@@ -121,21 +121,24 @@ def enrich_season(season: str, df_hist: pd.DataFrame) -> pd.DataFrame:
     w_total   = sum(weights)
 
     if noun_cols:
-        comp_score = sum(
-            scores_df[f"score_{c}"].fillna(0) * w
-            for c, w in zip(noun_cols, weights)
-        ) / w_total
+        # score_compat.py ile AYNI formül: top-4 noun (^1.5) + BPM blend (0.60/0.40).
+        # Tutarlı cross-era karşılaştırma için sabit BPM aralığı [-5, 15] kullanılır.
+        _score_mat = np.array([scores_df[f"score_{c}"].fillna(0).values**1.5 * w
+                               for c, w in zip(noun_cols, weights)]).T   # (n, 12)
+        _w_arr = np.array(weights)
+        _top_k = 4
+        _sort_idx  = np.argsort(-_score_mat, axis=1)[:, :_top_k]
+        _top_sc    = np.take_along_axis(_score_mat, _sort_idx, axis=1)
+        _top_wt    = _w_arr[_sort_idx]
+        comp_score = pd.Series(_top_sc.sum(axis=1) / _top_wt.sum(axis=1), index=scores_df.index)
 
-        # BPM varsa overall_score = 0.40*comp + 0.60*BPM_norm (score_compat ile aynı formül)
+        # BPM varsa overall_score = 0.60*top4_noun + 0.40*BPM_norm (score_compat ile aynı)
+        # Sabit aralık: çapraz sezon karşılaştırması için BPM_MIN=-5 BPM_MAX=15 (değiştirme)
         if "BPM" in merged.columns:
-            bpm_vals = merged["BPM"].values
-            bpm_ser  = pd.Series(bpm_vals, index=scores_df.index)
-            bpm_min  = -5.0
-            mask_q   = merged["GP"].fillna(0).values >= 35
-            bpm_max  = float(pd.Series(bpm_vals)[mask_q].fillna(bpm_min).max())
-            bpm_rng  = max(bpm_max - bpm_min, 1.0)
-            bpm_norm = ((bpm_ser.fillna(bpm_min) - bpm_min) / bpm_rng).clip(0.0, 1.0)
-            raw_overall = (0.40 * comp_score + 0.60 * bpm_norm).round(3)
+            bpm_ser  = pd.Series(merged["BPM"].values, index=scores_df.index)
+            BPM_MIN, BPM_MAX = -5.0, 15.0
+            bpm_norm = ((bpm_ser.fillna(BPM_MIN).clip(BPM_MIN, BPM_MAX) - BPM_MIN) / (BPM_MAX - BPM_MIN))
+            raw_overall = (0.60 * comp_score + 0.40 * bpm_norm).round(3)
             scores_df["BPM"] = bpm_ser.round(1).values
         else:
             raw_overall = comp_score.round(3)
@@ -143,33 +146,56 @@ def enrich_season(season: str, df_hist: pd.DataFrame) -> pd.DataFrame:
         mask_gp = merged["GP"].fillna(0) >= 35
         scores_df["overall_score"] = raw_overall.where(mask_gp.values, other=float("nan"))
 
-    # primary_arch — önce TAG sütununa, yoksa boolean bool'lara, yoksa score'a bak
+    # primary_arch — score_compat.py ile AYNI mantık (boolean-first kaldırıldı).
+    # Eskiden: boolean label önce kontrol ediliyordu → Jokić gibi oyuncular eski
+    # FALLBACK Ecosystem hatasından kalma Connector=True ile yanlış etiketleniyordu.
+    # Şimdi: doğrudan noun skorlarına bakılır (pozisyon maskesi + MIN_PRIMARY gate).
     df_season_pre = df_hist[df_hist["SEASON"] == season].copy()
     if "POSITION" in merged.columns:
         pos_map = dict(zip(merged["PLAYER_ID"], merged["POSITION"].fillna("")))
     else:
         pos_map = {}
 
-    # Geçici merge: primary_arch için TAG + bool'lar
-    scores_df = scores_df.merge(
-        df_season_pre[["PLAYER_ID"] + [c for c in HIST_BOOL_NOUNS if c in df_season_pre.columns]
-                       + (["TAG"] if "TAG" in df_season_pre.columns else [])],
-        on="PLAYER_ID", how="left"
-    )
+    # FALLBACK imzaları için noun thresholds (learned thresholds uygulanmaz)
+    fallback_thresholds = {c: FALLBACK_SIGNATURES[c].get("percentile_threshold", 0.0)
+                          for c in noun_cols if c in FALLBACK_SIGNATURES}
+    MIN_PRIMARY = 0.88   # score_compat.py ile aynı — düşük learned-threshold tuzağını engeller
+    ECO_FALLBACK_MIN = 0.90
 
-    # Tarihsel boolean core noun sütunları (hist labeled'de mevcut)
-    hist_bool_in_scores = [c for c in ["Engine","Anchor","Rim Runner","Spacer","Connector","Creator"]
-                           if c in scores_df.columns]
+    eco_thr = max(fallback_thresholds.get("Ecosystem", 0.0), MIN_PRIMARY)
 
     def _pick_arch(row):
-        # 1. Boolean True olan core noun'lar arasında en yüksek score'a sahip olanı seç
-        bool_active = [c for c in hist_bool_in_scores if row.get(c, False)]
-        if bool_active:
-            return max(bool_active, key=lambda c: float(row.get(f"score_{c}", 0) or 0))
-        # 2. Hiç boolean yoksa: fallback score (Initiator bias düzeltmesiyle)
-        pid = row.get("PLAYER_ID")
-        pos = pos_map.get(pid, "") if pid else ""
-        return _primary_arch_from_scores(row, pos, noun_cols)
+        ranked = sorted(
+            [(n, float(row.get(f"score_{n}", 0) or 0)) for n in noun_cols],
+            key=lambda x: -x[1],
+        )
+        other_scores = [float(row.get(f"score_{n}", 0) or 0)
+                        for n in noun_cols if n != "Initiator"]
+        other_max = max(other_scores) if other_scores else 0.0
+
+        # Ecosystem önceliği: threshold geçiliyorsa (ve top-3 içindeyse) Ecosystem seç.
+        # Jokić gibi oyuncular Force/Connector'dan yüksek skor alsa bile Ecosystem kazanır.
+        eco_score = float(row.get("score_Ecosystem", 0) or 0)
+        if eco_score >= eco_thr:
+            eco_rank = next((i for i, (n, _) in enumerate(ranked) if n == "Ecosystem"), 99)
+            if eco_rank <= 2:   # top-3 içindeyse
+                return "Ecosystem"
+
+        # Geçiş 1: threshold (fallback) + MIN_PRIMARY gate
+        for noun, score in ranked:
+            thr = max(fallback_thresholds.get(noun, 0.0), MIN_PRIMARY)
+            if score >= thr:
+                if noun == "Initiator" and other_max >= 0.52:
+                    continue
+                return noun
+        # Geçiş 2 (fallback): threshold yok, en yüksek skor
+        for noun, score in ranked:
+            if noun == "Ecosystem" and score < ECO_FALLBACK_MIN:
+                continue
+            if noun == "Initiator" and other_max >= 0.52:
+                continue
+            return noun
+        return ranked[0][0] if ranked else ""
 
     scores_df["primary_arch"] = scores_df.apply(_pick_arch, axis=1)
 

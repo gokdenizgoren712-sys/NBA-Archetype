@@ -162,9 +162,11 @@ def build_score_table(season: str = "2025-26") -> pd.DataFrame:
             other_max = max(
                 (float(row.get(c, 0) or 0) for c in _non_initiator_cols), default=0.0
             )
-            # Geçiş 1: threshold'u geçen ilk noun (skor zaten pozisyon penalty'si içeriyor)
+            # Geçiş 1: threshold'u geçen ilk noun (skor zaten pozisyon penalty'si içeriyor).
+            # MIN_PRIMARY=0.70: öğrenilmiş düşük threshold'lar (Creator=0.575 gibi) spurious seçimi engeller.
+            MIN_PRIMARY = 0.88
             for noun, score in ranked:
-                thr = noun_thresholds.get(noun, 0.0)
+                thr = max(noun_thresholds.get(noun, 0.0), MIN_PRIMARY)
                 if score >= thr:
                     if noun == "Initiator" and other_max >= 0.52:
                         continue
@@ -215,11 +217,30 @@ def build_score_table(season: str = "2025-26") -> pd.DataFrame:
     if core_score_cols:
         noun_cols = [c for c in CORE_NOUNS if f"score_{c}" in out.columns]
         weights   = [NOUN_WEIGHTS.get(c, 1.0) for c in noun_cols]
-        comp_score = sum(out[f"score_{c}"].fillna(0) * w for c, w in zip(noun_cols, weights)) / sum(weights)
+        # TOP-4 + ^1.5: her oyuncunun en yüksek 4 noun skoru üzerinden ağırlıklı ortalama.
+        # Breadth (Barnes: 8x0.75) yerine peak (SGA: 3x0.95) ödüllendirir.
+        # ^1.5 exponent: orta skorları baskılar (0.65^1.5=0.524), elit skoru korur (0.97^1.5=0.955).
+        import numpy as _np
+        _score_mat = _np.array([out[f"score_{c}"].fillna(0).values**1.5 * w
+                                for c, w in zip(noun_cols, weights)]).T   # (n_players, 12)
+        _w_arr = _np.array(weights)
+        _top_k = 4
+        _sort_idx = _np.argsort(-_score_mat, axis=1)[:, :_top_k]
+        _top_scores  = _np.take_along_axis(_score_mat, _sort_idx, axis=1)
+        _top_weights = _w_arr[_sort_idx]
+        comp_score = pd.Series(_top_scores.sum(axis=1) / _top_weights.sum(axis=1), index=out.index)
 
-        # BPM referans olarak sakla (overall_score hesabına katılmaz)
+        # BPM "kazanma etkisi" bileşeni (0.40 ağırlık).
+        # BPM clip(-5, 15) → [0, 1] normalize: Jokic(14.2)=0.96, SGA(11.7)=0.84, Giddey(2.7)=0.39.
+        # Noun-only top-4 değeri + BPM → sıralamanın impact'e duyarlı olması.
+        # BPM = Engine/Ecosystem signaturelarda da kullanılıyor (OBPM) ama farklı kanalda:
+        #   orada percentile skoru etkiliyor; burada kazanma bağlamında bireysel verimliliği ölçüyor.
         if "BPM" in df.columns:
             out["BPM"] = df["BPM"].values
+            _bpm = df["BPM"].fillna(df["BPM"].median())
+            _BPM_MIN, _BPM_MAX = -5.0, 15.0
+            _bpm_norm = ((_bpm.clip(_BPM_MIN, _BPM_MAX) - _BPM_MIN) / (_BPM_MAX - _BPM_MIN)).values
+            comp_score = 0.60 * comp_score + 0.40 * pd.Series(_bpm_norm, index=out.index)
 
         # Playoff blending (GP_playoff >= 5 olanlar için)
         if "score_playoff_comp" in out.columns:

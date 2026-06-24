@@ -52,7 +52,7 @@ COMPONENT_SIGNATURES = {
             "OBPM":          {"w": 0.14, "higher": True},   # offensive win impact
             "USG_PCT":       {"w": 0.14, "higher": True},   # heliocentric gravity
             "SECONDARY_AST": {"w": 0.12, "higher": True},   # hockey assists
-            "PTS":           {"w": 0.12, "higher": True},   # must score too
+            "PTS":           {"w": 0.12, "higher": True},   # must score too (Giddey gibi passer-only oyuncuları filtreler)
             "AST":           {"w": 0.08, "higher": True},   # sayı çifti
             "PASSES_MADE":   {"w": 0.04, "higher": True},   # sadece minor volüm sinyal
         },
@@ -648,12 +648,15 @@ FALLBACK_SIGNATURES = {
         },
     },
     "Ecosystem": {
-        "percentile_threshold": 0.78,
+        # Jokić/Magic/Big O tipi: hem yaratıcı hem de skorer, top hamlesini domine eder.
+        # ESKİ: USG_PCT higher=False (Jokić gibi yüksek USG oyuncuları penalize ediyordu) → DÜZELTİLDİ.
+        "percentile_threshold": 0.90,
         "metrics": {
-            "AST_PCT": {"w": 0.38, "higher": True},
-            "AST":     {"w": 0.28, "higher": True},
-            "AST_TO":  {"w": 0.22, "higher": True},
-            "USG_PCT": {"w": 0.12, "higher": False},
+            "AST_PCT": {"w": 0.32, "higher": True},   # PRIMARY: creation rate
+            "AST":     {"w": 0.22, "higher": True},   # raw assists
+            "PTS":     {"w": 0.20, "higher": True},   # scoring gate (saf passer'ları filtreler)
+            "USG_PCT": {"w": 0.14, "higher": True},   # heliocentric — FLIPPED from old False
+            "AST_TO":  {"w": 0.12, "higher": True},   # efficiency
         },
     },
     "Hub": {
