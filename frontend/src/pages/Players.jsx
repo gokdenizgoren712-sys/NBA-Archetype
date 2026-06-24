@@ -9,6 +9,20 @@ const CORE = ["Engine","Ecosystem","Hub","Connector","Creator","Anchor","Spacer"
 const MODIFIERS = ["Two-Way","Heliocentric","Jumbo","Pressure","Shotmaker","Three-Level","Scoring","Speed","Versatile","Defensive","Half-Court","Point-of-Attack","Gravity","Scalable","Stretch","Point-","Off-Ball","Slashing","Pick-and-Roll","3-and-D","Playmaking","Secondary"];
 const POSITIONS = ["","PG","SG","SF","PF","C"];
 
+const TAG_LABEL = {
+  "Point-": "Point-Forward",
+  "3-and-D": "3-and-D",
+  "Pick-and-Roll": "Pick-and-Roll",
+  "Point-of-Attack": "Point-of-Attack",
+};
+const tl = (n) => TAG_LABEL[n] || n;
+
+function topPct(pct) {
+  if (pct == null) return null;
+  const p = Math.round(pct * 100);
+  return p >= 99 ? "<1%" : `${100 - p}%`;
+}
+
 export default function Players() {
   const [search, setSearch]     = useState("");
   const [team, setTeam]         = useState("");
@@ -28,6 +42,9 @@ export default function Players() {
   const [compareDetail, setCompareDetail] = useState(null);
   const [similar, setSimilar]       = useState(null);
   const [similarLoading, setSimilarLoading] = useState(false);
+  const [career, setCareer]         = useState(null);
+  const [careerLoading, setCareerLoading] = useState(false);
+  const [teamList, setTeamList]     = useState([]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -48,12 +65,17 @@ export default function Players() {
 
   useEffect(() => { load(); }, [load]);
 
+  useEffect(() => {
+    api.teams().then(d => setTeamList(d.teams || [])).catch(() => {});
+  }, []);
+
   const openPlayer = async (p) => {
     setSelected(p);
     setDetail(null);
     setCompare(null);
     setCompareDetail(null);
     setSimilar(null);
+    setCareer(null);
     setTab("radar");
     const sc = await api.playerScores(p.PLAYER_NAME);
     setDetail(sc);
@@ -81,11 +103,11 @@ export default function Players() {
               className="w-full bg-slate-900 border border-slate-700 rounded-lg pl-8 pr-3 py-1.5 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-violet-500"
             />
           </div>
-          <input
-            value={team} onChange={e => setTeam(e.target.value.toUpperCase())}
-            placeholder="Team"
-            className="w-20 bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-violet-500"
-          />
+          <select value={team} onChange={e => setTeam(e.target.value)}
+            className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-violet-500">
+            <option value="">Team</option>
+            {teamList.map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
           <select value={pos} onChange={e => setPos(e.target.value)}
             className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-violet-500">
             <option value="">All positions</option>
@@ -105,6 +127,11 @@ export default function Players() {
             className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500">
             <option value="overall_score">Overall ↓</option>
             <option value="versatility_score">V.Score ↓</option>
+            <option value="PTS">PTS ↓</option>
+            <option value="REB">REB ↓</option>
+            <option value="AST">AST ↓</option>
+            <option value="BPM">BPM ↓</option>
+            <option value="GP">GP ↓</option>
           </select>
           <span className="text-xs text-slate-500">{total} players</span>
         </div>
@@ -149,7 +176,7 @@ export default function Players() {
 
           {/* Tabs */}
           <div className="flex border-b border-slate-800 shrink-0">
-            {[["radar","Radar"],["scores","Scores"],["similar","Similar"]].map(([k,l]) => (
+            {[["radar","Radar"],["scores","Scores"],["similar","Similar"],["career","Career"]].map(([k,l]) => (
               <button key={k} onClick={async () => {
                 setTab(k);
                 if (k === "similar" && !similar && selected) {
@@ -159,6 +186,14 @@ export default function Players() {
                     setSimilar(res.similar);
                   } catch(e) { console.error(e); }
                   setSimilarLoading(false);
+                }
+                if (k === "career" && !career && selected) {
+                  setCareerLoading(true);
+                  try {
+                    const res = await api.playerCareer(selected.PLAYER_NAME);
+                    setCareer(res);
+                  } catch(e) { console.error(e); setCareer({ error: true }); }
+                  setCareerLoading(false);
                 }
               }}
                 className={`flex-1 py-2 text-xs font-medium transition-colors ${
@@ -215,7 +250,7 @@ export default function Players() {
                           )}
                           {detail.overall_pct != null && (
                             <span className="ml-1 text-[10px] text-slate-500">
-                              top {100 - Math.round(detail.overall_pct * 100)}%
+                              top {topPct(detail.overall_pct)}
                             </span>
                           )}
                           {detail.bpm != null && (
@@ -250,12 +285,12 @@ export default function Players() {
                         <div className="text-[10px] uppercase tracking-wider text-slate-600 mt-4 mb-2">Active Modifier Tags</div>
                         <div className="flex flex-wrap gap-1.5 mb-3">
                           {sorted.map(m => (
-                            <span key={m} className="text-[10px] px-2 py-0.5 rounded-full bg-violet-900/40 text-violet-300 border border-violet-700/40">{m}</span>
+                            <span key={m} className="text-[10px] px-2 py-0.5 rounded-full bg-violet-900/40 text-violet-300 border border-violet-700/40">{tl(m)}</span>
                           ))}
                         </div>
                         <div className="text-[10px] uppercase tracking-wider text-slate-600 mb-2">Modifier Scores</div>
                         {sorted.map(m => (
-                          <ScoreBar key={m} label={m} value={detail.modifier_scores?.[m] || 0} />
+                          <ScoreBar key={m} label={tl(m)} value={detail.modifier_scores?.[m] || 0} />
                         ))}
                       </>
                       );
@@ -284,6 +319,50 @@ export default function Players() {
                     ))}
                     {!similarLoading && !similar && (
                       <div className="text-center text-slate-600 text-xs py-6">Click "Similar" tab to load</div>
+                    )}
+                  </div>
+                )}
+
+                {tab === "career" && (
+                  <div className="p-4">
+                    {careerLoading && (
+                      <div className="text-center text-slate-500 text-sm py-6">Loading...</div>
+                    )}
+                    {!careerLoading && career?.error && (
+                      <div className="text-center text-slate-500 text-xs py-6">Career data not available (historical data required)</div>
+                    )}
+                    {!careerLoading && career?.seasons && (
+                      <>
+                        <div className="text-[10px] uppercase tracking-wider text-slate-600 mb-3">Season-by-Season</div>
+                        <div className="space-y-1.5">
+                          {career.seasons.slice().reverse().map((s, i) => {
+                            const score = s.overall_score != null ? Math.round(s.overall_score * 100) : null;
+                            const isCurrent = s.season === "2025-26";
+                            return (
+                              <div key={i} className={`flex items-center gap-2 rounded-lg px-3 py-2 ${isCurrent ? "bg-violet-900/20 border border-violet-700/30" : "bg-slate-900/60"}`}>
+                                <div className="w-14 shrink-0">
+                                  <span className="text-[10px] text-slate-400 font-mono">{s.season}</span>
+                                </div>
+                                <div className="w-8 shrink-0 text-[10px] text-slate-500">{s.team}</div>
+                                <div className="flex-1 min-w-0">
+                                  <span className="text-xs text-violet-300 font-medium truncate">{s.primary_arch || "—"}</span>
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0 text-[10px] text-slate-500">
+                                  {s.pts != null && <span>{s.pts}p</span>}
+                                  {s.reb != null && <span>{s.reb}r</span>}
+                                  {s.ast != null && <span>{s.ast}a</span>}
+                                  {s.gp != null && <span className="text-slate-600">{s.gp}g</span>}
+                                </div>
+                                {score != null && (
+                                  <div className="w-8 text-right shrink-0">
+                                    <span className="text-xs font-bold text-violet-400">{score}</span>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </>
                     )}
                   </div>
                 )}
