@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { api } from "../api";
 import { useLang } from "../contexts/LanguageContext";
+import { X } from "lucide-react";
 
 function cellStyle(value) {
   if (value === "" || value === null || value === undefined) return { bg: "bg-slate-900", text: "text-slate-700", label: "—" };
@@ -41,14 +42,34 @@ export default function Affinity() {
   const [duoLoading, setDuoLoading] = useState(false);
   const [duoA, setDuoA]         = useState("");
   const [hovered, setHovered]   = useState(null); // {row, col}
+  const [sampleCounts, setSampleCounts] = useState({});
+  const [drillCell, setDrillCell]   = useState(null); // {archA, archB}
+  const [drillData, setDrillData]   = useState(null);
+  const [drillLoading, setDrillLoading] = useState(false);
 
   useEffect(() => {
     setLoading(true);
     api.affinity()
-      .then(d => { setMatrix(d.matrix || {}); setArchs(d.archetypes || []); })
+      .then(d => {
+        setMatrix(d.matrix || {});
+        setArchs(d.archetypes || []);
+        setSampleCounts(d.sample_counts || {});
+      })
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
+
+  const openDrill = async (archA, archB) => {
+    if (archA === archB) return;
+    setDrillCell({ archA, archB });
+    setDrillData(null);
+    setDrillLoading(true);
+    try {
+      const res = await api.affinityLineups(archA, archB, 10);
+      setDrillData(res);
+    } catch (e) { console.error(e); }
+    setDrillLoading(false);
+  };
 
   useEffect(() => {
     if (tab !== "duos") return;
@@ -131,17 +152,26 @@ export default function Affinity() {
                       const { bg, text, label } = cellStyle(raw);
                       const isDiag = row === col;
                       const isHov = hovered && (hovered.row === row || hovered.col === col || hovered.row === col || hovered.col === row);
+                      const isSelected = drillCell && ((drillCell.archA === row && drillCell.archB === col) || (drillCell.archA === col && drillCell.archB === row));
+                      const mins = sampleCounts[row]?.[col] ?? sampleCounts[col]?.[row];
                       return (
                         <td
                           key={col}
                           onMouseEnter={() => setHovered({ row, col })}
                           onMouseLeave={() => setHovered(null)}
-                          className={`p-1.5 text-center transition-all cursor-default ${
-                            isDiag ? "opacity-20" : ""
-                          } ${isHov && !isDiag ? "ring-1 ring-white/20" : ""}`}
+                          onClick={() => !isDiag && openDrill(row, col)}
+                          title={!isDiag && mins ? `${Math.round(mins)} lineup-dk` : undefined}
+                          className={`p-1.5 text-center transition-all ${
+                            isDiag ? "opacity-20 cursor-default" : "cursor-pointer hover:scale-110"
+                          } ${isHov && !isDiag ? "ring-1 ring-white/20" : ""} ${isSelected ? "ring-2 ring-white/50" : ""}`}
                         >
-                          <div className={`rounded px-2 py-1 ${bg}`}>
+                          <div className={`rounded px-2 py-1 ${bg} relative`}>
                             <span className={`${text} font-medium text-[11px]`}>{label}</span>
+                            {mins != null && !isDiag && (
+                              <span className="absolute -top-1 -right-1 text-[7px] bg-slate-700 text-slate-300 rounded px-0.5 leading-tight hidden group-hover:block">
+                                {Math.round(mins / 60)}h
+                              </span>
+                            )}
                           </div>
                         </td>
                       );
@@ -166,7 +196,82 @@ export default function Affinity() {
                 {label}
               </div>
             ))}
+            <div className="text-slate-600 ml-2">
+              {lang === "tr" ? "Hücreye tıkla → gerçek lineup'ları gör" : "Click a cell → see real lineups"}
+            </div>
           </div>
+
+          {/* Drill-down panel */}
+          {drillCell && (
+            <div className="mt-5 bg-slate-900 border border-slate-700 rounded-xl p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <div className={`w-2.5 h-2.5 rounded-full ${ARCH_DOT[drillCell.archA] || "bg-slate-500"}`}/>
+                  <span className="text-sm font-semibold text-white">{drillCell.archA}</span>
+                  <span className="text-slate-600 text-xs">+</span>
+                  <div className={`w-2.5 h-2.5 rounded-full ${ARCH_DOT[drillCell.archB] || "bg-slate-500"}`}/>
+                  <span className="text-sm font-semibold text-white">{drillCell.archB}</span>
+                  {drillData && (
+                    <span className="text-[10px] text-slate-500 ml-2">
+                      {lang === "tr" ? `${drillData.total} lineup` : `${drillData.total} lineups`}
+                      {drillData.avg_net != null && (
+                        <span className={`ml-1 font-semibold ${drillData.avg_net >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                          {drillData.avg_net > 0 ? "+" : ""}{drillData.avg_net.toFixed(1)} NET
+                        </span>
+                      )}
+                    </span>
+                  )}
+                </div>
+                <button onClick={() => { setDrillCell(null); setDrillData(null); }}
+                  className="text-slate-500 hover:text-white transition-colors">
+                  <X size={16} />
+                </button>
+              </div>
+
+              {drillLoading && <div className="text-center text-slate-500 text-sm py-4">Loading...</div>}
+              {!drillLoading && drillData?.total === 0 && (
+                <div className="text-center text-slate-600 text-xs py-4">
+                  {lang === "tr" ? "Bu çift için gerçek lineup verisi bulunamadı." : "No real lineup data found for this pair."}
+                </div>
+              )}
+              {!drillLoading && drillData?.lineups?.length > 0 && (
+                <div className="space-y-2">
+                  {drillData.lineups.map((lu, i) => {
+                    const net = lu.NET_RATING;
+                    const netColor = net >= 10 ? "text-emerald-400" : net >= 0 ? "text-blue-300" : "text-red-400";
+                    const players = (lu.GROUP_NAME || "").split(" - ");
+                    return (
+                      <div key={i} className="flex items-center gap-3 bg-slate-800/60 rounded-lg px-3 py-2">
+                        <span className="text-[10px] text-slate-600 w-4 shrink-0">{i + 1}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-wrap gap-x-1">
+                            {players.map((p, j) => (
+                              <span key={j} className="text-[11px] text-white">{p}{j < players.length - 1 ? " ·" : ""}</span>
+                            ))}
+                          </div>
+                          <div className="text-[9px] text-slate-500 mt-0.5">{Math.round(lu.MIN || 0)} min</div>
+                        </div>
+                        <div className="flex gap-3 shrink-0">
+                          {lu.fit_score != null && (
+                            <div className="text-center">
+                              <div className="text-sm font-bold text-violet-400">{Math.round(lu.fit_score * 100)}</div>
+                              <div className="text-[8px] text-slate-600">Fit</div>
+                            </div>
+                          )}
+                          {net != null && (
+                            <div className="text-center">
+                              <div className={`text-sm font-bold ${netColor}`}>{net > 0 ? "+" : ""}{net.toFixed(1)}</div>
+                              <div className="text-[8px] text-slate-600">NET</div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </>
       )}
 

@@ -289,6 +289,18 @@ def main():
     # Oyuncu arketipi (skor tabanlı)
     print("Oyuncu arketipleri (skor tabanlı) hesaplanıyor...")
     df_full = pd.read_parquet(DATA / "2025-26__merged.parquet")
+
+    # BPM proxy — OBPM/DBPM nba_api'den gelmiyor; yoksa hesapla ve kaydet
+    if "OBPM" not in df_full.columns or df_full["OBPM"].isna().all():
+        try:
+            sys.path.insert(0, str(ROOT / "src"))
+            from compute_bpm import compute_bpm
+            print("BPM proxy hesaplanıyor (compute_bpm)...")
+            df_full = compute_bpm(df_full)
+            df_full.to_parquet(DATA / "2025-26__merged.parquet")
+            print("  OBPM/DBPM/BPM eklendi → merged.parquet güncellendi")
+        except Exception as e:
+            print(f"  [UYARI] compute_bpm başarısız: {e}")
     player_arch = _player_arch_from_scores(df_full)
     abbrev      = _abbrev_map(player_arch)
 

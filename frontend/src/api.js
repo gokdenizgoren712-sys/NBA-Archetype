@@ -47,7 +47,8 @@ export const api = {
   teamPlayers: (team, season = "2025-26") => get(`/teams/${encodeURIComponent(team)}/players`, { season }),
 
   // Gerçek oynanmış lineup'lar
-  realLineups: (p) => get("/real-lineups", p),
+  realLineups:     (p) => get("/real-lineups", p),
+  affinityLineups: (arch_a, arch_b, limit = 10) => get("/affinity/lineups", { arch_a, arch_b, limit }),
 
   // Meta
   meta: () => get("/meta"),

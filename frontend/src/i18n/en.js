@@ -6,6 +6,7 @@ export const en = {
   nav_explore:    "Archetype Map",
   nav_glossary:   "Glossary",
   nav_about:      "About",
+  nav_compare:    "Compare",
 
   // Players page
   search_placeholder:  "Search player...",

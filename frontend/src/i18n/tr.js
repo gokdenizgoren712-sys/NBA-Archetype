@@ -6,6 +6,7 @@ export const tr = {
   nav_explore:    "Arketip Haritası",
   nav_glossary:   "Sözlük",
   nav_about:      "Hakkımızda",
+  nav_compare:    "Karşılaştır",
 
   // Players page
   search_placeholder:  "Oyuncu ara...",

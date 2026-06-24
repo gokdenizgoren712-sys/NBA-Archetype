@@ -133,6 +133,15 @@ export default function Players() {
             <option value="BPM">BPM ↓</option>
             <option value="GP">GP ↓</option>
           </select>
+          {/* Aktif filtre sayısı + temizle butonu */}
+          {(search || team || pos || arch || mod) && (
+            <button
+              onClick={() => { setSearch(""); setTeam(""); setPos(""); setArch(""); setMod(""); }}
+              className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs bg-violet-600/20 text-violet-300 border border-violet-600/30 hover:bg-violet-600/40 transition-colors"
+            >
+              ✕ Clear
+            </button>
+          )}
           <span className="text-xs text-slate-500">{total} players</span>
         </div>
 

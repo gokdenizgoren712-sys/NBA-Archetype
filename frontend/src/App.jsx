@@ -6,6 +6,7 @@ import Historical from "./pages/Historical";
 import Glossary   from "./pages/Glossary";
 import About      from "./pages/About";
 import Explore    from "./pages/Explore";
+import Compare    from "./pages/Compare";
 import { ThemeProvider, useTheme } from "./contexts/ThemeContext";
 import { LanguageProvider, useLang } from "./contexts/LanguageContext";
 import { api } from "./api";
@@ -25,6 +26,7 @@ function Header() {
     { to: "/lineups",    label: t("nav_lineups")    },
     { to: "/historical", label: t("nav_historical") },
     { to: "/explore",    label: t("nav_explore") },
+    { to: "/compare",    label: t("nav_compare")    },
     { to: "/glossary",   label: t("nav_glossary")   },
     { to: "/about",      label: t("nav_about")      },
   ];
@@ -119,6 +121,7 @@ function AppInner() {
               <Route path="/lineups"    element={<Lineups />} />
               <Route path="/historical" element={<Historical />} />
               <Route path="/explore"    element={<Explore />} />
+              <Route path="/compare"    element={<Compare />} />
               <Route path="/glossary"   element={<Glossary />} />
               <Route path="/about"      element={<About />} />
             </Routes>

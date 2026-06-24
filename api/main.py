@@ -322,6 +322,8 @@ def clear_cache():
     _load_affinity.cache_clear()
     _load_historical.cache_clear()
     _load_hist_base_stats.cache_clear()
+    _load_real_lineups.cache_clear()
+    _load_lineups_with_archs.cache_clear()
     global _SCORES_MTIME, _HIST_MTIME
     _SCORES_MTIME = 0.0
     _HIST_MTIME   = 0.0
@@ -445,6 +447,9 @@ def get_player_scores(player_name: str):
         "pos5_secondary":row.get("POS5_SECONDARY",""),
         "pos5_tertiary": row.get("POS5_TERTIARY",""),
         "gp":            int(row.get("GP",0)) if pd.notna(row.get("GP",0)) else 0,
+        "pts":           round(float(row["PTS"]),1) if "PTS" in row.index and pd.notna(row.get("PTS")) else None,
+        "reb":           round(float(row["REB"]),1) if "REB" in row.index and pd.notna(row.get("REB")) else None,
+        "ast":           round(float(row["AST"]),1) if "AST" in row.index and pd.notna(row.get("AST")) else None,
         "primary_arch":  row.get("primary_arch",""),
         "overall_score": round(float(row["overall_score"]),3) if pd.notna(row.get("overall_score")) else None,
         "overall_pct":   round(float(row["overall_pct"]),3) if pd.notna(row.get("overall_pct")) else None,
@@ -675,6 +680,54 @@ def custom_lineup_compat(body: dict):
             for k, v in result.items()}
 
 
+@lru_cache(maxsize=1)
+def _load_lineups_with_archs() -> pd.DataFrame:
+    """Real lineup'ları arketip bilgisiyle zenginleştirir; /api/affinity/lineups için."""
+    lineups = _load_real_lineups()
+    if lineups.empty:
+        return lineups
+    scores = _load_scores()
+    arch_map = {}
+    if "primary_arch" in scores.columns:
+        arch_map = dict(zip(scores["PLAYER_NAME"], scores["primary_arch"].fillna("")))
+
+    from collections import defaultdict
+    init_last: dict = {}
+    last_uniq: dict = {}
+    last_count: dict = defaultdict(list)
+    for name in scores["PLAYER_NAME"]:
+        parts = name.split()
+        if not parts: continue
+        last = parts[-1].lower()
+        fi = parts[0][0].lower() if parts[0] else ""
+        init_last[f"{fi}_{last}"] = name
+        last_count[last].append(name)
+    for last, names in last_count.items():
+        if len(names) == 1:
+            last_uniq[last] = names[0]
+
+    def expand(abbr: str) -> str:
+        parts = abbr.strip().split()
+        if not parts: return abbr
+        last = parts[-1].lower()
+        fi = parts[0].rstrip(".").lower() if len(parts) > 1 else ""
+        k = f"{fi}_{last}"
+        if k in init_last: return init_last[k]
+        if last in last_uniq: return last_uniq[last]
+        return abbr
+
+    archs_list, names_list = [], []
+    for _, row in lineups.iterrows():
+        raw = [n.strip() for n in row["GROUP_NAME"].split(" - ")]
+        expanded = [expand(n) for n in raw]
+        archs_list.append([arch_map.get(n, "") for n in expanded])
+        names_list.append(expanded)
+    lineups = lineups.copy()
+    lineups["_archs"] = archs_list
+    lineups["_names"] = names_list
+    return lineups
+
+
 @app.get("/api/affinity")
 def get_affinity_endpoint():
     """Arketip x arketip uyum matrisi. Prior (12 noun); empirikal varsa EMA ile güncellenir."""
@@ -684,7 +737,6 @@ def get_affinity_endpoint():
         df = PRIOR
         source = "prior"
     else:
-        # Prior temel; empirikal matriste örtüşen hücreler için EMA (alpha=0.3)
         df = PRIOR.copy()
         alpha = 0.3
         for a in df.index:
@@ -694,10 +746,59 @@ def get_affinity_endpoint():
                     if pd.notna(v):
                         df.loc[a, b] = round((1 - alpha) * df.loc[a, b] + alpha * float(v), 3)
         source = "blended"
+
+    # Sample counts: gerçek lineup'lardan arketip çifti başına düşen toplam dakika
+    sample_counts: dict = {}
+    try:
+        lu = _load_lineups_with_archs()
+        if not lu.empty and "_archs" in lu.columns:
+            from itertools import combinations as _comb
+            pair_min: dict = {}
+            for _, row in lu.iterrows():
+                archs = [a for a in row["_archs"] if a]
+                mins  = float(row.get("MIN", 0) or 0)
+                for a, b in _comb(sorted(set(archs)), 2):
+                    pair_min[(a, b)] = pair_min.get((a, b), 0) + mins
+            for (a, b), total_min in pair_min.items():
+                sample_counts.setdefault(a, {})[b] = round(total_min)
+                sample_counts.setdefault(b, {})[a] = round(total_min)
+    except Exception:
+        pass
+
     return {
         "archetypes": list(df.index),
         "matrix": json.loads(df.round(3).to_json()),
         "source": source,
+        "sample_counts": sample_counts,
+    }
+
+
+@app.get("/api/affinity/lineups")
+def get_affinity_lineups(
+    arch_a: str = Query(..., description="İlk arketip"),
+    arch_b: str = Query(..., description="İkinci arketip"),
+    limit:  int = Query(10, ge=1, le=50),
+):
+    """Verilen iki arketipi birlikte içeren gerçek 5'li lineup'lar."""
+    lu = _load_lineups_with_archs()
+    if lu.empty or "_archs" not in lu.columns:
+        return {"total": 0, "lineups": [], "avg_net": None}
+
+    mask = lu["_archs"].apply(lambda archs: arch_a in archs and arch_b in archs)
+    filtered = lu[mask].copy()
+    if filtered.empty:
+        return {"total": 0, "lineups": [], "avg_net": None}
+
+    filtered = filtered.sort_values("NET_RATING", ascending=False).reset_index(drop=True)
+    avg_net = round(float(filtered["NET_RATING"].mean()), 2) if "NET_RATING" in filtered.columns else None
+
+    keep = ["GROUP_NAME", "NET_RATING", "MIN", "PLUS_MINUS", "fit_score"]
+    keep = [c for c in keep if c in filtered.columns]
+    out = filtered[keep].iloc[:limit]
+    return {
+        "total":   int(len(filtered)),
+        "avg_net": avg_net,
+        "lineups": _safe(out),
     }
 
 

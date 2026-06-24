@@ -48,6 +48,17 @@ def main():
     df = pd.read_parquet(MERGED)
     print(f"Toplam oyuncu: {len(df)}")
 
+    # BPM proxy — OBPM/DBPM nba_api'den gelmiyor; yoksa hesapla
+    if "OBPM" not in df.columns or df["OBPM"].isna().all():
+        try:
+            from compute_bpm import compute_bpm
+            print("BPM proxy hesaplanıyor (compute_bpm)...")
+            df = compute_bpm(df)
+            df.to_parquet(MERGED)  # merged'ı güncelle; diğer scriptler de kullanır
+            print("  OBPM/DBPM/BPM eklendi")
+        except Exception as e:
+            print(f"  [UYARI] compute_bpm başarısız: {e}")
+
     # Minimum dakika filtresi (MIN maç başına; toplam = MIN * GP)
     if "MIN" in df.columns and "GP" in df.columns:
         total_min = df["MIN"] * df["GP"]
