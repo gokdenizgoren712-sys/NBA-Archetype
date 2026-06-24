@@ -1,0 +1,1237 @@
+"""
+NBA Arketip API — FastAPI backend
+Parquet dosyalarını okuyup JSON olarak sunar.
+"""
+
+import sys, json, os
+from pathlib import Path
+from functools import lru_cache
+from typing import Optional
+
+import pandas as pd
+import numpy as np
+from fastapi import FastAPI, Query, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+
+ROOT = Path(__file__).resolve().parent.parent
+# Render disk mount path override (env var DATA_DIR ile dışarıdan ayarlanabilir)
+DATA = Path(os.environ.get("DATA_DIR", str(ROOT / "data")))
+sys.path.insert(0, str(ROOT / "src"))
+sys.path.insert(0, str(ROOT / "config"))
+
+from signatures import COMPONENT_SIGNATURES, CORE_NOUNS, MODIFIER_TAGS, POSITION_COMPONENTS
+from roles import ROLE_SLOTS, compute_role_vec
+
+COMP_COLS = CORE_NOUNS        # uyum hesabı sadece core noun
+ALL_COMP_COLS = CORE_NOUNS + MODIFIER_TAGS
+CORE      = CORE_NOUNS        # geriye dönük alias
+
+app = FastAPI(title="NBA Arketip API", version="1.0.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+# ─── Cache: parquet dosyalarını bir kez yükle ──────────────────────────────────
+
+def _assign_pos5(df: pd.DataFrame) -> pd.Series:
+    """
+    POSITION string → birincil PG/SG/SF/PF/C.
+    Boy heuristiği KULLANILMAZ — API'nin position designation'ı öncelikli.
+    Listedeki ilk kelime birincil rolü gösterir (ör. "Forward-Center" → PF).
+
+      Center            → C
+      Center-Forward    → C  (Center birincil)
+      Forward-Center    → PF (Forward birincil, ama paint oyuncusu)
+      Forward           → PF (REB≥6.5) veya SF
+      Forward-Guard     → SF (forward leaning)
+      Guard-Forward     → SG (REB≥5.0) veya SF → SG
+      Guard             → PG (AST≥5.0) veya SG
+    """
+    def _s(col, default=""):
+        return df[col].fillna(default) if col in df.columns else pd.Series([default]*len(df), index=df.index)
+    def _n(col):
+        return pd.to_numeric(_s(col, 0), errors="coerce").fillna(0)
+    pos = _s("POSITION","").str.strip()
+    ast = _n("AST"); reb = _n("REB")
+
+    result = []
+    for p, a, r in zip(pos, ast, reb):
+        pu = p.upper().strip()
+        # --- BBR kısa kodları (C, PG, SG, SF, PF, PG-SG, vb.) ---
+        if pu in ("C",):
+            result.append("C")
+        elif pu in ("PG",):
+            result.append("PG")
+        elif pu in ("SG",):
+            result.append("SG")
+        elif pu in ("SF",):
+            result.append("SF")
+        elif pu in ("PF",):
+            result.append("PF")
+        elif pu in ("PG-SG", "SG-PG"):
+            result.append("PG" if a >= 5.0 else "SG")
+        elif pu in ("SG-SF", "SF-SG"):
+            result.append("SF" if r >= 5.0 else "SG")
+        elif pu in ("SF-PF", "PF-SF"):
+            result.append("PF" if r >= 6.5 else "SF")
+        elif pu in ("PF-C", "C-PF"):
+            result.append("C" if r >= 8.5 else "PF")
+        # --- nba_api uzun string'leri (fallback) ---
+        elif "CENTER-FORWARD" in pu or pu in ("CENTER",):
+            result.append("C")
+        elif "FORWARD-CENTER" in pu:
+            result.append("PF")
+        elif "FORWARD-GUARD" in pu:
+            result.append("SF")
+        elif "GUARD-FORWARD" in pu:
+            result.append("SF" if r >= 5.0 else "SG")
+        elif "FORWARD" in pu:
+            result.append("PF" if r >= 6.5 else "SF")
+        elif "GUARD" in pu:
+            result.append("PG" if a >= 5.0 else "SG")
+        else:
+            result.append("SF")
+    return pd.Series(result, index=df.index)
+
+
+def _assign_secondary_pos(df: pd.DataFrame, primary: pd.Series) -> pd.Series:
+    """Primary pozisyona göre ikincil mevki atar."""
+    def _n(col):
+        s = df[col] if col in df.columns else pd.Series([0.0]*len(df), index=df.index)
+        return pd.to_numeric(s, errors="coerce").fillna(0)
+    pos = df["POSITION"].fillna("").str.strip() if "POSITION" in df.columns else pd.Series([""] * len(df), index=df.index)
+    ast = _n("AST"); reb = _n("REB"); blk = _n("BLK"); ht = _n("PLAYER_HEIGHT_INCHES")
+
+    _next = {"PG": "SG", "SG": "PG", "SF": "PF", "PF": "C", "C": "PF"}
+    result = []
+    for p1, p, a, r, b, h in zip(primary, pos, ast, reb, blk, ht):
+        pu = p.upper()
+        if p1 == "PG":
+            result.append("SG" if a < 6.5 else "SG")
+        elif p1 == "SG":
+            result.append("PG" if a >= 4.0 else "SF")
+        elif p1 == "SF":
+            result.append("PF" if r >= 5.0 else "SG")
+        elif p1 == "PF":
+            result.append("C" if (b >= 1.0 or h >= 80) else "SF")
+        elif p1 == "C":
+            result.append("PF" if a >= 3.0 else "PF")
+        else:
+            result.append(_next.get(p1, "SF"))
+    return pd.Series(result, index=df.index)
+
+
+def _assign_tertiary_pos(primary: pd.Series, secondary: pd.Series) -> pd.Series:
+    """Birincil ve ikincil dışındaki en yakın üçüncül mevki."""
+    order = ["PG", "SG", "SF", "PF", "C"]
+    result = []
+    for p1, p2 in zip(primary, secondary):
+        for p in order:
+            if p not in (p1, p2):
+                result.append(p)
+                break
+        else:
+            result.append("SF")
+    return pd.Series(result, index=primary.index)
+
+
+# Parquet mtime izleme: dosya değişince cache otomatik temizlenir
+_SCORES_MTIME: float = 0.0
+_HIST_MTIME:   float = 0.0
+
+
+@lru_cache(maxsize=1)
+def _load_scores() -> pd.DataFrame:
+    p = DATA / "2025-26__player_scores.parquet"
+    if not p.exists():
+        raise FileNotFoundError("player_scores bulunamadı — önce export_excel.py çalıştır")
+    df = pd.read_parquet(p)
+    score_cols = [c for c in df.columns if c.startswith("score_")]
+    df[score_cols] = df[score_cols].fillna(0)
+    df["POS5"]           = _assign_pos5(df)
+    df["POS5_SECONDARY"] = _assign_secondary_pos(df, df["POS5"])
+    df["POS5_TERTIARY"]  = _assign_tertiary_pos(df["POS5"], df["POS5_SECONDARY"])
+    # Eksik stat'ları Base parquet'ten tamamla (FG3_PCT, FGA, vb.)
+    base_p = DATA / "2025-26__player_Base.parquet"
+    if base_p.exists():
+        try:
+            base = pd.read_parquet(base_p)
+            want = ["PLAYER_ID","FGA","FG_PCT","FG3A","FG3_PCT","STL","BLK"]
+            merge_cols = ["PLAYER_ID"] + [c for c in want[1:] if c in base.columns and c not in df.columns]
+            if len(merge_cols) > 1:
+                df = df.merge(base[merge_cols], on="PLAYER_ID", how="left")
+        except Exception:
+            pass
+    # versatility_score + versatility_tier ekle
+    vers_p = DATA / "2025-26__versatility.parquet"
+    if vers_p.exists():
+        try:
+            vers = pd.read_parquet(vers_p, columns=["PLAYER_ID","versatility_score","versatility_tier"])
+            df = df.merge(vers, on="PLAYER_ID", how="left")
+        except Exception:
+            pass
+
+    # Lig içi overall percentile + tier (runtime'da hesaplanır, parquet'e yazılmaz)
+    if "overall_score" in df.columns:
+        ranked = df["overall_score"].dropna()
+        if len(ranked) > 0:
+            df["overall_pct"] = (df["overall_score"]
+                                 .rank(pct=True, na_option="keep")
+                                 .round(3))
+            # Tier: ligin en iyisi yukarıda
+            # Elite = top 10%  (pct >= 0.90)
+            # Star   = top 25% (pct >= 0.75)
+            # Starter= top 50% (pct >= 0.50)
+            # Role   = geri kalan (pct < 0.50, overall_score mevcut)
+            def _tier(pct):
+                if pd.isna(pct):
+                    return ""
+                if pct >= 0.90: return "Elite"
+                if pct >= 0.75: return "Star"
+                if pct >= 0.50: return "Starter"
+                return "Role Player"
+            df["overall_tier"] = df["overall_pct"].apply(_tier)
+
+    return df
+
+
+@lru_cache(maxsize=1)
+def _load_labeled() -> pd.DataFrame:
+    return pd.read_parquet(DATA / "2025-26__labeled.parquet")
+
+
+@lru_cache(maxsize=1)
+def _load_duo_compat() -> pd.DataFrame:
+    # Önce hazır parquet'ten oku (export_excel.py çıktısı)
+    p = DATA / "2025-26__duo_compat.parquet"
+    if p.exists():
+        return pd.read_parquet(p)
+    # Yoksa hesapla ve kaydet (yalnızca ilk seferde, ~30sn)
+    scores = _load_scores()
+    from score_compat import duo_compatibility
+    aff_p = DATA / "2025-26__affinity_matrix.parquet"
+    aff = pd.read_parquet(aff_p) if aff_p.exists() else None
+    df = duo_compatibility(scores, affinity_matrix=aff, min_games=20)
+    df.to_parquet(p)
+    return df
+
+
+@lru_cache(maxsize=1)
+def _load_lineup_compat() -> pd.DataFrame:
+    scores = _load_scores()
+    from score_compat import top_lineup_combos
+    return top_lineup_combos(scores, top_n=3000, min_gp=35, min_mpg=22.0, pool_size=40)
+
+
+@lru_cache(maxsize=1)
+def _load_lineup_compat_positional() -> pd.DataFrame:
+    scores = _load_scores()
+    from score_compat import top_lineup_combos_positional
+    # top_n=50: greedy inline tüm 248K üzerinde çalışıyor, 50 unique lineup döner
+    return top_lineup_combos_positional(scores, top_n=50, min_gp=35, min_mpg=22.0, pool_per_pos=12)
+
+
+@lru_cache(maxsize=1)
+def _load_affinity() -> pd.DataFrame:
+    p = DATA / "2025-26__affinity_matrix.parquet"
+    return pd.read_parquet(p) if p.exists() else pd.DataFrame()
+
+
+_HIST_STAT_COLS = ["STL", "BLK", "FGA", "FG_PCT", "FG3A", "FG3_PCT", "TEAM_ABBREVIATION"]
+
+@lru_cache(maxsize=60)
+def _load_hist_base_stats(season: str) -> pd.DataFrame:
+    """Belirtilen sezon için hist_Base parquet'inden ek stat sütunlarını yükler."""
+    p = DATA / f"{season}__hist_Base.parquet"
+    if not p.exists():
+        return pd.DataFrame()
+    try:
+        base = pd.read_parquet(p)
+        avail = ["PLAYER_ID"] + [c for c in _HIST_STAT_COLS if c in base.columns]
+        return base[avail] if len(avail) > 1 else pd.DataFrame()
+    except Exception:
+        return pd.DataFrame()
+
+
+@lru_cache(maxsize=1)
+def _load_historical() -> pd.DataFrame:
+    p = DATA / "historical__labeled.parquet"
+    return pd.read_parquet(p) if p.exists() else pd.DataFrame()
+
+
+def _safe(df: pd.DataFrame) -> list[dict]:
+    """NaN/Inf'leri temizleyip JSON-serileştirilebilir dict listesi döner.
+    Numeric NaN → null (oyuncu GP eşiği altındaysa overall_score null gelir),
+    string NaN → "" (frontend'de güvenli).
+    """
+    df = df.replace([np.inf, -np.inf], np.nan)
+    str_cols = df.select_dtypes(include=["object"]).columns
+    df = df.copy()
+    df[str_cols] = df[str_cols].fillna("")
+    return json.loads(df.to_json(orient="records"))
+
+
+# ─── Endpoints ────────────────────────────────────────────────────────────────
+
+@app.get("/api/health")
+def health():
+    return {"status": "ok"}
+
+
+@app.get("/api/meta")
+def get_meta():
+    """Veri güncelliği + sezon + oyuncu sayısı."""
+    import datetime
+    _auto_invalidate()
+    df = _load_scores()
+    scores_path = ROOT / "data" / "2025-26__player_scores.parquet"
+    last_updated = None
+    if scores_path.exists():
+        mtime = scores_path.stat().st_mtime
+        last_updated = datetime.datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M")
+    ranked = df[df["overall_score"].notna()] if "overall_score" in df.columns else df
+    return {
+        "season":       "2025-26",
+        "player_count": int(len(ranked)),
+        "last_updated": last_updated,
+    }
+
+
+@app.get("/api/player-names")
+def get_player_names():
+    """Tüm oyuncu adları — frontend autocomplete için."""
+    _auto_invalidate()
+    df = _load_scores()
+    return {"names": sorted(df["PLAYER_NAME"].dropna().tolist())}
+
+
+@app.post("/api/admin/clear-cache")
+def clear_cache():
+    """lru_cache'i temizle — yeni formülle lineup'lar yeniden hesaplanır."""
+    _load_scores.cache_clear()
+    _load_labeled.cache_clear()
+    _load_duo_compat.cache_clear()
+    _load_lineup_compat.cache_clear()
+    _load_lineup_compat_positional.cache_clear()
+    _load_affinity.cache_clear()
+    _load_historical.cache_clear()
+    _load_hist_base_stats.cache_clear()
+    global _SCORES_MTIME, _HIST_MTIME
+    _SCORES_MTIME = 0.0
+    _HIST_MTIME   = 0.0
+    return {"status": "cleared", "message": "Tüm cache temizlendi. Sonraki istek verileri yeniden hesaplar."}
+
+
+def _auto_invalidate():
+    """Parquet dosyaları değiştiyse lru_cache'i otomatik temizle."""
+    global _SCORES_MTIME, _HIST_MTIME
+    sp = DATA / "2025-26__player_scores.parquet"
+    hp = DATA / "historical__labeled.parquet"
+    if sp.exists():
+        mt = sp.stat().st_mtime
+        if mt != _SCORES_MTIME:
+            _load_scores.cache_clear()
+            _SCORES_MTIME = mt
+    if hp.exists():
+        mt = hp.stat().st_mtime
+        if mt != _HIST_MTIME:
+            _load_historical.cache_clear()
+            _HIST_MTIME = mt
+
+
+@app.get("/api/components")
+def get_components():
+    """Tüm bileşen adları + core/modifier ayrımı."""
+    return {
+        "all":  COMP_COLS,
+        "core": CORE,
+        "modifiers": [c for c in COMP_COLS if c not in CORE],
+    }
+
+
+@app.get("/api/players")
+def get_players(
+    search:    Optional[str] = Query(None, description="İsim arama"),
+    team:      Optional[str] = Query(None),
+    position:  Optional[str] = Query(None),
+    arch:      Optional[str] = Query(None, description="Core noun filtre (primary_arch)"),
+    modifier:  Optional[str] = Query(None, description="Modifier tag filtre (score >= threshold)"),
+    min_score: float = Query(0.0, ge=0, le=1),
+    sort_by:   str = Query("overall_score", description="Sıralama: overall_score | versatility_score"),
+    limit:     int = Query(50, ge=1, le=500),
+    offset:    int = Query(0, ge=0),
+):
+    """Oyuncu listesi — filtre + sayfalama."""
+    _auto_invalidate()
+    df = _load_scores().copy()
+
+    if search:
+        df = df[df["PLAYER_NAME"].str.contains(search, case=False, na=False)]
+    if team:
+        df = df[df["TEAM_ABBREVIATION"].str.upper() == team.upper()]
+    if position:
+        pos_upper = position.upper()
+        if pos_upper in ("PG", "SG", "SF", "PF", "C") and "POS5" in df.columns:
+            df = df[df["POS5"] == pos_upper]
+        elif "POSITION" in df.columns:
+            df = df[df["POSITION"].str.contains(position, case=False, na=False)]
+    if arch:
+        df = df[df["primary_arch"].str.lower() == arch.lower()]
+    if modifier:
+        col = f"score_{modifier}"
+        if col in df.columns:
+            from signatures import COMPONENT_SIGNATURES as _CS
+            thr = _CS.get(modifier, {}).get("percentile_threshold", 0.75)
+            df = df[df[col] >= thr]
+    if min_score > 0 and "overall_score" in df.columns:
+        df = df[df["overall_score"] >= min_score]
+
+    valid_sort = sort_by if sort_by in df.columns else "overall_score"
+    df = df.sort_values(valid_sort, ascending=False, na_position="last")
+
+    total = len(df)
+    page  = df.iloc[offset: offset + limit]
+
+    return {
+        "total":   total,
+        "offset":  offset,
+        "limit":   limit,
+        "players": _safe(page),
+    }
+
+
+@app.get("/api/players/{player_name}/scores")
+def get_player_scores(player_name: str):
+    """Tek oyuncunun bileşen skor profili."""
+    df = _load_scores()
+    match = df[df["PLAYER_NAME"].str.lower() == player_name.lower()]
+    if match.empty:
+        # Fuzzy fallback
+        match = df[df["PLAYER_NAME"].str.contains(player_name, case=False, na=False)]
+    if match.empty:
+        raise HTTPException(status_code=404, detail=f"{player_name} bulunamadı")
+
+    row = match.iloc[0]
+    score_cols = [c for c in df.columns if c.startswith("score_")]
+    scores = {c.replace("score_",""):round(float(row[c]),3) for c in score_cols}
+
+    score_cols_core = [c for c in score_cols if c.replace("score_","") in CORE_NOUNS]
+    score_cols_mod  = [c for c in score_cols if c.replace("score_","") in MODIFIER_TAGS]
+    core_scores = {c.replace("score_",""):round(float(row[c]),3) for c in score_cols_core}
+    mod_scores  = {c.replace("score_",""):round(float(row[c]),3) for c in score_cols_mod}
+
+    # Aktif modifier taglar (eşik geçilmiş olanlar)
+    from signatures import COMPONENT_SIGNATURES as CS
+    active_modifiers = [
+        m for m, sc in mod_scores.items()
+        if sc >= CS.get(m, {}).get("percentile_threshold", 0.75)
+    ]
+
+    # Rol vektörü
+    role_vec = compute_role_vec(dict(row))
+    role_scores = {slot: round(float(role_vec[i]), 3) for i, slot in enumerate(ROLE_SLOTS)}
+
+    return {
+        "name":          row["PLAYER_NAME"],
+        "team":          row.get("TEAM_ABBREVIATION",""),
+        "position":      row.get("POSITION",""),
+        "pos5":          row.get("POS5",""),
+        "pos5_secondary":row.get("POS5_SECONDARY",""),
+        "pos5_tertiary": row.get("POS5_TERTIARY",""),
+        "gp":            int(row.get("GP",0)) if pd.notna(row.get("GP",0)) else 0,
+        "primary_arch":  row.get("primary_arch",""),
+        "overall_score": round(float(row["overall_score"]),3) if pd.notna(row.get("overall_score")) else None,
+        "overall_pct":   round(float(row["overall_pct"]),3) if pd.notna(row.get("overall_pct")) else None,
+        "overall_tier":  row.get("overall_tier",""),
+        "bpm":           round(float(row["BPM"]),1) if "BPM" in row.index and pd.notna(row.get("BPM")) else None,
+        "scores":        core_scores,
+        "modifier_scores": mod_scores,
+        "active_modifiers": active_modifiers,
+        "role_scores":   role_scores,
+    }
+
+
+@app.get("/api/players/{player_name}/duo-partners")
+def get_duo_partners(player_name: str, limit: int = Query(20, ge=1, le=100)):
+    """Bir oyuncunun en uyumlu duo ortakları."""
+    df = _load_duo_compat()
+    p = player_name.lower()
+    mask = (df["Oyuncu_1"].str.lower().str.contains(p, na=False) |
+            df["Oyuncu_2"].str.lower().str.contains(p, na=False))
+    result = df[mask].head(limit)
+
+    # Partner adını öne al
+    rows = []
+    for _, r in result.iterrows():
+        if p in r["Oyuncu_1"].lower():
+            partner, partner_team, partner_arch = r["Oyuncu_2"], r["Takım_2"], r["Arketip_2"]
+            self_arch = r["Arketip_1"]
+        else:
+            partner, partner_team, partner_arch = r["Oyuncu_1"], r["Takım_1"], r["Arketip_1"]
+            self_arch = r["Arketip_2"]
+        rows.append({
+            "partner":      partner,
+            "partner_team": partner_team,
+            "partner_arch": partner_arch,
+            "self_arch":    self_arch,
+            "coverage":     r["Kapsama"],
+            "complement":   r["Tamamlama"],
+            "affinity":     r["Affinity"],
+            "duo_score":    r["Uyum_Skoru"],
+            "n_strong":     r["Guclu_Bilesен"],
+        })
+    return rows
+
+
+@app.get("/api/duo-compat")
+def get_duo_compat(
+    arch1: Optional[str] = None,
+    arch2: Optional[str] = None,
+    same_team: bool = False,
+    limit: int = Query(50, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+):
+    """Duo uyum tablosu — arketip filtresiyle."""
+    df = _load_duo_compat()
+
+    if arch1:
+        df = df[df["Arketip_1"].str.lower() == arch1.lower() |
+                df["Arketip_2"].str.lower() == arch1.lower()]
+    if same_team:
+        df = df[df["Takım_1"] == df["Takım_2"]]
+
+    total = len(df)
+    return {
+        "total":  total,
+        "duos":   _safe(df.iloc[offset: offset + limit]),
+    }
+
+
+@app.get("/api/lineup-compat")
+def get_lineup_compat(
+    limit:      int = Query(50, ge=1, le=500),
+    offset:     int = Query(0, ge=0),
+    positional: int = Query(1, ge=0, le=1),
+    unique:     int = Query(1, ge=0, le=1,
+                            description="1=Her oyuncu tek lineup'ta (greedy), 0=tüm liste"),
+):
+    """
+    En uyumlu teorik 5'li kombinasyonlar.
+    positional=1 (varsayılan): her pozisyondan tam 1 oyuncu (PG/SG/SF/PF/C).
+    positional=0: kısıtsız, en iyi 40 oyuncudan herhangi 5'li.
+    unique=1: greedy seçim — her oyuncu yalnızca bir lineup'ta görünür.
+    """
+    df = _load_lineup_compat_positional() if positional else _load_lineup_compat()
+    # Greedy positional'da inline yapılıyor; kısıtsız mod için dışarıdan uygula
+    if unique and not positional and not df.empty:
+        from score_compat import greedy_unique_lineups
+        df = greedy_unique_lineups(df, top_n=limit + offset + 5)
+    total = len(df)
+    return {
+        "total":   total,
+        "lineups": _safe(df.iloc[offset: offset + limit]),
+    }
+
+
+@lru_cache(maxsize=1)
+def _load_real_lineups() -> pd.DataFrame:
+    """Gerçek oynanmış 5'li lineup'ları fit_score ile zenginleştirir."""
+    p5 = DATA / "2025-26__lineups_5man.parquet"
+    if not p5.exists():
+        return pd.DataFrame()
+    lineups = pd.read_parquet(p5)
+    lineups = lineups[lineups["MIN"] >= 50].copy().reset_index(drop=True)
+
+    scores = _load_scores()
+    # İsim lookup: kısaltılmış (A. Edwards) → tam isim
+    from collections import defaultdict
+    init_last: dict = {}
+    last_uniq: dict = {}
+    last_count: dict = defaultdict(list)
+    for name in scores["PLAYER_NAME"]:
+        parts = name.split()
+        if not parts:
+            continue
+        last = parts[-1].lower()
+        first_init = parts[0][0].lower() if parts[0] else ""
+        init_last[f"{first_init}_{last}"] = name
+        last_count[last].append(name)
+    for last, names in last_count.items():
+        if len(names) == 1:
+            last_uniq[last] = names[0]
+
+    def expand(abbr: str) -> str:
+        parts = abbr.strip().split()
+        if not parts:
+            return abbr
+        last = parts[-1].lower()
+        first_init = parts[0].rstrip(".").lower() if len(parts) > 1 else ""
+        k = f"{first_init}_{last}"
+        if k in init_last:
+            return init_last[k]
+        if last in last_uniq:
+            return last_uniq[last]
+        return abbr
+
+    from score_compat import lineup_score_from_names
+    fit_scores = []
+    for _, row in lineups.iterrows():
+        raw = [n.strip() for n in row["GROUP_NAME"].split(" - ")]
+        names = [expand(n) for n in raw]
+        try:
+            res = lineup_score_from_names(names, scores)
+            fit_scores.append(res.get("lineup_score") or res.get("total_fit"))
+        except Exception:
+            fit_scores.append(None)
+    lineups["fit_score"] = fit_scores
+    return lineups
+
+
+@app.get("/api/real-lineups")
+def get_real_lineups(
+    limit:  int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    sort_by: str = Query("NET_RATING", description="NET_RATING veya fit_score"),
+    min_min: int = Query(50, ge=0, description="Minimum dakika eşiği"),
+    playoff: int = Query(0, ge=0, le=1, description="1=playoff, 0=regular"),
+):
+    """
+    Gerçek oynanmış 5'li lineup'lar — NET_RATING + arketip fit_score.
+    r(fit, NET_RATING) ≈ 0.53 (Pearson, n≈79 @MIN>=100).
+    """
+    # Playoff seçimi
+    key_p = "2025-26__playoff_lineups_5man.parquet"
+    key_r = "2025-26__lineups_5man.parquet"
+    p5 = DATA / (key_p if playoff else key_r)
+    if not p5.exists():
+        return {"total": 0, "lineups": []}
+
+    df = _load_real_lineups() if not playoff else pd.read_parquet(p5)
+    if df.empty:
+        return {"total": 0, "lineups": []}
+
+    df = df[df["MIN"] >= min_min].copy()
+    sort_col = sort_by if sort_by in df.columns else "NET_RATING"
+    df = df.sort_values(sort_col, ascending=False).reset_index(drop=True)
+
+    keep = ["GROUP_NAME", "NET_RATING", "MIN", "PLUS_MINUS", "W_PCT"]
+    if "fit_score" in df.columns:
+        keep.append("fit_score")
+    keep = [c for c in keep if c in df.columns]
+    out = df[keep].iloc[offset: offset + limit]
+    return {"total": len(df), "lineups": _safe(out)}
+
+
+@app.post("/api/lineup-compat/custom")
+def custom_lineup_compat(body: dict):
+    """
+    Verilen 5 oyuncu için uyum skoru hesapla.
+    Body: {"players": ["Player A", "Player B", ...]}
+    """
+    names = body.get("players", [])
+    if len(names) < 2:
+        raise HTTPException(400, "En az 2 oyuncu gerekli")
+    from score_compat import lineup_score_from_names
+    scores = _load_scores()
+    result = lineup_score_from_names(names, scores)
+    if not result:
+        raise HTTPException(404, "Oyuncular bulunamadı — isim listesini kontrol edin")
+
+    # 3-season weighted overall_score context (son 3 sezon, son sezon 2x ağırlıklı)
+    hist = _load_historical()
+    if not hist.empty and "overall_score" in hist.columns and "SEASON" in hist.columns:
+        player_career_scores = {}
+        for name in names:
+            nm = name.strip()
+            rows = hist[hist["PLAYER_NAME"].str.lower() == nm.lower()]
+            if rows.empty:
+                rows = hist[hist["PLAYER_NAME"].str.contains(nm, case=False, na=False)]
+            if not rows.empty:
+                last3 = rows.sort_values("SEASON").tail(3)
+                valid = last3["overall_score"].dropna()
+                if len(valid) > 0:
+                    # Son sezon 2x, öncekiler 1x
+                    wts = [1.0] * len(valid)
+                    wts[-1] = 2.0
+                    wavg = float(np.average(valid.values, weights=wts))
+                    player_career_scores[nm] = round(wavg, 3)
+        if player_career_scores:
+            result["player_career_scores"] = player_career_scores
+
+    # NaN / numpy type temizle
+    def _clean(v):
+        if isinstance(v, float) and (v != v):  # NaN check
+            return None
+        if hasattr(v, "item"):                  # numpy scalar → python
+            return v.item()
+        return v
+    return {k: (_clean(v) if not isinstance(v, (dict, list)) else v)
+            for k, v in result.items()}
+
+
+@app.get("/api/affinity")
+def get_affinity_endpoint():
+    """Arketip x arketip uyum matrisi. Prior (12 noun); empirikal varsa EMA ile güncellenir."""
+    from roles import AFFINITY_MATRIX as PRIOR
+    empirical = _load_affinity()
+    if empirical.empty:
+        df = PRIOR
+        source = "prior"
+    else:
+        # Prior temel; empirikal matriste örtüşen hücreler için EMA (alpha=0.3)
+        df = PRIOR.copy()
+        alpha = 0.3
+        for a in df.index:
+            for b in df.columns:
+                if a in empirical.index and b in empirical.columns:
+                    v = empirical.loc[a, b]
+                    if pd.notna(v):
+                        df.loc[a, b] = round((1 - alpha) * df.loc[a, b] + alpha * float(v), 3)
+        source = "blended"
+    return {
+        "archetypes": list(df.index),
+        "matrix": json.loads(df.round(3).to_json()),
+        "source": source,
+    }
+
+
+@app.get("/api/role-stats")
+def get_role_stats():
+    """
+    Lig genelinde 11 fonksiyonel rol istatistikleri:
+    - coverage_rate: kaç % oyuncu o rolde ≥0.70 skora sahip
+    - avg_score: lig ortalaması
+    - net_rating_corr: role skoru ile NET_RATING korelasyonu (kazanma etkisi)
+    """
+    from roles import ROLE_SLOTS, compute_role_vec
+    df = _load_scores()
+    qualified = df[df["GP"].fillna(0) >= 35].copy().reset_index(drop=True)
+
+    # NET_RATING için merged dosyasına bak
+    merged_p = DATA / "2025-26__merged_bref.parquet"
+    if not merged_p.exists():
+        merged_p = DATA / "2025-26__merged.parquet"
+    if merged_p.exists():
+        merged = pd.read_parquet(merged_p, columns=["PLAYER_NAME", "NET_RATING", "BPM"])
+        qualified = qualified.merge(merged[["PLAYER_NAME","NET_RATING","BPM"]],
+                                    on="PLAYER_NAME", how="left", suffixes=("","_m"))
+        if "NET_RATING_m" in qualified.columns:
+            qualified["NET_RATING"] = qualified["NET_RATING"].fillna(qualified["NET_RATING_m"])
+
+    role_matrix = np.array(
+        [compute_role_vec(dict(qualified.iloc[i])) for i in range(len(qualified))],
+        dtype=np.float32,
+    )  # (n_players, 11)
+
+    has_net = "NET_RATING" in qualified.columns
+    net_arr = qualified["NET_RATING"].fillna(0).values.astype(np.float32) if has_net else None
+
+    stats = []
+    for j, slot in enumerate(ROLE_SLOTS):
+        col = role_matrix[:, j]
+        coverage_rate = float((col >= 0.70).mean())
+        avg_score     = float(col.mean())
+        if has_net and net_arr is not None and col.std() > 0:
+            corr = float(np.corrcoef(col, net_arr)[0, 1])
+        else:
+            corr = 0.0
+        stats.append({
+            "slot":          slot,
+            "coverage_rate": round(coverage_rate, 3),
+            "avg_score":     round(avg_score, 3),
+            "net_corr":      round(corr, 3),
+            "n_players":     int((col >= 0.70).sum()),
+        })
+
+    # Kazanmaya en çok katkı sağlayan roller (net_corr'a göre sıralı)
+    stats_sorted = sorted(stats, key=lambda x: -x["net_corr"])
+
+    return {
+        "season": "2025-26",
+        "n_qualified": len(qualified),
+        "roles": stats,
+        "by_impact": [s["slot"] for s in stats_sorted],
+    }
+
+
+@app.get("/api/seasons")
+def get_seasons():
+    """Mevcut tarihsel sezonlar (2025-26 dahil)."""
+    seasons = []
+    # Güncel sezon her zaman listenin başında
+    if (DATA / "2025-26__player_scores.parquet").exists():
+        seasons.append("2025-26")
+    df = _load_historical()
+    if not df.empty:
+        for s in sorted(df["SEASON"].unique().tolist(), reverse=True):
+            if s not in seasons:
+                seasons.append(s)
+    return {"seasons": seasons}
+
+
+_HIST_EXTRA = ["STL","BLK","FG_PCT","FG3_PCT","TEAM_ABBREVIATION","overall_score","primary_arch","POSITION"]
+
+@app.get("/api/historical/{season}")
+def get_historical(
+    season: str,
+    search: Optional[str] = None,
+    limit: int = Query(50, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    sort_col: str = Query("overall_score", description="Sıralama kolonu"),
+    sort_asc: bool = Query(False),
+):
+    """Tarihsel sezon oyuncu listesi — 2025-26 dahil."""
+    # 2025-26 için güncel player_scores kullan
+    if season == "2025-26":
+        df = _load_scores().copy()
+        df["SEASON"] = "2025-26"
+    else:
+        hist = _load_historical()
+        df = hist[hist["SEASON"] == season].copy()
+        if df.empty:
+            raise HTTPException(404, f"{season} sezonu bulunamadı")
+        # hist_Base'den ek stat sütunlarını merge et (STL, BLK, FG_PCT, FG3_PCT)
+        base_stats = _load_hist_base_stats(season)
+        if not base_stats.empty and "PLAYER_ID" in df.columns:
+            missing_cols = [c for c in base_stats.columns if c != "PLAYER_ID" and c not in df.columns]
+            if missing_cols:
+                df = df.merge(base_stats[["PLAYER_ID"] + missing_cols], on="PLAYER_ID", how="left")
+
+    if search:
+        df = df[df["PLAYER_NAME"].str.contains(search, case=False, na=False)]
+
+    if season == "2025-26":
+        # score_ sütunlarından bileşen listesi (threshold 0.50)
+        score_cols = {c.replace("score_",""): c for c in df.columns if c.startswith("score_") and c.replace("score_","") in COMP_COLS}
+        df["Bileşenler"] = df.apply(
+            lambda r: " | ".join(cn for cn, sc in score_cols.items() if float(r.get(sc, 0) or 0) >= 0.50), axis=1)
+    else:
+        comp_avail = [c for c in COMP_COLS if c in df.columns]
+        df["Bileşenler"] = df.apply(
+            lambda r: " | ".join(c for c in comp_avail if r.get(c, False)), axis=1)
+
+    base_cols = ["PLAYER_NAME","GP","MIN","PTS","REB","AST","STL","BLK","FGA","FG_PCT","FG3A","FG3_PCT","Bileşenler"]
+    extra = ["overall_score","primary_arch","versatility_score","versatility_tier",
+             "TEAM_ABBREVIATION","POSITION"]
+    keep = [c for c in base_cols + extra if c in df.columns]
+
+    total = len(df)
+
+    # Sıralama
+    valid_sort = sort_col if sort_col in df.columns else (
+        "overall_score" if "overall_score" in df.columns else
+        "versatility_score" if "versatility_score" in df.columns else "PTS"
+    )
+    df = df.sort_values(valid_sort, ascending=sort_asc, na_position="last")
+
+    # data_era: hangi metrik setinin kullanıldığını UI'a bildir
+    def _data_era(s: str) -> str:
+        try:
+            year = int(s.split("-")[0])
+        except (ValueError, IndexError):
+            return "classic"
+        if year >= 2015:
+            return "tracking"    # hustle + tracking (2015-16+)
+        if year >= 2013:
+            return "hustle"      # tracking ama hustle yok (2013-16 arası)
+        return "classic"         # sadece box-score + advanced (1983-2013)
+
+    return {
+        "season":   season,
+        "total":    total,
+        "data_era": _data_era(season),
+        "players":  _safe(df[keep].iloc[offset: offset + limit]),
+    }
+
+
+# ─── Tarihsel sezon: boolean-tabanlı duo/lineup uyumu ─────────────────────────
+
+def _bool_duo_compat(df_season: pd.DataFrame, top_n: int = 100) -> list[dict]:
+    """
+    Tarihsel sezon için boolean bileşen vektörlerinden duo uyumu hesaplar.
+    Skor vektörü olmadığı için 0/1 bileşen bayrakları kullanılır.
+    """
+    comp_avail = [c for c in COMP_COLS if c in df_season.columns]
+    if not comp_avail:
+        return []
+
+    df = df_season[df_season["GP"] >= 20].reset_index(drop=True) if "GP" in df_season.columns else df_season.reset_index(drop=True)
+    mat = df[comp_avail].fillna(0).values.astype(float)   # (n, n_comp)
+    names  = df["PLAYER_NAME"].tolist()
+    teams  = df["TEAM_ABBREVIATION"].tolist() if "TEAM_ABBREVIATION" in df.columns else [""] * len(df)
+
+    # Baskın arketip: en çok core bileşen veya versatility_score
+    core_avail = [c for c in CORE if c in comp_avail]
+
+    rows = []
+    n = len(df)
+    from itertools import combinations as comb
+    for i, j in comb(range(n), 2):
+        v1, v2 = mat[i], mat[j]
+        union      = np.maximum(v1, v2)
+        coverage   = float(union.mean())
+        complement = float((v1 != v2).mean())  # farklı bileşen oranı
+        duo_score  = 0.55 * coverage + 0.45 * complement
+        n_strong   = int(union.sum())
+        rows.append({
+            "Oyuncu_1":    names[i],
+            "Takım_1":     teams[i],
+            "Oyuncu_2":    names[j],
+            "Takım_2":     teams[j],
+            "Kapsama":     round(coverage, 3),
+            "Tamamlama":   round(complement, 3),
+            "Uyum_Skoru":  round(duo_score, 3),
+            "Ortak_Rol":   n_strong,
+        })
+
+    rows.sort(key=lambda x: -x["Uyum_Skoru"])
+    return rows[:top_n]
+
+
+def _bool_lineup_compat(df_season: pd.DataFrame, top_n: int = 50) -> list[dict]:
+    """Tarihsel sezon için boolean vektörden en iyi 5'liler."""
+    comp_avail = [c for c in COMP_COLS if c in df_season.columns]
+    if not comp_avail or len(df_season) < 5:
+        return []
+
+    df = df_season[df_season["GP"] >= 20].reset_index(drop=True) if "GP" in df_season.columns else df_season.reset_index(drop=True)
+    # top-30 versatility_score veya GP*MIN'e göre havuz
+    if "versatility_score" in df.columns:
+        pool = df.nlargest(30, "versatility_score").reset_index(drop=True)
+    else:
+        pool = df.head(30).reset_index(drop=True)
+
+    mat   = pool[comp_avail].fillna(0).values.astype(float)
+    names = pool["PLAYER_NAME"].tolist()
+    n_comp = len(comp_avail)
+
+    from itertools import combinations as comb
+    combos = list(comb(range(len(pool)), 5))
+    idx_arr = np.array(combos)
+    max_sc  = mat[idx_arr].max(axis=1)   # (n_combos, n_comp)
+
+    coverage = max_sc.mean(axis=1)
+    depth    = (max_sc >= 0.5).sum(axis=1) / n_comp
+    ls       = 0.60 * coverage + 0.40 * depth
+
+    top_idx = np.argsort(-ls)[:top_n]
+    rows = []
+    for i in top_idx:
+        cidx = combos[i]
+        ms   = max_sc[i]
+        rows.append({
+            "Oyuncu_1":   names[cidx[0]],
+            "Oyuncu_2":   names[cidx[1]],
+            "Oyuncu_3":   names[cidx[2]],
+            "Oyuncu_4":   names[cidx[3]],
+            "Oyuncu_5":   names[cidx[4]],
+            "Kapsama":    round(float(coverage[i]), 3),
+            "Derinlik":   round(float(depth[i]), 3),
+            "Uyum_Skoru": round(float(ls[i]), 3),
+            "Guclu_Rol":  int((ms >= 0.5).sum()),
+        })
+    return rows
+
+
+@app.get("/api/historical/{season}/duo-compat")
+def get_historical_duo(season: str, limit: int = Query(50, ge=1, le=200)):
+    if season == "2025-26":
+        df = _load_scores().copy()
+    else:
+        df = _load_historical()
+        df = df[df["SEASON"] == season]
+    if df.empty:
+        raise HTTPException(404, f"{season} sezonu bulunamadı")
+    rows = _bool_duo_compat(df, top_n=limit)
+    return {"season": season, "total": len(rows), "duos": rows}
+
+
+@app.get("/api/historical/{season}/lineup-compat")
+def get_historical_lineup(season: str, limit: int = Query(30, ge=1, le=100)):
+    if season == "2025-26":
+        df = _load_scores().copy()
+    else:
+        df = _load_historical()
+        df = df[df["SEASON"] == season]
+    if df.empty:
+        raise HTTPException(404, f"{season} sezonu bulunamadı")
+    rows = _bool_lineup_compat(df, top_n=limit)
+    return {"season": season, "total": len(rows), "lineups": rows}
+
+
+# ─── Takım bazlı endpointler ──────────────────────────────────────────────────
+
+@app.get("/api/teams")
+def get_teams(season: str = "2025-26"):
+    """Belirtilen sezondaki takım listesi."""
+    if season == "2025-26":
+        df = _load_scores()
+        col = "TEAM_ABBREVIATION"
+    else:
+        df = _load_historical()
+        df = df[df["SEASON"] == season]
+        col = "TEAM_ABBREVIATION"
+    if col not in df.columns or df.empty:
+        return {"teams": []}
+    return {"teams": sorted(df[col].dropna().unique().tolist())}
+
+
+@app.get("/api/teams/{team}/players")
+def get_team_players(team: str, season: str = "2025-26"):
+    """Takımın oyuncuları (skor vektörleriyle, 2025-26 için; tarihsel için boolean)."""
+    if season == "2025-26":
+        df = _load_scores()
+        df = df[df["TEAM_ABBREVIATION"].str.upper() == team.upper()]
+        return _safe(df.sort_values("overall_score", ascending=False))
+    else:
+        df = _load_historical()
+        df = df[(df["SEASON"] == season) & (df["TEAM_ABBREVIATION"].str.upper() == team.upper())]
+        comp_avail = [c for c in COMP_COLS if c in df.columns]
+        df = df.copy()
+        df["Bileşenler"] = df.apply(
+            lambda r: " | ".join(c for c in comp_avail if r.get(c, False)), axis=1)
+        keep = ["PLAYER_NAME","GP","MIN","PTS","REB","AST","Bileşenler","versatility_score","versatility_tier"]
+        keep = [c for c in keep if c in df.columns]
+        return _safe(df[keep].sort_values("versatility_score", ascending=False) if "versatility_score" in df.columns else df[keep])
+
+
+@app.get("/api/teams/{team}/duo-compat")
+def get_team_duo_compat(team: str, season: str = "2025-26"):
+    """Takım içi duo uyum tablosu."""
+    if season == "2025-26":
+        df = _load_duo_compat()
+        mask = ((df["Takım_1"].str.upper() == team.upper()) &
+                (df["Takım_2"].str.upper() == team.upper()))
+        result = df[mask].sort_values("Uyum_Skoru", ascending=False)
+        return _safe(result)
+    else:
+        df = _load_historical()
+        df = df[(df["SEASON"] == season) & (df["TEAM_ABBREVIATION"].str.upper() == team.upper())]
+        rows = _bool_duo_compat(df, top_n=100)
+        return rows
+
+
+@app.get("/api/historical/{season}/player/{player_name}/scores")
+def get_historical_player_scores(season: str, player_name: str):
+    """Tarihsel sezonda oyuncunun bileşen profili (radar için). 2025-26 destekli."""
+    if season == "2025-26":
+        df = _load_scores().copy()
+        # score_ sütunlarını boolean gibi kullan
+        score_cols = [c for c in df.columns if c.startswith("score_")]
+        comp_avail = [c.replace("score_","") for c in score_cols if c.replace("score_","") in COMP_COLS]
+    else:
+        df = _load_historical()
+        df = df[df["SEASON"] == season]
+        comp_avail = [c for c in COMP_COLS if c in df.columns]
+
+    match = df[df["PLAYER_NAME"].str.contains(player_name, case=False, na=False)]
+    if match.empty:
+        raise HTTPException(404, f"{player_name} bulunamadı ({season})")
+    row = match.iloc[0]
+
+    if season == "2025-26":
+        scores = {c: round(float(row.get(f"score_{c}", 0)), 3) for c in comp_avail}
+    else:
+        scores = {c: round(float(row.get(c, 0)), 3) for c in comp_avail}
+
+    overall = row.get("overall_score", None)
+    primary = row.get("primary_arch", "")
+    return {
+        "name":             row["PLAYER_NAME"],
+        "season":           season,
+        "team":             row.get("TEAM_ABBREVIATION",""),
+        "gp":               int(row.get("GP",0)) if pd.notna(row.get("GP",0)) else 0,
+        "scores":           scores,
+        "overall_score":    round(float(overall),3) if overall is not None and pd.notna(overall) else None,
+        "primary_arch":     primary if isinstance(primary, str) else "",
+        "versatility_score": round(float(row.get("versatility_score",0)),3) if "versatility_score" in row.index and pd.notna(row.get("versatility_score")) else None,
+        "versatility_tier":  row.get("versatility_tier",""),
+    }
+
+
+@app.get("/api/players/{player_name}/similar")
+def get_similar_players(player_name: str, n: int = Query(10, ge=1, le=50)):
+    """
+    En benzer n oyuncu — çok boyutlu benzerlik skoru.
+    Vektör: core noun skorları (ağırlık 1.0) + modifier skorları (ağırlık 0.4).
+    Cosine similarity sadece core noun'larla çalışıyordu;
+    modifier'lar eklenerek "Pressure Engine" ile "Volume Engine" ayrışıyor.
+    """
+    _auto_invalidate()
+    df = _load_scores()
+
+    # Sorgu oyuncusunu bul
+    match = df[df["PLAYER_NAME"].str.lower() == player_name.lower()]
+    if match.empty:
+        match = df[df["PLAYER_NAME"].str.contains(player_name, case=False, na=False)]
+    if match.empty:
+        raise HTTPException(status_code=404, detail=f"{player_name} bulunamadı")
+
+    # Vektör: core (ağırlık 1.0) + modifier (ağırlık 0.4)
+    core_cols = [f"score_{c}" for c in CORE_NOUNS    if f"score_{c}" in df.columns]
+    mod_cols  = [f"score_{c}" for c in MODIFIER_TAGS if f"score_{c}" in df.columns]
+
+    core_mat = df[core_cols].fillna(0).values.astype(float)
+    mod_mat  = df[mod_cols].fillna(0).values.astype(float) * 0.4 if mod_cols else np.zeros((len(df), 0))
+
+    mat = np.hstack([core_mat, mod_mat]) if mod_cols else core_mat
+
+    # L2 normalize
+    norms = np.linalg.norm(mat, axis=1, keepdims=True)
+    norms[norms == 0] = 1.0
+    mat_norm = mat / norms
+
+    # df'deki integer index yerine iloc pozisyonunu kullan
+    iloc_idx = df.index.get_loc(match.index[0])
+    query_vec = mat_norm[iloc_idx]
+    similarities = mat_norm @ query_vec
+
+    # Kendisini hariç tut, en yüksek n'yi al
+    similarities[iloc_idx] = -1.0
+    top_idx = np.argsort(similarities)[::-1][:n]
+
+    results = []
+    for i in top_idx:
+        row = df.iloc[i]
+        results.append({
+            "name":         row["PLAYER_NAME"],
+            "team":         row.get("TEAM_ABBREVIATION", ""),
+            "position":     row.get("POSITION", ""),
+            "primary_arch": row.get("primary_arch", ""),
+            "overall_score": round(float(row["overall_score"]), 3) if pd.notna(row.get("overall_score")) else None,
+            "overall_tier": row.get("overall_tier", ""),
+            "similarity":   round(float(similarities[i]), 3),
+        })
+    return {"query": match.iloc[0]["PLAYER_NAME"], "similar": results}
+
+
+@app.get("/api/player/career")
+def get_player_career(name: str = Query(..., description="Oyuncu adı")):
+    """
+    Sezon bazında kariyer zaman çizelgesi.
+    BREF_SLUG ile çapraz sezon eşleştirme; yoksa isim benzeri eşleşme.
+    Döner: season, primary_arch, overall_score, GP listesi.
+    """
+    _auto_invalidate()
+    hist = _load_historical()
+    if hist.empty:
+        raise HTTPException(status_code=503, detail="historical__labeled.parquet yok")
+
+    # Önce tam isim eşleştirme
+    match = hist[hist["PLAYER_NAME"].str.lower() == name.lower()]
+    if match.empty:
+        match = hist[hist["PLAYER_NAME"].str.contains(name, case=False, na=False)]
+    if match.empty:
+        raise HTTPException(status_code=404, detail=f"{name} kariyer verisinde bulunamadı")
+
+    player_name_canonical = match.iloc[0]["PLAYER_NAME"]
+
+    # BREF_SLUG varsa slug ile de eşleştir (isim değişmiş olabilir)
+    slug = None
+    slug_conflict = None
+    if "BREF_SLUG" in match.columns:
+        slugs = match["BREF_SLUG"].dropna().unique()
+        if len(slugs) > 0:
+            slug = slugs[0]
+            slug_rows = hist[hist["BREF_SLUG"] == slug]
+            if len(slug_rows) > len(match):
+                match = slug_rows
+            # Çakışma kontrolü: slug → birden fazla farklı oyuncu adı
+            names_for_slug = slug_rows["PLAYER_NAME"].unique().tolist() if not slug_rows.empty else []
+            if len(names_for_slug) > 1:
+                slug_conflict = names_for_slug
+                import logging
+                logging.getLogger("uvicorn").warning(
+                    "BREF_SLUG cakisma: slug=%s → %s", slug, names_for_slug
+                )
+
+    seasons = match.sort_values("SEASON")
+    timeline = []
+    for _, row in seasons.iterrows():
+        ovr = row.get("overall_score")
+        entry = {
+            "season":       row["SEASON"],
+            "team":         row.get("TEAM_ABBREVIATION", ""),
+            "primary_arch": row.get("primary_arch", "") if isinstance(row.get("primary_arch"), str) else "",
+            "overall_score": round(float(ovr), 3) if ovr is not None and pd.notna(ovr) else None,
+            "gp":           int(row["GP"]) if pd.notna(row.get("GP")) else None,
+            "pts":          round(float(row["PTS"]), 1) if pd.notna(row.get("PTS")) else None,
+            "reb":          round(float(row["REB"]), 1) if pd.notna(row.get("REB")) else None,
+            "ast":          round(float(row["AST"]), 1) if pd.notna(row.get("AST")) else None,
+        }
+        timeline.append(entry)
+
+    return {
+        "name":          player_name_canonical,
+        "slug":          slug,
+        "slug_conflict": slug_conflict,
+        "seasons":       timeline,
+    }
+
+
+@app.get("/api/explore/pca")
+def get_pca_loadings():
+    """
+    PCA yüklemeleri — PC1 ve PC2 için hangi arketip boyutunun ne kadar katkıda bulunduğunu döner.
+    İstemci tarafı PCA ile tutarlı: 12 core noun skor vektörü üzerinden covariance PCA.
+    """
+    _auto_invalidate()
+    df = _load_scores()
+    score_cols = [f"score_{c}" for c in CORE_NOUNS if f"score_{c}" in df.columns]
+    if len(score_cols) < 3:
+        raise HTTPException(503, "Yeterli skor kolonu yok")
+
+    mat = df[score_cols].fillna(0).values.astype(float)
+    # Merkezi hale getir
+    mat -= mat.mean(axis=0, keepdims=True)
+    # Covariance
+    cov = (mat.T @ mat) / max(len(mat) - 1, 1)
+
+    # Power iteration ile PC1 ve PC2
+    def power_iter(cov_m, deflate=None, iters=80):
+        v = np.zeros(cov_m.shape[0])
+        v[0] = 1.0
+        if deflate is not None:
+            for ev in deflate:
+                v -= np.dot(ev, v) * ev
+        for _ in range(iters):
+            v = cov_m @ v
+            if deflate is not None:
+                for ev in deflate:
+                    v -= np.dot(ev, v) * ev
+            norm = np.linalg.norm(v)
+            if norm < 1e-12:
+                break
+            v = v / norm
+        return v
+
+    ev1 = power_iter(cov)
+    ev2 = power_iter(cov, deflate=[ev1])
+
+    # Açıklanan varyans tahmini
+    lam1 = float(ev1 @ cov @ ev1)
+    lam2 = float(ev2 @ cov @ ev2)
+    total_var = float(np.trace(cov))
+    pct1 = round(lam1 / total_var, 4) if total_var > 0 else 0
+    pct2 = round(lam2 / total_var, 4) if total_var > 0 else 0
+
+    labels = [c.replace("score_", "") for c in score_cols]
+    return {
+        "pc1": {"pct_variance": pct1,
+                "loadings": {l: round(float(ev1[i]), 4) for i, l in enumerate(labels)}},
+        "pc2": {"pct_variance": pct2,
+                "loadings": {l: round(float(ev2[i]), 4) for i, l in enumerate(labels)}},
+    }
+
+
+# ─── Frontend statik dosyaları (build sonrası) ────────────────────────────────
+
+frontend_dist = ROOT / "frontend" / "dist"
+if frontend_dist.exists():
+    app.mount("/", StaticFiles(directory=str(frontend_dist), html=True), name="static")

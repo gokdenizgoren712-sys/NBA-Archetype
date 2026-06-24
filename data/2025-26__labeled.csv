@@ -1,0 +1,466 @@
+﻿PLAYER_NAME,TEAM_ABBREVIATION,GP,MIN,PTS,N_COMPONENTS,TAG
+A.J. Lawson,TOR,24,9.4,4.2,3,Guard | Spacer | Off-Ball
+AJ Green,MIL,78,29.1,10.4,5,Guard | Spacer | Gravity | Stretch | Off-Ball
+AJ Johnson,DAL,48,9.4,3.3,1,Guard
+Aaron Gordon,DEN,36,27.9,16.2,11,Forward | Wing | Creator | Spacer | Two-Way | Jumbo | Pressure | Scoring | Half-Court | Scalable | Stretch
+Aaron Holiday,HOU,57,13.7,5.5,2,Guard | Spacer
+Aaron Nesmith,IND,45,29.7,13.8,6,Guard | Wing | Spacer | Half-Court | Stretch | Off-Ball
+Aaron Wiggins,OKC,65,21.8,9.4,7,Guard | Spacer | Stopper | Two-Way | Defensive | Point-of-Attack | Stretch
+Ace Bailey,UTA,72,27.6,13.8,7,Forward | Spacer | Jumbo | Shotmaker | Three-Level | Half-Court | Stretch
+Adama Bal,MEM,8,30.2,10.4,6,Guard | Creator | Spacer | Initiator | Stretch | Off-Ball
+Adem Bona,PHI,71,17.4,4.8,3,Forward | Finisher | Jumbo
+Ajay Mitchell,OKC,57,25.8,13.6,15,Guard | Engine | Creator | Stopper | Two-Way | Pressure | Shotmaker | Defensive | Point-of-Attack | Scalable | Point- | Slashing | Pick-and-Roll | Playmaking | Secondary
+Al Horford,GSW,45,21.5,8.3,9,Big | Anchor | Spacer | Jumbo | Half-Court | Stretch | Point- | Off-Ball | Secondary
+Alex Caruso,OKC,56,18.2,6.2,7,Guard | Initiator | Stopper | Two-Way | Speed | Defensive | Point-of-Attack
+Alex Sarr,WAS,48,27.2,16.3,13,Big | Center | Hub | Connector | Creator | Force | Jumbo | Speed | Half-Court | Stretch | Point- | Slashing | Pick-and-Roll
+Alperen Sengun,HOU,72,33.3,20.4,24,Big | Center | Engine | Hub | Connector | Creator | Anchor | Force | Stopper | Two-Way | Heliocentric | Jumbo | Pressure | Shotmaker | Speed | Defensive | Half-Court | Point-of-Attack | Scalable | Point- | Slashing | Pick-and-Roll | Playmaking | Secondary
+Amen Thompson,HOU,79,37.4,18.3,22,Guard | Wing | Engine | Hub | Connector | Creator | Force | Initiator | Stopper | Two-Way | Jumbo | Pressure | Speed | Versatile | Defensive | Point-of-Attack | Scalable | Point- | Slashing | Pick-and-Roll | Playmaking | Secondary
+Amir Coffey,PHX,46,10.7,3.2,2,Guard | Wing
+Andre Drummond,PHI,63,19.5,6.4,3,Big | Center | Jumbo
+Andre Jackson Jr.,MIL,48,8.5,2.4,1,Guard
+Andrew Nembhard,IND,57,31.3,16.9,14,Guard | Wing | Engine | Hub | Creator | Pressure | Shotmaker | Half-Court | Scalable | Point- | Slashing | Pick-and-Roll | Playmaking | Secondary
+Andrew Wiggins,MIA,68,30.3,15.4,18,Forward | Wing | Creator | Spacer | Force | Initiator | Stopper | Two-Way | Jumbo | Shotmaker | Three-Level | Speed | Defensive | Point-of-Attack | Gravity | Stretch | Slashing | Pick-and-Roll
+Anfernee Simons,CHI,55,24.9,14.3,10,Guard | Engine | Creator | Spacer | Shotmaker | Three-Level | Half-Court | Gravity | Scalable | Stretch
+Anthony Black,ORL,64,29.8,15.0,19,Guard | Engine | Hub | Creator | Force | Initiator | Stopper | Two-Way | Jumbo | Pressure | Speed | Defensive | Point-of-Attack | Stretch | Point- | Slashing | Pick-and-Roll | Playmaking | Secondary
+Anthony Davis,WAS,20,31.3,20.4,22,Big | Forward | Engine | Hub | Connector | Anchor | Force | Stopper | Two-Way | Heliocentric | Jumbo | Pressure | Shotmaker | Scoring | Speed | Defensive | Half-Court | Point-of-Attack | Scalable | Point- | Slashing | Pick-and-Roll
+Anthony Edwards,MIN,61,35.0,28.8,25,Guard | Engine | Hub | Creator | Spacer | Force | Two-Way | Heliocentric | Pressure | Shotmaker | Three-Level | Scoring | Speed | Defensive | Half-Court | Point-of-Attack | Gravity | Scalable | Stretch | Point- | Slashing | Pick-and-Roll | 3-and-D | Playmaking | Secondary
+Anthony Gill,WAS,55,17.3,5.8,4,Forward | Wing | Finisher | Jumbo
+Ariel Hukporti,NYK,54,9.2,2.2,5,Big | Center | Finisher | Rim Runner | Jumbo
+Asa Newell,ATL,44,11.4,5.2,4,Forward | Finisher | Jumbo | Off-Ball
+Ausar Thompson,DET,73,26.0,9.9,19,Guard | Wing | Connector | Creator | Anchor | Finisher | Force | Initiator | Stopper | Two-Way | Jumbo | Pressure | Speed | Defensive | Point-of-Attack | Scalable | Point- | Slashing | Pick-and-Roll
+Austin Reaves,LAL,51,34.5,23.3,23,Guard | Engine | Hub | Creator | Spacer | Force | Stopper | Two-Way | Pressure | Shotmaker | Scoring | Speed | Defensive | Half-Court | Point-of-Attack | Gravity | Scalable | Stretch | Point- | Slashing | Pick-and-Roll | Playmaking | Secondary
+Ayo Dosunmu,MIN,69,27.3,14.8,15,Guard | Engine | Hub | Creator | Spacer | Initiator | Shotmaker | Gravity | Scalable | Stretch | Point- | Slashing | Pick-and-Roll | Playmaking | Secondary
+Bam Adebayo,MIA,73,32.4,20.1,21,Big | Engine | Hub | Connector | Creator | Anchor | Force | Stopper | Two-Way | Jumbo | Pressure | Scoring | Speed | Defensive | Half-Court | Point-of-Attack | Scalable | Stretch | Point- | Slashing | Pick-and-Roll
+Baylor Scheierman,BOS,77,18.6,5.5,3,Guard | Spacer | Off-Ball
+Ben Saraf,BKN,44,20.8,7.5,8,Guard | Engine | Hub | Creator | Pressure | Slashing | Pick-and-Roll | Secondary
+Ben Sheppard,IND,65,21.4,7.1,4,Guard | Spacer | Initiator | Off-Ball
+Bennedict Mathurin,LAC,54,30.0,17.6,11,Guard | Wing | Engine | Force | Initiator | Pressure | Shotmaker | Scoring | Half-Court | Slashing | Pick-and-Roll
+Bez Mbeng,UTA,15,32.8,8.1,11,Guard | Creator | Finisher | Initiator | Stopper | Speed | Versatile | Point-of-Attack | Pick-and-Roll | Playmaking | Secondary
+Bilal Coulibaly,WAS,56,26.2,11.7,9,Guard | Creator | Force | Initiator | Jumbo | Pressure | Speed | Point-of-Attack | Pick-and-Roll
+Blake Hinson,UTA,14,20.4,11.9,8,Forward | Wing | Spacer | Finisher | Scoring | Gravity | Stretch | Off-Ball
+Blake Wesley,POR,31,11.6,4.8,4,Guard | Creator | Initiator | Pick-and-Roll
+Bobby Portis,MIL,67,24.2,13.7,10,Forward | Spacer | Jumbo | Shotmaker | Three-Level | Scoring | Half-Court | Gravity | Stretch | Off-Ball
+Bogdan Bogdanović,LAC,23,19.7,7.4,5,Guard | Creator | Spacer | Shotmaker | Half-Court
+Bones Hyland,MIN,71,16.6,8.5,7,Guard | Creator | Spacer | Initiator | Two-Way | Scalable | Secondary
+Branden Carlson,OKC,42,11.6,5.8,5,Big | Center | Finisher | Jumbo | Off-Ball
+Brandin Podziemski,GSW,82,28.4,13.8,16,Guard | Hub | Creator | Spacer | Initiator | Stopper | Two-Way | Pressure | Half-Court | Point-of-Attack | Scalable | Stretch | Point- | Pick-and-Roll | Playmaking | Secondary
+Brandon Ingram,TOR,77,33.8,21.5,21,Forward | Wing | Engine | Hub | Creator | Spacer | Force | Two-Way | Heliocentric | Jumbo | Pressure | Shotmaker | Scoring | Half-Court | Gravity | Scalable | Stretch | Point- | Slashing | Pick-and-Roll | Secondary
+Brandon Miller,CHA,65,30.3,20.2,25,Forward | Wing | Engine | Hub | Creator | Spacer | Force | Stopper | Two-Way | Jumbo | Pressure | Shotmaker | Three-Level | Scoring | Speed | Defensive | Half-Court | Point-of-Attack | Gravity | Scalable | Stretch | Point- | Slashing | Pick-and-Roll | Secondary
+Brandon Williams,DAL,66,22.2,13.0,13,Guard | Engine | Hub | Creator | Initiator | Pressure | Shotmaker | Scalable | Point- | Slashing | Pick-and-Roll | Playmaking | Secondary
+Brice Sensabaugh,UTA,75,23.5,14.9,7,Forward | Wing | Spacer | Shotmaker | Three-Level | Scoring | Stretch
+Bronny James,LAL,42,8.9,2.9,1,Guard
+Brook Lopez,LAC,75,21.8,8.5,8,Big | Center | Spacer | Two-Way | Jumbo | Half-Court | Stretch | Off-Ball
+Brooks Barnhizer,OKC,40,8.7,1.7,1,Guard
+Bruce Brown,DEN,82,24.4,7.9,4,Guard | Wing | Initiator | Two-Way
+Bryce McGowens,NOP,42,21.0,8.1,3,Guard | Creator | Pressure
+Bub Carrington,WAS,82,27.7,10.7,12,Guard | Hub | Creator | Spacer | Initiator | Shotmaker | Half-Court | Gravity | Stretch | Point- | Playmaking | Secondary
+Buddy Hield,ATL,51,16.1,7.6,2,Guard | Spacer
+CJ McCollum,ATL,76,29.8,18.7,18,Guard | Engine | Hub | Creator | Spacer | Force | Two-Way | Shotmaker | Three-Level | Half-Court | Gravity | Scalable | Stretch | Point- | Slashing | Pick-and-Roll | Playmaking | Secondary
+Cade Cunningham,DET,64,33.9,23.9,27,Guard | Engine | Ecosystem | Hub | Connector | Creator | Anchor | Force | Initiator | Stopper | Two-Way | Heliocentric | Jumbo | Pressure | Shotmaker | Three-Level | Speed | Defensive | Half-Court | Point-of-Attack | Scalable | Stretch | Point- | Slashing | Pick-and-Roll | Playmaking | Secondary
+Caleb Love,POR,49,20.7,10.4,4,Guard | Creator | Spacer | Half-Court
+Caleb Martin,DAL,58,14.8,3.9,2,Forward | Wing
+Cam Christie,LAC,55,8.7,2.8,1,Guard
+Cam Spencer,MEM,72,23.8,11.1,13,Guard | Hub | Creator | Spacer | Shotmaker | Three-Level | Half-Court | Gravity | Scalable | Stretch | Point- | Playmaking | Secondary
+Cam Thomas,MIL,42,21.0,13.5,6,Guard | Engine | Creator | Pressure | Shotmaker | Half-Court
+Cam Whitmore,WAS,21,16.9,9.2,2,Forward | Wing
+Cameron Johnson,DEN,54,30.5,12.2,10,Forward | Wing | Creator | Spacer | Finisher | Initiator | Two-Way | Jumbo | Stretch | Off-Ball
+Cameron Payne,PHI,22,17.0,7.4,6,Guard | Creator | Spacer | Initiator | Playmaking | Secondary
+Caris LeVert,DET,60,19.2,7.4,6,Guard | Creator | Two-Way | Jumbo | Speed | Defensive
+Carter Bryant,SAS,71,11.5,4.2,3,Forward | Wing | Off-Ball
+Cason Wallace,OKC,77,26.6,8.6,9,Guard | Creator | Initiator | Stopper | Two-Way | Speed | Defensive | Point-of-Attack | Secondary
+Cedric Coward,MEM,62,25.8,13.6,11,Guard | Hub | Creator | Force | Initiator | Two-Way | Jumbo | Scalable | Stretch | Point- | Slashing
+Chaney Johnson,BKN,17,20.4,8.2,4,Guard | Wing | Jumbo | Shotmaker
+Chaz Lanier,DET,34,7.7,2.4,2,Guard | Off-Ball
+Chet Holmgren,OKC,69,28.9,17.1,15,Big | Anchor | Finisher | Force | Two-Way | Jumbo | Pressure | Shotmaker | Scoring | Defensive | Half-Court | Scalable | Stretch | Slashing | Pick-and-Roll
+Chris Paul,LAC,16,14.2,2.9,5,Guard | Creator | Half-Court | Playmaking | Secondary
+Christian Braun,DEN,44,31.8,12.0,7,Guard | Connector | Finisher | Initiator | Rim Runner | Two-Way | Jumbo
+Christian Koloko,ATL,27,13.2,2.7,4,Big | Center | Finisher | Jumbo
+Clint Capela,HOU,75,12.3,3.8,5,Big | Center | Finisher | Two-Way | Jumbo
+Coby White,CHA,50,25.0,17.4,16,Guard | Engine | Hub | Creator | Spacer | Initiator | Pressure | Shotmaker | Gravity | Scalable | Stretch | Point- | Slashing | Pick-and-Roll | Playmaking | Secondary
+Cody Williams,UTA,67,24.3,8.8,5,Forward | Wing | Finisher | Initiator | Jumbo
+Cole Anthony,MIL,35,15.0,6.7,5,Guard | Engine | Hub | Creator | Half-Court
+Collin Gillespie,PHX,80,28.5,12.7,18,Guard | Hub | Connector | Creator | Spacer | Stopper | Two-Way | Shotmaker | Defensive | Half-Court | Point-of-Attack | Gravity | Scalable | Stretch | Point- | 3-and-D | Playmaking | Secondary
+Collin Murray-Boyles,TOR,57,21.9,8.5,12,Forward | Wing | Finisher | Initiator | Stopper | Rim Runner | Two-Way | Jumbo | Speed | Defensive | Point-of-Attack | Off-Ball
+Collin Sexton,CHI,68,23.7,15.4,12,Guard | Engine | Hub | Creator | Spacer | Initiator | Two-Way | Pressure | Shotmaker | Scalable | Slashing | Pick-and-Roll
+Cooper Flagg,DAL,70,33.5,21.0,24,Forward | Engine | Hub | Creator | Anchor | Force | Initiator | Stopper | Two-Way | Heliocentric | Jumbo | Pressure | Shotmaker | Speed | Defensive | Half-Court | Point-of-Attack | Scalable | Stretch | Point- | Slashing | Pick-and-Roll | Playmaking | Secondary
+Corey Kispert,ATL,58,18.6,9.2,4,Forward | Wing | Spacer | Off-Ball
+Cormac Ryan,MIL,11,24.6,14.3,7,Guard | Spacer | Pressure | Scoring | Gravity | Stretch | 3-and-D
+Craig Porter Jr.,CLE,64,17.9,4.5,10,Guard | Creator | Two-Way | Jumbo | Speed | Versatile | Defensive | Point- | Playmaking | Secondary
+D'Angelo Russell,WAS,26,19.0,10.2,8,Guard | Engine | Hub | Creator | Shotmaker | Half-Court | Playmaking | Secondary
+DaRon Holmes II,DEN,25,8.4,3.7,3,Forward | Spacer | Off-Ball
+Daeqwon Plowden,SAC,32,26.4,10.8,5,Guard | Wing | Spacer | Stretch | Off-Ball
+Dalen Terry,PHI,48,11.5,3.7,3,Forward | Wing | Creator
+Dalton Knecht,LAL,54,10.2,4.2,2,Forward | Wing
+Daniel Gafford,DAL,55,21.7,9.5,9,Big | Forward | Anchor | Finisher | Force | Two-Way | Jumbo | Speed | Defensive
+Daniss Jenkins,DET,72,20.2,9.3,12,Guard | Engine | Hub | Creator | Initiator | Stopper | Two-Way | Half-Court | Scalable | Pick-and-Roll | Playmaking | Secondary
+Danny Wolf,BKN,57,20.8,8.9,3,Forward | Creator | Jumbo
+Darius Garland,LAC,45,29.9,18.8,18,Guard | Engine | Hub | Creator | Spacer | Two-Way | Heliocentric | Shotmaker | Three-Level | Half-Court | Gravity | Scalable | Stretch | Point- | Slashing | Pick-and-Roll | Playmaking | Secondary
+Davion Mitchell,MIA,70,28.6,9.3,12,Guard | Hub | Creator | Spacer | Two-Way | Versatile | Scalable | Point- | Slashing | Pick-and-Roll | Playmaking | Secondary
+Day'Ron Sharpe,BKN,62,18.7,8.7,12,Big | Center | Connector | Finisher | Force | Stopper | Two-Way | Jumbo | Speed | Defensive | Point-of-Attack | Scalable
+De'Aaron Fox,SAS,72,31.0,18.6,21,Guard | Engine | Hub | Creator | Force | Initiator | Stopper | Two-Way | Pressure | Shotmaker | Three-Level | Defensive | Half-Court | Point-of-Attack | Scalable | Stretch | Point- | Slashing | Pick-and-Roll | Playmaking | Secondary
+De'Andre Hunter,SAC,45,26.1,13.7,4,Forward | Wing | Pressure | Half-Court
+De'Anthony Melton,GSW,49,23.0,12.3,11,Guard | Engine | Hub | Creator | Stopper | Two-Way | Speed | Defensive | Half-Court | Point-of-Attack | Pick-and-Roll
+DeJon Jarreau,MEM,11,21.0,8.0,9,Guard | Hub | Creator | Jumbo | Speed | Versatile | Half-Court | Point- | Pick-and-Roll
+DeMar DeRozan,SAC,77,31.2,18.4,12,Guard | Wing | Engine | Creator | Force | Pressure | Shotmaker | Half-Court | Scalable | Slashing | Playmaking | Secondary
+Dean Wade,CLE,59,22.3,5.8,7,Big | Forward | Spacer | Two-Way | Jumbo | Stretch | Off-Ball
+Deandre Ayton,LAL,72,27.2,12.5,6,Big | Center | Finisher | Rim Runner | Jumbo | Scoring
+Dejounte Murray,NOP,14,27.8,16.7,19,Guard | Engine | Hub | Creator | Force | Initiator | Stopper | Two-Way | Pressure | Shotmaker | Three-Level | Half-Court | Point-of-Attack | Scalable | Point- | Slashing | Pick-and-Roll | Playmaking | Secondary
+Deni Avdija,POR,66,33.3,24.2,22,Forward | Wing | Engine | Ecosystem | Hub | Creator | Force | Initiator | Two-Way | Heliocentric | Jumbo | Pressure | Scoring | Versatile | Half-Court | Scalable | Stretch | Point- | Slashing | Pick-and-Roll | Playmaking | Secondary
+Dennis Schröder,CLE,70,24.2,10.8,9,Guard | Engine | Hub | Creator | Half-Court | Point- | Pick-and-Roll | Playmaking | Secondary
+Derik Queen,NOP,81,25.0,11.7,16,Big | Center | Engine | Hub | Connector | Creator | Force | Two-Way | Jumbo | Pressure | Speed | Half-Court | Point-of-Attack | Point- | Slashing | Pick-and-Roll
+Derrick Jones Jr.,LAC,50,27.0,10.1,9,Forward | Wing | Finisher | Initiator | Two-Way | Jumbo | Speed | Defensive | Off-Ball
+Derrick White,BOS,77,34.1,16.5,21,Guard | Engine | Hub | Connector | Creator | Anchor | Spacer | Force | Stopper | Two-Way | Jumbo | Shotmaker | Speed | Defensive | Half-Court | Point-of-Attack | Scalable | Stretch | Point- | Playmaking | Secondary
+Desmond Bane,ORL,82,33.6,20.1,25,Guard | Engine | Hub | Creator | Spacer | Force | Stopper | Two-Way | Jumbo | Pressure | Shotmaker | Three-Level | Scoring | Speed | Defensive | Half-Court | Point-of-Attack | Gravity | Scalable | Stretch | Point- | Slashing | Pick-and-Roll | Playmaking | Secondary
+Devin Booker,PHX,64,33.5,26.1,19,Guard | Engine | Hub | Creator | Force | Two-Way | Heliocentric | Pressure | Shotmaker | Three-Level | Scoring | Half-Court | Scalable | Stretch | Point- | Slashing | Pick-and-Roll | Playmaking | Secondary
+Devin Carter,SAC,38,18.4,8.9,6,Guard | Engine | Creator | Initiator | Pressure | Pick-and-Roll
+Devin Vassell,SAS,67,30.5,13.9,11,Guard | Wing | Creator | Spacer | Initiator | Two-Way | Shotmaker | Three-Level | Gravity | Stretch | Off-Ball
+Dillon Brooks,PHX,56,30.4,20.2,13,Guard | Wing | Engine | Spacer | Force | Two-Way | Heliocentric | Shotmaker | Three-Level | Scoring | Half-Court | Stretch | Slashing
+Domantas Sabonis,SAC,19,29.7,15.8,12,Big | Forward | Hub | Connector | Finisher | Force | Jumbo | Half-Court | Scalable | Point- | Playmaking | Secondary
+Dominick Barlow,PHI,71,23.8,7.7,7,Forward | Finisher | Initiator | Two-Way | Jumbo | Speed | Defensive
+Donovan Clingan,POR,77,27.2,12.1,9,Big | Center | Anchor | Finisher | Force | Two-Way | Jumbo | Scalable | Stretch
+Donovan Mitchell,CLE,70,33.5,27.9,26,Guard | Engine | Hub | Creator | Spacer | Force | Initiator | Stopper | Two-Way | Heliocentric | Pressure | Shotmaker | Three-Level | Scoring | Speed | Defensive | Half-Court | Point-of-Attack | Gravity | Scalable | Stretch | Point- | Slashing | Pick-and-Roll | Playmaking | Secondary
+Donte DiVincenzo,MIN,82,30.4,12.2,17,Guard | Hub | Creator | Spacer | Initiator | Stopper | Two-Way | Speed | Defensive | Point-of-Attack | Gravity | Stretch | Point- | Off-Ball | 3-and-D | Playmaking | Secondary
+Dorian Finney-Smith,HOU,37,16.8,3.3,2,Forward | Wing
+Doug McDermott,SAC,29,15.1,5.7,4,Forward | Wing | Spacer | Off-Ball
+Drake Powell,BKN,63,20.9,6.5,2,Guard | Wing
+Draymond Green,GSW,68,27.5,8.4,16,Forward | Wing | Hub | Connector | Creator | Two-Way | Jumbo | Speed | Versatile | Defensive | Point-of-Attack | Stretch | Point- | Off-Ball | Playmaking | Secondary
+Drew Eubanks,SAC,42,13.1,5.2,5,Big | Forward | Finisher | Rim Runner | Jumbo
+Drew Timme,LAL,27,8.7,3.4,3,Forward | Finisher | Off-Ball
+Dru Smith,MIA,70,16.3,5.6,9,Guard | Creator | Initiator | Stopper | Two-Way | Speed | Defensive | Point-of-Attack | Secondary
+Duncan Robinson,DET,77,27.4,12.2,8,Forward | Wing | Spacer | Two-Way | Gravity | Stretch | Off-Ball | 3-and-D
+Duop Reath,POR,32,8.1,2.9,4,Big | Center | Spacer | Off-Ball
+Dwight Powell,DAL,63,14.4,3.3,5,Big | Forward | Finisher | Rim Runner | Jumbo
+Dylan Cardwell,SAC,44,20.6,5.4,9,Big | Center | Anchor | Finisher | Two-Way | Jumbo | Speed | Defensive | Off-Ball
+Dylan Harper,SAS,69,22.6,11.8,13,Guard | Engine | Hub | Creator | Initiator | Two-Way | Shotmaker | Scalable | Point- | Slashing | Pick-and-Roll | Playmaking | Secondary
+Dyson Daniels,ATL,76,33.2,11.9,20,Guard | Hub | Connector | Creator | Finisher | Force | Initiator | Stopper | Two-Way | Jumbo | Speed | Versatile | Defensive | Point-of-Attack | Scalable | Point- | Slashing | Pick-and-Roll | Playmaking | Secondary
+E.J. Liddell,BKN,26,13.4,5.7,3,Forward | Wing | Jumbo
+Egor Dëmin,BKN,52,25.2,10.3,11,Guard | Hub | Creator | Spacer | Half-Court | Gravity | Stretch | Point- | Off-Ball | Playmaking | Secondary
+Elijah Harkless,UTA,26,21.0,6.8,5,Guard | Creator | Initiator | Pressure | Pick-and-Roll
+Ethan Thompson,IND,32,20.4,7.0,2,Guard | Initiator
+Evan Mobley,CLE,65,31.9,18.2,23,Big | Center | Hub | Connector | Creator | Anchor | Finisher | Force | Two-Way | Jumbo | Pressure | Scoring | Speed | Defensive | Half-Court | Point-of-Attack | Scalable | Stretch | Point- | Slashing | Pick-and-Roll | Playmaking | Secondary
+Franz Wagner,ORL,34,30.0,20.6,19,Forward | Engine | Hub | Creator | Force | Initiator | Stopper | Two-Way | Jumbo | Pressure | Shotmaker | Scoring | Defensive | Point-of-Attack | Scalable | Stretch | Point- | Slashing | Pick-and-Roll
+GG Jackson,MEM,55,21.4,12.5,6,Forward | Initiator | Jumbo | Pressure | Scoring | Slashing
+Gabe Vincent,ATL,53,16.6,4.4,2,Guard | Spacer
+Gary Harris,MIL,48,13.8,2.7,3,Guard | Spacer | Off-Ball
+Gary Payton II,GSW,73,15.6,7.5,4,Guard | Finisher | Rim Runner | Two-Way
+Gary Trent Jr.,MIL,65,21.2,8.1,3,Guard | Spacer | Off-Ball
+Giannis Antetokounmpo,MIL,36,28.9,27.6,21,Forward | Engine | Ecosystem | Hub | Connector | Creator | Force | Initiator | Two-Way | Heliocentric | Jumbo | Pressure | Scoring | Speed | Point-of-Attack | Scalable | Point- | Slashing | Pick-and-Roll | Playmaking | Secondary
+Goga Bitadze,ORL,64,15.2,5.9,4,Big | Finisher | Two-Way | Jumbo
+Gradey Dick,TOR,76,14.0,6.0,3,Guard | Wing | Two-Way
+Grant Williams,CHA,36,19.8,7.0,7,Forward | Wing | Spacer | Two-Way | Jumbo | Stretch | Off-Ball
+Grayson Allen,PHX,51,28.8,16.5,18,Guard | Engine | Hub | Creator | Spacer | Stopper | Two-Way | Pressure | Speed | Half-Court | Point-of-Attack | Gravity | Scalable | Stretch | Point- | Pick-and-Roll | Playmaking | Secondary
+Guerschon Yabusele,CHI,67,15.0,5.6,4,Forward | Wing | Spacer | Off-Ball
+Gui Santos,GSW,68,20.5,9.2,6,Forward | Wing | Finisher | Two-Way | Jumbo | Pick-and-Roll
+Harrison Barnes,SAS,77,25.8,9.9,7,Forward | Wing | Creator | Spacer | Two-Way | Stretch | Off-Ball
+Herbert Jones,NOP,56,28.4,8.9,9,Forward | Wing | Creator | Stopper | Two-Way | Jumbo | Speed | Defensive | Point-of-Attack
+Hugo González,BOS,74,14.6,3.9,5,Guard | Finisher | Two-Way | Jumbo | Off-Ball
+Immanuel Quickley,TOR,70,31.9,16.4,20,Guard | Engine | Hub | Connector | Creator | Spacer | Initiator | Stopper | Two-Way | Shotmaker | Point-of-Attack | Gravity | Scalable | Stretch | Point- | Slashing | Pick-and-Roll | 3-and-D | Playmaking | Secondary
+Isaac Okoro,CHI,63,26.9,9.3,3,Forward | Wing | Finisher
+Isaiah Collier,UTA,59,25.7,11.7,11,Guard | Engine | Hub | Creator | Initiator | Pressure | Point- | Slashing | Pick-and-Roll | Playmaking | Secondary
+Isaiah Hartenstein,OKC,47,24.2,9.2,15,Big | Hub | Connector | Anchor | Finisher | Force | Stopper | Rim Runner | Two-Way | Jumbo | Speed | Defensive | Point-of-Attack | Scalable | Point-
+Isaiah Jackson,LAC,55,16.5,6.7,5,Forward | Wing | Finisher | Two-Way | Jumbo
+Isaiah Joe,OKC,71,21.2,11.1,8,Guard | Spacer | Two-Way | Gravity | Scalable | Stretch | Off-Ball | 3-and-D
+Isaiah Livers,PHX,36,9.6,1.8,2,Forward | Wing
+Isaiah Stewart,DET,58,22.7,10.0,6,Big | Forward | Anchor | Finisher | Jumbo | Off-Ball
+Ivica Zubac,IND,48,30.1,14.1,8,Big | Center | Finisher | Force | Jumbo | Half-Court | Scalable | Point-
+JD Davison,HOU,28,7.8,2.5,2,Guard | Creator
+Ja Morant,MEM,20,28.4,19.5,18,Guard | Engine | Ecosystem | Hub | Creator | Force | Initiator | Two-Way | Heliocentric | Pressure | Shotmaker | Half-Court | Scalable | Point- | Slashing | Pick-and-Roll | Playmaking | Secondary
+Ja'Kobe Walter,TOR,72,20.5,7.5,7,Guard | Spacer | Stopper | Two-Way | Stretch | Off-Ball | 3-and-D
+Jabari Smith Jr.,HOU,77,35.1,15.8,11,Forward | Anchor | Spacer | Initiator | Two-Way | Jumbo | Shotmaker | Three-Level | Scoring | Stretch | Off-Ball
+Jabari Walker,PHI,64,11.9,4.3,2,Forward | Wing
+Jaden Hardy,WAS,57,15.8,9.2,2,Guard | Spacer
+Jaden Ivey,CHI,37,18.1,8.5,4,Guard | Spacer | Initiator | Two-Way
+Jaden McDaniels,MIN,73,31.7,14.8,16,Forward | Creator | Spacer | Finisher | Initiator | Stopper | Two-Way | Jumbo | Shotmaker | Three-Level | Speed | Defensive | Point-of-Attack | Stretch | Slashing | Pick-and-Roll
+Jae'Sean Tate,HOU,46,8.8,2.8,2,Forward | Wing
+Jahmai Mashack,MEM,31,21.7,6.2,3,Guard | Speed | Secondary
+Jaime Jaquez Jr.,MIA,75,28.3,15.4,15,Guard | Engine | Hub | Creator | Force | Initiator | Two-Way | Jumbo | Pressure | Scalable | Point- | Slashing | Pick-and-Roll | Playmaking | Secondary
+Jake LaRavia,LAL,82,25.1,8.2,9,Forward | Wing | Finisher | Initiator | Two-Way | Jumbo | Speed | Defensive | Point-of-Attack
+Jakob Poeltl,TOR,46,25.0,10.7,13,Big | Center | Connector | Anchor | Finisher | Stopper | Rim Runner | Two-Way | Jumbo | Speed | Defensive | Point-of-Attack | Scalable
+Jalen Brunson,NYK,74,35.0,26.0,22,Guard | Engine | Ecosystem | Hub | Creator | Spacer | Force | Two-Way | Heliocentric | Pressure | Shotmaker | Three-Level | Scoring | Half-Court | Gravity | Scalable | Stretch | Point- | Slashing | Pick-and-Roll | Playmaking | Secondary
+Jalen Duren,DET,70,28.2,19.5,16,Big | Center | Anchor | Finisher | Force | Two-Way | Jumbo | Pressure | Scoring | Speed | Defensive | Half-Court | Point-of-Attack | Scalable | Slashing | Pick-and-Roll
+Jalen Green,PHX,32,25.9,17.8,13,Guard | Engine | Creator | Force | Two-Way | Heliocentric | Shotmaker | Three-Level | Half-Court | Scalable | Stretch | Slashing | Pick-and-Roll
+Jalen Johnson,ATL,72,35.2,22.5,27,Forward | Wing | Engine | Hub | Connector | Creator | Force | Initiator | Stopper | Two-Way | Heliocentric | Jumbo | Pressure | Shotmaker | Three-Level | Speed | Versatile | Defensive | Half-Court | Point-of-Attack | Scalable | Stretch | Point- | Slashing | Pick-and-Roll | Playmaking | Secondary
+Jalen Pickett,DEN,50,16.1,5.2,3,Guard | Creator | Spacer
+Jalen Slawson,IND,13,23.9,7.3,15,Forward | Wing | Creator | Anchor | Spacer | Finisher | Stopper | Two-Way | Jumbo | Speed | Versatile | Defensive | Point-of-Attack | Stretch | Off-Ball
+Jalen Smith,CHI,53,20.7,10.2,7,Big | Forward | Spacer | Finisher | Jumbo | Stretch | Off-Ball
+Jalen Suggs,ORL,57,27.6,13.8,19,Guard | Engine | Hub | Creator | Spacer | Force | Initiator | Stopper | Two-Way | Speed | Defensive | Half-Court | Point-of-Attack | Scalable | Stretch | Point- | Pick-and-Roll | Playmaking | Secondary
+Jalen Williams,OKC,33,28.4,17.1,20,Guard | Wing | Engine | Hub | Creator | Force | Initiator | Stopper | Two-Way | Jumbo | Pressure | Shotmaker | Defensive | Half-Court | Point-of-Attack | Scalable | Point- | Slashing | Pick-and-Roll | Playmaking
+Jalen Wilson,BKN,54,15.9,6.4,2,Forward | Wing
+Jamal Cain,ORL,40,12.1,5.4,4,Forward | Wing | Finisher | Off-Ball
+Jamal Murray,DEN,75,35.4,25.4,22,Guard | Engine | Ecosystem | Hub | Creator | Spacer | Force | Two-Way | Heliocentric | Pressure | Shotmaker | Three-Level | Scoring | Half-Court | Gravity | Scalable | Stretch | Point- | Slashing | Pick-and-Roll | Playmaking | Secondary
+Jamal Shead,TOR,82,22.6,6.6,11,Guard | Hub | Creator | Initiator | Stopper | Two-Way | Versatile | Point- | Pick-and-Roll | Playmaking | Secondary
+Jamaree Bouyea,PHX,46,14.0,5.7,4,Guard | Creator | Initiator | Two-Way
+James Harden,CLE,70,34.8,23.6,22,Guard | Engine | Ecosystem | Hub | Creator | Spacer | Force | Two-Way | Heliocentric | Pressure | Shotmaker | Scoring | Speed | Half-Court | Gravity | Scalable | Stretch | Point- | Slashing | Pick-and-Roll | Playmaking | Secondary
+Jamir Watkins,WAS,50,20.6,7.4,4,Forward | Wing | Jumbo | Speed
+Jamison Battle,TOR,61,8.5,3.1,5,Forward | Wing | Spacer | Finisher | Off-Ball
+Jarace Walker,IND,76,25.7,11.6,6,Forward | Wing | Creator | Spacer | Jumbo | Stretch
+Jared McCain,OKC,67,17.3,8.3,2,Guard | Spacer
+Jaren Jackson Jr.,UTA,48,30.3,19.4,16,Big | Forward | Anchor | Force | Stopper | Two-Way | Jumbo | Pressure | Scoring | Speed | Defensive | Half-Court | Point-of-Attack | Stretch | Slashing | Pick-and-Roll
+Jarred Vanderbilt,LAL,65,17.3,4.4,4,Forward | Wing | Finisher | Jumbo
+Jarrett Allen,CLE,56,27.1,15.4,16,Big | Center | Anchor | Finisher | Force | Stopper | Rim Runner | Two-Way | Jumbo | Pressure | Scoring | Speed | Defensive | Half-Court | Point-of-Attack | Scalable
+Jase Richardson,ORL,54,10.9,4.4,1,Guard
+Javon Small,MEM,41,20.2,9.7,9,Guard | Hub | Creator | Spacer | Initiator | Shotmaker | Scalable | Stretch | Pick-and-Roll
+Javonte Green,DET,82,17.6,6.9,8,Guard | Spacer | Initiator | Stopper | Two-Way | Defensive | Point-of-Attack | Off-Ball
+Jaxson Hayes,LAL,66,18.3,7.5,5,Big | Finisher | Rim Runner | Jumbo | Off-Ball
+Jay Huff,IND,82,21.0,9.5,6,Big | Center | Finisher | Jumbo | Stretch | Off-Ball
+Jaylen Brown,BOS,71,34.4,28.7,22,Guard | Wing | Engine | Hub | Creator | Force | Two-Way | Heliocentric | Jumbo | Pressure | Shotmaker | Three-Level | Scoring | Half-Court | Point-of-Attack | Scalable | Stretch | Point- | Slashing | Pick-and-Roll | Playmaking | Secondary
+Jaylen Clark,MIN,68,13.1,4.0,1,Guard
+Jaylen Wells,MEM,69,26.4,12.5,4,Forward | Wing | Spacer | Stretch
+Jaylin Williams,OKC,65,19.7,7.2,8,Forward | Anchor | Spacer | Two-Way | Jumbo | Scalable | Stretch | Off-Ball
+Jaylon Tyson,CLE,66,26.9,13.2,9,Guard | Wing | Spacer | Finisher | Two-Way | Jumbo | Gravity | Stretch | Off-Ball
+Jayson Tatum,BOS,16,32.6,21.8,24,Forward | Wing | Engine | Hub | Connector | Creator | Spacer | Force | Stopper | Two-Way | Heliocentric | Pressure | Shotmaker | Defensive | Half-Court | Point-of-Attack | Gravity | Scalable | Stretch | Point- | Slashing | Pick-and-Roll | Playmaking | Secondary
+Jerami Grant,POR,57,29.7,18.6,10,Forward | Wing | Spacer | Jumbo | Pressure | Scoring | Half-Court | Gravity | Stretch | Slashing
+Jeremiah Fears,NOP,82,25.8,14.3,14,Guard | Engine | Hub | Creator | Force | Initiator | Two-Way | Pressure | Speed | Point- | Slashing | Pick-and-Roll | Playmaking | Secondary
+Jeremiah Robinson-Earl,DAL,22,16.4,4.6,2,Forward | Jumbo
+Jeremy Sochan,NYK,44,10.6,3.6,3,Forward | Wing | Finisher
+Jericho Sims,MIL,67,19.7,5.0,5,Big | Center | Finisher | Rim Runner | Jumbo
+Jett Howard,ORL,55,12.6,5.5,3,Guard | Spacer | Off-Ball
+Jevon Carter,ORL,53,16.4,6.4,3,Guard | Spacer | Half-Court
+Jimmy Butler III,GSW,38,31.1,20.0,22,Forward | Wing | Engine | Hub | Connector | Creator | Force | Initiator | Stopper | Two-Way | Jumbo | Pressure | Shotmaker | Defensive | Half-Court | Point-of-Attack | Scalable | Point- | Slashing | Pick-and-Roll | Playmaking | Secondary
+Joan Beringer,MIN,40,7.9,3.9,4,Forward | Finisher | Rim Runner | Jumbo
+Jock Landale,ATL,68,22.1,10.6,6,Big | Center | Finisher | Jumbo | Stretch | Off-Ball
+Joel Embiid,PHI,38,31.6,26.9,21,Big | Engine | Hub | Creator | Anchor | Force | Two-Way | Heliocentric | Jumbo | Pressure | Shotmaker | Three-Level | Scoring | Half-Court | Scalable | Stretch | Point- | Slashing | Pick-and-Roll | Playmaking | Secondary
+John Collins,LAC,69,27.1,13.6,11,Big | Forward | Spacer | Finisher | Two-Way | Jumbo | Three-Level | Scoring | Speed | Stretch | Off-Ball
+John Konchar,UTA,56,19.9,4.4,9,Guard | Finisher | Initiator | Stopper | Two-Way | Jumbo | Speed | Defensive | Point-of-Attack
+John Poulakidas,DAL,13,19.5,8.8,4,Guard | Spacer | Stretch | Off-Ball
+Johnny Furphy,IND,35,18.4,5.1,4,Guard | Finisher | Initiator | Jumbo
+Jonas Valančiūnas,DEN,65,13.4,8.7,5,Big | Center | Jumbo | Half-Court | Scalable
+Jonathan Isaac,ORL,52,10.0,2.6,2,Forward | Jumbo
+Jonathan Kuminga,ATL,36,23.1,12.2,10,Forward | Wing | Creator | Force | Two-Way | Jumbo | Pressure | Scalable | Slashing | Pick-and-Roll
+Jonathan Mogbo,TOR,40,6.2,1.5,2,Forward | Finisher
+Jordan Clarkson,NYK,72,17.8,8.6,1,Guard
+Jordan Goodwin,PHX,70,22.5,8.7,9,Guard | Creator | Spacer | Stopper | Two-Way | Defensive | Point-of-Attack | Stretch | 3-and-D
+Jordan Hawkins,NOP,51,13.6,5.1,1,Guard
+Jordan McLaughlin,SAS,44,6.4,2.0,1,Guard
+Jordan Miller,LAC,60,22.1,10.0,6,Guard | Creator | Pressure | Scalable | Slashing | Pick-and-Roll
+Jordan Poole,NOP,39,23.9,13.4,5,Guard | Engine | Creator | Spacer | Stretch
+Jordan Walsh,BOS,68,17.8,5.4,5,Guard | Finisher | Two-Way | Jumbo | Off-Ball
+Jose Alvarado,NYK,69,19.9,7.4,8,Guard | Creator | Spacer | Initiator | Stopper | Two-Way | Playmaking | Secondary
+Josh Giddey,CHI,54,32.1,17.0,19,Guard | Engine | Hub | Creator | Force | Initiator | Two-Way | Jumbo | Pressure | Speed | Versatile | Point-of-Attack | Scalable | Stretch | Point- | Slashing | Pick-and-Roll | Playmaking | Secondary
+Josh Green,CHA,58,15.7,4.3,4,Guard | Spacer | Two-Way | Off-Ball
+Josh Hart,NYK,66,30.2,12.0,20,Guard | Hub | Connector | Creator | Spacer | Finisher | Initiator | Stopper | Two-Way | Jumbo | Shotmaker | Versatile | Defensive | Point-of-Attack | Scalable | Stretch | Point- | Pick-and-Roll | Playmaking | Secondary
+Josh Minott,BKN,49,17.0,7.4,8,Forward | Wing | Spacer | Two-Way | Jumbo | Defensive | Stretch | Off-Ball
+Josh Okogie,HOU,78,17.4,4.5,4,Guard | Spacer | Two-Way | Off-Ball
+Jrue Holiday,POR,53,29.4,16.3,20,Guard | Engine | Hub | Creator | Spacer | Stopper | Two-Way | Shotmaker | Three-Level | Half-Court | Point-of-Attack | Gravity | Scalable | Stretch | Point- | Slashing | Pick-and-Roll | 3-and-D | Playmaking | Secondary
+Julian Champagnie,SAS,82,27.6,11.1,9,Forward | Wing | Spacer | Initiator | Two-Way | Jumbo | Defensive | Stretch | Off-Ball
+Julian Phillips,MIN,48,8.9,2.9,2,Forward | Wing
+Julian Reese,WAS,13,30.9,11.8,9,Forward | Connector | Finisher | Force | Jumbo | Pressure | Speed | Half-Court | Point-of-Attack
+Julian Strawther,DEN,57,15.1,7.2,2,Guard | Spacer
+Julius Randle,MIN,79,33.0,21.1,22,Big | Forward | Engine | Hub | Connector | Creator | Force | Stopper | Two-Way | Jumbo | Pressure | Shotmaker | Scoring | Half-Court | Point-of-Attack | Scalable | Stretch | Point- | Slashing | Pick-and-Roll | Playmaking | Secondary
+Justin Champagnie,WAS,69,20.0,8.7,5,Guard | Wing | Finisher | Jumbo | Speed
+Justin Edwards,PHI,64,15.3,6.0,3,Forward | Wing | Spacer
+Jusuf Nurkić,UTA,41,26.4,10.9,18,Big | Center | Hub | Connector | Finisher | Force | Stopper | Two-Way | Jumbo | Speed | Defensive | Half-Court | Point-of-Attack | Scalable | Point- | Off-Ball | Playmaking | Secondary
+KJ Simpson,DEN,20,12.9,4.6,2,Guard | Creator
+Kam Jones,IND,37,16.7,4.4,4,Guard | Creator | Playmaking | Secondary
+Karl-Anthony Towns,NYK,75,31.0,20.1,19,Big | Engine | Connector | Creator | Anchor | Force | Stopper | Two-Way | Jumbo | Pressure | Scoring | Defensive | Half-Court | Point-of-Attack | Scalable | Stretch | Point- | Slashing | Pick-and-Roll
+Karlo Matković,NOP,62,14.7,5.7,6,Big | Forward | Finisher | Rim Runner | Jumbo | Off-Ball
+Kasparas Jakučionis,MIA,53,17.8,6.2,5,Guard | Creator | Spacer | Off-Ball | Secondary
+Kawhi Leonard,LAC,65,32.1,27.9,28,Forward | Wing | Engine | Hub | Creator | Spacer | Force | Initiator | Stopper | Two-Way | Heliocentric | Jumbo | Pressure | Shotmaker | Three-Level | Scoring | Speed | Defensive | Half-Court | Point-of-Attack | Gravity | Scalable | Stretch | Point- | Slashing | Pick-and-Roll | Playmaking | Secondary
+Keaton Wallace,ATL,53,10.1,3.5,2,Guard | Creator
+Keegan Murray,SAC,23,34.5,14.0,8,Forward | Wing | Force | Initiator | Jumbo | Speed | Defensive | Stretch
+Kel'el Ware,MIA,77,22.1,11.1,11,Big | Center | Anchor | Spacer | Finisher | Two-Way | Jumbo | Scoring | Speed | Stretch | Off-Ball
+Keldon Johnson,SAS,82,23.3,13.2,6,Forward | Wing | Two-Way | Scoring | Scalable | Slashing
+Kelly Olynyk,SAS,42,8.6,3.2,2,Big | Forward
+Kelly Oubre Jr.,PHI,50,31.5,14.1,14,Forward | Wing | Spacer | Force | Initiator | Two-Way | Jumbo | Pressure | Scoring | Speed | Defensive | Point-of-Attack | Stretch | Slashing
+Kennedy Chandler,UTA,11,32.3,15.0,12,Guard | Engine | Hub | Creator | Initiator | Pressure | Shotmaker | Point- | Slashing | Pick-and-Roll | Playmaking | Secondary
+Kenrich Williams,OKC,56,15.3,6.5,2,Guard | Wing
+Kentavious Caldwell-Pope,MEM,51,21.3,8.4,4,Guard | Creator | Initiator | Secondary
+Keon Ellis,CLE,72,20.5,6.7,5,Guard | Spacer | Two-Way | Speed | Off-Ball
+Keshad Johnson,MIA,32,8.7,4.3,3,Forward | Wing | Two-Way
+Kevin Durant,HOU,78,36.4,26.0,24,Forward | Engine | Hub | Creator | Spacer | Force | Two-Way | Heliocentric | Jumbo | Pressure | Shotmaker | Three-Level | Scoring | Speed | Defensive | Half-Court | Gravity | Scalable | Stretch | Point- | Slashing | Pick-and-Roll | Playmaking | Secondary
+Kevin Huerter,DET,69,22.5,10.0,6,Guard | Wing | Creator | Initiator | Two-Way | Defensive
+Kevin Love,UTA,37,16.6,6.7,6,Big | Forward | Spacer | Jumbo | Stretch | Off-Ball
+Kevin Porter Jr.,MIL,38,33.2,17.4,22,Guard | Wing | Engine | Hub | Creator | Force | Stopper | Two-Way | Jumbo | Pressure | Shotmaker | Speed | Versatile | Defensive | Half-Court | Point-of-Attack | Scalable | Point- | Slashing | Pick-and-Roll | Playmaking | Secondary
+Kevon Looney,NOP,21,14.6,2.8,2,Forward | Jumbo
+Keyonte George,UTA,54,33.1,23.6,20,Guard | Engine | Hub | Creator | Spacer | Force | Initiator | Pressure | Shotmaker | Three-Level | Scoring | Half-Court | Gravity | Scalable | Stretch | Point- | Slashing | Pick-and-Roll | Playmaking | Secondary
+Khaman Maluach,PHX,46,8.9,3.0,4,Big | Center | Finisher | Jumbo
+Khris Middleton,DAL,63,22.8,10.2,5,Forward | Wing | Creator | Shotmaker | Half-Court
+Killian Hayes,SAC,23,17.6,5.5,5,Guard | Creator | Half-Court | Playmaking | Secondary
+Klay Thompson,DAL,69,21.7,11.7,6,Guard | Spacer | Half-Court | Gravity | Stretch | Off-Ball
+Kobe Brown,IND,61,15.8,5.8,2,Forward | Wing
+Kobe Sanders,LAC,68,19.9,7.3,2,Guard | Spacer
+Kon Knueppel,CHA,81,31.5,18.5,16,Guard | Wing | Hub | Creator | Spacer | Initiator | Two-Way | Shotmaker | Scoring | Gravity | Scalable | Stretch | Point- | Off-Ball | 3-and-D | Secondary
+Kris Dunn,LAC,82,27.2,7.3,10,Guard | Connector | Creator | Initiator | Stopper | Two-Way | Versatile | Point-of-Attack | Playmaking | Secondary
+Kris Murray,POR,57,23.4,5.8,6,Forward | Wing | Finisher | Two-Way | Jumbo | Defensive
+Kristaps Porziņģis,GSW,32,24.0,16.7,13,Big | Forward | Anchor | Force | Two-Way | Jumbo | Pressure | Shotmaker | Scoring | Defensive | Half-Court | Scalable | Stretch
+Kyle Anderson,MIN,43,19.8,6.2,11,Forward | Wing | Connector | Creator | Stopper | Two-Way | Jumbo | Speed | Versatile | Defensive | Point-of-Attack
+Kyle Filipowski,UTA,77,23.4,11.4,7,Big | Center | Finisher | Force | Jumbo | Pressure | Pick-and-Roll
+Kyle Kuzma,MIL,69,26.2,13.0,7,Forward | Wing | Creator | Initiator | Jumbo | Slashing | Pick-and-Roll
+Kyshawn George,WAS,48,29.0,14.8,20,Forward | Wing | Engine | Hub | Connector | Creator | Spacer | Force | Initiator | Jumbo | Shotmaker | Speed | Defensive | Half-Court | Point-of-Attack | Gravity | Stretch | Point- | Playmaking | Secondary
+LJ Cryer,GSW,18,16.2,8.2,4,Guard | Spacer | Stretch | Off-Ball
+LaMelo Ball,CHA,72,28.0,20.1,19,Guard | Engine | Ecosystem | Hub | Creator | Spacer | Force | Two-Way | Heliocentric | Shotmaker | Half-Court | Point-of-Attack | Gravity | Scalable | Stretch | Point- | Pick-and-Roll | Playmaking | Secondary
+Lachlan Olbrich,CHI,37,9.3,2.4,4,Big | Center | Finisher | Jumbo
+Landry Shamet,NYK,51,23.0,9.3,5,Guard | Spacer | Two-Way | Stretch | Off-Ball
+Larry Nance Jr.,CLE,35,12.8,3.7,4,Big | Forward | Finisher | Off-Ball
+Lauri Markkanen,UTA,42,34.3,26.7,15,Big | Forward | Spacer | Force | Two-Way | Jumbo | Pressure | Three-Level | Scoring | Speed | Half-Court | Gravity | Scalable | Stretch | Slashing
+LeBron James,LAL,60,33.2,20.9,22,Forward | Engine | Hub | Connector | Creator | Force | Initiator | Two-Way | Jumbo | Pressure | Shotmaker | Three-Level | Speed | Defensive | Point-of-Attack | Scalable | Stretch | Point- | Slashing | Pick-and-Roll | Playmaking | Secondary
+Leaky Black,WAS,15,28.9,7.1,7,Forward | Wing | Spacer | Jumbo | Speed | Half-Court | Stretch
+Leonard Miller,CHI,46,15.6,7.8,5,Forward | Finisher | Initiator | Rim Runner | Jumbo
+Liam McNeeley,CHA,31,11.9,4.3,4,Forward | Wing | Spacer | Off-Ball
+Lindy Waters III,SAS,40,7.1,2.4,3,Forward | Wing | Off-Ball
+Lonzo Ball,CLE,35,20.8,4.6,14,Guard | Hub | Connector | Creator | Initiator | Stopper | Two-Way | Speed | Versatile | Defensive | Point-of-Attack | Point- | Playmaking | Secondary
+Lucas Williamson,MEM,7,32.0,10.4,4,Guard | Spacer | Point-of-Attack | Stretch
+Luguentz Dort,OKC,69,26.8,8.3,6,Guard | Spacer | Two-Way | Defensive | Stretch | Off-Ball
+Luka Dončić,LAL,64,35.8,33.5,28,Forward | Wing | Engine | Ecosystem | Hub | Creator | Spacer | Force | Stopper | Two-Way | Heliocentric | Jumbo | Pressure | Shotmaker | Three-Level | Scoring | Speed | Defensive | Half-Court | Point-of-Attack | Gravity | Scalable | Stretch | Point- | Slashing | Pick-and-Roll | Playmaking | Secondary
+Luka Garza,BOS,69,16.2,8.1,5,Big | Center | Finisher | Jumbo | Off-Ball
+Luke Kennard,LAL,78,21.5,8.4,5,Guard | Creator | Spacer | Finisher | Off-Ball
+Luke Kornet,SAS,68,21.0,6.5,6,Big | Anchor | Finisher | Rim Runner | Two-Way | Jumbo
+Malachi Smith,BKN,15,23.9,8.3,8,Guard | Creator | Spacer | Initiator | Versatile | Stretch | Playmaking | Secondary
+Malaki Branham,WAS,28,9.8,4.6,2,Forward | Wing
+Malevy Leons,GSW,25,11.1,3.3,2,Forward | Jumbo
+Malik Monk,SAC,62,22.0,12.5,8,Guard | Engine | Creator | Spacer | Initiator | Shotmaker | Gravity | Stretch
+Marcus Sasser,DET,38,12.0,5.2,4,Guard | Spacer | Two-Way | Off-Ball
+Marcus Smart,LAL,62,28.5,9.3,9,Guard | Creator | Spacer | Stopper | Two-Way | Speed | Defensive | Half-Court | Point-of-Attack
+Mark Williams,PHX,60,23.6,11.7,15,Big | Center | Anchor | Finisher | Force | Rim Runner | Two-Way | Jumbo | Pressure | Scoring | Speed | Defensive | Point-of-Attack | Stretch | Off-Ball
+Marvin Bagley III,DAL,60,20.0,10.5,4,Forward | Finisher | Jumbo | Stretch
+Matas Buzelis,CHI,77,29.2,16.3,10,Forward | Wing | Spacer | Force | Initiator | Jumbo | Scoring | Speed | Stretch | Slashing
+Matisse Thybulle,POR,30,16.0,5.8,11,Guard | Wing | Spacer | Initiator | Stopper | Two-Way | Speed | Defensive | Point-of-Attack | Off-Ball | 3-and-D
+Max Christie,DAL,77,29.1,12.3,6,Guard | Spacer | Initiator | Gravity | Stretch | Off-Ball
+Max Strus,CLE,12,24.0,11.2,6,Guard | Wing | Spacer | Gravity | Stretch | Off-Ball
+Maxi Kleber,LAL,43,10.7,2.0,3,Forward | Finisher | Jumbo
+Maxime Raynaud,SAC,74,26.5,12.5,8,Big | Center | Finisher | Rim Runner | Jumbo | Scoring | Half-Court | Off-Ball
+Micah Peavy,NOP,61,15.0,4.3,2,Guard | Wing
+Micah Potter,IND,47,19.3,9.7,7,Big | Center | Spacer | Finisher | Jumbo | Stretch | Off-Ball
+Michael Porter Jr.,BKN,52,32.5,24.2,16,Forward | Engine | Hub | Creator | Spacer | Force | Jumbo | Pressure | Shotmaker | Three-Level | Scoring | Half-Court | Gravity | Scalable | Stretch | Point-
+Mikal Bridges,NYK,82,32.8,14.4,20,Guard | Wing | Hub | Creator | Spacer | Finisher | Initiator | Stopper | Two-Way | Jumbo | Shotmaker | Three-Level | Speed | Defensive | Point-of-Attack | Scalable | Stretch | Point- | Playmaking | Secondary
+Mike Conley,MIN,54,18.4,4.5,4,Guard | Creator | Playmaking | Secondary
+Miles Bridges,CHA,77,31.0,17.1,12,Forward | Wing | Hub | Creator | Force | Jumbo | Pressure | Scalable | Stretch | Point- | Slashing | Pick-and-Roll
+Miles McBride,NYK,41,26.3,12.0,13,Guard | Creator | Spacer | Initiator | Stopper | Two-Way | Shotmaker | Three-Level | Gravity | Stretch | Off-Ball | 3-and-D | Secondary
+Mitchell Robinson,NYK,60,19.6,5.7,10,Big | Anchor | Finisher | Force | Stopper | Two-Way | Jumbo | Speed | Defensive | Point-of-Attack
+Mohamed Diawara,NYK,69,9.2,3.6,2,Forward | Off-Ball
+Moritz Wagner,ORL,36,11.8,6.9,2,Big | Forward
+Moses Moody,GSW,60,25.7,12.1,11,Guard | Spacer | Stopper | Two-Way | Speed | Defensive | Point-of-Attack | Gravity | Stretch | Off-Ball | 3-and-D
+Mouhamed Gueye,ATL,77,15.3,4.4,5,Forward | Finisher | Two-Way | Jumbo | Defensive
+Moussa Cisse,DAL,38,13.9,4.5,6,Big | Center | Anchor | Finisher | Two-Way | Jumbo
+Moussa Diabaté,CHA,73,26.0,7.9,11,Forward | Connector | Anchor | Finisher | Force | Two-Way | Jumbo | Speed | Defensive | Scalable | Off-Ball
+Myles Turner,MIL,71,26.9,11.9,7,Big | Spacer | Jumbo | Speed | Half-Court | Stretch | Off-Ball
+Myron Gardner,MIA,45,9.1,3.6,3,Forward | Wing | Two-Way
+Nae'Qwan Tomlin,CLE,64,15.7,5.8,5,Forward | Wing | Finisher | Two-Way | Jumbo
+Naji Marshall,DAL,74,29.5,15.2,11,Forward | Wing | Engine | Creator | Force | Initiator | Pressure | Shotmaker | Point-of-Attack | Slashing | Pick-and-Roll
+Nate Williams,GSW,14,17.1,8.0,2,Guard | Spacer
+Naz Reid,MIN,77,26.1,13.6,11,Big | Anchor | Spacer | Stopper | Two-Way | Jumbo | Speed | Defensive | Point-of-Attack | Scalable | Stretch
+Neemias Queta,BOS,76,25.3,10.2,13,Big | Center | Anchor | Finisher | Force | Stopper | Rim Runner | Two-Way | Jumbo | Speed | Defensive | Point-of-Attack | Scalable
+Nic Claxton,BKN,69,27.8,11.7,14,Big | Center | Hub | Connector | Creator | Finisher | Force | Jumbo | Pressure | Versatile | Point- | Slashing | Pick-and-Roll | Playmaking
+Nick Richards,CHI,48,14.6,5.8,4,Big | Center | Finisher | Jumbo
+Nick Smith Jr.,LAL,30,12.5,6.2,4,Guard | Spacer | Shotmaker | Half-Court
+Nickeil Alexander-Walker,ATL,78,33.4,20.8,24,Guard | Engine | Hub | Creator | Spacer | Initiator | Stopper | Two-Way | Pressure | Shotmaker | Three-Level | Scoring | Speed | Defensive | Point-of-Attack | Gravity | Scalable | Stretch | Point- | Slashing | Pick-and-Roll | 3-and-D | Playmaking | Secondary
+Nicolas Batum,LAC,74,17.5,4.0,4,Guard | Wing | Spacer | Off-Ball
+Nikola Jokić,DEN,65,34.8,27.7,29,Big | Center | Engine | Ecosystem | Hub | Connector | Creator | Anchor | Force | Stopper | Two-Way | Heliocentric | Jumbo | Pressure | Shotmaker | Three-Level | Scoring | Speed | Defensive | Half-Court | Point-of-Attack | Gravity | Scalable | Stretch | Point- | Slashing | Pick-and-Roll | Playmaking | Secondary
+Nikola Jović,MIA,47,17.2,7.3,3,Forward | Initiator | Jumbo
+Nikola Vučević,BOS,64,28.4,15.1,14,Big | Center | Hub | Connector | Creator | Finisher | Jumbo | Three-Level | Half-Court | Scalable | Stretch | Point- | Off-Ball | Playmaking
+Nique Clifford,SAC,75,25.1,8.6,3,Guard | Creator | Initiator
+Noah Clowney,BKN,66,27.0,12.3,6,Big | Forward | Spacer | Jumbo | Pressure | Stretch
+Noah Penda,ORL,59,12.8,3.8,3,Guard | Wing | Jumbo
+Nolan Traore,BKN,56,22.2,8.9,9,Guard | Engine | Hub | Creator | Half-Court | Point- | Pick-and-Roll | Playmaking | Secondary
+Norman Powell,MIA,58,29.6,21.7,15,Guard | Engine | Creator | Spacer | Two-Way | Pressure | Shotmaker | Three-Level | Scoring | Half-Court | Gravity | Scalable | Stretch | Slashing | Pick-and-Roll
+OG Anunoby,NYK,67,33.2,16.7,18,Forward | Wing | Anchor | Spacer | Force | Stopper | Two-Way | Jumbo | Pressure | Scoring | Speed | Defensive | Point-of-Attack | Gravity | Scalable | Stretch | Slashing | 3-and-D
+Obi Toppin,IND,24,17.7,11.6,6,Forward | Finisher | Initiator | Scalable | Stretch | Off-Ball
+Ochai Agbaji,BKN,62,15.7,5.1,2,Guard | Finisher
+Olivier-Maxence Prosper,MEM,53,18.6,10.0,6,Forward | Wing | Spacer | Finisher | Initiator | Off-Ball
+Onyeka Okongwu,ATL,74,31.0,15.2,19,Big | Forward | Hub | Connector | Creator | Anchor | Spacer | Finisher | Force | Stopper | Two-Way | Jumbo | Speed | Defensive | Point-of-Attack | Scalable | Stretch | Point- | Off-Ball
+Oscar Tshiebwe,UTA,27,16.6,7.8,5,Big | Forward | Finisher | Rim Runner | Jumbo
+Oso Ighodaro,PHX,82,22.1,6.5,11,Forward | Connector | Anchor | Finisher | Stopper | Rim Runner | Two-Way | Jumbo | Speed | Defensive | Point-of-Attack
+Ousmane Dieng,MIL,57,19.3,7.6,4,Forward | Creator | Jumbo | Half-Court
+P.J. Washington,DAL,56,31.0,14.2,13,Forward | Wing | Anchor | Force | Initiator | Two-Way | Jumbo | Pressure | Speed | Defensive | Point-of-Attack | Stretch | Slashing
+PJ Hall,CHA,19,11.2,4.5,5,Big | Center | Finisher | Jumbo | Off-Ball
+Paolo Banchero,ORL,72,34.7,22.2,20,Forward | Engine | Hub | Connector | Creator | Force | Initiator | Two-Way | Heliocentric | Jumbo | Pressure | Shotmaker | Half-Court | Scalable | Stretch | Point- | Slashing | Pick-and-Roll | Playmaking | Secondary
+Pascal Siakam,IND,62,33.2,24.0,24,Forward | Wing | Engine | Hub | Connector | Creator | Force | Two-Way | Heliocentric | Jumbo | Pressure | Shotmaker | Three-Level | Scoring | Speed | Half-Court | Point-of-Attack | Scalable | Stretch | Point- | Slashing | Pick-and-Roll | Playmaking | Secondary
+Pat Connaughton,CHA,42,7.1,2.6,3,Guard | Spacer | Off-Ball
+Pat Spencer,GSW,66,18.6,7.2,6,Guard | Hub | Creator | Half-Court | Playmaking | Secondary
+Patrick Williams,CHI,72,20.5,7.0,3,Forward | Wing | Spacer
+Paul George,PHI,37,30.7,17.3,23,Forward | Wing | Engine | Hub | Creator | Spacer | Force | Stopper | Two-Way | Jumbo | Shotmaker | Three-Level | Speed | Defensive | Half-Court | Point-of-Attack | Gravity | Scalable | Stretch | Point- | 3-and-D | Playmaking | Secondary
+Paul Reed,DET,65,13.9,7.8,11,Forward | Anchor | Finisher | Stopper | Rim Runner | Two-Way | Jumbo | Speed | Defensive | Point-of-Attack | Scalable
+Payton Pritchard,BOS,79,32.3,17.0,16,Guard | Engine | Hub | Creator | Spacer | Two-Way | Shotmaker | Three-Level | Half-Court | Gravity | Scalable | Stretch | Point- | Slashing | Playmaking | Secondary
+Pelle Larsson,MIA,70,26.4,11.4,9,Guard | Creator | Finisher | Initiator | Two-Way | Pressure | Slashing | Pick-and-Roll | Secondary
+Pete Nance,MIL,47,15.7,5.4,5,Forward | Spacer | Finisher | Jumbo | Off-Ball
+Peyton Watson,DEN,54,29.6,14.6,11,Guard | Spacer | Force | Initiator | Two-Way | Jumbo | Pressure | Scoring | Speed | Stretch | Slashing
+Precious Achiuwa,SAC,73,23.9,10.1,6,Forward | Wing | Finisher | Force | Jumbo | Speed
+Quentin Grimes,PHI,75,29.4,13.4,8,Guard | Creator | Initiator | Two-Way | Pressure | Stretch | Pick-and-Roll | Secondary
+Quenton Jackson,IND,49,18.3,9.1,7,Guard | Creator | Initiator | Pressure | Pick-and-Roll | Playmaking | Secondary
+Quinten Post,GSW,67,17.3,7.7,7,Big | Center | Spacer | Jumbo | Half-Court | Stretch | Off-Ball
+RJ Barrett,TOR,57,30.3,19.3,15,Forward | Wing | Engine | Hub | Creator | Force | Initiator | Two-Way | Pressure | Scoring | Scalable | Stretch | Point- | Slashing | Pick-and-Roll
+Rasheer Fleming,PHX,55,12.2,4.3,5,Forward | Spacer | Two-Way | Jumbo | Off-Ball
+RayJ Dennis,ATL,17,12.1,4.4,3,Guard | Creator | Secondary
+Rayan Rupert,MEM,64,16.8,5.2,2,Guard | Wing
+Reed Sheppard,HOU,82,26.2,13.5,21,Guard | Engine | Hub | Creator | Spacer | Initiator | Stopper | Two-Way | Shotmaker | Three-Level | Speed | Defensive | Half-Court | Point-of-Attack | Gravity | Scalable | Stretch | Point- | 3-and-D | Playmaking | Secondary
+Rob Dillingham,CHI,65,14.9,6.3,3,Guard | Creator | Half-Court
+Robert Williams III,POR,59,17.1,6.7,9,Big | Anchor | Finisher | Rim Runner | Two-Way | Jumbo | Defensive | Scalable | Off-Ball
+Ron Harper Jr.,BOS,29,10.9,4.2,3,Guard | Wing | Spacer
+Ronald Holland II,DET,78,19.9,8.2,8,Forward | Wing | Initiator | Stopper | Two-Way | Jumbo | Defensive | Point-of-Attack
+Royce O'Neale,PHX,78,28.4,9.8,11,Forward | Wing | Spacer | Initiator | Two-Way | Speed | Stretch | Point- | Off-Ball | 3-and-D | Secondary
+Rudy Gobert,MIN,76,31.3,10.9,14,Big | Center | Connector | Anchor | Finisher | Force | Stopper | Two-Way | Jumbo | Pressure | Speed | Defensive | Point-of-Attack | Scalable
+Rui Hachimura,LAL,68,28.3,11.5,8,Forward | Wing | Spacer | Finisher | Shotmaker | Three-Level | Stretch | Off-Ball
+Russell Westbrook,SAC,64,28.9,15.2,14,Guard | Engine | Hub | Creator | Force | Shotmaker | Versatile | Half-Court | Stretch | Point- | Slashing | Pick-and-Roll | Playmaking | Secondary
+Ryan Dunn,PHX,70,19.4,5.8,8,Forward | Wing | Finisher | Stopper | Two-Way | Jumbo | Defensive | Point-of-Attack
+Ryan Kalkbrenner,CHA,69,21.4,7.6,5,Big | Center | Finisher | Two-Way | Jumbo
+Ryan Nembhard,DAL,60,19.5,6.6,7,Guard | Hub | Creator | Half-Court | Point- | Playmaking | Secondary
+Ryan Rollins,MIL,74,32.1,17.3,23,Guard | Engine | Hub | Creator | Spacer | Force | Stopper | Two-Way | Shotmaker | Three-Level | Speed | Defensive | Half-Court | Point-of-Attack | Gravity | Scalable | Stretch | Point- | Slashing | Pick-and-Roll | 3-and-D | Playmaking | Secondary
+Saddiq Bey,NOP,72,31.2,17.7,9,Guard | Wing | Creator | Spacer | Force | Pressure | Scoring | Stretch | Slashing
+Sam Hauser,BOS,78,24.8,9.2,6,Forward | Wing | Spacer | Two-Way | Stretch | Off-Ball
+Sam Merrill,CLE,52,26.5,12.8,7,Guard | Spacer | Two-Way | Gravity | Stretch | Off-Ball | 3-and-D
+Sandro Mamukelashvili,TOR,80,21.9,11.2,10,Big | Forward | Spacer | Finisher | Two-Way | Jumbo | Defensive | Scalable | Stretch | Off-Ball
+Santi Aldama,MEM,43,27.9,14.0,14,Big | Forward | Hub | Creator | Finisher | Initiator | Jumbo | Speed | Scalable | Stretch | Point- | Slashing | Pick-and-Roll | Secondary
+Scoot Henderson,POR,30,24.9,14.2,17,Guard | Engine | Hub | Creator | Spacer | Stopper | Two-Way | Pressure | Shotmaker | Half-Court | Point-of-Attack | Scalable | Stretch | Point- | Pick-and-Roll | Playmaking | Secondary
+Scottie Barnes,TOR,80,33.5,18.1,26,Forward | Wing | Engine | Hub | Connector | Creator | Anchor | Force | Initiator | Stopper | Two-Way | Jumbo | Pressure | Shotmaker | Three-Level | Speed | Versatile | Defensive | Half-Court | Point-of-Attack | Scalable | Point- | Slashing | Pick-and-Roll | Playmaking | Secondary
+Scotty Pippen Jr.,MEM,10,21.2,11.4,13,Guard | Engine | Hub | Creator | Initiator | Pressure | Speed | Point-of-Attack | Point- | Slashing | Pick-and-Roll | Playmaking | Secondary
+Shaedon Sharpe,POR,50,29.4,20.8,17,Guard | Engine | Creator | Force | Initiator | Two-Way | Heliocentric | Pressure | Shotmaker | Three-Level | Scoring | Half-Court | Point-of-Attack | Scalable | Stretch | Slashing | Pick-and-Roll
+Shai Gilgeous-Alexander,OKC,68,33.2,31.1,26,Guard | Engine | Ecosystem | Hub | Creator | Force | Stopper | Two-Way | Heliocentric | Jumbo | Pressure | Shotmaker | Three-Level | Scoring | Speed | Defensive | Half-Court | Point-of-Attack | Gravity | Scalable | Stretch | Point- | Slashing | Pick-and-Roll | Playmaking | Secondary
+Sharife Cooper,WAS,41,17.1,8.1,6,Guard | Engine | Creator | Shotmaker | Half-Court | Pick-and-Roll
+Sidy Cissoko,POR,75,19.1,5.1,1,Guard
+Simone Fontecchio,MIA,70,16.7,8.5,5,Forward | Wing | Spacer | Stretch | Off-Ball
+Sion James,CHA,82,22.5,5.4,2,Guard | Creator
+Spencer Jones,DEN,64,22.1,5.5,7,Forward | Wing | Spacer | Finisher | Two-Way | Jumbo | Off-Ball
+Stephen Curry,GSW,43,30.9,26.6,22,Guard | Engine | Hub | Creator | Spacer | Force | Two-Way | Heliocentric | Pressure | Shotmaker | Three-Level | Scoring | Speed | Half-Court | Point-of-Attack | Gravity | Scalable | Stretch | Point- | Pick-and-Roll | Playmaking | Secondary
+Stephon Castle,SAS,68,30.0,16.7,21,Guard | Engine | Hub | Connector | Creator | Force | Initiator | Stopper | Two-Way | Jumbo | Pressure | Versatile | Defensive | Half-Court | Point-of-Attack | Scalable | Point- | Slashing | Pick-and-Roll | Playmaking | Secondary
+Steven Adams,HOU,32,22.8,5.8,7,Big | Center | Anchor | Finisher | Force | Two-Way | Jumbo
+Svi Mykhailiuk,UTA,50,23.1,9.4,5,Guard | Wing | Spacer | Stretch | Off-Ball
+T.J. McConnell,IND,56,17.2,9.4,11,Guard | Engine | Hub | Creator | Shotmaker | Half-Court | Scalable | Point- | Slashing | Playmaking | Secondary
+Taelon Peter,IND,38,13.0,4.5,3,Guard | Spacer | Off-Ball
+Tari Eason,HOU,60,25.8,10.5,12,Forward | Wing | Anchor | Spacer | Initiator | Stopper | Two-Way | Jumbo | Speed | Defensive | Point-of-Attack | Stretch
+Taurean Prince,MIL,26,23.5,9.2,5,Forward | Wing | Spacer | Stretch | Off-Ball
+Taylor Hendricks,MEM,59,19.0,7.4,4,Forward | Finisher | Jumbo | Off-Ball
+Terance Mann,BKN,63,24.3,7.2,6,Guard | Wing | Creator | Initiator | Versatile | Secondary
+Terrence Shannon Jr.,MIN,43,12.5,5.6,2,Guard | Wing
+Thomas Bryant,CLE,60,12.2,6.2,4,Big | Finisher | Jumbo | Off-Ball
+Tidjane Salaün,CHA,37,15.6,6.0,5,Forward | Spacer | Finisher | Jumbo | Off-Ball
+Tim Hardaway Jr.,DEN,80,26.6,13.5,8,Guard | Wing | Spacer | Three-Level | Scoring | Gravity | Stretch | Off-Ball
+Tobias Harris,DET,63,27.7,13.3,10,Forward | Wing | Creator | Two-Way | Jumbo | Shotmaker | Defensive | Half-Court | Scalable | Stretch
+Toby Okani,MEM,6,36.2,10.0,4,Forward | Wing | Spacer | Jumbo
+Tony Bradley,ATL,41,11.0,4.0,4,Big | Finisher | Jumbo | Off-Ball
+Toumani Camara,POR,82,33.3,13.4,12,Forward | Wing | Spacer | Stopper | Two-Way | Jumbo | Speed | Defensive | Point-of-Attack | Stretch | Off-Ball | 3-and-D
+Trae Young,WAS,15,25.6,17.9,13,Guard | Engine | Hub | Creator | Pressure | Shotmaker | Half-Court | Scalable | Point- | Slashing | Pick-and-Roll | Playmaking | Secondary
+Trayce Jackson-Davis,TOR,53,9.4,3.4,4,Forward | Finisher | Jumbo | Off-Ball
+Tre Johnson,WAS,60,24.0,12.2,4,Guard | Spacer | Shotmaker | Stretch
+Tre Jones,CHI,65,27.0,14.1,14,Guard | Engine | Hub | Creator | Initiator | Two-Way | Pressure | Shotmaker | Scalable | Point- | Slashing | Pick-and-Roll | Playmaking | Secondary
+Tre Mann,CHA,53,12.6,5.5,3,Guard | Creator | Half-Court
+Trendon Watford,PHI,53,16.3,6.5,4,Guard | Wing | Creator | Jumbo
+Trey Murphy III,NOP,66,35.5,21.5,26,Forward | Wing | Hub | Connector | Creator | Spacer | Force | Initiator | Stopper | Two-Way | Jumbo | Pressure | Three-Level | Scoring | Speed | Defensive | Point-of-Attack | Gravity | Scalable | Stretch | Point- | Slashing | Pick-and-Roll | 3-and-D | Playmaking | Secondary
+Tristan Vukcevic,WAS,49,13.7,9.0,4,Forward | Jumbo | Half-Court | Off-Ball
+Tristan da Silva,ORL,77,24.7,9.9,6,Forward | Wing | Spacer | Two-Way | Stretch | Off-Ball
+Ty Jerome,MEM,15,22.6,19.7,21,Guard | Wing | Engine | Hub | Creator | Spacer | Force | Heliocentric | Pressure | Shotmaker | Three-Level | Scoring | Half-Court | Gravity | Scalable | Stretch | Point- | Slashing | Pick-and-Roll | Playmaking | Secondary
+Tyler Burton,MEM,12,25.6,10.8,4,Forward | Wing | Spacer | Stretch
+Tyler Herro,MIA,33,31.3,20.5,19,Guard | Engine | Hub | Creator | Spacer | Force | Initiator | Shotmaker | Three-Level | Scoring | Half-Court | Gravity | Scalable | Stretch | Point- | Slashing | Pick-and-Roll | Playmaking | Secondary
+Tyler Kolek,NYK,62,11.7,4.4,3,Guard | Creator | Secondary
+Tyrese Martin,PHI,46,16.9,6.3,2,Forward | Wing
+Tyrese Maxey,PHI,70,38.0,28.3,28,Guard | Engine | Ecosystem | Hub | Creator | Spacer | Force | Initiator | Stopper | Two-Way | Heliocentric | Pressure | Shotmaker | Three-Level | Scoring | Speed | Defensive | Half-Court | Point-of-Attack | Gravity | Scalable | Stretch | Point- | Slashing | Pick-and-Roll | 3-and-D | Playmaking | Secondary
+Tyrese Proctor,CLE,50,10.9,5.4,1,Guard
+Tyson Etienne,BKN,24,15.8,7.9,3,Guard | Spacer | Off-Ball
+Tyus Jones,DEN,67,14.6,3.0,3,Guard | Creator | Secondary
+VJ Edgecombe,PHI,75,35.0,16.0,22,Guard | Engine | Hub | Connector | Creator | Spacer | Force | Initiator | Stopper | Two-Way | Jumbo | Shotmaker | Three-Level | Speed | Defensive | Point-of-Attack | Stretch | Point- | Slashing | Pick-and-Roll | Playmaking | Secondary
+Victor Wembanyama,SAS,64,29.2,25.0,24,Big | Forward | Engine | Hub | Connector | Creator | Anchor | Force | Stopper | Two-Way | Jumbo | Pressure | Shotmaker | Three-Level | Scoring | Speed | Defensive | Half-Court | Point-of-Attack | Scalable | Stretch | Point- | Slashing | Pick-and-Roll
+Vince Williams Jr.,UTA,40,20.5,7.5,9,Guard | Hub | Creator | Two-Way | Versatile | Half-Court | Point- | Playmaking | Secondary
+Vít Krejčí,POR,65,21.4,8.5,4,Guard | Spacer | Stretch | Off-Ball
+Walter Clayton Jr.,MEM,69,20.4,7.8,7,Guard | Hub | Creator | Half-Court | Point- | Playmaking | Secondary
+Wendell Carter Jr.,ORL,78,29.3,11.8,7,Big | Anchor | Finisher | Two-Way | Jumbo | Defensive | Half-Court
+Will Richard,GSW,69,20.0,6.4,4,Guard | Finisher | Initiator | Off-Ball
+Will Riley,WAS,74,22.1,10.3,2,Forward | Creator
+Yang Hansen,POR,43,7.0,2.2,2,Big | Center
+Yanic Konan Niederhäuser,LAC,41,10.3,4.3,4,Big | Center | Finisher | Jumbo
+Yuki Kawamura,CHI,18,11.6,3.4,3,Guard | Creator | Secondary
+Yves Missi,NOP,66,19.7,5.7,4,Big | Center | Finisher | Jumbo
+Zaccharie Risacher,ATL,67,22.4,9.6,10,Forward | Wing | Spacer | Finisher | Initiator | Two-Way | Jumbo | Defensive | Stretch | Off-Ball
+Zach Edey,MEM,11,25.8,13.6,13,Big | Center | Anchor | Finisher | Force | Rim Runner | Two-Way | Jumbo | Scoring | Defensive | Half-Court | Scalable | Off-Ball
+Zach LaVine,SAC,39,31.4,19.2,10,Guard | Spacer | Initiator | Pressure | Shotmaker | Three-Level | Scoring | Half-Court | Gravity | Stretch
+Zeke Nnaji,DEN,52,12.0,3.7,4,Big | Forward | Finisher | Jumbo
+Ziaire Williams,BKN,56,22.9,10.2,8,Forward | Spacer | Stopper | Two-Way | Pressure | Speed | Defensive | Point-of-Attack
+Zion Williamson,NOP,62,29.7,21.0,15,Forward | Wing | Engine | Creator | Force | Two-Way | Jumbo | Pressure | Scoring | Speed | Point-of-Attack | Scalable | Point- | Slashing | Pick-and-Roll

@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls \"C:\\\\Users\\\\posei\\\\Documents\\\\Nba-Archetypes\\\\\" 2>/dev/null || ls /c/Users/posei/Documents/Nba-Archetypes/)",
+      "PowerShell(pip install -r \"C:\\\\Users\\\\posei\\\\Documents\\\\Nba-Archetypes\\\\requirements.txt\" 2>&1)",
+      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\posei\\\\Documents\\\\Nba-Archetypes\\\\\" -Recurse | Where-Object {$_.Extension -in \".xlsx\",\".xls\"} | Select-Object FullName)",
+      "PowerShell(cd \"C:\\\\Users\\\\posei\\\\Documents\\\\Nba-Archetypes\"; $env:PYTHONIOENCODING = \"utf-8\"; python src/test_new_sigs.py 2>&1)"
+    ]
+  }
+}

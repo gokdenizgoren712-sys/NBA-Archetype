@@ -1,0 +1,58 @@
+{
+  "Engine": {
+    "percentile": 0.775,
+    "F1": 0.625
+  },
+  "Connector": {
+    "percentile": 0.9,
+    "F1": 0.667
+  },
+  "Creator": {
+    "percentile": 0.575,
+    "F1": 0.105
+  },
+  "Anchor": {
+    "percentile": 0.9,
+    "F1": 0.857
+  },
+  "Spacer": {
+    "percentile": 0.6,
+    "F1": 0.222
+  },
+  "Rim Runner": {
+    "percentile": 0.95,
+    "F1": 0.8
+  },
+  "Two-Way": {
+    "percentile": 0.55,
+    "F1": 0.581
+  },
+  "Jumbo": {
+    "percentile": 0.55,
+    "F1": 0.2
+  },
+  "Shotmaker": {
+    "percentile": 0.775,
+    "F1": 0.5
+  },
+  "Three-Level": {
+    "percentile": 0.875,
+    "F1": 0.286
+  },
+  "Scoring": {
+    "percentile": 0.85,
+    "F1": 0.545
+  },
+  "Versatile": {
+    "percentile": 0.95,
+    "F1": 0.5
+  },
+  "Stretch": {
+    "percentile": 0.625,
+    "F1": 0.222
+  },
+  "3-and-D": {
+    "percentile": 0.95,
+    "F1": 0.5
+  }
+}
