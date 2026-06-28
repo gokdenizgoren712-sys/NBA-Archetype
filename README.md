@@ -1,34 +1,84 @@
-# NBA Arketip Etiketleme Sistemi
+# NBA Archetype System
 
-Jargon sözlüğündeki oyuncu arketiplerini niceliksel NBA metrikleriyle eşleştiren,
-doğrulayan ve otomatik etiketleyen sistem.
+A platform that maps NBA players to quantitative archetypes — covering every active and historical player from 1989-90 onward.
 
-## Kurulum
-    pip install nba_api pandas numpy pyarrow openpyxl scikit-learn
+Players are more than stat lines. This system identifies *who they are* on the floor: an **Ecosystem Engine**, a **Pressure Scoring Spacer**, a **Switchable Anchor**. Archetypes are derived from a hand-crafted jargon dictionary and validated against percentile-ranked NBA metrics.
 
-## Aşama durumu
-- [x] Aşama 1: Veri çekme (src/fetch_data.py) — cache'li, rate-limited
-- [x] Aşama 2: Threshold motoru + iki katmanlı doğrulama (src/engine.py, config/signatures.py)
-- [ ] Aşama 3: Tüm aktif oyunculara uygulama (motor hazır, sadece lig geneline koş)
-- [ ] Aşama 4: Tarihsel genişletme (1983+) — dönem-uyarlamalı imzalar gerek
-- [ ] Aşama 5: Arketip uyum korelasyonu (ağırlıklı takım başarısı)
-- [ ] Aşama 6: Versatile/non-versatile faktörü
-- [ ] Aşama 7: FastAPI backend + web
+---
 
-## Çalıştırma sırası
-1. python src/fetch_data.py          # gerçek veriyi çek (internet gerekli)
-2. python src/run_validation.py      # 40 oyuncuyu doğrula + eşik optimize et
-3. (sonraki aşamalar)
+## Features
 
-## Dosyalar
-- config/signatures.py : 14 bileşen × 6-7 metrik imzası + pozisyon eşleme
-- src/fetch_data.py     : nba_api veri çekme
-- src/engine.py         : persantil motoru, doğrulama, pozisyon atama, eşik optimizasyonu
-- src/mock_test.py      : gerçek veri olmadan pipeline doğrulama (sentetik)
+- **12 Core Archetypes** — Ecosystem, Engine, Hub, Creator, Connector, Anchor, Spacer, Finisher, Force, Initiator, Stopper, Rim Runner
+- **22 Modifier Tags** — Two-Way, Pressure, Gravity, Shotmaker, Switchable, and more
+- **Historical Coverage** — 1989-90 to 2025-26, era-normalized via within-season percentile ranks
+- **Lineup Compatibility Engine** — 5-pillar fit score (Creation · Spacing · Defense · Finishing · Role Fit) for any 5-man group
+- **Archetype Affinity Matrix** — which archetype pairs win together in real lineups
+- **Player Compare** — side-by-side radar profiles and component scores across any two players or eras
+- **Lineup Builder Game** — slot players from random seasons/teams into a lineup and score the fit
 
-## Önemli tasarım kararları
-- Ham eşik değil PERSANTİL kullanılır -> dönemler arası taşınabilir (1983 vs 2026)
-- Pozisyonlar nba_api POSITION alanından gelir (skor motorundan değil)
-- Eşikler: önce elle, sonra 40 oyuncudan F1-maksimize ederek optimize edilir
-- Doğrulama 2 katmanlı: bileşen F1 (Katman 1) + kompozit Jaccard (Katman 2)
-- Tracking/Hustle metrikleri eski sezonlarda yoksa motor otomatik düşürür
+---
+
+## Tech Stack
+
+| Layer | Tools |
+|---|---|
+| Data | `nba_api` · Basketball-Reference (BBref) · `pandas` · `pyarrow` |
+| Scoring | Percentile engine · `scikit-learn` · `scipy` |
+| Backend | FastAPI · Uvicorn |
+| Frontend | React 18 · Vite · Tailwind CSS |
+| Deploy | Render (Python web service + persistent disk) |
+
+---
+
+## How It Works
+
+### 1. Percentile Scoring
+Every metric (PTS, AST, TS%, OBPM, hustle stats…) is converted to a **within-season percentile rank**. This makes Michael Jordan's 1990 numbers directly comparable to SGA's 2025-26 numbers.
+
+### 2. Component Signatures
+Each archetype has a weighted signature of 6–8 metrics. A player's **component score** is how well they match that signature. Example — *Spacer*: heavy weight on 3PA rate, corner 3%, pull-up frequency.
+
+### 3. Labeling
+Players whose top component score exceeds a learned threshold receive that archetype label as their **primary arch**. Additional modifiers are stacked on top.
+
+### 4. Lineup Fit
+Five players are scored across five pillars:
+```
+Fit = 0.28 × Creation + 0.27 × Spacing + 0.22 × Defense + 0.12 × Finishing + 0.11 × Role Fit + Synergy Bonus
+```
+Spacing has a sweet-spot curve (2–3 shooters optimal). Role Fit penalizes ball-dominant redundancy.
+
+---
+
+## Project Structure
+
+```
+api/          FastAPI backend (endpoints, caching, lineup scoring)
+config/       Archetype signatures, position mappings, thresholds
+data/         Parquet files — player stats, scores, historical, lineups
+frontend/     React + Vite web app
+src/          Pipeline scripts — fetch, score, enrich, validate
+```
+
+---
+
+## Local Setup
+
+```bash
+# Backend
+pip install -r requirements.txt
+uvicorn api.main:app --reload
+
+# Frontend
+cd frontend
+npm install
+npm run dev
+```
+
+Data files (`data/*.parquet`) are required to run the API. They are not included in the repository due to size — generate them by running the pipeline scripts in `src/`.
+
+---
+
+## Created By
+
+**Gökdeniz Gören**
