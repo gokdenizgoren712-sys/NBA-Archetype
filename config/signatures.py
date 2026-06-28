@@ -273,18 +273,6 @@ COMPONENT_SIGNATURES = {
         },
     },
 
-    "Jumbo": {
-        "type": "modifier",
-        "desc": "Unusually large for position; physical size advantage",
-        "percentile_threshold": 0.78,
-        "metrics": {
-            "BLK":                  {"w": 0.30, "higher": True},
-            "REB":                  {"w": 0.28, "higher": True},
-            "FG3A":                 {"w": 0.22, "higher": False},  # doesn't shoot 3s = big body
-            "PLAYER_HEIGHT_INCHES": {"w": 0.20, "higher": True},
-        },
-    },
-
     "Pressure": {
         "type": "modifier",
         # Foul-Drawing modifier merge edildi — FTA + FTM çifti eklendi.
@@ -385,20 +373,6 @@ COMPONENT_SIGNATURES = {
         },
     },
 
-    "Half-Court": {
-        "type": "modifier",
-        "desc": "Set-offense specialist; thrives in half-court situations",
-        "percentile_threshold": 0.72,
-        "metrics": {
-            "PCT_PTS_FB":     {"w": 0.28, "higher": False},  # doesn't score in transition
-            "USG_PCT":        {"w": 0.20, "higher": True},
-            "FGA":            {"w": 0.08, "higher": True},   # USG_PCT sayı çifti
-            "PCT_PTS_2PT_MR": {"w": 0.20, "higher": True},
-            "TIME_OF_POSS":   {"w": 0.14, "higher": True},
-            "PASSES_MADE":    {"w": 0.10, "higher": True},
-        },
-    },
-
     "Point-of-Attack": {
         "type": "modifier",
         # Switchable modifier merge edildi — REB ve AST çok pozisyon geçişini yansıtıyor.
@@ -431,21 +405,6 @@ COMPONENT_SIGNATURES = {
         },
     },
 
-    "Scalable": {
-        "type": "modifier",
-        "desc": "Can expand or shrink his role; works as primary or secondary option",
-        "percentile_threshold": 0.72,
-        "metrics": {
-            "PIE":        {"w": 0.28, "higher": True},
-            "AST_PCT":    {"w": 0.16, "higher": True},
-            "AST":        {"w": 0.08, "higher": True},   # sayı çifti
-            "NET_RATING": {"w": 0.20, "higher": True},
-            "TS_PCT":     {"w": 0.12, "higher": True},
-            "PTS":        {"w": 0.10, "higher": True},   # sayı çifti
-            "FGA":        {"w": 0.06, "higher": True},
-        },
-    },
-
     "Stretch": {
         "type": "modifier",
         # Spacer (1-2-3) ile ayrımı: Stretch büyükler için (PF/C).
@@ -462,35 +421,6 @@ COMPONENT_SIGNATURES = {
             "PTS":         {"w": 0.08, "higher": True},   # skor ortalaması
             "FGM":         {"w": 0.04, "higher": True},   # genel skor hacmi
             "DRIVES":      {"w": 0.04, "higher": False},  # Spacer'dan daha yumuşak ceza
-        },
-    },
-
-    "Point-": {
-        "type": "modifier",
-        "desc": "Playmaking big (point-center or point-forward); handles and distributes",
-        "percentile_threshold": 0.74,
-        "metrics": {
-            "AST_PCT":       {"w": 0.24, "higher": True},
-            "AST":           {"w": 0.08, "higher": True},   # sayı çifti
-            "PASSES_MADE":   {"w": 0.22, "higher": True},
-            "REB":           {"w": 0.18, "higher": True},
-            "SECONDARY_AST": {"w": 0.14, "higher": True},
-            "POTENTIAL_AST": {"w": 0.06, "higher": True},
-            "BLK":           {"w": 0.08, "higher": True},
-        },
-    },
-
-    "Off-Ball": {
-        "type": "modifier",
-        "desc": "Impacts the game primarily without the ball; cutter, screener, shooter",
-        "percentile_threshold": 0.74,
-        "metrics": {
-            "PCT_AST_FGM":  {"w": 0.26, "higher": True},   # gets assisted a lot
-            "FGM":          {"w": 0.06, "higher": True},   # sayı çifti
-            "FG3_PCT":      {"w": 0.20, "higher": True},
-            "FG3A":         {"w": 0.08, "higher": True},   # sayı çifti
-            "DRIVES":       {"w": 0.24, "higher": False},  # doesn't self-create via drives
-            "TIME_OF_POSS": {"w": 0.16, "higher": False},
         },
     },
 
@@ -553,19 +483,6 @@ COMPONENT_SIGNATURES = {
         },
     },
 
-    "Secondary": {
-        "type": "modifier",
-        "desc": "Second option creator; sets up plays that lead to other assists",
-        "percentile_threshold": 0.72,
-        "metrics": {
-            "SECONDARY_AST": {"w": 0.28, "higher": True},
-            "POTENTIAL_AST": {"w": 0.24, "higher": True},
-            "AST_PCT":       {"w": 0.18, "higher": True},
-            "AST":           {"w": 0.08, "higher": True},   # sayı çifti
-            "PASSES_MADE":   {"w": 0.04, "higher": True},
-            "USG_PCT":       {"w": 0.18, "higher": False},
-        },
-    },
 
 }
 

@@ -346,6 +346,30 @@ export default function Historical() {
               </div>
             )}
           </div>
+          {/* Arketip bileşen skorları */}
+          {selDetail.scores && Object.keys(selDetail.scores).length > 0 && (
+            <div className="px-3 pb-2 mt-1">
+              <div className="text-[10px] text-slate-600 uppercase tracking-wider mb-2">Bileşen Skorları</div>
+              <div className="space-y-1">
+                {Object.entries(selDetail.scores)
+                  .sort(([, a], [, b]) => b - a)
+                  .map(([noun, score]) => {
+                    const pct = Math.round(score * 100);
+                    const barCls = score >= 0.80 ? "bg-blue-500" : score >= 0.65 ? "bg-blue-600/70" : "bg-slate-700";
+                    return (
+                      <div key={noun} className="flex items-center gap-2">
+                        <span className="text-[10px] text-slate-500 w-24 truncate">{noun}</span>
+                        <div className="flex-1 h-1 bg-slate-800 rounded-full">
+                          <div className={`h-full rounded-full ${barCls}`} style={{ width: `${pct}%` }} />
+                        </div>
+                        <span className={`text-[10px] w-5 text-right ${score >= 0.80 ? "text-blue-400" : score >= 0.65 ? "text-sky-400" : "text-slate-500"}`}>{pct}</span>
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+          )}
+
           {/* Kariyer sparkline */}
           {careerLoading && (
             <div className="px-3 pb-2 text-xs text-slate-600 text-center">Loading career...</div>

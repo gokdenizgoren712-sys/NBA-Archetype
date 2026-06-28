@@ -66,7 +66,14 @@ def compute_role_vec(row: dict | pd.Series) -> np.ndarray:
             s("Creator")   * 1.00,
             s("Connector") * 0.85,
         )),
-        s("Spacer"),
+        # Floor Spacing: Spacer arketipi VEYA 3-and-D / Stretch / Gravity modifier → geniş tanım.
+        # Spacer olmasa da aktif şut tehdidi olan oyuncular spacing değeri üretir.
+        min(1.0, max(
+            s("Spacer"),
+            s("3-and-D")  * 0.85,
+            s("Stretch")  * 0.80,
+            s("Gravity")  * 0.90,
+        )),
         min(1.0, max(
             s("Anchor") * 1.10,
             s("Force")  * 0.65,

@@ -103,24 +103,26 @@ def fetch_bref_pergame(season: str, force: bool = False) -> pd.DataFrame:
             v = _f(k)
             return int(v) if v is not None else None
 
+        # BBref modern format: per-game stats have _per_g suffix (ör. pts_per_g).
+        # Eski format (pre-2020 cache): pts, mp, trb vb. — fallback olarak dene.
         rows.append({
             "PLAYER_NAME":       player,
             "BREF_SLUG":         bref_slug,
             "TEAM_ABBREVIATION": team,
             "POSITION_raw":      pos,
             "GP":                _i("g") or _i("games"),
-            "MIN":               _f("mp"),
-            "PTS":               _f("pts"),
-            "REB":               _f("trb"),
-            "AST":               _f("ast"),
-            "STL":               _f("stl"),
-            "BLK":               _f("blk"),
-            "TOV":               _f("tov"),
-            "FGA":               _f("fga"),
+            "MIN":               _f("mp_per_g") or _f("mp"),
+            "PTS":               _f("pts_per_g") or _f("pts"),
+            "REB":               _f("trb_per_g") or _f("trb"),
+            "AST":               _f("ast_per_g") or _f("ast"),
+            "STL":               _f("stl_per_g") or _f("stl"),
+            "BLK":               _f("blk_per_g") or _f("blk"),
+            "TOV":               _f("tov_per_g") or _f("tov"),
+            "FGA":               _f("fga_per_g") or _f("fga"),
             "FG_PCT":            _f("fg_pct"),
-            "FG3A":              _f("fg3a"),
+            "FG3A":              _f("fg3a_per_g") or _f("fg3a"),
             "FG3_PCT":           _f("fg3_pct"),
-            "FTA":               _f("fta"),
+            "FTA":               _f("fta_per_g") or _f("fta"),
         })
 
     df = pd.DataFrame(rows)

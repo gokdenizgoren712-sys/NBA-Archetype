@@ -598,6 +598,20 @@ def _load_real_lineups() -> pd.DataFrame:
     return lineups
 
 
+@app.get("/api/lineups/correlation")
+def lineups_correlation():
+    """Fit skoru ↔ NET_RATING Pearson r (yeni 5-pillar formülü)."""
+    df = _load_real_lineups()
+    if df.empty or "fit_score" not in df.columns or "NET_RATING" not in df.columns:
+        return {"r": None, "n": 0, "p": None}
+    sub = df[["fit_score", "NET_RATING"]].dropna()
+    if len(sub) < 5:
+        return {"r": None, "n": len(sub), "p": None}
+    from scipy.stats import pearsonr
+    r_val, p_val = pearsonr(sub["fit_score"], sub["NET_RATING"])
+    return {"r": round(float(r_val), 3), "n": int(len(sub)), "p": round(float(p_val), 4)}
+
+
 @app.get("/api/real-lineups")
 def get_real_lineups(
     limit:  int = Query(50, ge=1, le=200),
@@ -1154,6 +1168,115 @@ def get_historical_player_scores(season: str, player_name: str):
         "versatility_score": round(float(row.get("versatility_score",0)),3) if "versatility_score" in row.index and pd.notna(row.get("versatility_score")) else None,
         "versatility_tier":  row.get("versatility_tier",""),
     }
+
+
+# ── Franchise geçmişi: modern kısaltma → tarihsel kısaltmalar ─────────────────
+# Her giriş: (ilk_sezon_yılı, son_sezon_yılı, tarihsel_kısaltma)
+_FRANCHISE_HISTORY: dict[str, list[tuple[int,int,str]]] = {
+    "BKN": [(1967,2011,"NJN")],                          # New Jersey Nets
+    "OKC": [(1967,2007,"SEA")],                          # Seattle SuperSonics
+    "NOP": [(2002,2004,"NOH"),(2005,2006,"NOK"),(2007,2013,"NOH")],  # NO Hornets/OKC Hornets
+    "MEM": [(1995,2000,"VAN")],                          # Vancouver Grizzlies
+    "CHA": [(1988,2001,"CHH"),(2004,2013,"CHA")],        # Charlotte Hornets / Bobcats
+    "UTA": [(1974,1978,"NOJ")],                          # New Orleans Jazz → Utah
+    "WAS": [(1961,1996,"WSB"),(1997,2000,"WAS")],        # Washington Bullets
+    "SAC": [(1972,1984,"KCK"),(1984,1984,"KCO")],        # Kansas City Kings
+    "LAC": [(1970,1977,"BUF"),(1978,1983,"SDC")],        # Buffalo/SD Clippers
+    "GSW": [(1962,1970,"SFW"),(1971,1971,"GSW")],        # SF/GS Warriors
+    "DAL": [],  # her zaman DAL
+    "DEN": [],
+}
+
+# Tarihsel kısaltma → modern kısaltma (ters tablo)
+_HIST_TO_MODERN: dict[str, str] = {}
+for _modern, _entries in _FRANCHISE_HISTORY.items():
+    for _s, _e, _hist in _entries:
+        _HIST_TO_MODERN[_hist] = _modern
+
+
+def _resolve_abbrev(modern: str, season: str) -> list[str]:
+    """Modern kısaltmayı (BKN) verilen sezondaki gerçek kısaltmaya (NJN) çevirir."""
+    try:
+        year = int(season[:4])
+    except ValueError:
+        return [modern]
+    entries = _FRANCHISE_HISTORY.get(modern, [])
+    for start, end, hist in entries:
+        if start <= year <= end:
+            return [hist]
+    return [modern]
+
+
+def _gp_filter(df: pd.DataFrame, min_gp: int = 15) -> pd.DataFrame:
+    """GP veya G kolonuyla filtrele (BBref 'G', nba_api 'GP')."""
+    col = next((c for c in ["GP","G"] if c in df.columns), None)
+    if col:
+        df = df[df[col].fillna(0) >= min_gp]
+    return df
+
+
+@app.get("/api/game/seasons")
+def game_seasons():
+    """Mevcut tüm sezonlar — oyun için (güncel + tarihsel)."""
+    seasons = ["2025-26"]
+    hist = _load_historical()
+    if not hist.empty and "SEASON" in hist.columns:
+        hist_seasons = sorted(hist["SEASON"].unique().tolist(), reverse=True)
+        seasons.extend(hist_seasons)
+    return {"seasons": seasons}
+
+
+@app.get("/api/game/teams")
+def game_teams(season: str = Query("2025-26")):
+    """Belirtilen sezonda veri olan takımlar.
+    Tarihsel kısaltmalar (NJN, SEA…) modern karşılıklarına (BKN, OKC…) çevrilir."""
+    if season == "2025-26":
+        df = _load_scores()
+        if df.empty or "TEAM_ABBREVIATION" not in df.columns:
+            return {"teams": []}
+        raw = df["TEAM_ABBREVIATION"].dropna().unique().tolist()
+    else:
+        df = _load_historical()
+        if df.empty or "TEAM_ABBREVIATION" not in df.columns:
+            return {"teams": []}
+        df = df[df["SEASON"] == season]
+        df = _gp_filter(df, 10)
+        raw = df["TEAM_ABBREVIATION"].dropna().unique().tolist()
+
+    # Tarihsel kısaltmalar → modern kısaltmalar
+    modern = sorted({_HIST_TO_MODERN.get(t, t) for t in raw})
+    return {"teams": modern}
+
+
+@app.get("/api/game/players")
+def game_players(season: str = Query("2025-26"), team: str = Query("")):
+    """Oyun için oyuncu listesi. Modern takım adı (BKN) tarihsel karşılığa (NJN)
+    otomatik çevrilir; score_* kolonları dahil döner."""
+    if season == "2025-26":
+        df = _load_scores().copy()
+        if team:
+            df = df[df["TEAM_ABBREVIATION"].str.upper() == team.upper()]
+        df = _gp_filter(df, 20)
+    else:
+        df = _load_historical().copy()
+        df = df[df["SEASON"] == season]
+        if team and "TEAM_ABBREVIATION" in df.columns:
+            hist_abbrevs = [a.upper() for a in _resolve_abbrev(team.upper(), season)]
+            df = df[df["TEAM_ABBREVIATION"].str.upper().isin(hist_abbrevs)]
+        df = _gp_filter(df, 10)
+
+    score_cols = [c for c in df.columns if c.startswith("score_")]
+    keep = ["PLAYER_NAME", "primary_arch", "overall_score", "POSITION",
+            "TEAM_ABBREVIATION", "GP", "G", "MIN", "PTS", "REB", "AST",
+            "STL", "BLK", "TOV"] + score_cols
+    keep = [c for c in keep if c in df.columns]
+
+    df = df[keep].copy()
+    if "overall_score" in df.columns:
+        df = df.sort_values("overall_score", ascending=False, na_position="last")
+
+    limit = 20 if team else 60
+    return {"players": _safe(df.head(limit))}
 
 
 @app.get("/api/players/{player_name}/similar")

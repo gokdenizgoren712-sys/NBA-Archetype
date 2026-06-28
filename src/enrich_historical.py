@@ -201,6 +201,24 @@ def enrich_season(season: str, df_hist: pd.DataFrame) -> pd.DataFrame:
 
     # df_hist ile birleştir (bu sezonun satırları)
     df_season = df_season_pre.copy()
+
+    # Stat kolonları: hist_merged'den PTS/REB/AST/STL/BLK/FGA/FG_PCT/FG3A/FG3_PCT/FTA/TOV ekle/güncelle.
+    # historical__labeled başlangıçta sadece PTS/REB/AST tutuyordu; eksik kolonlar None kalıyordu.
+    stat_update_cols = ["PTS", "REB", "AST", "STL", "BLK", "MIN", "FGA", "FG_PCT", "FG3A", "FG3_PCT", "FTA", "TOV"]
+    available_stats = [c for c in stat_update_cols if c in merged.columns and merged[c].notna().any()]
+    if available_stats:
+        stat_src = merged[["PLAYER_ID"] + available_stats].drop_duplicates("PLAYER_ID")
+        # Mevcut labeled'da olmayan kolonlar için yeni sütun ekle, olanlar için sadece None'ları doldur
+        for c in available_stats:
+            if c not in df_season.columns:
+                df_season = df_season.merge(stat_src[["PLAYER_ID", c]], on="PLAYER_ID", how="left")
+            elif df_season[c].isna().all():
+                df_season = df_season.merge(stat_src[["PLAYER_ID", c]], on="PLAYER_ID",
+                                            how="left", suffixes=("", "_src"))
+                if c + "_src" in df_season.columns:
+                    df_season[c] = df_season[c + "_src"]
+                    df_season.drop(columns=[c + "_src"], inplace=True)
+
     score_cols = [c for c in scores_df.columns if c.startswith("score_")]
     extra_cols = ["overall_score", "primary_arch"]
     bpm_col = ["BPM"] if "BPM" in scores_df.columns and "BPM" not in df_season_pre.columns else []

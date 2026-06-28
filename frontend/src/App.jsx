@@ -7,6 +7,7 @@ import Glossary   from "./pages/Glossary";
 import About      from "./pages/About";
 import Explore    from "./pages/Explore";
 import Compare    from "./pages/Compare";
+import LineupGame from "./pages/LineupGame";
 import { ThemeProvider, useTheme } from "./contexts/ThemeContext";
 import { LanguageProvider, useLang } from "./contexts/LanguageContext";
 import { api } from "./api";
@@ -27,6 +28,7 @@ function Header() {
     { to: "/historical", label: t("nav_historical") },
     { to: "/explore",    label: t("nav_explore") },
     { to: "/compare",    label: t("nav_compare")    },
+    { to: "/game",       label: lang === "tr" ? "Oyun" : "Game" },
     { to: "/glossary",   label: t("nav_glossary")   },
     { to: "/about",      label: t("nav_about")      },
   ];
@@ -122,6 +124,7 @@ function AppInner() {
               <Route path="/historical" element={<Historical />} />
               <Route path="/explore"    element={<Explore />} />
               <Route path="/compare"    element={<Compare />} />
+              <Route path="/game"       element={<LineupGame />} />
               <Route path="/glossary"   element={<Glossary />} />
               <Route path="/about"      element={<About />} />
             </Routes>

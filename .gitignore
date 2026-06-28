@@ -6,19 +6,6 @@ __pycache__/
 .venv/
 venv/
 
-# Data — sadece temel parquet'ler commit edilir; cache dosyaları değil
-# NOT: data/*.parquet GIT LFS ile takip ediliyor (bkz. .gitattributes)
-data/*__hist_merged.parquet
-data/*__player_*.parquet
-data/*__playoff_*.parquet
-data/*__pt_*.parquet
-data/*__hustle.parquet
-data/*__bios.parquet
-data/*__team_standings.parquet
-data/*__bref_*.parquet
-data/*__merged*.parquet
-data/learned_thresholds.json
-
 # Frontend
 frontend/node_modules/
 frontend/.env
@@ -28,5 +15,29 @@ frontend/.env
 Thumbs.db
 *.swp
 
-# Excel (ground truth - commit edilmez; TAGS.xlsx ayrı tutulur)
+# Excel ground truth
 nba_scouting_tags.xlsx
+TAGS.xlsx
+
+# API logs
+api_err.txt
+api_out.txt
+
+# Data — tüm ara cache dosyaları hariç, sadece kritik runtime dosyaları dahil
+# NOT: data/* kullanılır (data/ değil) — böylece dosya bazlı istisnalar çalışır
+data/*
+
+# ── Kritik runtime dosyaları (API için zorunlu) ──────────────────────────────
+!data/2025-26__player_scores.parquet
+!data/historical__labeled.parquet
+!data/2025-26__lineups_5man.parquet
+!data/2025-26__lineups_2man.parquet
+!data/2025-26__playoff_lineups_5man.parquet
+!data/2025-26__playoff_lineups_2man.parquet
+!data/2025-26__duo_compat.parquet
+!data/2025-26__affinity_matrix.parquet
+!data/2025-26__affinity_matrix_flex.parquet
+!data/2025-26__versatility.parquet
+!data/2025-26__team_standings.parquet
+!data/2025-26__merged_bref.parquet
+!data/2025-26__labeled.parquet

@@ -124,6 +124,10 @@ def build_score_table(season: str = "2025-26") -> pd.DataFrame:
     for col in ["PTS","REB","AST","STL","BLK","FGM","FG_PCT","TS_PCT","FG3A","FTA","PLAYER_HEIGHT_INCHES"]:
         if col in df.columns:
             out[col] = df[col].values
+    # OBPM/DBPM: merged_bref'ten geliyorsa player_scores'a taşı
+    for col in ["OBPM", "DBPM", "USG_PCT", "DEF_RATING", "OFF_RATING", "NET_RATING"]:
+        if col in df.columns:
+            out[col] = df[col].values
 
     for c in ALL_COMP_COLS:
         if c in scores.columns:
@@ -381,77 +385,148 @@ def duo_compatibility(score_table: pd.DataFrame,
 
 # ─── 3. 5'li lineup uyumu ─────────────────────────────────────────────────────
 
-def _player_switch_score(row) -> float:
-    """Pozisyonel çok yönlülük (switch ability): Two-Way + Stopper + Versatile."""
-    get = row.get if hasattr(row, "get") else lambda k, d=0: row[k] if k in row else d
-    return min(1.0,
-        float(get("score_Two-Way", 0)) * 0.50 +
-        float(get("score_Stopper", 0)) * 0.30 +
-        float(get("score_Versatile", 0)) * 0.20
-    )
-
-
-def _shot_depth(rvecs: np.ndarray) -> float:
-    """Lineup'ta shot creation derinliği: 3 yaratıcı = 1.0."""
-    n_creators = int((rvecs[:, _CREATOR_SLOTS].max(axis=1) >= 0.65).sum())
-    return min(n_creators / 3.0, 1.0)
+def _s(row, key: str) -> float:
+    """Güvenli score_ okuyucu."""
+    v = row.get(f"score_{key}", 0) if hasattr(row, "get") else 0
+    try:
+        f = float(v)
+        return f if not np.isnan(f) else 0.0
+    except (TypeError, ValueError):
+        return 0.0
 
 
 def _lineup_role_score(rows: list, affinity_matrix=None) -> dict:
     """
-    n oyuncu satırından rol tabanlı lineup skoru hesaplar (2-5 oyuncu).
-    Döner: coverage, balance, redundancy_penalty, affinity, lineup_score, role_breakdown
+    5 basketbol boyutunda lineup uyum skoru.
+
+    1. Creation  (0.28) — yaratıcılık kalitesi + derinliği
+    2. Spacing   (0.27) — şut tehdidi: Spacer | 3-and-D | Stretch | Gravity
+    3. Defense   (0.22) — iç saha + dış hat savunması + derinlik
+    4. Finishing (0.12) — son dokunuş: Finisher / Rim Runner / Slashing
+    5. Role Fit  (0.11) — top-dominant redundancy penaltısı (düşük = iyi)
+
+    Bonus: Creation × Spacing sinerjisi (max +0.05)
     """
-    rvecs = np.stack([_role_vec(r) for r in rows])   # (n, 11)
-    max_rv = rvecs.max(axis=0)                         # (11,)
+    # ── 1. CREATION ────────────────────────────────────────────────────────
+    # Primary: lineup'ta en iyi yaratıcı oyuncu
+    primary_creation_scores = [
+        max(_s(r,"Ecosystem")*1.10, _s(r,"Engine")*1.00,
+            _s(r,"Hub")*0.90, _s(r,"Creator")*0.88,
+            _s(r,"Connector")*0.75, _s(r,"Initiator")*0.80)
+        for r in rows
+    ]
+    primary_creation = min(1.0, max(primary_creation_scores))
 
-    coverage = float(max_rv.mean())
-    balance  = float((max_rv >= 0.70).sum() / len(ROLE_SLOTS))
+    # Depth: kaç oyuncu yaratıcılık üretebilir? (3 = tam derinlik)
+    n_creators = sum(1 for v in primary_creation_scores if v >= 0.65)
+    creation_depth = min(1.0, n_creators / 3.0)
 
-    # Redundancy: aynı slotta 3+ oyuncu ≥ 0.70 → israf
-    triple_dominant = int(((rvecs >= 0.70).sum(axis=0) >= 3).sum())
-    redundancy_penalty = 0.05 * triple_dominant / len(ROLE_SLOTS)
+    # Playmaking modifier: pas ve asist organizasyonu
+    playmaking_pool = max(_s(r,"Playmaking") for r in rows)
 
-    # Switch ability: oyuncu bazlı ortalama
-    switch_score = float(np.mean([_player_switch_score(r) for r in rows]))
+    creation = min(1.0, 0.60 * primary_creation + 0.25 * creation_depth + 0.15 * playmaking_pool)
 
-    # Shot creation derinliği
-    shot_depth = _shot_depth(rvecs)
+    # ── 2. SPACING ──────────────────────────────────────────────────────────
+    # Her oyuncunun spacing skoru: en yüksek şut tehdidi kaynağı
+    spacing_per_player = [
+        max(_s(r,"Spacer"), _s(r,"3-and-D")*0.90,
+            _s(r,"Stretch")*0.85, _s(r,"Gravity")*0.95,
+            _s(r,"Three-Level")*0.80)
+        for r in rows
+    ]
+    n_shooters = sum(1 for v in spacing_per_player if v >= 0.70)
+    avg_spacing = float(np.mean(spacing_per_player))
 
-    # Rol tamamlayıcılık: kaç farklı dominant rol var
-    dominant_slots = [int(np.argmax(_role_vec(r))) for r in rows]
-    role_diversity = round(len(set(dominant_slots)) / max(len(rows), 1), 3)
+    # Shooter sayısına göre tablo: 2-3 ideal, 0 çok kötü, 5 pasif
+    shooter_table = {0: 0.15, 1: 0.48, 2: 0.80, 3: 1.00, 4: 0.92, 5: 0.78}
+    shooter_score  = shooter_table.get(n_shooters, shooter_table.get(min(n_shooters, 5), 0.78))
+    spacing = min(1.0, 0.60 * shooter_score + 0.40 * avg_spacing)
 
-    # Arketip affinity: bilgilendirme amaçlı (skora katılmıyor)
+    # ── 3. DEFENSE ──────────────────────────────────────────────────────────
+    interior_def = min(1.0, max(
+        max(_s(r,"Anchor")*1.10, _s(r,"Force")*0.75, _s(r,"Rim Runner")*0.65)
+        for r in rows
+    ))
+    perimeter_def = min(1.0, max(
+        max(_s(r,"Stopper"), _s(r,"Two-Way")*0.90,
+            _s(r,"Point-of-Attack")*0.88, _s(r,"Defensive")*0.92)
+        for r in rows
+    ))
+    n_defenders = sum(1 for r in rows if max(
+        _s(r,"Two-Way"), _s(r,"Stopper"), _s(r,"Point-of-Attack"),
+        _s(r,"Defensive"), _s(r,"Anchor")
+    ) >= 0.65)
+    def_depth = min(1.0, n_defenders / 2.5)
+
+    defense = 0.35 * interior_def + 0.35 * perimeter_def + 0.30 * def_depth
+
+    # ── 4. FINISHING ────────────────────────────────────────────────────────
+    finishing = min(1.0, max(
+        max(_s(r,"Finisher")*1.00, _s(r,"Rim Runner")*0.95,
+            _s(r,"Force")*0.75, _s(r,"Slashing")*0.82, _s(r,"Anchor")*0.60)
+        for r in rows
+    ))
+
+    # ── 5. ROLE FIT (redundancy) ────────────────────────────────────────────
+    # Ball-dominant fazlası: 2+ Engine/Ecosystem ≥ 0.80 → penaltı
+    ball_dominant = sum(
+        1 for r in rows
+        if max(_s(r,"Engine")*1.05, _s(r,"Ecosystem")*1.00) >= 0.80
+    )
+    redundancy = max(0.0, (ball_dominant - 1) * 0.18)
+    role_fit = max(0.0, 1.0 - redundancy)
+
+    # ── SINERJI: Creation × Spacing ─────────────────────────────────────────
+    # 3 şut tehdidi oluşturucusu → yaratıcının etkinliğini artırır
+    spacing_bonus = max(0.0, spacing - 0.60) * 0.25   # spacing 0.60'ın üstünde her +0.10 = +0.025
+    synergy_bonus = min(0.05, creation * spacing_bonus)
+
+    # ── FİNAL ────────────────────────────────────────────────────────────────
+    lineup_score = min(1.0,
+        0.28 * creation
+        + 0.27 * spacing
+        + 0.22 * defense
+        + 0.12 * finishing
+        + 0.11 * role_fit
+        + synergy_bonus
+    )
+
+    # Arketip affinity (bilgilendirme amaçlı)
     get_arch = lambda r: str(r.get("primary_arch", "")) if hasattr(r, "get") else ""
     archs = [get_arch(r) for r in rows]
-    pairs_aff = [
-        get_affinity(archs[a], archs[b], affinity_matrix)
-        for a, b in combinations(range(len(archs)), 2)
-    ]
-    affinity = float(np.mean(pairs_aff)) if pairs_aff else 0.65
+    pairs_aff = [get_affinity(archs[a], archs[b], affinity_matrix)
+                 for a, b in combinations(range(len(archs)), 2)]
+    affinity = round(float(np.mean(pairs_aff)), 3) if pairs_aff else 0.65
 
-    # Yeni skor: switch + shot depth ağırlıklı
-    lineup_score = (0.35 * coverage + 0.30 * balance
-                    + 0.20 * switch_score + 0.15 * shot_depth
-                    - redundancy_penalty)
-
-    role_breakdown = {slot: round(float(max_rv[i]), 3) for i, slot in enumerate(ROLE_SLOTS)}
-    weakest   = sorted(role_breakdown, key=role_breakdown.get)[:3]
-    strongest = sorted(role_breakdown, key=role_breakdown.get, reverse=True)[:3]
+    pillars = {
+        "Creation":  round(creation, 3),
+        "Spacing":   round(spacing, 3),
+        "Defense":   round(defense, 3),
+        "Finishing": round(finishing, 3),
+        "Role Fit":  round(role_fit, 3),
+    }
+    weakest   = sorted(pillars, key=pillars.get)[:2]
+    strongest = sorted(pillars, key=pillars.get, reverse=True)[:2]
 
     return {
-        "coverage":           round(coverage, 3),
-        "balance":            round(balance, 3),
-        "switch_score":       round(switch_score, 3),
-        "shot_depth":         round(shot_depth, 3),
-        "role_diversity":     role_diversity,
-        "redundancy_penalty": round(redundancy_penalty, 3),
-        "affinity":           round(affinity, 3),
+        "creation":           round(creation, 3),
+        "spacing":            round(spacing, 3),
+        "defense":            round(defense, 3),
+        "finishing":          round(finishing, 3),
+        "role_fit":           round(role_fit, 3),
+        "synergy_bonus":      round(synergy_bonus, 3),
+        "n_shooters":         n_shooters,
+        "ball_dominant":      ball_dominant,
+        "redundancy_penalty": round(redundancy, 3),
+        "affinity":           affinity,
         "lineup_score":       round(lineup_score, 3),
-        "role_breakdown":     role_breakdown,
+        "pillar_breakdown":   pillars,
         "weakest":            weakest,
         "strongest":          strongest,
+        # Eski alan adları — geriye dönük uyumluluk
+        "coverage":           round((creation + spacing + defense) / 3, 3),
+        "balance":            round(role_fit, 3),
+        "role_breakdown":     pillars,
     }
 
 
@@ -508,35 +583,64 @@ def top_lineup_combos(score_table: pd.DataFrame,
         pool = pool[pool["MIN"] >= min_mpg]
     pool = pool.nlargest(pool_size, "overall_score").reset_index(drop=True)
 
-    n_roles = len(ROLE_SLOTS)
     names  = pool["PLAYER_NAME"].tolist()
     archs  = pool["primary_arch"].tolist() if "primary_arch" in pool.columns else ["?"]*len(pool)
-
-    # Rol matrisi: (n_players, n_roles)
-    rmat = np.array([_role_vec(pool.iloc[i]) for i in range(len(pool))], dtype=np.float32)
 
     combo_indices = list(combinations(range(len(pool)), 5))
     idx_arr = np.array(combo_indices)              # (n_combos, 5)
 
-    # (n_combos, 5, n_roles) -> max over players -> (n_combos, n_roles)
-    max_rv  = rmat[idx_arr].max(axis=1)            # (n_combos, n_roles)
-    coverage = max_rv.mean(axis=1)
-    balance  = (max_rv >= 0.70).sum(axis=1) / n_roles
+    # ── Per-player pillar vektörleri ─────────────────────────────────────────
+    def _gp(col, mult=1.0):
+        c = f"score_{col}"
+        arr = pool[c].fillna(0).values.astype(np.float32) if c in pool.columns else np.zeros(len(pool), np.float32)
+        return np.minimum(1.0, arr * mult)
 
-    # Redundancy: 3+ oyuncu ≥ 0.70 olan slot sayısı
-    triple  = ((rmat[idx_arr] >= 0.70).sum(axis=1) >= 3).sum(axis=1)
-    redundancy = 0.05 * triple / n_roles
+    creat_p = np.minimum(1.0, np.maximum.reduce([
+        _gp("Ecosystem",1.10), _gp("Engine",1.00), _gp("Hub",0.90),
+        _gp("Creator",0.88),   _gp("Connector",0.75), _gp("Initiator",0.80),
+    ]))
+    spac_p = np.minimum(1.0, np.maximum.reduce([
+        _gp("Spacer"), _gp("3-and-D",0.90), _gp("Stretch",0.85),
+        _gp("Gravity",0.95), _gp("Three-Level",0.80),
+    ]))
+    intd_p = np.minimum(1.0, np.maximum(_gp("Anchor",1.10), _gp("Force",0.65)))
+    perd_p = np.minimum(1.0, np.maximum.reduce([
+        _gp("Stopper"), _gp("Two-Way",0.90), _gp("Point-of-Attack",0.88), _gp("Defensive",0.92),
+    ]))
+    dflg_p = (np.maximum.reduce([_gp("Two-Way"), _gp("Stopper"), _gp("Point-of-Attack"),
+                                  _gp("Defensive"), _gp("Anchor")]) >= 0.65).astype(np.float32)
+    fini_p = np.minimum(1.0, np.maximum.reduce([
+        _gp("Finisher"), _gp("Rim Runner",0.95), _gp("Force",0.75), _gp("Slashing",0.82),
+    ]))
+    bdom_p  = (np.maximum(_gp("Engine",1.05), _gp("Ecosystem")) >= 0.80).astype(np.float32)
+    play_p  = _gp("Playmaking")
 
-    # Switch score: oyuncu bazlı, vektörize
-    sc_twoway  = pool.get("score_Two-Way",  pd.Series([0]*len(pool))).fillna(0).values.astype(np.float32)
-    sc_stopper = pool.get("score_Stopper",  pd.Series([0]*len(pool))).fillna(0).values.astype(np.float32)
-    sc_versati = pool.get("score_Versatile",pd.Series([0]*len(pool))).fillna(0).values.astype(np.float32)
-    sw_arr = np.clip(sc_twoway*0.50 + sc_stopper*0.30 + sc_versati*0.20, 0, 1)
-    switch_per_combo = sw_arr[idx_arr].mean(axis=1)
+    # ── Combo-level aggregation ───────────────────────────────────────────────
+    creat_s = creat_p[idx_arr]   # (n_combos, 5)
+    primary_creation = np.minimum(1.0, creat_s.max(axis=1))
+    n_creators       = (creat_s >= 0.65).sum(axis=1).astype(np.float32)
+    creation_depth   = np.minimum(1.0, n_creators / 3.0)
+    creation = np.minimum(1.0, 0.60*primary_creation + 0.25*creation_depth + 0.15*play_p[idx_arr].max(axis=1))
 
-    # Shot depth: 3+ creator slotunda ≥0.65 olan oyuncu sayısı
-    creator_flags = (rmat[:, _CREATOR_SLOTS].max(axis=1) >= 0.65).astype(np.float32)
-    shot_depth = np.minimum(creator_flags[idx_arr].sum(axis=1) / 3.0, 1.0)
+    spac_s      = spac_p[idx_arr]
+    n_shooters  = (spac_s >= 0.70).sum(axis=1)
+    avg_spacing = spac_s.mean(axis=1)
+    _stbl       = np.array([0.15, 0.48, 0.80, 1.00, 0.92, 0.78], dtype=np.float32)
+    spacing = np.minimum(1.0, 0.60*_stbl[np.minimum(n_shooters, 5)] + 0.40*avg_spacing)
+
+    interior_def  = np.minimum(1.0, intd_p[idx_arr].max(axis=1))
+    perimeter_def = np.minimum(1.0, perd_p[idx_arr].max(axis=1))
+    def_depth     = np.minimum(1.0, dflg_p[idx_arr].sum(axis=1) / 2.5)
+    defense = 0.35*interior_def + 0.35*perimeter_def + 0.30*def_depth
+
+    finishing = np.minimum(1.0, fini_p[idx_arr].max(axis=1))
+
+    ball_dom_count = bdom_p[idx_arr].sum(axis=1)
+    redundancy     = np.maximum(0.0, (ball_dom_count - 1.0) * 0.18)
+    role_fit       = np.maximum(0.0, 1.0 - redundancy)
+
+    spacing_bonus = np.maximum(0.0, spacing - 0.60) * 0.25
+    synergy_bonus = np.minimum(0.05, creation * spacing_bonus)
 
     # Affinity — vektörize
     from roles import AFFINITY_MATRIX
@@ -556,33 +660,37 @@ def top_lineup_combos(score_table: pd.DataFrame,
         aff_vals += aff_ext[ai, bi]
     aff_vals /= len(pair_slots)
 
-    ls = (0.35 * coverage + 0.30 * balance
-          + 0.20 * switch_per_combo + 0.15 * shot_depth - redundancy)
+    ls = np.minimum(1.0,
+        0.28*creation + 0.27*spacing + 0.22*defense
+        + 0.12*finishing + 0.11*role_fit + synergy_bonus
+    )
 
     top_idx = np.argsort(-ls)[:top_n]
 
     rows = []
     for i in top_idx:
         cidx = combo_indices[i]
-        rv   = max_rv[i]
-        role_bd = {ROLE_SLOTS[j]: round(float(rv[j]), 3) for j in range(n_roles)}
-        weakest = " | ".join(ROLE_SLOTS[j] for j in np.argsort(rv)[:3])
+        player_rows = [pool.iloc[k] for k in cidx]
+        pillar = _lineup_role_score(player_rows)
         rows.append({
-            "Oyuncu_1":    names[cidx[0]],
-            "Oyuncu_2":    names[cidx[1]],
-            "Oyuncu_3":    names[cidx[2]],
-            "Oyuncu_4":    names[cidx[3]],
+            "Oyuncu_1":    names[cidx[0]], "Oyuncu_2": names[cidx[1]],
+            "Oyuncu_3":    names[cidx[2]], "Oyuncu_4": names[cidx[3]],
             "Oyuncu_5":    names[cidx[4]],
             "Arketipler":  " | ".join(archs[k] for k in cidx),
-            "Kapsama":     round(float(coverage[i]), 3),
-            "Denge":       round(float(balance[i]), 3),
-            "Switch":      round(float(switch_per_combo[i]), 3),
-            "ShotDepth":   round(float(shot_depth[i]), 3),
             "Affinity":    round(float(aff_vals[i]), 3),
-            "Uyum_Skoru":  round(float(ls[i]), 3),
-            "Guclu_Rol":   int((rv >= 0.70).sum()),
-            "Zayif_Roller": weakest,
-            **{f"rol_{k.replace(' ','_')}": v for k, v in role_bd.items()},
+            "Uyum_Skoru":  round(float(ls[i]),       3),
+            "creation":    pillar.get("creation",  0),
+            "spacing":     pillar.get("spacing",   0),
+            "defense":     pillar.get("defense",   0),
+            "finishing":   pillar.get("finishing", 0),
+            "role_fit":    pillar.get("role_fit",  0),
+            "n_shooters":  pillar.get("n_shooters", 0),
+            "pillar_breakdown": pillar.get("pillar_breakdown", {}),
+            # geriye uyumluluk
+            "Kapsama":  pillar.get("creation", 0),
+            "Denge":    pillar.get("role_fit", 0),
+            "Switch":   pillar.get("defense",  0),
+            "ShotDepth":pillar.get("spacing",  0),
         })
 
     return pd.DataFrame(rows).reset_index(drop=True)
@@ -620,64 +728,88 @@ def top_lineup_combos_positional(score_table: pd.DataFrame,
         if len(pools[pos]) < 3:
             pools[pos] = df.nlargest(pool_per_pos, "overall_score").reset_index(drop=True)
 
-    n_comp = len(COMP_COLS)
-
-    # Her pozisyon için skor matrisi
-    mats: dict[str, np.ndarray] = {}
-    for pos in positions:
-        sub = pools[pos]
-        mats[pos] = np.array([_score_vec(sub.iloc[i]) for i in range(len(sub))])
-
     # Meshgrid ile tüm kombinasyonları oluştur
     ranges = [np.arange(len(pools[p])) for p in positions]
     grids  = np.meshgrid(*ranges, indexing="ij")
     idx    = np.stack([g.ravel() for g in grids], axis=1)  # (n_combos, 5)
 
-    # (n_combos, n_comp): her pozisyon slotundan gelen skor maksimumu
-    max_scores = np.zeros((len(idx), n_comp), dtype=np.float32)
-    for slot, pos in enumerate(positions):
-        max_scores = np.maximum(max_scores, mats[pos][idx[:, slot]])
+    # ── Per-player pillar vektörleri (her pozisyon havuzu için) ──────────────
+    def _gsc(pool, col, mult=1.0):
+        """pool'dan score_col al → float32 array."""
+        c = f"score_{col}"
+        arr = pool[c].fillna(0).values.astype(np.float32) if c in pool.columns else np.zeros(len(pool), np.float32)
+        return np.minimum(1.0, arr * mult)
 
-    # Rol matrisleri: her pozisyon için (pool_size, n_roles)
-    rmats: dict[str, np.ndarray] = {}
+    creation_v, spacing_v = {}, {}
+    int_def_v, per_def_v, def_flag_v = {}, {}, {}
+    finishing_v, ball_dom_v, playmaking_v = {}, {}, {}
+
     for pos in positions:
-        rmats[pos] = np.array([_role_vec(pools[pos].iloc[i]) for i in range(len(pools[pos]))], dtype=np.float32)
+        pool = pools[pos]
+        creation_v[pos]  = np.minimum(1.0, np.maximum.reduce([
+            _gsc(pool, "Ecosystem", 1.10), _gsc(pool, "Engine", 1.00),
+            _gsc(pool, "Hub", 0.90),       _gsc(pool, "Creator", 0.88),
+            _gsc(pool, "Connector", 0.75), _gsc(pool, "Initiator", 0.80),
+        ]))
+        spacing_v[pos]   = np.minimum(1.0, np.maximum.reduce([
+            _gsc(pool, "Spacer"),        _gsc(pool, "3-and-D", 0.90),
+            _gsc(pool, "Stretch", 0.85), _gsc(pool, "Gravity", 0.95),
+            _gsc(pool, "Three-Level", 0.80),
+        ]))
+        int_def_v[pos]   = np.minimum(1.0, np.maximum(_gsc(pool, "Anchor", 1.10), _gsc(pool, "Force", 0.65)))
+        per_def_v[pos]   = np.minimum(1.0, np.maximum.reduce([
+            _gsc(pool, "Stopper"),            _gsc(pool, "Two-Way", 0.90),
+            _gsc(pool, "Point-of-Attack", 0.88), _gsc(pool, "Defensive", 0.92),
+        ]))
+        def_flag_v[pos]  = (np.maximum.reduce([
+            _gsc(pool, "Two-Way"), _gsc(pool, "Stopper"),
+            _gsc(pool, "Point-of-Attack"), _gsc(pool, "Defensive"), _gsc(pool, "Anchor"),
+        ]) >= 0.65).astype(np.float32)
+        finishing_v[pos] = np.minimum(1.0, np.maximum.reduce([
+            _gsc(pool, "Finisher"),       _gsc(pool, "Rim Runner", 0.95),
+            _gsc(pool, "Force", 0.75),    _gsc(pool, "Slashing", 0.82),
+        ]))
+        ball_dom_v[pos]  = (np.maximum(_gsc(pool, "Engine", 1.05), _gsc(pool, "Ecosystem")) >= 0.80).astype(np.float32)
+        playmaking_v[pos]= _gsc(pool, "Playmaking")
 
-    n_roles = len(ROLE_SLOTS)
+    # ── Combo-level pillars (vectorized) ─────────────────────────────────────
+    def _combo_stack(vec_by_pos):
+        return np.stack([vec_by_pos[pos][idx[:, slot]] for slot, pos in enumerate(positions)], axis=1)
 
-    # (n_combos, n_roles): her pozisyon slotundan gelen rol maksimumu
-    max_rv = np.zeros((len(idx), n_roles), dtype=np.float32)
-    for slot, pos in enumerate(positions):
-        max_rv = np.maximum(max_rv, rmats[pos][idx[:, slot]])
+    creat_s = _combo_stack(creation_v)       # (n, 5)
+    spac_s  = _combo_stack(spacing_v)
+    intd_s  = _combo_stack(int_def_v)
+    perd_s  = _combo_stack(per_def_v)
+    dflg_s  = _combo_stack(def_flag_v)
+    fini_s  = _combo_stack(finishing_v)
+    bdom_s  = _combo_stack(ball_dom_v)
+    play_s  = _combo_stack(playmaking_v)
 
-    coverage = max_rv.mean(axis=1)
-    balance  = (max_rv >= 0.70).sum(axis=1) / n_roles
-    # (n_combos, 5, n_roles): her pozisyon slotunun rol matrisi
-    slot_rv = np.stack([rmats[pos][idx[:, slot]] for slot, pos in enumerate(positions)], axis=1)
-    triple_dominant = ((slot_rv >= 0.70).sum(axis=1) >= 3).sum(axis=1)  # (n_combos,)
-    redundancy = 0.05 * triple_dominant / n_roles
+    primary_creation = np.minimum(1.0, creat_s.max(axis=1))
+    n_creators       = (creat_s >= 0.65).sum(axis=1).astype(np.float32)
+    creation_depth   = np.minimum(1.0, n_creators / 3.0)
+    creation = np.minimum(1.0, 0.60*primary_creation + 0.25*creation_depth + 0.15*play_s.max(axis=1))
 
-    # Switch score: her pozisyon için switch vektörü
-    sw_by_pos = {}
-    for pos in positions:
-        sub = pools[pos]
-        sc_tw = sub.get("score_Two-Way",  pd.Series([0]*len(sub))).fillna(0).values.astype(np.float32)
-        sc_st = sub.get("score_Stopper",  pd.Series([0]*len(sub))).fillna(0).values.astype(np.float32)
-        sc_vr = sub.get("score_Versatile",pd.Series([0]*len(sub))).fillna(0).values.astype(np.float32)
-        sw_by_pos[pos] = np.clip(sc_tw*0.50 + sc_st*0.30 + sc_vr*0.20, 0, 1)
-    switch_sum = np.zeros(len(idx), dtype=np.float32)
-    for slot, pos in enumerate(positions):
-        switch_sum += sw_by_pos[pos][idx[:, slot]]
-    switch_per_combo = switch_sum / 5.0
+    n_shooters       = (spac_s >= 0.70).sum(axis=1)   # int
+    avg_spacing      = spac_s.mean(axis=1)
+    _shoot_tbl       = np.array([0.15, 0.48, 0.80, 1.00, 0.92, 0.78], dtype=np.float32)
+    shooter_score    = _shoot_tbl[np.minimum(n_shooters, 5)]
+    spacing = np.minimum(1.0, 0.60*shooter_score + 0.40*avg_spacing)
 
-    # Shot depth: creator slotunda yeterli oyuncu sayısı
-    creator_by_pos = {}
-    for pos in positions:
-        creator_by_pos[pos] = (rmats[pos][:, _CREATOR_SLOTS].max(axis=1) >= 0.65).astype(np.float32)
-    creator_count = np.zeros(len(idx), dtype=np.float32)
-    for slot, pos in enumerate(positions):
-        creator_count += creator_by_pos[pos][idx[:, slot]]
-    shot_depth = np.minimum(creator_count / 3.0, 1.0)
+    interior_def  = np.minimum(1.0, intd_s.max(axis=1))
+    perimeter_def = np.minimum(1.0, perd_s.max(axis=1))
+    n_defenders   = dflg_s.sum(axis=1)
+    def_depth     = np.minimum(1.0, n_defenders / 2.5)
+    defense = 0.35*interior_def + 0.35*perimeter_def + 0.30*def_depth
+
+    finishing = np.minimum(1.0, fini_s.max(axis=1))
+
+    ball_dominant_count = bdom_s.sum(axis=1)
+    redundancy = np.maximum(0.0, (ball_dominant_count - 1.0) * 0.18)
+    role_fit = np.maximum(0.0, 1.0 - redundancy)
+
+    spacing_bonus = np.maximum(0.0, spacing - 0.60) * 0.25
+    synergy_bonus = np.minimum(0.05, creation * spacing_bonus)
 
     # Affinity — vektörize: her pozisyon havuzu için arketip index dizisi hazırla
     from roles import AFFINITY_MATRIX
@@ -708,23 +840,25 @@ def top_lineup_combos_positional(score_table: pd.DataFrame,
         aff_vals += aff_ext[ai, bi]
     aff_vals /= len(pair_slots)
 
-    ls = (0.35 * coverage + 0.30 * balance
-          + 0.20 * switch_per_combo + 0.15 * shot_depth - redundancy)
+    ls = np.minimum(1.0,
+        0.28 * creation + 0.27 * spacing + 0.22 * defense
+        + 0.12 * finishing + 0.11 * role_fit + synergy_bonus
+    )
 
     # Skor sırasına göre TÜM kombolar — greedy sonradan veya inline kullanır
     sorted_idx_all = np.argsort(-ls)  # (n_combos,) tam sıralı
 
     def _build_row(i):
         slot_idx_ = idx[i]
-        rv_       = max_rv[i]
-        role_bd_  = {ROLE_SLOTS[j]: round(float(rv_[j]), 3) for j in range(n_roles)}
-        weakest_  = " | ".join(ROLE_SLOTS[j] for j in np.argsort(rv_)[:3])
         pbp, abp  = {}, {}
+        rows_for_pillar = []
         for slot_, pos_ in enumerate(positions):
             r_ = pools[pos_].iloc[slot_idx_[slot_]]
             pbp[pos_] = r_["PLAYER_NAME"]
             abp[pos_] = r_.get("primary_arch", "?")
-        # Her oyuncunun overall_score'u
+            rows_for_pillar.append(r_)
+        # Pillar detail: _lineup_role_score üzerinden tam hesapla (top-n satır için ok)
+        pillar = _lineup_role_score(rows_for_pillar)
         scores_by_pos = {}
         for slot_, pos_ in enumerate(positions):
             r2_ = pools[pos_].iloc[slot_idx_[slot_]]
@@ -738,16 +872,22 @@ def top_lineup_combos_positional(score_table: pd.DataFrame,
             "Skor_PG": scores_by_pos["PG"], "Skor_SG": scores_by_pos["SG"],
             "Skor_SF": scores_by_pos["SF"], "Skor_PF": scores_by_pos["PF"],
             "Skor_C":  scores_by_pos["C"],
-            "Arketipler": " | ".join(abp[p] for p in positions),
-            "Kapsama":    round(float(coverage[i]),         3),
-            "Denge":      round(float(balance[i]),          3),
-            "Switch":     round(float(switch_per_combo[i]), 3),
-            "ShotDepth":  round(float(shot_depth[i]),       3),
-            "Affinity":   round(float(aff_vals[i]),         3),
-            "Uyum_Skoru": round(float(ls[i]),               3),
-            "Guclu_Rol":  int((max_rv[i] >= 0.70).sum()),
-            "Zayif_Roller": weakest_,
-            **{f"rol_{k.replace(' ','_')}": v for k, v in role_bd_.items()},
+            "Arketipler":     " | ".join(abp[p] for p in positions),
+            "Affinity":       round(float(aff_vals[i]), 3),
+            "Uyum_Skoru":     round(float(ls[i]),       3),
+            "creation":       pillar.get("creation",  0),
+            "spacing":        pillar.get("spacing",   0),
+            "defense":        pillar.get("defense",   0),
+            "finishing":      pillar.get("finishing", 0),
+            "role_fit":       pillar.get("role_fit",  0),
+            "n_shooters":     pillar.get("n_shooters", 0),
+            "synergy_bonus":  pillar.get("synergy_bonus", 0),
+            "pillar_breakdown": pillar.get("pillar_breakdown", {}),
+            # Geriye uyumluluk
+            "Kapsama":  pillar.get("creation",  0),
+            "Denge":    pillar.get("role_fit",  0),
+            "Switch":   pillar.get("defense",   0),
+            "ShotDepth":pillar.get("spacing",   0),
         }
 
     # ── Inline greedy: tüm kombolar üzerinde —

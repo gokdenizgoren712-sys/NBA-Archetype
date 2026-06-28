@@ -45,6 +45,7 @@ export default function Lineups() {
   const [realLineups, setRealLineups] = useState([]);
   const [realLoading, setRealLoading] = useState(false);
   const [realSort, setRealSort] = useState("NET_RATING");
+  const [corr, setCorr] = useState(null);
 
   useEffect(() => {
     setLoading(true);
@@ -61,6 +62,9 @@ export default function Lineups() {
       .then(d => setRealLineups(d.lineups||[]))
       .catch(console.error)
       .finally(() => setRealLoading(false));
+    if (!corr) {
+      fetch("/api/lineups/correlation").then(r => r.json()).then(setCorr).catch(() => {});
+    }
   }, [tab, realSort]);
 
   // Oyuncu adlarını bir kez yükle (autocomplete için)
@@ -112,31 +116,7 @@ export default function Lineups() {
             {customError && <p className="text-red-400 text-xs">{customError}</p>}
             {customResult && (
               <div className="bg-slate-800 rounded-lg p-3 space-y-1.5 text-sm">
-                {[
-                  [t("coverage"),       customResult.coverage],
-                  [t("balance"),        customResult.balance],
-                  [t("switch_ability"), customResult.switch_score],
-                  [t("shot_depth"),     customResult.shot_depth],
-                ].map(([l,v])=>(
-                  v != null ? (
-                    <div key={l} className="flex justify-between">
-                      <span className="text-slate-400">{l}</span>
-                      <span className={SCORE_COLOR(v)}>{Math.round(v*100)}</span>
-                    </div>
-                  ) : null
-                ))}
-                <div className="border-t border-slate-700 pt-1.5 flex justify-between font-semibold">
-                  <span className="text-slate-300">{t("total_fit")}</span>
-                  <span className="text-blue-400">{Math.round(customResult.lineup_score*100)}</span>
-                </div>
-                {customResult.role_breakdown && (
-                  <div className="pt-2 border-t border-slate-700">
-                    <div className="text-[10px] text-slate-500 mb-1.5 uppercase tracking-wide">
-                      {t("role_coverage")}
-                    </div>
-                    <RoleBreakdown roleScores={customResult.role_breakdown} />
-                  </div>
-                )}
+                <PillarBreakdown result={customResult} lang={lang} />
               </div>
             )}
           </div>
@@ -200,8 +180,8 @@ export default function Lineups() {
           <>
             <p className="text-xs text-slate-500 mb-4">
               {lang==="tr"
-                ? "Sezonda ≥50 dk oynanan gerçek 5'li grup'lar — fit skoru teorik arketip uyumu, NET_RATING sahadan gerçek veri. r≈0.53."
-                : "Real 5-man groups with ≥50 min played — fit score is theoretical archetype compatibility, NET_RATING is on-court data. r≈0.53."}
+                ? `Sezonda ≥50 dk oynanan gerçek 5'li grup'lar — fit skoru teorik arketip uyumu, NET_RATING sahadan gerçek veri.${corr?.r != null ? ` r=${corr.r} (n=${corr.n})` : ""}`
+                : `Real 5-man groups with ≥50 min played — fit score is theoretical archetype compatibility, NET_RATING is on-court data.${corr?.r != null ? ` r=${corr.r} (n=${corr.n})` : ""}`}
             </p>
             {realLoading ? (
               <div className="text-slate-500 text-sm">{t("loading")}</div>
@@ -224,8 +204,65 @@ export default function Lineups() {
   );
 }
 
+const PILLAR_LABELS = {
+  tr: { creation: "Yaratıcılık", spacing: "Spacing", defense: "Savunma", finishing: "Finishing", role_fit: "Rol Uyumu" },
+  en: { creation: "Creation",    spacing: "Spacing",  defense: "Defense",  finishing: "Finishing", role_fit: "Role Fit"  },
+};
+
+function PillarBreakdown({ result, lang = "en", compact = false }) {
+  if (!result) return null;
+
+  // API eski alan adları (LineupCard: Kapsama vs) veya yeni pillar alanlar
+  const pillars = result.pillar_breakdown || {
+    Creation:  result.creation  ?? result.Kapsama,
+    Spacing:   result.spacing   ?? result.ShotDepth,
+    Defense:   result.defense   ?? result.balance,
+    Finishing: result.finishing,
+    "Role Fit":result.role_fit  ?? result.Denge,
+  };
+  const score = result.lineup_score ?? result.Uyum_Skoru ?? 0;
+  const nShooters = result.n_shooters;
+  const lbl = PILLAR_LABELS[lang] || PILLAR_LABELS.en;
+  const PMAP = {
+    Creation: lbl.creation, Spacing: lbl.spacing,
+    Defense: lbl.defense, Finishing: lbl.finishing, "Role Fit": lbl.role_fit,
+  };
+
+  return (
+    <div className="space-y-1">
+      {Object.entries(pillars).map(([k, v]) => {
+        if (v == null) return null;
+        const pct = Math.round(v * 100);
+        const barColor = v >= 0.80 ? "bg-blue-500" : v >= 0.65 ? "bg-blue-600/70" : "bg-slate-700";
+        const label = PMAP[k] || k;
+        const extra = k === "Spacing" && nShooters != null ? ` (${nShooters})` : "";
+        return (
+          <div key={k} className="flex items-center gap-2">
+            <span className="text-[10px] text-slate-400 w-20 shrink-0">{label}{extra}</span>
+            <div className="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+              <div className={`h-full ${barColor} rounded-full`} style={{ width: `${pct}%` }} />
+            </div>
+            <span className={`text-[10px] w-6 text-right ${SCORE_COLOR(v)}`}>{pct}</span>
+          </div>
+        );
+      })}
+      {!compact && (
+        <div className="border-t border-slate-700 pt-1.5 flex justify-between font-semibold mt-1">
+          <span className="text-slate-300 text-sm">Fit</span>
+          <span className="text-blue-400 text-sm">{Math.round(score * 100)}</span>
+        </div>
+      )}
+      {compact && (
+        <div className="flex justify-between items-center pt-1 border-t border-slate-800 mt-0.5">
+          <span className="text-[9px] text-slate-500">Fit</span>
+          <span className={`text-lg font-bold ${SCORE_COLOR(score)}`}>{Math.round(score * 100)}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function LineupCard({ lu, rank, t, lang }) {
-  const [expanded, setExpanded] = useState(false);
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col sm:flex-row gap-4">
       <div className="flex-1">
@@ -258,46 +295,9 @@ function LineupCard({ lu, rank, t, lang }) {
         </div>
       </div>
 
-      {/* Sağ panel: metrikler + rol bars */}
-      <div className="flex flex-col gap-2 ml-7 sm:ml-0 shrink-0">
-        <div className="flex gap-3 items-center flex-wrap">
-          {[
-            [t("coverage"),       lu.Kapsama],
-            [t("balance"),        lu.Denge],
-            [t("switch_ability"), lu.Switch],
-            [t("shot_depth"),     lu.ShotDepth],
-          ].map(([l,v])=>(
-            <div key={l} className="text-center">
-              <MiniBar value={v} />
-              <div className="text-[9px] text-slate-500 mt-0.5">{l}</div>
-            </div>
-          ))}
-          <div className="text-center">
-            <div className={`text-xl font-bold ${SCORE_COLOR(lu.Uyum_Skoru)}`}>
-              {Math.round((lu.Uyum_Skoru||0)*100)}
-            </div>
-            <div className="text-[9px] text-slate-500">{t("fit")}</div>
-          </div>
-        </div>
-
-        {/* Rol breakdown — compact vertical bars */}
-        {lu["rol_Primary_Creation"] != null && (
-          <>
-            <button
-              onClick={() => setExpanded(x => !x)}
-              className="text-[9px] text-slate-600 hover:text-slate-400 text-left transition-colors"
-            >
-              {expanded ? "▲ " : "▼ "}{t("role_coverage")}
-            </button>
-            {expanded && (
-              <RoleBreakdown compact roleScores={Object.fromEntries(
-                Object.entries(lu)
-                  .filter(([k]) => k.startsWith("rol_"))
-                  .map(([k, v]) => [k.replace("rol_","").replace(/_/g," "), v])
-              )} />
-            )}
-          </>
-        )}
+      {/* Sağ panel: pillar bars + fit skoru */}
+      <div className="flex flex-col gap-2 ml-7 sm:ml-0 shrink-0 w-52">
+        <PillarBreakdown result={lu} lang={lang} compact />
       </div>
     </div>
   );

@@ -1,143 +1,132 @@
 /**
- * Explore — PCA scatter plot: oyuncuları 12-boyutlu skor uzayında 2 bileşene indirgeyip gösterir.
- * PCA client-side yapılır (no extra deps), covariance → power iteration (2 pass).
+ * Explore — Semantic Archetype Map
+ * Her arketip 2D uzayda anlamlı bir konuma sabitlenir.
+ * Oyuncular kendi 12 arketip skorlarının ağırlıklı ortalamasıyla konumlanır.
+ * X: Off-ball ← → Ball-dominant/Creator
+ * Y: Interior/Big ↓ ↑ Perimeter/Wing
  */
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { api } from "../api";
 import { useLang } from "../contexts/LanguageContext";
 
 const ARCH_COLORS = {
-  Engine:      "#818cf8",
-  Ecosystem:   "#f59e0b",
-  Hub:         "#34d399",
-  Connector:   "#38bdf8",
-  Creator:     "#a78bfa",
-  Anchor:      "#fb923c",
-  Spacer:      "#6ee7b7",
-  Finisher:    "#f472b6",
-  Force:       "#ef4444",
-  Initiator:   "#facc15",
-  Stopper:     "#94a3b8",
-  "Rim Runner":"#4ade80",
+  Engine:       "#818cf8",
+  Ecosystem:    "#f59e0b",
+  Hub:          "#34d399",
+  Connector:    "#38bdf8",
+  Creator:      "#a78bfa",
+  Anchor:       "#fb923c",
+  Spacer:       "#6ee7b7",
+  Finisher:     "#f472b6",
+  Force:        "#ef4444",
+  Initiator:    "#facc15",
+  Stopper:      "#94a3b8",
+  "Rim Runner": "#4ade80",
 };
 
-const CORE = ["Engine","Ecosystem","Hub","Connector","Creator","Anchor","Spacer","Finisher","Force","Initiator","Stopper","Rim Runner"];
+const CORE = ["Engine","Ecosystem","Hub","Connector","Creator","Anchor","Spacer",
+              "Finisher","Force","Initiator","Stopper","Rim Runner"];
 
-// ── PCA helpers (vanilla JS) ──────────────────────────────────────────────────
-
-function matMulVec(mat, vec) {
-  return mat.map(row => row.reduce((s, v, i) => s + v * vec[i], 0));
-}
-
-function normalize(vec) {
-  const n = Math.sqrt(vec.reduce((s, v) => s + v * v, 0)) || 1;
-  return vec.map(v => v / n);
-}
-
-function powerIterate(cov, deflate = null, iters = 60) {
-  let v = cov[0].map((_, i) => i === 0 ? 1 : 0);
-  if (deflate) {
-    v = v.map((x, i) => x - deflate.reduce((s, d, j) => s + d[i] * v[j], 0) * deflate[0][i]);
-  }
-  for (let i = 0; i < iters; i++) {
-    v = normalize(matMulVec(cov, v));
-    if (deflate) {
-      const proj = deflate.reduce((s, ev) => {
-        const dot = ev.reduce((a, x, j) => a + x * v[j], 0);
-        return s.map((x, j) => x + dot * ev[j]);
-      }, new Array(v.length).fill(0));
-      v = normalize(v.map((x, j) => x - proj[j]));
-    }
-  }
-  return v;
-}
-
-function pca2d(matrix) {
-  const n = matrix.length;
-  const d = matrix[0].length;
-  // Center
-  const mean = Array.from({ length: d }, (_, j) => matrix.reduce((s, r) => s + r[j], 0) / n);
-  const centered = matrix.map(row => row.map((v, j) => v - mean[j]));
-  // Covariance (d×d)
-  const cov = Array.from({ length: d }, (_, i) =>
-    Array.from({ length: d }, (_, j) =>
-      centered.reduce((s, row) => s + row[i] * row[j], 0) / (n - 1)
-    )
-  );
-  const pc1 = powerIterate(cov);
-  const pc2 = powerIterate(cov, [pc1]);
-
-  const proj1 = centered.map(row => row.reduce((s, v, i) => s + v * pc1[i], 0));
-  const proj2 = centered.map(row => row.reduce((s, v, i) => s + v * pc2[i], 0));
-
-  const var1 = proj1.reduce((s, v) => s + v * v, 0) / (n - 1);
-  const var2 = proj2.reduce((s, v) => s + v * v, 0) / (n - 1);
-  const totalVar = cov.reduce((s, row, i) => s + row[i], 0) || 1;
-
-  return { proj1, proj2, pct1: var1 / totalVar, pct2: var2 / totalVar };
-}
-
-// ── Component ─────────────────────────────────────────────────────────────────
+/**
+ * Arketiplerin sabit semantik konumları (0–1 arası normalize).
+ * X: topu kullanma / yaratıcılık  (0=saf off-ball, 1=dominant ball-handler)
+ * Y: lokasyon / fiziksel profil   (0=iç saha büyük, 1=dış hat kanat)
+ */
+const ARCH_ANCHORS = {
+  Ecosystem:    { x: 0.75, y: 0.90 },  // Jokić/Magic: supreme creator+scorer, perimeter stretch
+  Creator:      { x: 0.88, y: 0.80 },  // Nash/CP3: pure playmaker, perimeter
+  Engine:       { x: 0.82, y: 0.68 },  // Jordan/Luka: primary scorer, ball dominant
+  Initiator:    { x: 0.68, y: 0.74 },  // secondary handler/facilitator
+  Connector:    { x: 0.58, y: 0.60 },  // Draymond/LeBron-facilitator: versatile glue
+  Hub:          { x: 0.62, y: 0.36 },  // KAT/Jokić early: playmaking big
+  Force:        { x: 0.45, y: 0.42 },  // Giannis/KG: physical wing-big scorer
+  Finisher:     { x: 0.30, y: 0.52 },  // athletic finisher, off-ball
+  Anchor:       { x: 0.22, y: 0.22 },  // Embiid/Wemby: rim protector, interior
+  "Rim Runner": { x: 0.12, y: 0.30 },  // Gobert: lob catcher, pure interior
+  Stopper:      { x: 0.28, y: 0.74 },  // Kawhi/Batum: perimeter defender
+  Spacer:       { x: 0.10, y: 0.82 },  // sharpshooter: perimeter, off-ball
+};
 
 const INFO = {
   en: {
     title: "Archetype Map",
-    subtitle: "How to read this chart",
-    what: "Each dot is a player. Their position on the chart is determined by PCA (Principal Component Analysis) — a mathematical technique that compresses 12 archetype scores into 2 dimensions while preserving as much variance as possible.",
-    pc1: "PC1 (horizontal axis): Captures the biggest source of variation across players — roughly the spectrum from perimeter-oriented to interior-dominant roles.",
-    pc2: "PC2 (vertical axis): The second-largest axis of variation — roughly separating playmakers and high-creation players from pure role players.",
-    cluster: "Players close together have similar archetype score profiles. Clusters naturally emerge by archetype: Engines cluster with other Engines, Spacers with Spacers, Ecosystems alone at the top.",
-    pct: "The percentages shown (PC1 X% · PC2 Y%) are the share of total variance explained by each axis. A combined 40–60% is typical for 12-dimensional data.",
-    tip: "Hover over a dot to see the player. Use the search box to highlight a specific player. Click an archetype in the legend to filter.",
+    subtitle: "How to read",
+    xLeft: "Off-ball specialist",
+    xRight: "Ball-dominant / Creator",
+    yBottom: "Interior / Big",
+    yTop: "Perimeter / Wing",
+    tip: "Each dot is a player placed by their archetype score mix. Players near an archetype label share that profile. Hover to inspect. Click a legend label to filter.",
   },
   tr: {
     title: "Arketip Haritası",
-    subtitle: "Bu grafik nasıl okunur?",
-    what: "Her nokta bir oyuncu. Grafikteki konumları PCA (Temel Bileşen Analizi) ile belirlenir — 12 arketip skorunu mümkün olduğunca az bilgi kaybıyla 2 boyuta indirgeyen matematiksel bir teknik.",
-    pc1: "PC1 (yatay eksen): Oyuncular arasındaki en büyük farklılık kaynağını yakalıyor — kabaca dış hat odaklı oyunculardan iç saha odaklılara uzanan bir spektrum.",
-    pc2: "PC2 (dikey eksen): İkinci büyük farklılık ekseni — genellikle organizatör/yaratıcı oyuncuları saf rol oyuncularından ayıran eksen.",
-    cluster: "Birbirine yakın noktalar benzer arketip skor profiline sahip. Kümeler doğal olarak arketiplere göre oluşur: Engine'ler Engine'lerle, Spacer'lar Spacer'larla, Ecosystem'lar ise zirveye yakın yalnız durur.",
-    pct: "Gösterilen yüzdeler (PC1 X% · PC2 Y%) her eksenin toplam varyansı ne kadar açıkladığını gösterir. 12 boyutlu veri için ikisinin toplamı %40–60 çıkması normaldir.",
-    tip: "Noktanın üzerine gelince oyuncuyu görebilirsin. Arama kutusuyla belirli bir oyuncuyu öne çıkar. Alttaki arketip etiketlerine tıklayarak filtrele.",
+    subtitle: "Nasıl okunur",
+    xLeft: "Off-ball / Rol oyuncusu",
+    xRight: "Topla dominant / Yaratıcı",
+    yBottom: "İç saha / Büyük",
+    yTop: "Dış hat / Kanat",
+    tip: "Her nokta bir oyuncu; 12 arketip skoru ağırlıklı ortalamayla konumlandırılır. Bir arketip etiketine yakın oyuncular o profili paylaşır. Hover ile detay gör, legend'a tıklayarak filtrele.",
   },
 };
+
+// Oyuncunun primary_arch anchor'ına 75% yapış, secondary arklar ^4 güçle 25% kaydırır.
+// Bu sayede Ecosystem oyuncular top-right'ta kalır ama Connector/Hub skoru onları biraz aşağı çeker.
+function playerPos(player) {
+  const primary = player.primary_arch;
+  const pAnchor = ARCH_ANCHORS[primary] || { x: 0.5, y: 0.5 };
+
+  // Secondary: primary dışındaki arklerin ^4 ağırlıklı merkezi
+  let wx = 0, wy = 0, wt = 0;
+  for (const [arch, pos] of Object.entries(ARCH_ANCHORS)) {
+    if (arch === primary) continue;
+    const s = Math.max(0, parseFloat(player[`score_${arch}`] ?? 0));
+    const w = s * s * s * s;  // ^4: küçük farkları bastırır, büyük farkları vurgular
+    if (w > 0) { wx += w * pos.x; wy += w * pos.y; wt += w; }
+  }
+  const secX = wt > 0 ? wx / wt : pAnchor.x;
+  const secY = wt > 0 ? wy / wt : pAnchor.y;
+
+  // 75% primary anchor, 25% secondary pull
+  let x = 0.75 * pAnchor.x + 0.25 * secX;
+  let y = 0.75 * pAnchor.y + 0.25 * secY;
+
+  // Deterministik küçük jitter: üst üste binen oyuncular yayılsın
+  const hash = (player.PLAYER_NAME || "").split("").reduce((h, c) => (h * 31 + c.charCodeAt(0)) & 0xffff, 0);
+  x += ((hash & 0xff) / 255 - 0.5) * 0.025;
+  y += ((hash >> 8) / 255 - 0.5) * 0.025;
+
+  return { x: Math.max(0.02, Math.min(0.98, x)), y: Math.max(0.02, Math.min(0.98, y)) };
+}
 
 export default function Explore() {
   const { lang } = useLang();
   const info = INFO[lang] || INFO.en;
 
-  const [players, setPlayers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [hover, setHover]     = useState(null);
-  const [filter, setFilter]   = useState("");
-  const [searchQ, setSearchQ] = useState("");
+  const [players, setPlayers]   = useState([]);
+  const [loading, setLoading]   = useState(true);
+  const [hover, setHover]       = useState(null);
+  const [filter, setFilter]     = useState("");
+  const [searchQ, setSearchQ]   = useState("");
   const [showInfo, setShowInfo] = useState(false);
-  const [pcaLoadings, setPcaLoadings] = useState(null);
   const svgRef = useRef(null);
 
-  // Pinch-to-zoom + pan state
-  const [zoom, setZoom]         = useState(1);
-  const [pan, setPan]           = useState({ x: 0, y: 0 });
-  const touchRef                = useRef({});   // geçici dokunuş verisi
+  // Zoom & pan
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan]   = useState({ x: 0, y: 0 });
+  const touchRef        = useRef({});
+  const resetView       = useCallback(() => { setZoom(1); setPan({ x: 0, y: 0 }); }, []);
 
-  const resetView = useCallback(() => { setZoom(1); setPan({ x: 0, y: 0 }); }, []);
-
-  // Wheel zoom (masaüstü)
   const onWheel = useCallback(e => {
     e.preventDefault();
-    const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
-    setZoom(z => Math.max(0.5, Math.min(8, z * factor)));
+    setZoom(z => Math.max(0.5, Math.min(8, z * (e.deltaY < 0 ? 1.15 : 1 / 1.15))));
   }, []);
 
-  // Touch handlers (mobil)
   const onTouchStart = useCallback(e => {
     if (e.touches.length === 2) {
       const dx = e.touches[0].clientX - e.touches[1].clientX;
       const dy = e.touches[0].clientY - e.touches[1].clientY;
-      touchRef.current.startDist = Math.sqrt(dx * dx + dy * dy);
-      touchRef.current.startZoom = zoom;
+      touchRef.current = { startDist: Math.sqrt(dx*dx+dy*dy), startZoom: zoom };
     } else if (e.touches.length === 1) {
-      touchRef.current.startPan = { x: e.touches[0].clientX - pan.x, y: e.touches[0].clientY - pan.y };
+      touchRef.current = { startPan: { x: e.touches[0].clientX - pan.x, y: e.touches[0].clientY - pan.y } };
     }
   }, [zoom, pan]);
 
@@ -146,14 +135,9 @@ export default function Explore() {
     if (e.touches.length === 2 && touchRef.current.startDist) {
       const dx = e.touches[0].clientX - e.touches[1].clientX;
       const dy = e.touches[0].clientY - e.touches[1].clientY;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      const newZoom = Math.max(0.5, Math.min(8, touchRef.current.startZoom * (dist / touchRef.current.startDist)));
-      setZoom(newZoom);
+      setZoom(Math.max(0.5, Math.min(8, touchRef.current.startZoom * (Math.sqrt(dx*dx+dy*dy) / touchRef.current.startDist))));
     } else if (e.touches.length === 1 && touchRef.current.startPan) {
-      setPan({
-        x: e.touches[0].clientX - touchRef.current.startPan.x,
-        y: e.touches[0].clientY - touchRef.current.startPan.y,
-      });
+      setPan({ x: e.touches[0].clientX - touchRef.current.startPan.x, y: e.touches[0].clientY - touchRef.current.startPan.y });
     }
   }, []);
 
@@ -164,55 +148,30 @@ export default function Explore() {
       setPlayers(d.players || []);
       setLoading(false);
     });
-    api.pcaLoadings().then(setPcaLoadings).catch(() => {});
   }, []);
 
-  const projected = useMemo(() => {
-    if (players.length < 10) return [];
-    const rows = players.map(p =>
-      CORE.map(c => parseFloat(p[`score_${c}`] || 0))
-    );
-    if (rows[0]?.length !== 12) return [];
-    try {
-      const { proj1, proj2, pct1, pct2 } = pca2d(rows);
-      return players.map((p, i) => ({
-        ...p,
-        pc1: proj1[i],
-        pc2: proj2[i],
-        pct1, pct2,
-      }));
-    } catch { return []; }
-  }, [players]);
+  const W = 720, H = 520, PAD = 56;
+  const toSvgX = x => PAD + x * (W - PAD * 2);
+  const toSvgY = y => H - PAD - y * (H - PAD * 2);  // flip Y (0=bottom, 1=top)
 
-  const filtered = useMemo(() => {
-    return projected.filter(p => {
+  const projected = useMemo(() =>
+    players.map(p => ({ ...p, ...playerPos(p) }))
+  , [players]);
+
+  const filtered = useMemo(() =>
+    projected.filter(p => {
       if (filter && p.primary_arch !== filter) return false;
       if (searchQ && !p.PLAYER_NAME?.toLowerCase().includes(searchQ.toLowerCase())) return false;
       return true;
-    });
-  }, [projected, filter, searchQ]);
-
-  // SVG layout
-  const W = 720, H = 520, PAD = 48;
-  const xs = filtered.map(p => p.pc1);
-  const ys = filtered.map(p => p.pc2);
-  const minX = Math.min(...xs) - 0.01, maxX = Math.max(...xs) + 0.01;
-  const minY = Math.min(...ys) - 0.01, maxY = Math.max(...ys) + 0.01;
-  const scX = v => PAD + ((v - minX) / (maxX - minX)) * (W - PAD * 2);
-  const scY = v => H - PAD - ((v - minY) / (maxY - minY)) * (H - PAD * 2);
-
-  const pct1 = projected[0]?.pct1 ?? 0;
-  const pct2 = projected[0]?.pct2 ?? 0;
+    })
+  , [projected, filter, searchQ]);
 
   return (
     <div className="p-4 flex flex-col gap-4">
-      {/* Başlık satırı */}
+      {/* Header */}
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-3 flex-wrap">
           <h2 className="text-white font-bold text-lg">{info.title}</h2>
-          <span className="text-xs text-slate-500">
-            PC1 {(pct1 * 100).toFixed(1)}% · PC2 {(pct2 * 100).toFixed(1)}%
-          </span>
           <input
             value={searchQ} onChange={e => setSearchQ(e.target.value)}
             placeholder={lang === "tr" ? "Oyuncu ara..." : "Search player..."}
@@ -227,60 +186,29 @@ export default function Explore() {
         <button
           onClick={() => setShowInfo(v => !v)}
           className={`flex items-center gap-1.5 px-3 py-1 rounded-lg border text-xs transition-colors shrink-0 ${
-            showInfo
-              ? "border-violet-500 text-violet-300 bg-violet-900/20"
-              : "border-slate-700 text-slate-400 hover:text-white hover:border-slate-500"
-          }`}
+            showInfo ? "border-violet-500 text-violet-300 bg-violet-900/20"
+                     : "border-slate-700 text-slate-400 hover:text-white hover:border-slate-500"}`}
         >
           <span className="text-base leading-none">ⓘ</span>
           {info.subtitle}
         </button>
       </div>
 
-      {/* Açıklama paneli */}
+      {/* Info panel */}
       {showInfo && (
-        <div className="bg-slate-900 border border-violet-700/30 rounded-xl p-5 space-y-3 max-w-2xl">
-          <p className="text-slate-300 text-sm leading-relaxed">{info.what}</p>
-          <div className="space-y-2">
-            {[info.pc1, info.pc2, info.cluster, info.pct].map((line, i) => (
-              <div key={i} className="flex gap-2 text-xs text-slate-400 leading-relaxed">
-                <span className="text-violet-500 shrink-0 mt-0.5">•</span>
-                <span>{line}</span>
-              </div>
-            ))}
+        <div className="bg-slate-900 border border-violet-700/30 rounded-xl p-4 max-w-2xl space-y-2">
+          <p className="text-slate-300 text-sm">{info.tip}</p>
+          <div className="grid grid-cols-2 gap-2 text-xs text-slate-500 border-t border-slate-800 pt-2">
+            <div><span className="text-violet-400">X sol</span> — {info.xLeft}</div>
+            <div><span className="text-violet-400">X sağ</span> — {info.xRight}</div>
+            <div><span className="text-violet-400">Y alt</span> — {info.yBottom}</div>
+            <div><span className="text-violet-400">Y üst</span> — {info.yTop}</div>
           </div>
-          {/* Gerçek PCA loadings — hangi bileşen hangi ekseni domine ediyor */}
-          {pcaLoadings && (
-            <div className="border-t border-slate-800 pt-3 space-y-2">
-              {[["PC1", pcaLoadings.pc1], ["PC2", pcaLoadings.pc2]].map(([label, pc]) => {
-                const top3 = Object.entries(pc.loadings)
-                  .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
-                  .slice(0, 3);
-                return (
-                  <div key={label} className="text-xs text-slate-500">
-                    <span className="text-slate-400 font-medium">{label}</span>
-                    <span className="ml-1">({(pc.pct_variance * 100).toFixed(1)}%)</span>
-                    <span className="ml-2">
-                      {top3.map(([k, v]) => (
-                        <span key={k} className="mr-2">
-                          <span style={{ color: v > 0 ? "#a78bfa" : "#f87171" }}>{k}</span>
-                          <span className="text-slate-600"> {v > 0 ? "+" : ""}{v.toFixed(2)}</span>
-                        </span>
-                      ))}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-          <p className="text-xs text-slate-500 border-t border-slate-800 pt-3">{info.tip}</p>
         </div>
       )}
 
       {loading ? (
-        <div className="text-slate-500 text-center py-20">Loading player data...</div>
-      ) : filtered.length === 0 ? (
-        <div className="text-slate-500 text-center py-20">No players match filter.</div>
+        <div className="text-slate-500 text-center py-20">Loading...</div>
       ) : (
         <div
           className="relative bg-slate-900 rounded-xl border border-slate-800 overflow-hidden touch-none"
@@ -290,45 +218,70 @@ export default function Explore() {
           onTouchMove={onTouchMove}
           onTouchEnd={onTouchEnd}
         >
-          {/* Reset zoom button — sadece zoom yapıldığında görünür */}
           {(zoom !== 1 || pan.x !== 0 || pan.y !== 0) && (
-            <button
-              onClick={resetView}
-              className="absolute top-2 right-2 z-10 text-[10px] px-2 py-1 rounded bg-slate-800 border border-slate-600 text-slate-400 hover:text-white"
-            >
+            <button onClick={resetView}
+              className="absolute top-2 right-2 z-10 text-[10px] px-2 py-1 rounded bg-slate-800 border border-slate-600 text-slate-400 hover:text-white">
               {lang === "tr" ? "Sıfırla" : "Reset"}
             </button>
           )}
-          <svg
-            ref={svgRef}
-            viewBox={`0 0 ${W} ${H}`}
-            width={W}
-            height={H}
-            style={{ display: "block", maxWidth: "100%", transform: `scale(${zoom}) translate(${pan.x / zoom}px, ${pan.y / zoom}px)`, transformOrigin: "center center", transition: "transform 0.05s ease" }}
-          >
-            {/* Axis lines */}
-            <line x1={PAD} y1={H/2} x2={W-PAD} y2={H/2} stroke="#334155" strokeWidth={1} />
-            <line x1={W/2} y1={PAD} x2={W/2} y2={H-PAD} stroke="#334155" strokeWidth={1} />
-            <text x={W - PAD + 4} y={H/2 + 4} fill="#475569" fontSize={10}>PC1</text>
-            <text x={W/2 + 4} y={PAD - 6} fill="#475569" fontSize={10}>PC2</text>
 
-            {/* Points */}
+          <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} width={W} height={H}
+            style={{ display: "block", maxWidth: "100%",
+              transform: `scale(${zoom}) translate(${pan.x/zoom}px,${pan.y/zoom}px)`,
+              transformOrigin: "center center", transition: "transform 0.05s ease" }}>
+
+            {/* Grid lines (subtle) */}
+            {[0.25, 0.5, 0.75].map(v => (
+              <g key={v}>
+                <line x1={toSvgX(v)} y1={PAD} x2={toSvgX(v)} y2={H-PAD} stroke="#1e293b" strokeWidth={1} strokeDasharray="4 4"/>
+                <line x1={PAD} y1={toSvgY(v)} x2={W-PAD} y2={toSvgY(v)} stroke="#1e293b" strokeWidth={1} strokeDasharray="4 4"/>
+              </g>
+            ))}
+
+            {/* Axis lines */}
+            <line x1={PAD} y1={H/2} x2={W-PAD} y2={H/2} stroke="#334155" strokeWidth={1}/>
+            <line x1={W/2} y1={PAD} x2={W/2} y2={H-PAD} stroke="#334155" strokeWidth={1}/>
+
+            {/* Axis labels */}
+            <text x={PAD+4} y={H/2-6} fill="#475569" fontSize={9} textAnchor="start">← {info.xLeft}</text>
+            <text x={W-PAD-4} y={H/2-6} fill="#475569" fontSize={9} textAnchor="end">{info.xRight} →</text>
+            <text x={W/2+6} y={PAD+12} fill="#475569" fontSize={9}>{info.yTop}</text>
+            <text x={W/2+6} y={H-PAD-6} fill="#475569" fontSize={9}>{info.yBottom}</text>
+
+            {/* Archetype anchor labels (background, fixed) */}
+            {(!filter ? Object.entries(ARCH_ANCHORS) : Object.entries(ARCH_ANCHORS).filter(([a]) => a === filter)).map(([arch, pos]) => {
+              const cx = toSvgX(pos.x), cy = toSvgY(pos.y);
+              const col = ARCH_COLORS[arch] || "#94a3b8";
+              return (
+                <g key={arch}>
+                  {/* Soft region circle */}
+                  <circle cx={cx} cy={cy} r={28} fill={col} fillOpacity={0.06} stroke={col} strokeOpacity={0.18} strokeWidth={1}/>
+                  {/* Label */}
+                  <text x={cx} y={cy - 32} fill={col} fontSize={10} fontWeight={600} textAnchor="middle"
+                    style={{ pointerEvents: "none", letterSpacing: "0.02em" }}>
+                    {arch}
+                  </text>
+                </g>
+              );
+            })}
+
+            {/* Player dots */}
             {filtered.map((p, i) => {
-              const cx = scX(p.pc1), cy = scY(p.pc2);
+              const cx = toSvgX(p.x), cy = toSvgY(p.y);
               const col = ARCH_COLORS[p.primary_arch] || "#94a3b8";
-              const isHover = hover?.PLAYER_NAME === p.PLAYER_NAME;
+              const isHover  = hover?.PLAYER_NAME === p.PLAYER_NAME;
               const isSearch = searchQ && p.PLAYER_NAME?.toLowerCase().includes(searchQ.toLowerCase());
               return (
-                <g key={i}
-                  style={{ cursor: "pointer" }}
+                <g key={i} style={{ cursor: "pointer" }}
                   onMouseEnter={() => setHover(p)}
                   onMouseLeave={() => setHover(null)}>
-                  <circle cx={cx} cy={cy} r={isHover ? 7 : 5}
-                    fill={col} fillOpacity={isHover || isSearch ? 1.0 : 0.65}
-                    stroke={isHover ? "#fff" : isSearch ? "#fff" : "none"} strokeWidth={1.5}
+                  <circle cx={cx} cy={cy} r={isHover ? 6 : 4}
+                    fill={col} fillOpacity={isHover || isSearch ? 1 : 0.70}
+                    stroke={isHover ? "#fff" : isSearch ? "#fff" : col}
+                    strokeWidth={isHover ? 1.5 : 0.5} strokeOpacity={0.5}
                   />
                   {(isHover || isSearch) && (
-                    <text x={cx + 8} y={cy + 4} fill="#e2e8f0" fontSize={10}
+                    <text x={cx+8} y={cy+4} fill="#e2e8f0" fontSize={10}
                       style={{ pointerEvents: "none", fontWeight: isSearch ? 700 : 400 }}>
                       {p.PLAYER_NAME}
                     </text>
@@ -349,6 +302,20 @@ export default function Explore() {
               {hover.overall_score != null && (
                 <div className="text-slate-500 mt-0.5">Overall: {Math.round(hover.overall_score * 100)}</div>
               )}
+              {/* Top-2 secondary scores */}
+              <div className="mt-1 flex flex-wrap gap-1">
+                {CORE.filter(c => c !== hover.primary_arch)
+                  .map(c => ({ arch: c, s: parseFloat(hover[`score_${c}`] || 0) }))
+                  .filter(({ s }) => s > 0.70)
+                  .sort((a,b) => b.s - a.s)
+                  .slice(0, 2)
+                  .map(({ arch, s }) => (
+                    <span key={arch} className="px-1.5 py-0.5 rounded text-[10px]"
+                      style={{ background: (ARCH_COLORS[arch] || "#94a3b8") + "22", color: ARCH_COLORS[arch] || "#94a3b8" }}>
+                      {arch} {Math.round(s * 100)}
+                    </span>
+                  ))}
+              </div>
             </div>
           )}
         </div>
@@ -357,22 +324,17 @@ export default function Explore() {
       {/* Legend */}
       <div className="flex flex-wrap gap-2 mt-1 items-center">
         {filter && (
-          <button
-            onClick={() => setFilter("")}
-            className="text-xs px-2.5 py-1 rounded-full border border-slate-600 text-slate-400 hover:text-white transition-colors"
-          >
+          <button onClick={() => setFilter("")}
+            className="text-xs px-2.5 py-1 rounded-full border border-slate-600 text-slate-400 hover:text-white transition-colors">
             {lang === "tr" ? "× Filtreyi kaldır" : "× Clear filter"}
           </button>
         )}
         {Object.entries(ARCH_COLORS).map(([arch, col]) => (
-          <button key={arch}
-            onClick={() => setFilter(filter === arch ? "" : arch)}
+          <button key={arch} onClick={() => setFilter(filter === arch ? "" : arch)}
             className={`flex items-center gap-1.5 text-xs px-2 py-1 rounded-full border transition-colors ${
-              filter === arch
-                ? "border-white/30 bg-white/10 text-white"
-                : "border-transparent text-slate-400 hover:text-white"
-            }`}>
-            <span style={{ background: col, width: 8, height: 8, borderRadius: "50%", display: "inline-block" }} />
+              filter === arch ? "border-white/30 bg-white/10 text-white"
+                             : "border-transparent text-slate-400 hover:text-white"}`}>
+            <span style={{ background: col, width: 8, height: 8, borderRadius: "50%", display: "inline-block" }}/>
             {arch}
           </button>
         ))}
