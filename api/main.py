@@ -13,6 +13,7 @@ import numpy as np
 from fastapi import FastAPI, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
 ROOT = Path(__file__).resolve().parent.parent
 # Render disk mount path override (env var DATA_DIR ile dışarıdan ayarlanabilir)
@@ -1463,4 +1464,13 @@ def get_pca_loadings():
 
 frontend_dist = ROOT / "frontend" / "dist"
 if frontend_dist.exists():
-    app.mount("/", StaticFiles(directory=str(frontend_dist), html=True), name="static")
+    # Catch-all: React Router path'lerini index.html'e yönlendir (SPA routing)
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def spa_fallback(full_path: str):
+        index = frontend_dist / "index.html"
+        file_path = frontend_dist / full_path
+        if file_path.exists() and file_path.is_file():
+            return FileResponse(str(file_path))
+        return FileResponse(str(index))
+
+    app.mount("/assets", StaticFiles(directory=str(frontend_dist / "assets")), name="assets")
