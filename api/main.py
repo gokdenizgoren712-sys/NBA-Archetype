@@ -74,8 +74,12 @@ def _assign_pos5(df: pd.DataFrame) -> pd.Series:
             result.append("SF")
         elif pu in ("PF",):
             result.append("PF")
-        elif pu in ("PG-SG", "SG-PG"):
-            result.append("PG" if a >= 5.0 else "SG")
+        elif pu in ("PG-SG",):
+            # BBref PG-SG: PG birincil — yüksek eşik ile gerçek playmaker'ları seç
+            result.append("PG" if a >= 6.5 else "SG")
+        elif pu in ("SG-PG",):
+            # BBref SG-PG: SG birincil — sadece çok yüksek AST'ta PG ver
+            result.append("PG" if a >= 7.5 else "SG")
         elif pu in ("SG-SF", "SF-SG"):
             result.append("SF" if r >= 5.0 else "SG")
         elif pu in ("SF-PF", "PF-SF"):
@@ -94,7 +98,8 @@ def _assign_pos5(df: pd.DataFrame) -> pd.Series:
         elif "FORWARD" in pu:
             result.append("PF" if r >= 6.5 else "SF")
         elif "GUARD" in pu:
-            result.append("PG" if a >= 5.0 else "SG")
+            # nba_api "Guard": gerçek playmaker eşiği daha yüksek tutulur
+            result.append("PG" if a >= 6.5 else "SG")
         else:
             result.append("SF")
     return pd.Series(result, index=df.index)
