@@ -71,16 +71,7 @@ const CONTENT = {
 
     authors_label: "Hazırlayanlar",
     authors: [
-      {
-        name: "Gökdeniz Gören",
-        role: "Konsept, Arketip Tasarımı & Jargon Sözlüğü",
-        note: "Projenin fikir babası. NBA gözleminden damıtılmış arketip taksonomisini ve oyuncu kimlik dilini oluşturdu.",
-      },
-      {
-        name: "Alp Sina Büyükkapucu",
-        role: "Sistem Mimarisi & Geliştirme",
-        note: "Veri altyapısını, persantil motorunu, lineup uyum algoritmalarını ve web arayüzünü geliştirdi.",
-      },
+      { name: "Gökdeniz Gören" },
     ],
 
     disclaimer: `Bu site resmi bir NBA ürünü değildir. Tüm veriler nba_api aracılığıyla stats.nba.com'dan
@@ -156,16 +147,7 @@ const CONTENT = {
 
     authors_label: "Created By",
     authors: [
-      {
-        name: "Gökdeniz Gören",
-        role: "Concept, Archetype Design & Jargon Dictionary",
-        note: "The originator of the project. Built the archetype taxonomy and player identity language distilled from years of NBA observation.",
-      },
-      {
-        name: "Alp Sina Büyükkapucu",
-        role: "System Architecture & Development",
-        note: "Built the data infrastructure, percentile engine, lineup compatibility algorithms, and the web interface.",
-      },
+      { name: "Gökdeniz Gören" },
     ],
 
     disclaimer: `This site is not an official NBA product. All data is sourced from stats.nba.com via the nba_api library.
@@ -241,19 +223,13 @@ export default function About() {
           <span className="w-1 h-5 bg-blue-500 rounded-full inline-block" />
           {c.authors_label}
         </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {c.authors.map(({ name, role, note }) => (
-            <div key={name} className="bg-slate-900 border border-slate-800 rounded-xl p-5">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-9 h-9 rounded-full bg-blue-900/60 border border-blue-700/40 flex items-center justify-center text-blue-300 font-bold text-sm shrink-0">
-                  {name.split(" ").map(w => w[0]).join("").slice(0, 2)}
-                </div>
-                <div>
-                  <div className="text-white font-semibold text-sm">{name}</div>
-                  <div className="text-blue-400 text-[11px]">{role}</div>
-                </div>
+        <div className="flex">
+          {c.authors.map(({ name }) => (
+            <div key={name} className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full bg-blue-900/60 border border-blue-700/40 flex items-center justify-center text-blue-300 font-bold text-sm shrink-0">
+                {name.split(" ").map(w => w[0]).join("").slice(0, 2)}
               </div>
-              <p className="text-slate-500 text-xs leading-relaxed">{note}</p>
+              <div className="text-white font-semibold text-sm">{name}</div>
             </div>
           ))}
         </div>
@@ -263,7 +239,7 @@ export default function About() {
       <div className="border-t border-slate-800 pt-6">
         <p className="text-slate-600 text-xs leading-relaxed text-center">{c.disclaimer}</p>
         <p className="text-slate-700 text-[10px] text-center mt-2">
-          © 2025-26 · Gökdeniz Gören & Alp Sina Büyükkapucu
+          © 2025-26 · Gökdeniz Gören
         </p>
       </div>
 
