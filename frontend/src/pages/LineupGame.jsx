@@ -55,23 +55,50 @@ const POS_COLORS = {
   C: "bg-red-900/60 text-red-300 border-red-700/50",
 };
 
+// ── Per-oyuncu boyutsal skor ──────────────────────────────────────────────────
+function computePlayerFit(p) {
+  const _s = k => { const v = parseFloat(p[`score_${k}`] ?? 0); return isNaN(v) ? 0 : Math.max(0, v); };
+  const creation  = Math.min(1, Math.max(_s("Ecosystem")*1.10, _s("Engine"), _s("Hub")*0.90, _s("Creator")*0.88, _s("Initiator")*0.80));
+  const spacing   = Math.min(1, Math.max(_s("Spacer"), _s("3-and-D")*0.90, _s("Stretch")*0.85, _s("Gravity")*0.95, _s("Three-Level")*0.80));
+  const defense   = Math.min(1, Math.max(_s("Anchor")*1.10, _s("Stopper"), _s("Two-Way")*0.90, _s("Force")*0.65));
+  const finishing = Math.min(1, Math.max(_s("Finisher"), _s("Rim Runner")*0.95, _s("Force")*0.75, _s("Slashing")*0.82));
+  const overall   = Math.min(1, Math.max(0, parseFloat(p.overall_score || 0)));
+  // Era faktörü: oyuncu kendi erasındaki metaya göre değerlendiriliyor
+  const era = getEra(p._season);
+  const arch = p.primary_arch || "";
+  const eraWeight = (ERA_ARCH_WEIGHTS[era.id] || {})[arch] ?? 1.0;
+  const eraFactor = Math.min(1.15, Math.max(0.75, eraWeight));
+  const raw = (overall + creation + spacing + defense + finishing) / 5;
+  return { creation, spacing, defense, finishing, overall, raw, fit: Math.min(1, raw * eraFactor), eraFactor, era };
+}
+
 // ── Lineup fit hesaplama ──────────────────────────────────────────────────────
 function computeLineupFit(players) {
   if (!players || players.length < 2) return null;
-  const _s = (p,k) => { const v=parseFloat(p[`score_${k}`]??0); return isNaN(v)?0:Math.max(0,v); };
-  const creationPP = players.map(p=>Math.min(1,Math.max(_s(p,"Ecosystem")*1.10,_s(p,"Engine"),_s(p,"Hub")*0.90,_s(p,"Creator")*0.88,_s(p,"Connector")*0.75,_s(p,"Initiator")*0.80)));
-  const creation=Math.min(1,0.60*Math.min(1,Math.max(...creationPP))+0.25*Math.min(1,creationPP.filter(v=>v>=0.65).length/3)+0.15*Math.max(...players.map(p=>_s(p,"Playmaking"))));
-  const spacingPP=players.map(p=>Math.min(1,Math.max(_s(p,"Spacer"),_s(p,"3-and-D")*0.90,_s(p,"Stretch")*0.85,_s(p,"Gravity")*0.95,_s(p,"Three-Level")*0.80)));
-  const nShooters=spacingPP.filter(v=>v>=0.70).length;
-  const spacing=Math.min(1,0.60*[0.15,0.48,0.80,1.00,0.92,0.78][Math.min(nShooters,5)]+0.40*(spacingPP.reduce((a,b)=>a+b,0)/players.length));
-  const intDef=Math.min(1,Math.max(...players.map(p=>Math.max(_s(p,"Anchor")*1.10,_s(p,"Force")*0.65))));
-  const perDef=Math.min(1,Math.max(...players.map(p=>Math.max(_s(p,"Stopper"),_s(p,"Two-Way")*0.90,_s(p,"Point-of-Attack")*0.88,_s(p,"Defensive")*0.92))));
-  const defense=0.35*intDef+0.35*perDef+0.30*Math.min(1,players.filter(p=>Math.max(_s(p,"Two-Way"),_s(p,"Stopper"),_s(p,"Anchor"))>=0.65).length/2.5);
-  const finishing=Math.min(1,Math.max(...players.map(p=>Math.max(_s(p,"Finisher"),_s(p,"Rim Runner")*0.95,_s(p,"Force")*0.75,_s(p,"Slashing")*0.82))));
-  const ballDom=players.filter(p=>Math.max(_s(p,"Engine")*1.05,_s(p,"Ecosystem"))>=0.80).length;
-  const roleFit=Math.max(0,1-Math.max(0,(ballDom-1)*0.18));
-  const synergy=Math.min(0.05,creation*Math.max(0,spacing-0.60)*0.25);
-  return {creation,spacing,defense,finishing,roleFit,nShooters,lineupScore:Math.min(1,0.28*creation+0.27*spacing+0.22*defense+0.12*finishing+0.11*roleFit+synergy),synergyBonus:synergy};
+  const _s = (p, k) => { const v = parseFloat(p[`score_${k}`] ?? 0); return isNaN(v) ? 0 : Math.max(0, v); };
+
+  // Per-oyuncu fit (overall + 4 boyut ortalaması × era faktörü)
+  const perPlayer = players.map(p => computePlayerFit(p));
+  const avgFit = perPlayer.reduce((a, b) => a + b.fit, 0) / perPlayer.length;
+
+  // Role Fit — sadece lineup seviyesinde (top dominansı)
+  const ballDom = players.filter(p => Math.max(_s(p,"Engine")*1.05, _s(p,"Ecosystem")) >= 0.80).length;
+  const roleFit = Math.max(0, 1 - Math.max(0, (ballDom - 1) * 0.18));
+
+  // nShooters (görüntü için)
+  const nShooters = perPlayer.filter(pp => pp.spacing >= 0.70).length;
+
+  // Lineup skoru = player fit ortalaması, Role Fit ince ayar yapar
+  const lineupScore = Math.min(1, avgFit * (0.85 + 0.15 * roleFit));
+
+  // Ortalama pillar değerleri (analiz için)
+  const avg = f => perPlayer.reduce((a, b) => a + b[f], 0) / perPlayer.length;
+
+  return {
+    creation: avg("creation"), spacing: avg("spacing"),
+    defense: avg("defense"),  finishing: avg("finishing"),
+    roleFit, nShooters, lineupScore, perPlayer,
+  };
 }
 
 // ── Era sistemi ───────────────────────────────────────────────────────────────
@@ -281,15 +308,15 @@ const PILLAR_SCORE_KEYS = {
 function analyzeLineup(fit, lineup, roundHistory=[]) {
   const filled = POSITIONS.map(p=>lineup[p]).filter(Boolean);
   const pillars = [
-    { key:"creation",  label:"Creation",  val:fit.creation,  w:0.28,
+    { key:"creation",  label:"Creation",  val:fit.creation,
       fix:"You need a true playmaker — an Engine, Ecosystem, or Creator archetype." },
-    { key:"spacing",   label:"Spacing",   val:fit.spacing,   w:0.27,
+    { key:"spacing",   label:"Spacing",   val:fit.spacing,
       fix:`${fit.nShooters} shooter${fit.nShooters===1?"":"s"} detected. Optimal is 2–3. Add a Spacer, 3-and-D, or Gravity player.` },
-    { key:"defense",   label:"Defense",   val:fit.defense,   w:0.22,
+    { key:"defense",   label:"Defense",   val:fit.defense,
       fix:"No interior anchor or perimeter stopper. Add an Anchor or Two-Way Stopper." },
-    { key:"finishing", label:"Finishing", val:fit.finishing, w:0.12,
+    { key:"finishing", label:"Finishing", val:fit.finishing,
       fix:"Weak at the rim. Add a Finisher, Rim Runner, or Force player." },
-    { key:"roleFit",   label:"Role Fit",  val:fit.roleFit,   w:0.11,
+    { key:"roleFit",   label:"Role Fit",  val:fit.roleFit,
       fix:"Too many ball-dominant players competing for the same role. Mix in off-ball specialists." },
   ];
 
@@ -337,13 +364,11 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang })
   const grade = pct>=85?"S":pct>=75?"A":pct>=65?"B":pct>=55?"C":"D";
   const gColor = pct>=85?"text-blue-300":pct>=75?"text-sky-300":pct>=65?"text-emerald-300":pct>=55?"text-amber-300":"text-red-400";
 
-  const pillars = [
-    { label:"Creation",  val:fit.creation,  w:0.28 },
-    { label:"Spacing",   val:fit.spacing,   w:0.27, extra:`(${fit.nShooters})` },
-    { label:"Defense",   val:fit.defense,   w:0.22 },
-    { label:"Finishing", val:fit.finishing, w:0.12 },
-    { label:"Role Fit",  val:fit.roleFit,   w:0.11 },
-  ];
+  // Per-oyuncu → pozisyona göre eşle (computeLineupFit POSITIONS sırasında çağrıldı)
+  const perPlayerMap = {};
+  POSITIONS.forEach((pos, i) => {
+    if (lineup[pos] && fit.perPlayer?.[i]) perPlayerMap[pos] = fit.perPlayer[i];
+  });
 
   return (
     <div className="space-y-4">
@@ -357,20 +382,52 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang })
             ⭐ Chemistry Bonus: +{primaryCount} primary slot (+{Math.round(chemBonus*100)} pts)
           </div>
         )}
-        <div className="space-y-2 max-w-xs mx-auto">
-          {pillars.map(({label,val,extra})=>{
-            const p=Math.round(val*100);
-            const bar=p>=80?"bg-blue-500":p>=65?"bg-blue-600/70":p>=45?"bg-slate-600":"bg-red-900/60";
+
+        {/* Per-oyuncu boyutsal skor */}
+        <div className="space-y-2.5 max-w-xs mx-auto mt-3">
+          {POSITIONS.map(pos => {
+            const p = lineup[pos];
+            const pp = perPlayerMap[pos];
+            if (!p || !pp) return null;
+            const fitPct = Math.round(pp.fit * 100);
+            const fitBar = fitPct>=80?"#3b82f6":fitPct>=65?"#475569":"#7f1d1d";
             return (
-              <div key={label} className="flex items-center gap-2">
-                <span className="text-[11px] text-slate-400 w-24 text-right shrink-0">{label}{extra&&<span className="text-slate-600 text-[9px] ml-0.5">{extra}</span>}</span>
-                <div className="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                  <div className={`h-full ${bar} rounded-full`} style={{width:`${p}%`}}/>
+              <div key={pos} className="text-left space-y-1">
+                <div className="flex items-center gap-1.5">
+                  <span className={`text-[8px] font-bold px-1 py-0.5 rounded border shrink-0 ${POS_COLORS[pos]||""}`}>{pos}</span>
+                  <span className="text-[11px] text-white font-medium flex-1 truncate">{p.PLAYER_NAME?.split(" ").slice(-1)[0]}</span>
+                  <span className="text-[10px] font-bold shrink-0" style={{color:fitPct>=75?"#60a5fa":fitPct>=55?"#94a3b8":"#f87171"}}>{fitPct}</span>
                 </div>
-                <span className={`text-[11px] w-6 shrink-0 ${p>=65?"text-blue-300":p>=45?"text-slate-300":"text-red-400"}`}>{p}</span>
+                {/* Overall + 4 boyut mini barları */}
+                <div className="grid grid-cols-5 gap-0.5 pl-4">
+                  {[["OVR",pp.overall],["CRE",pp.creation],["SPC",pp.spacing],["DEF",pp.defense],["FIN",pp.finishing]].map(([lbl,v])=>{
+                    const vp = Math.round(v*100);
+                    return (
+                      <div key={lbl} className="flex flex-col items-center gap-0.5">
+                        <div className="w-full h-1 bg-slate-800 rounded-full overflow-hidden">
+                          <div className="h-full rounded-full" style={{width:`${vp}%`,background:vp>=75?"#3b82f6":vp>=55?"#334155":"#1e293b"}}/>
+                        </div>
+                        <span className="text-[7px] text-slate-600">{lbl}</span>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             );
           })}
+
+          {/* Role Fit — lineup seviyesinde */}
+          <div className="flex items-center gap-2 border-t border-slate-800 pt-2">
+            <span className="text-[11px] text-slate-400 w-24 text-right shrink-0">Role Fit</span>
+            <div className="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+              <div className="h-full rounded-full transition-all"
+                style={{width:`${Math.round(fit.roleFit*100)}%`,
+                  background:fit.roleFit>=0.80?"#3b82f6":fit.roleFit>=0.65?"#475569":"#7f1d1d"}}/>
+            </div>
+            <span className={`text-[11px] w-6 shrink-0 ${fit.roleFit>=0.65?"text-blue-300":"text-red-400"}`}>
+              {Math.round(fit.roleFit*100)}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -708,8 +765,8 @@ export default function LineupGame() {
     const otherSeasons = seasons.filter(s => s !== chosenSeason);
     const pool = otherSeasons.length > 0 ? otherSeasons : seasons;
     const picked = pool[Math.floor(Math.random()*pool.length)];
-    startFullSpin(picked, null);
-  },[jokers.reYear,seasons,chosenSeason,startFullSpin]);
+    startFullSpin(picked, chosenTeam);  // takım sabit kalır
+  },[jokers.reYear,seasons,chosenSeason,chosenTeam,startFullSpin]);
 
   // ── Joker: ikisini de çevir (mevcut sezon+takım kombinasyonu hariç) ──────
   const jokerReBoth = useCallback(()=>{
