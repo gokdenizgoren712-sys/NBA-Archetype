@@ -2,6 +2,33 @@ import { useLang } from "../contexts/LanguageContext";
 
 const CHANGELOG = [
   {
+    version: "v1.1",
+    date: "Haziran 2026",
+    date_en: "June 2026",
+    label: "Oyun & Pozisyon Güncellemesi",
+    label_en: "Game & Position Update",
+    items_tr: [
+      "Tarihsel oyuncular için pozisyon tahmini düzeltildi (LeBron, Kawhi artık SF/PF görünüyor)",
+      "Oyun sonunda zayıf pillar için somut oyuncu önerisi (isim + sezon + takım)",
+      "2TM/3TM/TOT oyuncuları oyundan filtrelendi — her takım kendi kadrosuyla",
+      "Jokerler artık mevcut sezon/takımı tekrar seçmiyor",
+      "Oyun sayfasına açıklama + arketip strateji rehberi eklendi",
+      "Arketip haritasındaki cluster daireleri kaldırıldı",
+      "Site tamamen İngilizce'ye geçirildi",
+      "Sayfa yenileme ve direkt link erişimi artık 404 vermiyor (SPA routing düzeltildi)",
+    ],
+    items_en: [
+      "Historical player positions fixed — LeBron, Kawhi now correctly shown as SF/PF",
+      "Post-game analysis suggests a specific player by name for your weakest pillar",
+      "2TM/3TM/TOT rows removed from game — each team shows its own roster",
+      "Jokers no longer re-spin the same season or team",
+      "Game page now includes a full explanation and archetype strategy guide",
+      "Cluster circles removed from the Archetype Map",
+      "Site switched to English-only",
+      "Page refresh and direct links no longer return 404 (SPA routing fixed)",
+    ],
+  },
+  {
     version: "v1.0",
     date: "Haziran 2026",
     date_en: "June 2026",
