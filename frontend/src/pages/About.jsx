@@ -1,5 +1,33 @@
 import { useLang } from "../contexts/LanguageContext";
 
+const CHANGELOG = [
+  {
+    version: "v1.0",
+    date: "Haziran 2026",
+    date_en: "June 2026",
+    label: "İlk Sürüm",
+    label_en: "Initial Release",
+    items_tr: [
+      "12 temel arketip + 22 modifier tag sistemi",
+      "1989-90'dan günümüze tüm oyunculara persantil tabanlı puanlama",
+      "5 pilarlı lineup uyum motoru (Creation · Spacing · Defense · Finishing · Role Fit)",
+      "Arketip affinite matrisi — hangi arketipler kazanır?",
+      "Tarihsel oyuncu arama ve radar profilleri",
+      "Lineup Builder oyunu — farklı dönemlerden kadro kur",
+      "Oyuncu karşılaştırma sayfası",
+    ],
+    items_en: [
+      "12 core archetypes + 22 modifier tag system",
+      "Percentile-based scoring for all players from 1989-90 to present",
+      "5-pillar lineup fit engine (Creation · Spacing · Defense · Finishing · Role Fit)",
+      "Archetype affinity matrix — which archetypes win together?",
+      "Historical player search with radar profiles",
+      "Lineup Builder game — build a roster across different eras",
+      "Player comparison page",
+    ],
+  },
+];
+
 const CONTENT = {
   tr: {
     title: "Hakkımızda",
@@ -160,7 +188,10 @@ export default function About() {
   const c = CONTENT[lang] || CONTENT.tr;
 
   return (
-    <div className="p-6 max-w-3xl mx-auto space-y-10 pb-16">
+    <div className="p-6 max-w-6xl mx-auto pb-16">
+    <div className="flex gap-8 items-start">
+    {/* Sol kolon — ana içerik */}
+    <div className="flex-1 space-y-10 min-w-0">
 
       {/* Hero */}
       <div className="text-center pt-4 pb-2">
@@ -243,6 +274,47 @@ export default function About() {
         </p>
       </div>
 
+    </div>{/* /sol kolon */}
+
+    {/* Sağ kolon — Sürüm notları */}
+    <div className="w-72 shrink-0 sticky top-6 space-y-3">
+      <div className="flex items-center gap-2 mb-1">
+        <span className="w-1 h-5 bg-blue-500 rounded-full inline-block" />
+        <h2 className="text-white font-semibold text-sm">
+          {lang === "tr" ? "Sürüm Notları" : "Release Notes"}
+        </h2>
+      </div>
+      {CHANGELOG.map((entry) => (
+        <div key={entry.version} className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
+          {/* Versiyon başlık */}
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-blue-400 bg-blue-950/50 border border-blue-800/40 px-2 py-0.5 rounded-full">
+              {entry.version}
+            </span>
+            <span className="text-[10px] text-slate-500">
+              {lang === "tr" ? entry.date : entry.date_en}
+            </span>
+          </div>
+          <div className="text-[11px] font-semibold text-slate-300">
+            {lang === "tr" ? entry.label : entry.label_en}
+          </div>
+          {/* Madde listesi */}
+          <ul className="space-y-1.5">
+            {(lang === "tr" ? entry.items_tr : entry.items_en).map((item, i) => (
+              <li key={i} className="flex gap-2 text-[11px] text-slate-400 leading-relaxed">
+                <span className="text-blue-500 mt-0.5 shrink-0">+</span>
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+      <p className="text-[10px] text-slate-600 text-center pt-1">
+        {lang === "tr" ? "Daha fazla güncelleme yakında" : "More updates coming soon"}
+      </p>
+    </div>
+
+    </div>{/* /flex wrapper */}
     </div>
   );
 }
