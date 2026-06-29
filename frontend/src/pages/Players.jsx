@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Search } from "lucide-react";
 import { api } from "../api";
 import PlayerCard from "../components/PlayerCard";
@@ -10,10 +10,8 @@ const MODIFIERS = ["Two-Way","Heliocentric","Jumbo","Pressure","Shotmaker","Thre
 const POSITIONS = ["","PG","SG","SF","PF","C"];
 
 const TAG_LABEL = {
-  "Point-": "Point-Forward",
-  "3-and-D": "3-and-D",
-  "Pick-and-Roll": "Pick-and-Roll",
-  "Point-of-Attack": "Point-of-Attack",
+  "Point-": "Point-Forward", "3-and-D": "3-and-D",
+  "Pick-and-Roll": "Pick-and-Roll", "Point-of-Attack": "Point-of-Attack",
 };
 const tl = (n) => TAG_LABEL[n] || n;
 
@@ -23,142 +21,207 @@ function topPct(pct) {
   return p >= 99 ? "<1%" : `${100 - p}%`;
 }
 
+const POS_COLOR = {
+  PG: "bg-violet-500/20 text-violet-300",
+  SG: "bg-blue-500/20 text-blue-300",
+  SF: "bg-emerald-500/20 text-emerald-300",
+  PF: "bg-orange-500/20 text-orange-300",
+  C:  "bg-red-500/20 text-red-300",
+};
+
 export default function Players() {
-  const [search, setSearch]     = useState("");
-  const [team, setTeam]         = useState("");
-  const [pos, setPos]           = useState("");
-  const [arch, setArch]         = useState("");   // core noun filtre
-  const [mod, setMod]           = useState("");   // modifier filtre
-  const [sortBy, setSortBy]     = useState("overall_score");
+  const [seasons, setSeasons]   = useState([]);
+  const [season, setSeason]     = useState("2025-26");
+
+  const [search, setSearch]         = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const [pos, setPos]               = useState("");
+  const [arch, setArch]             = useState("");
+  const [mod, setMod]               = useState("");
+  const [team, setTeam]             = useState("");
+  const [sortBy, setSortBy]         = useState("overall_score");
+
   const [players, setPlayers]   = useState([]);
   const [total, setTotal]       = useState(0);
   const [loading, setLoading]   = useState(false);
+  const [teamList, setTeamList] = useState([]);
+  const debounceRef = useRef(null);
 
-  const [selected, setSelected] = useState(null);
-  const [detail, setDetail]     = useState(null);
-  const [tab, setTab]           = useState("radar");
-
-  const [compare, setCompare]       = useState(null);
-  const [compareDetail, setCompareDetail] = useState(null);
+  const [selected, setSelected]     = useState(null);
+  const [detail, setDetail]         = useState(null);
+  const [tab, setTab]               = useState("radar");
   const [similar, setSimilar]       = useState(null);
   const [similarLoading, setSimilarLoading] = useState(false);
   const [career, setCareer]         = useState(null);
   const [careerLoading, setCareerLoading] = useState(false);
-  const [teamList, setTeamList]     = useState([]);
+
+  const isCurrent = season === "2025-26";
+
+  useEffect(() => {
+    api.seasons().then(d => setSeasons(d.seasons || [])).catch(() => {});
+    api.teams().then(d => setTeamList(d.teams || [])).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    setSelected(null); setDetail(null);
+    setSimilar(null); setCareer(null);
+    setSearch(""); setSearchInput("");
+    setPos(""); setArch(""); setMod(""); setTeam("");
+    setSortBy("overall_score");
+    setPlayers([]); setTotal(0);
+  }, [season]);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const params = { limit: 60 };
-      if (search) params.search = search;
-      if (team)   params.team   = team;
-      if (pos)    params.position = pos;
-      if (arch)   params.arch     = arch;
-      if (mod)    params.modifier = mod;
-      params.sort_by = sortBy;
-      const data = await api.players(params);
-      setPlayers(data.players || []);
-      setTotal(data.total || 0);
+      if (isCurrent) {
+        const params = { limit: 60, sort_by: sortBy };
+        if (search) params.search = search;
+        if (team)   params.team   = team;
+        if (pos)    params.position = pos;
+        if (arch)   params.arch   = arch;
+        if (mod)    params.modifier = mod;
+        const data = await api.players(params);
+        setPlayers(data.players || []);
+        setTotal(data.total || 0);
+      } else {
+        const params = { limit: 200, sort_col: sortBy, sort_asc: false };
+        if (search) params.search = search;
+        const data = await api.historical(season, params);
+        let rows = data.players || [];
+        if (pos)  rows = rows.filter(p => (p.POSITION || "") === pos);
+        if (arch) rows = rows.filter(p => (p.primary_arch || "") === arch);
+        setPlayers(rows);
+        setTotal(data.total || rows.length);
+      }
     } catch (e) { console.error(e); }
     setLoading(false);
-  }, [search, team, pos, arch, mod, sortBy]);
+  }, [isCurrent, season, search, team, pos, arch, mod, sortBy]);
 
   useEffect(() => { load(); }, [load]);
 
-  useEffect(() => {
-    api.teams().then(d => setTeamList(d.teams || [])).catch(() => {});
-  }, []);
-
   const openPlayer = async (p) => {
     setSelected(p);
-    setDetail(null);
-    setCompare(null);
-    setCompareDetail(null);
-    setSimilar(null);
-    setCareer(null);
-    setTab("radar");
-    const sc = await api.playerScores(p.PLAYER_NAME);
-    setDetail(sc);
-  };
-
-  const openCompare = async (name, team, arch) => {
+    setDetail(null); setSimilar(null); setCareer(null); setTab("radar");
     try {
-      const sc = await api.playerScores(name);
-      setCompare({ PLAYER_NAME: name, TEAM_ABBREVIATION: team, primary_arch: arch });
-      setCompareDetail(sc);
-      setTab("radar");
+      const sc = isCurrent
+        ? await api.playerScores(p.PLAYER_NAME)
+        : await api.historicalPlayer(season, p.PLAYER_NAME);
+      setDetail(sc);
     } catch (e) { console.error(e); }
   };
 
+  const clearFilters = () => {
+    setSearch(""); setSearchInput(""); setPos(""); setArch(""); setMod(""); setTeam("");
+  };
+  const hasFilters = search || pos || arch || mod || team;
+
+  // historical oyuncu nesnesini PlayerCard'a uyumlu hale getir
+  const toCardPlayer = (p) => ({
+    ...p,
+    overall_tier: p.overall_tier || p.versatility_tier || "",
+  });
+
   return (
     <div className="flex h-full">
-      {/* Player list */}
       <div className="flex-1 flex flex-col overflow-hidden">
+
+        {/* Filter bar */}
         <div className="p-4 border-b border-slate-800 flex flex-wrap gap-2 items-center bg-slate-950">
-          <div className="relative flex-1 min-w-[180px]">
+          <select
+            value={season}
+            onChange={e => setSeason(e.target.value)}
+            className="bg-slate-900 border border-blue-700/50 rounded-lg px-3 py-1.5 text-sm text-blue-300 font-medium focus:outline-none focus:border-blue-500"
+          >
+            <option value="2025-26">2025-26 (Current)</option>
+            {seasons.filter(s => s !== "2025-26").map(s => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+
+          <div className="relative flex-1 min-w-[160px]">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
             <input
-              value={search} onChange={e => setSearch(e.target.value)}
+              value={searchInput}
+              onChange={e => {
+                setSearchInput(e.target.value);
+                clearTimeout(debounceRef.current);
+                debounceRef.current = setTimeout(() => setSearch(e.target.value), 300);
+              }}
               placeholder="Search player..."
               className="w-full bg-slate-900 border border-slate-700 rounded-lg pl-8 pr-3 py-1.5 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-violet-500"
             />
           </div>
-          <select value={team} onChange={e => setTeam(e.target.value)}
-            className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-violet-500">
-            <option value="">Team</option>
-            {teamList.map(t => <option key={t} value={t}>{t}</option>)}
-          </select>
+
           <select value={pos} onChange={e => setPos(e.target.value)}
             className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-violet-500">
             <option value="">All positions</option>
             {POSITIONS.filter(Boolean).map(p => <option key={p} value={p}>{p}</option>)}
           </select>
+
           <select value={arch} onChange={e => { setArch(e.target.value); setMod(""); }}
             className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-violet-500">
-            <option value="">All</option>
+            <option value="">All archetypes</option>
             {CORE.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
-          <select value={mod} onChange={e => { setMod(e.target.value); setArch(""); }}
-            className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-violet-500">
-            <option value="">Modifier</option>
-            {MODIFIERS.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
+
+          {isCurrent && (
+            <select value={mod} onChange={e => { setMod(e.target.value); setArch(""); }}
+              className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-violet-500">
+              <option value="">Modifier</option>
+              {MODIFIERS.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          )}
+
+          {isCurrent && (
+            <select value={team} onChange={e => setTeam(e.target.value)}
+              className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-violet-500">
+              <option value="">Team</option>
+              {teamList.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+          )}
+
           <select value={sortBy} onChange={e => setSortBy(e.target.value)}
             className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500">
             <option value="overall_score">Overall ↓</option>
-            <option value="versatility_score">V.Score ↓</option>
+            {isCurrent && <option value="versatility_score">V.Score ↓</option>}
             <option value="PTS">PTS ↓</option>
             <option value="REB">REB ↓</option>
             <option value="AST">AST ↓</option>
-            <option value="BPM">BPM ↓</option>
+            {isCurrent && <option value="BPM">BPM ↓</option>}
             <option value="GP">GP ↓</option>
           </select>
-          {/* Aktif filtre sayısı + temizle butonu */}
-          {(search || team || pos || arch || mod) && (
-            <button
-              onClick={() => { setSearch(""); setTeam(""); setPos(""); setArch(""); setMod(""); }}
-              className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs bg-violet-600/20 text-violet-300 border border-violet-600/30 hover:bg-violet-600/40 transition-colors"
-            >
+
+          {hasFilters && (
+            <button onClick={clearFilters}
+              className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs bg-violet-600/20 text-violet-300 border border-violet-600/30 hover:bg-violet-600/40 transition-colors">
               ✕ Clear
             </button>
           )}
+
           <span className="text-xs text-slate-500">{total} players</span>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4">
+        {/* Kart grid */}
+        <div className="flex-1 overflow-y-auto">
           {loading ? (
             <div className="text-center text-slate-500 py-12">Loading...</div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {players.map((p, i) => (
-                <PlayerCard key={i} player={p} rank={p.overall_score != null ? i + 1 : null} onClick={openPlayer} />
+                <PlayerCard
+                  key={i}
+                  player={toCardPlayer(p)}
+                  rank={p.overall_score != null ? i + 1 : null}
+                  onClick={openPlayer}
+                />
               ))}
             </div>
           )}
         </div>
       </div>
 
-      {/* Detail panel — mobilde full-screen modal, masaüstünde sidebar */}
+      {/* Detail panel */}
       {selected && (
         <div className="
           fixed inset-0 z-50 bg-slate-950 flex flex-col
@@ -167,48 +230,44 @@ export default function Players() {
           <div className="p-4 border-b border-slate-800 flex justify-between items-start shrink-0">
             <div>
               <div className="font-bold text-white">{selected.PLAYER_NAME}</div>
-              <div className="text-xs text-slate-400 mt-0.5">
-                {selected.TEAM_ABBREVIATION} · {selected.POS5 || selected.POSITION || "—"}
+              <div className="flex items-center gap-1.5 mt-0.5">
+                {detail?.position && (
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${POS_COLOR[detail.position] || "bg-slate-700 text-slate-400"}`}>
+                    {detail.position}
+                  </span>
+                )}
+                <span className="text-xs text-slate-400">
+                  {selected.TEAM_ABBREVIATION}
+                  {!isCurrent && ` · ${season}`}
+                </span>
               </div>
-              {compare && (
-                <div className="mt-1 flex items-center gap-1.5">
-                  <span className="text-[10px] text-amber-400">vs</span>
-                  <span className="text-xs text-amber-300 font-medium">{compare.PLAYER_NAME}</span>
-                  <button onClick={() => { setCompare(null); setCompareDetail(null); }}
-                    className="text-slate-600 hover:text-slate-300 text-xs">×</button>
-                </div>
-              )}
             </div>
-            <button onClick={() => { setSelected(null); setCompare(null); }}
+            <button onClick={() => { setSelected(null); setDetail(null); }}
               className="text-slate-500 hover:text-white text-lg leading-none">×</button>
           </div>
 
-          {/* Tabs */}
           <div className="flex border-b border-slate-800 shrink-0">
-            {[["radar","Radar"],["scores","Scores"],["similar","Similar"],["career","Career"]].map(([k,l]) => (
+            {(isCurrent
+              ? [["radar","Radar"],["scores","Scores"],["similar","Similar"],["career","Career"]]
+              : [["radar","Radar"],["scores","Scores"]]
+            ).map(([k,l]) => (
               <button key={k} onClick={async () => {
                 setTab(k);
-                if (k === "similar" && !similar && selected) {
+                if (k === "similar" && !similar && isCurrent) {
                   setSimilarLoading(true);
-                  try {
-                    const res = await api.similarPlayers(selected.PLAYER_NAME, 10);
-                    setSimilar(res.similar);
-                  } catch(e) { console.error(e); }
+                  try { const r = await api.similarPlayers(selected.PLAYER_NAME, 10); setSimilar(r.similar); }
+                  catch(e) { console.error(e); }
                   setSimilarLoading(false);
                 }
-                if (k === "career" && !career && selected) {
+                if (k === "career" && !career && isCurrent) {
                   setCareerLoading(true);
-                  try {
-                    const res = await api.playerCareer(selected.PLAYER_NAME);
-                    setCareer(res);
-                  } catch(e) { console.error(e); setCareer({ error: true }); }
+                  try { const r = await api.playerCareer(selected.PLAYER_NAME); setCareer(r); }
+                  catch(e) { setCareer({ error: true }); }
                   setCareerLoading(false);
                 }
               }}
                 className={`flex-1 py-2 text-xs font-medium transition-colors ${
-                  tab === k
-                    ? "text-violet-400 border-b-2 border-violet-500"
-                    : "text-slate-500 hover:text-slate-300"
+                  tab === k ? "text-violet-400 border-b-2 border-violet-500" : "text-slate-500 hover:text-slate-300"
                 }`}>{l}</button>
             ))}
           </div>
@@ -222,29 +281,24 @@ export default function Players() {
                   <div className="p-3">
                     <RadarProfile
                       scores={detail.scores}
-                      scores2={compareDetail?.scores}
                       name={detail.name}
-                      name2={compareDetail?.name}
                       primaryArch={detail.primary_arch}
-                      primaryArch2={compareDetail?.primary_arch}
                     />
-                    {!compare && (
-                      <p className="text-[10px] text-slate-600 text-center mt-1">
-                        Click a duo partner to compare on radar
-                      </p>
-                    )}
                     <div className="mt-3 grid grid-cols-4 gap-2">
-                      {["PTS","REB","AST","GP"].map(k => (
-                        <div key={k} className="bg-slate-900 rounded-lg p-2 text-center">
-                          <div className="text-sm font-bold text-white">
-                            {k === "GP" ? selected[k] : Number(selected[k] || 0).toFixed(1)}
+                      {["PTS","REB","AST","GP"].map(k => {
+                        const val = selected[k];
+                        return (
+                          <div key={k} className="bg-slate-900 rounded-lg p-2 text-center">
+                            <div className="text-sm font-bold text-white">
+                              {k === "GP" ? (val ?? "—") : val != null ? Number(val).toFixed(1) : "—"}
+                            </div>
+                            <div className="text-[9px] text-slate-500 uppercase">{k}</div>
                           </div>
-                          <div className="text-[9px] text-slate-500 uppercase">{k}</div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                     <div className="mt-2 text-center">
-                      <span className="text-xs text-slate-400">Primary Archetype: </span>
+                      <span className="text-xs text-slate-400">Archetype: </span>
                       <span className="text-xs font-semibold text-violet-300">{detail.primary_arch}</span>
                       {detail.overall_score != null ? (
                         <>
@@ -252,27 +306,12 @@ export default function Players() {
                           <span className="text-xs font-semibold text-violet-300">
                             {Math.round(detail.overall_score * 100)}
                           </span>
-                          {detail.overall_tier && (
-                            <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded bg-violet-900/30 text-violet-400 border border-violet-700/30">
-                              {detail.overall_tier}
-                            </span>
-                          )}
                           {detail.overall_pct != null && (
-                            <span className="ml-1 text-[10px] text-slate-500">
-                              top {topPct(detail.overall_pct)}
-                            </span>
-                          )}
-                          {detail.bpm != null && (
-                            <span className="ml-2 text-[10px] text-slate-500">
-                              BPM {detail.bpm > 0 ? "+" : ""}{detail.bpm}
-                            </span>
+                            <span className="ml-1 text-[10px] text-slate-500">top {topPct(detail.overall_pct)}</span>
                           )}
                         </>
                       ) : (
-                        <>
-                          <span className="mx-2 text-slate-700">·</span>
-                          <span className="text-xs text-slate-500 italic">not ranked (GP &lt; 35)</span>
-                        </>
+                        <span className="ml-2 text-xs text-slate-500 italic">not scored (GP &lt; 35)</span>
                       )}
                     </div>
                   </div>
@@ -284,34 +323,31 @@ export default function Players() {
                     {CORE.map(c => (
                       <ScoreBar key={c} label={c} value={detail.scores?.[c] || 0} highlight />
                     ))}
-                    {detail.active_modifiers?.length > 0 && (() => {
-                      // Modifier'ları score'a göre azalan sırayla göster
+                    {isCurrent && detail.active_modifiers?.length > 0 && (() => {
                       const sorted = [...detail.active_modifiers].sort(
                         (a, b) => (detail.modifier_scores?.[b] || 0) - (detail.modifier_scores?.[a] || 0)
                       );
                       return (
-                      <>
-                        <div className="text-[10px] uppercase tracking-wider text-slate-600 mt-4 mb-2">Active Modifier Tags</div>
-                        <div className="flex flex-wrap gap-1.5 mb-3">
+                        <>
+                          <div className="text-[10px] uppercase tracking-wider text-slate-600 mt-4 mb-2">Active Modifier Tags</div>
+                          <div className="flex flex-wrap gap-1.5 mb-3">
+                            {sorted.map(m => (
+                              <span key={m} className="text-[10px] px-2 py-0.5 rounded-full bg-violet-900/40 text-violet-300 border border-violet-700/40">{tl(m)}</span>
+                            ))}
+                          </div>
+                          <div className="text-[10px] uppercase tracking-wider text-slate-600 mb-2">Modifier Scores</div>
                           {sorted.map(m => (
-                            <span key={m} className="text-[10px] px-2 py-0.5 rounded-full bg-violet-900/40 text-violet-300 border border-violet-700/40">{tl(m)}</span>
+                            <ScoreBar key={m} label={tl(m)} value={detail.modifier_scores?.[m] || 0} />
                           ))}
-                        </div>
-                        <div className="text-[10px] uppercase tracking-wider text-slate-600 mb-2">Modifier Scores</div>
-                        {sorted.map(m => (
-                          <ScoreBar key={m} label={tl(m)} value={detail.modifier_scores?.[m] || 0} />
-                        ))}
-                      </>
+                        </>
                       );
                     })()}
                   </div>
                 )}
 
-                {tab === "similar" && (
+                {tab === "similar" && isCurrent && (
                   <div className="p-4 space-y-2">
-                    {similarLoading && (
-                      <div className="text-center text-slate-500 text-sm py-6">Loading...</div>
-                    )}
+                    {similarLoading && <div className="text-center text-slate-500 text-sm py-6">Loading...</div>}
                     {!similarLoading && similar && similar.map((p, i) => (
                       <div key={i} className="flex items-center justify-between bg-slate-900 rounded-lg px-3 py-2">
                         <div>
@@ -326,19 +362,14 @@ export default function Players() {
                         </div>
                       </div>
                     ))}
-                    {!similarLoading && !similar && (
-                      <div className="text-center text-slate-600 text-xs py-6">Click "Similar" tab to load</div>
-                    )}
                   </div>
                 )}
 
-                {tab === "career" && (
+                {tab === "career" && isCurrent && (
                   <div className="p-4">
-                    {careerLoading && (
-                      <div className="text-center text-slate-500 text-sm py-6">Loading...</div>
-                    )}
+                    {careerLoading && <div className="text-center text-slate-500 text-sm py-6">Loading...</div>}
                     {!careerLoading && career?.error && (
-                      <div className="text-center text-slate-500 text-xs py-6">Career data not available (historical data required)</div>
+                      <div className="text-center text-slate-500 text-xs py-6">Career data not available</div>
                     )}
                     {!careerLoading && career?.seasons && (
                       <>
@@ -346,9 +377,8 @@ export default function Players() {
                         <div className="space-y-1.5">
                           {career.seasons.slice().reverse().map((s, i) => {
                             const score = s.overall_score != null ? Math.round(s.overall_score * 100) : null;
-                            const isCurrent = s.season === "2025-26";
                             return (
-                              <div key={i} className={`flex items-center gap-2 rounded-lg px-3 py-2 ${isCurrent ? "bg-violet-900/20 border border-violet-700/30" : "bg-slate-900/60"}`}>
+                              <div key={i} className={`flex items-center gap-2 rounded-lg px-3 py-2 ${s.season === "2025-26" ? "bg-violet-900/20 border border-violet-700/30" : "bg-slate-900/60"}`}>
                                 <div className="w-14 shrink-0">
                                   <span className="text-[10px] text-slate-400 font-mono">{s.season}</span>
                                 </div>
@@ -375,7 +405,6 @@ export default function Players() {
                     )}
                   </div>
                 )}
-
               </>
             )}
           </div>

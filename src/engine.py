@@ -34,11 +34,13 @@ def select_signatures(df: pd.DataFrame, force_fallback: bool = False) -> dict:
 
 
 def compute_percentiles(df: pd.DataFrame, metric_cols: list) -> pd.DataFrame:
-    """Her metriği lig içinde rank-persantile çevirir (0..1). Eksik metrik: atlanır."""
+    """Her metriği lig içinde rank-persantile çevirir (0..1). Eksik metrik: atlanır.
+    Clip 0.999: küçük havuzlarda (tarihsel sezonlar, GP filtresi sonrası N<100) en iyi
+    oyuncunun tüm metriklerde 1.0 alıp overall=100 görünmesini önler."""
     pct = pd.DataFrame(index=df.index)
     for col in metric_cols:
         if col in df.columns:
-            pct[col] = df[col].rank(pct=True)
+            pct[col] = df[col].rank(pct=True).clip(upper=0.999)
     return pct
 
 

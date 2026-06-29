@@ -14,6 +14,7 @@ const TIER_COLOR = {
 // Sıralanabilir sütun tanımları
 const COLUMNS = [
   { key: "PLAYER_NAME",      label: "Player",    align: "left",  fmt: v => v,                          numeric: false },
+  { key: "POSITION",         label: "Pos",       align: "center",fmt: v => v || "—",                   numeric: false },
   { key: "GP",               label: "GP",        align: "right", fmt: v => v,                          numeric: true  },
   { key: "MIN",              label: "MIN",        align: "right", fmt: v => Number(v||0).toFixed(1),   numeric: true  },
   { key: "PTS",              label: "PTS",        align: "right", fmt: v => Number(v||0).toFixed(1),   numeric: true  },
@@ -245,6 +246,25 @@ export default function Historical() {
                             </td>
                           );
                         }
+                        if (col.key === "POSITION") {
+                          const pos = p[col.key];
+                          const POS_COLOR = {
+                            PG: "bg-violet-500/20 text-violet-300",
+                            SG: "bg-blue-500/20 text-blue-300",
+                            SF: "bg-emerald-500/20 text-emerald-300",
+                            PF: "bg-orange-500/20 text-orange-300",
+                            C:  "bg-red-500/20 text-red-300",
+                          };
+                          return (
+                            <td key={col.key} className="p-3 text-center">
+                              {pos ? (
+                                <span className={`text-xs px-1.5 py-0.5 rounded font-mono ${POS_COLOR[pos] || "bg-slate-700 text-slate-400"}`}>
+                                  {pos}
+                                </span>
+                              ) : <span className="text-slate-600">—</span>}
+                            </td>
+                          );
+                        }
                         if (col.key === "primary_arch") {
                           return (
                             <td key={col.key} className="p-3 text-left">
@@ -315,7 +335,13 @@ export default function Historical() {
           <div className="p-4 border-b border-slate-800 flex justify-between items-start">
             <div>
               <div className="font-bold text-white text-sm">{selDetail.name}</div>
-              <div className="text-xs text-slate-500">{selDetail.team} · {season}</div>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                {selDetail.position && (() => {
+                  const POS_COLOR = { PG:"bg-violet-500/20 text-violet-300", SG:"bg-blue-500/20 text-blue-300", SF:"bg-emerald-500/20 text-emerald-300", PF:"bg-orange-500/20 text-orange-300", C:"bg-red-500/20 text-red-300" };
+                  return <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${POS_COLOR[selDetail.position]||"bg-slate-700 text-slate-400"}`}>{selDetail.position}</span>;
+                })()}
+                <span className="text-xs text-slate-500">{selDetail.team} · {season}</span>
+              </div>
               {selDetail.primary_arch && (
                 <div className="text-xs text-blue-400 mt-0.5">{selDetail.primary_arch}</div>
               )}

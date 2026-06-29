@@ -2,7 +2,6 @@ import { BrowserRouter, Routes, Route, NavLink, Navigate, useNavigate } from "re
 import { useState, useEffect } from "react";
 import Players    from "./pages/Players";
 import Lineups    from "./pages/Lineups";
-import Historical from "./pages/Historical";
 import Glossary   from "./pages/Glossary";
 import About      from "./pages/About";
 import Explore    from "./pages/Explore";
@@ -15,7 +14,7 @@ import { api } from "./api";
 function Header() {
   const navigate   = useNavigate();
   const { theme, toggle: toggleTheme } = useTheme();
-  const { lang, toggle: toggleLang, t } = useLang();
+  const { lang } = useLang();
   const [meta, setMeta] = useState(null);
 
   useEffect(() => {
@@ -23,20 +22,19 @@ function Header() {
   }, []);
 
   const NAV = [
-    { to: "/players",    label: t("nav_players")    },
-    { to: "/lineups",    label: t("nav_lineups")    },
-    { to: "/historical", label: t("nav_historical") },
-    { to: "/explore",    label: t("nav_explore") },
-    { to: "/compare",    label: t("nav_compare")    },
-    { to: "/game",       label: lang === "tr" ? "Oyun" : "Game" },
-    { to: "/glossary",   label: t("nav_glossary")   },
-    { to: "/about",      label: t("nav_about")      },
+    { to: "/game",     label: "Game"     },
+    { to: "/players",  label: "Players"  },
+    { to: "/lineups",  label: "Lineups"  },
+    { to: "/explore",  label: "Explore"  },
+    { to: "/compare",  label: "Compare"  },
+    { to: "/glossary", label: "Glossary" },
+    { to: "/about",    label: "About"    },
   ];
 
   return (
     <header className="border-b border-slate-800 bg-slate-950 px-6 py-3 flex items-center gap-6 shrink-0">
       <button
-        onClick={() => navigate("/players")}
+        onClick={() => navigate("/game")}
         className="flex items-center gap-2 hover:opacity-80 transition-opacity"
         title="Home"
       >
@@ -62,31 +60,23 @@ function Header() {
         ))}
       </nav>
 
-      {/* Right controls */}
       <div className="ml-auto flex items-center gap-2">
         <span className="text-xs text-slate-600">2025-26</span>
         {meta?.last_updated && (
-          <span
-            className="text-[10px] text-slate-600 hidden sm:block"
-            title={lang === "tr" ? "Son güncelleme" : "Last updated"}
-          >
+          <span className="text-[10px] text-slate-600 hidden sm:block" title="Last updated">
             {meta.last_updated}
           </span>
         )}
-
-        {/* Cache clear */}
         <button
           onClick={async () => {
             await fetch("/api/admin/clear-cache", { method: "POST" });
             window.location.reload();
           }}
-          title="Veriyi yenile (cache temizle)"
+          title="Refresh data"
           className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-700 text-slate-500 hover:text-white hover:border-slate-500 transition-colors text-base"
         >
           ↺
         </button>
-
-        {/* Theme toggle */}
         <button
           onClick={toggleTheme}
           title={theme === "dark" ? "Light mode" : "Dark mode"}
@@ -107,15 +97,16 @@ function AppInner() {
         <main className="flex-1 overflow-hidden">
           <div className="h-full overflow-y-auto">
             <Routes>
-              <Route path="/"           element={<Navigate to="/players" replace />} />
-              <Route path="/players"    element={<Players />} />
-              <Route path="/lineups"    element={<Lineups />} />
-              <Route path="/historical" element={<Historical />} />
-              <Route path="/explore"    element={<Explore />} />
-              <Route path="/compare"    element={<Compare />} />
-              <Route path="/game"       element={<LineupGame />} />
-              <Route path="/glossary"   element={<Glossary />} />
-              <Route path="/about"      element={<About />} />
+              <Route path="/"          element={<Navigate to="/game" replace />} />
+              <Route path="/game"      element={<LineupGame />} />
+              <Route path="/players"   element={<Players />} />
+              <Route path="/lineups"   element={<Lineups />} />
+              <Route path="/explore"   element={<Explore />} />
+              <Route path="/compare"   element={<Compare />} />
+              <Route path="/glossary"  element={<Glossary />} />
+              <Route path="/about"     element={<About />} />
+              {/* Eski /historical linkleri players'a yonlendir */}
+              <Route path="/historical" element={<Navigate to="/players" replace />} />
             </Routes>
           </div>
         </main>

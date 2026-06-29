@@ -1054,7 +1054,8 @@ def get_historical(
     base_cols = ["PLAYER_NAME","GP","MIN","PTS","REB","AST","STL","BLK","FGA","FG_PCT","FG3A","FG3_PCT","Bileşenler"]
     extra = ["overall_score","primary_arch","versatility_score","versatility_tier",
              "TEAM_ABBREVIATION","POSITION"]
-    keep = [c for c in base_cols + extra if c in df.columns]
+    score_cols = [c for c in df.columns if c.startswith("score_")]
+    keep = [c for c in base_cols + extra if c in df.columns] + score_cols
 
     total = len(df)
 
@@ -1263,7 +1264,8 @@ def get_historical_player_scores(season: str, player_name: str):
     else:
         df = _load_historical()
         df = df[df["SEASON"] == season]
-        comp_avail = [c for c in COMP_COLS if c in df.columns]
+        # score_* kolonları sürekli [0,1] percentile — boolean kolon değil
+        comp_avail = [c for c in COMP_COLS if f"score_{c}" in df.columns]
 
     match = df[df["PLAYER_NAME"].str.contains(player_name, case=False, na=False)]
     if match.empty:
@@ -1273,14 +1275,16 @@ def get_historical_player_scores(season: str, player_name: str):
     if season == "2025-26":
         scores = {c: round(float(row.get(f"score_{c}", 0)), 3) for c in comp_avail}
     else:
-        scores = {c: round(float(row.get(c, 0)), 3) for c in comp_avail}
+        scores = {c: round(float(row.get(f"score_{c}", 0)), 3) for c in comp_avail}
 
     overall = row.get("overall_score", None)
     primary = row.get("primary_arch", "")
+    pos_raw = str(row.get("POSITION","") or "")
     return {
         "name":             row["PLAYER_NAME"],
         "season":           season,
         "team":             row.get("TEAM_ABBREVIATION",""),
+        "position":         pos_raw,
         "gp":               int(row.get("GP",0)) if pd.notna(row.get("GP",0)) else 0,
         "scores":           scores,
         "overall_score":    round(float(overall),3) if overall is not None and pd.notna(overall) else None,
