@@ -315,15 +315,15 @@ function analyzeLineup(fit, lineup, roundHistory=[]) {
   const filled = POSITIONS.map(p=>lineup[p]).filter(Boolean);
   const pillars = [
     { key:"creation",  label:"Creation",  val:fit.creation,
-      fix:"You need a true playmaker — an Engine, Ecosystem, or Creator archetype." },
+      fix:"No true playmaker in the lineup. An Engine, Ecosystem, or Creator covers this pillar." },
     { key:"spacing",   label:"Spacing",   val:fit.spacing,
-      fix:`${fit.nShooters} shooter${fit.nShooters===1?"":"s"} detected. Optimal is 2–3. Add a Spacer, 3-and-D, or Gravity player.` },
+      fix:`${fit.nShooters} shooter${fit.nShooters===1?"":"s"} — optimal is 2–3. A Spacer, 3-and-D, or Gravity player covers this pillar.` },
     { key:"defense",   label:"Defense",   val:fit.defense,
-      fix:"No interior anchor or perimeter stopper. Add an Anchor or Two-Way Stopper." },
+      fix:"No defensive anchor. An Anchor, Stopper, or Two-Way player covers this pillar." },
     { key:"finishing", label:"Finishing", val:fit.finishing,
-      fix:"Weak at the rim. Add a Finisher, Rim Runner, or Force player." },
+      fix:"No one finishing at the rim. A Finisher, Rim Runner, or Force player covers this pillar." },
     { key:"roleFit",   label:"Role Fit",  val:fit.roleFit,
-      fix:"Too many ball-dominant players competing for the same role. Mix in off-ball specialists." },
+      fix:"Multiple ball-dominant players overlap. Replace one with an off-ball specialist." },
   ];
 
   const sorted = [...pillars].sort((a,b)=>a.val-b.val);
@@ -554,7 +554,7 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang })
           <div className="flex gap-2 items-start">
             <span className="text-amber-400 text-sm shrink-0">⚠</span>
             <p className="text-[11px] text-amber-400/80">
-              {analysis.ballDom} ball-dominant players competing for creation. Consider replacing one with an off-ball scorer or specialist.
+              {analysis.ballDom} ball-dominant players on the same roster — Role Fit penalty applied. One playmaker is optimal; the others cancel out.
             </p>
           </div>
         )}
@@ -584,7 +584,7 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang })
                 <p className="text-[11px] text-slate-400 mt-0.5">
                   <span className="text-white font-semibold">{alt.PLAYER_NAME}</span>
                   {" "}<span className="text-slate-500">({altArch}, overall {altPct})</span>
-                  {" "}— {altTeam} · {altSeason} — was available but not selected. Would have significantly improved your lineup's {analysis.weakest.label.toLowerCase()}.
+                  {" "}— {altTeam} · {altSeason} — was available this game. Would have covered your lineup's {analysis.weakest.label.toLowerCase()} gap.
                 </p>
               </div>
             </div>
@@ -595,14 +595,14 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang })
         <div className="pt-1 border-t border-slate-800">
           <p className="text-[11px] text-slate-500 italic">
             {pct>=85
-              ? "Elite lineup construction. All five pillars covered — this roster would compete at the highest level."
+              ? "Championship-caliber construction. High-quality players across eras, all four pillars covered."
               : pct>=75
-              ? "Strong lineup with a clear identity. Minor gaps, but the core is functional."
+              ? "Strong lineup. Good player quality and solid role coverage — most gaps are minor."
               : pct>=65
-              ? "Decent fit. You have a foundation, but one key piece could unlock this lineup's potential."
+              ? "Functional roster with a clear identity. One key archetype away from a well-rounded unit."
               : pct>=55
-              ? "Some compatibility, but notable holes. The wheel wasn't kind — or the picks didn't mesh."
-              : "Significant mismatches. Try again with a more balanced role distribution."}
+              ? "Uneven fit. Either the eras didn't favor your archetypes, or the roster has coverage gaps."
+              : "Significant mismatches — low player quality, missing pillars, or too many ball-handlers. The wheel was brutal."}
           </p>
         </div>
       </div>
@@ -883,7 +883,7 @@ export default function LineupGame() {
       <div>
         <h1 className="text-xl font-bold text-white">Lineup Builder</h1>
         <p className="text-xs text-slate-500 mt-0.5">
-          Wheels pick a random season + team. Pick one player per round and slot them into a position.
+          Each round the wheels pick a random era and team. Draft one player, assign their position — five rounds, one lineup.
         </p>
       </div>
 
@@ -959,13 +959,13 @@ export default function LineupGame() {
 
       <InfoModal open={modal==="archetype"} onClose={()=>setModal(null)} title="??? Archetypes">
         <div className="space-y-3 text-sm text-slate-300 leading-relaxed">
-          <p>Player archetypes are <span className="text-white font-medium">hidden during the game</span> and revealed after your 5th pick. Read the stats and position clues to guess the role.</p>
-          <p>Each archetype is a percentile score built from real NBA tracking and box-score data. The 12 core archetypes range from <span className="text-orange-300">Engine</span> (usage, creation) to <span className="text-blue-300">Anchor</span> (rim protection, defensive rating).</p>
-          <p className="text-slate-400 text-xs">The lineup is scored across five pillars: Creation, Spacing, Defense, Finishing, and Role Fit. Archetypes that complement each other score higher than redundant ones.</p>
+          <p>Player archetypes are <span className="text-white font-medium">hidden during the game</span> and revealed at the end. Use stats and position clues to guess each player's role before committing to a slot.</p>
+          <p>Each archetype is a percentile score built from real NBA tracking and box-score data. The 12 roles range from <span className="text-orange-300">Engine</span> (usage, creation) to <span className="text-blue-300">Anchor</span> (rim protection, defensive rating).</p>
+          <p className="text-slate-400 text-xs">Final score = Player Quality × Lineup Coverage × Role Fit. Quality is each player's overall score adjusted for their era's meta. Coverage checks whether your lineup collectively covers creation, spacing, defense, and finishing — one great specialist is enough for their pillar.</p>
           <div className="flex gap-2 pt-1 border-t border-slate-800">
-            <a href="/glossary" className="text-xs text-violet-400 hover:text-violet-300 underline underline-offset-2">Full Glossary</a>
+            <a href="/glossary" className="text-xs underline underline-offset-2" style={{color:"var(--accent)"}}>Full Glossary</a>
             <span className="text-slate-700">·</span>
-            <a href="/about" className="text-xs text-violet-400 hover:text-violet-300 underline underline-offset-2">About the System</a>
+            <a href="/about" className="text-xs underline underline-offset-2" style={{color:"var(--accent)"}}>About the System</a>
           </div>
         </div>
       </InfoModal>
@@ -976,10 +976,10 @@ export default function LineupGame() {
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
             <div className="text-[10px] text-slate-600 uppercase tracking-widest">How it works</div>
             <p className="text-sm text-slate-300 leading-relaxed">
-              Each round, two wheels spin: one for <span className="text-blue-400 font-medium">season</span>, one for <span className="text-blue-400 font-medium">team</span>. Pick one player from that roster, then choose their position.
+              Each round the wheels spin: one for <span className="text-blue-400 font-medium">era</span>, one for <span className="text-blue-400 font-medium">team</span>. Pick one player from that roster, then slot them into a position.
             </p>
             <p className="text-sm text-slate-400 leading-relaxed">
-              After 5 picks, your lineup is scored across five pillars: <span className="text-slate-300">Creation · Spacing · Defense · Finishing · Role Fit</span>. Each player also receives an <span className="text-amber-300 font-medium">Era Fit</span> score — how well their archetype aligned with the meta of their era. Build the highest-scoring lineup you can; the wheels decide who you choose from.
+              After 5 picks your lineup is scored in two stages. First, each player's <span className="text-slate-300">quality</span> is adjusted by how meta their archetype was in their era — a Spacer in the Dead Ball era scores lower than in the Small Ball era. Then the lineup's <span className="text-slate-300">coverage</span> measures whether your roster collectively addresses Creation · Spacing · Defense · Finishing. One great specialist covers their pillar; duplicates don't stack.
             </p>
             <div className="grid grid-cols-3 gap-2 pt-1">
               {[
@@ -996,7 +996,7 @@ export default function LineupGame() {
             </div>
             <div className="pt-1 border-t border-slate-800">
               <p className="text-[11px] text-slate-500 italic">
-                Archetypes that win together: Creation + Spacing is the foundation. You need at least one true playmaker, 2 to 3 shooters, and a credible defensive anchor. Ball-dominant duos hurt — redundancy kills lineups.
+                The formula: avg player quality × lineup coverage × role fit. Quality rewards stars from dominant eras. Coverage demands one playmaker, 2–3 shooters, a defender, and a finisher. Role fit penalizes duplicate ball-handlers.
               </p>
             </div>
           </div>
