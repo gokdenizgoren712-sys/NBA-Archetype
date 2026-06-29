@@ -1,9 +1,9 @@
 /* Shared split-pane layout: sol liste + sağ detay panel */
 export default function SplitPane({ children, detail, onClose }) {
   return (
-    <div className="flex h-full overflow-hidden">
+    <div className="flex h-full min-h-0 overflow-hidden">
       {/* Sol: liste/grid */}
-      <div className={`flex flex-col overflow-hidden transition-all duration-200 ${
+      <div className={`flex flex-col min-h-0 overflow-hidden transition-all duration-200 ${
         detail ? "hidden md:flex md:flex-1" : "flex-1"
       }`}>
         {children}

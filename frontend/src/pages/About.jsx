@@ -2,6 +2,20 @@ import { useLang } from "../contexts/LanguageContext";
 
 const CHANGELOG = [
   {
+    version: "v2.1",
+    date_en: "June 2026",
+    label_en: "Mobile Fixes & Scoring Overhaul",
+    items_en: [
+      "Mobile bottom nav: split into two rows (4 + 3) for easier tapping",
+      "Fixed Glossary, About, Explore pages not rendering on mobile",
+      "About page layout adapts to mobile (single column)",
+      "Lineup Game year joker no longer changes the team",
+      "New two-stage scoring: Player Quality (overall × era) × Lineup Coverage",
+      "Score reveal shows per-player era-adjusted quality + 4-pillar coverage breakdown",
+      "Specialist players no longer penalized — coverage uses max across lineup",
+    ],
+  },
+  {
     version: "v2.0",
     date_en: "June 2026",
     label_en: "Design Overhaul",
@@ -100,7 +114,7 @@ export default function About() {
   return (
     <div className="h-full overflow-y-auto">
       <div className="p-6 max-w-6xl mx-auto pb-16">
-        <div className="flex gap-8 items-start">
+        <div className="flex flex-col-reverse md:flex-row gap-6 md:gap-8 items-start">
 
           {/* Left column */}
           <div className="flex-1 space-y-10 min-w-0">
@@ -188,7 +202,7 @@ export default function About() {
           </div>
 
           {/* Right column — changelog */}
-          <div className="w-72 shrink-0 sticky top-6 space-y-3">
+          <div className="w-full md:w-72 md:shrink-0 md:sticky md:top-6 space-y-3">
             <SectionLabel>Release Notes</SectionLabel>
             {CHANGELOG.map((entry) => (
               <div key={entry.version} className="p-4 rounded space-y-2"

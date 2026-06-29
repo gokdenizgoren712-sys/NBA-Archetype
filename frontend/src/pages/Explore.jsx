@@ -216,7 +216,7 @@ export default function Explore() {
       detail={<PlayerDetail player={selected} />}
       onClose={() => setSelected(null)}
     >
-      <div className="flex flex-col h-full overflow-hidden">
+      <div className="flex flex-col h-full min-h-0 overflow-hidden">
         {/* Controls */}
         <div className="flex flex-wrap items-center gap-2 px-4 py-2 shrink-0 border-b"
           style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
@@ -248,7 +248,7 @@ export default function Explore() {
         </div>
 
         {/* Map */}
-        <div className="flex-1 overflow-hidden relative">
+        <div className="flex-1 min-h-0 overflow-hidden relative" style={{ minHeight: 220 }}>
           {loading ? (
             <div className="flex items-center justify-center h-full text-sm" style={{ color: "var(--text-muted)" }}>
               Loading...

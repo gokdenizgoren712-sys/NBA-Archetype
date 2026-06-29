@@ -103,25 +103,34 @@ function SideNav() {
   );
 }
 
-/* ── Alt nav (mobile) ────────────────────────────────────────────── */
+/* ── Alt nav (mobile) — 2 satır ─────────────────────────────────── */
 function BottomNav() {
   const location = useLocation();
 
-  return (
-    <nav className="md:hidden flex shrink-0 border-t"
-      style={{ background: "var(--bg-surface)", borderColor: "var(--border)" }}>
-      {NAV.map(n => {
+  const Row = ({ items }) => (
+    <div className="flex">
+      {items.map(n => {
         const active = location.pathname === n.to;
         return (
           <NavLink key={n.to} to={n.to}
-            className="flex-1 flex flex-col items-center justify-center py-2 text-base transition-colors"
+            className="flex-1 flex flex-col items-center justify-center py-1.5 text-base transition-colors"
             style={{ color: active ? "var(--accent)" : "var(--text-muted)" }}
           >
-            <span className="leading-none">{n.icon}</span>
-            <span className="text-[8px] mt-0.5">{n.label}</span>
+            <span className="leading-none text-sm">{n.icon}</span>
+            <span className="text-[8px] mt-0.5 font-medium">{n.label}</span>
           </NavLink>
         );
       })}
+    </div>
+  );
+
+  return (
+    <nav className="md:hidden shrink-0 border-t"
+      style={{ background: "var(--bg-surface)", borderColor: "var(--border)" }}>
+      <Row items={NAV.slice(0, 4)} />
+      <div className="border-t" style={{ borderColor: "var(--border)" }}>
+        <Row items={NAV.slice(4)} />
+      </div>
     </nav>
   );
 }
@@ -133,10 +142,10 @@ function AppInner() {
       <div className="flex flex-col h-screen" style={{ background: "var(--bg-base)", color: "var(--text-primary)" }}>
         <TopBar />
 
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-1 min-h-0 overflow-hidden">
           <SideNav />
 
-          <main className="flex-1 overflow-hidden">
+          <main className="flex-1 min-h-0 overflow-hidden">
             <Routes>
               <Route path="/"           element={<Navigate to="/game" replace />} />
               <Route path="/game"       element={<LineupGame />} />
