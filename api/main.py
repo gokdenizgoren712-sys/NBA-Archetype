@@ -40,6 +40,48 @@ app.add_middleware(
 
 # ─── Cache: parquet dosyalarını bir kez yükle ──────────────────────────────────
 
+def _fill_position_from_components(df: pd.DataFrame) -> pd.DataFrame:
+    """Historical parquet'ta POSITION NaN ise Center/Big/Forward/Guard/Wing
+    boolean kolonlarından + istatistiklerden pozisyon tahmin et."""
+    if "POSITION" not in df.columns:
+        return df
+    mask = df["POSITION"].isna() | (df["POSITION"].astype(str).str.strip() == "")
+    if not mask.any():
+        return df
+
+    def _n(row, col):
+        try: return float(row.get(col) or 0)
+        except: return 0.0
+
+    def _b(row, col):
+        v = row.get(col)
+        return bool(v) if v is not None else False
+
+    def _infer(row):
+        reb = _n(row, "REB"); ast = _n(row, "AST"); blk = _n(row, "BLK")
+        if _b(row, "Center") or (reb >= 8.5 and blk >= 1.2):
+            return "C"
+        if _b(row, "Big") or (reb >= 7.0 and blk >= 0.5):
+            return "PF"
+        if _b(row, "Forward"):
+            return "PF" if reb >= 6.5 else "SF"
+        if _b(row, "Guard"):
+            return "PG" if ast >= 6.5 else "SG"
+        if _b(row, "Wing"):
+            return "SG" if ast >= 4.0 and reb < 5.0 else "SF"
+        # stat-only fallback
+        if reb >= 8.5: return "C" if blk >= 1.2 else "PF"
+        if reb >= 6.5: return "PF"
+        if reb >= 5.0 and ast < 4.0: return "SF"
+        if ast >= 6.5: return "PG"
+        if ast >= 3.5 and reb < 5.0: return "SG"
+        return "SF"
+
+    df = df.copy()
+    df.loc[mask, "POSITION"] = df[mask].apply(_infer, axis=1)
+    return df
+
+
 def _assign_pos5(df: pd.DataFrame) -> pd.Series:
     """
     POSITION string → birincil PG/SG/SF/PF/C.
@@ -1275,8 +1317,12 @@ def game_players(season: str = Query("2025-26"), team: str = Query("")):
             df = df[df["TEAM_ABBREVIATION"].str.upper().isin(hist_abbrevs)]
         df = _gp_filter(df, 10)
 
+    # NaN pozisyonları doldur, POS5 hesapla
+    df = _fill_position_from_components(df)
+    df["POS5"] = _assign_pos5(df)
+
     score_cols = [c for c in df.columns if c.startswith("score_")]
-    keep = ["PLAYER_NAME", "primary_arch", "overall_score", "POSITION",
+    keep = ["PLAYER_NAME", "primary_arch", "overall_score", "POSITION", "POS5",
             "TEAM_ABBREVIATION", "GP", "G", "MIN", "PTS", "REB", "AST",
             "STL", "BLK", "TOV"] + score_cols
     keep = [c for c in keep if c in df.columns]

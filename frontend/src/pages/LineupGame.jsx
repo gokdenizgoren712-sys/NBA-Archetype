@@ -33,7 +33,8 @@ const POS_STRING_MAP = {
 };
 
 function getEligiblePos(player) {
-  const raw = (player.POSITION || "").toUpperCase().trim();
+  // POS5 (backend hesaplı) → POSITION (raw) → arketip fallback
+  const raw = (player.POS5 || player.POSITION || "").toUpperCase().trim();
   if (raw && POS_STRING_MAP[raw]) return POS_STRING_MAP[raw];
   return ARCH_POSITIONS[player.primary_arch] || POSITIONS;
 }
@@ -170,7 +171,16 @@ function JokerBtn({ icon, label, available, onClick }) {
 }
 
 // ── Post-game analiz ──────────────────────────────────────────────────────────
-function analyzeLineup(fit, lineup) {
+// Pillar → hangi score_ kolonları yüksek olmalı
+const PILLAR_SCORE_KEYS = {
+  creation:  ["Engine","Ecosystem","Creator","Hub","Initiator"],
+  spacing:   ["Spacer","Three-Level","Gravity","Shotmaker"],
+  defense:   ["Anchor","Stopper","Two-Way","Force"],
+  finishing: ["Finisher","Rim Runner","Force"],
+  roleFit:   ["Connector","Spacer"],
+};
+
+function analyzeLineup(fit, lineup, roundHistory=[]) {
   const filled = POSITIONS.map(p=>lineup[p]).filter(Boolean);
   const pillars = [
     { key:"creation",  label:"Creation",  val:fit.creation,  w:0.28,
@@ -189,24 +199,38 @@ function analyzeLineup(fit, lineup) {
   const weakest = sorted[0];
   const strongest = sorted[sorted.length-1];
 
-  // Ball-dom uyarısı
   const ballDom = filled.filter(p=>{
     const _s=(k)=>parseFloat(p[`score_${k}`]??0)||0;
     return Math.max(_s("Engine")*1.05,_s("Ecosystem"))>=0.80;
   }).length;
 
-  // Kimya: birincil mevkisinde oynayanlar
   const primaryFits = filled.filter(p=>p._isPrimary);
-
-  // Güçlü/zayıf oyuncular
   const byScore = [...filled].sort((a,b)=>(parseFloat(b.overall_score)||0)-(parseFloat(a.overall_score)||0));
 
-  return { weakest, strongest, ballDom, primaryFits, byScore, pillars };
+  // Round history'den somut öneri: weakest pillar için en yüksek skora sahip
+  // seçilmemiş oyuncu
+  const scoreFor = (player, keys) =>
+    Math.max(...keys.map(k=>parseFloat(player[`score_${k}`]??0)||0));
+
+  const pickedNames = new Set(filled.map(p=>p.PLAYER_NAME));
+  const wKeys = PILLAR_SCORE_KEYS[weakest.key] || [];
+  let bestAlt = null;
+  for(const round of roundHistory){
+    const notPicked = (round.available||[]).filter(p=>!pickedNames.has(p.PLAYER_NAME));
+    for(const p of notPicked){
+      const s = scoreFor(p, wKeys);
+      if(!bestAlt || s > scoreFor(bestAlt.player, wKeys)){
+        bestAlt = {player:p, season:round.season, team:round.team, score:s};
+      }
+    }
+  }
+
+  return { weakest, strongest, ballDom, primaryFits, byScore, pillars, bestAlt };
 }
 
 // ── Sonuç ekranı ──────────────────────────────────────────────────────────────
-function ScoreReveal({ fit, lineup, primaryCount, onReset, lang }) {
-  const analysis = analyzeLineup(fit, lineup);
+function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang }) {
+  const analysis = analyzeLineup(fit, lineup, roundHistory);
   const chemBonus = primaryCount * 0.02;
   const rawScore  = fit.lineupScore;
   const totalScore = Math.min(1, rawScore + chemBonus);
@@ -314,19 +338,24 @@ function ScoreReveal({ fit, lineup, primaryCount, onReset, lang }) {
           </div>
         )}
 
-        {/* En düşük skoru oyuncu */}
-        {analysis.byScore.length >= 2 && (() => {
-          const weakP = analysis.byScore[analysis.byScore.length-1];
-          const bestP = analysis.byScore[0];
-          const weakPct = Math.round((parseFloat(weakP.overall_score)||0)*100);
-          const teamOf = weakP._team ? ` from ${weakP._team}` : "";
-          const yr = weakP._season ? ` (${weakP._season.slice(0,4)})` : "";
+        {/* Somut alternatif öneri */}
+        {analysis.bestAlt && (() => {
+          const {player:alt, season:altSeason, team:altTeam} = analysis.bestAlt;
+          const altPct = Math.round((parseFloat(alt.overall_score)||0)*100);
+          const altArch = alt.primary_arch || "unknown";
           return (
             <div className="flex gap-2 items-start">
-              <span className="text-slate-500 text-sm shrink-0">↓</span>
-              <p className="text-[11px] text-slate-500">
-                <span className="text-slate-400">{weakP.PLAYER_NAME}</span>{teamOf}{yr} was your weakest link (overall {weakPct}). A different player{teamOf} with a {analysis.weakest.label.toLowerCase()} profile could improve this lineup's ceiling significantly.
-              </p>
+              <span className="text-blue-400 text-sm shrink-0">💡</span>
+              <div>
+                <p className="text-[11px] text-slate-300 font-medium">
+                  Better pick for {analysis.weakest.label}:
+                </p>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  <span className="text-white font-semibold">{alt.PLAYER_NAME}</span>
+                  {" "}<span className="text-slate-500">({altArch}, overall {altPct})</span>
+                  {" "}— {altTeam} · {altSeason} — was available but not selected. Would have significantly improved your lineup's {analysis.weakest.label.toLowerCase()}.
+                </p>
+              </div>
             </div>
           );
         })()}
@@ -388,6 +417,9 @@ export default function LineupGame() {
   const lineupRef = useRef(lineup);
   useEffect(()=>{ lineupRef.current=lineup; },[lineup]);
   const timerRef = useRef(null);
+  // Her tur: {season, team, available:[...], picked: player}
+  const roundHistoryRef = useRef([]);
+  const pendingRoundRef = useRef(null); // fetchPlayers tamamlanınca set edilir
 
   const filledPositions = POSITIONS.filter(p=>lineup[p]!==null);
   const emptyPositions  = POSITIONS.filter(p=>lineup[p]===null);
@@ -407,6 +439,7 @@ export default function LineupGame() {
         const list=(d.players||[]).filter(p=>!taken.includes(p.PLAYER_NAME));
         if(list.length===0){ onEmpty(); return; }
         setPlayers(list);
+        pendingRoundRef.current={season,team,available:list};
         setPhase("pick_player");
         setStatusMsg("");
       })
@@ -543,6 +576,10 @@ export default function LineupGame() {
 
   // ── Oyuncu seç ────────────────────────────────────────────────────────────
   const handlePickPlayer = (player) => {
+    if(pendingRoundRef.current){
+      roundHistoryRef.current = [...roundHistoryRef.current, {...pendingRoundRef.current, picked: player}];
+      pendingRoundRef.current = null;
+    }
     setPickedPlayer(player);
     setPhase("pick_pos");
   };
@@ -589,6 +626,8 @@ export default function LineupGame() {
     setPrimaryCount(0);
     setJokers({reTeam:true,reYear:true,reBoth:true,double:true});
     setDoubleActive(false);
+    roundHistoryRef.current=[];
+    pendingRoundRef.current=null;
     setPhase("idle");
   };
 
@@ -752,7 +791,7 @@ export default function LineupGame() {
 
       {/* === COMPLETE === */}
       {phase==="complete"&&fitResult&&(
-        <ScoreReveal fit={fitResult} lineup={lineup} primaryCount={primaryCount} onReset={resetGame} lang={lang}/>
+        <ScoreReveal fit={fitResult} lineup={lineup} primaryCount={primaryCount} roundHistory={roundHistoryRef.current} onReset={resetGame} lang={lang}/>
       )}
     </div>
   );
