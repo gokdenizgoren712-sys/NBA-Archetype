@@ -19,17 +19,24 @@ const ARCH_POSITIONS = {
   "Rim Runner": ["C","PF"],
 };
 
-// POSITION string → eligible positions
+// POSITION string → eligible positions (game slot eligibility + chemistry bonus)
 const POS_STRING_MAP = {
-  "PG":["PG","SG"], "POINT GUARD":["PG","SG"],
-  "SG":["SG","SF"], "SHOOTING GUARD":["SG","SF"],
-  "SF":["SF","PF"], "SMALL FORWARD":["SF","PF"],
-  "PF":["PF","C"],  "POWER FORWARD":["PF","C"],
-  "C":["C","PF"],   "CENTER":["C","PF"],
-  "G":["PG","SG"],  "GUARD":["PG","SG"],
-  "F":["SF","PF"],  "FORWARD":["SF","PF"],
-  "G-F":["SG","SF"],"GUARD-FORWARD":["SG","SF"],"FORWARD-GUARD":["SG","SF"],
-  "F-C":["PF","C"], "FORWARD-CENTER":["PF","C"],"CENTER-FORWARD":["PF","C"],
+  // Tek pozisyon — sadece kendi slotları (badge karışıklığını önler)
+  "PG":["PG"],       "POINT GUARD":["PG"],
+  "SG":["SG","SF"],  "SHOOTING GUARD":["SG","SF"],
+  "SF":["SF","PF"],  "SMALL FORWARD":["SF","PF"],
+  "PF":["PF","C"],   "POWER FORWARD":["PF","C"],
+  "C": ["C","PF"],   "CENTER":["C","PF"],
+  // Generic / dual pozisyonlar
+  "G":["PG","SG"],   "GUARD":["PG","SG"],
+  "F":["SF","PF"],   "FORWARD":["SF","PF"],
+  "G-F":["SG","SF"], "GUARD-FORWARD":["SG","SF"], "FORWARD-GUARD":["SG","SF"],
+  "F-C":["PF","C"],  "FORWARD-CENTER":["PF","C"], "CENTER-FORWARD":["PF","C"],
+  // BBref dual kod formatı
+  "PG-SG":["PG","SG"], "SG-PG":["SG","PG"],
+  "SG-SF":["SG","SF"], "SF-SG":["SF","SG"],
+  "SF-PF":["SF","PF"], "PF-SF":["PF","SF"],
+  "PF-C": ["PF","C"],  "C-PF": ["C","PF"],
 };
 
 function getEligiblePos(player) {

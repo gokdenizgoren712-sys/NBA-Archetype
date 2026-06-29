@@ -59,9 +59,12 @@ def _fill_position_from_components(df: pd.DataFrame) -> pd.DataFrame:
 
     def _infer(row):
         reb = _n(row, "REB"); ast = _n(row, "AST"); blk = _n(row, "BLK")
+        arch = str(row.get("primary_arch") or "")
+
+        # 1. Boolean kolon kontrolü (engine çıktısı)
         if _b(row, "Center") or (reb >= 8.5 and blk >= 1.2):
             return "C"
-        if _b(row, "Big") or (reb >= 7.0 and blk >= 0.5):
+        if _b(row, "Big") or (reb >= 7.5 and blk >= 0.5):
             return "PF"
         if _b(row, "Forward"):
             return "PF" if reb >= 6.5 else "SF"
@@ -69,12 +72,32 @@ def _fill_position_from_components(df: pd.DataFrame) -> pd.DataFrame:
             return "PG" if ast >= 6.5 else "SG"
         if _b(row, "Wing"):
             return "SG" if ast >= 4.0 and reb < 5.0 else "SF"
-        # stat-only fallback
-        if reb >= 8.5: return "C" if blk >= 1.2 else "PF"
-        if reb >= 6.5: return "PF"
-        if reb >= 5.0 and ast < 4.0: return "SF"
-        if ast >= 6.5: return "PG"
-        if ast >= 3.5 and reb < 5.0: return "SG"
+
+        # 2. Stat + arketip tabanlı fallback (tüm booleans False)
+        # Yüksek AST her şeyden önce: Simmons, Magic gibi point-forward/PG
+        if ast >= 7.5:
+            return "PG"
+        # Dominant rim presence
+        if reb >= 9.0:
+            return "C"
+        if reb >= 7.5 and blk >= 1.0:
+            return "PF"
+        # Guard arketipi + yeterli AST → PG (Fox, Trae tipi)
+        if arch in ("Initiator",):
+            return "PG"
+        if arch in ("Engine", "Ecosystem", "Hub", "Creator") and ast >= 5.0 and reb < 5.5:
+            return "PG"
+        # Genel PG eşiği
+        if ast >= 6.5 and reb < 6.0:
+            return "PG"
+        # Big man
+        if reb >= 6.5 and ast < 5.0:
+            return "PF"
+        if reb >= 5.0 and ast < 4.0:
+            return "SF"
+        # Scoring guard
+        if ast >= 4.0 and reb < 4.5:
+            return "SG"
         return "SF"
 
     df = df.copy()
