@@ -1266,6 +1266,10 @@ def game_players(season: str = Query("2025-26"), team: str = Query("")):
     else:
         df = _load_historical().copy()
         df = df[df["SEASON"] == season]
+        # Multi-team (2TM/3TM/TOT) satırlarını filtrele — sadece per-takım satırları kalsın
+        _multi = {"2TM","3TM","4TM","TOT"}
+        if "TEAM_ABBREVIATION" in df.columns:
+            df = df[~df["TEAM_ABBREVIATION"].str.upper().isin(_multi)]
         if team and "TEAM_ABBREVIATION" in df.columns:
             hist_abbrevs = [a.upper() for a in _resolve_abbrev(team.upper(), season)]
             df = df[df["TEAM_ABBREVIATION"].str.upper().isin(hist_abbrevs)]

@@ -55,7 +55,7 @@ const INFO = {
     xRight: "Ball-dominant / Creator",
     yBottom: "Interior / Big",
     yTop: "Perimeter / Wing",
-    tip: "Each dot is a player placed by their archetype score mix. Players near an archetype label share that profile. Hover to inspect. Click a legend label to filter.",
+    tip: "Each dot is a player. Position is driven by their 12-dimensional archetype score vector, reduced to 2D — dots cluster naturally without manual placement. Nearby players share similar role profiles. Hover to inspect, click a legend label to filter by archetype.",
   },
   tr: {
     title: "Arketip Haritası",
@@ -254,8 +254,6 @@ export default function Explore() {
               const col = ARCH_COLORS[arch] || "#94a3b8";
               return (
                 <g key={arch}>
-                  {/* Soft region circle */}
-                  <circle cx={cx} cy={cy} r={28} fill={col} fillOpacity={0.06} stroke={col} strokeOpacity={0.18} strokeWidth={1}/>
                   {/* Label */}
                   <text x={cx} y={cy - 32} fill={col} fontSize={10} fontWeight={600} textAnchor="middle"
                     style={{ pointerEvents: "none", letterSpacing: "0.02em" }}>

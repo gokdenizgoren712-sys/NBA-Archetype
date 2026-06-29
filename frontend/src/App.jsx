@@ -74,17 +74,6 @@ function Header() {
           </span>
         )}
 
-        {/* Language toggle */}
-        <button
-          onClick={toggleLang}
-          title={lang === "tr" ? "Switch to English" : "Türkçe'ye geç"}
-          className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-slate-700 text-xs text-slate-400 hover:text-white hover:border-slate-500 transition-colors font-mono tracking-wide"
-        >
-          {lang === "tr" ? "TR" : "EN"}
-          <span className="text-slate-600">|</span>
-          {lang === "tr" ? "EN" : "TR"}
-        </button>
-
         {/* Cache clear */}
         <button
           onClick={async () => {

@@ -169,8 +169,44 @@ function JokerBtn({ icon, label, available, onClick }) {
   );
 }
 
+// ── Post-game analiz ──────────────────────────────────────────────────────────
+function analyzeLineup(fit, lineup) {
+  const filled = POSITIONS.map(p=>lineup[p]).filter(Boolean);
+  const pillars = [
+    { key:"creation",  label:"Creation",  val:fit.creation,  w:0.28,
+      fix:"You need a true playmaker — an Engine, Ecosystem, or Creator archetype." },
+    { key:"spacing",   label:"Spacing",   val:fit.spacing,   w:0.27,
+      fix:`${fit.nShooters} shooter${fit.nShooters===1?"":"s"} detected. Optimal is 2–3. Add a Spacer, 3-and-D, or Gravity player.` },
+    { key:"defense",   label:"Defense",   val:fit.defense,   w:0.22,
+      fix:"No interior anchor or perimeter stopper. Add an Anchor or Two-Way Stopper." },
+    { key:"finishing", label:"Finishing", val:fit.finishing, w:0.12,
+      fix:"Weak at the rim. Add a Finisher, Rim Runner, or Force player." },
+    { key:"roleFit",   label:"Role Fit",  val:fit.roleFit,   w:0.11,
+      fix:"Too many ball-dominant players competing for the same role. Mix in off-ball specialists." },
+  ];
+
+  const sorted = [...pillars].sort((a,b)=>a.val-b.val);
+  const weakest = sorted[0];
+  const strongest = sorted[sorted.length-1];
+
+  // Ball-dom uyarısı
+  const ballDom = filled.filter(p=>{
+    const _s=(k)=>parseFloat(p[`score_${k}`]??0)||0;
+    return Math.max(_s("Engine")*1.05,_s("Ecosystem"))>=0.80;
+  }).length;
+
+  // Kimya: birincil mevkisinde oynayanlar
+  const primaryFits = filled.filter(p=>p._isPrimary);
+
+  // Güçlü/zayıf oyuncular
+  const byScore = [...filled].sort((a,b)=>(parseFloat(b.overall_score)||0)-(parseFloat(a.overall_score)||0));
+
+  return { weakest, strongest, ballDom, primaryFits, byScore, pillars };
+}
+
 // ── Sonuç ekranı ──────────────────────────────────────────────────────────────
 function ScoreReveal({ fit, lineup, primaryCount, onReset, lang }) {
+  const analysis = analyzeLineup(fit, lineup);
   const chemBonus = primaryCount * 0.02;
   const rawScore  = fit.lineupScore;
   const totalScore = Math.min(1, rawScore + chemBonus);
@@ -179,11 +215,11 @@ function ScoreReveal({ fit, lineup, primaryCount, onReset, lang }) {
   const gColor = pct>=85?"text-blue-300":pct>=75?"text-sky-300":pct>=65?"text-emerald-300":pct>=55?"text-amber-300":"text-red-400";
 
   const pillars = [
-    { label:lang==="tr"?"Yaratıcılık":"Creation", val:fit.creation,  w:0.28 },
-    { label:"Spacing",                            val:fit.spacing,   w:0.27, extra:`(${fit.nShooters})` },
-    { label:lang==="tr"?"Savunma":"Defense",       val:fit.defense,   w:0.22 },
-    { label:"Finishing",                           val:fit.finishing, w:0.12 },
-    { label:lang==="tr"?"Rol Uyumu":"Role Fit",    val:fit.roleFit,   w:0.11 },
+    { label:"Creation",  val:fit.creation,  w:0.28 },
+    { label:"Spacing",   val:fit.spacing,   w:0.27, extra:`(${fit.nShooters})` },
+    { label:"Defense",   val:fit.defense,   w:0.22 },
+    { label:"Finishing", val:fit.finishing, w:0.12 },
+    { label:"Role Fit",  val:fit.roleFit,   w:0.11 },
   ];
 
   return (
@@ -195,7 +231,7 @@ function ScoreReveal({ fit, lineup, primaryCount, onReset, lang }) {
         <div className={`text-3xl font-bold mb-1 ${gColor}`}>{grade}</div>
         {chemBonus > 0 && (
           <div className="text-xs text-yellow-400 mb-4">
-            ⭐ Kimya Bonusu: +{primaryCount} birincil mevki (+{Math.round(chemBonus*100)} puan)
+            ⭐ Chemistry Bonus: +{primaryCount} primary slot (+{Math.round(chemBonus*100)} pts)
           </div>
         )}
         <div className="space-y-2 max-w-xs mx-auto">
@@ -235,9 +271,85 @@ function ScoreReveal({ fit, lineup, primaryCount, onReset, lang }) {
         </div>
       </div>
 
+      {/* Post-game analysis */}
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
+        <div className="text-[10px] text-slate-600 uppercase tracking-widest">Lineup Analysis</div>
+
+        {/* Güçlü yön */}
+        <div className="flex gap-2 items-start">
+          <span className="text-green-400 text-sm shrink-0">✓</span>
+          <div>
+            <span className="text-[11px] text-slate-300 font-medium">Strongest pillar: </span>
+            <span className="text-[11px] text-green-400">{analysis.strongest.label} ({Math.round(analysis.strongest.val*100)})</span>
+          </div>
+        </div>
+
+        {/* Zayıf yön + öneri */}
+        <div className="flex gap-2 items-start">
+          <span className="text-red-400 text-sm shrink-0">✗</span>
+          <div>
+            <span className="text-[11px] text-slate-300 font-medium">Biggest gap: </span>
+            <span className="text-[11px] text-red-400">{analysis.weakest.label} ({Math.round(analysis.weakest.val*100)})</span>
+            <p className="text-[11px] text-slate-500 mt-0.5">{analysis.weakest.fix}</p>
+          </div>
+        </div>
+
+        {/* Ball-dom uyarısı */}
+        {analysis.ballDom > 1 && (
+          <div className="flex gap-2 items-start">
+            <span className="text-amber-400 text-sm shrink-0">⚠</span>
+            <p className="text-[11px] text-amber-400/80">
+              {analysis.ballDom} ball-dominant players competing for creation. Consider replacing one with an off-ball scorer or specialist.
+            </p>
+          </div>
+        )}
+
+        {/* Kimya notu */}
+        {analysis.primaryFits.length > 0 && (
+          <div className="flex gap-2 items-start">
+            <span className="text-yellow-400 text-sm shrink-0">⭐</span>
+            <p className="text-[11px] text-slate-400">
+              {analysis.primaryFits.map(p=>p.PLAYER_NAME?.split(" ").slice(-1)[0]).join(", ")} played in their natural position — chemistry bonus earned.
+            </p>
+          </div>
+        )}
+
+        {/* En düşük skoru oyuncu */}
+        {analysis.byScore.length >= 2 && (() => {
+          const weakP = analysis.byScore[analysis.byScore.length-1];
+          const bestP = analysis.byScore[0];
+          const weakPct = Math.round((parseFloat(weakP.overall_score)||0)*100);
+          const teamOf = weakP._team ? ` from ${weakP._team}` : "";
+          const yr = weakP._season ? ` (${weakP._season.slice(0,4)})` : "";
+          return (
+            <div className="flex gap-2 items-start">
+              <span className="text-slate-500 text-sm shrink-0">↓</span>
+              <p className="text-[11px] text-slate-500">
+                <span className="text-slate-400">{weakP.PLAYER_NAME}</span>{teamOf}{yr} was your weakest link (overall {weakPct}). A different player{teamOf} with a {analysis.weakest.label.toLowerCase()} profile could improve this lineup's ceiling significantly.
+              </p>
+            </div>
+          );
+        })()}
+
+        {/* Genel değerlendirme */}
+        <div className="pt-1 border-t border-slate-800">
+          <p className="text-[11px] text-slate-500 italic">
+            {pct>=85
+              ? "Elite lineup construction. All five pillars covered — this roster would compete at the highest level."
+              : pct>=75
+              ? "Strong lineup with a clear identity. Minor gaps, but the core is functional."
+              : pct>=65
+              ? "Decent fit. You have a foundation, but one key piece could unlock this lineup's potential."
+              : pct>=55
+              ? "Some compatibility, but notable holes. The wheel wasn't kind — or the picks didn't mesh."
+              : "Significant mismatches. Try again with a more balanced role distribution."}
+          </p>
+        </div>
+      </div>
+
       <button onClick={onReset}
         className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-semibold transition-colors">
-        {lang==="tr"?"🔄 Tekrar Oyna":"🔄 Play Again"}
+        🔄 Play Again
       </button>
     </div>
   );
@@ -287,7 +399,7 @@ export default function LineupGame() {
   // ── Oyuncu çek (ortak) ───────────────────────────────────────────────────
   const fetchPlayers = useCallback((season, team, onEmpty) => {
     setPhase("fetching");
-    setStatusMsg(lang==="tr"?"Oyuncular yükleniyor...":"Loading players...");
+    setStatusMsg("Loading players...");
     fetch(`/api/game/players?season=${encodeURIComponent(season)}&team=${encodeURIComponent(team)}`)
       .then(r=>r.json())
       .then(d=>{
@@ -318,7 +430,7 @@ export default function LineupGame() {
 
     const afterSeasonStop = (season) => {
       setChosenSeason(season);
-      setStatusMsg(lang==="tr"?"Takımlar yükleniyor...":"Loading teams...");
+      setStatusMsg("Loading teams...");
 
       fetch(`/api/game/teams?season=${encodeURIComponent(season)}`)
         .then(r=>r.json())
@@ -345,7 +457,7 @@ export default function LineupGame() {
             setSpinT(false);
             setChosenTeam(team);
             fetchPlayers(season, team, ()=>{
-              setStatusMsg(lang==="tr"?"Veri yok, tekrar dönüyor...":"No data, re-spinning...");
+              setStatusMsg("No data, re-spinning...");
               setTimeout(()=>startFullSpin(),700);
             });
           },2000);
@@ -365,39 +477,62 @@ export default function LineupGame() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[seasons, lang, fetchPlayers]);
 
-  // ── Joker: sadece takım çevir ─────────────────────────────────────────────
+  // ── Joker: sadece takım çevir (mevcut takım hariç) ───────────────────────
   const jokerReTeam = useCallback(()=>{
     if(!jokers.reTeam||teamPool.length===0) return;
     setJokers(j=>({...j,reTeam:false}));
     clearTimeout(timerRef.current);
-    const tIdx=Math.floor(Math.random()*teamPool.length);
-    setTargetTIdx(tIdx);
+    // Mevcut takımı havuzdan çıkar
+    const otherTeams = teamPool.filter(t => t !== chosenTeam);
+    const pool = otherTeams.length > 0 ? otherTeams : teamPool;
+    const tIdx = teamPool.indexOf(pool[Math.floor(Math.random()*pool.length)]);
+    setTargetTIdx(Math.max(0,tIdx));
     setSpinT(true);
     setSpinS(false);
     setPlayers([]);
     setPhase("spin_team");
 
     timerRef.current=setTimeout(()=>{
-      const team=teamPool[tIdx];
+      const team=teamPool[Math.max(0,tIdx)];
       setSpinT(false);
       setChosenTeam(team);
-      fetchPlayers(chosenSeason,team,()=>jokerReTeam());
+      fetchPlayers(chosenSeason,team,()=>{
+        // hâlâ boş ise tekrar dene
+        const alt=pool.filter(t=>t!==team);
+        if(alt.length===0) return;
+        const ai=teamPool.indexOf(alt[Math.floor(Math.random()*alt.length)]);
+        setTargetTIdx(Math.max(0,ai));
+        setSpinT(true);
+        timerRef.current=setTimeout(()=>{
+          const t2=teamPool[Math.max(0,ai)];
+          setSpinT(false);
+          setChosenTeam(t2);
+          fetchPlayers(chosenSeason,t2,()=>{});
+        },2000);
+      });
     },2000);
-  },[jokers.reTeam,teamPool,chosenSeason,fetchPlayers]);
+  },[jokers.reTeam,teamPool,chosenTeam,chosenSeason,fetchPlayers]);
 
-  // ── Joker: sadece yılı çevir (takım sabit) ───────────────────────────────
+  // ── Joker: sadece yılı çevir (mevcut sezon hariç) ────────────────────────
   const jokerReYear = useCallback(()=>{
-    if(!jokers.reYear) return;
+    if(!jokers.reYear||seasons.length===0) return;
     setJokers(j=>({...j,reYear:false}));
-    startFullSpin(null, chosenTeam||null);
-  },[jokers.reYear,chosenTeam,startFullSpin]);
+    const otherSeasons = seasons.filter(s => s !== chosenSeason);
+    const pool = otherSeasons.length > 0 ? otherSeasons : seasons;
+    const picked = pool[Math.floor(Math.random()*pool.length)];
+    startFullSpin(picked, null);
+  },[jokers.reYear,seasons,chosenSeason,startFullSpin]);
 
-  // ── Joker: ikisini de çevir ───────────────────────────────────────────────
+  // ── Joker: ikisini de çevir (mevcut sezon+takım kombinasyonu hariç) ──────
   const jokerReBoth = useCallback(()=>{
     if(!jokers.reBoth) return;
     setJokers(j=>({...j,reBoth:false}));
-    startFullSpin();
-  },[jokers.reBoth,startFullSpin]);
+    // startFullSpin tamamen rastgele — sadece aynı sezonu almamaya çalış
+    const otherSeasons = seasons.filter(s => s !== chosenSeason);
+    const pool = otherSeasons.length > 0 ? otherSeasons : seasons;
+    const picked = pool[Math.floor(Math.random()*pool.length)];
+    startFullSpin(picked, null);
+  },[jokers.reBoth,seasons,chosenSeason,startFullSpin]);
 
   // ── Joker: ikili seçim ────────────────────────────────────────────────────
   const jokerDouble = useCallback(()=>{
@@ -464,9 +599,9 @@ export default function LineupGame() {
 
       {/* Başlık */}
       <div>
-        <h1 className="text-xl font-bold text-white">{lang==="tr"?"Lineup Kurma Oyunu":"Lineup Builder Game"}</h1>
+        <h1 className="text-xl font-bold text-white">Lineup Builder</h1>
         <p className="text-xs text-slate-500 mt-0.5">
-          {lang==="tr"?"Çarklar rastgele sezon+takım seçer. Birincil mevkine yerleştirilen oyuncular ⭐ kimya bonusu kazandırır!":"Wheels pick random season+team. Players in their primary position earn ⭐ chemistry bonus!"}
+          Wheels pick a random season + team. Pick one player per round and slot them into a position.
         </p>
       </div>
 
@@ -489,16 +624,16 @@ export default function LineupGame() {
       {/* Jokerler (sadece pick_player fazında) */}
       {phase==="pick_player"&&(
         <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-2">
-          <div className="text-[9px] text-slate-600 uppercase tracking-widest mb-1.5 text-center">Jokerler</div>
+          <div className="text-[9px] text-slate-600 uppercase tracking-widest mb-1.5 text-center">Jokers</div>
           <div className="flex gap-1.5 justify-center">
-            <JokerBtn icon="🔄" label={lang==="tr"?"Takım":"Team"} available={jokers.reTeam} onClick={jokerReTeam}/>
-            <JokerBtn icon="📅" label={lang==="tr"?"Yıl":"Year"}  available={jokers.reYear} onClick={jokerReYear}/>
-            <JokerBtn icon="⚡" label={lang==="tr"?"İkisi":"Both"} available={jokers.reBoth} onClick={jokerReBoth}/>
-            <JokerBtn icon="👥" label={lang==="tr"?"2 Seç":"Pick 2"} available={jokers.double&&!doubleActive&&emptyPositions.length>=2} onClick={jokerDouble}/>
+            <JokerBtn icon="🔄" label="Team"   available={jokers.reTeam} onClick={jokerReTeam}/>
+            <JokerBtn icon="📅" label="Year"   available={jokers.reYear} onClick={jokerReYear}/>
+            <JokerBtn icon="⚡" label="Both"   available={jokers.reBoth} onClick={jokerReBoth}/>
+            <JokerBtn icon="👥" label="Pick 2" available={jokers.double&&!doubleActive&&emptyPositions.length>=2} onClick={jokerDouble}/>
           </div>
           {doubleActive&&(
             <div className="text-center text-xs text-amber-400 mt-1.5 animate-pulse">
-              {lang==="tr"?"👥 İkili seçim aktif — 2 oyuncu seç":"👥 Double pick active — choose 2 players"}
+              👥 Double pick active — choose 2 players
             </div>
           )}
         </div>
@@ -506,17 +641,42 @@ export default function LineupGame() {
 
       {/* === IDLE === */}
       {phase==="idle"&&(
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center">
-          <div className="text-5xl mb-4">🎰</div>
-          <p className="text-sm text-slate-400 mb-6 max-w-xs mx-auto">
-            {lang==="tr"
-              ?"Sezon çarkı dönecek, ardından takım çarkı. Birincil mevkine yerleştirdiğin oyuncular ⭐ kimya bonusu kazandırır!"
-              :"Season wheel spins, then team wheel. Players placed in their primary position earn ⭐ chemistry bonus!"}
-          </p>
+        <div className="space-y-3">
+          {/* Oyun açıklaması */}
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
+            <div className="text-[10px] text-slate-600 uppercase tracking-widest">How it works</div>
+            <p className="text-sm text-slate-300 leading-relaxed">
+              Each round, two wheels spin — one for <span className="text-blue-400 font-medium">season</span>, one for <span className="text-blue-400 font-medium">team</span>. You pick one player from that roster, then choose which position to slot them into.
+            </p>
+            <p className="text-sm text-slate-400 leading-relaxed">
+              After 5 picks, your lineup is scored across five pillars: <span className="text-slate-300">Creation · Spacing · Defense · Finishing · Role Fit</span>. The goal is to build the highest-scoring lineup possible — but the wheels decide who you're choosing from.
+            </p>
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              {[
+                ["⭐ Chemistry","Place players in their natural position for a bonus"],
+                ["🃏 Jokers","Re-spin year, team, or both — once each per game"],
+                ["👥 Double Pick","Pick two players from the same roster in one round"],
+                ["??? Archetype","Player archetypes are hidden — revealed at the end"],
+              ].map(([title,desc])=>(
+                <div key={title} className="bg-slate-800/60 rounded-lg p-2.5">
+                  <div className="text-[11px] text-white font-medium mb-0.5">{title}</div>
+                  <div className="text-[10px] text-slate-500 leading-relaxed">{desc}</div>
+                </div>
+              ))}
+            </div>
+            <div className="pt-1 border-t border-slate-800">
+              <p className="text-[11px] text-slate-500 italic">
+                Archetypes that <span className="text-slate-400">win together</span>: Creation + Spacing is the foundation. You need at least one true playmaker, 2–3 shooters, and a credible defensive anchor. Ball-dominant duos hurt — redundancy kills lineups.
+              </p>
+            </div>
+          </div>
+          {/* Başlat butonu */}
+          <div className="text-center">
           <button onClick={()=>startFullSpin()} disabled={seasons.length===0}
-            className="px-8 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 text-white rounded-xl font-semibold text-base transition-colors">
-            {seasons.length===0?(lang==="tr"?"Yükleniyor...":"Loading..."):(lang==="tr"?"🎰 Oyunu Başlat":"🎰 Start Game")}
+            className="px-10 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 text-white rounded-xl font-semibold text-base transition-colors">
+            {seasons.length===0?"Loading...":"🎰 Start Game"}
           </button>
+          </div>
         </div>
       )}
 
@@ -528,7 +688,7 @@ export default function LineupGame() {
             <SpinWheel items={teamPool.length>0?teamPool:["..."]} spinning={spinTeams} targetIdx={targetTIdx} label={lang==="tr"?"Takım":"Team"}/>
           </div>
           <p className="text-center text-xs text-slate-500 animate-pulse">
-            {statusMsg||( phase==="spin_season"?(lang==="tr"?"Sezon seçiliyor...":"Picking season...") : phase==="spin_team"?(lang==="tr"?"Takım seçiliyor...":"Picking team...") : (lang==="tr"?"Yükleniyor...":"Loading...") )}
+            {statusMsg||(phase==="spin_season"?"Picking season...":phase==="spin_team"?"Picking team...":"Loading...")}
           </p>
         </div>
       )}
@@ -539,7 +699,7 @@ export default function LineupGame() {
           <div className="flex items-center gap-2 mb-3 flex-wrap">
             <span className="bg-blue-600/20 border border-blue-500/30 text-blue-300 text-xs font-mono px-2 py-0.5 rounded-lg">{chosenSeason}</span>
             <span className="bg-slate-800 border border-slate-700 text-white text-xs font-mono px-2 py-0.5 rounded-lg">{chosenTeam}</span>
-            <span className="text-xs text-slate-500">{lang==="tr"?"— oyuncu seç":"— pick a player"}</span>
+            <span className="text-xs text-slate-500">— pick a player</span>
           </div>
           <div className="grid grid-cols-2 gap-2 max-h-80 overflow-y-auto">
             {players.map((p,i)=><PlayerCard key={i} player={p} onClick={()=>handlePickPlayer(p)} dimmed={false}/>)}
@@ -566,10 +726,10 @@ export default function LineupGame() {
                 </div>
               </div>
               <button onClick={()=>{setPickedPlayer(null);setPhase("pick_player");}}
-                className="text-slate-600 hover:text-slate-300 text-xs">{lang==="tr"?"← Geri":"← Back"}</button>
+                className="text-slate-600 hover:text-slate-300 text-xs">← Back</button>
             </div>
             <div className="text-xs text-slate-500 mb-2">
-              {lang==="tr"?"Hangi pozisyon? (★ = birincil → kimya bonusu)":"Which position? (★ = primary → chemistry bonus)"}
+              Which position? (★ = primary → chemistry bonus)
             </div>
             <div className="flex gap-2 flex-wrap">
               {emptyPositions.map(pos=>{
