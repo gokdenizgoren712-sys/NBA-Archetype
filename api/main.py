@@ -1276,11 +1276,45 @@ def get_historical_player_scores(season: str, player_name: str):
         scores = {c: round(float(row.get(f"score_{c}", 0)), 3) for c in comp_avail}
     else:
         scores = {c: round(float(row.get(f"score_{c}", 0)), 3) for c in comp_avail}
+        # Modifier skorları: hist_merged'den on-the-fly hesapla (var olan metriklerle)
+        modifier_scores: dict = {}
+        active_modifiers: list = []
+        try:
+            from engine import predict_components, compute_percentiles
+            from signatures import COMPONENT_SIGNATURES, MODIFIER_TAGS
+            merged_p = DATA / f"{season.replace('/', '-')}__hist_merged.parquet"
+            if merged_p.exists():
+                mdf = pd.read_parquet(merged_p)
+                # FT_RATE türet
+                if "FTA" in mdf.columns and "FGA" in mdf.columns:
+                    mdf["FT_RATE"] = (mdf["FTA"] / mdf["FGA"].replace(0, pd.NA)).fillna(0)
+                mod_sigs = {k: v for k, v in COMPONENT_SIGNATURES.items() if k in MODIFIER_TAGS}
+                if mod_sigs:
+                    all_m = sorted({m for c in mod_sigs for m in mod_sigs[c]["metrics"]})
+                    pct_df = compute_percentiles(mdf, all_m)
+                    from engine import score_component
+                    for tag in MODIFIER_TAGS:
+                        if tag not in mod_sigs:
+                            continue
+                        s = score_component(pct_df, tag, mod_sigs)
+                        # Bu oyuncunun satırını bul
+                        p_match = mdf[mdf["PLAYER_NAME"].str.contains(player_name, case=False, na=False)]
+                        if p_match.empty:
+                            continue
+                        idx = p_match.index[0]
+                        val = float(s.loc[idx]) if idx in s.index else 0.0
+                        if pd.isna(val):
+                            val = 0.0
+                        modifier_scores[tag] = round(val, 3)
+                    thr_def = 0.70
+                    active_modifiers = [t for t, v in modifier_scores.items() if v >= thr_def]
+        except Exception:
+            pass
 
     overall = row.get("overall_score", None)
     primary = row.get("primary_arch", "")
     pos_raw = str(row.get("POSITION","") or "")
-    return {
+    result = {
         "name":             row["PLAYER_NAME"],
         "season":           season,
         "team":             row.get("TEAM_ABBREVIATION",""),
@@ -1292,6 +1326,10 @@ def get_historical_player_scores(season: str, player_name: str):
         "versatility_score": round(float(row.get("versatility_score",0)),3) if "versatility_score" in row.index and pd.notna(row.get("versatility_score")) else None,
         "versatility_tier":  row.get("versatility_tier",""),
     }
+    if season != "2025-26":
+        result["modifier_scores"]  = modifier_scores
+        result["active_modifiers"] = active_modifiers
+    return result
 
 
 # ── Franchise geçmişi: modern kısaltma → tarihsel kısaltmalar ─────────────────

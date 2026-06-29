@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Search } from "lucide-react";
 import { api } from "../api";
 import PlayerCard from "../components/PlayerCard";
@@ -6,7 +6,6 @@ import ScoreBar from "../components/ScoreBar";
 import RadarProfile from "../components/RadarProfile";
 
 const CORE = ["Engine","Ecosystem","Hub","Connector","Creator","Anchor","Spacer","Finisher","Force","Initiator","Stopper","Rim Runner"];
-const MODIFIERS = ["Two-Way","Heliocentric","Jumbo","Pressure","Shotmaker","Three-Level","Scoring","Speed","Versatile","Defensive","Half-Court","Point-of-Attack","Gravity","Scalable","Stretch","Point-","Off-Ball","Slashing","Pick-and-Roll","3-and-D","Playmaking","Secondary"];
 const POSITIONS = ["","PG","SG","SF","PF","C"];
 
 const TAG_LABEL = {
@@ -29,6 +28,56 @@ const POS_COLOR = {
   C:  "bg-red-500/20 text-red-300",
 };
 
+/* ── Career line chart ───────────────────────────────────────────── */
+function CareerChart({ seasons }) {
+  const scored = seasons.filter(s => s.overall_score != null);
+  if (scored.length < 2) return null;
+
+  const W = 320, H = 100, PX = 24, PY = 14;
+  const iW = W - PX * 2, iH = H - PY * 2;
+
+  const vals = scored.map(s => s.overall_score);
+  const minV = Math.min(...vals);
+  const maxV = Math.max(...vals);
+  const range = maxV - minV || 0.01;
+
+  const pts = scored.map((s, i) => {
+    const x = PX + (i / (scored.length - 1)) * iW;
+    const y = PY + iH - ((s.overall_score - minV) / range) * iH;
+    return { x, y, s };
+  });
+
+  const path = pts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
+  const area = `${path} L${pts[pts.length-1].x.toFixed(1)},${(PY+iH).toFixed(1)} L${pts[0].x.toFixed(1)},${(PY+iH).toFixed(1)} Z`;
+
+  return (
+    <div className="mb-4">
+      <div className="text-[10px] uppercase tracking-wider text-slate-600 mb-2">Overall Score Trajectory</div>
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: H }}>
+        <defs>
+          <linearGradient id="cg" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.35" />
+            <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0.02" />
+          </linearGradient>
+        </defs>
+        <path d={area} fill="url(#cg)" />
+        <path d={path} fill="none" stroke="#8b5cf6" strokeWidth="2" strokeLinejoin="round" />
+        {pts.map((p, i) => (
+          <g key={i}>
+            <circle cx={p.x} cy={p.y} r="3" fill="#8b5cf6" />
+            <text x={p.x} y={p.y - 5} textAnchor="middle" fontSize="7" fill="#a78bfa">
+              {Math.round(p.s.overall_score * 100)}
+            </text>
+            <text x={p.x} y={H - 2} textAnchor="middle" fontSize="7" fill="#4b5563">
+              {p.s.season?.slice(0,4)}
+            </text>
+          </g>
+        ))}
+      </svg>
+    </div>
+  );
+}
+
 export default function Players() {
   const [seasons, setSeasons]   = useState([]);
   const [season, setSeason]     = useState("2025-26");
@@ -37,14 +86,13 @@ export default function Players() {
   const [searchInput, setSearchInput] = useState("");
   const [pos, setPos]               = useState("");
   const [arch, setArch]             = useState("");
-  const [mod, setMod]               = useState("");
   const [team, setTeam]             = useState("");
   const [sortBy, setSortBy]         = useState("overall_score");
 
   const [players, setPlayers]   = useState([]);
   const [total, setTotal]       = useState(0);
   const [loading, setLoading]   = useState(false);
-  const [teamList, setTeamList] = useState([]);
+  const [teamList, setTeamList] = useState([]);  // current season teams (from API)
   const debounceRef = useRef(null);
 
   const [selected, setSelected]     = useState(null);
@@ -57,6 +105,13 @@ export default function Players() {
 
   const isCurrent = season === "2025-26";
 
+  // historical team list derived from loaded players
+  const histTeams = useMemo(() => {
+    if (isCurrent) return [];
+    const teams = [...new Set(players.map(p => p.TEAM_ABBREVIATION).filter(Boolean))].sort();
+    return teams;
+  }, [players, isCurrent]);
+
   useEffect(() => {
     api.seasons().then(d => setSeasons(d.seasons || [])).catch(() => {});
     api.teams().then(d => setTeamList(d.teams || [])).catch(() => {});
@@ -66,7 +121,7 @@ export default function Players() {
     setSelected(null); setDetail(null);
     setSimilar(null); setCareer(null);
     setSearch(""); setSearchInput("");
-    setPos(""); setArch(""); setMod(""); setTeam("");
+    setPos(""); setArch(""); setTeam("");
     setSortBy("overall_score");
     setPlayers([]); setTotal(0);
   }, [season]);
@@ -80,7 +135,6 @@ export default function Players() {
         if (team)   params.team   = team;
         if (pos)    params.position = pos;
         if (arch)   params.arch   = arch;
-        if (mod)    params.modifier = mod;
         const data = await api.players(params);
         setPlayers(data.players || []);
         setTotal(data.total || 0);
@@ -91,12 +145,13 @@ export default function Players() {
         let rows = data.players || [];
         if (pos)  rows = rows.filter(p => (p.POSITION || "") === pos);
         if (arch) rows = rows.filter(p => (p.primary_arch || "") === arch);
+        if (team) rows = rows.filter(p => (p.TEAM_ABBREVIATION || "") === team);
         setPlayers(rows);
         setTotal(data.total || rows.length);
       }
     } catch (e) { console.error(e); }
     setLoading(false);
-  }, [isCurrent, season, search, team, pos, arch, mod, sortBy]);
+  }, [isCurrent, season, search, team, pos, arch, sortBy]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -112,15 +167,21 @@ export default function Players() {
   };
 
   const clearFilters = () => {
-    setSearch(""); setSearchInput(""); setPos(""); setArch(""); setMod(""); setTeam("");
+    setSearch(""); setSearchInput(""); setPos(""); setArch(""); setTeam("");
   };
-  const hasFilters = search || pos || arch || mod || team;
+  const hasFilters = search || pos || arch || team;
 
-  // historical oyuncu nesnesini PlayerCard'a uyumlu hale getir
   const toCardPlayer = (p) => ({
     ...p,
     overall_tier: p.overall_tier || p.versatility_tier || "",
   });
+
+  const loadCareer = async (name) => {
+    setCareerLoading(true);
+    try { const r = await api.playerCareer(name); setCareer(r); }
+    catch(e) { setCareer({ error: true }); }
+    setCareerLoading(false);
+  };
 
   return (
     <div className="flex h-full">
@@ -159,27 +220,18 @@ export default function Players() {
             {POSITIONS.filter(Boolean).map(p => <option key={p} value={p}>{p}</option>)}
           </select>
 
-          <select value={arch} onChange={e => { setArch(e.target.value); setMod(""); }}
+          <select value={arch} onChange={e => { setArch(e.target.value); }}
             className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-violet-500">
             <option value="">All archetypes</option>
             {CORE.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
 
-          {isCurrent && (
-            <select value={mod} onChange={e => { setMod(e.target.value); setArch(""); }}
-              className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-violet-500">
-              <option value="">Modifier</option>
-              {MODIFIERS.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-          )}
-
-          {isCurrent && (
-            <select value={team} onChange={e => setTeam(e.target.value)}
-              className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-violet-500">
-              <option value="">Team</option>
-              {teamList.map(t => <option key={t} value={t}>{t}</option>)}
-            </select>
-          )}
+          {/* Team filter — current uses API list, historical uses derived list */}
+          <select value={team} onChange={e => setTeam(e.target.value)}
+            className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-violet-500">
+            <option value="">Team</option>
+            {(isCurrent ? teamList : histTeams).map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
 
           <select value={sortBy} onChange={e => setSortBy(e.target.value)}
             className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500">
@@ -247,10 +299,12 @@ export default function Players() {
           </div>
 
           <div className="flex border-b border-slate-800 shrink-0">
-            {(isCurrent
-              ? [["radar","Radar"],["scores","Scores"],["similar","Similar"],["career","Career"]]
-              : [["radar","Radar"],["scores","Scores"]]
-            ).map(([k,l]) => (
+            {[
+              ["radar","Radar"],
+              ["scores","Scores"],
+              ...(isCurrent ? [["similar","Similar"]] : []),
+              ["career","Career"],
+            ].map(([k,l]) => (
               <button key={k} onClick={async () => {
                 setTab(k);
                 if (k === "similar" && !similar && isCurrent) {
@@ -259,11 +313,8 @@ export default function Players() {
                   catch(e) { console.error(e); }
                   setSimilarLoading(false);
                 }
-                if (k === "career" && !career && isCurrent) {
-                  setCareerLoading(true);
-                  try { const r = await api.playerCareer(selected.PLAYER_NAME); setCareer(r); }
-                  catch(e) { setCareer({ error: true }); }
-                  setCareerLoading(false);
+                if (k === "career" && !career) {
+                  loadCareer(selected.PLAYER_NAME);
                 }
               }}
                 className={`flex-1 py-2 text-xs font-medium transition-colors ${
@@ -323,7 +374,7 @@ export default function Players() {
                     {CORE.map(c => (
                       <ScoreBar key={c} label={c} value={detail.scores?.[c] || 0} highlight />
                     ))}
-                    {isCurrent && detail.active_modifiers?.length > 0 && (() => {
+                    {detail.active_modifiers?.length > 0 && (() => {
                       const sorted = [...detail.active_modifiers].sort(
                         (a, b) => (detail.modifier_scores?.[b] || 0) - (detail.modifier_scores?.[a] || 0)
                       );
@@ -342,6 +393,9 @@ export default function Players() {
                         </>
                       );
                     })()}
+                    {!isCurrent && (!detail.active_modifiers || detail.active_modifiers.length === 0) && (
+                      <div className="mt-4 text-[10px] text-slate-600 italic">No modifier tags active for this season</div>
+                    )}
                   </div>
                 )}
 
@@ -365,7 +419,7 @@ export default function Players() {
                   </div>
                 )}
 
-                {tab === "career" && isCurrent && (
+                {tab === "career" && (
                   <div className="p-4">
                     {careerLoading && <div className="text-center text-slate-500 text-sm py-6">Loading...</div>}
                     {!careerLoading && career?.error && (
@@ -373,6 +427,7 @@ export default function Players() {
                     )}
                     {!careerLoading && career?.seasons && (
                       <>
+                        <CareerChart seasons={career.seasons} />
                         <div className="text-[10px] uppercase tracking-wider text-slate-600 mb-3">Season-by-Season</div>
                         <div className="space-y-1.5">
                           {career.seasons.slice().reverse().map((s, i) => {
