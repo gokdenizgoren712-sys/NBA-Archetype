@@ -877,7 +877,8 @@ export default function LineupGame() {
   const isSpinPhase = phase==="spin_season"||phase==="spin_team"||phase==="fetching";
 
   return (
-    <div className="min-h-full p-4 sm:p-6 max-w-xl mx-auto space-y-3">
+    <div className="h-full overflow-y-auto">
+    <div className="p-4 sm:p-6 max-w-xl mx-auto space-y-3 pb-6">
 
       {/* Başlık */}
       <div>
@@ -1083,6 +1084,7 @@ export default function LineupGame() {
       {phase==="complete"&&fitResult&&(
         <ScoreReveal fit={fitResult} lineup={lineup} primaryCount={primaryCount} roundHistory={roundHistoryRef.current} onReset={resetGame} lang={lang}/>
       )}
+    </div>
     </div>
   );
 }
