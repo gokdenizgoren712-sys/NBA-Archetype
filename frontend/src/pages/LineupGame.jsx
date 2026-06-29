@@ -74,6 +74,57 @@ function computeLineupFit(players) {
   return {creation,spacing,defense,finishing,roleFit,nShooters,lineupScore:Math.min(1,0.28*creation+0.27*spacing+0.22*defense+0.12*finishing+0.11*roleFit+synergy),synergyBonus:synergy};
 }
 
+// ── Era sistemi ───────────────────────────────────────────────────────────────
+const ERAS = [
+  { id:"magic_bird", label:"Magic vs Bird Era",    short:"80s",       color:"text-amber-400",    bg:"bg-amber-900/30 border-amber-700/40",    years:[1979,1991] },
+  { id:"jordan",     label:"Jordan Era",           short:"Jordan",    color:"text-red-400",      bg:"bg-red-900/30 border-red-700/40",        years:[1991,1998] },
+  { id:"dead_ball",  label:"Dead Ball Era",        short:"Dead Ball", color:"text-slate-400",    bg:"bg-slate-700/50 border-slate-500/40",    years:[1998,2008] },
+  { id:"proto",      label:"Proto Super Team Era", short:"Proto ST",  color:"text-blue-400",     bg:"bg-blue-900/30 border-blue-700/40",      years:[2008,2014] },
+  { id:"small_ball", label:"Small Ball Era",       short:"Small Ball",color:"text-emerald-400",  bg:"bg-emerald-900/30 border-emerald-700/40",years:[2014,2020] },
+  { id:"parity",     label:"Parity Era",           short:"Parity",    color:"text-violet-400",   bg:"bg-violet-900/30 border-violet-700/40",  years:[2020,2030] },
+];
+
+// Her arketipin o era'da ne kadar "meta" olduğu (1.0 = nötr, >1 meta, <1 meta-dışı)
+const ERA_ARCH_WEIGHTS = {
+  magic_bird: { Engine:0.90, Ecosystem:1.30, Hub:1.15, Creator:0.85, Connector:0.95, Anchor:1.15, Force:1.20, Spacer:0.45, Finisher:0.85, Initiator:0.70, Stopper:0.95, "Rim Runner":0.70 },
+  jordan:     { Engine:1.25, Ecosystem:0.85, Hub:0.90, Creator:1.20, Connector:0.85, Anchor:0.95, Force:1.00, Spacer:0.60, Finisher:0.90, Initiator:0.85, Stopper:1.15, "Rim Runner":0.80 },
+  dead_ball:  { Engine:0.90, Ecosystem:0.85, Hub:0.85, Creator:0.95, Connector:0.85, Anchor:1.25, Force:1.15, Spacer:0.55, Finisher:0.85, Initiator:0.75, Stopper:1.20, "Rim Runner":0.85 },
+  proto:      { Engine:1.10, Ecosystem:0.95, Hub:1.00, Creator:1.05, Connector:0.95, Anchor:1.00, Force:1.00, Spacer:0.80, Finisher:1.05, Initiator:0.85, Stopper:1.00, "Rim Runner":1.10 },
+  small_ball: { Engine:1.20, Ecosystem:1.05, Hub:1.00, Creator:1.10, Connector:1.00, Anchor:0.70, Force:0.65, Spacer:1.35, Finisher:1.00, Initiator:0.90, Stopper:0.95, "Rim Runner":1.10 },
+  parity:     { Engine:1.10, Ecosystem:1.15, Hub:1.05, Creator:1.05, Connector:1.10, Anchor:0.85, Force:0.80, Spacer:1.20, Finisher:1.00, Initiator:0.95, Stopper:1.05, "Rim Runner":1.05 },
+};
+
+const ERA_META_BLURB = {
+  magic_bird: "Post play & team ball. Ecosystems and powerful bigs reign. Spacers barely exist.",
+  jordan:     "Isolation era. Engines and Creators peak. Stoppers at a premium.",
+  dead_ball:  "Grind-it-out defense. Anchors and Stoppers dominate. Pace is dead.",
+  proto:      "Pick-and-roll transition. Stretch bigs emerging. Relatively balanced.",
+  small_ball: "Spacing is king. Spacers peak. Traditional bigs and Forces struggle.",
+  parity:     "Two-way versatility rewarded. Ecosystems and connectors shine.",
+};
+
+function getEra(season) {
+  if (!season) return ERAS[5];
+  const year = parseInt(season.split("-")[0]);
+  return ERAS.find(e => year >= e.years[0] && year < e.years[1]) || ERAS[5];
+}
+
+function computeEraFit(player, season) {
+  const era = getEra(season || player._season);
+  const arch = player.primary_arch || "";
+  const w = (ERA_ARCH_WEIGHTS[era.id] || {})[arch] ?? 1.0;
+  const archScore = parseFloat(player[`score_${arch}`] ?? 0) || 0;
+  return Math.min(1, w * archScore);
+}
+
+function computeLineupEraFit(lineup) {
+  const filled = POSITIONS.map(p => lineup[p]).filter(Boolean);
+  if (!filled.length) return null;
+  const items = filled.map(p => ({ player: p, era: getEra(p._season), fit: computeEraFit(p) }));
+  const avg = items.reduce((a, b) => a + b.fit, 0) / items.length;
+  return { avg, items };
+}
+
 // ── SpinWheel ─────────────────────────────────────────────────────────────────
 function SpinWheel({ items, spinning, targetIdx, label }) {
   const [centerIdx,setCenterIdx]=useState(0);
@@ -107,18 +158,26 @@ function SpinWheel({ items, spinning, targetIdx, label }) {
 }
 
 // ── Oyuncu kartı ─────────────────────────────────────────────────────────────
-function PlayerCard({ player, onClick, dimmed }) {
+function PlayerCard({ player, season, discover, onClick, dimmed }) {
   const eligible = getEligiblePos(player);
   const primary  = eligible[0];
   const stat = (k,d=1) => player[k]!=null ? (+player[k]).toFixed(d) : "—";
+  const era = getEra(season);
+  const overall = player.overall_score != null ? Math.round(player.overall_score * 100) : null;
   return (
     <button onClick={onClick} disabled={dimmed}
       className={`w-full text-left border rounded-xl p-2.5 transition-all group
         ${dimmed?"opacity-30 cursor-not-allowed border-slate-800 bg-slate-900/50"
-                :"border-slate-700 hover:border-blue-500/60 hover:bg-slate-800 bg-slate-900 cursor-pointer"}`}>
-      {/* İsim */}
-      <div className="text-sm text-white font-medium group-hover:text-blue-200 leading-tight truncate mb-1.5">
-        {player.PLAYER_NAME}
+                :discover?"border-emerald-700/60 hover:border-emerald-500/80 hover:bg-slate-800 bg-slate-900 cursor-pointer"
+                         :"border-slate-700 hover:border-blue-500/60 hover:bg-slate-800 bg-slate-900 cursor-pointer"}`}>
+      {/* İsim + era chip */}
+      <div className="flex items-start justify-between gap-1 mb-1.5">
+        <div className={`text-sm font-medium leading-tight truncate ${discover?"text-emerald-200":"text-white group-hover:text-blue-200"}`}>
+          {player.PLAYER_NAME}
+        </div>
+        <span className={`text-[8px] px-1.5 py-0.5 rounded border shrink-0 font-medium ${era.bg} ${era.color}`}>
+          {era.short}
+        </span>
       </div>
       {/* İstatistikler */}
       <div className="flex gap-2 text-[10px] text-slate-400 mb-1.5 flex-wrap">
@@ -128,15 +187,27 @@ function PlayerCard({ player, onClick, dimmed }) {
         <span>STL <span className="text-slate-200 font-medium">{stat("STL")}</span></span>
         <span>BLK <span className="text-slate-200 font-medium">{stat("BLK")}</span></span>
       </div>
-      {/* Mevkiler */}
+      {/* Mevkiler + arketip */}
       <div className="flex gap-1 flex-wrap">
         {eligible.map(p=>(
           <span key={p} className={`text-[9px] px-1.5 py-0.5 rounded border font-bold ${p===primary?"ring-1 ring-blue-400/40":""} ${POS_COLORS[p]||"bg-slate-800 text-slate-400 border-slate-700"}`}>
             {p}{p===primary?" ★":""}
           </span>
         ))}
-        {/* Arketip gizli */}
-        <span className="ml-auto text-[9px] px-1.5 py-0.5 rounded border border-slate-700 bg-slate-800 text-slate-500 font-mono">???</span>
+        {discover ? (
+          <span className="ml-auto flex items-center gap-1">
+            <span className="text-[9px] px-1.5 py-0.5 rounded border border-emerald-700/50 bg-emerald-900/30 text-emerald-300 font-medium">
+              {player.primary_arch || "—"}
+            </span>
+            {overall != null && (
+              <span className="text-[9px] px-1.5 py-0.5 rounded border border-violet-700/50 bg-violet-900/30 text-violet-300 font-bold">
+                {overall}
+              </span>
+            )}
+          </span>
+        ) : (
+          <span className="ml-auto text-[9px] px-1.5 py-0.5 rounded border border-slate-700 bg-slate-800 text-slate-500 font-mono">???</span>
+        )}
       </div>
     </button>
   );
@@ -160,6 +231,26 @@ function LineupSlot({ pos, player }) {
       ) : (
         <div className="text-slate-700 text-sm">—</div>
       )}
+    </div>
+  );
+}
+
+// ── Info Modal ────────────────────────────────────────────────────────────────
+function InfoModal({ open, onClose, title, children }) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+         onClick={onClose}>
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+      <div className="relative bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-sm w-full shadow-2xl
+                      animate-[fadeScaleIn_0.18s_ease-out]"
+           onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-white font-bold text-base">{title}</h3>
+          <button onClick={onClose} className="text-slate-500 hover:text-white text-xl leading-none">×</button>
+        </div>
+        {children}
+      </div>
     </div>
   );
 }
@@ -237,7 +328,8 @@ function analyzeLineup(fit, lineup, roundHistory=[]) {
 
 // ── Sonuç ekranı ──────────────────────────────────────────────────────────────
 function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang }) {
-  const analysis = analyzeLineup(fit, lineup, roundHistory);
+  const analysis  = analyzeLineup(fit, lineup, roundHistory);
+  const eraResult = computeLineupEraFit(lineup);
   const chemBonus = primaryCount * 0.02;
   const rawScore  = fit.lineupScore;
   const totalScore = Math.min(1, rawScore + chemBonus);
@@ -301,6 +393,59 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang })
           })}
         </div>
       </div>
+
+      {/* Era Fit */}
+      {eraResult && (
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-[10px] text-slate-600 uppercase tracking-widest">Era Fit</div>
+            <div className="text-right">
+              <span className={`text-lg font-bold ${eraResult.avg>=0.75?"text-emerald-400":eraResult.avg>=0.55?"text-amber-400":"text-red-400"}`}>
+                {Math.round(eraResult.avg*100)}
+              </span>
+              <span className="text-[10px] text-slate-500 ml-1">avg</span>
+            </div>
+          </div>
+          <div className="space-y-2.5">
+            {eraResult.items.map(({player:p, era, fit}, i) => {
+              const fitPct = Math.round(fit*100);
+              const arch = p.primary_arch || "—";
+              const weight = (ERA_ARCH_WEIGHTS[era.id]||{})[arch] ?? 1.0;
+              const isBonus = weight > 1.0;
+              const isPenalty = weight < 0.85;
+              return (
+                <div key={i} className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className={`text-[8px] px-1.5 py-0.5 rounded border shrink-0 ${era.bg} ${era.color}`}>{era.short}</span>
+                    <span className="text-xs text-white font-medium flex-1 truncate">{p.PLAYER_NAME}</span>
+                    <span className={`text-[10px] font-bold shrink-0 ${fitPct>=75?"text-emerald-400":fitPct>=55?"text-amber-400":"text-red-400"}`}>{fitPct}</span>
+                  </div>
+                  <div className="flex items-center gap-2 pl-0">
+                    <div className="flex-1 h-1 bg-slate-800 rounded-full overflow-hidden">
+                      <div className={`h-full rounded-full ${fitPct>=75?"bg-emerald-500":fitPct>=55?"bg-amber-500":"bg-red-700"}`}
+                           style={{width:`${fitPct}%`}}/>
+                    </div>
+                    <span className={`text-[9px] shrink-0 ${isBonus?"text-emerald-500":isPenalty?"text-red-500":"text-slate-600"}`}>
+                      {arch} {isBonus?`↑${Math.round((weight-1)*100)}%`:isPenalty?`↓${Math.round((1-weight)*100)}%`:""}
+                    </span>
+                  </div>
+                  {isPenalty && (
+                    <p className="text-[9px] text-slate-600 pl-0 leading-tight">
+                      {arch} was off-meta in the {era.label} — {ERA_META_BLURB[era.id]}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <div className="mt-3 pt-2 border-t border-slate-800">
+            <p className="text-[10px] text-slate-500 italic leading-relaxed">
+              Era Fit measures how well each player's archetype aligned with the meta of their era.
+              A Spacer from the Dead Ball era scores low — not because they were bad, but because spacing wasn't the league's currency yet.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Post-game analysis */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
@@ -418,8 +563,11 @@ export default function LineupGame() {
   const [chosenTeam,   setChosenTeam]   = useState("");
 
   // Jokerler
-  const [jokers, setJokers] = useState({reTeam:true,reYear:true,reBoth:true,double:true});
-  const [doubleActive, setDoubleActive] = useState(false);
+  const [jokers, setJokers] = useState({reTeam:true,reYear:true,reBoth:true,double:true,discover:true});
+  const [doubleActive, setDoubleActive]   = useState(false);
+  const [discoverActive, setDiscoverActive] = useState(false);
+  // Info modals
+  const [modal, setModal] = useState(null); // "chemistry" | "jokers" | "archetype"
 
   const lineupRef = useRef(lineup);
   useEffect(()=>{ lineupRef.current=lineup; },[lineup]);
@@ -581,6 +729,13 @@ export default function LineupGame() {
     setDoubleActive(true);
   },[jokers.double]);
 
+  // ── Joker: discover (arketip + skor göster) ───────────────────────────────
+  const jokerDiscover = useCallback(()=>{
+    if(!jokers.discover) return;
+    setJokers(j=>({...j,discover:false}));
+    setDiscoverActive(true);
+  },[jokers.discover]);
+
   // ── Oyuncu seç ────────────────────────────────────────────────────────────
   const handlePickPlayer = (player) => {
     if(pendingRoundRef.current){
@@ -588,6 +743,7 @@ export default function LineupGame() {
       pendingRoundRef.current = null;
     }
     setPickedPlayer(player);
+    setDiscoverActive(false);
     setPhase("pick_pos");
   };
 
@@ -631,8 +787,9 @@ export default function LineupGame() {
     setSpinS(false);
     setSpinT(false);
     setPrimaryCount(0);
-    setJokers({reTeam:true,reYear:true,reBoth:true,double:true});
+    setJokers({reTeam:true,reYear:true,reBoth:true,double:true,discover:true});
     setDoubleActive(false);
+    setDiscoverActive(false);
     roundHistoryRef.current=[];
     pendingRoundRef.current=null;
     setPhase("idle");
@@ -672,56 +829,103 @@ export default function LineupGame() {
         <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-2">
           <div className="text-[9px] text-slate-600 uppercase tracking-widest mb-1.5 text-center">Jokers</div>
           <div className="flex gap-1.5 justify-center">
-            <JokerBtn icon="🔄" label="Team"   available={jokers.reTeam} onClick={jokerReTeam}/>
-            <JokerBtn icon="📅" label="Year"   available={jokers.reYear} onClick={jokerReYear}/>
-            <JokerBtn icon="⚡" label="Both"   available={jokers.reBoth} onClick={jokerReBoth}/>
-            <JokerBtn icon="👥" label="Pick 2" available={jokers.double&&!doubleActive&&emptyPositions.length>=2} onClick={jokerDouble}/>
+            <JokerBtn icon="🔄" label="Team"     available={jokers.reTeam}   onClick={jokerReTeam}/>
+            <JokerBtn icon="📅" label="Year"     available={jokers.reYear}   onClick={jokerReYear}/>
+            <JokerBtn icon="⚡" label="Both"     available={jokers.reBoth}   onClick={jokerReBoth}/>
+            <JokerBtn icon="👥" label="Pick 2"   available={jokers.double&&!doubleActive&&emptyPositions.length>=2} onClick={jokerDouble}/>
+            <JokerBtn icon="🔍" label="Discover" available={jokers.discover&&!discoverActive} onClick={jokerDiscover}/>
           </div>
           {doubleActive&&(
             <div className="text-center text-xs text-amber-400 mt-1.5 animate-pulse">
               👥 Double pick active — choose 2 players
             </div>
           )}
+          {discoverActive&&(
+            <div className="text-center text-xs text-emerald-400 mt-1.5 animate-pulse">
+              🔍 Discover active — archetypes and scores revealed this round
+            </div>
+          )}
         </div>
       )}
+
+      {/* Info modals */}
+      <InfoModal open={modal==="chemistry"} onClose={()=>setModal(null)} title="⭐ Chemistry">
+        <div className="space-y-3 text-sm text-slate-300 leading-relaxed">
+          <p>Each player has a <span className="text-white font-medium">primary position</span> based on their archetype and real-life role. When you slot a player into their primary position, you earn a chemistry point.</p>
+          <p>At the end of the game, each chemistry point adds <span className="text-yellow-300 font-medium">+2 to your final score</span> (up to +10 for a perfect lineup).</p>
+          <p className="text-slate-400 text-xs">A star (⭐) marks the primary slot button. You can still place players in other positions — sometimes a mismatched role is the right tactical call.</p>
+        </div>
+      </InfoModal>
+
+      <InfoModal open={modal==="jokers"} onClose={()=>setModal(null)} title="🃏 Jokers">
+        <div className="space-y-3">
+          {[
+            ["🔄","Team","Re-spin the team wheel. Get a different roster from the same season."],
+            ["📅","Year","Re-spin the season wheel. Jump to a completely different era."],
+            ["⚡","Both","Re-spin both wheels at once. Full reset of the current round."],
+            ["👥","Pick 2","Choose two players from the current roster in a single round."],
+            ["🔍","Discover","Reveal every player's archetype and overall score this round, then choose with full information."],
+          ].map(([icon,name,desc])=>(
+            <div key={name} className="flex gap-3 items-start">
+              <span className="text-xl shrink-0">{icon}</span>
+              <div>
+                <div className="text-white font-medium text-sm">{name}</div>
+                <div className="text-slate-400 text-xs leading-relaxed">{desc}</div>
+              </div>
+            </div>
+          ))}
+          <p className="text-[11px] text-slate-600 pt-1 border-t border-slate-800">Each joker can be used once per game.</p>
+        </div>
+      </InfoModal>
+
+      <InfoModal open={modal==="archetype"} onClose={()=>setModal(null)} title="??? Archetypes">
+        <div className="space-y-3 text-sm text-slate-300 leading-relaxed">
+          <p>Player archetypes are <span className="text-white font-medium">hidden during the game</span> and revealed after your 5th pick. Read the stats and position clues to guess the role.</p>
+          <p>Each archetype is a percentile score built from real NBA tracking and box-score data. The 12 core archetypes range from <span className="text-orange-300">Engine</span> (usage, creation) to <span className="text-blue-300">Anchor</span> (rim protection, defensive rating).</p>
+          <p className="text-slate-400 text-xs">The lineup is scored across five pillars: Creation, Spacing, Defense, Finishing, and Role Fit. Archetypes that complement each other score higher than redundant ones.</p>
+          <div className="flex gap-2 pt-1 border-t border-slate-800">
+            <a href="/glossary" className="text-xs text-violet-400 hover:text-violet-300 underline underline-offset-2">Full Glossary</a>
+            <span className="text-slate-700">·</span>
+            <a href="/about" className="text-xs text-violet-400 hover:text-violet-300 underline underline-offset-2">About the System</a>
+          </div>
+        </div>
+      </InfoModal>
 
       {/* === IDLE === */}
       {phase==="idle"&&(
         <div className="space-y-3">
-          {/* Oyun açıklaması */}
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
             <div className="text-[10px] text-slate-600 uppercase tracking-widest">How it works</div>
             <p className="text-sm text-slate-300 leading-relaxed">
-              Each round, two wheels spin — one for <span className="text-blue-400 font-medium">season</span>, one for <span className="text-blue-400 font-medium">team</span>. You pick one player from that roster, then choose which position to slot them into.
+              Each round, two wheels spin: one for <span className="text-blue-400 font-medium">season</span>, one for <span className="text-blue-400 font-medium">team</span>. Pick one player from that roster, then choose their position.
             </p>
             <p className="text-sm text-slate-400 leading-relaxed">
-              After 5 picks, your lineup is scored across five pillars: <span className="text-slate-300">Creation · Spacing · Defense · Finishing · Role Fit</span>. The goal is to build the highest-scoring lineup possible — but the wheels decide who you're choosing from.
+              After 5 picks, your lineup is scored across five pillars: <span className="text-slate-300">Creation · Spacing · Defense · Finishing · Role Fit</span>. Each player also receives an <span className="text-amber-300 font-medium">Era Fit</span> score — how well their archetype aligned with the meta of their era. Build the highest-scoring lineup you can; the wheels decide who you choose from.
             </p>
-            <div className="grid grid-cols-2 gap-2 pt-1">
+            <div className="grid grid-cols-3 gap-2 pt-1">
               {[
-                ["⭐ Chemistry","Place players in their natural position for a bonus"],
-                ["🃏 Jokers","Re-spin year, team, or both — once each per game"],
-                ["👥 Double Pick","Pick two players from the same roster in one round"],
-                ["??? Archetype","Player archetypes are hidden — revealed at the end"],
-              ].map(([title,desc])=>(
-                <div key={title} className="bg-slate-800/60 rounded-lg p-2.5">
-                  <div className="text-[11px] text-white font-medium mb-0.5">{title}</div>
+                {key:"chemistry", icon:"⭐", title:"Chemistry",   desc:"Slot players into natural positions for a score bonus"},
+                {key:"jokers",    icon:"🃏", title:"Jokers",      desc:"Five one-time abilities to reshape your options"},
+                {key:"archetype", icon:"???",title:"Archetypes",  desc:"Hidden until the end — revealed alongside your score"},
+              ].map(({key,icon,title,desc})=>(
+                <button key={key} onClick={()=>setModal(key)}
+                  className="bg-slate-800/60 hover:bg-slate-700/60 rounded-lg p-2.5 text-left transition-colors border border-slate-700/50 hover:border-slate-600">
+                  <div className="text-[13px] font-bold text-white mb-0.5">{icon} {title}</div>
                   <div className="text-[10px] text-slate-500 leading-relaxed">{desc}</div>
-                </div>
+                </button>
               ))}
             </div>
             <div className="pt-1 border-t border-slate-800">
               <p className="text-[11px] text-slate-500 italic">
-                Archetypes that <span className="text-slate-400">win together</span>: Creation + Spacing is the foundation. You need at least one true playmaker, 2–3 shooters, and a credible defensive anchor. Ball-dominant duos hurt — redundancy kills lineups.
+                Archetypes that win together: Creation + Spacing is the foundation. You need at least one true playmaker, 2 to 3 shooters, and a credible defensive anchor. Ball-dominant duos hurt — redundancy kills lineups.
               </p>
             </div>
           </div>
-          {/* Başlat butonu */}
           <div className="text-center">
-          <button onClick={()=>startFullSpin()} disabled={seasons.length===0}
-            className="px-10 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 text-white rounded-xl font-semibold text-base transition-colors">
-            {seasons.length===0?"Loading...":"🎰 Start Game"}
-          </button>
+            <button onClick={()=>startFullSpin()} disabled={seasons.length===0}
+              className="px-10 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 text-white rounded-xl font-semibold text-base transition-colors">
+              {seasons.length===0?"Loading...":"🎰 Start Game"}
+            </button>
           </div>
         </div>
       )}
@@ -748,7 +952,7 @@ export default function LineupGame() {
             <span className="text-xs text-slate-500">— pick a player</span>
           </div>
           <div className="grid grid-cols-2 gap-2 max-h-80 overflow-y-auto">
-            {players.map((p,i)=><PlayerCard key={i} player={p} onClick={()=>handlePickPlayer(p)} dimmed={false}/>)}
+            {players.map((p,i)=><PlayerCard key={i} player={p} season={chosenSeason} discover={discoverActive} onClick={()=>handlePickPlayer(p)} dimmed={false}/>)}
           </div>
         </div>
       )}

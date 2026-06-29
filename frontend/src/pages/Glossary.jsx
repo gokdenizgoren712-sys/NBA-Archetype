@@ -212,6 +212,110 @@ export default function Glossary() {
           />
         ))}
       </div>
+
+      {/* NBA Eras */}
+      <div className="mt-12">
+        <h2 className="text-xl font-bold text-white mb-1">NBA Eras and Era Fit</h2>
+        <p className="text-sm text-slate-400 mb-6">
+          The Lineup Builder game scores each player's <span className="text-amber-300 font-medium">Era Fit</span> — how well their archetype aligned with the meta of the era they played in.
+          Era Fit is computed as: <code className="text-xs bg-slate-800 px-1.5 py-0.5 rounded text-slate-200">era_weight[archetype] × score_[archetype]</code>.
+          The archetype score is the player's within-season percentile composite (0–1).
+          The era weight reflects how much NBA teams valued that archetype in a given period, derived from pace, shot distribution, and lineup construction trends of each era.
+        </p>
+
+        <div className="space-y-3">
+          {[
+            {
+              short: "80s", label: "Magic vs Bird Era", years: "1979–1991",
+              color: "text-amber-400", bg: "border-amber-700/30 bg-amber-900/10",
+              meta: "Post play, team ball, mid-range dominance",
+              desc: "The league ran through dominant big men (Kareem, Barkley, Malone) and all-court playmakers (Magic, Bird). The 3-pointer existed but was rarely attempted — Spacers were virtually irrelevant. Ecosystems and Force/Anchor archetypes commanded maximum value.",
+              top: ["Ecosystem ×1.30", "Force ×1.20", "Anchor ×1.15", "Hub ×1.15"],
+              low: ["Spacer ×0.45", "Initiator ×0.70", "Rim Runner ×0.70"],
+            },
+            {
+              short: "Jordan", label: "Jordan Era", years: "1991–1998",
+              color: "text-red-400", bg: "border-red-700/30 bg-red-900/10",
+              meta: "Isolation scoring, lockdown defense, pure athleticism",
+              desc: "Michael Jordan redefined individual excellence. Teams were built around one dominant scorer with supporting stoppers. Engines and Creators peaked in value; lockdown Stoppers were premium. The Ecosystem archetype declined as isolation replaced ball movement.",
+              top: ["Engine ×1.25", "Creator ×1.20", "Stopper ×1.15"],
+              low: ["Spacer ×0.60", "Ecosystem ×0.85", "Hub ×0.90"],
+            },
+            {
+              short: "Dead Ball", label: "Dead Ball Era", years: "1998–2008",
+              color: "text-slate-300", bg: "border-slate-600/30 bg-slate-800/20",
+              meta: "Physical defense, post play, deliberately slow pace",
+              desc: "The league's lowest-scoring era since the shot clock. Physical hand-checking rules rewarded defensive specialists. Interior bigs (Shaq, Duncan, KG) defined championship rosters. Spacing was minimal — teams rarely attempted 3s. Anchors and Stoppers dominated; Spacers had almost no value.",
+              top: ["Anchor ×1.25", "Stopper ×1.20", "Force ×1.15"],
+              low: ["Spacer ×0.55", "Ecosystem ×0.85", "Connector ×0.85"],
+            },
+            {
+              short: "Proto ST", label: "Proto Super Team Era", years: "2008–2014",
+              color: "text-blue-400", bg: "border-blue-700/30 bg-blue-900/10",
+              meta: "Pick-and-roll revolution, emerging stretch bigs, early spacing",
+              desc: "The post-handcheck era opened up driving lanes. Pick-and-roll became the primary offensive system (Nash Suns, LeBron Cavs, Thunder). Stretch bigs started emerging — Dirk proved a shooting big could win a title. Rim Runners became premium in the new pace-friendly game. A transitional era where most archetypes had balanced value.",
+              top: ["Engine ×1.10", "Creator ×1.05", "Rim Runner ×1.10"],
+              low: ["Spacer ×0.80", "Ecosystem ×0.95"],
+            },
+            {
+              short: "Small Ball", label: "Small Ball Era", years: "2014–2020",
+              color: "text-emerald-400", bg: "border-emerald-700/30 bg-emerald-900/10",
+              meta: "Spacing is king, 3-point explosion, pace and space",
+              desc: "The Warriors dynasty redefined basketball. Three-point volume exploded, traditional big men were phased out, and floor spacing became non-negotiable. A Spacer from this era was exponentially more valuable than in any prior period. Force and Anchor archetypes struggled as teams stopped playing through the post.",
+              top: ["Spacer ×1.35", "Engine ×1.20", "Creator ×1.10"],
+              low: ["Force ×0.65", "Anchor ×0.70", "Initiator ×0.90"],
+            },
+            {
+              short: "Parity", label: "Parity Era", years: "2020–present",
+              color: "text-violet-400", bg: "border-violet-700/30 bg-violet-900/10",
+              meta: "Two-way versatility, load management, balanced rosters",
+              desc: "No single dominant style defines this era. Teams value switchable, two-way players who can play multiple positions. The Ecosystem archetype (playmaking bigs, pass-first guards) has re-emerged as load management and roster depth became strategic priorities. Spacing remains important but pure Spacers are less dominant than in the Small Ball era.",
+              top: ["Spacer ×1.20", "Ecosystem ×1.15", "Connector ×1.10"],
+              low: ["Force ×0.80", "Anchor ×0.85"],
+            },
+          ].map(era => (
+            <div key={era.label} className={`border rounded-xl p-4 ${era.bg}`}>
+              <div className="flex items-center gap-3 mb-2">
+                <span className={`text-[10px] px-2 py-0.5 rounded border font-bold ${era.bg} ${era.color}`}>{era.short}</span>
+                <span className={`font-bold text-base ${era.color}`}>{era.label}</span>
+                <span className="text-xs text-slate-500">{era.years}</span>
+              </div>
+              <p className="text-xs text-slate-400 italic mb-2">{era.meta}</p>
+              <p className="text-sm text-slate-300 leading-relaxed mb-3">{era.desc}</p>
+              <div className="flex flex-wrap gap-4">
+                <div>
+                  <div className="text-[10px] text-emerald-500 uppercase tracking-wider mb-1">Meta archetypes</div>
+                  <div className="flex flex-wrap gap-1">
+                    {era.top.map(t => (
+                      <span key={t} className="text-[10px] px-2 py-0.5 rounded bg-emerald-900/30 border border-emerald-700/40 text-emerald-300">{t}</span>
+                    ))}
+                  </div>
+                </div>
+                {era.low?.length > 0 && (
+                  <div>
+                    <div className="text-[10px] text-red-500 uppercase tracking-wider mb-1">Off-meta</div>
+                    <div className="flex flex-wrap gap-1">
+                      {era.low.map(t => (
+                        <span key={t} className="text-[10px] px-2 py-0.5 rounded bg-red-900/30 border border-red-700/40 text-red-400">{t}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-6 bg-slate-900 border border-slate-800 rounded-xl p-4">
+          <h3 className="text-white font-semibold mb-2 text-sm">How era weights were determined</h3>
+          <p className="text-xs text-slate-400 leading-relaxed">
+            Era weights are set manually based on observable NBA trends: pace, 3-point attempt rates, championship roster construction, and rule changes. For example, the Spacer weight rises from ×0.45 (Magic/Bird) to ×1.35 (Small Ball) tracking the 3-point rate's growth from ~3 attempts per team per game in 1985 to ~35 in 2019. Anchor weight falls as post-up frequency declined and switch-heavy defenses made traditional big men less effective. Weights are intentionally coarse — the goal is directional accuracy, not a regression model.
+          </p>
+          <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+            These weights are applied only in the Lineup Builder game's Era Fit score. Archetype scores in the Players and Historical pages are purely within-season percentile rankings and are not era-adjusted.
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
