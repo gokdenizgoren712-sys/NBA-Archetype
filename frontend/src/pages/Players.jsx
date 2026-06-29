@@ -4,6 +4,7 @@ import { api } from "../api";
 import PlayerCard from "../components/PlayerCard";
 import ScoreBar from "../components/ScoreBar";
 import RadarProfile from "../components/RadarProfile";
+import SplitPane from "../components/SplitPane";
 
 const CORE = ["Engine","Ecosystem","Hub","Connector","Creator","Anchor","Spacer","Finisher","Force","Initiator","Stopper","Rim Runner"];
 const POSITIONS = ["","PG","SG","SF","PF","C"];
@@ -21,55 +22,52 @@ function topPct(pct) {
 }
 
 const POS_COLOR = {
-  PG: "bg-violet-500/20 text-violet-300",
-  SG: "bg-blue-500/20 text-blue-300",
-  SF: "bg-emerald-500/20 text-emerald-300",
-  PF: "bg-orange-500/20 text-orange-300",
-  C:  "bg-red-500/20 text-red-300",
+  PG: "text-violet-400", SG: "text-blue-400",
+  SF: "text-emerald-400", PF: "text-orange-400", C: "text-red-400",
 };
 
-/* ── Career line chart ───────────────────────────────────────────── */
+/* ── Career SVG chart ────────────────────────────────────────────── */
 function CareerChart({ seasons }) {
   const scored = seasons.filter(s => s.overall_score != null);
   if (scored.length < 2) return null;
 
-  const W = 320, H = 100, PX = 24, PY = 14;
+  const W = 320, H = 90, PX = 24, PY = 12;
   const iW = W - PX * 2, iH = H - PY * 2;
-
   const vals = scored.map(s => s.overall_score);
-  const minV = Math.min(...vals);
-  const maxV = Math.max(...vals);
+  const minV = Math.min(...vals), maxV = Math.max(...vals);
   const range = maxV - minV || 0.01;
 
-  const pts = scored.map((s, i) => {
-    const x = PX + (i / (scored.length - 1)) * iW;
-    const y = PY + iH - ((s.overall_score - minV) / range) * iH;
-    return { x, y, s };
-  });
+  const pts = scored.map((s, i) => ({
+    x: PX + (i / (scored.length - 1)) * iW,
+    y: PY + iH - ((s.overall_score - minV) / range) * iH,
+    s,
+  }));
 
   const path = pts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
   const area = `${path} L${pts[pts.length-1].x.toFixed(1)},${(PY+iH).toFixed(1)} L${pts[0].x.toFixed(1)},${(PY+iH).toFixed(1)} Z`;
 
   return (
     <div className="mb-4">
-      <div className="text-[10px] uppercase tracking-wider text-slate-600 mb-2">Overall Score Trajectory</div>
+      <div className="text-[10px] uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)" }}>
+        Overall Trajectory
+      </div>
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: H }}>
         <defs>
           <linearGradient id="cg" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.35" />
-            <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0.02" />
+            <stop offset="0%" stopColor="var(--accent)" stopOpacity="0.25" />
+            <stop offset="100%" stopColor="var(--accent)" stopOpacity="0.02" />
           </linearGradient>
         </defs>
         <path d={area} fill="url(#cg)" />
-        <path d={path} fill="none" stroke="#8b5cf6" strokeWidth="2" strokeLinejoin="round" />
+        <path d={path} fill="none" stroke="var(--accent)" strokeWidth="1.5" strokeLinejoin="round" />
         {pts.map((p, i) => (
           <g key={i}>
-            <circle cx={p.x} cy={p.y} r="3" fill="#8b5cf6" />
-            <text x={p.x} y={p.y - 5} textAnchor="middle" fontSize="7" fill="#a78bfa">
+            <circle cx={p.x} cy={p.y} r="2.5" fill="var(--accent)" />
+            <text x={p.x} y={p.y - 5} textAnchor="middle" fontSize="7" fill="var(--accent)">
               {Math.round(p.s.overall_score * 100)}
             </text>
-            <text x={p.x} y={H - 2} textAnchor="middle" fontSize="7" fill="#4b5563">
-              {p.s.season?.slice(0,4)}
+            <text x={p.x} y={H - 1} textAnchor="middle" fontSize="7" fill="var(--text-faint)">
+              {p.s.season?.slice(0, 4)}
             </text>
           </g>
         ))}
@@ -78,6 +76,199 @@ function CareerChart({ seasons }) {
   );
 }
 
+/* ── Detail panel content ────────────────────────────────────────── */
+function DetailPanel({ selected, detail, isCurrent, season, tab, setTab,
+  similar, similarLoading, career, careerLoading, onLoadCareer }) {
+
+  if (!selected) return null;
+
+  const tabs = [
+    ["radar", "Radar"], ["scores", "Scores"],
+    ...(isCurrent ? [["similar", "Similar"]] : []),
+    ["career", "Career"],
+  ];
+
+  return (
+    <div className="flex flex-col h-full">
+      {/* Header */}
+      <div className="p-4 border-b shrink-0" style={{ borderColor: "var(--border)" }}>
+        <div className="font-bold text-sm" style={{ color: "var(--text-primary)" }}>
+          {selected.PLAYER_NAME}
+        </div>
+        <div className="flex items-center gap-2 mt-1">
+          {detail?.position && (
+            <span className={`text-[10px] font-mono font-medium ${POS_COLOR[detail.position] || ""}`}>
+              {detail.position}
+            </span>
+          )}
+          <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+            {selected.TEAM_ABBREVIATION}{!isCurrent ? ` · ${season}` : ""}
+          </span>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex shrink-0 border-b" style={{ borderColor: "var(--border)" }}>
+        {tabs.map(([k, l]) => (
+          <button key={k} onClick={async () => {
+            setTab(k);
+            if (k === "career" && !career) onLoadCareer(selected.PLAYER_NAME);
+          }}
+            className="flex-1 py-2 text-xs font-medium transition-colors"
+            style={{
+              color: tab === k ? "var(--accent)" : "var(--text-muted)",
+              borderBottom: tab === k ? "2px solid var(--accent)" : "2px solid transparent",
+            }}>{l}</button>
+        ))}
+      </div>
+
+      {/* Body */}
+      <div className="flex-1 overflow-y-auto">
+        {!detail ? (
+          <div className="p-8 text-center text-sm" style={{ color: "var(--text-muted)" }}>Loading...</div>
+        ) : (
+          <>
+            {tab === "radar" && (
+              <div className="p-4">
+                <RadarProfile scores={detail.scores} name={detail.name} primaryArch={detail.primary_arch} />
+                <div className="mt-3 grid grid-cols-4 gap-2">
+                  {["PTS","REB","AST","GP"].map(k => {
+                    const val = selected[k];
+                    return (
+                      <div key={k} className="text-center p-2 rounded"
+                        style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
+                        <div className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>
+                          {k === "GP" ? (val ?? "—") : val != null ? Number(val).toFixed(1) : "—"}
+                        </div>
+                        <div className="text-[9px] uppercase tracking-wide mt-0.5" style={{ color: "var(--text-faint)" }}>{k}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="mt-3 text-center">
+                  <span className="text-xs" style={{ color: "var(--text-muted)" }}>Archetype: </span>
+                  <span className="text-xs font-semibold" style={{ color: "var(--accent)" }}>{detail.primary_arch}</span>
+                  {detail.overall_score != null && (
+                    <>
+                      <span className="mx-2" style={{ color: "var(--border)" }}>·</span>
+                      <span className="text-xs font-bold" style={{ color: "var(--accent)" }}>
+                        {Math.round(detail.overall_score * 100)}
+                      </span>
+                      {detail.overall_pct != null && (
+                        <span className="ml-1 text-[10px]" style={{ color: "var(--text-muted)" }}>
+                          top {topPct(detail.overall_pct)}
+                        </span>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {tab === "scores" && (
+              <div className="p-4 space-y-1">
+                <div className="text-[10px] uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)" }}>
+                  Core Archetypes
+                </div>
+                {CORE.map(c => (
+                  <ScoreBar key={c} label={c} value={detail.scores?.[c] || 0} highlight />
+                ))}
+                {detail.active_modifiers?.length > 0 && (() => {
+                  const sorted = [...detail.active_modifiers].sort(
+                    (a, b) => (detail.modifier_scores?.[b] || 0) - (detail.modifier_scores?.[a] || 0)
+                  );
+                  return (
+                    <>
+                      <div className="text-[10px] uppercase tracking-wider mt-4 mb-2" style={{ color: "var(--text-faint)" }}>
+                        Active Modifiers
+                      </div>
+                      <div className="flex flex-wrap gap-1.5 mb-3">
+                        {sorted.map(m => (
+                          <span key={m} className="text-[10px] px-2 py-0.5 rounded font-medium"
+                            style={{ color: "var(--accent)", border: "1px solid var(--accent-border)", background: "var(--accent-dim)" }}>
+                            {tl(m)}
+                          </span>
+                        ))}
+                      </div>
+                      {sorted.map(m => (
+                        <ScoreBar key={m} label={tl(m)} value={detail.modifier_scores?.[m] || 0} />
+                      ))}
+                    </>
+                  );
+                })()}
+              </div>
+            )}
+
+            {tab === "similar" && isCurrent && (
+              <div className="p-4 space-y-2">
+                {similarLoading && <div className="text-center text-sm py-6" style={{ color: "var(--text-muted)" }}>Loading...</div>}
+                {!similarLoading && similar?.map((p, i) => (
+                  <div key={i} className="flex items-center justify-between px-3 py-2 rounded"
+                    style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
+                    <div>
+                      <div className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{p.name}</div>
+                      <div className="text-[10px] mt-0.5" style={{ color: "var(--text-muted)" }}>
+                        {p.team} · {p.position} · <span style={{ color: "var(--accent)" }}>{p.primary_arch}</span>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0 ml-2">
+                      <div className="text-xs font-semibold" style={{ color: "var(--accent)" }}>{Math.round(p.similarity * 100)}%</div>
+                      <div className="text-[9px]" style={{ color: "var(--text-faint)" }}>similarity</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {tab === "career" && (
+              <div className="p-4">
+                {careerLoading && <div className="text-center text-sm py-6" style={{ color: "var(--text-muted)" }}>Loading...</div>}
+                {!careerLoading && career?.error && (
+                  <div className="text-center text-xs py-6" style={{ color: "var(--text-muted)" }}>Career data not available</div>
+                )}
+                {!careerLoading && career?.seasons && (
+                  <>
+                    <CareerChart seasons={career.seasons} />
+                    <div className="text-[10px] uppercase tracking-wider mb-3" style={{ color: "var(--text-faint)" }}>
+                      Season-by-Season
+                    </div>
+                    <div className="space-y-1.5">
+                      {career.seasons.slice().reverse().map((s, i) => {
+                        const score = s.overall_score != null ? Math.round(s.overall_score * 100) : null;
+                        const isCur = s.season === "2025-26";
+                        return (
+                          <div key={i} className="flex items-center gap-2 px-3 py-2 rounded"
+                            style={{
+                              background: isCur ? "var(--accent-dim)" : "var(--bg-elevated)",
+                              border: `1px solid ${isCur ? "var(--accent-border)" : "var(--border)"}`,
+                            }}>
+                            <span className="w-14 shrink-0 text-[10px] font-mono" style={{ color: "var(--text-muted)" }}>{s.season}</span>
+                            <span className="w-8 shrink-0 text-[10px]" style={{ color: "var(--text-faint)" }}>{s.team}</span>
+                            <span className="flex-1 text-xs font-medium truncate" style={{ color: "var(--accent)" }}>{s.primary_arch || "—"}</span>
+                            <div className="flex items-center gap-2 text-[10px]" style={{ color: "var(--text-muted)" }}>
+                              {s.pts != null && <span>{s.pts}p</span>}
+                              {s.reb != null && <span>{s.reb}r</span>}
+                              {s.ast != null && <span>{s.ast}a</span>}
+                            </div>
+                            {score != null && (
+                              <span className="w-8 text-xs font-bold text-right shrink-0" style={{ color: "var(--accent)" }}>{score}</span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ── Main component ──────────────────────────────────────────────── */
 export default function Players() {
   const [seasons, setSeasons]   = useState([]);
   const [season, setSeason]     = useState("2025-26");
@@ -92,7 +283,7 @@ export default function Players() {
   const [players, setPlayers]   = useState([]);
   const [total, setTotal]       = useState(0);
   const [loading, setLoading]   = useState(false);
-  const [teamList, setTeamList] = useState([]);  // current season teams (from API)
+  const [teamList, setTeamList] = useState([]);
   const debounceRef = useRef(null);
 
   const [selected, setSelected]     = useState(null);
@@ -105,11 +296,9 @@ export default function Players() {
 
   const isCurrent = season === "2025-26";
 
-  // historical team list derived from loaded players
   const histTeams = useMemo(() => {
     if (isCurrent) return [];
-    const teams = [...new Set(players.map(p => p.TEAM_ABBREVIATION).filter(Boolean))].sort();
-    return teams;
+    return [...new Set(players.map(p => p.TEAM_ABBREVIATION).filter(Boolean))].sort();
   }, [players, isCurrent]);
 
   useEffect(() => {
@@ -166,15 +355,12 @@ export default function Players() {
     } catch (e) { console.error(e); }
   };
 
-  const clearFilters = () => {
-    setSearch(""); setSearchInput(""); setPos(""); setArch(""); setTeam("");
+  const loadSimilar = async (name) => {
+    setSimilarLoading(true);
+    try { const r = await api.similarPlayers(name, 10); setSimilar(r.similar); }
+    catch(e) { console.error(e); }
+    setSimilarLoading(false);
   };
-  const hasFilters = search || pos || arch || team;
-
-  const toCardPlayer = (p) => ({
-    ...p,
-    overall_tier: p.overall_tier || p.versatility_tier || "",
-  });
 
   const loadCareer = async (name) => {
     setCareerLoading(true);
@@ -183,288 +369,110 @@ export default function Players() {
     setCareerLoading(false);
   };
 
+  const clearFilters = () => { setSearch(""); setSearchInput(""); setPos(""); setArch(""); setTeam(""); };
+  const hasFilters = search || pos || arch || team;
+
+  const toCardPlayer = (p) => ({ ...p, overall_tier: p.overall_tier || p.versatility_tier || "" });
+
+  const selectEl = (value, onChange, opts, placeholder) => (
+    <select value={value} onChange={e => onChange(e.target.value)}
+      className="rounded px-3 py-1.5 text-sm focus:outline-none"
+      style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)", color: "var(--text-primary)" }}>
+      <option value="">{placeholder}</option>
+      {opts.map(o => <option key={o} value={o}>{o}</option>)}
+    </select>
+  );
+
   return (
-    <div className="flex h-full">
-      <div className="flex-1 flex flex-col overflow-hidden">
+    <SplitPane
+      detail={selected ? (
+        <DetailPanel
+          selected={selected} detail={detail} isCurrent={isCurrent}
+          season={season} tab={tab} setTab={async (k) => {
+            setTab(k);
+            if (k === "similar" && !similar && isCurrent) loadSimilar(selected.PLAYER_NAME);
+            if (k === "career" && !career) loadCareer(selected.PLAYER_NAME);
+          }}
+          similar={similar} similarLoading={similarLoading}
+          career={career} careerLoading={careerLoading}
+          onLoadCareer={loadCareer}
+        />
+      ) : null}
+      onClose={() => { setSelected(null); setDetail(null); }}
+    >
+      {/* Filter bar */}
+      <div className="p-3 border-b flex flex-wrap gap-2 items-center shrink-0"
+        style={{ background: "var(--bg-surface)", borderColor: "var(--border)" }}>
 
-        {/* Filter bar */}
-        <div className="p-4 border-b border-slate-800 flex flex-wrap gap-2 items-center bg-slate-950">
-          <select
-            value={season}
-            onChange={e => setSeason(e.target.value)}
-            className="bg-slate-900 border border-blue-700/50 rounded-lg px-3 py-1.5 text-sm text-blue-300 font-medium focus:outline-none focus:border-blue-500"
-          >
-            <option value="2025-26">2025-26 (Current)</option>
-            {seasons.filter(s => s !== "2025-26").map(s => (
-              <option key={s} value={s}>{s}</option>
-            ))}
-          </select>
+        {/* Season */}
+        <select value={season} onChange={e => setSeason(e.target.value)}
+          className="rounded px-3 py-1.5 text-sm font-medium focus:outline-none"
+          style={{ background: "var(--accent-dim)", border: "1px solid var(--accent-border)", color: "var(--accent)" }}>
+          <option value="2025-26">2025-26</option>
+          {seasons.filter(s => s !== "2025-26").map(s => <option key={s} value={s}>{s}</option>)}
+        </select>
 
-          <div className="relative flex-1 min-w-[160px]">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-            <input
-              value={searchInput}
-              onChange={e => {
-                setSearchInput(e.target.value);
-                clearTimeout(debounceRef.current);
-                debounceRef.current = setTimeout(() => setSearch(e.target.value), 300);
-              }}
-              placeholder="Search player..."
-              className="w-full bg-slate-900 border border-slate-700 rounded-lg pl-8 pr-3 py-1.5 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-violet-500"
-            />
-          </div>
-
-          <select value={pos} onChange={e => setPos(e.target.value)}
-            className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-violet-500">
-            <option value="">All positions</option>
-            {POSITIONS.filter(Boolean).map(p => <option key={p} value={p}>{p}</option>)}
-          </select>
-
-          <select value={arch} onChange={e => { setArch(e.target.value); }}
-            className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-violet-500">
-            <option value="">All archetypes</option>
-            {CORE.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
-
-          {/* Team filter — current uses API list, historical uses derived list */}
-          <select value={team} onChange={e => setTeam(e.target.value)}
-            className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-violet-500">
-            <option value="">Team</option>
-            {(isCurrent ? teamList : histTeams).map(t => <option key={t} value={t}>{t}</option>)}
-          </select>
-
-          <select value={sortBy} onChange={e => setSortBy(e.target.value)}
-            className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500">
-            <option value="overall_score">Overall ↓</option>
-            {isCurrent && <option value="versatility_score">V.Score ↓</option>}
-            <option value="PTS">PTS ↓</option>
-            <option value="REB">REB ↓</option>
-            <option value="AST">AST ↓</option>
-            {isCurrent && <option value="BPM">BPM ↓</option>}
-            <option value="GP">GP ↓</option>
-          </select>
-
-          {hasFilters && (
-            <button onClick={clearFilters}
-              className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs bg-violet-600/20 text-violet-300 border border-violet-600/30 hover:bg-violet-600/40 transition-colors">
-              ✕ Clear
-            </button>
-          )}
-
-          <span className="text-xs text-slate-500">{total} players</span>
+        {/* Search */}
+        <div className="relative flex-1 min-w-[140px]">
+          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "var(--text-muted)" }} />
+          <input value={searchInput}
+            onChange={e => {
+              setSearchInput(e.target.value);
+              clearTimeout(debounceRef.current);
+              debounceRef.current = setTimeout(() => setSearch(e.target.value), 300);
+            }}
+            placeholder="Search player..."
+            className="w-full rounded pl-8 pr-3 py-1.5 text-sm focus:outline-none"
+            style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
+          />
         </div>
 
-        {/* Kart grid */}
-        <div className="flex-1 overflow-y-auto">
-          {loading ? (
-            <div className="text-center text-slate-500 py-12">Loading...</div>
-          ) : (
-            <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {players.map((p, i) => (
-                <PlayerCard
-                  key={i}
-                  player={toCardPlayer(p)}
-                  rank={p.overall_score != null ? i + 1 : null}
-                  onClick={openPlayer}
-                />
-              ))}
-            </div>
-          )}
-        </div>
+        {selectEl(pos, setPos, POSITIONS.filter(Boolean), "Position")}
+        {selectEl(arch, setArch, CORE, "Archetype")}
+        {selectEl(team, setTeam, isCurrent ? teamList : histTeams, "Team")}
+
+        {/* Sort */}
+        <select value={sortBy} onChange={e => setSortBy(e.target.value)}
+          className="rounded px-3 py-1.5 text-sm focus:outline-none"
+          style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)", color: "var(--text-primary)" }}>
+          <option value="overall_score">Overall ↓</option>
+          {isCurrent && <option value="versatility_score">Versatility ↓</option>}
+          <option value="PTS">PTS ↓</option>
+          <option value="REB">REB ↓</option>
+          <option value="AST">AST ↓</option>
+          {isCurrent && <option value="BPM">BPM ↓</option>}
+          <option value="GP">GP ↓</option>
+        </select>
+
+        {hasFilters && (
+          <button onClick={clearFilters}
+            className="px-2 py-1.5 rounded text-xs transition-colors"
+            style={{ color: "var(--accent)", border: "1px solid var(--accent-border)", background: "var(--accent-dim)" }}>
+            ✕ Clear
+          </button>
+        )}
+
+        <span className="text-xs" style={{ color: "var(--text-faint)" }}>{total}</span>
       </div>
 
-      {/* Detail panel */}
-      {selected && (
-        <div className="
-          fixed inset-0 z-50 bg-slate-950 flex flex-col
-          md:static md:inset-auto md:z-auto md:w-96 md:border-l md:border-slate-800 md:shrink-0
-        ">
-          <div className="p-4 border-b border-slate-800 flex justify-between items-start shrink-0">
-            <div>
-              <div className="font-bold text-white">{selected.PLAYER_NAME}</div>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                {detail?.position && (
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${POS_COLOR[detail.position] || "bg-slate-700 text-slate-400"}`}>
-                    {detail.position}
-                  </span>
-                )}
-                <span className="text-xs text-slate-400">
-                  {selected.TEAM_ABBREVIATION}
-                  {!isCurrent && ` · ${season}`}
-                </span>
-              </div>
-            </div>
-            <button onClick={() => { setSelected(null); setDetail(null); }}
-              className="text-slate-500 hover:text-white text-lg leading-none">×</button>
-          </div>
-
-          <div className="flex border-b border-slate-800 shrink-0">
-            {[
-              ["radar","Radar"],
-              ["scores","Scores"],
-              ...(isCurrent ? [["similar","Similar"]] : []),
-              ["career","Career"],
-            ].map(([k,l]) => (
-              <button key={k} onClick={async () => {
-                setTab(k);
-                if (k === "similar" && !similar && isCurrent) {
-                  setSimilarLoading(true);
-                  try { const r = await api.similarPlayers(selected.PLAYER_NAME, 10); setSimilar(r.similar); }
-                  catch(e) { console.error(e); }
-                  setSimilarLoading(false);
-                }
-                if (k === "career" && !career) {
-                  loadCareer(selected.PLAYER_NAME);
-                }
-              }}
-                className={`flex-1 py-2 text-xs font-medium transition-colors ${
-                  tab === k ? "text-violet-400 border-b-2 border-violet-500" : "text-slate-500 hover:text-slate-300"
-                }`}>{l}</button>
+      {/* Grid */}
+      <div className="flex-1 overflow-y-auto p-4">
+        {loading ? (
+          <div className="text-center py-12 text-sm" style={{ color: "var(--text-muted)" }}>Loading...</div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {players.map((p, i) => (
+              <PlayerCard
+                key={i}
+                player={toCardPlayer(p)}
+                rank={p.overall_score != null ? i + 1 : null}
+                onClick={openPlayer}
+                season={!isCurrent ? season : undefined}
+              />
             ))}
           </div>
-
-          <div className="flex-1 overflow-y-auto">
-            {!detail ? (
-              <div className="p-8 text-center text-slate-500 text-sm">Loading...</div>
-            ) : (
-              <>
-                {tab === "radar" && (
-                  <div className="p-3">
-                    <RadarProfile
-                      scores={detail.scores}
-                      name={detail.name}
-                      primaryArch={detail.primary_arch}
-                    />
-                    <div className="mt-3 grid grid-cols-4 gap-2">
-                      {["PTS","REB","AST","GP"].map(k => {
-                        const val = selected[k];
-                        return (
-                          <div key={k} className="bg-slate-900 rounded-lg p-2 text-center">
-                            <div className="text-sm font-bold text-white">
-                              {k === "GP" ? (val ?? "—") : val != null ? Number(val).toFixed(1) : "—"}
-                            </div>
-                            <div className="text-[9px] text-slate-500 uppercase">{k}</div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                    <div className="mt-2 text-center">
-                      <span className="text-xs text-slate-400">Archetype: </span>
-                      <span className="text-xs font-semibold text-violet-300">{detail.primary_arch}</span>
-                      {detail.overall_score != null ? (
-                        <>
-                          <span className="mx-2 text-slate-700">·</span>
-                          <span className="text-xs font-semibold text-violet-300">
-                            {Math.round(detail.overall_score * 100)}
-                          </span>
-                          {detail.overall_pct != null && (
-                            <span className="ml-1 text-[10px] text-slate-500">top {topPct(detail.overall_pct)}</span>
-                          )}
-                        </>
-                      ) : (
-                        <span className="ml-2 text-xs text-slate-500 italic">not scored (GP &lt; 35)</span>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {tab === "scores" && (
-                  <div className="p-4 space-y-1">
-                    <div className="text-[10px] uppercase tracking-wider text-slate-600 mb-2">Core Archetypes</div>
-                    {CORE.map(c => (
-                      <ScoreBar key={c} label={c} value={detail.scores?.[c] || 0} highlight />
-                    ))}
-                    {detail.active_modifiers?.length > 0 && (() => {
-                      const sorted = [...detail.active_modifiers].sort(
-                        (a, b) => (detail.modifier_scores?.[b] || 0) - (detail.modifier_scores?.[a] || 0)
-                      );
-                      return (
-                        <>
-                          <div className="text-[10px] uppercase tracking-wider text-slate-600 mt-4 mb-2">Active Modifier Tags</div>
-                          <div className="flex flex-wrap gap-1.5 mb-3">
-                            {sorted.map(m => (
-                              <span key={m} className="text-[10px] px-2 py-0.5 rounded-full bg-violet-900/40 text-violet-300 border border-violet-700/40">{tl(m)}</span>
-                            ))}
-                          </div>
-                          <div className="text-[10px] uppercase tracking-wider text-slate-600 mb-2">Modifier Scores</div>
-                          {sorted.map(m => (
-                            <ScoreBar key={m} label={tl(m)} value={detail.modifier_scores?.[m] || 0} />
-                          ))}
-                        </>
-                      );
-                    })()}
-                    {!isCurrent && (!detail.active_modifiers || detail.active_modifiers.length === 0) && (
-                      <div className="mt-4 text-[10px] text-slate-600 italic">No modifier tags active for this season</div>
-                    )}
-                  </div>
-                )}
-
-                {tab === "similar" && isCurrent && (
-                  <div className="p-4 space-y-2">
-                    {similarLoading && <div className="text-center text-slate-500 text-sm py-6">Loading...</div>}
-                    {!similarLoading && similar && similar.map((p, i) => (
-                      <div key={i} className="flex items-center justify-between bg-slate-900 rounded-lg px-3 py-2">
-                        <div>
-                          <div className="text-sm text-white font-medium">{p.name}</div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {p.team} · {p.position} · <span className="text-violet-400">{p.primary_arch}</span>
-                          </div>
-                        </div>
-                        <div className="text-right shrink-0 ml-2">
-                          <div className="text-xs text-slate-300">{Math.round(p.similarity * 100)}%</div>
-                          <div className="text-[9px] text-slate-600">similarity</div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {tab === "career" && (
-                  <div className="p-4">
-                    {careerLoading && <div className="text-center text-slate-500 text-sm py-6">Loading...</div>}
-                    {!careerLoading && career?.error && (
-                      <div className="text-center text-slate-500 text-xs py-6">Career data not available</div>
-                    )}
-                    {!careerLoading && career?.seasons && (
-                      <>
-                        <CareerChart seasons={career.seasons} />
-                        <div className="text-[10px] uppercase tracking-wider text-slate-600 mb-3">Season-by-Season</div>
-                        <div className="space-y-1.5">
-                          {career.seasons.slice().reverse().map((s, i) => {
-                            const score = s.overall_score != null ? Math.round(s.overall_score * 100) : null;
-                            return (
-                              <div key={i} className={`flex items-center gap-2 rounded-lg px-3 py-2 ${s.season === "2025-26" ? "bg-violet-900/20 border border-violet-700/30" : "bg-slate-900/60"}`}>
-                                <div className="w-14 shrink-0">
-                                  <span className="text-[10px] text-slate-400 font-mono">{s.season}</span>
-                                </div>
-                                <div className="w-8 shrink-0 text-[10px] text-slate-500">{s.team}</div>
-                                <div className="flex-1 min-w-0">
-                                  <span className="text-xs text-violet-300 font-medium truncate">{s.primary_arch || "—"}</span>
-                                </div>
-                                <div className="flex items-center gap-2 shrink-0 text-[10px] text-slate-500">
-                                  {s.pts != null && <span>{s.pts}p</span>}
-                                  {s.reb != null && <span>{s.reb}r</span>}
-                                  {s.ast != null && <span>{s.ast}a</span>}
-                                  {s.gp != null && <span className="text-slate-600">{s.gp}g</span>}
-                                </div>
-                                {score != null && (
-                                  <div className="w-8 text-right shrink-0">
-                                    <span className="text-xs font-bold text-violet-400">{score}</span>
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </>
-                    )}
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </SplitPane>
   );
 }

@@ -1,102 +1,125 @@
 @import "tailwindcss";
 
-/* ── Tailwind v4: violet → slate-blue remap ──────────────────────────────── */
+/* ── Tailwind v4: palette overrides ──────────────────────────────── */
 @theme {
-  /* Remap violet palette → slate-blue (no more purple) */
-  --color-violet-50:  #eff6ff;
-  --color-violet-100: #dbeafe;
-  --color-violet-200: #bfdbfe;
-  --color-violet-300: #93c5fd;
-  --color-violet-400: #60a5fa;
-  --color-violet-500: #3b82f6;
-  --color-violet-600: #2563eb;
-  --color-violet-700: #1d4ed8;
-  --color-violet-800: #1e40af;
-  --color-violet-900: #1e3a8a;
-  --color-violet-950: #172554;
+  /* Remap violet → amber/gold (NBA accent) */
+  --color-violet-50:  #fffbeb;
+  --color-violet-100: #fef3c7;
+  --color-violet-200: #fde68a;
+  --color-violet-300: #fcd34d;
+  --color-violet-400: #fbbf24;
+  --color-violet-500: #f59e0b;
+  --color-violet-600: #d97706;
+  --color-violet-700: #b45309;
+  --color-violet-800: #92400e;
+  --color-violet-900: #78350f;
+  --color-violet-950: #451a03;
 
-  /* Anthracite slate */
-  --color-slate-950: #0d0f14;
-  --color-slate-900: #13161e;
-  --color-slate-800: #1c2130;
-  --color-slate-700: #2a3148;
-  --color-slate-600: #3d4663;
-  --color-slate-500: #5a6480;
-  --color-slate-400: #8892a8;
-  --color-slate-300: #b8c0d0;
-  --color-slate-200: #d8dde8;
-  --color-slate-100: #eef0f5;
-  --color-slate-50:  #f6f7fb;
+  /* Deep black slate */
+  --color-slate-950: #080a0f;
+  --color-slate-900: #0d1017;
+  --color-slate-800: #161b26;
+  --color-slate-700: #1f2737;
+  --color-slate-600: #2e3a50;
+  --color-slate-500: #4a5568;
+  --color-slate-400: #718096;
+  --color-slate-300: #a0aec0;
+  --color-slate-200: #cbd5e0;
+  --color-slate-100: #e2e8f0;
+  --color-slate-50:  #f7fafc;
 }
 
-/* ── Modal animasyon ────────────────────────────────────────────────────── */
+/* ── CSS custom properties ───────────────────────────────────────── */
+:root {
+  --bg-base:      #080a0f;
+  --bg-surface:   #0d1017;
+  --bg-elevated:  #161b26;
+  --border:       #1f2737;
+  --accent:       #f59e0b;
+  --accent-dim:   rgba(245,158,11,0.12);
+  --accent-border:rgba(245,158,11,0.30);
+  --text-primary: #e2e8f0;
+  --text-muted:   #718096;
+  --text-faint:   #2e3a50;
+}
+
+html.light {
+  --bg-base:      #f0f2f8;
+  --bg-surface:   #e4e8f2;
+  --bg-elevated:  #d8dde8;
+  --border:       #c4cad8;
+  --accent:       #d97706;
+  --accent-dim:   rgba(217,119,6,0.10);
+  --accent-border:rgba(217,119,6,0.30);
+  --text-primary: #141720;
+  --text-muted:   #4a5568;
+  --text-faint:   #a0aec0;
+}
+
+/* ── Modal animasyon ─────────────────────────────────────────────── */
 @keyframes fadeScaleIn {
-  from { opacity: 0; transform: scale(0.92); }
+  from { opacity: 0; transform: scale(0.93); }
   to   { opacity: 1; transform: scale(1); }
 }
 
-/* ── Base reset ─────────────────────────────────────────────────────────── */
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(16px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ── Base reset ──────────────────────────────────────────────────── */
 * { box-sizing: border-box; }
 body {
   margin: 0;
-  background: #0d0f14;
-  color: #eef0f5;
-  font-family: system-ui, sans-serif;
-  transition: background 0.15s, color 0.15s;
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: system-ui, -apple-system, sans-serif;
 }
 
-/* ── LIGHT MODE — full class overrides ──────────────────────────────────── */
-/*
-   Tailwind bazı sınıfları compile-time static değerle üretir.
-   En güvenilir yol: html.light altında tek tek sınıfları ezme.
-*/
-
-/* Backgrounds */
-html.light                       { background: #d4d8e8; color: #141720; }
-html.light body                  { background: #d4d8e8; color: #141720; }
-html.light .bg-\[#0f0f13\]       { background-color: #d4d8e8; }
-html.light .bg-slate-950         { background-color: #d4d8e8; }
-html.light .bg-slate-900         { background-color: #dde1f0; }
-html.light .bg-slate-800         { background-color: #e5e8f4; }
+/* ── Light mode overrides ────────────────────────────────────────── */
+html.light body                  { background: var(--bg-base); color: var(--text-primary); }
+html.light .bg-slate-950         { background-color: #f0f2f8; }
+html.light .bg-slate-900         { background-color: #e4e8f2; }
+html.light .bg-slate-800         { background-color: #d8dde8; }
 html.light .bg-slate-800\/50,
-html.light .bg-slate-800\/60     { background-color: rgba(229,232,244,0.8); }
-html.light .bg-slate-700         { background-color: #cdd2e4; }
+html.light .bg-slate-800\/60     { background-color: rgba(216,221,232,0.8); }
+html.light .bg-slate-700         { background-color: #c4cad8; }
 
-/* Text */
 html.light .text-white           { color: #141720; }
 html.light .text-slate-100       { color: #141720; }
 html.light .text-slate-200       { color: #1e2235; }
 html.light .text-slate-300       { color: #2a3148; }
-html.light .text-slate-400       { color: #3d4663; }
-html.light .text-slate-500       { color: #5a6480; }
-html.light .text-slate-600       { color: #6b7592; }
+html.light .text-slate-400       { color: #4a5568; }
+html.light .text-slate-500       { color: #718096; }
+html.light .text-slate-600       { color: #a0aec0; }
 
-/* Borders */
-html.light .border-slate-800     { border-color: #c0c5d8; }
-html.light .border-slate-700     { border-color: #b4bace; }
+html.light .border-slate-800     { border-color: #c4cad8; }
+html.light .border-slate-700     { border-color: #b0b8cc; }
 
-/* Inputs & form controls */
 html.light input,
 html.light textarea,
-html.light select                { background-color: #dde1f0; color: #141720; border-color: #c0c5d8; }
+html.light select                { background-color: #e4e8f2; color: #141720; border-color: #c4cad8; }
 html.light input::placeholder,
-html.light textarea::placeholder { color: #7a84a0; }
+html.light textarea::placeholder { color: #718096; }
 
-/* Focus rings */
-html.light .focus\:border-blue-500:focus  { border-color: #3b82f6; }
-html.light .focus\:border-violet-500:focus { border-color: #3b82f6; }
+html.light .hover\:bg-slate-800:hover { background-color: #c4cad8; }
 
-/* Nav active link */
-html.light .hover\:bg-slate-800:hover { background-color: #cdd2e4; }
+/* ── Scrollbar ───────────────────────────────────────────────────── */
+::-webkit-scrollbar        { width: 4px; height: 4px; }
+::-webkit-scrollbar-track  { background: transparent; }
+::-webkit-scrollbar-thumb  { background: var(--border); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-faint); }
 
-/* Scrollbar */
-html.light ::-webkit-scrollbar        { width: 6px; height: 6px; }
-html.light ::-webkit-scrollbar-track  { background: #d4d8e8; }
-html.light ::-webkit-scrollbar-thumb  { background: #b0b6cc; border-radius: 3px; }
-html.light ::-webkit-scrollbar-thumb:hover { background: #8892a8; }
+/* ── Utility classes ─────────────────────────────────────────────── */
+.accent-text  { color: var(--accent); }
+.accent-bg    { background: var(--accent-dim); }
+.accent-border{ border-color: var(--accent-border); }
 
-/* Dark mode scrollbar */
-html.dark ::-webkit-scrollbar        { width: 6px; height: 6px; }
-html.dark ::-webkit-scrollbar-track  { background: #13161e; }
-html.dark ::-webkit-scrollbar-thumb  { background: #2a3148; border-radius: 3px; }
-html.dark ::-webkit-scrollbar-thumb:hover { background: #3d4663; }
+.surface  { background: var(--bg-surface); }
+.elevated { background: var(--bg-elevated); }
+.border-base { border-color: var(--border); }
+
+/* split-pane detail panel slide-in */
+.detail-panel {
+  animation: slideInRight 0.18s ease-out;
+}

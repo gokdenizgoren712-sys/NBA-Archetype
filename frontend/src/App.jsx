@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, NavLink, Navigate, useNavigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, NavLink, Navigate, useNavigate, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
 import Players    from "./pages/Players";
 import Lineups    from "./pages/Lineups";
@@ -8,108 +8,150 @@ import Explore    from "./pages/Explore";
 import Compare    from "./pages/Compare";
 import LineupGame from "./pages/LineupGame";
 import { ThemeProvider, useTheme } from "./contexts/ThemeContext";
-import { LanguageProvider, useLang } from "./contexts/LanguageContext";
+import { LanguageProvider } from "./contexts/LanguageContext";
 import { api } from "./api";
 
-function Header() {
-  const navigate   = useNavigate();
-  const { theme, toggle: toggleTheme } = useTheme();
-  const { lang } = useLang();
+/* ── Nav config ──────────────────────────────────────────────────── */
+const NAV = [
+  { to: "/game",     icon: "⬡",  label: "Game"     },
+  { to: "/players",  icon: "👤", label: "Players"  },
+  { to: "/lineups",  icon: "☰",  label: "Lineups"  },
+  { to: "/explore",  icon: "◎",  label: "Explore"  },
+  { to: "/compare",  icon: "⇌",  label: "Compare"  },
+  { to: "/glossary", icon: "≡",  label: "Glossary" },
+  { to: "/about",    icon: "ℹ",  label: "About"    },
+];
+
+/* ── Top bar ─────────────────────────────────────────────────────── */
+function TopBar() {
+  const navigate = useNavigate();
+  const { theme, toggle } = useTheme();
   const [meta, setMeta] = useState(null);
 
-  useEffect(() => {
-    api.meta().then(setMeta).catch(() => {});
-  }, []);
-
-  const NAV = [
-    { to: "/game",     label: "Game"     },
-    { to: "/players",  label: "Players"  },
-    { to: "/lineups",  label: "Lineups"  },
-    { to: "/explore",  label: "Explore"  },
-    { to: "/compare",  label: "Compare"  },
-    { to: "/glossary", label: "Glossary" },
-    { to: "/about",    label: "About"    },
-  ];
+  useEffect(() => { api.meta().then(setMeta).catch(() => {}); }, []);
 
   return (
-    <header className="border-b border-slate-800 bg-slate-950 px-6 py-3 flex items-center gap-6 shrink-0">
-      <button
-        onClick={() => navigate("/game")}
-        className="flex items-center gap-2 hover:opacity-80 transition-opacity"
-        title="Home"
-      >
-        <span className="text-xl">🏀</span>
-        <span className="font-bold text-white text-sm tracking-wide">NBA Archetype</span>
+    <header className="h-11 shrink-0 flex items-center px-4 gap-3 border-b"
+      style={{ background: "var(--bg-surface)", borderColor: "var(--border)" }}>
+
+      {/* Logo */}
+      <button onClick={() => navigate("/game")}
+        className="flex items-center gap-2 hover:opacity-75 transition-opacity">
+        <span className="text-base">🏀</span>
+        <span className="font-bold text-sm tracking-wide hidden sm:block" style={{ color: "var(--accent)" }}>
+          NBA Archetype
+        </span>
+        <span className="font-bold text-sm tracking-wide sm:hidden" style={{ color: "var(--accent)" }}>
+          NBA
+        </span>
       </button>
 
-      <nav className="flex gap-1">
-        {NAV.map(n => (
-          <NavLink
-            key={n.to}
-            to={n.to}
-            className={({ isActive }) =>
-              `px-3 py-1.5 rounded-lg text-sm transition-colors ${
-                isActive
-                  ? "bg-blue-600/20 text-blue-300"
-                  : "text-slate-400 hover:text-white hover:bg-slate-800"
-              }`
-            }
-          >
-            {n.label}
-          </NavLink>
-        ))}
-      </nav>
-
-      <div className="ml-auto flex items-center gap-2">
-        <span className="text-xs text-slate-600">2025-26</span>
+      <div className="ml-auto flex items-center gap-1.5">
         {meta?.last_updated && (
-          <span className="text-[10px] text-slate-600 hidden sm:block" title="Last updated">
+          <span className="text-[10px] hidden md:block" style={{ color: "var(--text-muted)" }}>
             {meta.last_updated}
           </span>
         )}
+
         <button
-          onClick={async () => {
-            await fetch("/api/admin/clear-cache", { method: "POST" });
-            window.location.reload();
-          }}
+          onClick={async () => { await fetch("/api/admin/clear-cache", { method: "POST" }); window.location.reload(); }}
           title="Refresh data"
-          className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-700 text-slate-500 hover:text-white hover:border-slate-500 transition-colors text-base"
-        >
-          ↺
-        </button>
+          className="w-7 h-7 flex items-center justify-center rounded text-sm transition-colors"
+          style={{ color: "var(--text-muted)", border: "1px solid var(--border)" }}
+          onMouseEnter={e => e.currentTarget.style.color = "var(--text-primary)"}
+          onMouseLeave={e => e.currentTarget.style.color = "var(--text-muted)"}
+        >↺</button>
+
         <button
-          onClick={toggleTheme}
+          onClick={toggle}
           title={theme === "dark" ? "Light mode" : "Dark mode"}
-          className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-700 text-slate-400 hover:text-white hover:border-slate-500 transition-colors text-base"
-        >
-          {theme === "dark" ? "☀" : "🌙"}
-        </button>
+          className="w-7 h-7 flex items-center justify-center rounded text-sm transition-colors"
+          style={{ color: "var(--text-muted)", border: "1px solid var(--border)" }}
+          onMouseEnter={e => e.currentTarget.style.color = "var(--text-primary)"}
+          onMouseLeave={e => e.currentTarget.style.color = "var(--text-muted)"}
+        >{theme === "dark" ? "☀" : "🌙"}</button>
       </div>
     </header>
   );
 }
 
+/* ── Sol icon bar (desktop) ──────────────────────────────────────── */
+function SideNav() {
+  const location = useLocation();
+
+  return (
+    <aside className="hidden md:flex flex-col w-14 shrink-0 border-r pt-2 pb-4"
+      style={{ background: "var(--bg-surface)", borderColor: "var(--border)" }}>
+      {NAV.map(n => {
+        const active = location.pathname === n.to || location.pathname.startsWith(n.to + "/");
+        return (
+          <NavLink key={n.to} to={n.to} title={n.label}
+            className="relative flex flex-col items-center justify-center h-12 text-lg transition-colors group"
+            style={{ color: active ? "var(--accent)" : "var(--text-muted)" }}
+          >
+            {/* active indicator */}
+            {active && (
+              <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-r"
+                style={{ background: "var(--accent)" }} />
+            )}
+            <span className="leading-none">{n.icon}</span>
+            <span className="text-[8px] mt-0.5 font-medium tracking-wide opacity-70">{n.label}</span>
+          </NavLink>
+        );
+      })}
+    </aside>
+  );
+}
+
+/* ── Alt nav (mobile) ────────────────────────────────────────────── */
+function BottomNav() {
+  const location = useLocation();
+
+  return (
+    <nav className="md:hidden flex shrink-0 border-t"
+      style={{ background: "var(--bg-surface)", borderColor: "var(--border)" }}>
+      {NAV.map(n => {
+        const active = location.pathname === n.to;
+        return (
+          <NavLink key={n.to} to={n.to}
+            className="flex-1 flex flex-col items-center justify-center py-2 text-base transition-colors"
+            style={{ color: active ? "var(--accent)" : "var(--text-muted)" }}
+          >
+            <span className="leading-none">{n.icon}</span>
+            <span className="text-[8px] mt-0.5">{n.label}</span>
+          </NavLink>
+        );
+      })}
+    </nav>
+  );
+}
+
+/* ── Inner app ───────────────────────────────────────────────────── */
 function AppInner() {
   return (
     <BrowserRouter>
-      <div className="flex flex-col h-screen text-slate-100" style={{ background: "var(--bg-base)" }}>
-        <Header />
-        <main className="flex-1 overflow-hidden">
-          <div className="h-full overflow-y-auto">
+      <div className="flex flex-col h-screen" style={{ background: "var(--bg-base)", color: "var(--text-primary)" }}>
+        <TopBar />
+
+        <div className="flex flex-1 overflow-hidden">
+          <SideNav />
+
+          <main className="flex-1 overflow-hidden">
             <Routes>
-              <Route path="/"          element={<Navigate to="/game" replace />} />
-              <Route path="/game"      element={<LineupGame />} />
-              <Route path="/players"   element={<Players />} />
-              <Route path="/lineups"   element={<Lineups />} />
-              <Route path="/explore"   element={<Explore />} />
-              <Route path="/compare"   element={<Compare />} />
-              <Route path="/glossary"  element={<Glossary />} />
-              <Route path="/about"     element={<About />} />
-              {/* Eski /historical linkleri players'a yonlendir */}
+              <Route path="/"           element={<Navigate to="/game" replace />} />
+              <Route path="/game"       element={<LineupGame />} />
+              <Route path="/players"    element={<Players />} />
+              <Route path="/lineups"    element={<Lineups />} />
+              <Route path="/explore"    element={<Explore />} />
+              <Route path="/compare"    element={<Compare />} />
+              <Route path="/glossary"   element={<Glossary />} />
+              <Route path="/about"      element={<About />} />
               <Route path="/historical" element={<Navigate to="/players" replace />} />
             </Routes>
-          </div>
-        </main>
+          </main>
+        </div>
+
+        <BottomNav />
       </div>
     </BrowserRouter>
   );
