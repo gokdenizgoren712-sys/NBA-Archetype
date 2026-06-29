@@ -55,49 +55,55 @@ const POS_COLORS = {
   C: "bg-red-900/60 text-red-300 border-red-700/50",
 };
 
-// ── Per-oyuncu boyutsal skor ──────────────────────────────────────────────────
+// ── Per-oyuncu: boyutsal katkı + era kalitesi ────────────────────────────────
 function computePlayerFit(p) {
   const _s = k => { const v = parseFloat(p[`score_${k}`] ?? 0); return isNaN(v) ? 0 : Math.max(0, v); };
+  // Boyutsal katkılar — lineup coverage için max alınır, specialist cezalandırılmaz
   const creation  = Math.min(1, Math.max(_s("Ecosystem")*1.10, _s("Engine"), _s("Hub")*0.90, _s("Creator")*0.88, _s("Initiator")*0.80));
   const spacing   = Math.min(1, Math.max(_s("Spacer"), _s("3-and-D")*0.90, _s("Stretch")*0.85, _s("Gravity")*0.95, _s("Three-Level")*0.80));
   const defense   = Math.min(1, Math.max(_s("Anchor")*1.10, _s("Stopper"), _s("Two-Way")*0.90, _s("Force")*0.65));
   const finishing = Math.min(1, Math.max(_s("Finisher"), _s("Rim Runner")*0.95, _s("Force")*0.75, _s("Slashing")*0.82));
   const overall   = Math.min(1, Math.max(0, parseFloat(p.overall_score || 0)));
-  // Era faktörü: oyuncu kendi erasındaki metaya göre değerlendiriliyor
+  // Oyuncu kalitesi = overall × era faktörü (kendi erasındaki değeri)
   const era = getEra(p._season);
   const arch = p.primary_arch || "";
   const eraWeight = (ERA_ARCH_WEIGHTS[era.id] || {})[arch] ?? 1.0;
   const eraFactor = Math.min(1.15, Math.max(0.75, eraWeight));
-  const raw = (overall + creation + spacing + defense + finishing) / 5;
-  return { creation, spacing, defense, finishing, overall, raw, fit: Math.min(1, raw * eraFactor), eraFactor, era };
+  const quality = Math.min(1, overall * eraFactor);
+  return { creation, spacing, defense, finishing, overall, quality, eraFactor, era };
 }
 
 // ── Lineup fit hesaplama ──────────────────────────────────────────────────────
+// Mantık: Player Quality (oyuncular ne kadar iyi?) × Lineup Coverage (4 rol örtülüyor mu?)
 function computeLineupFit(players) {
   if (!players || players.length < 2) return null;
   const _s = (p, k) => { const v = parseFloat(p[`score_${k}`] ?? 0); return isNaN(v) ? 0 : Math.max(0, v); };
 
-  // Per-oyuncu fit (overall + 4 boyut ortalaması × era faktörü)
   const perPlayer = players.map(p => computePlayerFit(p));
-  const avgFit = perPlayer.reduce((a, b) => a + b.fit, 0) / perPlayer.length;
 
-  // Role Fit — sadece lineup seviyesinde (top dominansı)
+  // 1. Oyuncu kalitesi ortalaması (era-adjusted overall)
+  const avgQuality = perPlayer.reduce((a, b) => a + b.quality, 0) / perPlayer.length;
+
+  // 2. Lineup coverage — her pillar için en iyi oyuncunun katkısı yeterli mi?
+  const creationCov  = Math.min(1, Math.max(...perPlayer.map(p => p.creation)));
+  const nShooters    = perPlayer.filter(p => p.spacing >= 0.65).length;
+  const spacingCov   = [0.10, 0.45, 0.82, 1.00, 0.88, 0.72][Math.min(nShooters, 5)];
+  const defenseCov   = Math.min(1, Math.max(...perPlayer.map(p => p.defense)));
+  const finishingCov = Math.min(1, Math.max(...perPlayer.map(p => p.finishing)));
+  const coverage     = (creationCov + spacingCov + defenseCov + finishingCov) / 4;
+
+  // 3. Role Fit — top dominansı cezası (sadece lineup seviyesinde)
   const ballDom = players.filter(p => Math.max(_s(p,"Engine")*1.05, _s(p,"Ecosystem")) >= 0.80).length;
-  const roleFit = Math.max(0, 1 - Math.max(0, (ballDom - 1) * 0.18));
+  const roleFit = Math.max(0, 1 - Math.max(0, (ballDom - 1) * 0.15));
 
-  // nShooters (görüntü için)
-  const nShooters = perPlayer.filter(pp => pp.spacing >= 0.70).length;
-
-  // Lineup skoru = player fit ortalaması, Role Fit ince ayar yapar
-  const lineupScore = Math.min(1, avgFit * (0.85 + 0.15 * roleFit));
-
-  // Ortalama pillar değerleri (analiz için)
-  const avg = f => perPlayer.reduce((a, b) => a + b[f], 0) / perPlayer.length;
+  // 4. Final: quality × coverage × role_fit
+  const lineupScore = Math.min(1, avgQuality * coverage * roleFit);
 
   return {
-    creation: avg("creation"), spacing: avg("spacing"),
-    defense: avg("defense"),  finishing: avg("finishing"),
-    roleFit, nShooters, lineupScore, perPlayer,
+    creation: creationCov, spacing: spacingCov,
+    defense: defenseCov,   finishing: finishingCov,
+    roleFit, nShooters, coverage, avgQuality,
+    lineupScore, perPlayer,
   };
 }
 
@@ -370,6 +376,9 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang })
     if (lineup[pos] && fit.perPlayer?.[i]) perPlayerMap[pos] = fit.perPlayer[i];
   });
 
+  const coveragePct = Math.round((fit.coverage || 0) * 100);
+  const qualityPct  = Math.round((fit.avgQuality || 0) * 100);
+
   return (
     <div className="space-y-4">
       {/* Ana skor */}
@@ -378,55 +387,68 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang })
         <div className={`text-7xl font-black mb-1 ${pct>=75?"text-blue-400":pct>=55?"text-sky-400":"text-slate-300"}`}>{pct}</div>
         <div className={`text-3xl font-bold mb-1 ${gColor}`}>{grade}</div>
         {chemBonus > 0 && (
-          <div className="text-xs text-yellow-400 mb-4">
+          <div className="text-xs text-yellow-400 mb-2">
             ⭐ Chemistry Bonus: +{primaryCount} primary slot (+{Math.round(chemBonus*100)} pts)
           </div>
         )}
 
-        {/* Per-oyuncu boyutsal skor */}
-        <div className="space-y-2.5 max-w-xs mx-auto mt-3">
+        {/* Oyuncu kalitesi — per-player quality (overall × era) */}
+        <div className="mt-4 space-y-1.5 max-w-xs mx-auto text-left">
+          <div className="text-[9px] text-slate-600 uppercase tracking-widest mb-2 text-center">
+            Player Quality <span className="text-slate-700">avg {qualityPct}</span>
+          </div>
           {POSITIONS.map(pos => {
             const p = lineup[pos];
             const pp = perPlayerMap[pos];
             if (!p || !pp) return null;
-            const fitPct = Math.round(pp.fit * 100);
-            const fitBar = fitPct>=80?"#3b82f6":fitPct>=65?"#475569":"#7f1d1d";
+            const qPct = Math.round(pp.quality * 100);
+            const eraBonus = pp.eraFactor > 1.02;
+            const eraPenalty = pp.eraFactor < 0.92;
             return (
-              <div key={pos} className="text-left space-y-1">
-                <div className="flex items-center gap-1.5">
-                  <span className={`text-[8px] font-bold px-1 py-0.5 rounded border shrink-0 ${POS_COLORS[pos]||""}`}>{pos}</span>
-                  <span className="text-[11px] text-white font-medium flex-1 truncate">{p.PLAYER_NAME?.split(" ").slice(-1)[0]}</span>
-                  <span className="text-[10px] font-bold shrink-0" style={{color:fitPct>=75?"#60a5fa":fitPct>=55?"#94a3b8":"#f87171"}}>{fitPct}</span>
+              <div key={pos} className="flex items-center gap-2">
+                <span className={`text-[8px] font-bold px-1 py-0.5 rounded border shrink-0 ${POS_COLORS[pos]||""}`}>{pos}</span>
+                <span className="text-[10px] text-white flex-1 truncate">{p.PLAYER_NAME?.split(" ").slice(-1)[0]}</span>
+                <span className={`text-[8px] shrink-0 ${pp.era.color}`}>{pp.era.short}</span>
+                {eraBonus && <span className="text-[8px] text-emerald-500 shrink-0">↑era</span>}
+                {eraPenalty && <span className="text-[8px] text-red-500 shrink-0">↓era</span>}
+                <div className="w-16 h-1.5 bg-slate-800 rounded-full overflow-hidden shrink-0">
+                  <div className="h-full rounded-full" style={{width:`${qPct}%`,background:qPct>=75?"#3b82f6":qPct>=55?"#475569":"#7f1d1d"}}/>
                 </div>
-                {/* Overall + 4 boyut mini barları */}
-                <div className="grid grid-cols-5 gap-0.5 pl-4">
-                  {[["OVR",pp.overall],["CRE",pp.creation],["SPC",pp.spacing],["DEF",pp.defense],["FIN",pp.finishing]].map(([lbl,v])=>{
-                    const vp = Math.round(v*100);
-                    return (
-                      <div key={lbl} className="flex flex-col items-center gap-0.5">
-                        <div className="w-full h-1 bg-slate-800 rounded-full overflow-hidden">
-                          <div className="h-full rounded-full" style={{width:`${vp}%`,background:vp>=75?"#3b82f6":vp>=55?"#334155":"#1e293b"}}/>
-                        </div>
-                        <span className="text-[7px] text-slate-600">{lbl}</span>
-                      </div>
-                    );
-                  })}
-                </div>
+                <span className={`text-[10px] w-5 text-right shrink-0 ${qPct>=75?"text-blue-300":qPct>=55?"text-slate-400":"text-red-400"}`}>{qPct}</span>
               </div>
             );
           })}
+        </div>
 
-          {/* Role Fit — lineup seviyesinde */}
-          <div className="flex items-center gap-2 border-t border-slate-800 pt-2">
-            <span className="text-[11px] text-slate-400 w-24 text-right shrink-0">Role Fit</span>
+        {/* Lineup Coverage */}
+        <div className="mt-4 space-y-1.5 max-w-xs mx-auto text-left border-t border-slate-800 pt-3">
+          <div className="text-[9px] text-slate-600 uppercase tracking-widest mb-2 text-center">
+            Lineup Coverage <span className="text-slate-700">avg {coveragePct}</span>
+          </div>
+          {[
+            ["Creation",  fit.creation],
+            [`Spacing (${fit.nShooters})`, fit.spacing],
+            ["Defense",   fit.defense],
+            ["Finishing", fit.finishing],
+          ].map(([label, val]) => {
+            const vp = Math.round((val||0)*100);
+            return (
+              <div key={label} className="flex items-center gap-2">
+                <span className="text-[10px] text-slate-400 w-24 text-right shrink-0">{label}</span>
+                <div className="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                  <div className="h-full rounded-full" style={{width:`${vp}%`,background:vp>=75?"#3b82f6":vp>=55?"#475569":"#7f1d1d"}}/>
+                </div>
+                <span className={`text-[10px] w-5 text-right shrink-0 ${vp>=65?"text-blue-300":vp>=45?"text-slate-400":"text-red-400"}`}>{vp}</span>
+              </div>
+            );
+          })}
+          {/* Role Fit */}
+          <div className="flex items-center gap-2 border-t border-slate-800 pt-1.5">
+            <span className="text-[10px] text-slate-400 w-24 text-right shrink-0">Role Fit</span>
             <div className="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden">
-              <div className="h-full rounded-full transition-all"
-                style={{width:`${Math.round(fit.roleFit*100)}%`,
-                  background:fit.roleFit>=0.80?"#3b82f6":fit.roleFit>=0.65?"#475569":"#7f1d1d"}}/>
+              <div className="h-full rounded-full" style={{width:`${Math.round(fit.roleFit*100)}%`,background:fit.roleFit>=0.80?"#3b82f6":fit.roleFit>=0.65?"#475569":"#7f1d1d"}}/>
             </div>
-            <span className={`text-[11px] w-6 shrink-0 ${fit.roleFit>=0.65?"text-blue-300":"text-red-400"}`}>
-              {Math.round(fit.roleFit*100)}
-            </span>
+            <span className={`text-[10px] w-5 text-right shrink-0 ${fit.roleFit>=0.65?"text-blue-300":"text-red-400"}`}>{Math.round(fit.roleFit*100)}</span>
           </div>
         </div>
       </div>
