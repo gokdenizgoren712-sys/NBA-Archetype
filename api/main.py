@@ -41,13 +41,52 @@ app.add_middleware(
 # ─── Cache: parquet dosyalarını bir kez yükle ──────────────────────────────────
 
 def _fill_position_from_components(df: pd.DataFrame) -> pd.DataFrame:
-    """Historical parquet'ta POSITION NaN ise Center/Big/Forward/Guard/Wing
-    boolean kolonlarından + istatistiklerden pozisyon tahmin et."""
+    """Historical parquet'ta POSITION NaN ise:
+    1. BBref position_lookup.parquet'ten gerçek pozisyonu al (build_position_lookup.py çıktısı)
+    2. Yoksa Center/Big/Forward/Guard/Wing boolean kolonlarından + istatistiklerden tahmin et."""
     if "POSITION" not in df.columns:
-        return df
+        df = df.copy()
+        df["POSITION"] = ""
     mask = df["POSITION"].isna() | (df["POSITION"].astype(str).str.strip() == "")
     if not mask.any():
         return df
+
+    # --- Adım 1: BBref lookup ---
+    lkp = _load_position_lookup()
+    if not lkp.empty and "SEASON" in df.columns:
+        lkp_idx = lkp.set_index(["PLAYER_NAME", "SEASON"])
+        def _from_lookup(row):
+            key = (row["PLAYER_NAME"], row["SEASON"])
+            if key in lkp_idx.index:
+                pos = lkp_idx.loc[key, "POS_PRIMARY"]
+                if isinstance(pos, pd.Series):
+                    pos = pos.iloc[0]
+                return str(pos) if pos else ""
+            # Sezon bağımsız: oyuncunun en sık görülen pozisyonu
+            sub = lkp[lkp["PLAYER_NAME"] == row["PLAYER_NAME"]]
+            if not sub.empty:
+                mode = sub["POS_PRIMARY"].mode()
+                return str(mode.iloc[0]) if not mode.empty else ""
+            return ""
+        df = df.copy()
+        df.loc[mask, "POSITION"] = df[mask].apply(_from_lookup, axis=1)
+        # POS_SECONDARY ekle (BBref'ten)
+        if "POS_SECONDARY" not in df.columns:
+            df["POS_SECONDARY"] = ""
+        def _sec_from_lookup(row):
+            if not lkp.empty:
+                key = (row["PLAYER_NAME"], row.get("SEASON", ""))
+                if key in lkp_idx.index:
+                    sec = lkp_idx.loc[key, "POS_SECONDARY"]
+                    if isinstance(sec, pd.Series):
+                        sec = sec.iloc[0]
+                    return str(sec) if sec else ""
+            return ""
+        df["POS_SECONDARY"] = df.apply(_sec_from_lookup, axis=1)
+        # Hâlâ boş kalanlar → stat inference'a düş
+        mask = df["POSITION"].isna() | (df["POSITION"].astype(str).str.strip() == "")
+        if not mask.any():
+            return df
 
     def _n(row, col):
         try: return float(row.get(col) or 0)
@@ -316,6 +355,15 @@ def _load_affinity() -> pd.DataFrame:
 
 _HIST_STAT_COLS = ["STL", "BLK", "FGA", "FG_PCT", "FG3A", "FG3_PCT", "TEAM_ABBREVIATION"]
 
+
+@lru_cache(maxsize=1)
+def _load_position_lookup() -> pd.DataFrame:
+    """BBref'ten derlenen pozisyon lookup tablosu. Yoksa boş DataFrame döner."""
+    p = DATA / "position_lookup.parquet"
+    if not p.exists():
+        return pd.DataFrame(columns=["PLAYER_NAME", "SEASON", "POS_PRIMARY", "POS_SECONDARY"])
+    return pd.read_parquet(p)
+
 @lru_cache(maxsize=60)
 def _load_hist_base_stats(season: str) -> pd.DataFrame:
     """Belirtilen sezon için hist_Base parquet'inden ek stat sütunlarını yükler."""
@@ -395,6 +443,7 @@ def clear_cache():
     _load_hist_base_stats.cache_clear()
     _load_real_lineups.cache_clear()
     _load_lineups_with_archs.cache_clear()
+    _load_position_lookup.cache_clear()
     global _SCORES_MTIME, _HIST_MTIME
     _SCORES_MTIME = 0.0
     _HIST_MTIME   = 0.0
