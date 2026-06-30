@@ -1940,9 +1940,10 @@ def promote(body: LoginBody, user=Depends(get_current_user)):
     uid = int(user["sub"])
     with get_conn() as conn:
         conn.execute("UPDATE users SET role='admin' WHERE id=?", (uid,))
-    new_token = create_token(uid, "admin")
-    with get_conn() as conn:
         row = conn.execute("SELECT id,email,username,role FROM users WHERE id=?", (uid,)).fetchone()
+    if not row:
+        raise HTTPException(404, "User not found in database")
+    new_token = create_token(uid, "admin")
     return {"token": new_token, "user": dict(row)}
 
 @app.get("/api/auth/me")
