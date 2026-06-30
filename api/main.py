@@ -511,13 +511,27 @@ def robots_txt():
 
 @app.get("/sitemap.xml", response_class=PlainTextResponse, include_in_schema=False)
 def sitemap_xml():
-    urls = "\n".join(
+    import urllib.parse
+    static_urls = "\n".join(
         f"  <url><loc>{BASE_URL}{r}</loc><changefreq>weekly</changefreq><priority>{'1.0' if r == '/' else '0.8'}</priority></url>"
         for r in STATIC_ROUTES
     )
+    player_urls = ""
+    try:
+        sp = DATA / "2025-26__player_scores.parquet"
+        if sp.exists():
+            names = pd.read_parquet(sp, columns=["PLAYER_NAME"])["PLAYER_NAME"].dropna()
+            player_urls = "\n".join(
+                f'  <url><loc>{BASE_URL}/players/{urllib.parse.quote(str(n), safe="")}</loc>'
+                f'<changefreq>weekly</changefreq><priority>0.6</priority></url>'
+                for n in names
+            )
+    except Exception:
+        pass
     xml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-{urls}
+{static_urls}
+{player_urls}
 </urlset>"""
     from fastapi.responses import Response
     return Response(content=xml, media_type="application/xml")

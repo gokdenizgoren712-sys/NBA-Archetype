@@ -18,6 +18,7 @@ import ArticleEditor from "./pages/admin/ArticleEditor";
 import UserList      from "./pages/admin/UserList";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword  from "./pages/ResetPassword";
+import PlayerProfile  from "./pages/PlayerProfile";
 import { ThemeProvider, useTheme } from "./contexts/ThemeContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
@@ -194,6 +195,7 @@ function AppInner() {
               <Route path="/"                         element={<Navigate to="/game" replace />} />
               <Route path="/game"                     element={<LineupGame />} />
               <Route path="/players"                  element={<Players />} />
+              <Route path="/players/:name"           element={<PlayerProfile />} />
               <Route path="/lineups"                  element={<Lineups />} />
               <Route path="/explore"                  element={<Explore />} />
               <Route path="/compare"                  element={<Compare />} />

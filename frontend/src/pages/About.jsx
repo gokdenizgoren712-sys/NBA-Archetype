@@ -3,6 +3,18 @@ import { SEO } from "../hooks/useSEO";
 
 const CHANGELOG = [
   {
+    version: "v2.5",
+    date_en: "June 2026",
+    label_en: "Player Profile Pages",
+    items_en: [
+      "Every player now has a permanent URL — /players/:name — shareable and SEO-indexed",
+      "Player profile page: radar, stats, core scores, modifiers, career timeline, similar players",
+      "Share button (Web Share API on mobile, clipboard fallback on desktop)",
+      "DetailPanel ↗ button opens the player's profile page in-app",
+      "Dynamic sitemap: all 500+ player profiles included in /sitemap.xml for search engine indexing",
+    ],
+  },
+  {
     version: "v2.4",
     date_en: "June 2026",
     label_en: "Data Quality Sprint",

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Search } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { api } from "../api";
 import { SEO } from "../hooks/useSEO";
 import { useAuth } from "../contexts/AuthContext";
@@ -83,6 +84,7 @@ function DetailPanel({ selected, detail, isCurrent, season, tab, setTab,
   similar, similarLoading, career, careerLoading, onLoadCareer,
   token, isLoggedIn }) {
 
+  const navigate = useNavigate();
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -130,19 +132,28 @@ function DetailPanel({ selected, detail, isCurrent, season, tab, setTab,
               </span>
             </div>
           </div>
-          <button
-            onClick={savePlayer}
-            disabled={saving || saved}
-            title={saved ? "Saved!" : "Save player"}
-            className="shrink-0 w-7 h-7 flex items-center justify-center rounded transition-colors"
-            style={{
-              color: saved ? "var(--accent)" : "var(--text-muted)",
-              border: `1px solid ${saved ? "var(--accent-border)" : "var(--border)"}`,
-              background: saved ? "var(--accent-dim)" : "transparent",
-              opacity: saving ? 0.5 : 1,
-            }}>
-            {saved ? "★" : "☆"}
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => navigate(`/players/${encodeURIComponent(selected.PLAYER_NAME)}`)}
+              title="Open profile page"
+              className="shrink-0 w-7 h-7 flex items-center justify-center rounded transition-colors text-sm"
+              style={{ color: "var(--text-muted)", border: "1px solid var(--border)" }}>
+              ↗
+            </button>
+            <button
+              onClick={savePlayer}
+              disabled={saving || saved}
+              title={saved ? "Saved!" : "Save player"}
+              className="shrink-0 w-7 h-7 flex items-center justify-center rounded transition-colors"
+              style={{
+                color: saved ? "var(--accent)" : "var(--text-muted)",
+                border: `1px solid ${saved ? "var(--accent-border)" : "var(--border)"}`,
+                background: saved ? "var(--accent-dim)" : "transparent",
+                opacity: saving ? 0.5 : 1,
+              }}>
+              {saved ? "★" : "☆"}
+            </button>
+          </div>
         </div>
       </div>
 
