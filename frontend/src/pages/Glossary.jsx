@@ -12,14 +12,14 @@ const ERAS = [
     low: ["Spacer ×0.45","Initiator ×0.70","Rim Runner ×0.70"],
   },
   {
-    short: "Jordan", label: "Jordan Era", years: "1991–1998",
+    short: "Jordan", label: "Jordan Era", years: "1991–1999",
     color: "#f87171", meta: "Isolation scoring, lockdown defense, pure athleticism",
     desc: "Michael Jordan redefined individual excellence. Teams were built around one dominant scorer with supporting stoppers. Engines and Creators peaked in value; lockdown Stoppers were premium.",
     top: ["Engine ×1.25","Creator ×1.20","Stopper ×1.15"],
     low: ["Spacer ×0.60","Ecosystem ×0.85","Hub ×0.90"],
   },
   {
-    short: "Dead Ball", label: "Dead Ball Era", years: "1998–2008",
+    short: "Dead Ball", label: "Dead Ball Era", years: "1999–2008",
     color: "#94a3b8", meta: "Physical defense, post play, deliberately slow pace",
     desc: "The league's lowest-scoring era since the shot clock. Physical hand-checking rules rewarded defensive specialists. Interior bigs (Shaq, Duncan, KG) defined championship rosters.",
     top: ["Anchor ×1.25","Stopper ×1.20","Force ×1.15"],
