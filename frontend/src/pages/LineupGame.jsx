@@ -607,10 +607,217 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang })
         </div>
       </div>
 
+      {/* Share butonu */}
+      <ShareCard pct={pct} grade={grade} fit={fit} lineup={lineup} />
+
       <button onClick={onReset}
         className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-semibold transition-colors">
         🔄 Play Again
       </button>
+    </div>
+  );
+}
+
+// ── Paylaşım kartı — canvas üzerinde çizilir ─────────────────────────────────
+function ShareCard({ pct, grade, fit, lineup }) {
+  const [preview, setPreview] = useState(null);
+  const [copied, setCopied]   = useState(false);
+
+  const SITE_URL = "https://nba-archetypes.onrender.com";
+
+  const buildCanvas = () => {
+    const W = 520, H = 420;
+    const canvas = document.createElement("canvas");
+    canvas.width  = W * 2;   // retina
+    canvas.height = H * 2;
+    const ctx = canvas.getContext("2d");
+    ctx.scale(2, 2);
+
+    // Arkaplan
+    ctx.fillStyle = "#0a0a0f";
+    ctx.fillRect(0, 0, W, H);
+
+    // Border
+    ctx.strokeStyle = "#1e293b";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(0.5, 0.5, W - 1, H - 1);
+
+    // Üst çizgi (accent)
+    ctx.fillStyle = "#f59e0b";
+    ctx.fillRect(0, 0, W, 3);
+
+    // Başlık
+    ctx.font = "bold 13px system-ui, -apple-system, sans-serif";
+    ctx.fillStyle = "#f59e0b";
+    ctx.fillText("🏀 NBA Archetype", 20, 28);
+
+    ctx.font = "10px system-ui";
+    ctx.fillStyle = "#475569";
+    ctx.fillText("Lineup Builder", 20, 42);
+
+    // Büyük skor
+    const scoreColor = pct >= 85 ? "#60a5fa" : pct >= 75 ? "#38bdf8" : pct >= 65 ? "#34d399" : pct >= 55 ? "#fbbf24" : "#f87171";
+    ctx.font = "bold 72px system-ui";
+    ctx.fillStyle = scoreColor;
+    ctx.textAlign = "center";
+    ctx.fillText(pct, W - 80, 68);
+
+    ctx.font = "bold 28px system-ui";
+    ctx.fillStyle = scoreColor;
+    ctx.fillText(grade, W - 80, 95);
+
+    ctx.font = "9px system-ui";
+    ctx.fillStyle = "#334155";
+    ctx.fillText("FIT SCORE", W - 80, 110);
+    ctx.textAlign = "left";
+
+    // Oyuncular
+    const players = POSITIONS.map(pos => lineup[pos]).filter(Boolean);
+    let y = 60;
+    players.forEach((p, i) => {
+      const pos = POSITIONS[i];
+      const arch = p.primary_arch || "—";
+      const season = (p._season || "").slice(2, 4);
+
+      // Pos badge
+      const posColors = { PG:"#a78bfa", SG:"#60a5fa", SF:"#34d399", PF:"#fb923c", C:"#f87171" };
+      ctx.font = "bold 8px system-ui";
+      ctx.fillStyle = posColors[pos] || "#64748b";
+      ctx.fillText(pos, 20, y + 4);
+
+      // İsim
+      ctx.font = "12px system-ui";
+      ctx.fillStyle = "#e2e8f0";
+      const lastName = p.PLAYER_NAME?.split(" ").slice(-1)[0] || p.PLAYER_NAME || "—";
+      ctx.fillText(lastName, 50, y + 4);
+
+      // Arch
+      ctx.font = "10px system-ui";
+      ctx.fillStyle = "#94a3b8";
+      ctx.fillText(arch, 200, y + 4);
+
+      // Sezon
+      ctx.font = "9px system-ui";
+      ctx.fillStyle = "#334155";
+      ctx.fillText(`'${season}`, 310, y + 4);
+
+      y += 22;
+    });
+
+    // Ayırıcı
+    const sepY = y + 6;
+    ctx.strokeStyle = "#1e293b";
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(20, sepY); ctx.lineTo(W - 20, sepY); ctx.stroke();
+
+    // Pillar barlar
+    const pillars = [
+      ["Creation",  fit.creation],
+      ["Spacing",   fit.spacing],
+      ["Defense",   fit.defense],
+      ["Finishing", fit.finishing],
+    ];
+    const barY = sepY + 14;
+    const BAR_W = 160, BAR_H = 5;
+    pillars.forEach(([label, val], i) => {
+      const x = i < 2 ? 20 : 270;
+      const rowY = barY + (i % 2) * 20;
+      const vp = Math.round((val || 0) * 100);
+      const barColor = vp >= 75 ? "#3b82f6" : vp >= 55 ? "#475569" : "#7f1d1d";
+
+      ctx.font = "9px system-ui";
+      ctx.fillStyle = "#64748b";
+      ctx.fillText(label, x, rowY);
+
+      ctx.fillStyle = "#1e293b";
+      ctx.beginPath();
+      ctx.roundRect(x, rowY + 4, BAR_W, BAR_H, 2);
+      ctx.fill();
+
+      ctx.fillStyle = barColor;
+      ctx.beginPath();
+      ctx.roundRect(x, rowY + 4, BAR_W * (vp / 100), BAR_H, 2);
+      ctx.fill();
+
+      ctx.font = "bold 9px system-ui";
+      ctx.fillStyle = vp >= 65 ? "#60a5fa" : "#475569";
+      ctx.fillText(vp, x + BAR_W + 5, rowY + 9);
+    });
+
+    // Site URL (watermark)
+    ctx.font = "9px system-ui";
+    ctx.fillStyle = "#1e293b";
+    ctx.textAlign = "right";
+    ctx.fillText(SITE_URL, W - 20, H - 14);
+    ctx.textAlign = "left";
+
+    return canvas;
+  };
+
+  const generate = () => {
+    const canvas = buildCanvas();
+    setPreview(canvas.toDataURL("image/png"));
+  };
+
+  const download = () => {
+    const canvas = buildCanvas();
+    const a = document.createElement("a");
+    a.download = `nba-lineup-${Date.now()}.png`;
+    a.href = canvas.toDataURL("image/png");
+    a.click();
+  };
+
+  const tweet = () => {
+    const text = `I scored ${pct}/100 (${grade}) on NBA Archetype Lineup Builder!\n\nBuild your all-time lineup across eras 🏀\n${SITE_URL}/game\n\n#NBAArchetype #NBA`;
+    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, "_blank", "noopener");
+  };
+
+  const copyLink = () => {
+    navigator.clipboard.writeText(`${SITE_URL}/game`).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  return (
+    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
+      <div className="text-[10px] text-slate-600 uppercase tracking-widest">Share Your Result</div>
+
+      {/* Preview */}
+      {preview ? (
+        <div className="rounded-xl overflow-hidden border border-slate-700">
+          <img src={preview} alt="score card" className="w-full" />
+        </div>
+      ) : (
+        <button onClick={generate}
+          className="w-full py-2.5 rounded-xl text-sm font-medium transition-colors border border-slate-700 hover:border-slate-500"
+          style={{ color: "#94a3b8" }}>
+          👁 Preview Card
+        </button>
+      )}
+
+      {/* Butonlar */}
+      <div className="grid grid-cols-3 gap-2">
+        <button onClick={download}
+          className="py-2 rounded-lg text-xs font-medium transition-colors"
+          style={{ background: "#1e293b", color: "#94a3b8", border: "1px solid #334155" }}
+          onMouseEnter={e => e.currentTarget.style.background = "#334155"}
+          onMouseLeave={e => e.currentTarget.style.background = "#1e293b"}>
+          ↓ Save PNG
+        </button>
+        <button onClick={tweet}
+          className="py-2 rounded-lg text-xs font-bold transition-colors"
+          style={{ background: "#0f172a", color: "#e2e8f0", border: "1px solid #1d4ed8" }}
+          onMouseEnter={e => e.currentTarget.style.background = "#1d4ed8"}
+          onMouseLeave={e => e.currentTarget.style.background = "#0f172a"}>
+          𝕏 Tweet
+        </button>
+        <button onClick={copyLink}
+          className="py-2 rounded-lg text-xs font-medium transition-colors"
+          style={{ background: "#1e293b", color: copied ? "#34d399" : "#94a3b8", border: "1px solid #334155" }}>
+          {copied ? "✓ Copied!" : "🔗 Copy Link"}
+        </button>
+      </div>
     </div>
   );
 }
