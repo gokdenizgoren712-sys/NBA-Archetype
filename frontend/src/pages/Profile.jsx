@@ -13,11 +13,13 @@ function authFetch(path, token, opts = {}) {
 }
 
 export default function Profile() {
-  const { token, user, isLoggedIn, logout } = useAuth();
+  const { token, user, isLoggedIn, logout, login } = useAuth();
   const navigate = useNavigate();
   const [data, setData]   = useState(null);
   const [tab, setTab]     = useState("players");
   const [loading, setLoading] = useState(true);
+  const [promoteCode, setPromoteCode] = useState("");
+  const [promoteErr, setPromoteErr]   = useState("");
 
   useEffect(() => {
     if (!isLoggedIn) { navigate("/login"); return; }
@@ -27,6 +29,20 @@ export default function Profile() {
   const removePlayer = async (id) => {
     await authFetch(`/profile/saved-players/${id}`, token, { method: "DELETE" });
     setData(d => ({ ...d, saved_players: d.saved_players.filter(p => p.id !== id) }));
+  };
+
+  const promoteToAdmin = async () => {
+    setPromoteErr("");
+    try {
+      const res = await authFetch("/auth/promote", token, {
+        method: "POST",
+        body: JSON.stringify({ email: "", password: promoteCode }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.detail || "Failed");
+      login(d.token, d.user);
+      window.location.href = "/admin/articles";
+    } catch (e) { setPromoteErr(e.message); }
   };
 
   const removeLineup = async (id) => {
@@ -75,6 +91,31 @@ export default function Profile() {
             </button>
           </div>
         </div>
+
+        {/* Admin promotion — only for non-admin users */}
+        {data.user?.role !== "admin" && (
+          <div className="mb-6 p-4 rounded" style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
+            <p className="text-xs mb-2 font-medium" style={{ color: "var(--text-muted)" }}>Have an admin invite code?</p>
+            <div className="flex gap-2">
+              <input
+                type="password"
+                value={promoteCode}
+                onChange={e => setPromoteCode(e.target.value)}
+                placeholder="Admin invite code"
+                className="flex-1 px-3 py-1.5 rounded text-sm outline-none"
+                style={{ background: "var(--bg-surface)", color: "var(--text-primary)", border: "1px solid var(--border)" }}
+              />
+              <button
+                onClick={promoteToAdmin}
+                disabled={!promoteCode}
+                className="px-3 py-1.5 rounded text-sm font-medium"
+                style={{ background: "var(--accent)", color: "#000", opacity: promoteCode ? 1 : 0.5 }}>
+                Upgrade
+              </button>
+            </div>
+            {promoteErr && <p className="text-xs text-red-400 mt-1">{promoteErr}</p>}
+          </div>
+        )}
 
         {/* Tabs */}
         <div className="flex gap-1 mb-4 border-b" style={{ borderColor: "var(--border)" }}>

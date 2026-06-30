@@ -1930,6 +1930,21 @@ def login(body: LoginBody):
     return {"token": token, "user": {"id": row["id"], "email": row["email"],
                                       "username": row["username"], "role": row["role"]}}
 
+@app.post("/api/auth/promote")
+def promote(body: LoginBody, user=Depends(get_current_user)):
+    """Mevcut kullanıcıyı admin'e yükselt — invite code doğruysa."""
+    if not ADMIN_INVITE_CODE:
+        raise HTTPException(400, "ADMIN_INVITE_CODE env var not set on server")
+    if body.password != ADMIN_INVITE_CODE:
+        raise HTTPException(403, "Invalid admin invite code")
+    uid = int(user["sub"])
+    with get_conn() as conn:
+        conn.execute("UPDATE users SET role='admin' WHERE id=?", (uid,))
+    new_token = create_token(uid, "admin")
+    with get_conn() as conn:
+        row = conn.execute("SELECT id,email,username,role FROM users WHERE id=?", (uid,)).fetchone()
+    return {"token": new_token, "user": dict(row)}
+
 @app.get("/api/auth/me")
 def me(user=Depends(get_current_user)):
     with get_conn() as conn:
