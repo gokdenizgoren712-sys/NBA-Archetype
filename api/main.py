@@ -806,6 +806,31 @@ def custom_lineup_compat(body: dict):
     if not result:
         raise HTTPException(404, "Oyuncular bulunamadı — isim listesini kontrol edin")
 
+    # Per-player skor verileri (era-adjusted frontend scoring için)
+    SCORE_KEYS = ["Engine","Ecosystem","Hub","Creator","Connector","Initiator",
+                  "Anchor","Force","Spacer","Finisher","Stopper","Rim Runner",
+                  "3-and-D","Two-Way","Stretch","Gravity","Slashing","Three-Level"]
+    players_data = []
+    for name in names:
+        nm = name.strip()
+        row = scores[scores["PLAYER_NAME"].str.lower() == nm.lower()]
+        if row.empty:
+            row = scores[scores["PLAYER_NAME"].str.contains(nm, case=False, na=False)]
+        if not row.empty:
+            r = row.iloc[0]
+            pd_entry = {
+                "name": str(r.get("PLAYER_NAME", nm)),
+                "primary_arch": str(r.get("primary_arch", "")),
+                "overall_score": float(r.get("overall_score", 0) or 0),
+                "_season": "2025-26",
+            }
+            for k in SCORE_KEYS:
+                col = f"score_{k}"
+                pd_entry[f"score_{k}"] = float(r[col]) if col in r and pd.notna(r[col]) else 0.0
+            players_data.append(pd_entry)
+    if players_data:
+        result["players_data"] = players_data
+
     # 3-season weighted overall_score context (son 3 sezon, son sezon 2x ağırlıklı)
     hist = _load_historical()
     if not hist.empty and "overall_score" in hist.columns and "SEASON" in hist.columns:

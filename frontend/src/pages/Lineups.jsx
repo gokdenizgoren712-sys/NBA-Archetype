@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { api } from "../api";
 import RoleBreakdown from "../components/RoleBreakdown";
 import RoleImpactChart from "../components/RoleImpactChart";
@@ -6,6 +6,7 @@ import { explainLineup } from "../utils/lineupExplain";
 import { useLang } from "../contexts/LanguageContext";
 import { Search } from "lucide-react";
 import { SEO } from "../hooks/useSEO";
+import { computeLineupFit, GRADE_COLOR, PILLAR_LABELS, getEra } from "../utils/lineupScoring";
 
 const SCORE_COLOR = (v) =>
   v >= 0.80 ? "var(--accent)" :
@@ -16,7 +17,79 @@ const POS_COLOR = {
   PG: "#a78bfa", SG: "#60a5fa", SF: "#34d399", PF: "#fb923c", C: "#f87171",
 };
 
-// ── iki aşamalı skor renklendirme — barda kullanılır
+// ── İki aşamalı skor (2025-26 custom lineup için) ────────────────────────────
+function TwoStageResult({ result }) {
+  const fit = useMemo(() => {
+    if (!result?.players_data) return null;
+    return computeLineupFit(result.players_data);
+  }, [result]);
+
+  // Tarihsel / fallback: basit pillar göster
+  if (!fit) return <PillarBreakdown result={result} />;
+
+  const gradeColor = GRADE_COLOR[fit.grade] || "var(--text-muted)";
+
+  return (
+    <div className="space-y-3">
+      {/* Grade + Skor */}
+      <div className="flex items-center gap-3">
+        <span className="text-4xl font-black" style={{ color: gradeColor }}>{fit.grade}</span>
+        <div>
+          <div className="text-lg font-bold" style={{ color: gradeColor }}>{fit.pct}%</div>
+          <div className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+            Quality {Math.round(fit.avgQuality * 100)} · Coverage {Math.round(fit.coverage * 100)} · Fit {Math.round(fit.roleFit * 100)}
+          </div>
+        </div>
+      </div>
+
+      {/* 4 Pillar barları */}
+      <div className="space-y-1.5">
+        {Object.entries(PILLAR_LABELS).map(([key, label]) => {
+          const v = fit[key];
+          const pct = Math.round(v * 100);
+          const extra = key === "spacing" ? ` (${fit.nShooters}×)` : "";
+          return (
+            <div key={key} className="flex items-center gap-2">
+              <span className="text-[10px] w-20 shrink-0" style={{ color: "var(--text-muted)" }}>
+                {label}{extra}
+              </span>
+              <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: "var(--bg-surface)" }}>
+                <div className="h-full rounded-full transition-all"
+                  style={{ width: `${pct}%`, background: SCORE_COLOR(v) }} />
+              </div>
+              <span className="text-[10px] w-6 text-right font-medium" style={{ color: SCORE_COLOR(v) }}>{pct}</span>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Per-player era faktörü */}
+      {result.players_data && (
+        <div className="border-t pt-2 space-y-0.5" style={{ borderColor: "var(--border)" }}>
+          {result.players_data.map((p, i) => {
+            const pf = fit.perPlayer[i];
+            if (!pf) return null;
+            const eraLabel = pf.era?.short || "";
+            const ef = pf.eraFactor;
+            const efColor = ef >= 1.05 ? "#4ade80" : ef <= 0.88 ? "#f87171" : "var(--text-muted)";
+            return (
+              <div key={p.name} className="flex items-center justify-between text-[10px]">
+                <span style={{ color: "var(--text-primary)" }}>{p.name}</span>
+                <span className="flex items-center gap-1">
+                  <span style={{ color: "var(--text-muted)" }}>{p.primary_arch}</span>
+                  <span style={{ color: "var(--text-muted)" }}>·</span>
+                  <span style={{ color: efColor }}>{eraLabel} ×{ef.toFixed(2)}</span>
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Tarihsel / basit pillar breakdown ─────────────────────────────────────────
 function PillarBreakdown({ result, lang = "en" }) {
   if (!result) return null;
   const pillars = result.pillar_breakdown || {
@@ -26,7 +99,6 @@ function PillarBreakdown({ result, lang = "en" }) {
     Finishing:   result.finishing  ?? null,
     "Role Fit":  result.role_fit   ?? result.Denge ?? null,
   };
-  // Tarihsel: Kapsama / Derinlik / Uyum_Skoru formatı
   const score = result.lineup_score ?? result.Uyum_Skoru ?? 0;
   const nShooters = result.n_shooters;
 
@@ -358,17 +430,10 @@ export default function Lineups() {
               {customResult && (
                 <div className="p-3 rounded space-y-1.5 text-sm mt-2"
                   style={{ background: "var(--bg-surface)", border: "1px solid var(--border)" }}>
-                  <PillarBreakdown result={customResult} lang={lang} />
-                  {customResult.players && (
-                    <div className="pt-2 border-t" style={{ borderColor: "var(--border)" }}>
-                      {customResult.players.map((p, i) => (
-                        <div key={i} className="text-[10px] flex justify-between py-0.5" style={{ color: "var(--text-muted)" }}>
-                          <span>{p.name}</span>
-                          <span style={{ color: "var(--accent)" }}>{p.primary_arch}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  {isCurrent
+                    ? <TwoStageResult result={customResult} />
+                    : <PillarBreakdown result={customResult} lang={lang} />
+                  }
                 </div>
               )}
             </div>
