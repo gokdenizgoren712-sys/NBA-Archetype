@@ -2,6 +2,20 @@ import { useLang } from "../contexts/LanguageContext";
 
 const CHANGELOG = [
   {
+    version: "v2.2",
+    date_en: "June 2026",
+    label_en: "Historical Seasons & Affinity Engine",
+    items_en: [
+      "Affinity page: SplitPane layout — click any cell to see real lineups in a side panel",
+      "Affinity now mobile-friendly with full-screen drill-down panel",
+      "Compare page: independent season selector per player — compare across eras (e.g. 2003 Kobe vs 2025 SGA)",
+      "Lineups page: season selector — browse theoretical lineups for any season since 1983",
+      "Custom lineup builder now works for historical seasons with autocomplete search",
+      "OBPM / DBPM breakdown added to Compare stats",
+      "BPM, PTS, REB, AST now returned for all historical seasons",
+    ],
+  },
+  {
     version: "v2.1",
     date_en: "June 2026",
     label_en: "Mobile Fixes & Scoring Overhaul",
