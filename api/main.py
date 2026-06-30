@@ -33,6 +33,13 @@ CORE      = CORE_NOUNS        # geriye dönük alias
 
 app = FastAPI(title="NBA Arketip API", version="1.0.0")
 
+# Tüm unhandled exception'ları JSON olarak döndür (Starlette'in plain-text 500'ünü geç)
+import traceback as _tb
+@app.exception_handler(Exception)
+async def _json_500(request: Request, exc: Exception):
+    logging.error(f"Unhandled exception: {type(exc).__name__}: {exc}\n{_tb.format_exc()}")
+    return JSONResponse(status_code=500, content={"detail": f"{type(exc).__name__}: {exc}"})
+
 # ─── Middleware ────────────────────────────────────────────────────────────────
 
 IS_PROD = os.environ.get("RENDER") == "true"
