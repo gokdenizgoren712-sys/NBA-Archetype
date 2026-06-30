@@ -665,7 +665,7 @@ def get_player_scores(player_name: str):
         # Fuzzy fallback
         match = df[df["PLAYER_NAME"].str.contains(player_name, case=False, na=False)]
     if match.empty:
-        raise HTTPException(status_code=404, detail=f"{player_name} bulunamadı")
+        raise HTTPException(status_code=404, detail=f"{player_name} not found")
 
     row = match.iloc[0]
     score_cols = [c for c in df.columns if c.startswith("score_")]
@@ -910,7 +910,7 @@ def custom_lineup_compat(body: dict):
     scores = _load_scores()
     result = lineup_score_from_names(names, scores)
     if not result:
-        raise HTTPException(404, "Oyuncular bulunamadı — isim listesini kontrol edin")
+        raise HTTPException(404, "Players not found — check the name list")
 
     # Per-player skor verileri (era-adjusted frontend scoring için)
     SCORE_KEYS = ["Engine","Ecosystem","Hub","Creator","Connector","Initiator",
@@ -1190,7 +1190,7 @@ def get_historical(
         hist = _load_historical()
         df = hist[hist["SEASON"] == season].copy()
         if df.empty:
-            raise HTTPException(404, f"{season} sezonu bulunamadı")
+            raise HTTPException(404, f"Season {season} not found")
         # hist_Base'den ek stat sütunlarını merge et (STL, BLK, FG_PCT, FG3_PCT)
         base_stats = _load_hist_base_stats(season)
         if not base_stats.empty and "PLAYER_ID" in df.columns:
@@ -1341,7 +1341,7 @@ def get_historical_duo(season: str, limit: int = Query(50, ge=1, le=200)):
         df = _load_historical()
         df = df[df["SEASON"] == season]
     if df.empty:
-        raise HTTPException(404, f"{season} sezonu bulunamadı")
+        raise HTTPException(404, f"Season {season} not found")
     rows = _bool_duo_compat(df, top_n=limit)
     return {"season": season, "total": len(rows), "duos": rows}
 
@@ -1354,7 +1354,7 @@ def get_historical_lineup(season: str, limit: int = Query(30, ge=1, le=100)):
         df = _load_historical()
         df = df[df["SEASON"] == season]
     if df.empty:
-        raise HTTPException(404, f"{season} sezonu bulunamadı")
+        raise HTTPException(404, f"Season {season} not found")
     rows = _bool_lineup_compat(df, top_n=limit)
     return {"season": season, "total": len(rows), "lineups": rows}
 
@@ -1427,7 +1427,7 @@ def get_historical_player_scores(season: str, player_name: str):
 
     match = df[df["PLAYER_NAME"].str.contains(player_name, case=False, na=False)]
     if match.empty:
-        raise HTTPException(404, f"{player_name} bulunamadı ({season})")
+        raise HTTPException(404, f"{player_name} not found ({season})")
     row = match.iloc[0]
 
     if season == "2025-26":
@@ -1509,7 +1509,7 @@ def post_historical_custom_lineup(season: str, body: dict):
         hist = _load_historical()
         df = hist[hist["SEASON"] == season].copy()
         if df.empty:
-            raise HTTPException(404, f"{season} sezonu bulunamadı")
+            raise HTTPException(404, f"Season {season} not found")
 
     score_cols = [c for c in df.columns if c.startswith("score_") and c.replace("score_","") in ALL_COMP_COLS]
     matched = []
@@ -1519,7 +1519,7 @@ def post_historical_custom_lineup(season: str, body: dict):
             matched.append(hit.iloc[0])
 
     if len(matched) < 2:
-        raise HTTPException(404, "Oyuncular veri setinde bulunamadı")
+        raise HTTPException(404, "Players not found in dataset")
 
     from roles import compute_role_vec, ROLE_SLOTS
     players_out = []
@@ -1704,7 +1704,7 @@ def get_similar_players(player_name: str, n: int = Query(10, ge=1, le=50)):
     if match.empty:
         match = df[df["PLAYER_NAME"].str.contains(player_name, case=False, na=False)]
     if match.empty:
-        raise HTTPException(status_code=404, detail=f"{player_name} bulunamadı")
+        raise HTTPException(status_code=404, detail=f"{player_name} not found")
 
     # Vektör: core (ağırlık 1.0) + modifier (ağırlık 0.4)
     core_cols = [f"score_{c}" for c in CORE_NOUNS    if f"score_{c}" in df.columns]
@@ -1761,7 +1761,7 @@ def get_player_career(name: str = Query(..., description="Oyuncu adı")):
     if match.empty:
         match = hist[hist["PLAYER_NAME"].str.contains(name, case=False, na=False)]
     if match.empty:
-        raise HTTPException(status_code=404, detail=f"{name} kariyer verisinde bulunamadı")
+        raise HTTPException(status_code=404, detail=f"{name} not found in career data")
 
     player_name_canonical = match.iloc[0]["PLAYER_NAME"]
 
@@ -2101,11 +2101,11 @@ def get_article(slug: str, user=Depends(get_optional_user)):
                WHERE a.slug=?""", (slug,)
         ).fetchone()
     if not row:
-        raise HTTPException(404, "Makale bulunamadı")
+        raise HTTPException(404, "Article not found")
     art = _row(row)
     if art["status"] != "published":
         if not user or user.get("role") != "admin":
-            raise HTTPException(404, "Makale bulunamadı")
+            raise HTTPException(404, "Article not found")
     return art
 
 # ── Articles (admin) ──────────────────────────────────────────────────────────
@@ -2125,7 +2125,7 @@ def admin_list_articles(user=Depends(require_admin)):
 def create_article(body: ArticleBody, user=Depends(require_admin)):
     slug = body.slug.strip() or _slugify(body.title)
     if not slug:
-        raise HTTPException(400, "Başlık gerekli")
+        raise HTTPException(400, "Title is required")
     from datetime import datetime as _dt
     now = _dt.utcnow().isoformat()
     try:
@@ -2171,12 +2171,7 @@ def admin_patch_user(user_id: int, body: PatchUserBody, _user=Depends(require_ad
             conn.execute("UPDATE users SET is_banned=? WHERE id=?", (body.is_banned, user_id))
     return {"ok": True}
 
-@app.delete("/api/admin/users/{user_id}")
-def admin_delete_user(user_id: int, _user=Depends(require_admin)):
-    with get_conn() as conn:
-        conn.execute("DELETE FROM users WHERE id=?", (user_id,))
-    return {"ok": True}
-
+# /all must come BEFORE /{user_id} — otherwise FastAPI tries int("all") → 422
 @app.delete("/api/admin/users/all")
 def delete_all_users(_user=Depends(require_admin)):
     with get_conn() as conn:
@@ -2186,6 +2181,12 @@ def delete_all_users(_user=Depends(require_admin)):
         conn.execute("DELETE FROM comments")
         conn.execute("DELETE FROM users")
     return {"deleted": count}
+
+@app.delete("/api/admin/users/{user_id}")
+def admin_delete_user(user_id: int, _user=Depends(require_admin)):
+    with get_conn() as conn:
+        conn.execute("DELETE FROM users WHERE id=?", (user_id,))
+    return {"ok": True}
 
 @app.delete("/api/admin/articles/{article_id}")
 def delete_article(article_id: int, user=Depends(require_admin)):
@@ -2200,7 +2201,7 @@ def list_comments(slug: str):
     with get_conn() as conn:
         art = conn.execute("SELECT id FROM articles WHERE slug=?", (slug,)).fetchone()
         if not art:
-            raise HTTPException(404, "Makale bulunamadı")
+            raise HTTPException(404, "Article not found")
         rows = conn.execute(
             """SELECT c.id, c.content, c.created_at, u.username
                FROM comments c LEFT JOIN users u ON c.user_id=u.id
@@ -2212,11 +2213,11 @@ def list_comments(slug: str):
 @app.post("/api/articles/{slug}/comments")
 def add_comment(slug: str, body: CommentBody, user=Depends(get_current_user)):
     if not body.content.strip():
-        raise HTTPException(400, "Yorum boş olamaz")
+        raise HTTPException(400, "Comment cannot be empty")
     with get_conn() as conn:
         art = conn.execute("SELECT id FROM articles WHERE slug=? AND status='published'", (slug,)).fetchone()
         if not art:
-            raise HTTPException(404, "Makale bulunamadı")
+            raise HTTPException(404, "Article not found")
         cur = conn.execute(
             "INSERT INTO comments (article_id, user_id, content) VALUES (?,?,?)",
             (art["id"], int(user["sub"]), body.content.strip())
@@ -2266,7 +2267,7 @@ def save_player(body: SavePlayerBody, user=Depends(get_current_user)):
         return {"id": cur.lastrowid, "ok": True}
     except Exception as e:
         if "UNIQUE" in str(e):
-            raise HTTPException(409, "Zaten kaydedilmiş")
+            raise HTTPException(409, "Already saved")
         raise HTTPException(500, str(e))
 
 @app.delete("/api/profile/saved-players/{item_id}")
