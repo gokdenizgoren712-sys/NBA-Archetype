@@ -268,7 +268,9 @@ export default function Compare() {
                 ["PTS", detailA.pts, detailB.pts, (v) => v?.toFixed(1)],
                 ["REB", detailA.reb, detailB.reb, (v) => v?.toFixed(1)],
                 ["AST", detailA.ast, detailB.ast, (v) => v?.toFixed(1)],
-                ["BPM", detailA.bpm, detailB.bpm, (v) => v != null ? (v > 0 ? `+${v.toFixed(1)}` : v.toFixed(1)) : null],
+                ["BPM",  detailA.bpm,  detailB.bpm,  (v) => v != null ? (v > 0 ? `+${v.toFixed(1)}` : v.toFixed(1)) : null],
+                ["OBPM", detailA.obpm, detailB.obpm, (v) => v != null ? (v > 0 ? `+${v.toFixed(1)}` : v.toFixed(1)) : null],
+                ["DBPM", detailA.dbpm, detailB.dbpm, (v) => v != null ? (v > 0 ? `+${v.toFixed(1)}` : v.toFixed(1)) : null],
                 ["GP",  detailA.gp,  detailB.gp,  (v) => v],
                 ["Overall", detailA.overall_score, detailB.overall_score, (v) => v != null ? Math.round(v * 100) : null],
               ].map(([label, a, b, fmt]) => (

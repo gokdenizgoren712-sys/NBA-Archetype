@@ -6,6 +6,7 @@ import Glossary   from "./pages/Glossary";
 import About      from "./pages/About";
 import Explore    from "./pages/Explore";
 import Compare    from "./pages/Compare";
+import Affinity   from "./pages/Affinity";
 import LineupGame from "./pages/LineupGame";
 import { ThemeProvider, useTheme } from "./contexts/ThemeContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
@@ -18,6 +19,7 @@ const NAV = [
   { to: "/lineups",  icon: "☰",  label: "Lineups"  },
   { to: "/explore",  icon: "◎",  label: "Explore"  },
   { to: "/compare",  icon: "⇌",  label: "Compare"  },
+  { to: "/affinity", icon: "⬡",  label: "Affinity" },
   { to: "/glossary", icon: "≡",  label: "Glossary" },
   { to: "/about",    icon: "ℹ",  label: "About"    },
 ];
@@ -131,6 +133,7 @@ function BottomNav() {
       <div className="border-t" style={{ borderColor: "var(--border)" }}>
         <Row items={NAV.slice(4)} />
       </div>
+
     </nav>
   );
 }
@@ -153,6 +156,7 @@ function AppInner() {
               <Route path="/lineups"    element={<Lineups />} />
               <Route path="/explore"    element={<Explore />} />
               <Route path="/compare"    element={<Compare />} />
+              <Route path="/affinity"   element={<Affinity />} />
               <Route path="/glossary"   element={<Glossary />} />
               <Route path="/about"      element={<About />} />
               <Route path="/historical" element={<Navigate to="/players" replace />} />
