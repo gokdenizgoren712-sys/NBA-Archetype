@@ -3,6 +3,30 @@ import { SEO } from "../hooks/useSEO";
 
 const CHANGELOG = [
   {
+    version: "v2.4",
+    date_en: "June 2026",
+    label_en: "Data Quality Sprint",
+    items_en: [
+      "BPM proxy (OBPM/DBPM) now injected at pipeline step 1 — Engine, Creator, Anchor scores more accurate",
+      "build_score_table() and run_validation.py both get BPM as a safety net",
+      "Affinity alpha is now per-pair adaptive (0→0.6 based on lineup minutes) instead of a fixed 0.3",
+      "Small sample badge (~small sample) on player cards with fewer than 20 games played",
+      "DetailPanel warning banner for low-GP players — scores flagged as potentially unstable",
+    ],
+  },
+  {
+    version: "v2.3",
+    date_en: "June 2026",
+    label_en: "Auth & UI Polish",
+    items_en: [
+      "Google Sign-In added to Login and Register pages",
+      "Google-only accounts stored securely; password login blocked for OAuth users",
+      "UI fully in English — 'Giriş' → 'Log In', all Turkish error messages translated",
+      "Admin route ordering bug fixed (DELETE /users/all no longer shadowed by /{user_id})",
+      "Password reset flow via Gmail SMTP App Password",
+    ],
+  },
+  {
     version: "v2.2",
     date_en: "June 2026",
     label_en: "Historical Seasons & Affinity Engine",
