@@ -44,7 +44,7 @@ function UserButton() {
     <button onClick={() => navigate("/login")}
       className="px-2.5 py-1 rounded text-xs font-medium transition-colors"
       style={{ background: "var(--accent)", color: "#000" }}>
-      Giriş
+      Log In
     </button>
   );
   return (

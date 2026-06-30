@@ -1938,11 +1938,11 @@ def register(body: RegisterBody):
     is_admin = body.admin_invite_code and body.admin_invite_code == ADMIN_INVITE_CODE
     role = "admin" if is_admin else "user"
     if not body.email or "@" not in body.email:
-        raise HTTPException(400, "Geçersiz email")
+        raise HTTPException(400, "Invalid email address")
     if len(body.password) < 6:
-        raise HTTPException(400, "Şifre en az 6 karakter olmalı")
+        raise HTTPException(400, "Password must be at least 6 characters")
     if len(body.username) < 2:
-        raise HTTPException(400, "Kullanıcı adı en az 2 karakter olmalı")
+        raise HTTPException(400, "Username must be at least 2 characters")
     hashed = hash_password(body.password)
     try:
         with get_conn() as conn:
@@ -1953,7 +1953,7 @@ def register(body: RegisterBody):
             user_id = cur.lastrowid
     except Exception as e:
         if "UNIQUE" in str(e):
-            raise HTTPException(409, "Bu email veya kullanıcı adı zaten kullanılıyor")
+            raise HTTPException(409, "Email or username already taken")
         raise HTTPException(500, str(e))
     token = create_token(user_id, role)
     return {"token": token, "user": {"id": user_id, "email": body.email, "username": body.username, "role": role}}
@@ -2074,7 +2074,7 @@ def me(user=Depends(get_current_user)):
         row = conn.execute("SELECT id,email,username,role,created_at FROM users WHERE id=?",
                            (int(user["sub"]),)).fetchone()
     if not row:
-        raise HTTPException(404, "Kullanıcı bulunamadı")
+        raise HTTPException(404, "User not found")
     return _row(row)
 
 # ── Articles (public) ─────────────────────────────────────────────────────────
@@ -2139,7 +2139,7 @@ def create_article(body: ArticleBody, user=Depends(require_admin)):
             return {"id": cur.lastrowid, "slug": slug}
     except Exception as e:
         if "UNIQUE" in str(e):
-            raise HTTPException(409, "Bu slug zaten kullanılıyor")
+            raise HTTPException(409, "This slug is already in use")
         raise HTTPException(500, str(e))
 
 @app.put("/api/admin/articles/{article_id}")
