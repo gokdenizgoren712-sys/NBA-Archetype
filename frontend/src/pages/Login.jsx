@@ -22,7 +22,7 @@ export default function Login() {
         body: JSON.stringify(form),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || "Giriş başarısız");
+      if (!res.ok) throw new Error(data.detail || "Login failed");
       login(data.token, data.user);
       navigate(data.user.role === "admin" ? "/admin/articles" : "/profile");
     } catch (e) {
@@ -34,11 +34,11 @@ export default function Login() {
 
   return (
     <>
-    <SEO title="Giriş Yap" description="NBA Archetype hesabına giriş yap." path="/login" noindex />
+    <SEO title="Log In" description="Log in to your NBA Archetype account." path="/login" noindex />
     <div className="h-full flex items-center justify-center p-6" style={{ background: "var(--bg-base)" }}>
       <div className="w-full max-w-sm">
         <h1 className="text-2xl font-bold mb-6 text-center" style={{ color: "var(--text-primary)" }}>
-          Giriş Yap
+          Log In
         </h1>
 
         <form onSubmit={submit} className="space-y-4">
@@ -53,7 +53,12 @@ export default function Login() {
             />
           </div>
           <div>
-            <label className="block text-sm mb-1" style={{ color: "var(--text-muted)" }}>Şifre</label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-sm" style={{ color: "var(--text-muted)" }}>Password</label>
+              <Link to="/forgot-password" className="text-xs" style={{ color: "var(--accent)" }}>
+                Forgot password?
+              </Link>
+            </div>
             <input
               type="password" required
               value={form.password}
@@ -70,13 +75,13 @@ export default function Login() {
             className="w-full py-2 rounded text-sm font-semibold transition-opacity"
             style={{ background: "var(--accent)", color: "#000", opacity: loading ? 0.6 : 1 }}
           >
-            {loading ? "Giriş yapılıyor…" : "Giriş Yap"}
+            {loading ? "Logging in…" : "Log In"}
           </button>
         </form>
 
         <p className="text-center text-sm mt-4" style={{ color: "var(--text-muted)" }}>
-          Hesabın yok mu?{" "}
-          <Link to="/register" style={{ color: "var(--accent)" }}>Kayıt ol</Link>
+          Don't have an account?{" "}
+          <Link to="/register" style={{ color: "var(--accent)" }}>Sign up</Link>
         </p>
       </div>
     </div>

@@ -20,6 +20,9 @@ def init_db():
             username         TEXT UNIQUE NOT NULL,
             hashed_password  TEXT NOT NULL,
             role             TEXT NOT NULL DEFAULT 'user',
+            is_banned        INTEGER NOT NULL DEFAULT 0,
+            reset_token      TEXT,
+            reset_expires    TEXT,
             created_at       TEXT DEFAULT (datetime('now'))
         );
 
@@ -63,3 +66,13 @@ def init_db():
             created_at  TEXT DEFAULT (datetime('now'))
         );
         """)
+        # Migration: add columns to existing DBs that predate these fields
+        for col, dfn in [
+            ("is_banned",     "INTEGER NOT NULL DEFAULT 0"),
+            ("reset_token",   "TEXT"),
+            ("reset_expires", "TEXT"),
+        ]:
+            try:
+                conn.execute(f"ALTER TABLE users ADD COLUMN {col} {dfn}")
+            except Exception:
+                pass

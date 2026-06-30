@@ -15,6 +15,9 @@ import Register      from "./pages/Register";
 import Profile       from "./pages/Profile";
 import ArticleList   from "./pages/admin/ArticleList";
 import ArticleEditor from "./pages/admin/ArticleEditor";
+import UserList      from "./pages/admin/UserList";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword  from "./pages/ResetPassword";
 import { ThemeProvider, useTheme } from "./contexts/ThemeContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
@@ -205,11 +208,15 @@ function AppInner() {
               {/* Blog */}
               <Route path="/blog"                     element={<Blog />} />
               <Route path="/blog/:slug"               element={<BlogPost />} />
+              {/* Auth extras */}
+              <Route path="/forgot-password"          element={<ForgotPassword />} />
+              <Route path="/reset-password"           element={<ResetPassword />} />
               {/* Admin */}
               <Route path="/admin"                    element={<Navigate to="/admin/articles" replace />} />
               <Route path="/admin/articles"           element={<ArticleList />} />
               <Route path="/admin/articles/new"       element={<ArticleEditor />} />
               <Route path="/admin/articles/:id/edit"  element={<ArticleEditor />} />
+              <Route path="/admin/users"              element={<UserList />} />
             </Routes>
           </main>
         </div>

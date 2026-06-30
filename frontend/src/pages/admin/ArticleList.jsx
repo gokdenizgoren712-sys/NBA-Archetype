@@ -39,10 +39,10 @@ export default function ArticleList() {
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>Articles</h1>
           <div className="flex gap-2">
-            <Link to="/profile"
+            <Link to="/admin/users"
               className="px-3 py-1.5 rounded text-sm"
               style={{ background: "var(--bg-elevated)", color: "var(--text-muted)", border: "1px solid var(--border)" }}>
-              Profile
+              Users
             </Link>
             <Link to="/admin/articles/new"
               className="px-3 py-1.5 rounded text-sm font-semibold"

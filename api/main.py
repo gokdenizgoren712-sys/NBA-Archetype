@@ -3,10 +3,12 @@ NBA Arketip API — FastAPI backend
 Parquet dosyalarını okuyup JSON olarak sunar.
 """
 
-import sys, json, os, time, logging
+import sys, json, os, time, logging, secrets, smtplib
 from pathlib import Path
 from functools import lru_cache
 from typing import Optional
+from email.mime.text import MIMEText
+from datetime import datetime, timedelta
 
 import pandas as pd
 import numpy as np
@@ -42,7 +44,29 @@ async def _json_500(request: Request, exc: Exception):
 
 # ─── Middleware ────────────────────────────────────────────────────────────────
 
-IS_PROD = os.environ.get("RENDER") == "true"
+IS_PROD   = os.environ.get("RENDER") == "true"
+SMTP_HOST = os.environ.get("SMTP_HOST", "")
+SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
+SMTP_USER = os.environ.get("SMTP_USER", "")
+SMTP_PASS = os.environ.get("SMTP_PASS", "")
+SMTP_FROM = os.environ.get("SMTP_FROM", SMTP_USER)
+SITE_URL  = os.environ.get("SITE_URL", "https://nba-archetypes.onrender.com")
+
+def _send_email(to: str, subject: str, html: str):
+    if not SMTP_HOST or not SMTP_USER:
+        logging.warning("SMTP not configured — skipping email to %s", to)
+        return
+    try:
+        msg = MIMEText(html, "html")
+        msg["Subject"] = subject
+        msg["From"]    = SMTP_FROM
+        msg["To"]      = to
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10) as s:
+            s.starttls()
+            s.login(SMTP_USER, SMTP_PASS)
+            s.send_message(msg)
+    except Exception as e:
+        logging.error("Email send failed: %s", e)
 
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
@@ -1861,6 +1885,16 @@ class LoginBody(BaseModel):
     email: str
     password: str
 
+class PatchUserBody(BaseModel):
+    is_banned: int = None
+
+class ForgotBody(BaseModel):
+    email: str
+
+class ResetBody(BaseModel):
+    token: str
+    password: str
+
 class ArticleBody(BaseModel):
     title: str
     slug: str = ""
@@ -1925,10 +1959,53 @@ def login(body: LoginBody):
     with get_conn() as conn:
         row = conn.execute("SELECT * FROM users WHERE email=?", (body.email.lower(),)).fetchone()
     if not row or not verify_password(body.password, row["hashed_password"]):
-        raise HTTPException(401, "Email veya şifre hatalı")
+        raise HTTPException(401, "Incorrect email or password")
+    if row["is_banned"]:
+        raise HTTPException(403, "This account has been suspended")
     token = create_token(row["id"], row["role"])
     return {"token": token, "user": {"id": row["id"], "email": row["email"],
                                       "username": row["username"], "role": row["role"]}}
+
+@app.post("/api/auth/forgot-password")
+def forgot_password(body: ForgotBody):
+    with get_conn() as conn:
+        row = conn.execute("SELECT id, email FROM users WHERE email=?", (body.email.lower(),)).fetchone()
+    if row:
+        token = secrets.token_urlsafe(32)
+        expires = (datetime.utcnow() + timedelta(hours=1)).isoformat()
+        with get_conn() as conn:
+            conn.execute("UPDATE users SET reset_token=?, reset_expires=? WHERE id=?",
+                         (token, expires, row["id"]))
+        reset_url = f"{SITE_URL}/reset-password?token={token}"
+        _send_email(
+            row["email"],
+            "NBA Archetype — Password Reset",
+            f"""<p>Click the link below to reset your password. It expires in 1 hour.</p>
+            <p><a href="{reset_url}">{reset_url}</a></p>
+            <p>If you didn't request this, you can ignore this email.</p>""",
+        )
+    return {"ok": True}  # always OK — don't reveal if email exists
+
+@app.post("/api/auth/reset-password")
+def reset_password(body: ResetBody):
+    if len(body.password) < 6:
+        raise HTTPException(400, "Password must be at least 6 characters")
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT id, role FROM users WHERE reset_token=? AND reset_expires > datetime('now')",
+            (body.token,),
+        ).fetchone()
+    if not row:
+        raise HTTPException(400, "Invalid or expired reset link")
+    hashed = hash_password(body.password)
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE users SET hashed_password=?, reset_token=NULL, reset_expires=NULL WHERE id=?",
+            (hashed, row["id"]),
+        )
+        user_row = conn.execute("SELECT id,email,username,role FROM users WHERE id=?", (row["id"],)).fetchone()
+    new_token = create_token(row["id"], row["role"])
+    return {"token": new_token, "user": dict(user_row)}
 
 @app.post("/api/auth/promote")
 def promote(body: LoginBody, user=Depends(get_current_user)):
@@ -2033,6 +2110,27 @@ def update_article(article_id: int, body: ArticleBody, user=Depends(require_admi
              body.status, now, article_id)
         )
     return {"ok": True, "slug": slug}
+
+@app.get("/api/admin/users")
+def admin_list_users(_user=Depends(require_admin)):
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT id,email,username,role,is_banned,created_at FROM users ORDER BY created_at DESC"
+        ).fetchall()
+    return {"users": [dict(r) for r in rows]}
+
+@app.patch("/api/admin/users/{user_id}")
+def admin_patch_user(user_id: int, body: PatchUserBody, _user=Depends(require_admin)):
+    if body.is_banned is not None:
+        with get_conn() as conn:
+            conn.execute("UPDATE users SET is_banned=? WHERE id=?", (body.is_banned, user_id))
+    return {"ok": True}
+
+@app.delete("/api/admin/users/{user_id}")
+def admin_delete_user(user_id: int, _user=Depends(require_admin)):
+    with get_conn() as conn:
+        conn.execute("DELETE FROM users WHERE id=?", (user_id,))
+    return {"ok": True}
 
 @app.delete("/api/admin/users/all")
 def delete_all_users(_user=Depends(require_admin)):
