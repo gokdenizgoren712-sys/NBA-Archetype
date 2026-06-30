@@ -1025,27 +1025,13 @@ def get_affinity_endpoint():
     if cached: return cached
     from roles import AFFINITY_MATRIX as PRIOR
     empirical = _load_affinity()
-    if empirical.empty:
-        df = PRIOR
-        source = "prior"
-    else:
-        df = PRIOR.copy()
-        alpha = 0.3
-        for a in df.index:
-            for b in df.columns:
-                if a in empirical.index and b in empirical.columns:
-                    v = empirical.loc[a, b]
-                    if pd.notna(v):
-                        df.loc[a, b] = round((1 - alpha) * df.loc[a, b] + alpha * float(v), 3)
-        source = "blended"
-
-    # Sample counts: gerçek lineup'lardan arketip çifti başına düşen toplam dakika
+    # Pair dakikalarını blending öncesinde hesapla (adaptif alpha + sample_counts için)
+    pair_min: dict = {}
     sample_counts: dict = {}
     try:
         lu = _load_lineups_with_archs()
         if not lu.empty and "_archs" in lu.columns:
             from itertools import combinations as _comb
-            pair_min: dict = {}
             for _, row in lu.iterrows():
                 archs = [a for a in row["_archs"] if a]
                 mins  = float(row.get("MIN", 0) or 0)
@@ -1056,6 +1042,22 @@ def get_affinity_endpoint():
                 sample_counts.setdefault(b, {})[a] = round(total_min)
     except Exception:
         pass
+
+    if empirical.empty:
+        df = PRIOR
+        source = "prior"
+    else:
+        df = PRIOR.copy()
+        for a in df.index:
+            for b in df.columns:
+                if a in empirical.index and b in empirical.columns:
+                    v = empirical.loc[a, b]
+                    if pd.notna(v):
+                        # Adaptif alpha: 2000+ dakika → max 0.6 empirik ağırlık
+                        pair_mins = pair_min.get(tuple(sorted([a, b])), 0)
+                        alpha = min(0.6, pair_mins / 2000)
+                        df.loc[a, b] = round((1 - alpha) * df.loc[a, b] + alpha * float(v), 3)
+        source = "blended"
 
     result = {
         "archetypes": list(df.index),

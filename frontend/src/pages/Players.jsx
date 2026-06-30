@@ -167,6 +167,12 @@ function DetailPanel({ selected, detail, isCurrent, season, tab, setTab,
           <div className="p-8 text-center text-sm" style={{ color: "var(--text-muted)" }}>Loading...</div>
         ) : (
           <>
+            {selected?.GP != null && Number(selected.GP) < 20 && (
+              <div className="mx-4 mt-3 px-3 py-1.5 rounded text-[11px]"
+                style={{ background: "rgba(245,158,11,.10)", color: "#f59e0b", border: "1px solid rgba(245,158,11,.25)" }}>
+                ⚠ Small sample ({selected.GP} games) — scores may be unstable
+              </div>
+            )}
             {tab === "radar" && (
               <div className="p-4">
                 <RadarProfile scores={detail.scores} name={detail.name} primaryArch={detail.primary_arch} />

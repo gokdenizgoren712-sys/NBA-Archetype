@@ -99,6 +99,12 @@ export default function PlayerCard({ player, rank, onClick, discover, season }) 
           style={{ background: "transparent" }}>
           {arch || "—"}
         </span>
+        {player.GP != null && Number(player.GP) < 20 && (
+          <span className="text-[9px] px-1.5 py-0.5 rounded font-medium"
+            style={{ background: "rgba(245,158,11,.15)", color: "#f59e0b" }}>
+            ~small sample
+          </span>
+        )}
       </div>
 
       {/* Stats row */}

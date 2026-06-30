@@ -75,6 +75,13 @@ def build_score_table(season: str = "2025-26") -> pd.DataFrame:
     if "bref_pos" in df.columns:
         df["POSITION"] = df["bref_pos"].fillna(df["POSITION"])
 
+    if "OBPM" not in df.columns or df["OBPM"].isna().all():
+        try:
+            from compute_bpm import compute_bpm
+            df = compute_bpm(df)
+        except Exception:
+            pass
+
     if "FTA" in df.columns and "FGA" in df.columns:
         df["FT_RATE"] = (df["FTA"] / df["FGA"].replace(0, pd.NA)).fillna(0)
 

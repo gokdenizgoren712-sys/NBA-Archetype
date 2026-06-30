@@ -233,6 +233,13 @@ if __name__ == "__main__":
                                              "PLAYER_WEIGHT", "PLAYER_HEIGHT")]
         df = df.merge(bios[bio_cols], on="PLAYER_ID", how="left")
 
+    try:
+        from compute_bpm import compute_bpm
+        df = compute_bpm(df)
+        print("BPM proxy eklendi (OBPM/DBPM/BPM)")
+    except Exception as e:
+        print(f"[UYARI] compute_bpm başarısız: {e}")
+
     df.to_parquet(DATA_DIR / "2025-26__merged.parquet")
     print(f"\nBirleşik tablo: {df.shape[0]} oyuncu, {df.shape[1]} kolon")
     print("Kaydedildi: data/2025-26__merged.parquet")

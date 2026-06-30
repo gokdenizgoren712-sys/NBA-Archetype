@@ -61,6 +61,14 @@ def main():
         return
     df = pd.read_parquet(MERGED)
 
+    if "OBPM" not in df.columns or df["OBPM"].isna().all():
+        try:
+            from compute_bpm import compute_bpm
+            df = compute_bpm(df)
+            print("BPM proxy eklendi (OBPM/DBPM/BPM)")
+        except Exception as e:
+            print(f"[UYARI] compute_bpm başarısız: {e}")
+
     # FT_RATE türet (Downhill imzasında kullanılıyor)
     if "FTA" in df and "FGA" in df:
         df["FT_RATE"] = (df["FTA"] / df["FGA"].replace(0, pd.NA)).fillna(0)
