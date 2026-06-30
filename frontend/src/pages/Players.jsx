@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Search } from "lucide-react";
 import { api } from "../api";
 import { SEO } from "../hooks/useSEO";
+import { useAuth } from "../contexts/AuthContext";
 import PlayerCard from "../components/PlayerCard";
 import ScoreBar from "../components/ScoreBar";
 import RadarProfile from "../components/RadarProfile";
@@ -79,7 +80,27 @@ function CareerChart({ seasons }) {
 
 /* ── Detail panel content ────────────────────────────────────────── */
 function DetailPanel({ selected, detail, isCurrent, season, tab, setTab,
-  similar, similarLoading, career, careerLoading, onLoadCareer }) {
+  similar, similarLoading, career, careerLoading, onLoadCareer,
+  token, isLoggedIn }) {
+
+  const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => { setSaved(false); }, [selected]);
+
+  const savePlayer = async () => {
+    if (!isLoggedIn) { window.location.href = "/login"; return; }
+    setSaving(true);
+    try {
+      await fetch("/api/profile/save-player", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ player_name: selected.PLAYER_NAME, season: isCurrent ? "2025-26" : season }),
+      });
+      setSaved(true);
+    } catch (e) { console.error(e); }
+    setSaving(false);
+  };
 
   if (!selected) return null;
 
@@ -93,18 +114,35 @@ function DetailPanel({ selected, detail, isCurrent, season, tab, setTab,
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="p-4 border-b shrink-0" style={{ borderColor: "var(--border)" }}>
-        <div className="font-bold text-sm" style={{ color: "var(--text-primary)" }}>
-          {selected.PLAYER_NAME}
-        </div>
-        <div className="flex items-center gap-2 mt-1">
-          {detail?.position && (
-            <span className={`text-[10px] font-mono font-medium ${POS_COLOR[detail.position] || ""}`}>
-              {detail.position}
-            </span>
-          )}
-          <span className="text-xs" style={{ color: "var(--text-muted)" }}>
-            {selected.TEAM_ABBREVIATION}{!isCurrent ? ` · ${season}` : ""}
-          </span>
+        <div className="flex items-start justify-between">
+          <div>
+            <div className="font-bold text-sm" style={{ color: "var(--text-primary)" }}>
+              {selected.PLAYER_NAME}
+            </div>
+            <div className="flex items-center gap-2 mt-1">
+              {detail?.position && (
+                <span className={`text-[10px] font-mono font-medium ${POS_COLOR[detail.position] || ""}`}>
+                  {detail.position}
+                </span>
+              )}
+              <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+                {selected.TEAM_ABBREVIATION}{!isCurrent ? ` · ${season}` : ""}
+              </span>
+            </div>
+          </div>
+          <button
+            onClick={savePlayer}
+            disabled={saving || saved}
+            title={saved ? "Saved!" : "Save player"}
+            className="shrink-0 w-7 h-7 flex items-center justify-center rounded transition-colors"
+            style={{
+              color: saved ? "var(--accent)" : "var(--text-muted)",
+              border: `1px solid ${saved ? "var(--accent-border)" : "var(--border)"}`,
+              background: saved ? "var(--accent-dim)" : "transparent",
+              opacity: saving ? 0.5 : 1,
+            }}>
+            {saved ? "★" : "☆"}
+          </button>
         </div>
       </div>
 
@@ -271,6 +309,7 @@ function DetailPanel({ selected, detail, isCurrent, season, tab, setTab,
 
 /* ── Main component ──────────────────────────────────────────────── */
 export default function Players() {
+  const { token, isLoggedIn } = useAuth();
   const [seasons, setSeasons]   = useState([]);
   const [season, setSeason]     = useState("2025-26");
 
@@ -403,6 +442,7 @@ export default function Players() {
           similar={similar} similarLoading={similarLoading}
           career={career} careerLoading={careerLoading}
           onLoadCareer={loadCareer}
+          token={token} isLoggedIn={isLoggedIn}
         />
       ) : null}
       onClose={() => { setSelected(null); setDetail(null); }}

@@ -33,7 +33,7 @@ export default function BlogPost() {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ content: comment }),
       });
-      if (!res.ok) throw new Error("Yorum gönderilemedi");
+      if (!res.ok) throw new Error("Failed to post comment");
       const data = await res.json();
       setComments(c => [...c, {
         id: data.id, content: comment,
@@ -53,11 +53,11 @@ export default function BlogPost() {
     setComments(c => c.filter(x => x.id !== id));
   };
 
-  if (loading) return <div className="h-full flex items-center justify-center" style={{ color: "var(--text-muted)" }}>Yükleniyor…</div>;
+  if (loading) return <div className="h-full flex items-center justify-center" style={{ color: "var(--text-muted)" }}>Loading…</div>;
   if (!article) return (
     <div className="h-full flex flex-col items-center justify-center gap-3">
-      <p style={{ color: "var(--text-muted)" }}>Makale bulunamadı.</p>
-      <Link to="/blog" style={{ color: "var(--accent)" }}>← Blog'a dön</Link>
+      <p style={{ color: "var(--text-muted)" }}>Article not found.</p>
+      <Link to="/blog" style={{ color: "var(--accent)" }}>← Back to Blog</Link>
     </div>
   );
 
@@ -80,11 +80,11 @@ export default function BlogPost() {
           {article.title}
         </h1>
         <p className="text-sm mb-6" style={{ color: "var(--text-muted)" }}>
-          {article.author} · {new Date(article.created_at).toLocaleDateString("tr-TR")}
+          {article.author} · {new Date(article.created_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
           {user?.role === "admin" && (
             <Link to={`/admin/articles/${article.id}/edit`}
               className="ml-3 underline" style={{ color: "var(--accent)" }}>
-              Düzenle
+              Edit
             </Link>
           )}
         </p>
@@ -99,7 +99,7 @@ export default function BlogPost() {
         {/* Comments */}
         <div className="mt-12 border-t pt-8" style={{ borderColor: "var(--border)" }}>
           <h2 className="font-semibold mb-4 text-base" style={{ color: "var(--text-primary)" }}>
-            Yorumlar ({comments.length})
+            Comments ({comments.length})
           </h2>
 
           {isLoggedIn ? (
@@ -108,7 +108,7 @@ export default function BlogPost() {
                 value={comment}
                 onChange={e => setComment(e.target.value)}
                 rows={3}
-                placeholder="Yorumunu yaz…"
+                placeholder="Write a comment…"
                 className="w-full px-3 py-2 rounded text-sm outline-none resize-none"
                 style={{ background: "var(--bg-elevated)", color: "var(--text-primary)", border: "1px solid var(--border)" }}
               />
@@ -116,12 +116,12 @@ export default function BlogPost() {
               <button onClick={submitComment} disabled={posting || !comment.trim()}
                 className="mt-2 px-4 py-1.5 rounded text-sm font-medium transition-opacity"
                 style={{ background: "var(--accent)", color: "#000", opacity: (posting || !comment.trim()) ? 0.5 : 1 }}>
-                {posting ? "Gönderiliyor…" : "Gönder"}
+                {posting ? "Posting…" : "Post"}
               </button>
             </div>
           ) : (
             <p className="text-sm mb-6" style={{ color: "var(--text-muted)" }}>
-              Yorum yapmak için <Link to="/login" style={{ color: "var(--accent)" }}>giriş yap</Link>.
+              <Link to="/login" style={{ color: "var(--accent)" }}>Log in</Link> to comment.
             </p>
           )}
 
@@ -133,7 +133,7 @@ export default function BlogPost() {
                   <span className="text-xs font-semibold" style={{ color: "var(--accent)" }}>{c.username}</span>
                   <div className="flex items-center gap-2">
                     <span className="text-xs" style={{ color: "var(--text-muted)" }}>
-                      {new Date(c.created_at).toLocaleDateString("tr-TR")}
+                      {new Date(c.created_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
                     </span>
                     {(user?.id === c.user_id || user?.role === "admin") && (
                       <button onClick={() => deleteComment(c.id)} className="text-xs text-red-400 hover:text-red-300">✕</button>

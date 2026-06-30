@@ -25,43 +25,43 @@ export default function ArticleList() {
   }, []);
 
   const deleteArticle = async (id) => {
-    if (!confirm("Bu makaleyi silmek istediğine emin misin?")) return;
+    if (!confirm("Delete this article?")) return;
     await authFetch(`/admin/articles/${id}`, token, { method: "DELETE" });
     setArticles(a => a.filter(x => x.id !== id));
   };
 
   return (
     <>
-    <SEO title="Admin — Makaleler" noindex path="/admin/articles" />
+    <SEO title="Admin — Articles" noindex path="/admin/articles" />
     <div className="h-full overflow-y-auto" style={{ background: "var(--bg-base)" }}>
       <div className="p-6 max-w-5xl mx-auto">
 
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>Makaleler</h1>
+          <h1 className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>Articles</h1>
           <div className="flex gap-2">
             <Link to="/profile"
               className="px-3 py-1.5 rounded text-sm"
               style={{ background: "var(--bg-elevated)", color: "var(--text-muted)", border: "1px solid var(--border)" }}>
-              Profil
+              Profile
             </Link>
             <Link to="/admin/articles/new"
               className="px-3 py-1.5 rounded text-sm font-semibold"
               style={{ background: "var(--accent)", color: "#000" }}>
-              + Yeni Makale
+              + New Article
             </Link>
           </div>
         </div>
 
         {loading ? (
-          <p style={{ color: "var(--text-muted)" }}>Yükleniyor…</p>
+          <p style={{ color: "var(--text-muted)" }}>Loading…</p>
         ) : articles.length === 0 ? (
-          <p style={{ color: "var(--text-muted)" }}>Henüz makale yok. İlk makaleyi oluştur!</p>
+          <p style={{ color: "var(--text-muted)" }}>No articles yet. Create your first one!</p>
         ) : (
           <div className="rounded overflow-hidden border" style={{ borderColor: "var(--border)" }}>
             <table className="w-full text-sm">
               <thead style={{ background: "var(--bg-elevated)" }}>
                 <tr>
-                  {["Başlık", "Slug", "Durum", "Tarih", "İşlem"].map(h => (
+                  {["Title", "Slug", "Status", "Date", "Actions"].map(h => (
                     <th key={h} className="text-left px-4 py-2 font-medium" style={{ color: "var(--text-muted)" }}>{h}</th>
                   ))}
                 </tr>
@@ -83,23 +83,23 @@ export default function ArticleList() {
                           background: a.status === "published" ? "rgba(34,197,94,.15)" : "rgba(148,163,184,.15)",
                           color: a.status === "published" ? "#4ade80" : "var(--text-muted)",
                         }}>
-                        {a.status === "published" ? "Yayında" : "Taslak"}
+                        {a.status === "published" ? "Published" : "Draft"}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-xs" style={{ color: "var(--text-muted)" }}>
-                      {new Date(a.created_at).toLocaleDateString("tr-TR")}
+                      {new Date(a.created_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex gap-2">
                         <Link to={`/admin/articles/${a.id}/edit`}
                           className="px-2 py-1 rounded text-xs"
                           style={{ background: "var(--bg-elevated)", color: "var(--text-primary)", border: "1px solid var(--border)" }}>
-                          Düzenle
+                          Edit
                         </Link>
                         <button onClick={() => deleteArticle(a.id)}
                           className="px-2 py-1 rounded text-xs text-red-400 hover:text-red-300"
                           style={{ border: "1px solid rgba(248,113,113,.3)" }}>
-                          Sil
+                          Delete
                         </button>
                       </div>
                     </td>

@@ -35,17 +35,17 @@ export default function Profile() {
   };
 
   const TABS = [
-    { key: "players", label: "Oyuncular" },
-    { key: "lineups", label: "Lineup'lar" },
-    { key: "comments", label: "Yorumlar" },
+    { key: "players",  label: "Players"  },
+    { key: "lineups",  label: "Lineups"  },
+    { key: "comments", label: "Comments" },
   ];
 
-  if (loading) return <div className="h-full flex items-center justify-center" style={{ color: "var(--text-muted)" }}>Yükleniyor…</div>;
+  if (loading) return <div className="h-full flex items-center justify-center" style={{ color: "var(--text-muted)" }}>Loading…</div>;
   if (!data) return null;
 
   return (
     <>
-    <SEO title="Profilim" path="/profile" noindex />
+    <SEO title="Profile" path="/profile" noindex />
     <div className="h-full overflow-y-auto" style={{ background: "var(--bg-base)" }}>
       <div className="p-6 max-w-3xl mx-auto">
 
@@ -56,8 +56,8 @@ export default function Profile() {
               {data.user?.username}
             </h1>
             <p className="text-sm mt-0.5" style={{ color: "var(--text-muted)" }}>
-              {data.user?.email} · {data.user?.role === "admin" ? "Admin" : "Üye"} ·
-              Katılım {new Date(data.user?.created_at).toLocaleDateString("tr-TR")}
+              {data.user?.email} · {data.user?.role === "admin" ? "Admin" : "Member"} ·
+              Joined {new Date(data.user?.created_at).toLocaleDateString("en-US", { year: "numeric", month: "short" })}
             </p>
           </div>
           <div className="flex gap-2">
@@ -71,7 +71,7 @@ export default function Profile() {
             <button onClick={logout}
               className="px-3 py-1.5 rounded text-sm"
               style={{ background: "var(--bg-elevated)", color: "var(--text-muted)", border: "1px solid var(--border)" }}>
-              Çıkış
+              Sign out
             </button>
           </div>
         </div>
@@ -96,7 +96,7 @@ export default function Profile() {
           <div className="space-y-2">
             {data.saved_players.length === 0 ? (
               <p className="text-sm py-4" style={{ color: "var(--text-muted)" }}>
-                Henüz kayıtlı oyuncu yok. Players sayfasından oyuncu kaydet.
+                No saved players yet. Open a player card and click the bookmark icon to save.
               </p>
             ) : data.saved_players.map(p => (
               <div key={p.id} className="flex items-center justify-between p-3 rounded"
@@ -120,7 +120,7 @@ export default function Profile() {
           <div className="space-y-3">
             {data.saved_lineups.length === 0 ? (
               <p className="text-sm py-4" style={{ color: "var(--text-muted)" }}>
-                Henüz kayıtlı lineup yok. Lineup Game'den kaydedebilirsin.
+                No saved lineups yet. Build a custom lineup on the Lineups page and save it.
               </p>
             ) : data.saved_lineups.map(l => (
               <div key={l.id} className="p-3 rounded"
@@ -129,13 +129,13 @@ export default function Profile() {
                   <span className="font-bold text-lg" style={{ color: "var(--accent)" }}>{l.grade}</span>
                   <div className="flex items-center gap-2">
                     <span className="text-xs" style={{ color: "var(--text-muted)" }}>
-                      {new Date(l.created_at).toLocaleDateString("tr-TR")}
+                      {new Date(l.created_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
                     </span>
-                    <button onClick={() => removeLineup(l.id)} className="text-xs text-red-400">✕</button>
+                    <button onClick={() => removeLineup(l.id)} className="text-xs text-red-400 hover:text-red-300">✕</button>
                   </div>
                 </div>
                 <p className="text-xs mb-2" style={{ color: "var(--text-muted)" }}>
-                  Skor: {l.pct ? Math.round(l.pct) : "—"}% · {l.label || ""}
+                  Score: {l.pct ? Math.round(l.pct) : "—"}%{l.label ? ` · ${l.label}` : ""}
                 </p>
                 <div className="flex flex-wrap gap-1">
                   {l.players.map((p, i) => (
@@ -155,7 +155,7 @@ export default function Profile() {
           <div className="space-y-2">
             {data.comments.length === 0 ? (
               <p className="text-sm py-4" style={{ color: "var(--text-muted)" }}>
-                Henüz yorum yapılmadı.
+                No comments yet.
               </p>
             ) : data.comments.map(c => (
               <div key={c.id} className="p-3 rounded"
@@ -167,7 +167,7 @@ export default function Profile() {
                 </Link>
                 <p className="text-sm mt-1" style={{ color: "var(--text-primary)" }}>{c.content}</p>
                 <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
-                  {new Date(c.created_at).toLocaleDateString("tr-TR")}
+                  {new Date(c.created_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
                 </p>
               </div>
             ))}

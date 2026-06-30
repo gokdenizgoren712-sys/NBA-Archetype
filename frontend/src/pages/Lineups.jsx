@@ -4,6 +4,7 @@ import RoleBreakdown from "../components/RoleBreakdown";
 import RoleImpactChart from "../components/RoleImpactChart";
 import { explainLineup } from "../utils/lineupExplain";
 import { useLang } from "../contexts/LanguageContext";
+import { useAuth } from "../contexts/AuthContext";
 import { Search } from "lucide-react";
 import { SEO } from "../hooks/useSEO";
 import { computeLineupFit, GRADE_COLOR, PILLAR_LABELS, getEra } from "../utils/lineupScoring";
@@ -315,6 +316,7 @@ function HistPlayerSearch({ value, onChange, season, placeholder }) {
 
 export default function Lineups() {
   const { t, lang } = useLang();
+  const { token, isLoggedIn } = useAuth();
 
   const [seasons, setSeasons]           = useState(["2025-26"]);
   const [season, setSeason]             = useState("2025-26");
@@ -329,6 +331,7 @@ export default function Lineups() {
   const [realLoading, setRealLoading]   = useState(false);
   const [realSort, setRealSort]         = useState("NET_RATING");
   const [corr, setCorr]                 = useState(null);
+  const [lineupSaved, setLineupSaved]   = useState(false);
 
   const isCurrent = season === "2025-26";
 
@@ -365,7 +368,7 @@ export default function Lineups() {
   const setSlot = (i, v) => setSlots(prev => { const a = [...prev]; a[i] = v; return a; });
 
   const evalCustom = async () => {
-    setCustomResult(null); setCustomError("");
+    setCustomResult(null); setCustomError(""); setLineupSaved(false);
     const names = slots.map(s => s.trim()).filter(Boolean);
     if (names.length < 2) { setCustomError(t("enter_min_2")); return; }
     try {
@@ -374,6 +377,27 @@ export default function Lineups() {
         : await api.historicalCustomLineup(season, names);
       setCustomResult(r);
     } catch (e) { setCustomError(e.message); }
+  };
+
+  const saveLineup = async () => {
+    if (!isLoggedIn) { window.location.href = "/login"; return; }
+    if (!customResult) return;
+    const fit = customResult.players_data ? computeLineupFit(customResult.players_data) : null;
+    const names = slots.map(s => s.trim()).filter(Boolean);
+    try {
+      await fetch("/api/profile/save-lineup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          players: names,
+          score: fit ? fit.pct / 100 : customResult.lineup_score,
+          grade: fit?.grade || "",
+          pct: fit?.pct || null,
+          label: names.join(" · "),
+        }),
+      });
+      setLineupSaved(true);
+    } catch (e) { console.error(e); }
   };
 
   return (
@@ -434,6 +458,17 @@ export default function Lineups() {
                     ? <TwoStageResult result={customResult} />
                     : <PillarBreakdown result={customResult} lang={lang} />
                   }
+                  <button
+                    onClick={saveLineup}
+                    disabled={lineupSaved}
+                    className="w-full mt-2 py-1.5 rounded text-xs font-medium transition-colors"
+                    style={{
+                      background: lineupSaved ? "var(--accent-dim)" : "var(--bg-elevated)",
+                      color: lineupSaved ? "var(--accent)" : "var(--text-muted)",
+                      border: `1px solid ${lineupSaved ? "var(--accent-border)" : "var(--border)"}`,
+                    }}>
+                    {lineupSaved ? "★ Saved" : "☆ Save Lineup"}
+                  </button>
                 </div>
               )}
             </div>

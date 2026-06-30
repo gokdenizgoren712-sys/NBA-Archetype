@@ -112,11 +112,17 @@ function TopBar() {
 /* ── Sol icon bar (desktop) ──────────────────────────────────────── */
 function SideNav() {
   const location = useLocation();
+  const { isAdmin } = useAuth();
+
+  const items = [
+    ...NAV,
+    ...(isAdmin ? [{ to: "/admin/articles", icon: "⚙", label: "Admin" }] : []),
+  ];
 
   return (
     <aside className="hidden md:flex flex-col w-14 shrink-0 border-r pt-2 pb-4"
       style={{ background: "var(--bg-surface)", borderColor: "var(--border)" }}>
-      {NAV.map(n => {
+      {items.map(n => {
         const active = location.pathname === n.to || location.pathname.startsWith(n.to + "/");
         return (
           <NavLink key={n.to} to={n.to} title={n.label}

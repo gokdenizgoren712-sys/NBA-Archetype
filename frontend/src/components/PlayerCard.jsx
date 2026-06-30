@@ -17,13 +17,6 @@ const ARCH_COLOR = {
   "Rim Runner": "text-emerald-400 border-emerald-500/40",
 };
 
-const TIER_COLOR = {
-  Elite:        "text-yellow-400",
-  Star:         "text-amber-400",
-  Starter:      "text-sky-400",
-  "Role Player":"text-slate-500",
-};
-
 const TAG_LABEL = {
   "Point-": "Pt.Fwd", "3-and-D": "3&D",
   "Pick-and-Roll": "P&R", "Point-of-Attack": "PoA",
@@ -100,17 +93,12 @@ export default function PlayerCard({ player, rank, onClick, discover, season }) 
         </div>
       </div>
 
-      {/* Archetype + Tier */}
+      {/* Archetype */}
       <div className="flex items-center gap-2 mb-2.5 flex-wrap">
         <span className={`text-xs font-medium px-2 py-0.5 rounded border ${color}`}
           style={{ background: "transparent" }}>
           {arch || "—"}
         </span>
-        {tier && (
-          <span className={`text-[10px] font-medium ${TIER_COLOR[tier] || "text-slate-500"}`}>
-            {tier}
-          </span>
-        )}
       </div>
 
       {/* Stats row */}

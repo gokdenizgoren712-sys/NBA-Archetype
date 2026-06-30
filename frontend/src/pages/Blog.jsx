@@ -16,8 +16,8 @@ export default function Blog() {
   return (
     <>
     <SEO
-      title="Blog — NBA Analiz & Yazılar"
-      description="NBA arketipleri, oyuncu analizleri ve basketbol taktikleri üzerine yazılar."
+      title="Blog — NBA Analysis & Articles"
+      description="Articles on NBA archetypes, player analysis, and basketball tactics."
       path="/blog"
     />
     <div className="h-full overflow-y-auto" style={{ background: "var(--bg-base)" }}>
@@ -25,9 +25,9 @@ export default function Blog() {
         <h1 className="text-2xl font-bold mb-6" style={{ color: "var(--text-primary)" }}>Blog</h1>
 
         {loading ? (
-          <p style={{ color: "var(--text-muted)" }}>Yükleniyor…</p>
+          <p style={{ color: "var(--text-muted)" }}>Loading…</p>
         ) : articles.length === 0 ? (
-          <p style={{ color: "var(--text-muted)" }}>Henüz makale yok.</p>
+          <p style={{ color: "var(--text-muted)" }}>No articles yet.</p>
         ) : (
           <div className="space-y-4">
             {articles.map(a => (
@@ -43,7 +43,7 @@ export default function Blog() {
                     {a.title}
                   </h2>
                   <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-                    {a.author} · {new Date(a.created_at).toLocaleDateString("tr-TR")}
+                    {a.author} · {new Date(a.created_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
                   </p>
                 </div>
               </Link>
