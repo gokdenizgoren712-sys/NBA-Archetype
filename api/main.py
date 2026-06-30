@@ -45,12 +45,13 @@ async def _json_500(request: Request, exc: Exception):
 # ─── Middleware ────────────────────────────────────────────────────────────────
 
 IS_PROD   = os.environ.get("RENDER") == "true"
-SMTP_HOST = os.environ.get("SMTP_HOST", "")
-SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
-SMTP_USER = os.environ.get("SMTP_USER", "")
-SMTP_PASS = os.environ.get("SMTP_PASS", "")
-SMTP_FROM = os.environ.get("SMTP_FROM", SMTP_USER)
-SITE_URL  = os.environ.get("SITE_URL", "https://nba-archetypes.onrender.com")
+SMTP_HOST        = os.environ.get("SMTP_HOST", "")
+SMTP_PORT        = int(os.environ.get("SMTP_PORT", "587"))
+SMTP_USER        = os.environ.get("SMTP_USER", "")
+SMTP_PASS        = os.environ.get("SMTP_PASS", "")
+SMTP_FROM        = os.environ.get("SMTP_FROM", SMTP_USER)
+SITE_URL         = os.environ.get("SITE_URL", "https://nba-archetypes.onrender.com")
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
 
 def _send_email(to: str, subject: str, html: str):
     if not SMTP_HOST or not SMTP_USER:
@@ -1895,6 +1896,9 @@ class ResetBody(BaseModel):
     token: str
     password: str
 
+class GoogleAuthBody(BaseModel):
+    credential: str
+
 class ArticleBody(BaseModel):
     title: str
     slug: str = ""
@@ -1958,13 +1962,54 @@ def register(body: RegisterBody):
 def login(body: LoginBody):
     with get_conn() as conn:
         row = conn.execute("SELECT * FROM users WHERE email=?", (body.email.lower(),)).fetchone()
-    if not row or not verify_password(body.password, row["hashed_password"]):
+    if not row or not row["hashed_password"]:
+        raise HTTPException(401, "Incorrect email or password")
+    if not verify_password(body.password, row["hashed_password"]):
         raise HTTPException(401, "Incorrect email or password")
     if row["is_banned"]:
         raise HTTPException(403, "This account has been suspended")
     token = create_token(row["id"], row["role"])
     return {"token": token, "user": {"id": row["id"], "email": row["email"],
                                       "username": row["username"], "role": row["role"]}}
+
+@app.post("/api/auth/google")
+def google_auth(body: GoogleAuthBody):
+    import httpx
+    resp = httpx.get(
+        f"https://oauth2.googleapis.com/tokeninfo?id_token={body.credential}",
+        timeout=10,
+    )
+    if resp.status_code != 200:
+        raise HTTPException(400, "Invalid Google token")
+    info = resp.json()
+    if GOOGLE_CLIENT_ID and info.get("aud") != GOOGLE_CLIENT_ID:
+        raise HTTPException(400, "Token audience mismatch")
+    email = info.get("email", "")
+    if not email:
+        raise HTTPException(400, "No email in Google token")
+    base = _re.sub(r"[^A-Za-z0-9_]", "", info.get("given_name", email.split("@")[0]))[:20] or "user"
+    with get_conn() as conn:
+        row = conn.execute("SELECT * FROM users WHERE email=?", (email.lower(),)).fetchone()
+        if row:
+            if row["is_banned"]:
+                raise HTTPException(403, "Account suspended")
+            user_id, role = row["id"], row["role"]
+        else:
+            username = base
+            for i in range(1, 100):
+                exists = conn.execute("SELECT id FROM users WHERE username=?", (username,)).fetchone()
+                if not exists:
+                    break
+                username = f"{base}{i}"
+            cur = conn.execute(
+                "INSERT INTO users (email, username, hashed_password, role) VALUES (?,?,?,?)",
+                (email.lower(), username, "", "user"),
+            )
+            user_id, role = cur.lastrowid, "user"
+        user_row = conn.execute(
+            "SELECT id,email,username,role FROM users WHERE id=?", (user_id,)
+        ).fetchone()
+    return {"token": create_token(user_id, role), "user": dict(user_row)}
 
 @app.post("/api/auth/forgot-password")
 def forgot_password(body: ForgotBody):

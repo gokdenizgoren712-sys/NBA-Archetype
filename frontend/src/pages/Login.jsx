@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { SEO } from "../hooks/useSEO";
+import GoogleSignIn from "../components/GoogleSignIn";
 
 const BASE = "/api";
 
@@ -78,6 +79,8 @@ export default function Login() {
             {loading ? "Logging in…" : "Log In"}
           </button>
         </form>
+
+        <GoogleSignIn />
 
         <p className="text-center text-sm mt-4" style={{ color: "var(--text-muted)" }}>
           Don't have an account?{" "}
