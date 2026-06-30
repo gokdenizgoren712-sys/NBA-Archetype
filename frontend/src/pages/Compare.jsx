@@ -14,15 +14,25 @@ const ARCH_COLOR = {
   Initiator: "#facc15", Stopper: "#94a3b8", "Rim Runner": "#4ade80",
 };
 
-const A_COLOR = "#f59e0b";  // amber — player A
-const B_COLOR = "#60a5fa";  // blue  — player B
+const A_COLOR = "#f59e0b";
+const B_COLOR = "#60a5fa";
 
-function PlayerSearch({ side, onSelect, lang }) {
-  const [query, setQuery] = useState("");
+function SeasonSelect({ value, onChange, seasons }) {
+  return (
+    <select value={value} onChange={e => onChange(e.target.value)}
+      className="w-full rounded px-3 py-2 text-xs focus:outline-none"
+      style={{ background: "var(--bg-elevated)", color: "var(--text-muted)", border: "1px solid var(--border)" }}>
+      {seasons.map(s => <option key={s} value={s}>{s}</option>)}
+    </select>
+  );
+}
+
+function PlayerSearch({ side, season, onSelect, lang }) {
+  const [query, setQuery]   = useState("");
   const [results, setResults] = useState([]);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen]     = useState(false);
   const timer = useRef(null);
-  const ref = useRef(null);
+  const ref   = useRef(null);
 
   useEffect(() => {
     const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
@@ -30,13 +40,16 @@ function PlayerSearch({ side, onSelect, lang }) {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
+  // Sezon değişince arama sıfırla
+  useEffect(() => { setQuery(""); setResults([]); setOpen(false); }, [season]);
+
   const handleChange = (val) => {
     setQuery(val);
     clearTimeout(timer.current);
     if (val.length < 2) { setResults([]); setOpen(false); return; }
     timer.current = setTimeout(async () => {
       try {
-        const d = await api.players({ search: val, limit: 8 });
+        const d = await api.historical(season, { search: val, limit: 8 });
         setResults(d.players || []);
         setOpen(true);
       } catch {}
@@ -57,10 +70,7 @@ function PlayerSearch({ side, onSelect, lang }) {
           onFocus={() => results.length && setOpen(true)}
           placeholder={label}
           className="w-full rounded pl-8 pr-3 py-2.5 text-sm focus:outline-none"
-          style={{
-            background: "var(--bg-elevated)", color: "var(--text-primary)",
-            border: `1px solid ${sideColor}50`,
-          }}
+          style={{ background: "var(--bg-elevated)", color: "var(--text-primary)", border: `1px solid ${sideColor}50` }}
         />
       </div>
       {open && results.length > 0 && (
@@ -74,7 +84,9 @@ function PlayerSearch({ side, onSelect, lang }) {
               onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
               <div>
                 <div className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{p.PLAYER_NAME}</div>
-                <div className="text-[10px]" style={{ color: "var(--text-muted)" }}>{p.TEAM_ABBREVIATION} · {p.POSITION}</div>
+                <div className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+                  {p.TEAM_ABBREVIATION} · {p.POSITION}
+                </div>
               </div>
               <span className="text-[10px] px-1.5 py-0.5 rounded font-medium"
                 style={{ color: ARCH_COLOR[p.primary_arch] || "var(--accent)", border: `1px solid ${ARCH_COLOR[p.primary_arch] || "var(--accent)"}50` }}>
@@ -88,12 +100,12 @@ function PlayerSearch({ side, onSelect, lang }) {
   );
 }
 
-function StatCell({ label, valA, valB, fmt = (v) => v?.toFixed?.(1) ?? v }) {
+function StatCell({ label, valA, valB, fmt = (v) => v?.toFixed?.(1) ?? v, higherBetter = true }) {
   if (valA == null && valB == null) return null;
   const a = valA != null ? Number(valA) : null;
   const b = valB != null ? Number(valB) : null;
-  const aWins = a != null && b != null && a > b;
-  const bWins = a != null && b != null && b > a;
+  const aWins = a != null && b != null && (higherBetter ? a > b : a < b);
+  const bWins = a != null && b != null && (higherBetter ? b > a : b < a);
   return (
     <div className="grid grid-cols-3 items-center py-1.5 border-b text-xs" style={{ borderColor: "var(--border)" }}>
       <div className="text-right pr-3 font-semibold" style={{ color: aWins ? A_COLOR : "var(--text-primary)" }}>
@@ -136,7 +148,7 @@ function VSBar({ label, scoreA, scoreB }) {
   );
 }
 
-function PlayerHeader({ detail, loading, side }) {
+function PlayerHeader({ detail, loading, side, season }) {
   const sideColor = side === "a" ? A_COLOR : B_COLOR;
   if (loading) return (
     <div className="p-4 rounded animate-pulse" style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
@@ -157,7 +169,15 @@ function PlayerHeader({ detail, loading, side }) {
       <div className="flex items-start justify-between">
         <div>
           <div className="font-bold text-base" style={{ color: sideColor }}>{detail.name}</div>
-          <div className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>{detail.team} · {detail.position}</div>
+          <div className="text-xs mt-0.5 flex items-center gap-1.5" style={{ color: "var(--text-muted)" }}>
+            {detail.team} · {detail.position}
+            {detail.season && detail.season !== "2025-26" && (
+              <span className="px-1.5 py-0.5 rounded text-[9px]"
+                style={{ background: "var(--bg-surface)", border: "1px solid var(--border)" }}>
+                {detail.season}
+              </span>
+            )}
+          </div>
         </div>
         {overall != null && (
           <div className="text-right">
@@ -188,33 +208,48 @@ function PlayerHeader({ detail, loading, side }) {
 export default function Compare() {
   const { lang } = useLang();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [detailA, setDetailA] = useState(null);
-  const [detailB, setDetailB] = useState(null);
+
+  const [seasons, setSeasons]   = useState(["2025-26"]);
+  const [seasonA, setSeasonA]   = useState("2025-26");
+  const [seasonB, setSeasonB]   = useState("2025-26");
+  const [detailA, setDetailA]   = useState(null);
+  const [detailB, setDetailB]   = useState(null);
   const [loadingA, setLoadingA] = useState(false);
   const [loadingB, setLoadingB] = useState(false);
 
-  const loadPlayer = async (side, name) => {
+  // Sezonları yükle
+  useEffect(() => {
+    api.seasons().then(d => setSeasons(d.seasons || ["2025-26"])).catch(() => {});
+  }, []);
+
+  const loadPlayer = async (side, name, season) => {
     const setDetail  = side === "a" ? setDetailA : setDetailB;
     const setLoading = side === "a" ? setLoadingA : setLoadingB;
     setLoading(true);
     try {
-      const data = await api.playerScores(name);
+      const data = await api.historicalPlayer(season, name);
       setDetail(data);
       const p = new URLSearchParams(searchParams);
       p.set(side, name);
+      p.set(side + "s", season);
       setSearchParams(p, { replace: true });
     } catch (e) { console.error(e); }
     setLoading(false);
   };
 
+  // URL params'tan restore
   useEffect(() => {
-    const a = searchParams.get("a");
-    const b = searchParams.get("b");
-    if (a) loadPlayer("a", a);
-    if (b) loadPlayer("b", b);
+    const a  = searchParams.get("a");
+    const b  = searchParams.get("b");
+    const as_ = searchParams.get("as") || "2025-26";
+    const bs_ = searchParams.get("bs") || "2025-26";
+    if (a) { setSeasonA(as_); loadPlayer("a", a, as_); }
+    if (b) { setSeasonB(bs_); loadPlayer("b", b, bs_); }
   }, []); // eslint-disable-line
 
   const bothLoaded = detailA && detailB;
+
+  const bpmFmt = (v) => v != null ? (v > 0 ? `+${v.toFixed(1)}` : v.toFixed(1)) : null;
 
   return (
     <div className="h-full overflow-y-auto">
@@ -225,19 +260,27 @@ export default function Compare() {
           </h2>
           <p className="text-sm mt-0.5" style={{ color: "var(--text-muted)" }}>
             {lang === "tr"
-              ? "İki oyuncuyu arketip profili, skor ve istatistik bazında karşılaştır"
-              : "Compare two players by archetype profile, scores, and stats"}
+              ? "Farklı eralardan iki oyuncuyu karşılaştır — sezon bağımsız"
+              : "Compare players across eras — each player can be from a different season"}
           </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 mb-4">
-          <PlayerSearch side="a" onSelect={n => loadPlayer("a", n)} lang={lang} />
-          <PlayerSearch side="b" onSelect={n => loadPlayer("b", n)} lang={lang} />
+        {/* Season selectors */}
+        <div className="grid grid-cols-2 gap-3 mb-2">
+          <SeasonSelect value={seasonA} onChange={s => { setSeasonA(s); setDetailA(null); }} seasons={seasons} />
+          <SeasonSelect value={seasonB} onChange={s => { setSeasonB(s); setDetailB(null); }} seasons={seasons} />
         </div>
 
+        {/* Player search */}
         <div className="grid grid-cols-2 gap-3 mb-4">
-          <PlayerHeader detail={detailA} loading={loadingA} side="a" />
-          <PlayerHeader detail={detailB} loading={loadingB} side="b" />
+          <PlayerSearch side="a" season={seasonA} onSelect={n => loadPlayer("a", n, seasonA)} lang={lang} />
+          <PlayerSearch side="b" season={seasonB} onSelect={n => loadPlayer("b", n, seasonB)} lang={lang} />
+        </div>
+
+        {/* Player headers */}
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <PlayerHeader detail={detailA} loading={loadingA} side="a" season={seasonA} />
+          <PlayerHeader detail={detailB} loading={loadingB} side="b" season={seasonB} />
         </div>
 
         {bothLoaded && (
@@ -260,22 +303,24 @@ export default function Compare() {
                 Stats
               </div>
               <div className="grid grid-cols-3 text-[10px] mb-1">
-                <div className="text-right pr-3 font-medium" style={{ color: A_COLOR }}>{detailA.name?.split(" ").pop()}</div>
+                <div className="text-right pr-3 font-medium" style={{ color: A_COLOR }}>
+                  {detailA.name?.split(" ").pop()}
+                  {seasonA !== "2025-26" && <span className="ml-1 opacity-60">'{seasonA.slice(2,4)}</span>}
+                </div>
                 <div />
-                <div className="text-left pl-3 font-medium" style={{ color: B_COLOR }}>{detailB.name?.split(" ").pop()}</div>
+                <div className="text-left pl-3 font-medium" style={{ color: B_COLOR }}>
+                  {detailB.name?.split(" ").pop()}
+                  {seasonB !== "2025-26" && <span className="ml-1 opacity-60">'{seasonB.slice(2,4)}</span>}
+                </div>
               </div>
-              {[
-                ["PTS", detailA.pts, detailB.pts, (v) => v?.toFixed(1)],
-                ["REB", detailA.reb, detailB.reb, (v) => v?.toFixed(1)],
-                ["AST", detailA.ast, detailB.ast, (v) => v?.toFixed(1)],
-                ["BPM",  detailA.bpm,  detailB.bpm,  (v) => v != null ? (v > 0 ? `+${v.toFixed(1)}` : v.toFixed(1)) : null],
-                ["OBPM", detailA.obpm, detailB.obpm, (v) => v != null ? (v > 0 ? `+${v.toFixed(1)}` : v.toFixed(1)) : null],
-                ["DBPM", detailA.dbpm, detailB.dbpm, (v) => v != null ? (v > 0 ? `+${v.toFixed(1)}` : v.toFixed(1)) : null],
-                ["GP",  detailA.gp,  detailB.gp,  (v) => v],
-                ["Overall", detailA.overall_score, detailB.overall_score, (v) => v != null ? Math.round(v * 100) : null],
-              ].map(([label, a, b, fmt]) => (
-                <StatCell key={label} label={label} valA={a} valB={b} fmt={fmt} />
-              ))}
+              <StatCell label="PTS"     valA={detailA.pts}          valB={detailB.pts}          fmt={(v) => v?.toFixed(1)} />
+              <StatCell label="REB"     valA={detailA.reb}          valB={detailB.reb}          fmt={(v) => v?.toFixed(1)} />
+              <StatCell label="AST"     valA={detailA.ast}          valB={detailB.ast}          fmt={(v) => v?.toFixed(1)} />
+              <StatCell label="BPM"     valA={detailA.bpm}          valB={detailB.bpm}          fmt={bpmFmt} />
+              <StatCell label="OBPM"    valA={detailA.obpm}         valB={detailB.obpm}         fmt={bpmFmt} />
+              <StatCell label="DBPM"    valA={detailA.dbpm}         valB={detailB.dbpm}         fmt={bpmFmt} />
+              <StatCell label="GP"      valA={detailA.gp}           valB={detailB.gp}           fmt={(v) => v} />
+              <StatCell label="Overall" valA={detailA.overall_score} valB={detailB.overall_score} fmt={(v) => v != null ? Math.round(v * 100) : null} />
             </div>
 
             {/* VS bars */}
@@ -313,7 +358,9 @@ export default function Compare() {
 
         {!detailA && !detailB && (
           <div className="text-center py-16 text-sm" style={{ color: "var(--text-faint)" }}>
-            {lang === "tr" ? "Karşılaştırmak için iki oyuncu ara" : "Search two players above to compare"}
+            {lang === "tr"
+              ? "Sezon seçip iki oyuncu ara, era'lar arası karşılaştır"
+              : "Select a season and search two players to compare across eras"}
           </div>
         )}
       </div>

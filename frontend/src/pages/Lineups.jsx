@@ -1,60 +1,44 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { api } from "../api";
 import RoleBreakdown from "../components/RoleBreakdown";
 import RoleImpactChart from "../components/RoleImpactChart";
-import PlayerNameInput from "../components/PlayerNameInput";
 import { explainLineup } from "../utils/lineupExplain";
 import { useLang } from "../contexts/LanguageContext";
+import { Search } from "lucide-react";
 
 const SCORE_COLOR = (v) =>
   v >= 0.80 ? "var(--accent)" :
   v >= 0.65 ? "#d97706"       :
               "var(--text-muted)";
 
-function MiniBar({ value }) {
-  const pct = Math.round((value || 0) * 100);
-  return (
-    <div className="flex items-center gap-1.5">
-      <div className="w-16 h-1.5 rounded-full overflow-hidden" style={{ background: "var(--bg-elevated)" }}>
-        <div className="h-full rounded-full transition-all"
-          style={{ width: `${pct}%`, background: value >= 0.70 ? "var(--accent)" : "var(--border)" }} />
-      </div>
-      <span className="text-[10px] w-5" style={{ color: "var(--text-muted)" }}>{pct}</span>
-    </div>
-  );
-}
-
 const POS_COLOR = {
   PG: "#a78bfa", SG: "#60a5fa", SF: "#34d399", PF: "#fb923c", C: "#f87171",
 };
 
-function PillarBreakdown({ result, lang = "en", compact = false }) {
+// ── iki aşamalı skor renklendirme — barda kullanılır
+function PillarBreakdown({ result, lang = "en" }) {
   if (!result) return null;
   const pillars = result.pillar_breakdown || {
-    Creation:   result.creation   ?? result.Kapsama,
-    Spacing:    result.spacing    ?? result.ShotDepth,
-    Defense:    result.defense    ?? result.balance,
-    Finishing:  result.finishing,
-    "Role Fit": result.role_fit   ?? result.Denge,
+    Creation:    result.creation   ?? null,
+    Spacing:     result.spacing    ?? null,
+    Defense:     result.defense    ?? null,
+    Finishing:   result.finishing  ?? null,
+    "Role Fit":  result.role_fit   ?? result.Denge ?? null,
   };
+  // Tarihsel: Kapsama / Derinlik / Uyum_Skoru formatı
   const score = result.lineup_score ?? result.Uyum_Skoru ?? 0;
   const nShooters = result.n_shooters;
-
-  const LABELS = {
-    Creation: "Creation", Spacing: "Spacing", Defense: "Defense",
-    Finishing: "Finishing", "Role Fit": "Role Fit",
-  };
 
   return (
     <div className="space-y-1">
       {Object.entries(pillars).map(([k, v]) => {
         if (v == null) return null;
         const pct = Math.round(v * 100);
-        const extra = k === "Spacing" && nShooters != null ? ` (${nShooters})` : "";
+        const extra = k === "Spacing" && nShooters != null ? ` (${nShooters} shooters)` : "";
         return (
           <div key={k} className="flex items-center gap-2">
             <span className="text-[10px] w-20 shrink-0" style={{ color: "var(--text-muted)" }}>
-              {LABELS[k] || k}{extra}
+              {k}{extra}
             </span>
             <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: "var(--bg-elevated)" }}>
               <div className="h-full rounded-full" style={{ width: `${pct}%`, background: SCORE_COLOR(v) }} />
@@ -71,6 +55,7 @@ function PillarBreakdown({ result, lang = "en", compact = false }) {
   );
 }
 
+// Teorik lineup kartı — 2025-26 formatı (Oyuncu_1..5 + pozisyon kartları)
 function LineupCard({ lu, rank, t, lang }) {
   return (
     <div className="flex flex-col sm:flex-row gap-4 p-4 rounded"
@@ -104,7 +89,35 @@ function LineupCard({ lu, rank, t, lang }) {
         </div>
       </div>
       <div className="flex flex-col gap-2 ml-7 sm:ml-0 shrink-0 w-52">
-        <PillarBreakdown result={lu} lang={lang} compact />
+        <PillarBreakdown result={lu} lang={lang} />
+      </div>
+    </div>
+  );
+}
+
+// Tarihsel lineup kartı — boolean vektör formatı (Oyuncu_1..5 + Kapsama / Uyum_Skoru)
+function HistLineupCard({ lu, rank }) {
+  const players = [lu.Oyuncu_1, lu.Oyuncu_2, lu.Oyuncu_3, lu.Oyuncu_4, lu.Oyuncu_5].filter(Boolean);
+  const score = lu.Uyum_Skoru ?? lu.lineup_score ?? 0;
+  return (
+    <div className="flex items-start gap-4 p-4 rounded"
+      style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
+      <span className="text-xs w-5 shrink-0 mt-0.5" style={{ color: "var(--text-faint)" }}>{rank + 1}</span>
+      <div className="flex-1">
+        <div className="text-sm font-medium mb-1" style={{ color: "var(--text-primary)" }}>
+          {players.join(" · ")}
+        </div>
+        <div className="flex gap-4 text-[10px]" style={{ color: "var(--text-muted)" }}>
+          {lu.Kapsama   != null && <span>Coverage: {Math.round(lu.Kapsama * 100)}</span>}
+          {lu.Derinlik  != null && <span>Depth: {Math.round(lu.Derinlik * 100)}</span>}
+          {lu.Guclu_Rol != null && <span>Strong roles: {lu.Guclu_Rol}</span>}
+        </div>
+      </div>
+      <div className="shrink-0 text-center">
+        <div className="text-lg font-bold" style={{ color: SCORE_COLOR(score) }}>
+          {Math.round(score * 100)}
+        </div>
+        <div className="text-[8px]" style={{ color: "var(--text-faint)" }}>Fit</div>
       </div>
     </div>
   );
@@ -115,7 +128,6 @@ function RealLineupCard({ lu, rank }) {
   const fit = lu.fit_score;
   const netColor = net >= 10 ? "#34d399" : net >= 0 ? "var(--accent)" : "#f87171";
   const players = (lu.GROUP_NAME || "").split(" - ");
-
   return (
     <div className="flex items-center gap-4 p-4 rounded"
       style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
@@ -166,12 +178,76 @@ function TabBtn({ active, onClick, children }) {
   );
 }
 
+// Player search input for custom lineup (season-aware)
+function HistPlayerSearch({ value, onChange, season, placeholder }) {
+  const [query, setQuery]     = useState(value || "");
+  const [results, setResults] = useState([]);
+  const [open, setOpen]       = useState(false);
+  const timer = useRef(null);
+  const ref   = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  useEffect(() => { setQuery(value || ""); }, [value]);
+
+  const handleChange = (val) => {
+    setQuery(val);
+    onChange(val);
+    clearTimeout(timer.current);
+    if (val.length < 2) { setResults([]); setOpen(false); return; }
+    timer.current = setTimeout(async () => {
+      try {
+        const d = await api.historical(season, { search: val, limit: 8 });
+        setResults(d.players || []);
+        setOpen(true);
+      } catch {}
+    }, 280);
+  };
+
+  const pick = (p) => { setQuery(p.PLAYER_NAME); onChange(p.PLAYER_NAME); setOpen(false); };
+
+  return (
+    <div ref={ref} className="relative">
+      <div className="relative">
+        <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2" style={{ color: "var(--text-muted)" }} />
+        <input value={query} onChange={e => handleChange(e.target.value)}
+          onFocus={() => results.length && setOpen(true)}
+          placeholder={placeholder}
+          className="w-full rounded pl-7 pr-2 py-2 text-xs focus:outline-none"
+          style={{ background: "var(--bg-surface)", color: "var(--text-primary)", border: "1px solid var(--border)" }}
+        />
+      </div>
+      {open && results.length > 0 && (
+        <div className="absolute top-full left-0 right-0 z-30 rounded mt-0.5 overflow-hidden shadow-lg"
+          style={{ background: "var(--bg-surface)", border: "1px solid var(--border)" }}>
+          {results.map((p, i) => (
+            <button key={i} onClick={() => pick(p)}
+              className="w-full flex items-center justify-between px-3 py-2 text-left transition-colors"
+              style={{ borderBottom: "1px solid var(--border)" }}
+              onMouseEnter={e => e.currentTarget.style.background = "var(--bg-elevated)"}
+              onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+              <span className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>{p.PLAYER_NAME}</span>
+              <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>{p.TEAM_ABBREVIATION}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Lineups() {
   const { t, lang } = useLang();
+
+  const [seasons, setSeasons]           = useState(["2025-26"]);
+  const [season, setSeason]             = useState("2025-26");
   const [topLineups, setTopLineups]     = useState([]);
   const [loading, setLoading]           = useState(false);
   const [slots, setSlots]               = useState(["", "", "", "", ""]);
-  const [allNames, setAllNames]         = useState([]);
   const [customResult, setCustomResult] = useState(null);
   const [customError, setCustomError]   = useState("");
   const [mode, setMode]                 = useState("positional");
@@ -181,16 +257,25 @@ export default function Lineups() {
   const [realSort, setRealSort]         = useState("NET_RATING");
   const [corr, setCorr]                 = useState(null);
 
-  useEffect(() => {
-    setLoading(true);
-    api.lineupCompat({ limit: 50, positional: mode === "positional" ? 1 : 0, unique: 1 })
-      .then(d => setTopLineups(d.lineups || []))
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, [mode]);
+  const isCurrent = season === "2025-26";
 
   useEffect(() => {
-    if (tab !== "real") return;
+    api.seasons().then(d => setSeasons(d.seasons || ["2025-26"])).catch(() => {});
+  }, []);
+
+  // Teorik lineup'ları sezon değişince yükle
+  useEffect(() => {
+    if (tab !== "theoretical") return;
+    setLoading(true);
+    setTopLineups([]);
+    const p = isCurrent
+      ? api.lineupCompat({ limit: 50, positional: mode === "positional" ? 1 : 0, unique: 1 })
+      : api.historicalLineup(season, 30);
+    p.then(d => setTopLineups(d.lineups || [])).catch(console.error).finally(() => setLoading(false));
+  }, [season, mode, tab]); // eslint-disable-line
+
+  useEffect(() => {
+    if (tab !== "real" || !isCurrent) return;
     setRealLoading(true);
     api.realLineups({ limit: 50, sort_by: realSort, min_min: 50 })
       .then(d => setRealLineups(d.lineups || []))
@@ -199,11 +284,10 @@ export default function Lineups() {
     if (!corr) {
       fetch("/api/lineups/correlation").then(r => r.json()).then(setCorr).catch(() => {});
     }
-  }, [tab, realSort]);
+  }, [tab, realSort, isCurrent]); // eslint-disable-line
 
-  useEffect(() => {
-    fetch("/api/player-names").then(r => r.json()).then(d => setAllNames(d.names || [])).catch(() => {});
-  }, []);
+  // Sezon değişince custom sıfırla
+  useEffect(() => { setSlots(["","","","",""]); setCustomResult(null); setCustomError(""); }, [season]);
 
   const setSlot = (i, v) => setSlots(prev => { const a = [...prev]; a[i] = v; return a; });
 
@@ -211,24 +295,48 @@ export default function Lineups() {
     setCustomResult(null); setCustomError("");
     const names = slots.map(s => s.trim()).filter(Boolean);
     if (names.length < 2) { setCustomError(t("enter_min_2")); return; }
-    try { const r = await api.customLineup(names); setCustomResult(r); }
-    catch (e) { setCustomError(e.message); }
+    try {
+      const r = isCurrent
+        ? await api.customLineup(names)
+        : await api.historicalCustomLineup(season, names);
+      setCustomResult(r);
+    } catch (e) { setCustomError(e.message); }
   };
 
   return (
     <div className="h-full overflow-y-auto">
       <div className="p-6 max-w-5xl mx-auto space-y-6">
 
+        {/* Season selector */}
+        <div className="flex items-center gap-3">
+          <span className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Season</span>
+          <select value={season} onChange={e => { setSeason(e.target.value); setTab("theoretical"); }}
+            className="rounded px-3 py-1.5 text-sm focus:outline-none"
+            style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)", color: "var(--text-primary)" }}>
+            {seasons.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+          {!isCurrent && (
+            <span className="text-xs px-2 py-0.5 rounded"
+              style={{ background: "var(--accent-dim)", color: "var(--accent)", border: "1px solid var(--accent-border)" }}>
+              Historical mode
+            </span>
+          )}
+        </div>
+
         {/* Custom lineup */}
         <div className="p-5 rounded" style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
           <h2 className="font-semibold mb-3 text-sm" style={{ color: "var(--text-primary)" }}>
             {t("custom_lineup_title")}
+            {!isCurrent && <span className="ml-2 text-xs font-normal" style={{ color: "var(--text-muted)" }}>{season}</span>}
           </h2>
           <div className="flex gap-4">
             <div className="flex-1 space-y-2">
               {slots.map((v, i) => (
-                <PlayerNameInput key={i} value={v} onChange={val => setSlot(i, val)}
-                  placeholder={`${t("position")} ${i + 1}…`} allNames={allNames} slotLabel={`${i + 1}`} />
+                isCurrent
+                  ? <HistPlayerSearch key={i} value={v} onChange={val => setSlot(i, val)}
+                      season="2025-26" placeholder={`${t("position")} ${i + 1}…`} />
+                  : <HistPlayerSearch key={i} value={v} onChange={val => setSlot(i, val)}
+                      season={season} placeholder={`Player ${i + 1}…`} />
               ))}
             </div>
             <div className="flex flex-col justify-between w-44">
@@ -239,19 +347,29 @@ export default function Lineups() {
                 onMouseLeave={e => e.currentTarget.style.opacity = "1"}>
                 {t("calculate_fit")}
               </button>
-              {customError && <p className="text-red-400 text-xs">{customError}</p>}
+              {customError && <p className="text-red-400 text-xs mt-2">{customError}</p>}
               {customResult && (
-                <div className="p-3 rounded space-y-1.5 text-sm"
+                <div className="p-3 rounded space-y-1.5 text-sm mt-2"
                   style={{ background: "var(--bg-surface)", border: "1px solid var(--border)" }}>
                   <PillarBreakdown result={customResult} lang={lang} />
+                  {customResult.players && (
+                    <div className="pt-2 border-t" style={{ borderColor: "var(--border)" }}>
+                      {customResult.players.map((p, i) => (
+                        <div key={i} className="text-[10px] flex justify-between py-0.5" style={{ color: "var(--text-muted)" }}>
+                          <span>{p.name}</span>
+                          <span style={{ color: "var(--accent)" }}>{p.primary_arch}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
           </div>
         </div>
 
-        {/* Season Role Impact */}
-        <RoleImpactChart />
+        {/* Role impact chart — sadece güncel sezon */}
+        {isCurrent && <RoleImpactChart />}
 
         {/* Top lineups */}
         <div>
@@ -260,12 +378,14 @@ export default function Lineups() {
               <TabBtn active={tab === "theoretical"} onClick={() => setTab("theoretical")}>
                 {lang === "tr" ? "Teorik" : "Theoretical"}
               </TabBtn>
-              <TabBtn active={tab === "real"} onClick={() => setTab("real")}>
-                {lang === "tr" ? "Gerçek Lineup'lar" : "Real Lineups"}
-              </TabBtn>
+              {isCurrent && (
+                <TabBtn active={tab === "real"} onClick={() => setTab("real")}>
+                  {lang === "tr" ? "Gerçek Lineup'lar" : "Real Lineups"}
+                </TabBtn>
+              )}
             </div>
 
-            {tab === "theoretical" && (
+            {tab === "theoretical" && isCurrent && (
               <div className="flex gap-2">
                 {[["positional", t("positional_mode")], ["any", t("any_mode")]].map(([k, l]) => (
                   <TabBtn key={k} active={mode === k} onClick={() => setMode(k)}>{l}</TabBtn>
@@ -273,7 +393,7 @@ export default function Lineups() {
               </div>
             )}
 
-            {tab === "real" && (
+            {tab === "real" && isCurrent && (
               <select value={realSort} onChange={e => setRealSort(e.target.value)}
                 className="rounded px-3 py-1.5 text-xs focus:outline-none"
                 style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)", color: "var(--text-primary)" }}>
@@ -286,22 +406,34 @@ export default function Lineups() {
 
           {tab === "theoretical" && (
             <>
-              {mode === "positional" && (
+              {isCurrent && mode === "positional" && (
                 <p className="text-xs mb-4" style={{ color: "var(--text-muted)" }}>{t("positional_note")}</p>
+              )}
+              {!isCurrent && (
+                <p className="text-xs mb-4" style={{ color: "var(--text-muted)" }}>
+                  Historical lineup fit — based on component coverage from {season} player data.
+                </p>
               )}
               {loading ? (
                 <div className="text-sm py-8 text-center" style={{ color: "var(--text-muted)" }}>{t("loading")}</div>
               ) : (
                 <div className="space-y-2">
                   {topLineups.map((lu, i) => (
-                    <LineupCard key={i} lu={lu} rank={i} t={t} lang={lang} />
+                    isCurrent
+                      ? <LineupCard key={i} lu={lu} rank={i} t={t} lang={lang} />
+                      : <HistLineupCard key={i} lu={lu} rank={i} />
                   ))}
+                  {topLineups.length === 0 && !loading && (
+                    <div className="text-sm text-center py-8" style={{ color: "var(--text-muted)" }}>
+                      No data for {season}
+                    </div>
+                  )}
                 </div>
               )}
             </>
           )}
 
-          {tab === "real" && (
+          {tab === "real" && isCurrent && (
             <>
               <p className="text-xs mb-4" style={{ color: "var(--text-muted)" }}>
                 {`Real 5-man groups with ≥50 min played — fit score is theoretical archetype compatibility, NET_RATING is on-court data.${corr?.r != null ? ` r=${corr.r} (n=${corr.n})` : ""}`}

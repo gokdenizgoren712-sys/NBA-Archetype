@@ -1316,12 +1316,20 @@ def get_historical_player_scores(season: str, player_name: str):
     overall = row.get("overall_score", None)
     primary = row.get("primary_arch", "")
     pos_raw = str(row.get("POSITION","") or "")
+    def _stat(col):
+        v = row.get(col)
+        return round(float(v), 1) if v is not None and pd.notna(v) else None
+
     result = {
         "name":             row["PLAYER_NAME"],
         "season":           season,
         "team":             row.get("TEAM_ABBREVIATION",""),
         "position":         pos_raw,
         "gp":               int(row.get("GP",0)) if pd.notna(row.get("GP",0)) else 0,
+        "pts":              _stat("PTS"),
+        "reb":              _stat("REB"),
+        "ast":              _stat("AST"),
+        "bpm":              _stat("BPM"),
         "scores":           scores,
         "overall_score":    round(float(overall),3) if overall is not None and pd.notna(overall) else None,
         "primary_arch":     primary if isinstance(primary, str) else "",
@@ -1332,6 +1340,81 @@ def get_historical_player_scores(season: str, player_name: str):
         result["modifier_scores"]  = modifier_scores
         result["active_modifiers"] = active_modifiers
     return result
+
+
+@app.post("/api/historical/{season}/lineup-compat/custom")
+def post_historical_custom_lineup(season: str, body: dict):
+    """Tarihsel sezon için özel 5'li lineup uyumu. Body: {players: [name, ...]}"""
+    names = body.get("players", [])
+    if len(names) < 2:
+        raise HTTPException(400, "En az 2 oyuncu gerekli")
+
+    if season == "2025-26":
+        df = _load_scores().copy()
+    else:
+        hist = _load_historical()
+        df = hist[hist["SEASON"] == season].copy()
+        if df.empty:
+            raise HTTPException(404, f"{season} sezonu bulunamadı")
+
+    score_cols = [c for c in df.columns if c.startswith("score_") and c.replace("score_","") in ALL_COMP_COLS]
+    matched = []
+    for name in names:
+        hit = df[df["PLAYER_NAME"].str.contains(name, case=False, na=False)]
+        if not hit.empty:
+            matched.append(hit.iloc[0])
+
+    if len(matched) < 2:
+        raise HTTPException(404, "Oyuncular veri setinde bulunamadı")
+
+    from roles import compute_role_vec, ROLE_SLOTS
+    players_out = []
+    for row in matched:
+        sc = {c.replace("score_",""): round(float(row.get(c,0)),3) for c in score_cols if pd.notna(row.get(c))}
+        players_out.append({
+            "name":         row["PLAYER_NAME"],
+            "team":         row.get("TEAM_ABBREVIATION",""),
+            "primary_arch": row.get("primary_arch",""),
+            "overall_score": round(float(row["overall_score"]),3) if pd.notna(row.get("overall_score")) else None,
+            "scores":       sc,
+        })
+
+    # Coverage hesabı — score_* tabanlı
+    comp_avail = list({c.replace("score_","") for c in score_cols})
+    import numpy as np
+    mat = np.array([[float(row.get(f"score_{c}",0) or 0) for c in comp_avail] for row in matched])
+    max_cov = mat.max(axis=0)
+    coverage = float(max_cov.mean())
+    depth    = float((max_cov >= 0.50).mean())
+    lineup_score = round(0.60 * coverage + 0.40 * depth, 3)
+
+    pillar_keys = {
+        "Creation":  ["Engine","Ecosystem","Hub","Creator","Initiator"],
+        "Spacing":   ["Spacer","3-and-D","Stretch","Gravity","Three-Level"],
+        "Defense":   ["Anchor","Stopper","Two-Way","Force"],
+        "Finishing": ["Finisher","Rim Runner","Force","Slashing"],
+    }
+    pillar_breakdown = {}
+    for pillar, comps in pillar_keys.items():
+        vals = [float(row.get(f"score_{c}", 0) or 0) for row in matched for c in comps if f"score_{c}" in df.columns]
+        pillar_breakdown[pillar] = round(max(vals) if vals else 0, 3)
+
+    ball_dom = sum(
+        1 for row in matched
+        if max(float(row.get("score_Engine",0) or 0)*1.05, float(row.get("score_Ecosystem",0) or 0)) >= 0.80
+    )
+    role_fit = max(0.0, 1.0 - max(0, (ball_dom - 1) * 0.15))
+    pillar_breakdown["Role Fit"] = round(role_fit, 3)
+
+    return {
+        "season":          season,
+        "players":         players_out,
+        "lineup_score":    lineup_score,
+        "coverage":        round(coverage, 3),
+        "pillar_breakdown": pillar_breakdown,
+        "role_fit":        round(role_fit, 3),
+        "n_matched":       len(matched),
+    }
 
 
 # ── Franchise geçmişi: modern kısaltma → tarihsel kısaltmalar ─────────────────

@@ -37,6 +37,7 @@ export const api = {
   historical:      (season, p) => get(`/historical/${encodeURIComponent(season)}`, p),
   historicalLineup:(season, limit = 30) => get(`/historical/${encodeURIComponent(season)}/lineup-compat`, { limit }),
   historicalPlayer:(season, name)       => get(`/historical/${encodeURIComponent(season)}/player/${encodeURIComponent(name)}/scores`),
+  historicalCustomLineup: (season, players) => post(`/historical/${encodeURIComponent(season)}/lineup-compat/custom`, { players }),
 
   // Benzer oyuncular + kariyer zaman çizelgesi
   similarPlayers: (name, n = 10) => get(`/players/${encodeURIComponent(name)}/similar`, { n }),
