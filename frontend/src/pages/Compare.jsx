@@ -4,6 +4,7 @@ import { Search } from "lucide-react";
 import { api } from "../api";
 import RadarProfile from "../components/RadarProfile";
 import { useLang } from "../contexts/LanguageContext";
+import { SEO } from "../hooks/useSEO";
 
 const CORE = ["Engine","Ecosystem","Hub","Connector","Creator","Anchor","Spacer","Finisher","Force","Initiator","Stopper","Rim Runner"];
 
@@ -252,6 +253,12 @@ export default function Compare() {
   const bpmFmt = (v) => v != null ? (v > 0 ? `+${v.toFixed(1)}` : v.toFixed(1)) : null;
 
   return (
+    <>
+    <SEO
+      title="Compare NBA Players"
+      description="Compare any two NBA players side by side across any season from 1983 to today. Radar profiles, archetype tags, BPM, and 12 role scores for every player-season."
+      path="/compare"
+    />
     <div className="h-full overflow-y-auto">
       <div className="p-4 md:p-6 max-w-4xl mx-auto">
         <div className="mb-5">
@@ -365,5 +372,6 @@ export default function Compare() {
         )}
       </div>
     </div>
+    </>
   );
 }

@@ -5,6 +5,7 @@ import RoleImpactChart from "../components/RoleImpactChart";
 import { explainLineup } from "../utils/lineupExplain";
 import { useLang } from "../contexts/LanguageContext";
 import { Search } from "lucide-react";
+import { SEO } from "../hooks/useSEO";
 
 const SCORE_COLOR = (v) =>
   v >= 0.80 ? "var(--accent)" :
@@ -304,6 +305,12 @@ export default function Lineups() {
   };
 
   return (
+    <>
+    <SEO
+      title="NBA Lineup Builder"
+      description="Build and analyze 5-man NBA lineups from any era. Evaluate real historical lineups by role coverage, archetype balance, and net rating across 40+ seasons."
+      path="/lineups"
+    />
     <div className="h-full overflow-y-auto">
       <div className="p-6 max-w-5xl mx-auto space-y-6">
 
@@ -455,5 +462,6 @@ export default function Lineups() {
         </div>
       </div>
     </div>
+    </>
   );
 }

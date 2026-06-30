@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Search } from "lucide-react";
 import { api } from "../api";
+import { SEO } from "../hooks/useSEO";
 import PlayerCard from "../components/PlayerCard";
 import ScoreBar from "../components/ScoreBar";
 import RadarProfile from "../components/RadarProfile";
@@ -384,6 +385,12 @@ export default function Players() {
   );
 
   return (
+    <>
+    <SEO
+      title="NBA Players — Archetype Profiles"
+      description="Browse every NBA player from 1983 to 2026 with their archetype classification, percentile scores, and modifier tags. Filter by position, archetype, or season."
+      path="/players"
+    />
     <SplitPane
       detail={selected ? (
         <DetailPanel
@@ -474,5 +481,6 @@ export default function Players() {
         )}
       </div>
     </SplitPane>
+    </>
   );
 }

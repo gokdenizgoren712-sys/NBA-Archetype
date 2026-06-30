@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useLang } from "../contexts/LanguageContext";
+import { SEO } from "../hooks/useSEO";
 
 const POSITIONS = ["PG", "SG", "SF", "PF", "C"];
 
@@ -1085,6 +1086,11 @@ export default function LineupGame() {
 
   return (
     <div className="h-full overflow-y-auto">
+    <SEO
+      title="Lineup Builder Game"
+      description="Build the greatest 5-man lineup in NBA history. Pick players from any era — 1983 to today — and see how well your roster fits together across archetypes and eras."
+      path="/game"
+    />
     <div className="p-4 sm:p-6 max-w-xl mx-auto space-y-3 pb-6">
 
       {/* Başlık */}

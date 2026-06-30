@@ -13,7 +13,7 @@ import numpy as np
 from fastapi import FastAPI, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, PlainTextResponse
 
 ROOT = Path(__file__).resolve().parent.parent
 # Render disk mount path override (env var DATA_DIR ile dışarıdan ayarlanabilir)
@@ -395,6 +395,28 @@ def _safe(df: pd.DataFrame) -> list[dict]:
     df[str_cols] = df[str_cols].fillna("")
     return json.loads(df.to_json(orient="records"))
 
+
+# ─── SEO ──────────────────────────────────────────────────────────────────────
+
+BASE_URL = "https://nba-archetypes.onrender.com"
+STATIC_ROUTES = ["/", "/players", "/explore", "/compare", "/lineups", "/affinity", "/glossary", "/game", "/about"]
+
+@app.get("/robots.txt", response_class=PlainTextResponse, include_in_schema=False)
+def robots_txt():
+    return f"User-agent: *\nAllow: /\nSitemap: {BASE_URL}/sitemap.xml\n"
+
+@app.get("/sitemap.xml", response_class=PlainTextResponse, include_in_schema=False)
+def sitemap_xml():
+    urls = "\n".join(
+        f"  <url><loc>{BASE_URL}{r}</loc><changefreq>weekly</changefreq><priority>{'1.0' if r == '/' else '0.8'}</priority></url>"
+        for r in STATIC_ROUTES
+    )
+    xml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+{urls}
+</urlset>"""
+    from fastapi.responses import Response
+    return Response(content=xml, media_type="application/xml")
 
 # ─── Endpoints ────────────────────────────────────────────────────────────────
 

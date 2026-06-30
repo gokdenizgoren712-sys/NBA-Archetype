@@ -1,4 +1,5 @@
 import { useLang } from "../contexts/LanguageContext";
+import { SEO } from "../hooks/useSEO";
 
 const CHANGELOG = [
   {
@@ -126,6 +127,12 @@ export default function About() {
   const { lang } = useLang();
 
   return (
+    <>
+    <SEO
+      title="About NBA Archetype"
+      description="Learn how the NBA Archetype system works: 12 core roles, 22 modifier tags, percentile-based scoring across every season since 1983. Full changelog and methodology."
+      path="/about"
+    />
     <div className="h-full overflow-y-auto">
       <div className="p-6 max-w-6xl mx-auto pb-16">
         <div className="flex flex-col-reverse md:flex-row gap-6 md:gap-8 items-start">
@@ -247,5 +254,6 @@ export default function About() {
         </div>
       </div>
     </div>
+    </>
   );
 }

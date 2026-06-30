@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { api } from "../api";
 import { useLang } from "../contexts/LanguageContext";
 import SplitPane from "../components/SplitPane";
+import { SEO } from "../hooks/useSEO";
 
 function cellStyle(value) {
   if (value === "" || value === null || value === undefined)
@@ -449,8 +450,15 @@ export default function Affinity() {
     : null;
 
   return (
+    <>
+    <SEO
+      title="Archetype Affinity Matrix"
+      description="Discover which NBA archetypes work best together. Explore affinity scores between all 12 player roles, with real lineup drill-downs showing net rating data."
+      path="/affinity"
+    />
     <SplitPane detail={detail} onClose={() => { setDrillCell(null); setDrillData(null); }}>
       {leftPanel}
     </SplitPane>
+    </>
   );
 }

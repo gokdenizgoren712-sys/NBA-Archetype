@@ -2,6 +2,7 @@ import { useState } from "react";
 import { COMPONENTS, METRIC_LABELS, CORE_COMPONENTS, MODIFIER_COMPONENTS } from "../data/glossary";
 import { useLang } from "../contexts/LanguageContext";
 import SplitPane from "../components/SplitPane";
+import { SEO } from "../hooks/useSEO";
 
 const ERAS = [
   {
@@ -181,6 +182,12 @@ export default function Glossary() {
     : [["all","All"],["core","Core"],["modifier","Modifiers"]];
 
   return (
+    <>
+    <SEO
+      title="Archetype Glossary"
+      description="Full glossary of NBA archetype components: 12 core roles and 22 modifier tags explained with the metrics and thresholds used to classify every player."
+      path="/glossary"
+    />
     <SplitPane
       detail={selected ? <CompDetail item={selected} lang={lang} /> : null}
       onClose={() => setSelected(null)}
@@ -298,5 +305,6 @@ export default function Glossary() {
         )}
       </div>
     </SplitPane>
+    </>
   );
 }

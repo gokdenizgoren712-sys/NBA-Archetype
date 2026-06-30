@@ -3,6 +3,7 @@ import { api } from "../api";
 import { useLang } from "../contexts/LanguageContext";
 import ScoreBar from "../components/ScoreBar";
 import SplitPane from "../components/SplitPane";
+import { SEO } from "../hooks/useSEO";
 
 const ARCH_COLORS = {
   Engine:       "#fb923c",
@@ -212,6 +213,12 @@ export default function Explore() {
   , [projected, filter, searchQ]);
 
   return (
+    <>
+    <SEO
+      title="Explore NBA Archetypes"
+      description="Explore all NBA player archetypes with projections, percentile scores, and role breakdowns. Filter by position, archetype, and modifier tags across 40+ seasons."
+      path="/explore"
+    />
     <SplitPane
       detail={selected ? <PlayerDetail player={selected} /> : null}
       onClose={() => setSelected(null)}
@@ -369,5 +376,6 @@ export default function Explore() {
         </div>
       </div>
     </SplitPane>
+    </>
   );
 }
