@@ -2034,6 +2034,16 @@ def update_article(article_id: int, body: ArticleBody, user=Depends(require_admi
         )
     return {"ok": True, "slug": slug}
 
+@app.delete("/api/admin/users/all")
+def delete_all_users(_user=Depends(require_admin)):
+    with get_conn() as conn:
+        count = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
+        conn.execute("DELETE FROM saved_lineups")
+        conn.execute("DELETE FROM saved_players")
+        conn.execute("DELETE FROM comments")
+        conn.execute("DELETE FROM users")
+    return {"deleted": count}
+
 @app.delete("/api/admin/articles/{article_id}")
 def delete_article(article_id: int, user=Depends(require_admin)):
     with get_conn() as conn:
