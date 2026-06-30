@@ -14,7 +14,6 @@ const SLOTS = [
   { key: "Two-Way Defense",      short: "2WY", label: "Two-Way" },
   { key: "Shot Creation",        short: "SCR", label: "Shot Creation" },
   { key: "Transition",           short: "TRN", label: "Transition" },
-  { key: "Versatility",          short: "VRS", label: "Versatility" },
 ];
 
 const slotColor = (v) => {

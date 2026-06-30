@@ -373,7 +373,7 @@ export default function Players() {
   const clearFilters = () => { setSearch(""); setSearchInput(""); setPos(""); setArch(""); setTeam(""); };
   const hasFilters = search || pos || arch || team;
 
-  const toCardPlayer = (p) => ({ ...p, overall_tier: p.overall_tier || p.versatility_tier || "" });
+  const toCardPlayer = (p) => ({ ...p, overall_tier: p.overall_tier || "" });
 
   const selectEl = (value, onChange, opts, placeholder) => (
     <select value={value} onChange={e => onChange(e.target.value)}
@@ -443,7 +443,6 @@ export default function Players() {
           className="rounded px-3 py-1.5 text-sm focus:outline-none"
           style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)", color: "var(--text-primary)" }}>
           <option value="overall_score">Overall ↓</option>
-          {isCurrent && <option value="versatility_score">Versatility ↓</option>}
           <option value="PTS">PTS ↓</option>
           <option value="REB">REB ↓</option>
           <option value="AST">AST ↓</option>

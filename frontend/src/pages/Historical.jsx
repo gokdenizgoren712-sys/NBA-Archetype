@@ -28,8 +28,6 @@ const COLUMNS = [
   { key: "FG3_PCT",          label: "3P%",        align: "right", fmt: v => v != null ? (Number(v)*100).toFixed(1)+"%" : "—", numeric: true },
   { key: "overall_score",    label: "Overall",    align: "right", fmt: v => v != null ? Math.round(Number(v)*100) : "—", numeric: true },
   { key: "primary_arch",     label: "Archetype",  align: "left",  fmt: v => v || "—",                 numeric: false },
-  { key: "versatility_score",label: "V.Score",    align: "right", fmt: v => v != null ? Math.round(Number(v)*100) : "—", numeric: true },
-  { key: "versatility_tier", label: "Tier",       align: "left",  fmt: null,                           numeric: false },
   { key: "Bileşenler",       label: "Components", align: "left",  fmt: v => v || "—",                 numeric: false },
 ];
 
@@ -219,18 +217,6 @@ export default function Historical() {
                     >
                       <td className="p-3 text-slate-600 text-xs">{i + 1}</td>
                       {COLUMNS.filter(c => c.key !== "Bileşenler").map(col => {
-                        if (col.key === "versatility_tier") {
-                          const tier = p[col.key];
-                          return (
-                            <td key={col.key} className="p-3">
-                              {tier ? (
-                                <span className={`text-xs px-1.5 py-0.5 rounded ${TIER_COLOR[tier] || "bg-slate-800 text-slate-500"}`}>
-                                  {tier}
-                                </span>
-                              ) : <span className="text-slate-600">—</span>}
-                            </td>
-                          );
-                        }
                         if (col.key === "overall_score") {
                           const v = p[col.key];
                           const score = v != null ? Math.round(Number(v) * 100) : null;
@@ -359,16 +345,6 @@ export default function Historical() {
                   selDetail.overall_score >= 0.80 ? "text-blue-400" :
                   selDetail.overall_score >= 0.65 ? "text-sky-400" : "text-slate-300"
                 }`}>{Math.round(selDetail.overall_score * 100)}</div>
-              </div>
-            )}
-            {selDetail.versatility_score != null && (
-              <div className="mt-2 flex justify-center gap-4 text-xs">
-                <span className="text-slate-400">Versatility: <span className="text-blue-400 font-bold">{Math.round(selDetail.versatility_score*100)}</span></span>
-                {selDetail.versatility_tier && (
-                  <span className={`px-2 py-0.5 rounded text-xs ${TIER_COLOR[selDetail.versatility_tier]||""}`}>
-                    {selDetail.versatility_tier}
-                  </span>
-                )}
               </div>
             )}
           </div>

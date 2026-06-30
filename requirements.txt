@@ -12,3 +12,4 @@ passlib[bcrypt]>=1.7
 python-jose[cryptography]>=3.3
 pydantic[email]>=2.0
 python-multipart>=0.0.9
+slowapi>=0.1.9

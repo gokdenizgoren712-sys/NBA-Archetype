@@ -16,7 +16,6 @@ const ROLE_SHORT = {
   "Two-Way Defense":      "2WY",
   "Shot Creation":        "SCR",
   "Transition":           "TRN",
-  "Versatility":          "VRS",
 };
 
 const corrColor = (v) => {

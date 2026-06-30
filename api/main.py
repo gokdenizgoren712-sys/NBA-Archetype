@@ -3,17 +3,20 @@ NBA Arketip API — FastAPI backend
 Parquet dosyalarını okuyup JSON olarak sunar.
 """
 
-import sys, json, os
+import sys, json, os, time, logging
 from pathlib import Path
 from functools import lru_cache
 from typing import Optional
 
 import pandas as pd
 import numpy as np
-from fastapi import FastAPI, Query, HTTPException
+from fastapi import FastAPI, Query, HTTPException, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, PlainTextResponse
+from fastapi.responses import FileResponse, PlainTextResponse, JSONResponse
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
 ROOT = Path(__file__).resolve().parent.parent
 # Render disk mount path override (env var DATA_DIR ile dışarıdan ayarlanabilir)
@@ -30,12 +33,89 @@ CORE      = CORE_NOUNS        # geriye dönük alias
 
 app = FastAPI(title="NBA Arketip API", version="1.0.0")
 
+# ─── Middleware ────────────────────────────────────────────────────────────────
+
+IS_PROD = os.environ.get("RENDER") == "true"
+
+app.add_middleware(GZipMiddleware, minimum_size=1000)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=["https://nba-archetypes.onrender.com"] if IS_PROD else ["*"],
+    allow_methods=["GET", "POST", "DELETE", "PUT"],
+    allow_headers=["Authorization", "Content-Type"],
 )
+
+# Güvenlik header'ları
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    return response
+
+# Request loglama (yavaş endpoint tespiti)
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    t0 = time.perf_counter()
+    response = await call_next(request)
+    ms = int((time.perf_counter() - t0) * 1000)
+    if ms > 500:
+        logging.warning(f"SLOW {request.method} {request.url.path} {ms}ms")
+    elif request.url.path.startswith("/api"):
+        logging.info(f"{request.method} {request.url.path} {response.status_code} {ms}ms")
+    return response
+
+# ─── In-process response cache ────────────────────────────────────────────────
+import hashlib, threading
+_RESP_CACHE: dict = {}          # key → (ts, body)
+_CACHE_TTL  = 300               # 5 dakika
+_CACHE_LOCK = threading.Lock()
+_CACHE_MAX  = 200               # maksimum entry
+
+def _cache_key(path: str, params: dict) -> str:
+    raw = path + "|" + json.dumps(params, sort_keys=True)
+    return hashlib.md5(raw.encode()).hexdigest()
+
+def cache_get(key: str):
+    with _CACHE_LOCK:
+        entry = _RESP_CACHE.get(key)
+        if entry and (time.time() - entry[0]) < _CACHE_TTL:
+            return entry[1]
+        if entry:
+            del _RESP_CACHE[key]
+    return None
+
+def cache_set(key: str, value):
+    with _CACHE_LOCK:
+        if len(_RESP_CACHE) >= _CACHE_MAX:
+            oldest = min(_RESP_CACHE, key=lambda k: _RESP_CACHE[k][0])
+            del _RESP_CACHE[oldest]
+        _RESP_CACHE[key] = (time.time(), value)
+
+# ─── Rate limiter (IP başına) ──────────────────────────────────────────────────
+_RL: dict = {}   # ip → [timestamps]
+_RL_LOCK = threading.Lock()
+RL_WINDOW = 60   # saniye
+RL_LIMIT  = 120  # istek / pencere
+
+def _check_rate(ip: str) -> bool:
+    now = time.time()
+    with _RL_LOCK:
+        hits = [t for t in _RL.get(ip, []) if now - t < RL_WINDOW]
+        hits.append(now)
+        _RL[ip] = hits
+        return len(hits) > RL_LIMIT
+
+@app.middleware("http")
+async def rate_limit(request: Request, call_next):
+    if request.url.path.startswith("/api"):
+        ip = request.headers.get("x-forwarded-for", request.client.host if request.client else "unknown").split(",")[0].strip()
+        if _check_rate(ip):
+            return JSONResponse({"detail": "Too many requests"}, status_code=429,
+                                headers={"Retry-After": str(RL_WINDOW)})
+    return await call_next(request)
 
 
 # ─── Cache: parquet dosyalarını bir kez yükle ──────────────────────────────────
@@ -278,14 +358,6 @@ def _load_scores() -> pd.DataFrame:
                 df = df.merge(base[merge_cols], on="PLAYER_ID", how="left")
         except Exception:
             pass
-    # versatility_score + versatility_tier ekle
-    vers_p = DATA / "2025-26__versatility.parquet"
-    if vers_p.exists():
-        try:
-            vers = pd.read_parquet(vers_p, columns=["PLAYER_ID","versatility_score","versatility_tier"])
-            df = df.merge(vers, on="PLAYER_ID", how="left")
-        except Exception:
-            pass
 
     # Lig içi overall percentile + tier (runtime'da hesaplanır, parquet'e yazılmaz)
     if "overall_score" in df.columns:
@@ -469,6 +541,8 @@ def clear_cache():
     global _SCORES_MTIME, _HIST_MTIME
     _SCORES_MTIME = 0.0
     _HIST_MTIME   = 0.0
+    with _CACHE_LOCK:
+        _RESP_CACHE.clear()
     return {"status": "cleared", "message": "Tüm cache temizlendi. Sonraki istek verileri yeniden hesaplar."}
 
 
@@ -507,7 +581,7 @@ def get_players(
     arch:      Optional[str] = Query(None, description="Core noun filtre (primary_arch)"),
     modifier:  Optional[str] = Query(None, description="Modifier tag filtre (score >= threshold)"),
     min_score: float = Query(0.0, ge=0, le=1),
-    sort_by:   str = Query("overall_score", description="Sıralama: overall_score | versatility_score"),
+    sort_by:   str = Query("overall_score", description="Sıralama: overall_score | PTS | REB | AST"),
     limit:     int = Query(50, ge=1, le=500),
     offset:    int = Query(0, ge=0),
 ):
@@ -914,6 +988,9 @@ def _load_lineups_with_archs() -> pd.DataFrame:
 @app.get("/api/affinity")
 def get_affinity_endpoint():
     """Arketip x arketip uyum matrisi. Prior (12 noun); empirikal varsa EMA ile güncellenir."""
+    ck = "affinity_matrix"
+    cached = cache_get(ck)
+    if cached: return cached
     from roles import AFFINITY_MATRIX as PRIOR
     empirical = _load_affinity()
     if empirical.empty:
@@ -948,12 +1025,14 @@ def get_affinity_endpoint():
     except Exception:
         pass
 
-    return {
+    result = {
         "archetypes": list(df.index),
         "matrix": json.loads(df.round(3).to_json()),
         "source": source,
         "sample_counts": sample_counts,
     }
+    cache_set(ck, result)
+    return result
 
 
 @app.get("/api/affinity/lineups")
@@ -1101,8 +1180,7 @@ def get_historical(
             lambda r: " | ".join(c for c in comp_avail if r.get(c, False)), axis=1)
 
     base_cols = ["PLAYER_NAME","GP","MIN","PTS","REB","AST","STL","BLK","FGA","FG_PCT","FG3A","FG3_PCT","Bileşenler"]
-    extra = ["overall_score","primary_arch","versatility_score","versatility_tier",
-             "TEAM_ABBREVIATION","POSITION"]
+    extra = ["overall_score","primary_arch","TEAM_ABBREVIATION","POSITION"]
     score_cols = [c for c in df.columns if c.startswith("score_")]
     keep = [c for c in base_cols + extra if c in df.columns] + score_cols
 
@@ -1110,8 +1188,7 @@ def get_historical(
 
     # Sıralama
     valid_sort = sort_col if sort_col in df.columns else (
-        "overall_score" if "overall_score" in df.columns else
-        "versatility_score" if "versatility_score" in df.columns else "PTS"
+        "overall_score" if "overall_score" in df.columns else "PTS"
     )
     df = df.sort_values(valid_sort, ascending=sort_asc, na_position="last")
 
@@ -1281,9 +1358,9 @@ def get_team_players(team: str, season: str = "2025-26"):
         df = df.copy()
         df["Bileşenler"] = df.apply(
             lambda r: " | ".join(c for c in comp_avail if r.get(c, False)), axis=1)
-        keep = ["PLAYER_NAME","GP","MIN","PTS","REB","AST","Bileşenler","versatility_score","versatility_tier"]
+        keep = ["PLAYER_NAME","GP","MIN","PTS","REB","AST","Bileşenler"]
         keep = [c for c in keep if c in df.columns]
-        return _safe(df[keep].sort_values("versatility_score", ascending=False) if "versatility_score" in df.columns else df[keep])
+        return _safe(df[keep].sort_values("overall_score", ascending=False) if "overall_score" in df.columns else df[keep])
 
 
 @app.get("/api/teams/{team}/duo-compat")
@@ -1380,8 +1457,6 @@ def get_historical_player_scores(season: str, player_name: str):
         "scores":           scores,
         "overall_score":    round(float(overall),3) if overall is not None and pd.notna(overall) else None,
         "primary_arch":     primary if isinstance(primary, str) else "",
-        "versatility_score": round(float(row.get("versatility_score",0)),3) if "versatility_score" in row.index and pd.notna(row.get("versatility_score")) else None,
-        "versatility_tier":  row.get("versatility_tier",""),
     }
     if season != "2025-26":
         result["modifier_scores"]  = modifier_scores
