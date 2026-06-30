@@ -35,6 +35,9 @@ function _s(p, k) {
   return isNaN(v) ? 0 : Math.max(0, v);
 }
 
+const ARCHES = ["Engine","Ecosystem","Hub","Connector","Creator","Anchor","Spacer","Finisher","Force","Initiator","Stopper","Rim Runner"];
+const RANK_W  = [0.40, 0.25, 0.15, 0.12, 0.08];
+
 export function computePlayerFit(p) {
   const creation  = Math.min(1, Math.max(_s(p,"Ecosystem")*1.10, _s(p,"Engine"), _s(p,"Hub")*0.90, _s(p,"Creator")*0.88, _s(p,"Initiator")*0.80));
   const spacing   = Math.min(1, Math.max(_s(p,"Spacer"), _s(p,"3-and-D")*0.90, _s(p,"Stretch")*0.85, _s(p,"Gravity")*0.95, _s(p,"Three-Level")*0.80));
@@ -42,9 +45,12 @@ export function computePlayerFit(p) {
   const finishing = Math.min(1, Math.max(_s(p,"Finisher"), _s(p,"Rim Runner")*0.95, _s(p,"Force")*0.75, _s(p,"Slashing")*0.82));
   const overall   = Math.min(1, Math.max(0, parseFloat(p.overall_score || 0)));
   const era       = getEra(p._season);
-  const arch      = p.primary_arch || "";
-  const eraWeight = (ERA_ARCH_WEIGHTS[era.id] || {})[arch] ?? 1.0;
-  const eraFactor = Math.min(1.15, Math.max(0.75, eraWeight));
+  const top5      = ARCHES
+    .map(a => ({ a, s: _s(p, a), w: (ERA_ARCH_WEIGHTS[era.id] || {})[a] ?? 1.0 }))
+    .sort((x, y) => y.s - x.s)
+    .slice(0, 5);
+  const blendedEraW = top5.reduce((acc, x, i) => acc + RANK_W[i] * x.w, 0);
+  const eraFactor = Math.min(1.15, Math.max(0.75, blendedEraW));
   const quality   = Math.min(1, overall * eraFactor);
   return { creation, spacing, defense, finishing, overall, quality, eraFactor, era };
 }
@@ -62,8 +68,12 @@ export function computeLineupFit(players) {
   const finishingCov = Math.min(1, Math.max(...perPlayer.map(p => p.finishing)));
   const coverage     = (creationCov + spacingCov + defenseCov + finishingCov) / 4;
 
-  const ballDom = players.filter(p => Math.max(_s(p,"Engine")*1.05, _s(p,"Ecosystem")) >= 0.80).length;
-  const roleFit = Math.max(0, 1 - Math.max(0, (ballDom - 1) * 0.15));
+  const BALL_PENALTIES = [0, 0, 0.05, 0.18, 0.33, 0.50];
+  const ballDomPlayers = players
+    .filter(p => Math.max(_s(p,"Engine")*1.05, _s(p,"Ecosystem")) >= 0.80)
+    .map(p => p.PLAYER_NAME || p.name || "?");
+  const ballDom = ballDomPlayers.length;
+  const roleFit = 1 - BALL_PENALTIES[Math.min(ballDom, 5)];
 
   const lineupScore = Math.min(1, avgQuality * coverage * roleFit);
   const pct         = Math.round(lineupScore * 100);
@@ -79,6 +89,7 @@ export function computeLineupFit(players) {
     defense: defenseCov,   finishing: finishingCov,
     roleFit, nShooters, coverage, avgQuality,
     lineupScore, pct, grade, perPlayer,
+    ballDomPlayers,
   };
 }
 

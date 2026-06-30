@@ -3,6 +3,20 @@ import { SEO } from "../hooks/useSEO";
 
 const CHANGELOG = [
   {
+    version: "v2.6",
+    date_en: "June 2026",
+    label_en: "LineupGame Completion",
+    items_en: [
+      "Profile save bug fixed — players now correctly saved to your profile",
+      "Ball-dominant players now shown by name (e.g. 'LeBron, Durant — 2 playmakers')",
+      "Ball-dom penalty now graduated: 1 playmaker = 0%, 2 = −5%, 3 = −18%, 4 = −33%, 5 = −50%",
+      "Context note: high usage on a weak team ≠ ball-dominant in a strong lineup",
+      "Era fit now uses weighted top-5 archetypes (not just primary) for more accurate scoring",
+      "Post-game archetype affinity score — average pairwise synergy of your 5 players",
+      "Global leaderboard: top 10 scores shown after each game (auto-saved if logged in)",
+    ],
+  },
+  {
     version: "v2.5",
     date_en: "June 2026",
     label_en: "Player Profile Pages",

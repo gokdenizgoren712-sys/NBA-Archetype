@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useLang } from "../contexts/LanguageContext";
+import { useAuth } from "../contexts/AuthContext";
 import { SEO } from "../hooks/useSEO";
 
 const POSITIONS = ["PG", "SG", "SF", "PF", "C"];
@@ -143,12 +144,19 @@ function getEra(season) {
   return ERAS.find(e => year >= e.years[0] && year < e.years[1]) || ERAS[5];
 }
 
+const _ARCHES = ["Engine","Ecosystem","Hub","Connector","Creator","Anchor","Spacer","Finisher","Force","Initiator","Stopper","Rim Runner"];
+const _RANK_W  = [0.40, 0.25, 0.15, 0.12, 0.08];
+
 function computeEraFit(player, season) {
-  const era = getEra(season || player._season);
-  const arch = player.primary_arch || "";
-  const w = (ERA_ARCH_WEIGHTS[era.id] || {})[arch] ?? 1.0;
-  const archScore = parseFloat(player[`score_${arch}`] ?? 0) || 0;
-  return Math.min(1, w * archScore);
+  const era  = getEra(season || player._season);
+  const _ps  = (k) => parseFloat(player[`score_${k}`] ?? 0) || 0;
+  const top5 = _ARCHES
+    .map(a => ({ a, s: _ps(a), w: (ERA_ARCH_WEIGHTS[era.id] || {})[a] ?? 1.0 }))
+    .sort((x, y) => y.s - x.s)
+    .slice(0, 5);
+  const blendedW = top5.reduce((acc, x, i) => acc + _RANK_W[i] * x.w, 0);
+  const blendedS = top5.reduce((acc, x, i) => acc + _RANK_W[i] * x.s, 0);
+  return Math.min(1, blendedW * blendedS * 5);
 }
 
 function computeLineupEraFit(lineup) {
@@ -331,10 +339,11 @@ function analyzeLineup(fit, lineup, roundHistory=[]) {
   const weakest = sorted[0];
   const strongest = sorted[sorted.length-1];
 
-  const ballDom = filled.filter(p=>{
-    const _s=(k)=>parseFloat(p[`score_${k}`]??0)||0;
-    return Math.max(_s("Engine")*1.05,_s("Ecosystem"))>=0.80;
-  }).length;
+  const ballDomPlayers = fit.ballDomPlayers || filled.filter(p => {
+    const _bs = (k) => parseFloat(p[`score_${k}`] ?? 0) || 0;
+    return Math.max(_bs("Engine") * 1.05, _bs("Ecosystem")) >= 0.80;
+  }).map(p => p.PLAYER_NAME || "?");
+  const ballDom = ballDomPlayers.length;
 
   const primaryFits = filled.filter(p=>p._isPrimary);
   const byScore = [...filled].sort((a,b)=>(parseFloat(b.overall_score)||0)-(parseFloat(a.overall_score)||0));
@@ -357,11 +366,12 @@ function analyzeLineup(fit, lineup, roundHistory=[]) {
     }
   }
 
-  return { weakest, strongest, ballDom, primaryFits, byScore, pillars, bestAlt };
+  return { weakest, strongest, ballDom, ballDomPlayers, primaryFits, byScore, pillars, bestAlt };
 }
 
 // ── Sonuç ekranı ──────────────────────────────────────────────────────────────
-function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang }) {
+function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, affinityMatrix }) {
+  const { isLoggedIn, token } = useAuth();
   const analysis  = analyzeLineup(fit, lineup, roundHistory);
   const eraResult = computeLineupEraFit(lineup);
   const chemBonus = primaryCount * 0.02;
@@ -369,6 +379,39 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang })
   const totalScore = Math.min(1, rawScore + chemBonus);
   const pct  = Math.round(totalScore * 100);
   const grade = pct>=85?"S":pct>=75?"A":pct>=65?"B":pct>=55?"C":"D";
+
+  // Archetype affinity score
+  const affinityScore = (() => {
+    const filled = POSITIONS.map(p => lineup[p]).filter(Boolean);
+    const archs  = filled.map(p => p.primary_arch).filter(Boolean);
+    if (archs.length < 2 || !affinityMatrix) return null;
+    let total = 0, count = 0;
+    for (let i = 0; i < archs.length; i++)
+      for (let j = i+1; j < archs.length; j++) {
+        const v = affinityMatrix[archs[i]]?.[archs[j]] ?? affinityMatrix[archs[j]]?.[archs[i]];
+        if (v != null) { total += v; count++; }
+      }
+    return count > 0 ? Math.round((total / count) * 100) : null;
+  })();
+
+  const [leaderboard, setLeaderboard] = useState(null);
+
+  // Auto-save score (once on mount, if logged in)
+  useEffect(() => {
+    if (!isLoggedIn || !token) return;
+    const players = POSITIONS.map(p => lineup[p]).filter(Boolean).map(p => p.PLAYER_NAME);
+    fetch("/api/game/score", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ pct, grade, lineup: players }),
+    }).catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Leaderboard
+  useEffect(() => {
+    fetch("/api/leaderboard?limit=10").then(r => r.json()).then(d => setLeaderboard(d.entries || [])).catch(() => {});
+  }, []);
   const gColor = pct>=85?"text-blue-300":pct>=75?"text-sky-300":pct>=65?"text-emerald-300":pct>=55?"text-amber-300":"text-red-400";
 
   // Per-oyuncu → pozisyona göre eşle (computeLineupFit POSITIONS sırasında çağrıldı)
@@ -551,12 +594,16 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang })
         </div>
 
         {/* Ball-dom uyarısı */}
-        {analysis.ballDom > 1 && (
+        {analysis.ballDom >= 1 && (
           <div className="flex gap-2 items-start">
             <span className="text-amber-400 text-sm shrink-0">⚠</span>
-            <p className="text-[11px] text-amber-400/80">
-              {analysis.ballDom} ball-dominant players on the same roster — Role Fit penalty applied. One playmaker is optimal; the others cancel out.
-            </p>
+            <div>
+              <p className="text-[11px] text-amber-400/80">
+                Ball-dominant: {analysis.ballDomPlayers.join(", ")}
+                {analysis.ballDom === 1 ? " — one playmaker, optimal" : ` — ${analysis.ballDom} playmakers, role fit penalty applied`}
+              </p>
+              <p className="text-[10px] text-slate-600 mt-0.5">High usage on a weak team ≠ ball-dominant in a strong lineup context.</p>
+            </div>
           </div>
         )}
 
@@ -592,6 +639,17 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang })
           );
         })()}
 
+        {/* Archetype affinity */}
+        {affinityScore != null && (
+          <div className="flex gap-2 items-start">
+            <span className="text-violet-400 text-sm shrink-0">⬡</span>
+            <p className="text-[11px] text-slate-400">
+              Archetype affinity: <span className="text-violet-400 font-semibold">{affinityScore}</span>
+              <span className="text-slate-600"> — avg pairwise synergy</span>
+            </p>
+          </div>
+        )}
+
         {/* Genel değerlendirme */}
         <div className="pt-1 border-t border-slate-800">
           <p className="text-[11px] text-slate-500 italic">
@@ -610,6 +668,23 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang })
 
       {/* Share butonu */}
       <ShareCard pct={pct} grade={grade} fit={fit} lineup={lineup} />
+
+      {/* Leaderboard */}
+      {leaderboard && leaderboard.length > 0 && (
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-2">
+          <div className="text-[10px] text-slate-600 uppercase tracking-widest mb-1">Top Scores</div>
+          {leaderboard.slice(0, 10).map((entry, i) => (
+            <div key={i} className="flex items-center gap-2 text-[11px]">
+              <span className="text-slate-700 w-5 text-right shrink-0 font-mono">{i + 1}.</span>
+              <span className="text-slate-300 flex-1 truncate">{entry.username}</span>
+              <span className={`font-bold shrink-0 ${entry.pct>=85?"text-blue-400":entry.pct>=72?"text-sky-300":entry.pct>=58?"text-emerald-400":entry.pct>=42?"text-amber-400":"text-red-400"}`}>
+                {entry.pct}
+              </span>
+              <span className="text-slate-600 shrink-0 w-4">{entry.grade}</span>
+            </div>
+          ))}
+        </div>
+      )}
 
       <button onClick={onReset}
         className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-semibold transition-colors">
@@ -866,8 +941,11 @@ export default function LineupGame() {
   const filledPositions = POSITIONS.filter(p=>lineup[p]!==null);
   const emptyPositions  = POSITIONS.filter(p=>lineup[p]===null);
 
+  const [affinityMatrix, setAffinityMatrix] = useState(null);
+
   useEffect(()=>{
     fetch("/api/game/seasons").then(r=>r.json()).then(d=>setSeasons(d.seasons||["2025-26"])).catch(()=>setSeasons(["2025-26"]));
+    fetch("/api/affinity").then(r=>r.json()).then(d=>setAffinityMatrix(d.matrix||null)).catch(()=>{});
   },[]);
 
   // ── Oyuncu çek (ortak) ───────────────────────────────────────────────────
@@ -1295,7 +1373,7 @@ export default function LineupGame() {
 
       {/* === COMPLETE === */}
       {phase==="complete"&&fitResult&&(
-        <ScoreReveal fit={fitResult} lineup={lineup} primaryCount={primaryCount} roundHistory={roundHistoryRef.current} onReset={resetGame} lang={lang}/>
+        <ScoreReveal fit={fitResult} lineup={lineup} primaryCount={primaryCount} roundHistory={roundHistoryRef.current} onReset={resetGame} lang={lang} affinityMatrix={affinityMatrix}/>
       )}
     </div>
     </div>

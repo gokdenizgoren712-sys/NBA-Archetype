@@ -94,12 +94,12 @@ function DetailPanel({ selected, detail, isCurrent, season, tab, setTab,
     if (!isLoggedIn) { window.location.href = "/login"; return; }
     setSaving(true);
     try {
-      await fetch("/api/profile/save-player", {
+      const res = await fetch("/api/profile/saved-players", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ player_name: selected.PLAYER_NAME, season: isCurrent ? "2025-26" : season }),
       });
-      setSaved(true);
+      if (res.ok || res.status === 409) setSaved(true);
     } catch (e) { console.error(e); }
     setSaving(false);
   };

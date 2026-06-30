@@ -65,6 +65,15 @@ def init_db():
             label       TEXT,
             created_at  TEXT DEFAULT (datetime('now'))
         );
+
+        CREATE TABLE IF NOT EXISTS lineup_games (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id     INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            pct         INTEGER NOT NULL,
+            grade       TEXT NOT NULL,
+            lineup_json TEXT,
+            created_at  TEXT DEFAULT (datetime('now'))
+        );
         """)
         # Migration: add columns to existing DBs that predate these fields
         for col, dfn in [
