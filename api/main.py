@@ -1833,10 +1833,10 @@ def get_pca_loadings():
 
 # ─── Auth + User + Article + Comment endpoints ────────────────────────────────
 
-from db   import init_db, get_conn
-from auth import (hash_password, verify_password, create_token,
-                  get_current_user, get_optional_user, require_admin,
-                  ADMIN_INVITE_CODE)
+from .db   import init_db, get_conn
+from .auth import (hash_password, verify_password, create_token,
+                   get_current_user, get_optional_user, require_admin,
+                   ADMIN_INVITE_CODE)
 from pydantic import BaseModel, EmailStr
 import re as _re
 
