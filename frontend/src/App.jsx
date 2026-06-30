@@ -68,7 +68,7 @@ function TopBar() {
 
   return (
     <header className="h-11 shrink-0 flex items-center px-4 gap-3 border-b"
-      style={{ background: "var(--bg-surface)", borderColor: "var(--border)" }}>
+      style={{ background: "var(--bg-surface)", borderColor: "rgba(200,16,46,0.22)" }}>
 
       {/* Logo */}
       <button onClick={() => navigate("/game")}
@@ -125,7 +125,7 @@ function SideNav() {
 
   return (
     <aside className="hidden md:flex flex-col w-14 shrink-0 border-r pt-2 pb-4"
-      style={{ background: "var(--bg-surface)", borderColor: "var(--border)" }}>
+      style={{ background: "var(--bg-surface)", borderColor: "rgba(200,16,46,0.38)" }}>
       {items.map(n => {
         const active = location.pathname === n.to || location.pathname.startsWith(n.to + "/");
         return (
@@ -170,7 +170,7 @@ function BottomNav() {
 
   return (
     <nav className="md:hidden shrink-0 border-t"
-      style={{ background: "var(--bg-surface)", borderColor: "var(--border)" }}>
+      style={{ background: "var(--bg-surface)", borderColor: "rgba(200,16,46,0.30)" }}>
       <Row items={NAV.slice(0, 4)} />
       <div className="border-t" style={{ borderColor: "var(--border)" }}>
         <Row items={NAV.slice(4)} />

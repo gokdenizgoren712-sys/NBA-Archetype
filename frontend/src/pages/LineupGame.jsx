@@ -181,7 +181,7 @@ function SpinWheel({ items, spinning, targetIdx, label }) {
   const visible=[-2,-1,0,1,2].map(off=>({off,item:items[((centerIdx+off)%items.length+items.length)%items.length]}));
   return (
     <div className="flex flex-col items-center select-none">
-      <div className="text-[10px] text-slate-500 uppercase tracking-widest mb-2">{label}</div>
+      <div className="text-[10.5px] text-slate-500 uppercase tracking-widest mb-2">{label}</div>
       <div className="relative w-32 rounded-xl overflow-hidden border border-slate-800 bg-slate-950">
         <div className="pointer-events-none absolute inset-x-0 top-0 h-14 z-10" style={{background:"linear-gradient(to bottom,#020817,transparent)"}}/>
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-14 z-10" style={{background:"linear-gradient(to top,#020817,transparent)"}}/>
@@ -217,12 +217,12 @@ function PlayerCard({ player, season, discover, onClick, dimmed }) {
         <div className={`text-sm font-medium leading-tight truncate ${discover?"text-emerald-200":"text-white group-hover:text-blue-200"}`}>
           {player.PLAYER_NAME}
         </div>
-        <span className={`text-[8px] px-1.5 py-0.5 rounded border shrink-0 font-medium ${era.bg} ${era.color}`}>
+        <span className={`text-[8.5px] px-1.5 py-0.5 rounded border shrink-0 font-medium ${era.bg} ${era.color}`}>
           {era.short}
         </span>
       </div>
       {/* İstatistikler */}
-      <div className="flex gap-2 text-[10px] text-slate-400 mb-1.5 flex-wrap">
+      <div className="flex gap-2 text-[10.5px] text-slate-400 mb-1.5 flex-wrap">
         <span>PTS <span className="text-slate-200 font-medium">{stat("PTS")}</span></span>
         <span>REB <span className="text-slate-200 font-medium">{stat("REB")}</span></span>
         <span>AST <span className="text-slate-200 font-medium">{stat("AST")}</span></span>
@@ -232,23 +232,23 @@ function PlayerCard({ player, season, discover, onClick, dimmed }) {
       {/* Mevkiler + arketip */}
       <div className="flex gap-1 flex-wrap">
         {eligible.map(p=>(
-          <span key={p} className={`text-[9px] px-1.5 py-0.5 rounded border font-bold ${p===primary?"ring-1 ring-blue-400/40":""} ${POS_COLORS[p]||"bg-slate-800 text-slate-400 border-slate-700"}`}>
+          <span key={p} className={`text-[9.5px] px-1.5 py-0.5 rounded border font-bold ${p===primary?"ring-1 ring-blue-400/40":""} ${POS_COLORS[p]||"bg-slate-800 text-slate-400 border-slate-700"}`}>
             {p}{p===primary?" ★":""}
           </span>
         ))}
         {discover ? (
           <span className="ml-auto flex items-center gap-1">
-            <span className="text-[9px] px-1.5 py-0.5 rounded border border-emerald-700/50 bg-emerald-900/30 text-emerald-300 font-medium">
+            <span className="text-[9.5px] px-1.5 py-0.5 rounded border border-emerald-700/50 bg-emerald-900/30 text-emerald-300 font-medium">
               {player.primary_arch || "—"}
             </span>
             {overall != null && (
-              <span className="text-[9px] px-1.5 py-0.5 rounded border border-violet-700/50 bg-violet-900/30 text-violet-300 font-bold">
+              <span className="text-[9.5px] px-1.5 py-0.5 rounded border border-violet-700/50 bg-violet-900/30 text-violet-300 font-bold">
                 {overall}
               </span>
             )}
           </span>
         ) : (
-          <span className="ml-auto text-[9px] px-1.5 py-0.5 rounded border border-slate-700 bg-slate-800 text-slate-500 font-mono">???</span>
+          <span className="ml-auto text-[9.5px] px-1.5 py-0.5 rounded border border-slate-700 bg-slate-800 text-slate-500 font-mono">???</span>
         )}
       </div>
     </button>
@@ -261,14 +261,14 @@ function LineupSlot({ pos, player }) {
   return (
     <div className={`flex-1 rounded-lg p-1.5 border text-center min-w-0 transition-all
       ${player?"border-blue-500/40 bg-blue-900/15":"border-slate-800 bg-slate-900/60"}`}>
-      <div className={`text-[8px] uppercase tracking-wider mb-0.5 ${POS_COLORS[pos]?.split(" ")[1]||"text-slate-600"}`}>{pos}</div>
+      <div className={`text-[8.5px] uppercase tracking-wider mb-0.5 ${POS_COLORS[pos]?.split(" ")[1]||"text-slate-600"}`}>{pos}</div>
       {player ? (
         <>
-          <div className="text-[10px] text-white font-semibold truncate leading-tight">
+          <div className="text-[10.5px] text-white font-semibold truncate leading-tight">
             {player.PLAYER_NAME?.split(" ").slice(-1)[0]}
           </div>
-          <div className="text-[8px] text-slate-500">{(player._season||"").slice(0,4)}</div>
-          {isPrimary && <div className="text-[8px] text-yellow-400">⭐</div>}
+          <div className="text-[8.5px] text-slate-500">{(player._season||"").slice(0,4)}</div>
+          {isPrimary && <div className="text-[8.5px] text-yellow-400">⭐</div>}
         </>
       ) : (
         <div className="text-slate-700 text-sm">—</div>
@@ -305,7 +305,7 @@ function JokerBtn({ icon, label, available, onClick }) {
         ${available?"border-amber-700/60 bg-amber-900/20 hover:bg-amber-900/40 cursor-pointer text-amber-300"
                   :"border-slate-800 bg-slate-900/40 cursor-not-allowed text-slate-600"}`}>
       <span className="text-base leading-none">{icon}</span>
-      <span className="text-[9px] leading-tight whitespace-nowrap">{label}</span>
+      <span className="text-[9.5px] leading-tight whitespace-nowrap">{label}</span>
     </button>
   );
 }
@@ -438,7 +438,7 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
 
         {/* Oyuncu kalitesi — per-player quality (overall × era) */}
         <div className="mt-4 space-y-1.5 max-w-xs mx-auto text-left">
-          <div className="text-[9px] text-slate-600 uppercase tracking-widest mb-2 text-center">
+          <div className="text-[9.5px] text-slate-600 uppercase tracking-widest mb-2 text-center">
             Player Quality <span className="text-slate-700">avg {qualityPct}</span>
           </div>
           {POSITIONS.map(pos => {
@@ -450,15 +450,15 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
             const eraPenalty = pp.eraFactor < 0.92;
             return (
               <div key={pos} className="flex items-center gap-2">
-                <span className={`text-[8px] font-bold px-1 py-0.5 rounded border shrink-0 ${POS_COLORS[pos]||""}`}>{pos}</span>
-                <span className="text-[10px] text-white flex-1 truncate">{p.PLAYER_NAME?.split(" ").slice(-1)[0]}</span>
-                <span className={`text-[8px] shrink-0 ${pp.era.color}`}>{pp.era.short}</span>
-                {eraBonus && <span className="text-[8px] text-emerald-500 shrink-0">↑era</span>}
-                {eraPenalty && <span className="text-[8px] text-red-500 shrink-0">↓era</span>}
+                <span className={`text-[8.5px] font-bold px-1 py-0.5 rounded border shrink-0 ${POS_COLORS[pos]||""}`}>{pos}</span>
+                <span className="text-[10.5px] text-white flex-1 truncate">{p.PLAYER_NAME?.split(" ").slice(-1)[0]}</span>
+                <span className={`text-[8.5px] shrink-0 ${pp.era.color}`}>{pp.era.short}</span>
+                {eraBonus && <span className="text-[8.5px] text-emerald-500 shrink-0">↑era</span>}
+                {eraPenalty && <span className="text-[8.5px] text-red-500 shrink-0">↓era</span>}
                 <div className="w-16 h-1.5 bg-slate-800 rounded-full overflow-hidden shrink-0">
-                  <div className="h-full rounded-full" style={{width:`${qPct}%`,background:qPct>=75?"#3b82f6":qPct>=55?"#475569":"#7f1d1d"}}/>
+                  <div className="h-full rounded-full" style={{width:`${qPct}%`,background:qPct>=75?"#1D428A":qPct>=55?"#2a3d6b":"#7f1d1d"}}/>
                 </div>
-                <span className={`text-[10px] w-5 text-right shrink-0 ${qPct>=75?"text-blue-300":qPct>=55?"text-slate-400":"text-red-400"}`}>{qPct}</span>
+                <span className={`text-[10.5px] w-5 text-right shrink-0 ${qPct>=75?"text-blue-300":qPct>=55?"text-slate-400":"text-red-400"}`}>{qPct}</span>
               </div>
             );
           })}
@@ -466,7 +466,7 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
 
         {/* Lineup Coverage */}
         <div className="mt-4 space-y-1.5 max-w-xs mx-auto text-left border-t border-slate-800 pt-3">
-          <div className="text-[9px] text-slate-600 uppercase tracking-widest mb-2 text-center">
+          <div className="text-[9.5px] text-slate-600 uppercase tracking-widest mb-2 text-center">
             Lineup Coverage <span className="text-slate-700">avg {coveragePct}</span>
           </div>
           {[
@@ -478,38 +478,38 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
             const vp = Math.round((val||0)*100);
             return (
               <div key={label} className="flex items-center gap-2">
-                <span className="text-[10px] text-slate-400 w-24 text-right shrink-0">{label}</span>
+                <span className="text-[10.5px] text-slate-400 w-24 text-right shrink-0">{label}</span>
                 <div className="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                  <div className="h-full rounded-full" style={{width:`${vp}%`,background:vp>=75?"#3b82f6":vp>=55?"#475569":"#7f1d1d"}}/>
+                  <div className="h-full rounded-full" style={{width:`${vp}%`,background:vp>=75?"#1D428A":vp>=55?"#2a3d6b":"#7f1d1d"}}/>
                 </div>
-                <span className={`text-[10px] w-5 text-right shrink-0 ${vp>=65?"text-blue-300":vp>=45?"text-slate-400":"text-red-400"}`}>{vp}</span>
+                <span className={`text-[10.5px] w-5 text-right shrink-0 ${vp>=65?"text-blue-300":vp>=45?"text-slate-400":"text-red-400"}`}>{vp}</span>
               </div>
             );
           })}
           {/* Role Fit */}
           <div className="flex items-center gap-2 border-t border-slate-800 pt-1.5">
-            <span className="text-[10px] text-slate-400 w-24 text-right shrink-0">Role Fit</span>
+            <span className="text-[10.5px] text-slate-400 w-24 text-right shrink-0">Role Fit</span>
             <div className="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden">
-              <div className="h-full rounded-full" style={{width:`${Math.round(fit.roleFit*100)}%`,background:fit.roleFit>=0.80?"#3b82f6":fit.roleFit>=0.65?"#475569":"#7f1d1d"}}/>
+              <div className="h-full rounded-full" style={{width:`${Math.round(fit.roleFit*100)}%`,background:fit.roleFit>=0.80?"#1D428A":fit.roleFit>=0.65?"#2a3d6b":"#7f1d1d"}}/>
             </div>
-            <span className={`text-[10px] w-5 text-right shrink-0 ${fit.roleFit>=0.65?"text-blue-300":"text-red-400"}`}>{Math.round(fit.roleFit*100)}</span>
+            <span className={`text-[10.5px] w-5 text-right shrink-0 ${fit.roleFit>=0.65?"text-blue-300":"text-red-400"}`}>{Math.round(fit.roleFit*100)}</span>
           </div>
         </div>
       </div>
 
       {/* Lineup — arketip artık açık */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
-        <div className="text-[10px] text-slate-600 uppercase tracking-widest mb-3">Final Lineup</div>
+        <div className="text-[10.5px] text-slate-600 uppercase tracking-widest mb-3">Final Lineup</div>
         <div className="space-y-2">
           {POSITIONS.map(pos=>{
             const p=lineup[pos]; if(!p) return null;
             const isPrimary = getPrimaryPos(p) === pos;
             return (
               <div key={pos} className="flex items-center gap-2">
-                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border shrink-0 ${POS_COLORS[pos]||""}`}>{pos}</span>
+                <span className={`text-[9.5px] font-bold px-1.5 py-0.5 rounded border shrink-0 ${POS_COLORS[pos]||""}`}>{pos}</span>
                 <span className="text-sm text-white font-medium flex-1 min-w-0 truncate">{p.PLAYER_NAME}</span>
-                <span className="text-[10px] text-blue-400 shrink-0">{p.primary_arch||"—"}</span>
-                <span className="text-[10px] text-slate-500 shrink-0">{(p._season||"").slice(0,4)}</span>
+                <span className="text-[10.5px] text-blue-400 shrink-0">{p.primary_arch||"—"}</span>
+                <span className="text-[10.5px] text-slate-500 shrink-0">{(p._season||"").slice(0,4)}</span>
                 {isPrimary&&<span className="text-yellow-400 text-xs shrink-0">⭐</span>}
               </div>
             );
@@ -521,12 +521,12 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
       {eraResult && (
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
           <div className="flex items-center justify-between mb-3">
-            <div className="text-[10px] text-slate-600 uppercase tracking-widest">Era Fit</div>
+            <div className="text-[10.5px] text-slate-600 uppercase tracking-widest">Era Fit</div>
             <div className="text-right">
               <span className={`text-lg font-bold ${eraResult.avg>=0.75?"text-emerald-400":eraResult.avg>=0.55?"text-amber-400":"text-red-400"}`}>
                 {Math.round(eraResult.avg*100)}
               </span>
-              <span className="text-[10px] text-slate-500 ml-1">avg</span>
+              <span className="text-[10.5px] text-slate-500 ml-1">avg</span>
             </div>
           </div>
           <div className="space-y-2.5">
@@ -539,21 +539,21 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
               return (
                 <div key={i} className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className={`text-[8px] px-1.5 py-0.5 rounded border shrink-0 ${era.bg} ${era.color}`}>{era.short}</span>
+                    <span className={`text-[8.5px] px-1.5 py-0.5 rounded border shrink-0 ${era.bg} ${era.color}`}>{era.short}</span>
                     <span className="text-xs text-white font-medium flex-1 truncate">{p.PLAYER_NAME}</span>
-                    <span className={`text-[10px] font-bold shrink-0 ${fitPct>=75?"text-emerald-400":fitPct>=55?"text-amber-400":"text-red-400"}`}>{fitPct}</span>
+                    <span className={`text-[10.5px] font-bold shrink-0 ${fitPct>=75?"text-emerald-400":fitPct>=55?"text-amber-400":"text-red-400"}`}>{fitPct}</span>
                   </div>
                   <div className="flex items-center gap-2 pl-0">
                     <div className="flex-1 h-1 bg-slate-800 rounded-full overflow-hidden">
                       <div className={`h-full rounded-full ${fitPct>=75?"bg-emerald-500":fitPct>=55?"bg-amber-500":"bg-red-700"}`}
                            style={{width:`${fitPct}%`}}/>
                     </div>
-                    <span className={`text-[9px] shrink-0 ${isBonus?"text-emerald-500":isPenalty?"text-red-500":"text-slate-600"}`}>
+                    <span className={`text-[9.5px] shrink-0 ${isBonus?"text-emerald-500":isPenalty?"text-red-500":"text-slate-600"}`}>
                       {arch} {isBonus?`↑${Math.round((weight-1)*100)}%`:isPenalty?`↓${Math.round((1-weight)*100)}%`:""}
                     </span>
                   </div>
                   {isPenalty && (
-                    <p className="text-[9px] text-slate-600 pl-0 leading-tight">
+                    <p className="text-[9.5px] text-slate-600 pl-0 leading-tight">
                       {arch} was off-meta in the {era.label} — {ERA_META_BLURB[era.id]}
                     </p>
                   )}
@@ -562,7 +562,7 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
             })}
           </div>
           <div className="mt-3 pt-2 border-t border-slate-800">
-            <p className="text-[10px] text-slate-500 italic leading-relaxed">
+            <p className="text-[10.5px] text-slate-500 italic leading-relaxed">
               Era Fit measures how well each player's archetype aligned with the meta of their era.
               A Spacer from the Dead Ball era scores low — not because they were bad, but because spacing wasn't the league's currency yet.
             </p>
@@ -572,14 +572,14 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
 
       {/* Post-game analysis */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
-        <div className="text-[10px] text-slate-600 uppercase tracking-widest">Lineup Analysis</div>
+        <div className="text-[10.5px] text-slate-600 uppercase tracking-widest">Lineup Analysis</div>
 
         {/* Güçlü yön */}
         <div className="flex gap-2 items-start">
           <span className="text-green-400 text-sm shrink-0">✓</span>
           <div>
-            <span className="text-[11px] text-slate-300 font-medium">Strongest pillar: </span>
-            <span className="text-[11px] text-green-400">{analysis.strongest.label} ({Math.round(analysis.strongest.val*100)})</span>
+            <span className="text-[11.5px] text-slate-300 font-medium">Strongest pillar: </span>
+            <span className="text-[11.5px] text-green-400">{analysis.strongest.label} ({Math.round(analysis.strongest.val*100)})</span>
           </div>
         </div>
 
@@ -587,9 +587,9 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
         <div className="flex gap-2 items-start">
           <span className="text-red-400 text-sm shrink-0">✗</span>
           <div>
-            <span className="text-[11px] text-slate-300 font-medium">Biggest gap: </span>
-            <span className="text-[11px] text-red-400">{analysis.weakest.label} ({Math.round(analysis.weakest.val*100)})</span>
-            <p className="text-[11px] text-slate-500 mt-0.5">{analysis.weakest.fix}</p>
+            <span className="text-[11.5px] text-slate-300 font-medium">Biggest gap: </span>
+            <span className="text-[11.5px] text-red-400">{analysis.weakest.label} ({Math.round(analysis.weakest.val*100)})</span>
+            <p className="text-[11.5px] text-slate-500 mt-0.5">{analysis.weakest.fix}</p>
           </div>
         </div>
 
@@ -598,11 +598,11 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
           <div className="flex gap-2 items-start">
             <span className="text-amber-400 text-sm shrink-0">⚠</span>
             <div>
-              <p className="text-[11px] text-amber-400/80">
+              <p className="text-[11.5px] text-amber-400/80">
                 Ball-dominant: {analysis.ballDomPlayers.join(", ")}
                 {analysis.ballDom === 1 ? " — one playmaker, optimal" : ` — ${analysis.ballDom} playmakers, role fit penalty applied`}
               </p>
-              <p className="text-[10px] text-slate-600 mt-0.5">High usage on a weak team ≠ ball-dominant in a strong lineup context.</p>
+              <p className="text-[10.5px] text-slate-600 mt-0.5">High usage on a weak team ≠ ball-dominant in a strong lineup context.</p>
             </div>
           </div>
         )}
@@ -611,7 +611,7 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
         {analysis.primaryFits.length > 0 && (
           <div className="flex gap-2 items-start">
             <span className="text-yellow-400 text-sm shrink-0">⭐</span>
-            <p className="text-[11px] text-slate-400">
+            <p className="text-[11.5px] text-slate-400">
               {analysis.primaryFits.map(p=>p.PLAYER_NAME?.split(" ").slice(-1)[0]).join(", ")} played in their natural position — chemistry bonus earned.
             </p>
           </div>
@@ -626,10 +626,10 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
             <div className="flex gap-2 items-start">
               <span className="text-blue-400 text-sm shrink-0">💡</span>
               <div>
-                <p className="text-[11px] text-slate-300 font-medium">
+                <p className="text-[11.5px] text-slate-300 font-medium">
                   Better pick for {analysis.weakest.label}:
                 </p>
-                <p className="text-[11px] text-slate-400 mt-0.5">
+                <p className="text-[11.5px] text-slate-400 mt-0.5">
                   <span className="text-white font-semibold">{alt.PLAYER_NAME}</span>
                   {" "}<span className="text-slate-500">({altArch}, overall {altPct})</span>
                   {" "}— {altTeam} · {altSeason} — was available this game. Would have covered your lineup's {analysis.weakest.label.toLowerCase()} gap.
@@ -643,7 +643,7 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
         {affinityScore != null && (
           <div className="flex gap-2 items-start">
             <span className="text-violet-400 text-sm shrink-0">⬡</span>
-            <p className="text-[11px] text-slate-400">
+            <p className="text-[11.5px] text-slate-400">
               Archetype affinity: <span className="text-violet-400 font-semibold">{affinityScore}</span>
               <span className="text-slate-600"> — avg pairwise synergy</span>
             </p>
@@ -652,7 +652,7 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
 
         {/* Genel değerlendirme */}
         <div className="pt-1 border-t border-slate-800">
-          <p className="text-[11px] text-slate-500 italic">
+          <p className="text-[11.5px] text-slate-500 italic">
             {pct>=85
               ? "Championship-caliber construction. High-quality players across eras, all four pillars covered."
               : pct>=75
@@ -672,9 +672,9 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
       {/* Leaderboard */}
       {leaderboard && leaderboard.length > 0 && (
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-2">
-          <div className="text-[10px] text-slate-600 uppercase tracking-widest mb-1">Top Scores</div>
+          <div className="text-[10.5px] text-slate-600 uppercase tracking-widest mb-1">Top Scores</div>
           {leaderboard.slice(0, 10).map((entry, i) => (
-            <div key={i} className="flex items-center gap-2 text-[11px]">
+            <div key={i} className="flex items-center gap-2 text-[11.5px]">
               <span className="text-slate-700 w-5 text-right shrink-0 font-mono">{i + 1}.</span>
               <span className="text-slate-300 flex-1 truncate">{entry.username}</span>
               <span className={`font-bold shrink-0 ${entry.pct>=85?"text-blue-400":entry.pct>=72?"text-sky-300":entry.pct>=58?"text-emerald-400":entry.pct>=42?"text-amber-400":"text-red-400"}`}>
@@ -732,7 +732,7 @@ function ShareCard({ pct, grade, fit, lineup }) {
     ctx.fillText("Lineup Builder", 20, 42);
 
     // Büyük skor
-    const scoreColor = pct >= 85 ? "#60a5fa" : pct >= 75 ? "#38bdf8" : pct >= 65 ? "#34d399" : pct >= 55 ? "#fbbf24" : "#f87171";
+    const scoreColor = pct >= 85 ? "#f59e0b" : pct >= 75 ? "#4a7fc1" : pct >= 65 ? "#34d399" : pct >= 55 ? "#fbbf24" : "#f87171";
     ctx.font = "bold 72px system-ui";
     ctx.fillStyle = scoreColor;
     ctx.textAlign = "center";
@@ -799,7 +799,7 @@ function ShareCard({ pct, grade, fit, lineup }) {
       const x = i < 2 ? 20 : 270;
       const rowY = barY + (i % 2) * 20;
       const vp = Math.round((val || 0) * 100);
-      const barColor = vp >= 75 ? "#3b82f6" : vp >= 55 ? "#475569" : "#7f1d1d";
+      const barColor = vp >= 75 ? "#1D428A" : vp >= 55 ? "#2a3d6b" : "#7f1d1d";
 
       ctx.font = "9px system-ui";
       ctx.fillStyle = "#64748b";
@@ -857,7 +857,7 @@ function ShareCard({ pct, grade, fit, lineup }) {
 
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
-      <div className="text-[10px] text-slate-600 uppercase tracking-widest">Share Your Result</div>
+      <div className="text-[10.5px] text-slate-600 uppercase tracking-widest">Share Your Result</div>
 
       {/* Preview */}
       {preview ? (
@@ -1169,7 +1169,7 @@ export default function LineupGame() {
       description="Build the greatest 5-man lineup in NBA history. Pick players from any era — 1983 to today — and see how well your roster fits together across archetypes and eras."
       path="/game"
     />
-    <div className="p-4 sm:p-6 max-w-xl mx-auto space-y-3 pb-6">
+    <div className="p-4 sm:p-6 max-w-2xl mx-auto space-y-3 pb-6">
 
       {/* Başlık */}
       <div>
@@ -1190,15 +1190,15 @@ export default function LineupGame() {
           <div className="flex-1 h-1 bg-slate-800 rounded-full overflow-hidden">
             <div className="h-full bg-blue-500 rounded-full transition-all duration-500" style={{width:`${(filledPositions.length/5)*100}%`}}/>
           </div>
-          <span className="text-[10px] text-slate-500">{filledPositions.length}/5</span>
-          {primaryCount>0&&<span className="text-[10px] text-yellow-400">⭐×{primaryCount}</span>}
+          <span className="text-[10.5px] text-slate-500">{filledPositions.length}/5</span>
+          {primaryCount>0&&<span className="text-[10.5px] text-yellow-400">⭐×{primaryCount}</span>}
         </div>
       )}
 
       {/* Jokerler (sadece pick_player fazında) */}
       {phase==="pick_player"&&(
         <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-2">
-          <div className="text-[9px] text-slate-600 uppercase tracking-widest mb-1.5 text-center">Jokers</div>
+          <div className="text-[9.5px] text-slate-600 uppercase tracking-widest mb-1.5 text-center">Jokers</div>
           <div className="flex gap-1.5 justify-center">
             <JokerBtn icon="🔄" label="Team"     available={jokers.reTeam}   onClick={jokerReTeam}/>
             <JokerBtn icon="📅" label="Year"     available={jokers.reYear}   onClick={jokerReYear}/>
@@ -1245,7 +1245,7 @@ export default function LineupGame() {
               </div>
             </div>
           ))}
-          <p className="text-[11px] text-slate-600 pt-1 border-t border-slate-800">Each joker can be used once per game.</p>
+          <p className="text-[11.5px] text-slate-600 pt-1 border-t border-slate-800">Each joker can be used once per game.</p>
         </div>
       </InfoModal>
 
@@ -1266,7 +1266,7 @@ export default function LineupGame() {
       {phase==="idle"&&(
         <div className="space-y-3">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
-            <div className="text-[10px] text-slate-600 uppercase tracking-widest">How it works</div>
+            <div className="text-[10.5px] text-slate-600 uppercase tracking-widest">How it works</div>
             <p className="text-sm text-slate-300 leading-relaxed">
               Each round the wheels spin: one for <span className="text-blue-400 font-medium">era</span>, one for <span className="text-blue-400 font-medium">team</span>. Pick one player from that roster, then slot them into a position.
             </p>
@@ -1282,12 +1282,12 @@ export default function LineupGame() {
                 <button key={key} onClick={()=>setModal(key)}
                   className="bg-slate-800/60 hover:bg-slate-700/60 rounded-lg p-2.5 text-left transition-colors border border-slate-700/50 hover:border-slate-600">
                   <div className="text-[13px] font-bold text-white mb-0.5">{icon} {title}</div>
-                  <div className="text-[10px] text-slate-500 leading-relaxed">{desc}</div>
+                  <div className="text-[10.5px] text-slate-500 leading-relaxed">{desc}</div>
                 </button>
               ))}
             </div>
             <div className="pt-1 border-t border-slate-800">
-              <p className="text-[11px] text-slate-500 italic">
+              <p className="text-[11.5px] text-slate-500 italic">
                 The formula: avg player quality × lineup coverage × role fit. Quality rewards stars from dominant eras. Coverage demands one playmaker, 2–3 shooters, a defender, and a finisher. Role fit penalizes duplicate ball-handlers.
               </p>
             </div>
@@ -1340,7 +1340,7 @@ export default function LineupGame() {
                 <div className="text-xs text-slate-500 mt-0.5">{chosenSeason} · {chosenTeam}</div>
                 <div className="flex gap-1 mt-1.5 flex-wrap">
                   {eligible.map(p=>(
-                    <span key={p} className={`text-[9px] px-1.5 py-0.5 rounded border font-bold ${POS_COLORS[p]||""}`}>
+                    <span key={p} className={`text-[9.5px] px-1.5 py-0.5 rounded border font-bold ${POS_COLORS[p]||""}`}>
                       {p}{p===primary?" ★":""}
                     </span>
                   ))}

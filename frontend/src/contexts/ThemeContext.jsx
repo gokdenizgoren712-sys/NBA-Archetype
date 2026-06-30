@@ -22,7 +22,7 @@ export function ThemeProvider({ children }) {
     } else {
       root.classList.add("dark");
       root.classList.remove("light");
-      document.body.style.background = "#0d0f14";
+      document.body.style.background = "#030307";
       document.body.style.color = "#eef0f5";
     }
   }, [theme]);
