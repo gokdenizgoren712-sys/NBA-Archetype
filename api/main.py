@@ -1731,6 +1731,290 @@ def get_pca_loadings():
     }
 
 
+# ─── Auth + User + Article + Comment endpoints ────────────────────────────────
+
+from db   import init_db, get_conn
+from auth import (hash_password, verify_password, create_token,
+                  get_current_user, get_optional_user, require_admin,
+                  ADMIN_INVITE_CODE)
+from pydantic import BaseModel, EmailStr
+import re as _re
+
+init_db()
+
+# ── Pydantic modelleri ────────────────────────────────────────────────────────
+
+class RegisterBody(BaseModel):
+    email: str
+    username: str
+    password: str
+    admin_invite_code: str = ""
+
+class LoginBody(BaseModel):
+    email: str
+    password: str
+
+class ArticleBody(BaseModel):
+    title: str
+    slug: str = ""
+    content: str = ""
+    cover_image_url: str = ""
+    status: str = "draft"
+
+class CommentBody(BaseModel):
+    content: str
+
+class SavePlayerBody(BaseModel):
+    player_name: str
+    season: str = "2025-26"
+
+class SaveLineupBody(BaseModel):
+    players: list
+    score: float = None
+    grade: str = ""
+    pct: float = None
+    label: str = ""
+
+# ── Yardımcı ─────────────────────────────────────────────────────────────────
+
+def _slugify(text: str) -> str:
+    s = text.lower().strip()
+    s = _re.sub(r"[^\w\s-]", "", s)
+    s = _re.sub(r"[\s_-]+", "-", s)
+    return s[:80]
+
+def _row(r) -> dict:
+    return dict(r) if r else None
+
+# ── Auth ──────────────────────────────────────────────────────────────────────
+
+@app.post("/api/auth/register")
+def register(body: RegisterBody):
+    is_admin = body.admin_invite_code and body.admin_invite_code == ADMIN_INVITE_CODE
+    role = "admin" if is_admin else "user"
+    if not body.email or "@" not in body.email:
+        raise HTTPException(400, "Geçersiz email")
+    if len(body.password) < 6:
+        raise HTTPException(400, "Şifre en az 6 karakter olmalı")
+    if len(body.username) < 2:
+        raise HTTPException(400, "Kullanıcı adı en az 2 karakter olmalı")
+    hashed = hash_password(body.password)
+    try:
+        with get_conn() as conn:
+            cur = conn.execute(
+                "INSERT INTO users (email, username, hashed_password, role) VALUES (?,?,?,?)",
+                (body.email.lower(), body.username, hashed, role)
+            )
+            user_id = cur.lastrowid
+    except Exception as e:
+        if "UNIQUE" in str(e):
+            raise HTTPException(409, "Bu email veya kullanıcı adı zaten kullanılıyor")
+        raise HTTPException(500, str(e))
+    token = create_token(user_id, role)
+    return {"token": token, "user": {"id": user_id, "email": body.email, "username": body.username, "role": role}}
+
+@app.post("/api/auth/login")
+def login(body: LoginBody):
+    with get_conn() as conn:
+        row = conn.execute("SELECT * FROM users WHERE email=?", (body.email.lower(),)).fetchone()
+    if not row or not verify_password(body.password, row["hashed_password"]):
+        raise HTTPException(401, "Email veya şifre hatalı")
+    token = create_token(row["id"], row["role"])
+    return {"token": token, "user": {"id": row["id"], "email": row["email"],
+                                      "username": row["username"], "role": row["role"]}}
+
+@app.get("/api/auth/me")
+def me(user=Depends(get_current_user)):
+    with get_conn() as conn:
+        row = conn.execute("SELECT id,email,username,role,created_at FROM users WHERE id=?",
+                           (int(user["sub"]),)).fetchone()
+    if not row:
+        raise HTTPException(404, "Kullanıcı bulunamadı")
+    return _row(row)
+
+# ── Articles (public) ─────────────────────────────────────────────────────────
+
+@app.get("/api/articles")
+def list_articles(limit: int = Query(20), offset: int = Query(0)):
+    with get_conn() as conn:
+        rows = conn.execute(
+            """SELECT a.id, a.title, a.slug, a.cover_image_url, a.created_at, a.updated_at,
+                      u.username as author
+               FROM articles a LEFT JOIN users u ON a.author_id=u.id
+               WHERE a.status='published'
+               ORDER BY a.created_at DESC LIMIT ? OFFSET ?""",
+            (limit, offset)
+        ).fetchall()
+    return {"articles": [_row(r) for r in rows]}
+
+@app.get("/api/articles/{slug}")
+def get_article(slug: str, user=Depends(get_optional_user)):
+    with get_conn() as conn:
+        row = conn.execute(
+            """SELECT a.*, u.username as author
+               FROM articles a LEFT JOIN users u ON a.author_id=u.id
+               WHERE a.slug=?""", (slug,)
+        ).fetchone()
+    if not row:
+        raise HTTPException(404, "Makale bulunamadı")
+    art = _row(row)
+    if art["status"] != "published":
+        if not user or user.get("role") != "admin":
+            raise HTTPException(404, "Makale bulunamadı")
+    return art
+
+# ── Articles (admin) ──────────────────────────────────────────────────────────
+
+@app.get("/api/admin/articles")
+def admin_list_articles(user=Depends(require_admin)):
+    with get_conn() as conn:
+        rows = conn.execute(
+            """SELECT a.id, a.title, a.slug, a.status, a.cover_image_url,
+                      a.created_at, a.updated_at, u.username as author
+               FROM articles a LEFT JOIN users u ON a.author_id=u.id
+               ORDER BY a.created_at DESC"""
+        ).fetchall()
+    return {"articles": [_row(r) for r in rows]}
+
+@app.post("/api/admin/articles")
+def create_article(body: ArticleBody, user=Depends(require_admin)):
+    slug = body.slug.strip() or _slugify(body.title)
+    if not slug:
+        raise HTTPException(400, "Başlık gerekli")
+    from datetime import datetime as _dt
+    now = _dt.utcnow().isoformat()
+    try:
+        with get_conn() as conn:
+            cur = conn.execute(
+                """INSERT INTO articles (title, slug, content, cover_image_url, author_id, status, created_at, updated_at)
+                   VALUES (?,?,?,?,?,?,?,?)""",
+                (body.title, slug, body.content, body.cover_image_url or None,
+                 int(user["sub"]), body.status, now, now)
+            )
+            return {"id": cur.lastrowid, "slug": slug}
+    except Exception as e:
+        if "UNIQUE" in str(e):
+            raise HTTPException(409, "Bu slug zaten kullanılıyor")
+        raise HTTPException(500, str(e))
+
+@app.put("/api/admin/articles/{article_id}")
+def update_article(article_id: int, body: ArticleBody, user=Depends(require_admin)):
+    from datetime import datetime as _dt
+    now = _dt.utcnow().isoformat()
+    slug = body.slug.strip() or _slugify(body.title)
+    with get_conn() as conn:
+        conn.execute(
+            """UPDATE articles SET title=?, slug=?, content=?, cover_image_url=?,
+               status=?, updated_at=? WHERE id=?""",
+            (body.title, slug, body.content, body.cover_image_url or None,
+             body.status, now, article_id)
+        )
+    return {"ok": True, "slug": slug}
+
+@app.delete("/api/admin/articles/{article_id}")
+def delete_article(article_id: int, user=Depends(require_admin)):
+    with get_conn() as conn:
+        conn.execute("DELETE FROM articles WHERE id=?", (article_id,))
+    return {"ok": True}
+
+# ── Comments ──────────────────────────────────────────────────────────────────
+
+@app.get("/api/articles/{slug}/comments")
+def list_comments(slug: str):
+    with get_conn() as conn:
+        art = conn.execute("SELECT id FROM articles WHERE slug=?", (slug,)).fetchone()
+        if not art:
+            raise HTTPException(404, "Makale bulunamadı")
+        rows = conn.execute(
+            """SELECT c.id, c.content, c.created_at, u.username
+               FROM comments c LEFT JOIN users u ON c.user_id=u.id
+               WHERE c.article_id=? ORDER BY c.created_at ASC""",
+            (art["id"],)
+        ).fetchall()
+    return {"comments": [_row(r) for r in rows]}
+
+@app.post("/api/articles/{slug}/comments")
+def add_comment(slug: str, body: CommentBody, user=Depends(get_current_user)):
+    if not body.content.strip():
+        raise HTTPException(400, "Yorum boş olamaz")
+    with get_conn() as conn:
+        art = conn.execute("SELECT id FROM articles WHERE slug=? AND status='published'", (slug,)).fetchone()
+        if not art:
+            raise HTTPException(404, "Makale bulunamadı")
+        cur = conn.execute(
+            "INSERT INTO comments (article_id, user_id, content) VALUES (?,?,?)",
+            (art["id"], int(user["sub"]), body.content.strip())
+        )
+    return {"id": cur.lastrowid, "ok": True}
+
+@app.delete("/api/comments/{comment_id}")
+def delete_comment(comment_id: int, user=Depends(get_current_user)):
+    with get_conn() as conn:
+        row = conn.execute("SELECT user_id FROM comments WHERE id=?", (comment_id,)).fetchone()
+        if not row:
+            raise HTTPException(404)
+        if row["user_id"] != int(user["sub"]) and user.get("role") != "admin":
+            raise HTTPException(403, "Yetkisiz")
+        conn.execute("DELETE FROM comments WHERE id=?", (comment_id,))
+    return {"ok": True}
+
+# ── Profile & saved items ─────────────────────────────────────────────────────
+
+@app.get("/api/profile")
+def get_profile(user=Depends(get_current_user)):
+    uid = int(user["sub"])
+    with get_conn() as conn:
+        u = conn.execute("SELECT id,email,username,role,created_at FROM users WHERE id=?", (uid,)).fetchone()
+        players = conn.execute("SELECT * FROM saved_players WHERE user_id=? ORDER BY created_at DESC", (uid,)).fetchall()
+        lineups = conn.execute("SELECT * FROM saved_lineups WHERE user_id=? ORDER BY created_at DESC", (uid,)).fetchall()
+        comments = conn.execute(
+            """SELECT c.id, c.content, c.created_at, a.title as article_title, a.slug as article_slug
+               FROM comments c JOIN articles a ON c.article_id=a.id
+               WHERE c.user_id=? ORDER BY c.created_at DESC LIMIT 20""", (uid,)
+        ).fetchall()
+    return {
+        "user": _row(u),
+        "saved_players": [_row(r) for r in players],
+        "saved_lineups": [dict(r) | {"players": __import__("json").loads(r["players"])} for r in lineups],
+        "comments": [_row(r) for r in comments],
+    }
+
+@app.post("/api/profile/saved-players")
+def save_player(body: SavePlayerBody, user=Depends(get_current_user)):
+    try:
+        with get_conn() as conn:
+            cur = conn.execute(
+                "INSERT INTO saved_players (user_id, player_name, season) VALUES (?,?,?)",
+                (int(user["sub"]), body.player_name, body.season)
+            )
+        return {"id": cur.lastrowid, "ok": True}
+    except Exception as e:
+        if "UNIQUE" in str(e):
+            raise HTTPException(409, "Zaten kaydedilmiş")
+        raise HTTPException(500, str(e))
+
+@app.delete("/api/profile/saved-players/{item_id}")
+def unsave_player(item_id: int, user=Depends(get_current_user)):
+    with get_conn() as conn:
+        conn.execute("DELETE FROM saved_players WHERE id=? AND user_id=?", (item_id, int(user["sub"])))
+    return {"ok": True}
+
+@app.post("/api/profile/saved-lineups")
+def save_lineup(body: SaveLineupBody, user=Depends(get_current_user)):
+    import json as _json
+    with get_conn() as conn:
+        cur = conn.execute(
+            "INSERT INTO saved_lineups (user_id, players, score, grade, pct, label) VALUES (?,?,?,?,?,?)",
+            (int(user["sub"]), _json.dumps(body.players), body.score, body.grade, body.pct, body.label)
+        )
+    return {"id": cur.lastrowid, "ok": True}
+
+@app.delete("/api/profile/saved-lineups/{item_id}")
+def delete_lineup(item_id: int, user=Depends(get_current_user)):
+    with get_conn() as conn:
+        conn.execute("DELETE FROM saved_lineups WHERE id=? AND user_id=?", (item_id, int(user["sub"])))
+    return {"ok": True}
+
 # ─── Frontend statik dosyaları (build sonrası) ────────────────────────────────
 
 frontend_dist = ROOT / "frontend" / "dist"

@@ -1,15 +1,23 @@
 import { BrowserRouter, Routes, Route, NavLink, Navigate, useNavigate, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
-import Players    from "./pages/Players";
-import Lineups    from "./pages/Lineups";
-import Glossary   from "./pages/Glossary";
-import About      from "./pages/About";
-import Explore    from "./pages/Explore";
-import Compare    from "./pages/Compare";
-import Affinity   from "./pages/Affinity";
-import LineupGame from "./pages/LineupGame";
+import Players       from "./pages/Players";
+import Lineups       from "./pages/Lineups";
+import Glossary      from "./pages/Glossary";
+import About         from "./pages/About";
+import Explore       from "./pages/Explore";
+import Compare       from "./pages/Compare";
+import Affinity      from "./pages/Affinity";
+import LineupGame    from "./pages/LineupGame";
+import Blog          from "./pages/Blog";
+import BlogPost      from "./pages/BlogPost";
+import Login         from "./pages/Login";
+import Register      from "./pages/Register";
+import Profile       from "./pages/Profile";
+import ArticleList   from "./pages/admin/ArticleList";
+import ArticleEditor from "./pages/admin/ArticleEditor";
 import { ThemeProvider, useTheme } from "./contexts/ThemeContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { api } from "./api";
 
 /* ── Nav config ──────────────────────────────────────────────────── */
@@ -20,9 +28,31 @@ const NAV = [
   { to: "/explore",  icon: "◎",  label: "Explore"  },
   { to: "/compare",  icon: "⇌",  label: "Compare"  },
   { to: "/affinity", icon: "⬡",  label: "Affinity" },
+  { to: "/blog",     icon: "✍",  label: "Blog"     },
   { to: "/glossary", icon: "≡",  label: "Glossary" },
   { to: "/about",    icon: "ℹ",  label: "About"    },
 ];
+
+/* ── User button (top-right) ─────────────────────────────────────── */
+function UserButton() {
+  const { user, isLoggedIn } = useAuth();
+  const navigate = useNavigate();
+  if (!isLoggedIn) return (
+    <button onClick={() => navigate("/login")}
+      className="px-2.5 py-1 rounded text-xs font-medium transition-colors"
+      style={{ background: "var(--accent)", color: "#000" }}>
+      Giriş
+    </button>
+  );
+  return (
+    <button onClick={() => navigate("/profile")}
+      className="w-7 h-7 flex items-center justify-center rounded-full text-xs font-bold"
+      title={user.username}
+      style={{ background: "var(--accent)", color: "#000" }}>
+      {user.username?.[0]?.toUpperCase()}
+    </button>
+  );
+}
 
 /* ── Top bar ─────────────────────────────────────────────────────── */
 function TopBar() {
@@ -72,6 +102,8 @@ function TopBar() {
           onMouseEnter={e => e.currentTarget.style.color = "var(--text-primary)"}
           onMouseLeave={e => e.currentTarget.style.color = "var(--text-muted)"}
         >{theme === "dark" ? "☀" : "🌙"}</button>
+
+        <UserButton />
       </div>
     </header>
   );
@@ -150,16 +182,28 @@ function AppInner() {
 
           <main className="flex-1 min-h-0 overflow-hidden">
             <Routes>
-              <Route path="/"           element={<Navigate to="/game" replace />} />
-              <Route path="/game"       element={<LineupGame />} />
-              <Route path="/players"    element={<Players />} />
-              <Route path="/lineups"    element={<Lineups />} />
-              <Route path="/explore"    element={<Explore />} />
-              <Route path="/compare"    element={<Compare />} />
-              <Route path="/affinity"   element={<Affinity />} />
-              <Route path="/glossary"   element={<Glossary />} />
-              <Route path="/about"      element={<About />} />
-              <Route path="/historical" element={<Navigate to="/players" replace />} />
+              <Route path="/"                         element={<Navigate to="/game" replace />} />
+              <Route path="/game"                     element={<LineupGame />} />
+              <Route path="/players"                  element={<Players />} />
+              <Route path="/lineups"                  element={<Lineups />} />
+              <Route path="/explore"                  element={<Explore />} />
+              <Route path="/compare"                  element={<Compare />} />
+              <Route path="/affinity"                 element={<Affinity />} />
+              <Route path="/glossary"                 element={<Glossary />} />
+              <Route path="/about"                    element={<About />} />
+              <Route path="/historical"               element={<Navigate to="/players" replace />} />
+              {/* Auth */}
+              <Route path="/login"                    element={<Login />} />
+              <Route path="/register"                 element={<Register />} />
+              <Route path="/profile"                  element={<Profile />} />
+              {/* Blog */}
+              <Route path="/blog"                     element={<Blog />} />
+              <Route path="/blog/:slug"               element={<BlogPost />} />
+              {/* Admin */}
+              <Route path="/admin"                    element={<Navigate to="/admin/articles" replace />} />
+              <Route path="/admin/articles"           element={<ArticleList />} />
+              <Route path="/admin/articles/new"       element={<ArticleEditor />} />
+              <Route path="/admin/articles/:id/edit"  element={<ArticleEditor />} />
             </Routes>
           </main>
         </div>
@@ -174,7 +218,9 @@ export default function App() {
   return (
     <ThemeProvider>
       <LanguageProvider>
-        <AppInner />
+        <AuthProvider>
+          <AppInner />
+        </AuthProvider>
       </LanguageProvider>
     </ThemeProvider>
   );

@@ -119,6 +119,19 @@ html.light .hover\:bg-slate-800:hover { background-color: #c4cad8; }
 .elevated { background: var(--bg-elevated); }
 .border-base { border-color: var(--border); }
 
+/* Blog / makale içerik stili */
+.prose-nba h1 { font-size: 1.8em; font-weight: 700; margin: 1em 0 .5em; }
+.prose-nba h2 { font-size: 1.4em; font-weight: 700; margin: 1em 0 .5em; }
+.prose-nba h3 { font-size: 1.1em; font-weight: 600; margin: 1em 0 .4em; }
+.prose-nba p  { margin: .5em 0; line-height: 1.75; }
+.prose-nba ul { list-style: disc; padding-left: 1.5em; margin: .5em 0; }
+.prose-nba ol { list-style: decimal; padding-left: 1.5em; margin: .5em 0; }
+.prose-nba blockquote { border-left: 3px solid var(--accent); padding-left: 1em; opacity: .8; margin: .5em 0; }
+.prose-nba code { font-family: monospace; background: var(--bg-elevated); padding: .1em .3em; border-radius: 3px; font-size: .9em; }
+.prose-nba img { max-width: 100%; border-radius: 6px; margin: 1em 0; }
+.prose-nba hr  { border: none; border-top: 1px solid var(--border); margin: 1.5em 0; }
+.prose-nba a   { color: var(--accent); text-decoration: underline; }
+
 /* split-pane detail panel slide-in */
 .detail-panel {
   animation: slideInRight 0.18s ease-out;
