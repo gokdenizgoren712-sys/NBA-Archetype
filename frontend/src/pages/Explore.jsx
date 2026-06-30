@@ -213,7 +213,7 @@ export default function Explore() {
 
   return (
     <SplitPane
-      detail={<PlayerDetail player={selected} />}
+      detail={selected ? <PlayerDetail player={selected} /> : null}
       onClose={() => setSelected(null)}
     >
       <div className="flex flex-col h-full min-h-0 overflow-hidden">

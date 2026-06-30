@@ -182,7 +182,7 @@ export default function Glossary() {
 
   return (
     <SplitPane
-      detail={selected ? <CompDetail item={selected} lang={lang} /> : <CompDetail item={null} lang={lang} />}
+      detail={selected ? <CompDetail item={selected} lang={lang} /> : null}
       onClose={() => setSelected(null)}
     >
       <div className="flex flex-col h-full">
