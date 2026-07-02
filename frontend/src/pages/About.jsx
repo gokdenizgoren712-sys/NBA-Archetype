@@ -3,6 +3,18 @@ import { SEO } from "../hooks/useSEO";
 
 const CHANGELOG = [
   {
+    version: "v2.7",
+    date_en: "July 2026",
+    label_en: "UI Refresh — Deep Black + NBA Colors",
+    items_en: [
+      "Backgrounds deepened to near-pure black across the entire app",
+      "NBA red (#C8102E) accent line on the left nav border, top bar, and mobile nav",
+      "Score bars in LineupGame now use NBA blue (#1D428A)",
+      "LineupGame tile widened (max-w-xl → max-w-2xl) for better readability",
+      "All small in-game font sizes bumped +0.5px (8→8.5, 9→9.5, 10→10.5, 11→11.5px)",
+    ],
+  },
+  {
     version: "v2.6",
     date_en: "June 2026",
     label_en: "LineupGame Completion",
