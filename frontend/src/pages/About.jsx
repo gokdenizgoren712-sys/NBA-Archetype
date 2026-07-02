@@ -3,6 +3,18 @@ import { SEO } from "../hooks/useSEO";
 
 const CHANGELOG = [
   {
+    version: "v3.0",
+    date_en: "July 2026",
+    label_en: "Living Platform — Tag Corrections + Confidence Bands + Manual Refresh",
+    items_en: [
+      "Users can now flag incorrect archetypes directly from a player's profile page",
+      "Admin review panel: approve / reject corrections, then apply with one click",
+      "Approved corrections update primary_arch in scores and widen the ground truth set for validation",
+      "Confidence band on score bars and radar: wider range for low-sample players (GP<30)",
+      "Admin data panel: 'Refresh Now' button triggers a full pipeline re-run (fetch + score rebuild)",
+    ],
+  },
+  {
     version: "v2.7",
     date_en: "July 2026",
     label_en: "UI Refresh — Deep Black + NBA Colors",

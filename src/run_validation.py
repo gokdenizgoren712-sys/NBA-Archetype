@@ -56,6 +56,24 @@ def main():
             continue
         ground_truth[norm] = comps
 
+    # Onaylı kullanıcı düzeltmelerini ground truth'a ekle (arch_overrides.json)
+    overrides_path = ROOT / "data" / "arch_overrides.json"
+    if overrides_path.exists():
+        try:
+            overrides = json.loads(overrides_path.read_text())
+            added = 0
+            for player_name, season_map in overrides.items():
+                if not isinstance(season_map, dict):
+                    continue
+                arch = next(reversed(list(season_map.values())), None)
+                if arch:
+                    ground_truth[player_name] = ground_truth.get(player_name, set()) | {arch}
+                    added += 1
+            if added:
+                print(f"[overrides] {added} düzeltme ground truth'a eklendi")
+        except Exception as e:
+            print(f"[UYARI] arch_overrides.json okunamadı: {e}")
+
     if not MERGED.exists():
         print(f"[HATA] {MERGED} yok. Önce: python src/fetch_data.py")
         return

@@ -256,6 +256,11 @@ def _fill_position_from_components(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def _confidence_margin(gp: int) -> float:
+    """GP'ye göre skor güven aralığı. GP≥70→0.02, GP=35→~0.08, GP=1→0.14."""
+    return round(max(0.02, min(0.15, 0.12 * (1 - min(gp, 70) / 70))), 3)
+
+
 def _assign_pos5(df: pd.DataFrame) -> pd.Series:
     """
     POSITION string → birincil PG/SG/SF/PF/C.
@@ -723,6 +728,7 @@ def get_player_scores(player_name: str):
         "modifier_scores": mod_scores,
         "active_modifiers": active_modifiers,
         "role_scores":   role_scores,
+        "confidence_margin": _confidence_margin(int(row.get("GP", 70)) if pd.notna(row.get("GP")) else 70),
     }
 
 
@@ -1492,19 +1498,21 @@ def get_historical_player_scores(season: str, player_name: str):
         v = row.get(col)
         return round(float(v), 1) if v is not None and pd.notna(v) else None
 
+    _gp_val = int(row.get("GP", 70)) if pd.notna(row.get("GP", 70)) else 70
     result = {
-        "name":             row["PLAYER_NAME"],
-        "season":           season,
-        "team":             row.get("TEAM_ABBREVIATION",""),
-        "position":         pos_raw,
-        "gp":               int(row.get("GP",0)) if pd.notna(row.get("GP",0)) else 0,
-        "pts":              _stat("PTS"),
-        "reb":              _stat("REB"),
-        "ast":              _stat("AST"),
-        "bpm":              _stat("BPM"),
-        "scores":           scores,
-        "overall_score":    round(float(overall),3) if overall is not None and pd.notna(overall) else None,
-        "primary_arch":     primary if isinstance(primary, str) else "",
+        "name":               row["PLAYER_NAME"],
+        "season":             season,
+        "team":               row.get("TEAM_ABBREVIATION",""),
+        "position":           pos_raw,
+        "gp":                 _gp_val,
+        "pts":                _stat("PTS"),
+        "reb":                _stat("REB"),
+        "ast":                _stat("AST"),
+        "bpm":                _stat("BPM"),
+        "scores":             scores,
+        "overall_score":      round(float(overall),3) if overall is not None and pd.notna(overall) else None,
+        "primary_arch":       primary if isinstance(primary, str) else "",
+        "confidence_margin":  _confidence_margin(_gp_val),
     }
     if season != "2025-26":
         result["modifier_scores"]  = modifier_scores
@@ -2313,6 +2321,16 @@ class GameScoreBody(BaseModel):
     grade: str
     lineup: list = []
 
+class CorrectionBody(BaseModel):
+    player_name: str
+    season: str = "2025-26"
+    current_arch: str
+    suggested_arch: str
+    note: str = ""
+
+class PatchCorrectionBody(BaseModel):
+    status: str
+
 @app.post("/api/game/score")
 def save_game_score(body: GameScoreBody, user=Depends(get_current_user)):
     if not 0 <= body.pct <= 100:
@@ -2336,6 +2354,113 @@ def get_leaderboard(limit: int = Query(50, le=100)):
             ORDER BY lg.pct DESC LIMIT ?
         """, (limit,)).fetchall()
     return {"entries": [dict(r) for r in rows]}
+
+
+# ── Tag Corrections ───────────────────────────────────────────────────────────
+
+VALID_ARCHES = {"Engine","Ecosystem","Hub","Connector","Creator","Anchor",
+                "Spacer","Finisher","Force","Initiator","Stopper","Rim Runner"}
+
+@app.post("/api/corrections")
+def submit_correction(body: CorrectionBody, user=Depends(get_current_user)):
+    if body.suggested_arch not in VALID_ARCHES:
+        raise HTTPException(400, "Invalid archetype")
+    if body.current_arch == body.suggested_arch:
+        raise HTTPException(400, "Same archetype")
+    with get_conn() as conn:
+        conn.execute(
+            """INSERT INTO tag_corrections
+               (user_id, player_name, season, current_arch, suggested_arch, note)
+               VALUES (?,?,?,?,?,?)""",
+            (int(user["sub"]), body.player_name, body.season,
+             body.current_arch, body.suggested_arch, body.note or None),
+        )
+    return {"ok": True}
+
+@app.get("/api/admin/corrections")
+def admin_list_corrections(status: str = "pending", user=Depends(require_admin)):
+    with get_conn() as conn:
+        rows = conn.execute(
+            """SELECT tc.*, u.username
+               FROM tag_corrections tc LEFT JOIN users u ON tc.user_id = u.id
+               WHERE tc.status = ? ORDER BY tc.created_at DESC""",
+            (status,),
+        ).fetchall()
+    return {"corrections": [dict(r) for r in rows]}
+
+@app.patch("/api/admin/corrections/{correction_id}")
+def patch_correction(correction_id: int, body: PatchCorrectionBody,
+                     user=Depends(require_admin)):
+    if body.status not in ("approved", "rejected", "pending"):
+        raise HTTPException(400, "Invalid status")
+    with get_conn() as conn:
+        row = conn.execute("SELECT id FROM tag_corrections WHERE id=?",
+                           (correction_id,)).fetchone()
+        if not row:
+            raise HTTPException(404)
+        conn.execute("UPDATE tag_corrections SET status=? WHERE id=?",
+                     (body.status, correction_id))
+    return {"ok": True}
+
+@app.post("/api/admin/apply-corrections")
+def apply_corrections(user=Depends(require_admin)):
+    import threading, json as _json
+    overrides_path = ROOT / "data" / "arch_overrides.json"
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT player_name, season, suggested_arch FROM tag_corrections WHERE status='approved'"
+        ).fetchall()
+    if not rows:
+        return {"ok": True, "applied": 0}
+    # Build override dict: {player_name: {season: arch}}
+    overrides: dict = {}
+    if overrides_path.exists():
+        try:
+            overrides = _json.loads(overrides_path.read_text())
+        except Exception:
+            overrides = {}
+    for r in rows:
+        overrides.setdefault(r["player_name"], {})[r["season"]] = r["suggested_arch"]
+    overrides_path.write_text(_json.dumps(overrides, ensure_ascii=False, indent=2))
+    # Rebuild scores in background
+    def _rebuild():
+        try:
+            from src.score_compat import build_score_table
+            build_score_table("2025-26")
+            _load_scores.cache_clear()
+            _load_labeled.cache_clear()
+            _load_lineup_compat.cache_clear()
+        except Exception as e:
+            import logging; logging.getLogger(__name__).error("apply-corrections rebuild: %s", e)
+    threading.Thread(target=_rebuild, daemon=True).start()
+    return {"ok": True, "applied": len(rows)}
+
+
+# ── Manual Refresh ───────────────────────────────────────────────────────────
+
+@app.post("/api/admin/trigger-refresh")
+def trigger_refresh(season: str = "2025-26", user=Depends(require_admin)):
+    import sys as _sys
+    _scripts = ROOT / "scripts"
+    if str(_scripts) not in _sys.path:
+        _sys.path.insert(0, str(_scripts))
+    from refresh import start_refresh, is_running
+    if is_running():
+        return {"ok": False, "reason": "already running"}
+    start_refresh(season)
+    from datetime import datetime as _dt, timezone as _tz
+    return {"ok": True, "started_at": _dt.now(_tz.utc).isoformat()}
+
+@app.get("/api/admin/refresh-status")
+def get_refresh_status(user=Depends(require_admin)):
+    import sys as _sys
+    _scripts = ROOT / "scripts"
+    if str(_scripts) not in _sys.path:
+        _sys.path.insert(0, str(_scripts))
+    from refresh import read_status, is_running
+    status = read_status()
+    status["running"] = is_running()
+    return status
 
 
 # ─── Frontend statik dosyaları (build sonrası) ────────────────────────────────

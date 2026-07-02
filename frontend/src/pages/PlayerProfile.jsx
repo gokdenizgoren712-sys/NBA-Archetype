@@ -5,6 +5,7 @@ import { SEO } from "../hooks/useSEO";
 import RadarProfile from "../components/RadarProfile";
 import ScoreBar from "../components/ScoreBar";
 import PlayerCard from "../components/PlayerCard";
+import { useAuth } from "../contexts/AuthContext";
 
 const CORE = ["Engine","Ecosystem","Hub","Connector","Creator","Anchor","Spacer","Finisher","Force","Initiator","Stopper","Rim Runner"];
 
@@ -91,12 +92,17 @@ export default function PlayerProfile() {
   const navigate = useNavigate();
   const name = decodeURIComponent(rawName || "");
 
+  const { isLoggedIn, token } = useAuth();
   const [detail, setDetail] = useState(null);
   const [career, setCareer] = useState(null);
   const [similar, setSimilar] = useState([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [flagOpen, setFlagOpen] = useState(false);
+  const [flagArch, setFlagArch] = useState("");
+  const [flagNote, setFlagNote] = useState("");
+  const [flagStatus, setFlagStatus] = useState(null); // null | "sending" | "ok" | "err"
 
   useEffect(() => {
     if (!name) return;
@@ -200,6 +206,16 @@ export default function PlayerProfile() {
                     style={{ background: "transparent" }}>
                     {arch || "—"}
                   </span>
+                  {isLoggedIn && arch && (
+                    <button
+                      onClick={() => { setFlagOpen(true); setFlagArch(""); setFlagNote(""); setFlagStatus(null); }}
+                      className="text-[10px] px-1.5 py-0.5 rounded transition-colors"
+                      title="Flag incorrect archetype"
+                      style={{ color: "var(--text-faint)", border: "1px solid var(--border)" }}
+                      onMouseEnter={e => e.currentTarget.style.color = "var(--text-muted)"}
+                      onMouseLeave={e => e.currentTarget.style.color = "var(--text-faint)"}
+                    >⚑ flag</button>
+                  )}
                   {isSmallSample && (
                     <span className="text-[9px] px-1.5 py-0.5 rounded font-medium"
                       style={{ background: "rgba(245,158,11,.15)", color: "#f59e0b" }}>
@@ -229,7 +245,7 @@ export default function PlayerProfile() {
 
           {/* Radar */}
           <Section title="Archetype Radar">
-            <RadarProfile scores={detail.scores} name={name} primaryArch={arch} />
+            <RadarProfile scores={detail.scores} name={name} primaryArch={arch} margin={detail.confidence_margin || 0} />
           </Section>
 
           {/* Stats */}
@@ -253,7 +269,7 @@ export default function PlayerProfile() {
           <Section title="Core Archetype Scores">
             <div className="space-y-1">
               {CORE.map(c => (
-                <ScoreBar key={c} label={c} value={detail.scores?.[c] || 0} highlight={c === arch} />
+                <ScoreBar key={c} label={c} value={detail.scores?.[c] || 0} highlight={c === arch} margin={detail.confidence_margin || 0} />
               ))}
             </div>
           </Section>
@@ -307,6 +323,96 @@ export default function PlayerProfile() {
 
         </div>
       </div>
+
+      {/* Flag archetype modal */}
+      {flagOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.7)" }}
+          onClick={e => { if (e.target === e.currentTarget) setFlagOpen(false); }}>
+          <div className="w-full max-w-sm p-5 rounded-lg space-y-4"
+            style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+                Flag Archetype
+              </h3>
+              <button onClick={() => setFlagOpen(false)} style={{ color: "var(--text-muted)" }}>✕</button>
+            </div>
+
+            <div className="text-xs space-y-1" style={{ color: "var(--text-muted)" }}>
+              <div>Current: <span style={{ color: "var(--accent)" }}>{arch}</span></div>
+              <div className="text-[10px]" style={{ color: "var(--text-faint)" }}>
+                Suggest a correction — an admin will review before it's applied.
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-[11px]" style={{ color: "var(--text-muted)" }}>Suggested archetype</label>
+              <select value={flagArch} onChange={e => setFlagArch(e.target.value)}
+                className="w-full px-3 py-2 rounded text-sm"
+                style={{ background: "var(--bg-base)", border: "1px solid var(--border)", color: "var(--text-primary)" }}>
+                <option value="">— select —</option>
+                {CORE.filter(a => a !== arch).map(a => (
+                  <option key={a} value={a}>{a}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-[11px]" style={{ color: "var(--text-muted)" }}>Note (optional)</label>
+              <textarea value={flagNote} onChange={e => setFlagNote(e.target.value)}
+                rows={2} placeholder="Why do you think this is wrong?"
+                className="w-full px-3 py-2 rounded text-xs resize-none"
+                style={{ background: "var(--bg-base)", border: "1px solid var(--border)", color: "var(--text-primary)" }} />
+            </div>
+
+            {flagStatus === "ok" && (
+              <div className="text-xs text-center py-1" style={{ color: "#4ade80" }}>
+                ✓ Submitted — thanks for the feedback!
+              </div>
+            )}
+            {flagStatus === "err" && (
+              <div className="text-xs text-center py-1" style={{ color: "#f87171" }}>
+                Failed to submit. Please try again.
+              </div>
+            )}
+
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => setFlagOpen(false)}
+                className="text-xs px-3 py-1.5 rounded"
+                style={{ border: "1px solid var(--border)", color: "var(--text-muted)" }}>
+                Cancel
+              </button>
+              <button
+                disabled={!flagArch || flagStatus === "sending" || flagStatus === "ok"}
+                onClick={async () => {
+                  if (!flagArch) return;
+                  setFlagStatus("sending");
+                  try {
+                    const res = await fetch("/api/corrections", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                      body: JSON.stringify({
+                        player_name: name,
+                        season: detail?.season || "2025-26",
+                        current_arch: arch,
+                        suggested_arch: flagArch,
+                        note: flagNote,
+                      }),
+                    });
+                    setFlagStatus(res.ok ? "ok" : "err");
+                    if (res.ok) setTimeout(() => setFlagOpen(false), 1500);
+                  } catch {
+                    setFlagStatus("err");
+                  }
+                }}
+                className="text-xs px-3 py-1.5 rounded font-medium"
+                style={{ background: flagArch ? "var(--accent)" : "var(--border)", color: flagArch ? "#000" : "var(--text-faint)" }}>
+                {flagStatus === "sending" ? "Submitting…" : "Submit"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

@@ -13,9 +13,10 @@ import BlogPost      from "./pages/BlogPost";
 import Login         from "./pages/Login";
 import Register      from "./pages/Register";
 import Profile       from "./pages/Profile";
-import ArticleList   from "./pages/admin/ArticleList";
-import ArticleEditor from "./pages/admin/ArticleEditor";
-import UserList      from "./pages/admin/UserList";
+import ArticleList    from "./pages/admin/ArticleList";
+import ArticleEditor  from "./pages/admin/ArticleEditor";
+import UserList       from "./pages/admin/UserList";
+import CorrectionList from "./pages/admin/CorrectionList";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword  from "./pages/ResetPassword";
 import PlayerProfile  from "./pages/PlayerProfile";
@@ -219,6 +220,7 @@ function AppInner() {
               <Route path="/admin/articles/new"       element={<ArticleEditor />} />
               <Route path="/admin/articles/:id/edit"  element={<ArticleEditor />} />
               <Route path="/admin/users"              element={<UserList />} />
+              <Route path="/admin/corrections"        element={<CorrectionList />} />
             </Routes>
           </main>
         </div>

@@ -60,13 +60,18 @@ export default function RadarProfile({
   name2  = "",
   primaryArch = "",
   primaryArch2 = "",
+  margin = 0,            // güven bandı (0-0.15)
 }) {
+  const showHalo = margin > 0.05 && !scores2;
+  const haloKey = "_halo";
+
   const data = COMP_ORDER
     .filter(c => scores[c] !== undefined)
     .map(c => ({
       comp:  c,
       [name || "Oyuncu"]: scores[c] || 0,
       ...(scores2 ? { [name2 || "Oyuncu 2"]: scores2[c] || 0 } : {}),
+      ...(showHalo ? { [haloKey]: Math.min(1, (scores[c] || 0) + margin) } : {}),
     }));
 
   const color1 = pickColor(primaryArch);
@@ -88,6 +93,18 @@ export default function RadarProfile({
           tick={{ fill: "#475569", fontSize: 9 }}
           tickCount={3}
         />
+        {/* Confidence halo — outer faint polygon */}
+        {showHalo && (
+          <Radar
+            name={haloKey}
+            dataKey={haloKey}
+            stroke="none"
+            fill={color1}
+            fillOpacity={0.07}
+            legendType="none"
+            dot={false}
+          />
+        )}
         <Radar
           name={key1}
           dataKey={key1}

@@ -74,6 +74,18 @@ def init_db():
             lineup_json TEXT,
             created_at  TEXT DEFAULT (datetime('now'))
         );
+
+        CREATE TABLE IF NOT EXISTS tag_corrections (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id         INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            player_name     TEXT NOT NULL,
+            season          TEXT NOT NULL DEFAULT '2025-26',
+            current_arch    TEXT NOT NULL,
+            suggested_arch  TEXT NOT NULL,
+            note            TEXT,
+            status          TEXT NOT NULL DEFAULT 'pending',
+            created_at      TEXT DEFAULT (datetime('now'))
+        );
         """)
         # Migration: add columns to existing DBs that predate these fields
         for col, dfn in [

@@ -298,7 +298,32 @@ def build_score_table(season: str = "2025-26") -> pd.DataFrame:
 
         out["overall_score"] = raw_overall.round(3)
 
+    # Kullanıcı/admin onaylı arketip düzeltmeleri — primary_arch üzerine yaz
+    apply_overrides(out, ROOT / "data" / "arch_overrides.json")
+
     return out
+
+
+def apply_overrides(df: pd.DataFrame, path) -> None:
+    """arch_overrides.json'daki onaylı düzeltmeleri primary_arch'a uygula (in-place)."""
+    from pathlib import Path as _P
+    p = _P(path)
+    if not p.exists():
+        return
+    try:
+        import json as _j
+        overrides = _j.loads(p.read_text())
+    except Exception:
+        return
+    if "primary_arch" not in df.columns or "PLAYER_NAME" not in df.columns:
+        return
+    for player_name, season_map in overrides.items():
+        if not isinstance(season_map, dict):
+            continue
+        # Her sezon değerinin en son kaydını al (birden fazla sezon girişi olabilir)
+        arch = next(reversed(list(season_map.values())), None)
+        if arch:
+            df.loc[df["PLAYER_NAME"] == player_name, "primary_arch"] = arch
 
 
 def _score_vec(row: pd.Series) -> np.ndarray:
