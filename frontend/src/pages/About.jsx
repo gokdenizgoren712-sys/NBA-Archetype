@@ -3,6 +3,18 @@ import { SEO } from "../hooks/useSEO";
 
 const CHANGELOG = [
   {
+    version: "v3.1",
+    date_en: "July 2026",
+    label_en: "Multi-League — G-League + League Nav Icons",
+    items_en: [
+      "G-League players page with full archetype scoring (league-internal percentiles, current season only)",
+      "Custom SVG league icons in the left nav: NBA, G-League, NCAA, EuroLeague",
+      "BPM proxy computed from box-score stats for G-League players (no external scraping)",
+      "NCAA and EuroLeague placeholders added — full data pipelines in v3.2",
+      "Mobile nav filters out Coming Soon league pages to avoid dead taps",
+    ],
+  },
+  {
     version: "v3.0",
     date_en: "July 2026",
     label_en: "Living Platform — Tag Corrections + Confidence Bands + Manual Refresh",

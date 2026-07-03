@@ -17,6 +17,10 @@ import ArticleList    from "./pages/admin/ArticleList";
 import ArticleEditor  from "./pages/admin/ArticleEditor";
 import UserList       from "./pages/admin/UserList";
 import CorrectionList from "./pages/admin/CorrectionList";
+import GLeague        from "./pages/GLeague";
+import NCAAPage       from "./pages/NCAAPage";
+import EuroLeaguePage from "./pages/EuroLeaguePage";
+import { NBAIcon, GLeagueIcon, NCAAIcon, EuroLeagueIcon } from "./components/LeagueIcons";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword  from "./pages/ResetPassword";
 import PlayerProfile  from "./pages/PlayerProfile";
@@ -27,15 +31,18 @@ import { api } from "./api";
 
 /* ── Nav config ──────────────────────────────────────────────────── */
 const NAV = [
-  { to: "/game",     icon: "⬡",  label: "Game"     },
-  { to: "/players",  icon: "👤", label: "Players"  },
-  { to: "/lineups",  icon: "☰",  label: "Lineups"  },
-  { to: "/explore",  icon: "◎",  label: "Explore"  },
-  { to: "/compare",  icon: "⇌",  label: "Compare"  },
-  { to: "/affinity", icon: "⬡",  label: "Affinity" },
-  { to: "/blog",     icon: "✍",  label: "Blog"     },
-  { to: "/glossary", icon: "≡",  label: "Glossary" },
-  { to: "/about",    icon: "ℹ",  label: "About"    },
+  { to: "/game",       icon: "⬡",                label: "Game"    },
+  { to: "/players",    icon: <NBAIcon />,         label: "NBA"     },
+  { to: "/gleague",    icon: <GLeagueIcon />,     label: "G-Lg"   },
+  { to: "/ncaa",       icon: <NCAAIcon />,        label: "NCAA"    },
+  { to: "/euroleague", icon: <EuroLeagueIcon />,  label: "EUR"     },
+  { to: "/lineups",    icon: "☰",                label: "Lineups" },
+  { to: "/explore",    icon: "◎",                label: "Explore" },
+  { to: "/compare",    icon: "⇌",                label: "Compare" },
+  { to: "/affinity",   icon: "⬡",                label: "Affinity"},
+  { to: "/blog",       icon: "✍",                label: "Blog"    },
+  { to: "/glossary",   icon: "≡",                label: "Glossary"},
+  { to: "/about",      icon: "ℹ",                label: "About"   },
 ];
 
 /* ── User button (top-right) ─────────────────────────────────────── */
@@ -149,6 +156,9 @@ function SideNav() {
 }
 
 /* ── Alt nav (mobile) — 2 satır ─────────────────────────────────── */
+// NCAA + EUR are Coming Soon → mobilde gösterme, sidebar'da erişilebilir
+const BOTTOM_NAV = NAV.filter(n => n.to !== "/ncaa" && n.to !== "/euroleague");
+
 function BottomNav() {
   const location = useLocation();
 
@@ -169,14 +179,14 @@ function BottomNav() {
     </div>
   );
 
+  const mid = Math.ceil(BOTTOM_NAV.length / 2);
   return (
     <nav className="md:hidden shrink-0 border-t"
       style={{ background: "var(--bg-surface)", borderColor: "rgba(200,16,46,0.30)" }}>
-      <Row items={NAV.slice(0, 4)} />
+      <Row items={BOTTOM_NAV.slice(0, mid)} />
       <div className="border-t" style={{ borderColor: "var(--border)" }}>
-        <Row items={NAV.slice(4)} />
+        <Row items={BOTTOM_NAV.slice(mid)} />
       </div>
-
     </nav>
   );
 }
@@ -221,6 +231,10 @@ function AppInner() {
               <Route path="/admin/articles/:id/edit"  element={<ArticleEditor />} />
               <Route path="/admin/users"              element={<UserList />} />
               <Route path="/admin/corrections"        element={<CorrectionList />} />
+              {/* League pages */}
+              <Route path="/gleague"                  element={<GLeague />} />
+              <Route path="/ncaa"                     element={<NCAAPage />} />
+              <Route path="/euroleague"               element={<EuroLeaguePage />} />
             </Routes>
           </main>
         </div>

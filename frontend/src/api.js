@@ -51,6 +51,10 @@ export const api = {
   realLineups:     (p) => get("/real-lineups", p),
   affinityLineups: (arch_a, arch_b, limit = 10) => get("/affinity/lineups", { arch_a, arch_b, limit }),
 
+  // G-League
+  gleaguePlayers:      (p) => get("/gleague/players", p),
+  gleaguePlayerScores: (name) => get(`/gleague/players/${encodeURIComponent(name)}/scores`),
+
   // Meta
   meta: () => get("/meta"),
 
