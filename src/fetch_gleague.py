@@ -47,8 +47,8 @@ def fetch_gleague_stats(season: str = "2025-26") -> dict:
             resp = leaguedashplayerstats.LeagueDashPlayerStats(
                 season=season,
                 season_type_all_star="Regular Season",
-                measure_type_simple=measure,
-                per_mode_simple="PerGame",
+                measure_type_detailed_defense=measure,
+                per_mode_detailed="PerGame",
                 league_id_nullable=LEAGUE_ID,
             )
             df = resp.get_data_frames()[0]
@@ -69,7 +69,8 @@ def fetch_gleague_stats(season: str = "2025-26") -> dict:
             bio = leaguedashplayerbiostats.LeagueDashPlayerBioStats(
                 season=season,
                 season_type_all_star="Regular Season",
-                league_id_nullable=LEAGUE_ID,
+                league_id=LEAGUE_ID,
+                per_mode_simple="PerGame",
             )
             df_bio = bio.get_data_frames()[0]
             df_bio.to_parquet(bio_cp)

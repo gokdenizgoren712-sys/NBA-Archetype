@@ -200,7 +200,8 @@ def build_score_table(season: str = "2025-26", league: str = "nba") -> pd.DataFr
 
     # Playoff blending: playoff parquet varsa comp_score'u harmanlıyoruz.
     # overall = 0.70 * reg_comp + 0.30 * playoff_comp  (GP_playoff >= 5 şartı)
-    playoff_p = ROOT / "data" / f"{season.replace('/', '-')}__playoff_merged.parquet"
+    # NBA dışı ligler için playoff parquet yok — prefix ile kontrol et.
+    playoff_p = ROOT / "data" / f"{prefix}{season.replace('/', '-')}__playoff_merged.parquet"
     if playoff_p.exists():
         try:
             pdf = pd.read_parquet(playoff_p)
