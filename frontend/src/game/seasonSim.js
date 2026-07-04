@@ -6,6 +6,7 @@
 
 import { ERA_ARCH_WEIGHTS, getEra, eraIndex } from "./eras";
 import { coachRatingBonus, coachPlayoffBonus } from "./coaches";
+import { awardEffects, isTimeless, isSixthMan } from "./awards";
 
 const clamp01 = v => Math.min(1, Math.max(0, v));
 
@@ -14,16 +15,34 @@ const DIST_PENALTY = [1.00, 0.95, 0.89, 0.82, 0.74, 0.66];
 
 // ── Oyuncunun sim era'daki profili ───────────────────────────────────────────
 // _posPenalty: draft sırasında atanır (doğal=1.0, komşu mevki=0.90, uzak=0.75, FLEX=1.0)
+// TIMELESS (overall ≥ 0.90): era mesafe cezası neredeyse sıfırlanır
 export function playerSimProfile(player, simEra) {
   const overall = clamp01(parseFloat(player.overall_score || 0));
   const arch    = player.primary_arch || "";
   const archW   = Math.min(1.15, Math.max(0.75, (ERA_ARCH_WEIGHTS[simEra.id] || {})[arch] ?? 1.0));
   const homeEra = getEra(player._season);
   const dist    = Math.abs(eraIndex(homeEra) - eraIndex(simEra));
-  const distP   = DIST_PENALTY[Math.min(dist, DIST_PENALTY.length - 1)];
+  const timeless = isTimeless(player);
+  let distP = DIST_PENALTY[Math.min(dist, DIST_PENALTY.length - 1)];
+  if (timeless) distP = Math.max(distP, 0.95);
   const posP    = player._posPenalty ?? 1.0;
   const simQuality = clamp01(overall * archW * distP * posP);
-  return { name: player.PLAYER_NAME, arch, homeEra, dist, archW, distP, posP, overall, simQuality };
+  return { name: player.PLAYER_NAME, arch, homeEra, dist, archW, distP, posP, overall, simQuality, timeless };
+}
+
+// ── Bench pozisyon dengesi ───────────────────────────────────────────────────
+// Bench'te G + F + C gruplarının hepsi varsa küçük buff (+0.008)
+function posGroup(player) {
+  const raw = String(player?.POS5 || player?.POSITION || "").toUpperCase().trim();
+  if (raw === "C" || raw.startsWith("CENTER")) return "C";
+  if (raw === "PG" || raw === "SG" || raw.startsWith("G") || raw.includes("GUARD")) return "G";
+  return "F";
+}
+
+export function benchCoverage(bench = []) {
+  const groups = new Set(bench.map(posGroup));
+  return { G: groups.has("G"), F: groups.has("F"), C: groups.has("C"),
+           balanced: groups.has("G") && groups.has("F") && groups.has("C") };
 }
 
 // ── Takım reytingi ───────────────────────────────────────────────────────────
@@ -31,7 +50,15 @@ export function playerSimProfile(player, simEra) {
 export function computeTeamRating(players, simEra, fit, affinity01 = null, extras = {}) {
   const { bench = [], coach = null } = extras;
   const profiles      = players.map(p => playerSimProfile(p, simEra));
-  const benchProfiles = bench.map(p => ({ ...playerSimProfile(p, simEra), bench: true }));
+  const benchProfiles = bench.map(p => {
+    const prof = { ...playerSimProfile(p, simEra), bench: true };
+    // SIXTH MAN: bench'ten gelince +10% (starter'ken etkisiz)
+    if (isSixthMan(p.PLAYER_NAME)) {
+      prof.simQuality = clamp01(prof.simQuality * 1.10);
+      prof.sixth = true;
+    }
+    return prof;
+  });
 
   const startersQ = profiles.reduce((a, b) => a + b.simQuality, 0) / profiles.length;
   const benchQ    = benchProfiles.length
@@ -45,6 +72,11 @@ export function computeTeamRating(players, simEra, fit, affinity01 = null, extra
     ...benchProfiles.map(p => p.simQuality * 0.85),
   );
 
+  // Ödül tag'leri: MVP/DPOY/Duo → regular, yüzükler → playoff, FMVP → Finals
+  const fx = awardEffects(players, bench);
+  const cover = benchCoverage(bench);
+  if (cover.balanced) { fx.regular += 0.008; fx.notes.push("Balanced bench (G+F+C) +0.8"); }
+
   // NOT: rating bilerek clamp'lenmez — süper takımlar 1.0 tavanına yapışırsa
   // pozisyon/koç farkları tavanda kaybolur; logistic her aralıkla çalışır.
   let rating = 0.42 * rosterQ
@@ -53,7 +85,8 @@ export function computeTeamRating(players, simEra, fit, affinity01 = null, extra
              + 0.12 * (fit?.roleFit  ?? 1.0);
   if (affinity01 != null) rating += (affinity01 - 0.65) * 0.15;
   rating += coachRatingBonus(coach);
-  return { rating, profiles, benchProfiles, starPower };
+  rating += fx.regular;
+  return { rating, profiles, benchProfiles, starPower, fx, benchBalanced: cover.balanced };
 }
 
 // ── Tek maç ──────────────────────────────────────────────────────────────────
@@ -81,14 +114,14 @@ const PLAYOFF_ROUNDS = [
   { key: "F",    label: "NBA Finals",        base: 0.83 },
 ];
 
-// Best-of-7, 2-2-1-1-1 formatı
-function playSeries(myRating, opp, homeAdv, rand) {
+// Best-of-7, 2-2-1-1-1 formatı. boost: seri bazlı ek reyting (ör. FMVP geni Finals'te)
+function playSeries(myRating, opp, homeAdv, rand, boost = 0) {
   let w = 0, l = 0;
   const games = [];
   while (w < 4 && l < 4) {
     const gameNo = w + l;
     const home = [0, 1, 4, 6].includes(gameNo) ? homeAdv : !homeAdv;
-    const won = playGame(myRating, opp, home, rand);
+    const won = playGame(myRating + boost, opp, home, rand);
     games.push(won);
     won ? w++ : l++;
   }
@@ -109,7 +142,7 @@ function winsToSeed(wins) {
 // ── Tam sezon ────────────────────────────────────────────────────────────────
 export function simulateSeason(players, simEra, fit, affinity01 = null, extras = {}) {
   const rand = Math.random;
-  const { rating, profiles, benchProfiles, starPower } =
+  const { rating, profiles, benchProfiles, starPower, fx, benchBalanced } =
     computeTeamRating(players, simEra, fit, affinity01, extras);
   const coach = extras.coach || null;
 
@@ -138,8 +171,9 @@ export function simulateSeason(players, simEra, fit, affinity01 = null, extras =
   const madePlayoffs = wins >= 41;
   const seed = madePlayoffs ? winsToSeed(wins) : null;
 
-  // Playoff koşusu: yıldız gücü playoffta daha çok konuşur + koç şampiyonluk DNA'sı
-  const playoffRating = 0.82 * effRating + 0.18 * starPower + coachPlayoffBonus(coach);
+  // Playoff koşusu: yıldız gücü + koç DNA'sı + Championship yüzük bonusu
+  const playoffRating = 0.82 * effRating + 0.18 * starPower
+                      + coachPlayoffBonus(coach) + (fx?.playoff ?? 0);
   const playoffRounds = [];
   let champion = false;
   if (madePlayoffs) {
@@ -148,7 +182,9 @@ export function simulateSeason(players, simEra, fit, affinity01 = null, extras =
       const seedEdge = r === 0 ? (8 - seed) * 0.008 : 0;   // yüksek seed R1'de daha zayıf rakip
       const opp = clamp01(round.base + (rand() - 0.5) * 0.05 - seedEdge);
       const homeAdv = r === 3 ? rand() < 0.5 : seed <= 4;
-      const series = playSeries(playoffRating, opp, homeAdv, rand);
+      // FMVP geni yalnızca Finals serisinde devreye girer
+      const seriesBoost = r === 3 ? (fx?.finals ?? 0) : 0;
+      const series = playSeries(playoffRating, opp, homeAdv, rand, seriesBoost);
       playoffRounds.push({ ...round, opp, ...series });
       if (!series.won) break;
       if (r === 3) champion = true;
@@ -176,6 +212,7 @@ export function simulateSeason(players, simEra, fit, affinity01 = null, extras =
 
   return {
     simEra, rating, playoffRating, profiles, benchProfiles, coach, starPower,
+    tagNotes: fx?.notes ?? [], benchBalanced,
     gameLog, wins, losses,
     bestStreak, worstSkid: Math.abs(worstSkid),
     madePlayoffs, seed,

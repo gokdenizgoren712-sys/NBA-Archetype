@@ -196,6 +196,16 @@ export default function SeasonSimPanel({ players, simEra, fit, affinity01, bench
             </div>
           )}
 
+          {/* Aktif tag etkileri */}
+          {stage === "done" && result.tagNotes?.length > 0 && (
+            <div className="space-y-1 border-t border-slate-800 pt-2.5">
+              <div className="text-[9.5px] text-slate-600 uppercase tracking-widest">Active Tag Effects</div>
+              {result.tagNotes.map((n, i) => (
+                <div key={i} className="text-[10.5px] text-slate-400">• {n}</div>
+              ))}
+            </div>
+          )}
+
           {/* Run it back */}
           {stage === "done" && (
             <button onClick={run}

@@ -3,6 +3,20 @@ import { SEO } from "../hooks/useSEO";
 
 const CHANGELOG = [
   {
+    version: "v3.5 — Phase 2.5",
+    date_en: "July 2026",
+    label_en: "Court View + Player Tags",
+    items_en: [
+      "Split-pane game: controls on the left, a live half-court on the right — always visible while drafting",
+      "Free rearranging: tap a player then a slot to move or swap, any time between picks (penalties recompute live)",
+      "Balanced bench buff: covering Guard + Forward + Center on the bench earns a small rating bonus",
+      "Real-history player tags: MVP, DPOY, Champion (rings), Finals MVP, 6th Man, Dynamic Duo, Timeless, Versatile",
+      "Tag effects in the sim: MVP/DPOY boost the season, rings boost playoffs, Finals MVP activates only in the Finals, 6th Man only off the bench",
+      "Dynamic Duos (Jordan+Pippen, Shaq+Kobe, Jokic+Murray...) activate when both are drafted",
+      "Timeless stars (overall ≥ 90) shrug off era distance penalties — computed from data, not curated",
+    ],
+  },
+  {
     version: "v3.5 — Phase 2",
     date_en: "July 2026",
     label_en: "Game Overhaul — 9-Man Rosters, Position Penalties, Coach Draft",

@@ -5,6 +5,8 @@ import { SEO } from "../hooks/useSEO";
 import { ERAS, ERA_ARCH_WEIGHTS, ERA_META_BLURB, getEra } from "../game/eras";
 import SeasonSimPanel from "../game/SeasonSimPanel";
 import { COACHES } from "../game/coaches";
+import { getPlayerTags } from "../game/awards";
+import CourtBoard from "../game/CourtBoard";
 
 const POSITIONS = ["PG", "SG", "SF", "PF", "C"];
 
@@ -243,12 +245,14 @@ function PlayerCard({ player, season, discover, onClick, dimmed }) {
 }
 
 // ── Lineup slot ───────────────────────────────────────────────────────────────
-function LineupSlot({ pos, player, bench=false }) {
+function LineupSlot({ pos, player, bench=false, selected=false, canTap=false, onTap }) {
   const isPrimary = !bench && player && getPrimaryPos(player) === pos;
   const posLabel = bench ? "BENCH" : pos;
   return (
-    <div className={`flex-1 rounded-lg p-1.5 border text-center min-w-0 transition-all
-      ${player?(bench?"border-slate-600/50 bg-slate-800/30":"border-blue-500/40 bg-blue-900/15"):"border-slate-800 bg-slate-900/60"}`}>
+    <div onClick={()=>canTap&&onTap&&onTap(pos)}
+      className={`flex-1 rounded-lg p-1.5 border text-center min-w-0 transition-all
+      ${selected?"border-yellow-400 shadow-[0_0_8px_rgba(250,204,21,.35)]":player?(bench?"border-slate-600/50 bg-slate-800/30":"border-blue-500/40 bg-blue-900/15"):"border-slate-800 bg-slate-900/60"}
+      ${canTap?"cursor-pointer":""}`}>
       <div className={`text-[8.5px] uppercase tracking-wider mb-0.5 ${bench?"text-slate-600":POS_COLORS[pos]?.split(" ")[1]||"text-slate-600"}`}>{posLabel}</div>
       {player ? (
         <>
@@ -508,7 +512,7 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
               <div key={pos} className="flex items-center gap-2">
                 <span className={`text-[9.5px] font-bold px-1.5 py-0.5 rounded border shrink-0 ${POS_COLORS[pos]||""}`}>{pos}</span>
                 <span className="text-sm text-white font-medium flex-1 min-w-0 truncate">{p.PLAYER_NAME}</span>
-                {isFlex(p)&&<span className="text-[8.5px] text-violet-400 shrink-0">FLEX</span>}
+                {isFlex(p)&&<span className="text-[8.5px] text-violet-400 shrink-0">VERS</span>}
                 {pen<1&&<span className="text-[9px] text-red-400 shrink-0">{pen<=0.75?"−25%":"−10%"}</span>}
                 <span className="text-[10.5px] text-blue-400 shrink-0">{p.primary_arch||"—"}</span>
                 <span className="text-[10.5px] text-slate-500 shrink-0">{(p._season||"").slice(0,4)}</span>
@@ -949,7 +953,7 @@ export default function LineupGame() {
   const [pickedPlayer, setPickedPlayer] = useState(null);
   const [fitResult, setFitResult]   = useState(null);
   const [statusMsg, setStatusMsg]   = useState("");
-  const [primaryCount, setPrimaryCount] = useState(0); // kimya sayacı
+  const [moveSrc, setMoveSrc]       = useState(null); // saha üzerinde taşınan slot
 
   // Çark
   const [spinSeasons, setSpinS] = useState(false);
@@ -975,6 +979,26 @@ export default function LineupGame() {
 
   const filledSlots = ALL_SLOTS.filter(p=>lineup[p]!==null);
   const emptySlots  = ALL_SLOTS.filter(p=>lineup[p]===null);
+  // Kimya: mevcut dizilime göre türetilir (taşıma/swap sonrası güncel kalır)
+  const primaryCount = POSITIONS.filter(p=>lineup[p]&&getPrimaryPos(lineup[p])===p).length;
+
+  // ── Saha üzerinde taşı / takas et ─────────────────────────────────────────
+  const canRearrange = ["spin_season","spin_team","fetching","pick_player","pick_coach"].includes(phase);
+  const handleSlotTap = useCallback((slot)=>{
+    const cur = lineupRef.current;
+    if(moveSrc==null){
+      if(cur[slot]) setMoveSrc(slot);
+      return;
+    }
+    if(moveSrc===slot){ setMoveSrc(null); return; }
+    const place=(pl,s)=>pl?{...pl,_assignedPos:s,_isBench:!POSITIONS.includes(s),
+                            _posPenalty:posPenaltyFor(pl,s),
+                            _isPrimary:POSITIONS.includes(s)&&getPrimaryPos(pl)===s}:null;
+    const nl={...cur,[slot]:place(cur[moveSrc],slot),[moveSrc]:place(cur[slot],moveSrc)};
+    setLineup(nl);
+    lineupRef.current=nl;
+    setMoveSrc(null);
+  },[moveSrc]);
 
   const [affinityMatrix, setAffinityMatrix] = useState(null);
 
@@ -1151,7 +1175,6 @@ export default function LineupGame() {
   const handlePickPos = (pos) => {
     const isStarter = POSITIONS.includes(pos);
     const isPrimary = isStarter && getPrimaryPos(pickedPlayer) === pos;
-    if(isPrimary) setPrimaryCount(c=>c+1);
 
     const enriched={...pickedPlayer,_season:chosenSeason,_team:chosenTeam,_isPrimary:isPrimary,
                     _assignedPos:pos,_isBench:!isStarter,
@@ -1163,9 +1186,8 @@ export default function LineupGame() {
 
     const filled=ALL_SLOTS.filter(p=>newLineup[p]!==null);
     if(filled.length===ALL_SLOTS.length){
-      const fit=computeLineupFit(POSITIONS.map(p=>newLineup[p]));
-      setFitResult(fit);
-      // Koç draft'ı: 4 rastgele aday arasından seç
+      // Koç draft'ı: 4 rastgele aday. Fit, koç seçilirken hesaplanır
+      // (pick_coach sırasında dizilim hâlâ değiştirilebilir).
       setCoachOptions([...COACHES].sort(()=>Math.random()-0.5).slice(0,4));
       setPhase("pick_coach");
     } else if(doubleActive){
@@ -1194,7 +1216,7 @@ export default function LineupGame() {
     setStatusMsg("");
     setSpinS(false);
     setSpinT(false);
-    setPrimaryCount(0);
+    setMoveSrc(null);
     setJokers({reTeam:true,reYear:true,reBoth:true,double:true,discover:true});
     setDoubleActive(false);
     setDiscoverActive(false);
@@ -1213,7 +1235,7 @@ export default function LineupGame() {
       description="Build the greatest 5-man lineup in NBA history. Pick players from any era — 1983 to today — and see how well your roster fits together across archetypes and eras."
       path="/game"
     />
-    <div className="p-4 sm:p-6 max-w-2xl mx-auto space-y-3 pb-6">
+    <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-3 pb-6">
 
       {/* Başlık */}
       <div>
@@ -1223,13 +1245,24 @@ export default function LineupGame() {
         </p>
       </div>
 
-      {/* Lineup bar — starters + bench */}
-      <div className="flex gap-1">
-        {POSITIONS.map(pos=><LineupSlot key={pos} pos={pos} player={lineup[pos]}/>)}
+      {phase!=="complete"&&(
+      <div className="flex flex-col lg:flex-row gap-4 items-start">
+
+      {/* ── SOL PANEL: kontroller ── */}
+      <div className="w-full lg:w-[430px] shrink-0 min-w-0 space-y-3">
+
+      {/* Lineup bar (mobil) — desktop'ta sağdaki saha görünümü kullanılır */}
+      <div className="flex gap-1 lg:hidden">
+        {POSITIONS.map(pos=><LineupSlot key={pos} pos={pos} player={lineup[pos]}
+          selected={moveSrc===pos} canTap={canRearrange} onTap={handleSlotTap}/>)}
       </div>
-      <div className="flex gap-1 opacity-80">
-        {BENCH_SLOTS.map(pos=><LineupSlot key={pos} pos={pos} player={lineup[pos]} bench/>)}
+      <div className="flex gap-1 opacity-80 lg:hidden">
+        {BENCH_SLOTS.map(pos=><LineupSlot key={pos} pos={pos} player={lineup[pos]} bench
+          selected={moveSrc===pos} canTap={canRearrange} onTap={handleSlotTap}/>)}
       </div>
+      {canRearrange&&moveSrc&&(
+        <p className="text-[9.5px] text-yellow-400/90 lg:hidden">Moving {lineup[moveSrc]?.PLAYER_NAME?.split(" ").slice(-1)[0]} — tap a destination slot</p>
+      )}
 
       {/* İlerleme */}
       {phase!=="idle"&&phase!=="pick_era"&&phase!=="complete"&&(
@@ -1321,7 +1354,7 @@ export default function LineupGame() {
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
             <div className="text-[10.5px] text-slate-600 uppercase tracking-widest">How it works</div>
             <p className="text-sm text-slate-300 leading-relaxed">
-              Each round the wheels spin: one for <span className="text-blue-400 font-medium">era</span>, one for <span className="text-blue-400 font-medium">team</span>. Pick one player from that roster, then slot them into a starting position or the bench — <span className="text-slate-200">9 spots total</span> (5 starters + 4 bench). Off-position starters cost −10% / −25% unless they're <span className="text-violet-300">FLEX</span> (Versatile tag). Finish by drafting a <span className="text-slate-200">coach</span> — O/D grades and championship rings feed the sim.
+              Each round the wheels spin: one for <span className="text-blue-400 font-medium">era</span>, one for <span className="text-blue-400 font-medium">team</span>. Pick one player from that roster, then slot them into a starting position or the bench — <span className="text-slate-200">9 spots total</span> (5 starters + 4 bench), and you can rearrange freely between picks. Off-position starters cost −10% / −25% unless they're <span className="text-violet-300">VERSATILE</span>. A bench covering Guard + Forward + Center earns a buff. Real-history tags feed the sim too: <span className="text-yellow-300">MVP</span>, <span className="text-sky-300">DPOY</span>, <span className="text-amber-300">🏆 Champion</span>, <span className="text-orange-300">Finals MVP</span>, <span className="text-orange-400">6th Man</span>, <span className="text-emerald-300">Dynamic Duo</span>, <span className="text-purple-300">Timeless</span>. Finish by drafting a <span className="text-slate-200">coach</span>.
             </p>
             <p className="text-sm text-slate-400 leading-relaxed">
               After 5 picks your lineup is scored in two stages. First, each player's <span className="text-slate-300">quality</span> is adjusted by how meta their archetype was in their era — a Spacer in the Dead Ball era scores lower than in the Small Ball era. Then the lineup's <span className="text-slate-300">coverage</span> measures whether your roster collectively addresses Creation · Spacing · Defense · Finishing. One great specialist covers their pillar; duplicates don't stack.
@@ -1425,24 +1458,32 @@ export default function LineupGame() {
                 <div className="text-white font-semibold">{pickedPlayer.PLAYER_NAME}</div>
                 <div className="text-xs text-slate-500 mt-0.5">{chosenSeason} · {chosenTeam}</div>
                 <div className="flex gap-1 mt-1.5 flex-wrap">
-                  {isFlex(pickedPlayer)&&(
-                    <span className="text-[9.5px] px-1.5 py-0.5 rounded border font-bold bg-violet-900/50 text-violet-300 border-violet-600/60"
-                      title="Versatile — plays any position with no penalty">
-                      FLEX
-                    </span>
-                  )}
                   {eligible.map(p=>(
                     <span key={p} className={`text-[9.5px] px-1.5 py-0.5 rounded border font-bold ${POS_COLORS[p]||""}`}>
                       {p}{p===primary?" ★":""}
                     </span>
                   ))}
                 </div>
+                {(()=>{
+                  const tags=getPlayerTags(pickedPlayer);
+                  return tags.length>0&&(
+                    <div className="flex gap-1 mt-1.5 flex-wrap">
+                      {tags.map(t=>(
+                        <span key={t.key} title={t.detail}
+                          className="text-[8.5px] px-1.5 py-0.5 rounded border font-semibold"
+                          style={{color:t.color,borderColor:t.color+"55",background:t.color+"14"}}>
+                          {t.label}
+                        </span>
+                      ))}
+                    </div>
+                  );
+                })()}
               </div>
               <button onClick={()=>{setPickedPlayer(null);setPhase("pick_player");}}
                 className="text-slate-600 hover:text-slate-300 text-xs">← Back</button>
             </div>
             <div className="text-xs text-slate-500 mb-2">
-              Which position? (★ = primary → chemistry bonus{isFlex(pickedPlayer)?" · FLEX: no penalty anywhere":" · off-position costs −10% / −25%"})
+              Which position? (★ = primary → chemistry bonus{isFlex(pickedPlayer)?" · VERSATILE: no penalty anywhere":" · off-position costs −10% / −25%"})
             </div>
             <div className="flex gap-2 flex-wrap">
               {POSITIONS.filter(p=>!lineup[p]).map(pos=>{
@@ -1458,7 +1499,7 @@ export default function LineupGame() {
                                       :"bg-slate-900/50 border-slate-800 text-slate-500 hover:bg-slate-800"}`}>
                     <div>{pos}{isPrim?" ⭐":""}</div>
                     {penLabel&&<div className="text-[8.5px] font-medium text-red-400/90">{penLabel}</div>}
-                    {!penLabel&&!isPrim&&isFlex(pickedPlayer)&&<div className="text-[8.5px] font-medium text-violet-400">flex</div>}
+                    {!penLabel&&!isPrim&&isFlex(pickedPlayer)&&<div className="text-[8.5px] font-medium text-violet-400">vers.</div>}
                   </button>
                 );
               })}
@@ -1495,7 +1536,13 @@ export default function LineupGame() {
           <div className="grid grid-cols-2 gap-2">
             {coachOptions.map(c=>(
               <button key={c.name}
-                onClick={()=>{setCoach(c);setPhase("complete");}}
+                onClick={()=>{
+                  setCoach(c);
+                  setMoveSrc(null);
+                  const fit=computeLineupFit(POSITIONS.map(p=>lineupRef.current[p]));
+                  setFitResult(fit);
+                  setPhase("complete");
+                }}
                 className="text-left rounded-xl border border-slate-700 bg-slate-800/50 p-3 transition-all hover:border-blue-500 hover:scale-[1.02]">
                 <div className="text-sm font-bold text-white">{c.name}</div>
                 <div className="text-[9.5px] text-slate-500 mt-0.5">{c.years}</div>
@@ -1513,9 +1560,24 @@ export default function LineupGame() {
         </div>
       )}
 
+      </div>{/* sol panel sonu */}
+
+      {/* ── SAĞ PANEL: yarım saha (desktop) ── */}
+      <div className="hidden lg:block flex-1 min-w-0">
+        <div className="sticky top-2">
+          <CourtBoard lineup={lineup} coach={coach} moveSrc={moveSrc}
+            canRearrange={canRearrange} onSlotTap={handleSlotTap} getPrimaryPos={getPrimaryPos}/>
+        </div>
+      </div>
+
+      </div>
+      )}
+
       {/* === COMPLETE === */}
       {phase==="complete"&&fitResult&&(
-        <ScoreReveal fit={fitResult} lineup={lineup} primaryCount={primaryCount} roundHistory={roundHistoryRef.current} onReset={resetGame} lang={lang} affinityMatrix={affinityMatrix} simEra={simEra} coach={coach}/>
+        <div className="max-w-2xl mx-auto space-y-3">
+          <ScoreReveal fit={fitResult} lineup={lineup} primaryCount={primaryCount} roundHistory={roundHistoryRef.current} onReset={resetGame} lang={lang} affinityMatrix={affinityMatrix} simEra={simEra} coach={coach}/>
+        </div>
       )}
     </div>
     </div>
