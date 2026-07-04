@@ -8,7 +8,7 @@ import { useAuth } from "../contexts/AuthContext";
 
 const MONTHS = ["OCT", "NOV", "DEC", "JAN", "FEB", "MAR", "APR"];
 
-export default function SeasonSimPanel({ players, simEra, fit, affinity01 }) {
+export default function SeasonSimPanel({ players, simEra, fit, affinity01, bench = [], coach = null }) {
   const { isLoggedIn, token } = useAuth();
   const [result, setResult]           = useState(null);
   const [revealGames, setRevealGames] = useState(0);
@@ -21,7 +21,7 @@ export default function SeasonSimPanel({ players, simEra, fit, affinity01 }) {
 
   const run = () => {
     clearInterval(timerRef.current);
-    const res = simulateSeason(players, simEra, fit, affinity01);
+    const res = simulateSeason(players, simEra, fit, affinity01, { bench, coach });
     setResult(res);
     setRevealGames(0);
     setRevealRounds(0);
@@ -72,7 +72,15 @@ export default function SeasonSimPanel({ players, simEra, fit, affinity01 }) {
     <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
       <div className="flex items-center justify-between">
         <div className="text-[10.5px] text-slate-600 uppercase tracking-widest">Season Simulation</div>
-        <span className={`text-[9.5px] px-1.5 py-0.5 rounded border ${simEra.bg} ${simEra.color}`}>{simEra.label}</span>
+        <div className="flex items-center gap-1.5">
+          {coach && (
+            <span className="text-[9.5px] px-1.5 py-0.5 rounded border border-slate-700 text-slate-300"
+              title={`O:${coach.off} D:${coach.def}${coach.champs ? ` · ${coach.champs}× champ` : ""}`}>
+              🧠 {coach.name.split(" ").slice(-1)[0]}
+            </span>
+          )}
+          <span className={`text-[9.5px] px-1.5 py-0.5 rounded border ${simEra.bg} ${simEra.color}`}>{simEra.label}</span>
+        </div>
       </div>
 
       {/* === IDLE === */}
@@ -80,9 +88,10 @@ export default function SeasonSimPanel({ players, simEra, fit, affinity01 }) {
         <div className="space-y-3">
           <p className="text-[11.5px] text-slate-400 leading-relaxed">
             Take this roster through an 82-game season in the <span className={simEra.color}>{simEra.label}</span>.
-            Each player's archetype is re-weighted for the era's meta, plus a penalty for how far they are from
-            their home era. Win 50%+ to make the playoffs, then survive four best-of-7 rounds.
-            The same five won't always get the same result.
+            Each player's archetype is re-weighted for the era's meta, plus penalties for era distance and
+            off-position minutes. Starters carry ~78% of the load — your bench covers the rest
+            {coach ? <> — and <span className="text-slate-300">{coach.name}</span> {coach.champs > 0 ? `brings ${coach.champs} ring${coach.champs > 1 ? "s" : ""} of playoff DNA` : "runs the sideline"}</> : ""}.
+            Win 50%+ to make the playoffs, then survive four best-of-7 rounds.
           </p>
           <button onClick={run}
             className="w-full py-3 bg-emerald-700 hover:bg-emerald-600 text-white rounded-xl font-semibold transition-colors">
@@ -164,17 +173,19 @@ export default function SeasonSimPanel({ players, simEra, fit, affinity01 }) {
           {stage === "done" && (
             <div className="space-y-1.5 border-t border-slate-800 pt-2.5">
               <div className="text-[9.5px] text-slate-600 uppercase tracking-widest">Era Performance</div>
-              {result.profiles.map((pr, i) => {
+              {[...result.profiles, ...(result.benchProfiles || [])].map((pr, i) => {
                 const qPct = Math.round(pr.simQuality * 100);
                 const metaUp   = pr.archW > 1.02;
                 const metaDown = pr.archW < 0.92;
                 return (
-                  <div key={i} className="flex items-center gap-2">
+                  <div key={i} className={`flex items-center gap-2 ${pr.bench ? "opacity-70" : ""}`}>
+                    {pr.bench && <span className="text-[8px] px-1 rounded bg-slate-800 text-slate-500 shrink-0">B</span>}
                     <span className="text-[10.5px] text-white flex-1 truncate">{pr.name?.split(" ").slice(-1)[0]}</span>
                     <span className="text-[9px] text-slate-600 shrink-0">{pr.arch}</span>
                     {metaUp   && <span className="text-[8.5px] text-emerald-500 shrink-0">↑meta</span>}
                     {metaDown && <span className="text-[8.5px] text-red-500 shrink-0">↓meta</span>}
                     {pr.dist > 0 && <span className="text-[8.5px] text-amber-600 shrink-0">−{pr.dist} era</span>}
+                    {pr.posP != null && pr.posP < 1 && <span className="text-[8.5px] text-red-400 shrink-0">{pr.posP <= 0.75 ? "−25% pos" : "−10% pos"}</span>}
                     <div className="w-16 h-1.5 bg-slate-800 rounded-full overflow-hidden shrink-0">
                       <div className="h-full rounded-full" style={{ width: `${qPct}%`, background: qPct >= 70 ? "#059669" : qPct >= 50 ? "#2a3d6b" : "#7f1d1d" }} />
                     </div>

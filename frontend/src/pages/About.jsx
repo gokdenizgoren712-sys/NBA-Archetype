@@ -3,6 +3,19 @@ import { SEO } from "../hooks/useSEO";
 
 const CHANGELOG = [
   {
+    version: "v3.5 — Phase 2",
+    date_en: "July 2026",
+    label_en: "Game Overhaul — 9-Man Rosters, Position Penalties, Coach Draft",
+    items_en: [
+      "Rosters expanded to 9 spots: 5 starters + 4 bench — starters carry ~78% of the simulation load",
+      "Positional fit penalties: natural spot is free, one position off −10%, way off −25%",
+      "FLEX players (Versatile tag) slot anywhere with no penalty — computed from data, not hand-picked",
+      "Coach draft: 40 curated coaches with O/D grades that shift your season rating",
+      "Championship coaches carry playoff DNA — each ring boosts your playoff rating (Phil Jackson caps the scale)",
+      "OFF GURU / DEF GURU coach tags, bench-aware star power, and per-slot penalty preview while drafting",
+    ],
+  },
+  {
     version: "v3.5 — Phase 1",
     date_en: "July 2026",
     label_en: "Game Overhaul — Season Simulation",

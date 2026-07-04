@@ -4,6 +4,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { SEO } from "../hooks/useSEO";
 import { ERAS, ERA_ARCH_WEIGHTS, ERA_META_BLURB, getEra } from "../game/eras";
 import SeasonSimPanel from "../game/SeasonSimPanel";
+import { COACHES } from "../game/coaches";
 
 const POSITIONS = ["PG", "SG", "SF", "PF", "C"];
 
@@ -51,6 +52,22 @@ function getEligiblePos(player) {
 }
 function getPrimaryPos(player) { return getEligiblePos(player)[0]; }
 
+// ── Faz 2: bench + pozisyon cezası ───────────────────────────────────────────
+const BENCH_SLOTS = ["B1","B2","B3","B4"];
+const ALL_SLOTS   = [...POSITIONS, ...BENCH_SLOTS];
+
+// FLEX: Versatile tag'i geçen oyuncular her mevkide cezasız (LeBron/Jokic tipi)
+function isFlex(player) { return (parseFloat(player?.["score_Versatile"] ?? 0) || 0) >= 0.75; }
+
+// Doğal mevki = ceza yok; 1 adım uzak = −10%; 2+ adım = −25%; bench = ceza yok
+function posPenaltyFor(player, pos) {
+  if (!POSITIONS.includes(pos)) return 1.0;
+  if (isFlex(player)) return 1.0;
+  const nat = getPrimaryPos(player);
+  const d = Math.abs(POSITIONS.indexOf(pos) - POSITIONS.indexOf(nat));
+  return d === 0 ? 1.0 : d === 1 ? 0.90 : 0.75;
+}
+
 const POS_COLORS = {
   PG:"bg-blue-900/60 text-blue-300 border-blue-700/50",
   SG:"bg-sky-900/60 text-sky-300 border-sky-700/50",
@@ -68,13 +85,14 @@ function computePlayerFit(p) {
   const defense   = Math.min(1, Math.max(_s("Anchor")*1.10, _s("Stopper"), _s("Two-Way")*0.90, _s("Force")*0.65));
   const finishing = Math.min(1, Math.max(_s("Finisher"), _s("Rim Runner")*0.95, _s("Force")*0.75, _s("Slashing")*0.82));
   const overall   = Math.min(1, Math.max(0, parseFloat(p.overall_score || 0)));
-  // Oyuncu kalitesi = overall × era faktörü (kendi erasındaki değeri)
+  // Oyuncu kalitesi = overall × era faktörü × pozisyon cezası (Faz 2)
   const era = getEra(p._season);
   const arch = p.primary_arch || "";
   const eraWeight = (ERA_ARCH_WEIGHTS[era.id] || {})[arch] ?? 1.0;
   const eraFactor = Math.min(1.15, Math.max(0.75, eraWeight));
-  const quality = Math.min(1, overall * eraFactor);
-  return { creation, spacing, defense, finishing, overall, quality, eraFactor, era };
+  const posPenalty = p._posPenalty ?? 1.0;
+  const quality = Math.min(1, overall * eraFactor * posPenalty);
+  return { creation, spacing, defense, finishing, overall, quality, eraFactor, era, posPenalty };
 }
 
 // ── Lineup fit hesaplama ──────────────────────────────────────────────────────
@@ -225,12 +243,13 @@ function PlayerCard({ player, season, discover, onClick, dimmed }) {
 }
 
 // ── Lineup slot ───────────────────────────────────────────────────────────────
-function LineupSlot({ pos, player }) {
-  const isPrimary = player && getPrimaryPos(player) === pos;
+function LineupSlot({ pos, player, bench=false }) {
+  const isPrimary = !bench && player && getPrimaryPos(player) === pos;
+  const posLabel = bench ? "BENCH" : pos;
   return (
     <div className={`flex-1 rounded-lg p-1.5 border text-center min-w-0 transition-all
-      ${player?"border-blue-500/40 bg-blue-900/15":"border-slate-800 bg-slate-900/60"}`}>
-      <div className={`text-[8.5px] uppercase tracking-wider mb-0.5 ${POS_COLORS[pos]?.split(" ")[1]||"text-slate-600"}`}>{pos}</div>
+      ${player?(bench?"border-slate-600/50 bg-slate-800/30":"border-blue-500/40 bg-blue-900/15"):"border-slate-800 bg-slate-900/60"}`}>
+      <div className={`text-[8.5px] uppercase tracking-wider mb-0.5 ${bench?"text-slate-600":POS_COLORS[pos]?.split(" ")[1]||"text-slate-600"}`}>{posLabel}</div>
       {player ? (
         <>
           <div className="text-[10.5px] text-white font-semibold truncate leading-tight">
@@ -339,7 +358,7 @@ function analyzeLineup(fit, lineup, roundHistory=[]) {
 }
 
 // ── Sonuç ekranı ──────────────────────────────────────────────────────────────
-function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, affinityMatrix, simEra }) {
+function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, affinityMatrix, simEra, coach }) {
   const { isLoggedIn, token } = useAuth();
   const analysis  = analyzeLineup(fit, lineup, roundHistory);
   const eraResult = computeLineupEraFit(lineup);
@@ -368,7 +387,7 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
   // Auto-save score (once on mount, if logged in)
   useEffect(() => {
     if (!isLoggedIn || !token) return;
-    const players = POSITIONS.map(p => lineup[p]).filter(Boolean).map(p => p.PLAYER_NAME);
+    const players = ALL_SLOTS.map(p => lineup[p]).filter(Boolean).map(p => p.PLAYER_NAME);
     fetch("/api/game/score", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -424,6 +443,7 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
                 <span className={`text-[8.5px] shrink-0 ${pp.era.color}`}>{pp.era.short}</span>
                 {eraBonus && <span className="text-[8.5px] text-emerald-500 shrink-0">↑era</span>}
                 {eraPenalty && <span className="text-[8.5px] text-red-500 shrink-0">↓era</span>}
+                {(pp.posPenalty ?? 1) < 1 && <span className="text-[8.5px] text-red-400 shrink-0">↓pos</span>}
                 <div className="w-16 h-1.5 bg-slate-800 rounded-full overflow-hidden shrink-0">
                   <div className="h-full rounded-full" style={{width:`${qPct}%`,background:qPct>=75?"#1D428A":qPct>=55?"#2a3d6b":"#7f1d1d"}}/>
                 </div>
@@ -469,6 +489,8 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
       {/* Sezon simülasyonu (v3.5) */}
       <SeasonSimPanel
         players={POSITIONS.map(p => lineup[p]).filter(Boolean)}
+        bench={BENCH_SLOTS.map(p => lineup[p]).filter(Boolean)}
+        coach={coach}
         simEra={simEra || ERAS[5]}
         fit={fit}
         affinity01={affinityScore != null ? affinityScore / 100 : null}
@@ -481,16 +503,43 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
           {POSITIONS.map(pos=>{
             const p=lineup[pos]; if(!p) return null;
             const isPrimary = getPrimaryPos(p) === pos;
+            const pen = p._posPenalty ?? 1;
             return (
               <div key={pos} className="flex items-center gap-2">
                 <span className={`text-[9.5px] font-bold px-1.5 py-0.5 rounded border shrink-0 ${POS_COLORS[pos]||""}`}>{pos}</span>
                 <span className="text-sm text-white font-medium flex-1 min-w-0 truncate">{p.PLAYER_NAME}</span>
+                {isFlex(p)&&<span className="text-[8.5px] text-violet-400 shrink-0">FLEX</span>}
+                {pen<1&&<span className="text-[9px] text-red-400 shrink-0">{pen<=0.75?"−25%":"−10%"}</span>}
                 <span className="text-[10.5px] text-blue-400 shrink-0">{p.primary_arch||"—"}</span>
                 <span className="text-[10.5px] text-slate-500 shrink-0">{(p._season||"").slice(0,4)}</span>
                 {isPrimary&&<span className="text-yellow-400 text-xs shrink-0">⭐</span>}
               </div>
             );
           })}
+          {BENCH_SLOTS.some(b=>lineup[b])&&(
+            <div className="border-t border-slate-800 pt-2 space-y-2">
+              {BENCH_SLOTS.map(b=>{
+                const p=lineup[b]; if(!p) return null;
+                return (
+                  <div key={b} className="flex items-center gap-2 opacity-80">
+                    <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded border border-slate-700 text-slate-500 shrink-0">BN</span>
+                    <span className="text-sm text-slate-200 flex-1 min-w-0 truncate">{p.PLAYER_NAME}</span>
+                    <span className="text-[10.5px] text-blue-400/70 shrink-0">{p.primary_arch||"—"}</span>
+                    <span className="text-[10.5px] text-slate-500 shrink-0">{(p._season||"").slice(0,4)}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {coach&&(
+            <div className="border-t border-slate-800 pt-2 flex items-center gap-2">
+              <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded border border-slate-600 text-slate-300 shrink-0">🧠</span>
+              <span className="text-sm text-white font-medium flex-1 truncate">{coach.name}</span>
+              <span className="text-[10px] font-mono text-slate-400 shrink-0">O:{coach.off} D:{coach.def}</span>
+              {coach.champs>0&&<span className="text-[10px] text-yellow-400 shrink-0">🏆×{coach.champs}</span>}
+              {coach.tag&&<span className="text-[8.5px] px-1 rounded bg-violet-900/40 text-violet-300 shrink-0">{coach.tag}</span>}
+            </div>
+          )}
         </div>
       </div>
 
@@ -883,16 +932,20 @@ export default function LineupGame() {
 
   // Oyun fazı
   const [phase, setPhase] = useState("idle");
-  // idle | pick_era | spin_season | spin_team | fetching | pick_player | pick_pos | complete
+  // idle | pick_era | spin_season | spin_team | fetching | pick_player | pick_pos | pick_coach | complete
 
   // Simülasyon era'sı (v3.5): sezon simülasyonunun oynanacağı dönem
   const [simEra, setSimEra] = useState(null);
+
+  // Koç draft'ı (Faz 2)
+  const [coach, setCoach]               = useState(null);
+  const [coachOptions, setCoachOptions] = useState([]);
 
   // Veriler
   const [seasons, setSeasons]       = useState([]);
   const [teamPool, setTeamPool]     = useState([]);
   const [players, setPlayers]       = useState([]);
-  const [lineup, setLineup]         = useState({PG:null,SG:null,SF:null,PF:null,C:null});
+  const [lineup, setLineup]         = useState({PG:null,SG:null,SF:null,PF:null,C:null,B1:null,B2:null,B3:null,B4:null});
   const [pickedPlayer, setPickedPlayer] = useState(null);
   const [fitResult, setFitResult]   = useState(null);
   const [statusMsg, setStatusMsg]   = useState("");
@@ -920,8 +973,8 @@ export default function LineupGame() {
   const roundHistoryRef = useRef([]);
   const pendingRoundRef = useRef(null); // fetchPlayers tamamlanınca set edilir
 
-  const filledPositions = POSITIONS.filter(p=>lineup[p]!==null);
-  const emptyPositions  = POSITIONS.filter(p=>lineup[p]===null);
+  const filledSlots = ALL_SLOTS.filter(p=>lineup[p]!==null);
+  const emptySlots  = ALL_SLOTS.filter(p=>lineup[p]===null);
 
   const [affinityMatrix, setAffinityMatrix] = useState(null);
 
@@ -1094,22 +1147,27 @@ export default function LineupGame() {
     setPhase("pick_pos");
   };
 
-  // ── Pozisyon seç ──────────────────────────────────────────────────────────
+  // ── Pozisyon seç (starter mevkisi veya bench slotu) ──────────────────────
   const handlePickPos = (pos) => {
-    const isPrimary = getPrimaryPos(pickedPlayer) === pos;
+    const isStarter = POSITIONS.includes(pos);
+    const isPrimary = isStarter && getPrimaryPos(pickedPlayer) === pos;
     if(isPrimary) setPrimaryCount(c=>c+1);
 
-    const enriched={...pickedPlayer,_season:chosenSeason,_team:chosenTeam,_isPrimary:isPrimary};
+    const enriched={...pickedPlayer,_season:chosenSeason,_team:chosenTeam,_isPrimary:isPrimary,
+                    _assignedPos:pos,_isBench:!isStarter,
+                    _posPenalty:posPenaltyFor(pickedPlayer,pos)};
     const newLineup={...lineupRef.current,[pos]:enriched};
     setLineup(newLineup);
     lineupRef.current=newLineup;
     setPickedPlayer(null);
 
-    const filled=POSITIONS.filter(p=>newLineup[p]!==null);
-    if(filled.length===5){
+    const filled=ALL_SLOTS.filter(p=>newLineup[p]!==null);
+    if(filled.length===ALL_SLOTS.length){
       const fit=computeLineupFit(POSITIONS.map(p=>newLineup[p]));
       setFitResult(fit);
-      setPhase("complete");
+      // Koç draft'ı: 4 rastgele aday arasından seç
+      setCoachOptions([...COACHES].sort(()=>Math.random()-0.5).slice(0,4));
+      setPhase("pick_coach");
     } else if(doubleActive){
       // İkili seçim: aynı havuzdan tekrar seç
       setPlayers(prev=>prev.filter(p=>p.PLAYER_NAME!==pickedPlayer.PLAYER_NAME));
@@ -1122,8 +1180,11 @@ export default function LineupGame() {
 
   const resetGame = () => {
     clearTimeout(timerRef.current);
-    setLineup({PG:null,SG:null,SF:null,PF:null,C:null});
-    lineupRef.current={PG:null,SG:null,SF:null,PF:null,C:null};
+    const empty={PG:null,SG:null,SF:null,PF:null,C:null,B1:null,B2:null,B3:null,B4:null};
+    setLineup(empty);
+    lineupRef.current=empty;
+    setCoach(null);
+    setCoachOptions([]);
     setFitResult(null);
     setPlayers([]);
     setPickedPlayer(null);
@@ -1158,13 +1219,16 @@ export default function LineupGame() {
       <div>
         <h1 className="text-xl font-bold text-white">Lineup Builder</h1>
         <p className="text-xs text-slate-500 mt-0.5">
-          Each round the wheels pick a random era and team. Draft one player, assign their position — five rounds, one lineup.
+          Each round the wheels pick a random era and team. Draft 9 players — 5 starters, 4 bench — then a coach, and take them through a full season.
         </p>
       </div>
 
-      {/* Lineup bar */}
+      {/* Lineup bar — starters + bench */}
       <div className="flex gap-1">
         {POSITIONS.map(pos=><LineupSlot key={pos} pos={pos} player={lineup[pos]}/>)}
+      </div>
+      <div className="flex gap-1 opacity-80">
+        {BENCH_SLOTS.map(pos=><LineupSlot key={pos} pos={pos} player={lineup[pos]} bench/>)}
       </div>
 
       {/* İlerleme */}
@@ -1177,9 +1241,9 @@ export default function LineupGame() {
             </span>
           )}
           <div className="flex-1 h-1 bg-slate-800 rounded-full overflow-hidden">
-            <div className="h-full bg-blue-500 rounded-full transition-all duration-500" style={{width:`${(filledPositions.length/5)*100}%`}}/>
+            <div className="h-full bg-blue-500 rounded-full transition-all duration-500" style={{width:`${(filledSlots.length/ALL_SLOTS.length)*100}%`}}/>
           </div>
-          <span className="text-[10.5px] text-slate-500">{filledPositions.length}/5</span>
+          <span className="text-[10.5px] text-slate-500">{filledSlots.length}/{ALL_SLOTS.length}</span>
           {primaryCount>0&&<span className="text-[10.5px] text-yellow-400">⭐×{primaryCount}</span>}
         </div>
       )}
@@ -1192,7 +1256,7 @@ export default function LineupGame() {
             <JokerBtn icon="🔄" label="Team"     available={jokers.reTeam}   onClick={jokerReTeam}/>
             <JokerBtn icon="📅" label="Year"     available={jokers.reYear}   onClick={jokerReYear}/>
             <JokerBtn icon="⚡" label="Both"     available={jokers.reBoth}   onClick={jokerReBoth}/>
-            <JokerBtn icon="👥" label="Pick 2"   available={jokers.double&&!doubleActive&&emptyPositions.length>=2} onClick={jokerDouble}/>
+            <JokerBtn icon="👥" label="Pick 2"   available={jokers.double&&!doubleActive&&emptySlots.length>=2} onClick={jokerDouble}/>
             <JokerBtn icon="🔍" label="Discover" available={jokers.discover&&!discoverActive} onClick={jokerDiscover}/>
           </div>
           {doubleActive&&(
@@ -1257,7 +1321,7 @@ export default function LineupGame() {
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
             <div className="text-[10.5px] text-slate-600 uppercase tracking-widest">How it works</div>
             <p className="text-sm text-slate-300 leading-relaxed">
-              Each round the wheels spin: one for <span className="text-blue-400 font-medium">era</span>, one for <span className="text-blue-400 font-medium">team</span>. Pick one player from that roster, then slot them into a position.
+              Each round the wheels spin: one for <span className="text-blue-400 font-medium">era</span>, one for <span className="text-blue-400 font-medium">team</span>. Pick one player from that roster, then slot them into a starting position or the bench — <span className="text-slate-200">9 spots total</span> (5 starters + 4 bench). Off-position starters cost −10% / −25% unless they're <span className="text-violet-300">FLEX</span> (Versatile tag). Finish by drafting a <span className="text-slate-200">coach</span> — O/D grades and championship rings feed the sim.
             </p>
             <p className="text-sm text-slate-400 leading-relaxed">
               After 5 picks your lineup is scored in two stages. First, each player's <span className="text-slate-300">quality</span> is adjusted by how meta their archetype was in their era — a Spacer in the Dead Ball era scores lower than in the Small Ball era. Then the lineup's <span className="text-slate-300">coverage</span> measures whether your roster collectively addresses Creation · Spacing · Defense · Finishing. One great specialist covers their pillar; duplicates don't stack.
@@ -1361,6 +1425,12 @@ export default function LineupGame() {
                 <div className="text-white font-semibold">{pickedPlayer.PLAYER_NAME}</div>
                 <div className="text-xs text-slate-500 mt-0.5">{chosenSeason} · {chosenTeam}</div>
                 <div className="flex gap-1 mt-1.5 flex-wrap">
+                  {isFlex(pickedPlayer)&&(
+                    <span className="text-[9.5px] px-1.5 py-0.5 rounded border font-bold bg-violet-900/50 text-violet-300 border-violet-600/60"
+                      title="Versatile — plays any position with no penalty">
+                      FLEX
+                    </span>
+                  )}
                   {eligible.map(p=>(
                     <span key={p} className={`text-[9.5px] px-1.5 py-0.5 rounded border font-bold ${POS_COLORS[p]||""}`}>
                       {p}{p===primary?" ★":""}
@@ -1372,30 +1442,80 @@ export default function LineupGame() {
                 className="text-slate-600 hover:text-slate-300 text-xs">← Back</button>
             </div>
             <div className="text-xs text-slate-500 mb-2">
-              Which position? (★ = primary → chemistry bonus)
+              Which position? (★ = primary → chemistry bonus{isFlex(pickedPlayer)?" · FLEX: no penalty anywhere":" · off-position costs −10% / −25%"})
             </div>
             <div className="flex gap-2 flex-wrap">
-              {emptyPositions.map(pos=>{
+              {POSITIONS.filter(p=>!lineup[p]).map(pos=>{
                 const isElig=eligible.includes(pos);
                 const isPrim=pos===primary;
+                const pen=posPenaltyFor(pickedPlayer,pos);
+                const penLabel=pen>=1?null:pen>=0.90?"−10%":"−25%";
                 return (
                   <button key={pos} onClick={()=>handlePickPos(pos)}
-                    className={`flex-1 min-w-[3rem] py-2.5 border rounded-xl font-bold text-sm transition-all
+                    className={`flex-1 min-w-[3rem] py-2 border rounded-xl font-bold text-sm transition-all
                       ${isPrim?"bg-amber-900/30 border-amber-500/60 text-amber-200 hover:bg-amber-600 hover:text-white"
                                :isElig?"bg-slate-800 border-slate-600 text-white hover:bg-blue-700 hover:border-blue-500"
                                       :"bg-slate-900/50 border-slate-800 text-slate-500 hover:bg-slate-800"}`}>
-                    {pos}{isPrim?" ⭐":""}
+                    <div>{pos}{isPrim?" ⭐":""}</div>
+                    {penLabel&&<div className="text-[8.5px] font-medium text-red-400/90">{penLabel}</div>}
+                    {!penLabel&&!isPrim&&isFlex(pickedPlayer)&&<div className="text-[8.5px] font-medium text-violet-400">flex</div>}
                   </button>
                 );
               })}
             </div>
+            {BENCH_SLOTS.some(b=>!lineup[b])&&(
+              <>
+                <div className="text-xs text-slate-500 mt-3 mb-2">
+                  Or send to the bench — no position penalty, but reduced minutes (~22% of the load)
+                </div>
+                <div className="flex gap-2">
+                  {BENCH_SLOTS.filter(b=>!lineup[b]).map(b=>(
+                    <button key={b} onClick={()=>handlePickPos(b)}
+                      className="flex-1 py-2 border rounded-xl font-bold text-sm transition-all bg-slate-900/70 border-slate-700 text-slate-400 hover:bg-slate-700 hover:text-white">
+                      {b}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         );
       })()}
 
+      {/* === PICK COACH === */}
+      {phase==="pick_coach"&&(
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
+          <div>
+            <div className="text-[10.5px] text-slate-600 uppercase tracking-widest mb-1">Final Step — Draft a Coach</div>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Offense and Defense grades shift your team rating all season. Championship rings add
+              playoff DNA — the more rings, the bigger the boost when the lights are brightest.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {coachOptions.map(c=>(
+              <button key={c.name}
+                onClick={()=>{setCoach(c);setPhase("complete");}}
+                className="text-left rounded-xl border border-slate-700 bg-slate-800/50 p-3 transition-all hover:border-blue-500 hover:scale-[1.02]">
+                <div className="text-sm font-bold text-white">{c.name}</div>
+                <div className="text-[9.5px] text-slate-500 mt-0.5">{c.years}</div>
+                <div className="flex items-center gap-2 mt-2">
+                  <span className="text-[10px] font-mono"><span className="text-slate-500">OFF</span> <span className={`font-bold ${c.off.startsWith("A")?"text-emerald-400":c.off.startsWith("B")?"text-sky-300":c.off.startsWith("C")?"text-amber-400":"text-red-400"}`}>{c.off}</span></span>
+                  <span className="text-[10px] font-mono"><span className="text-slate-500">DEF</span> <span className={`font-bold ${c.def.startsWith("A")?"text-emerald-400":c.def.startsWith("B")?"text-sky-300":c.def.startsWith("C")?"text-amber-400":"text-red-400"}`}>{c.def}</span></span>
+                </div>
+                <div className="flex items-center gap-1.5 mt-1.5 min-h-[16px]">
+                  {c.champs>0&&<span className="text-[9.5px] text-yellow-400">🏆×{c.champs}</span>}
+                  {c.tag&&<span className="text-[8.5px] px-1 py-0.5 rounded bg-violet-900/40 text-violet-300 border border-violet-700/40">{c.tag}</span>}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* === COMPLETE === */}
       {phase==="complete"&&fitResult&&(
-        <ScoreReveal fit={fitResult} lineup={lineup} primaryCount={primaryCount} roundHistory={roundHistoryRef.current} onReset={resetGame} lang={lang} affinityMatrix={affinityMatrix} simEra={simEra}/>
+        <ScoreReveal fit={fitResult} lineup={lineup} primaryCount={primaryCount} roundHistory={roundHistoryRef.current} onReset={resetGame} lang={lang} affinityMatrix={affinityMatrix} simEra={simEra} coach={coach}/>
       )}
     </div>
     </div>
