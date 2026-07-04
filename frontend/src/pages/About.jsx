@@ -3,6 +3,19 @@ import { SEO } from "../hooks/useSEO";
 
 const CHANGELOG = [
   {
+    version: "v3.5 — Phase 3a",
+    date_en: "July 2026",
+    label_en: "Season Awards from Simulated Stats",
+    items_en: [
+      "Every simulated season now produces per-player stat lines: real PTS/REB/AST scaled by sim effectiveness (era meta, era distance, position penalty) and minutes share",
+      "League MVP: requires a 55+ win season and a dominant leader — odds scale with quality and wins",
+      "All-NBA and All-Star selections for high-performing starters",
+      "Defensive POY from the best defensive composite (Anchor / Stopper / Two-Way) on a 48+ win team",
+      "Sixth Man of the Year for the best bench player — real 6MOY winners get better odds",
+      "Finals MVP awarded to your best starter when you win it all",
+    ],
+  },
+  {
     version: "v3.5 — Phase 2.5",
     date_en: "July 2026",
     label_en: "Court View + Player Tags",

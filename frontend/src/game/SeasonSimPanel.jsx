@@ -196,6 +196,37 @@ export default function SeasonSimPanel({ players, simEra, fit, affinity01, bench
             </div>
           )}
 
+          {/* Sezon ödülleri + istatistikler */}
+          {stage === "done" && (
+            <div className="space-y-2 border-t border-slate-800 pt-2.5">
+              <div className="text-[9.5px] text-slate-600 uppercase tracking-widest">Season Awards</div>
+              {result.awards?.length > 0 ? (
+                <div className="space-y-1">
+                  {result.awards.map((a, i) => (
+                    <div key={i} className="text-[11px] text-slate-200">{a}</div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-[10.5px] text-slate-600 italic">No individual hardware this season.</div>
+              )}
+              {result.statLines?.length > 0 && (
+                <div className="mt-1.5">
+                  <div className="grid grid-cols-[1fr_2.2rem_2.2rem_2.2rem] gap-x-1 text-[8.5px] text-slate-600 uppercase tracking-wider pb-1">
+                    <span>Player</span><span className="text-right">PTS</span><span className="text-right">REB</span><span className="text-right">AST</span>
+                  </div>
+                  {result.statLines.map((l, i) => (
+                    <div key={i} className={`grid grid-cols-[1fr_2.2rem_2.2rem_2.2rem] gap-x-1 text-[10px] leading-relaxed ${l.bench ? "text-slate-500" : "text-slate-300"}`}>
+                      <span className="truncate">{l.bench ? "· " : ""}{l.name?.split(" ").slice(-1)[0]}</span>
+                      <span className="text-right tabular-nums">{l.pts}</span>
+                      <span className="text-right tabular-nums">{l.reb}</span>
+                      <span className="text-right tabular-nums">{l.ast}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Aktif tag etkileri */}
           {stage === "done" && result.tagNotes?.length > 0 && (
             <div className="space-y-1 border-t border-slate-800 pt-2.5">

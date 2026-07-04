@@ -201,7 +201,65 @@ export function simulateSeason(players, simEra, fit, affinity01 = null, extras =
     : playoffRounds.length === 2 ? "SEMI"
     : "R1";
 
-  const RESULT_LABEL = {
+  // ── Sezon ödülleri (Faz 3) ───────────────────────────────────────────────────
+// Simüle box-stat: gerçek PTS/REB/AST × (sim etkinliği / gerçek overall) × dakika payı.
+// Ödüller bu istatistik + takım başarısı + şans üzerinden dağıtılır.
+function computeSeasonAwards({ profiles, benchProfiles, players, bench, wins, champion }, rand) {
+  const factor = prof => prof ? prof.simQuality / Math.max(0.35, prof.overall) : 1;
+  const line = (pl, prof, isBench) => {
+    const f = factor(prof) * (isBench ? 0.55 : 1.0);
+    return {
+      name:  prof.name,
+      pts:   +(Math.max(0, parseFloat(pl.PTS || 0)) * f).toFixed(1),
+      reb:   +(Math.max(0, parseFloat(pl.REB || 0)) * f).toFixed(1),
+      ast:   +(Math.max(0, parseFloat(pl.AST || 0)) * f).toFixed(1),
+      q:     prof.simQuality,
+      bench: isBench,
+    };
+  };
+  const starterLines = players.map((pl, i) => line(pl, profiles[i], false));
+  const benchLines   = bench.map((pl, i) => line(pl, benchProfiles[i], true));
+
+  const awards = [];
+  const best = starterLines.reduce((a, b) => (b.q > a.q ? b : a), starterLines[0]);
+
+  // League MVP: 55+ galibiyet + dominant sezon → şans, kalite ve galibiyetle artar
+  if (best && wins >= 55 && best.q >= 0.85) {
+    const odds = Math.min(0.85, (best.q - 0.80) * 3 + (wins - 55) * 0.02);
+    if (rand() < odds) awards.push(`🏅 League MVP — ${best.name}`);
+  }
+  // All-NBA / All-Star seçimleri
+  for (const l of starterLines) {
+    if (l.q >= 0.80)      awards.push(`🌟 All-NBA — ${l.name}`);
+    else if (l.q >= 0.70) awards.push(`⭐ All-Star — ${l.name}`);
+  }
+  // DPOY: en iyi savunma kompoziti (Anchor/Stopper/Two-Way) × sim etkinliği
+  const defs = players.map((pl, i) => ({
+    name: profiles[i].name,
+    d: Math.max(
+      parseFloat(pl["score_Anchor"] || 0), parseFloat(pl["score_Stopper"] || 0),
+      parseFloat(pl["score_Two-Way"] || 0),
+    ) * factor(profiles[i]),
+  }));
+  const defBest = defs.reduce((a, b) => (b.d > a.d ? b : a), defs[0]);
+  if (defBest && defBest.d >= 0.80 && wins >= 48 && rand() < Math.min(0.7, (defBest.d - 0.72) * 2.5)) {
+    awards.push(`🛡 Defensive POY — ${defBest.name}`);
+  }
+  // 6th Man: en iyi bench oyuncusu (gerçek 6MOY tag'i şansı artırır)
+  if (benchLines.length) {
+    const b6 = benchLines.reduce((a, b) => (b.q > a.q ? b : a), benchLines[0]);
+    const hasTag = benchProfiles.find(p => p.name === b6.name)?.sixth;
+    if (b6.q >= 0.50 && rand() < (hasTag ? 0.70 : 0.30)) {
+      awards.push(`🔥 Sixth Man of the Year — ${b6.name}`);
+    }
+  }
+  // Finals MVP: şampiyonlukta en iyi starter
+  if (champion && best) awards.push(`🏆 Finals MVP — ${best.name}`);
+
+  return { statLines: [...starterLines, ...benchLines], awards };
+}
+
+const RESULT_LABEL = {
     CHAMPION: "NBA CHAMPIONS",
     FINALS:   "Lost in the NBA Finals",
     CF:       "Lost in the Conference Finals",
@@ -210,9 +268,14 @@ export function simulateSeason(players, simEra, fit, affinity01 = null, extras =
     MISSED:   "Missed the Playoffs",
   };
 
+  const { statLines, awards } = computeSeasonAwards(
+    { profiles, benchProfiles, players, bench: extras.bench || [], wins, champion }, rand,
+  );
+
   return {
     simEra, rating, playoffRating, profiles, benchProfiles, coach, starPower,
     tagNotes: fx?.notes ?? [], benchBalanced,
+    statLines, awards,
     gameLog, wins, losses,
     bestStreak, worstSkid: Math.abs(worstSkid),
     madePlayoffs, seed,
