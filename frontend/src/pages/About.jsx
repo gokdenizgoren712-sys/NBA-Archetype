@@ -3,6 +3,20 @@ import { SEO } from "../hooks/useSEO";
 
 const CHANGELOG = [
   {
+    version: "v3.5 — Phase 1",
+    date_en: "July 2026",
+    label_en: "Game Overhaul — Season Simulation",
+    items_en: [
+      "Pick your simulation era before drafting — your five will live or die by that era's meta",
+      "Full 82-game season simulated game by game: opponents, home/away, hot streaks and skids",
+      "Make the playoffs at 41+ wins, then survive four best-of-7 rounds to win the ring",
+      "Era modifiers: archetype meta weight (a Spacer thrives in Small Ball, drowns in the 80s) plus a distance penalty for players far from their home decade",
+      "Star power matters more in the playoffs — team rating shifts toward your best player",
+      "Run It Back: re-simulate the same roster for a different outcome (only the first run counts)",
+      "Leaderboard now shows win totals and a 🏆 badge for simulated champions",
+    ],
+  },
+  {
     version: "v3.1",
     date_en: "July 2026",
     label_en: "Multi-League — G-League + League Nav Icons",

@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useLang } from "../contexts/LanguageContext";
 import { useAuth } from "../contexts/AuthContext";
 import { SEO } from "../hooks/useSEO";
+import { ERAS, ERA_ARCH_WEIGHTS, ERA_META_BLURB, getEra } from "../game/eras";
+import SeasonSimPanel from "../game/SeasonSimPanel";
 
 const POSITIONS = ["PG", "SG", "SF", "PF", "C"];
 
@@ -109,40 +111,7 @@ function computeLineupFit(players) {
   };
 }
 
-// ── Era sistemi ───────────────────────────────────────────────────────────────
-const ERAS = [
-  { id:"magic_bird", label:"Magic vs Bird Era",    short:"80s",       color:"text-amber-400",    bg:"bg-amber-900/30 border-amber-700/40",    years:[1979,1991] },
-  { id:"jordan",     label:"Jordan Era",           short:"Jordan",    color:"text-red-400",      bg:"bg-red-900/30 border-red-700/40",        years:[1991,1999] },
-  { id:"dead_ball",  label:"Dead Ball Era",        short:"Dead Ball", color:"text-slate-400",    bg:"bg-slate-700/50 border-slate-500/40",    years:[1999,2008] },
-  { id:"proto",      label:"Proto Super Team Era", short:"Proto ST",  color:"text-blue-400",     bg:"bg-blue-900/30 border-blue-700/40",      years:[2008,2014] },
-  { id:"small_ball", label:"Small Ball Era",       short:"Small Ball",color:"text-emerald-400",  bg:"bg-emerald-900/30 border-emerald-700/40",years:[2014,2020] },
-  { id:"parity",     label:"Parity Era",           short:"Parity",    color:"text-violet-400",   bg:"bg-violet-900/30 border-violet-700/40",  years:[2020,2030] },
-];
-
-// Her arketipin o era'da ne kadar "meta" olduğu (1.0 = nötr, >1 meta, <1 meta-dışı)
-const ERA_ARCH_WEIGHTS = {
-  magic_bird: { Engine:0.90, Ecosystem:1.30, Hub:1.15, Creator:0.85, Connector:0.95, Anchor:1.15, Force:1.20, Spacer:0.45, Finisher:0.85, Initiator:0.70, Stopper:0.95, "Rim Runner":0.70 },
-  jordan:     { Engine:1.25, Ecosystem:0.85, Hub:0.90, Creator:1.20, Connector:0.85, Anchor:0.95, Force:1.00, Spacer:0.60, Finisher:0.90, Initiator:0.85, Stopper:1.15, "Rim Runner":0.80 },
-  dead_ball:  { Engine:0.90, Ecosystem:0.85, Hub:0.85, Creator:0.95, Connector:0.85, Anchor:1.25, Force:1.15, Spacer:0.55, Finisher:0.85, Initiator:0.75, Stopper:1.20, "Rim Runner":0.85 },
-  proto:      { Engine:1.10, Ecosystem:0.95, Hub:1.00, Creator:1.05, Connector:0.95, Anchor:1.00, Force:1.00, Spacer:0.80, Finisher:1.05, Initiator:0.85, Stopper:1.00, "Rim Runner":1.10 },
-  small_ball: { Engine:1.20, Ecosystem:1.05, Hub:1.00, Creator:1.10, Connector:1.00, Anchor:0.70, Force:0.65, Spacer:1.35, Finisher:1.00, Initiator:0.90, Stopper:0.95, "Rim Runner":1.10 },
-  parity:     { Engine:1.10, Ecosystem:1.15, Hub:1.05, Creator:1.05, Connector:1.10, Anchor:0.85, Force:0.80, Spacer:1.20, Finisher:1.00, Initiator:0.95, Stopper:1.05, "Rim Runner":1.05 },
-};
-
-const ERA_META_BLURB = {
-  magic_bird: "Post play & team ball. Ecosystems and powerful bigs reign. Spacers barely exist.",
-  jordan:     "Isolation era. Engines and Creators peak. Stoppers at a premium.",
-  dead_ball:  "Grind-it-out defense. Anchors and Stoppers dominate. Pace is dead.",
-  proto:      "Pick-and-roll transition. Stretch bigs emerging. Relatively balanced.",
-  small_ball: "Spacing is king. Spacers peak. Traditional bigs and Forces struggle.",
-  parity:     "Two-way versatility rewarded. Ecosystems and connectors shine.",
-};
-
-function getEra(season) {
-  if (!season) return ERAS[5];
-  const year = parseInt(season.split("-")[0]);
-  return ERAS.find(e => year >= e.years[0] && year < e.years[1]) || ERAS[5];
-}
+// ── Era sistemi — src/game/eras.js'ten import edilir ─────────────────────────
 
 const _ARCHES = ["Engine","Ecosystem","Hub","Connector","Creator","Anchor","Spacer","Finisher","Force","Initiator","Stopper","Rim Runner"];
 const _RANK_W  = [0.40, 0.25, 0.15, 0.12, 0.08];
@@ -370,7 +339,7 @@ function analyzeLineup(fit, lineup, roundHistory=[]) {
 }
 
 // ── Sonuç ekranı ──────────────────────────────────────────────────────────────
-function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, affinityMatrix }) {
+function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, affinityMatrix, simEra }) {
   const { isLoggedIn, token } = useAuth();
   const analysis  = analyzeLineup(fit, lineup, roundHistory);
   const eraResult = computeLineupEraFit(lineup);
@@ -496,6 +465,14 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
           </div>
         </div>
       </div>
+
+      {/* Sezon simülasyonu (v3.5) */}
+      <SeasonSimPanel
+        players={POSITIONS.map(p => lineup[p]).filter(Boolean)}
+        simEra={simEra || ERAS[5]}
+        fit={fit}
+        affinity01={affinityScore != null ? affinityScore / 100 : null}
+      />
 
       {/* Lineup — arketip artık açık */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
@@ -677,6 +654,8 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
             <div key={i} className="flex items-center gap-2 text-[11.5px]">
               <span className="text-slate-700 w-5 text-right shrink-0 font-mono">{i + 1}.</span>
               <span className="text-slate-300 flex-1 truncate">{entry.username}</span>
+              {entry.season_result === "CHAMPION" && <span className="shrink-0" title="Won a simulated championship">🏆</span>}
+              {entry.wins != null && <span className="text-slate-600 shrink-0 text-[10px]">{entry.wins}W</span>}
               <span className={`font-bold shrink-0 ${entry.pct>=85?"text-blue-400":entry.pct>=72?"text-sky-300":entry.pct>=58?"text-emerald-400":entry.pct>=42?"text-amber-400":"text-red-400"}`}>
                 {entry.pct}
               </span>
@@ -904,7 +883,10 @@ export default function LineupGame() {
 
   // Oyun fazı
   const [phase, setPhase] = useState("idle");
-  // idle | spin_season | spin_team | fetching | pick_player | pick_pos | complete
+  // idle | pick_era | spin_season | spin_team | fetching | pick_player | pick_pos | complete
+
+  // Simülasyon era'sı (v3.5): sezon simülasyonunun oynanacağı dönem
+  const [simEra, setSimEra] = useState(null);
 
   // Veriler
   const [seasons, setSeasons]       = useState([]);
@@ -1155,6 +1137,7 @@ export default function LineupGame() {
     setJokers({reTeam:true,reYear:true,reBoth:true,double:true,discover:true});
     setDoubleActive(false);
     setDiscoverActive(false);
+    setSimEra(null);
     roundHistoryRef.current=[];
     pendingRoundRef.current=null;
     setPhase("idle");
@@ -1185,8 +1168,14 @@ export default function LineupGame() {
       </div>
 
       {/* İlerleme */}
-      {phase!=="idle"&&phase!=="complete"&&(
+      {phase!=="idle"&&phase!=="pick_era"&&phase!=="complete"&&(
         <div className="flex items-center gap-2">
+          {simEra&&(
+            <span className={`text-[9px] px-1.5 py-0.5 rounded border shrink-0 ${simEra.bg} ${simEra.color}`}
+              title={`Season will simulate in the ${simEra.label}`}>
+              SIM: {simEra.short}
+            </span>
+          )}
           <div className="flex-1 h-1 bg-slate-800 rounded-full overflow-hidden">
             <div className="h-full bg-blue-500 rounded-full transition-all duration-500" style={{width:`${(filledPositions.length/5)*100}%`}}/>
           </div>
@@ -1273,6 +1262,9 @@ export default function LineupGame() {
             <p className="text-sm text-slate-400 leading-relaxed">
               After 5 picks your lineup is scored in two stages. First, each player's <span className="text-slate-300">quality</span> is adjusted by how meta their archetype was in their era — a Spacer in the Dead Ball era scores lower than in the Small Ball era. Then the lineup's <span className="text-slate-300">coverage</span> measures whether your roster collectively addresses Creation · Spacing · Defense · Finishing. One great specialist covers their pillar; duplicates don't stack.
             </p>
+            <p className="text-sm text-slate-400 leading-relaxed">
+              Then the real test: a full <span className="text-emerald-400 font-medium">82-game season simulation</span> in the era you pick before drafting. Win 50%+ to make the playoffs, survive four best-of-7 rounds, and chase the ring. Archetypes off-meta in your sim era — and players far from their home decade — take penalties.
+            </p>
             <div className="grid grid-cols-3 gap-2 pt-1">
               {[
                 {key:"chemistry", icon:"⭐", title:"Chemistry",   desc:"Slot players into natural positions for a score bonus"},
@@ -1293,11 +1285,41 @@ export default function LineupGame() {
             </div>
           </div>
           <div className="text-center">
-            <button onClick={()=>startFullSpin()} disabled={seasons.length===0}
+            <button onClick={()=>setPhase("pick_era")} disabled={seasons.length===0}
               className="px-10 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 text-white rounded-xl font-semibold text-base transition-colors">
               {seasons.length===0?"Loading...":"🎰 Start Game"}
             </button>
           </div>
+        </div>
+      )}
+
+      {/* === PICK SIM ERA === */}
+      {phase==="pick_era"&&(
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
+          <div>
+            <div className="text-[10.5px] text-slate-600 uppercase tracking-widest mb-1">Step 1 — Pick Your Simulation Era</div>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Your season will be simulated under this era's meta. Draft accordingly — a Spacer
+              is gold in the Small Ball era and nearly worthless in the 80s. Players far from
+              their home era also take a distance penalty.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {ERAS.map(era=>(
+              <button key={era.id}
+                onClick={()=>{setSimEra(era);startFullSpin();}}
+                className={`text-left rounded-xl border p-3 transition-all hover:scale-[1.02] ${era.bg}`}>
+                <div className={`text-sm font-bold ${era.color}`}>{era.label}</div>
+                <div className="text-[9.5px] text-slate-500 mt-0.5">{era.years[0]}–{Math.min(era.years[1],2026)}</div>
+                <div className="text-[10px] text-slate-400 mt-1.5 leading-snug">{ERA_META_BLURB[era.id]}</div>
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={()=>{setSimEra(ERAS[Math.floor(Math.random()*ERAS.length)]);startFullSpin();}}
+            className="w-full py-2.5 rounded-xl text-sm font-medium border border-slate-700 text-slate-300 hover:border-blue-500 hover:text-blue-300 transition-colors">
+            🎲 Random Era
+          </button>
         </div>
       )}
 
@@ -1373,7 +1395,7 @@ export default function LineupGame() {
 
       {/* === COMPLETE === */}
       {phase==="complete"&&fitResult&&(
-        <ScoreReveal fit={fitResult} lineup={lineup} primaryCount={primaryCount} roundHistory={roundHistoryRef.current} onReset={resetGame} lang={lang} affinityMatrix={affinityMatrix}/>
+        <ScoreReveal fit={fitResult} lineup={lineup} primaryCount={primaryCount} roundHistory={roundHistoryRef.current} onReset={resetGame} lang={lang} affinityMatrix={affinityMatrix} simEra={simEra}/>
       )}
     </div>
     </div>

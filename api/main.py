@@ -2452,11 +2452,40 @@ def save_game_score(body: GameScoreBody, user=Depends(get_current_user)):
     return {"ok": True}
 
 
+class SeasonResultBody(BaseModel):
+    wins: int
+    season_result: str   # CHAMPION | FINALS | CF | SEMI | R1 | MISSED
+    sim_era: str = ""
+
+_VALID_SEASON_RESULTS = {"CHAMPION", "FINALS", "CF", "SEMI", "R1", "MISSED"}
+
+@app.post("/api/game/season-result")
+def save_season_result(body: SeasonResultBody, user=Depends(get_current_user)):
+    """Sezon simülasyonu sonucunu kullanıcının son lineup_games kaydına işler."""
+    if body.season_result not in _VALID_SEASON_RESULTS:
+        raise HTTPException(400, "Invalid season result")
+    if not 0 <= body.wins <= 82:
+        raise HTTPException(400, "Invalid wins")
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT id FROM lineup_games WHERE user_id=? ORDER BY id DESC LIMIT 1",
+            (int(user["sub"]),),
+        ).fetchone()
+        if not row:
+            return {"ok": False, "detail": "No game score to attach to"}
+        conn.execute(
+            "UPDATE lineup_games SET wins=?, season_result=?, sim_era=? WHERE id=?",
+            (body.wins, body.season_result, body.sim_era[:32], row["id"]),
+        )
+    return {"ok": True}
+
+
 @app.get("/api/leaderboard")
 def get_leaderboard(limit: int = Query(50, le=100)):
     with get_conn() as conn:
         rows = conn.execute("""
-            SELECT lg.pct, lg.grade, lg.lineup_json, lg.created_at, u.username
+            SELECT lg.pct, lg.grade, lg.lineup_json, lg.created_at, u.username,
+                   lg.wins, lg.season_result, lg.sim_era
             FROM lineup_games lg JOIN users u ON lg.user_id = u.id
             ORDER BY lg.pct DESC LIMIT ?
         """, (limit,)).fetchall()
