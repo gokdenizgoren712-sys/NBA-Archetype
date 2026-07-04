@@ -2427,6 +2427,7 @@ class GameScoreBody(BaseModel):
     pct: int
     grade: str
     lineup: list = []
+    mode: str = "classic"
 
 class CorrectionBody(BaseModel):
     player_name: str
@@ -2444,10 +2445,12 @@ def save_game_score(body: GameScoreBody, user=Depends(get_current_user)):
         raise HTTPException(400, "Invalid score")
     if body.grade not in ("S","A","B","C","D"):
         raise HTTPException(400, "Invalid grade")
+    if body.mode not in ("classic", "salarycap"):
+        raise HTTPException(400, "Invalid mode")
     with get_conn() as conn:
         conn.execute(
-            "INSERT INTO lineup_games (user_id, pct, grade, lineup_json) VALUES (?,?,?,?)",
-            (int(user["sub"]), body.pct, body.grade, json.dumps(body.lineup)),
+            "INSERT INTO lineup_games (user_id, pct, grade, lineup_json, mode) VALUES (?,?,?,?,?)",
+            (int(user["sub"]), body.pct, body.grade, json.dumps(body.lineup), body.mode),
         )
     return {"ok": True}
 
@@ -2481,14 +2484,17 @@ def save_season_result(body: SeasonResultBody, user=Depends(get_current_user)):
 
 
 @app.get("/api/leaderboard")
-def get_leaderboard(limit: int = Query(50, le=100)):
+def get_leaderboard(limit: int = Query(50, le=100), mode: str = Query("classic")):
+    if mode not in ("classic", "salarycap"):
+        mode = "classic"
     with get_conn() as conn:
         rows = conn.execute("""
             SELECT lg.pct, lg.grade, lg.lineup_json, lg.created_at, u.username,
-                   lg.wins, lg.season_result, lg.sim_era
+                   lg.wins, lg.season_result, lg.sim_era, lg.mode
             FROM lineup_games lg JOIN users u ON lg.user_id = u.id
+            WHERE COALESCE(lg.mode, 'classic') = ?
             ORDER BY lg.pct DESC LIMIT ?
-        """, (limit,)).fetchall()
+        """, (mode, limit)).fetchall()
     return {"entries": [dict(r) for r in rows]}
 
 

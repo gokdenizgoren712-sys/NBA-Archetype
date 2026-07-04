@@ -3,6 +3,19 @@ import { SEO } from "../hooks/useSEO";
 
 const CHANGELOG = [
   {
+    version: "v3.5 — Phase 3b",
+    date_en: "July 2026",
+    label_en: "Salary Cap Draft Mode",
+    items_en: [
+      "New game mode: build within tier limits — 2 S · 2 A · 2 B · 2 C · 1 D across your 9 spots",
+      "Tiers computed from overall score (S ≥ 87, A ≥ 78, B ≥ 70, C ≥ 58, D below) and shown on every card",
+      "Players from full tiers are locked out; every spin guarantees at least one open-tier player or auto-respins",
+      "Tier hunt failsafe: after 15 fruitless spins a wildcard round opens the whole roster",
+      "Live quota tracker (S/A/B/C/D) under the progress bar",
+      "Salary Cap has its own leaderboard — scores saved and ranked per mode",
+    ],
+  },
+  {
     version: "v3.5 — Phase 3a",
     date_en: "July 2026",
     label_en: "Season Awards from Simulated Stats",

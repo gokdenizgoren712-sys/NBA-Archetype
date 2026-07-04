@@ -97,11 +97,12 @@ def init_db():
                 conn.execute(f"ALTER TABLE users ADD COLUMN {col} {dfn}")
             except Exception:
                 pass
-        # v3.5: sezon simülasyonu sonuçları
+        # v3.5: sezon simülasyonu sonuçları + oyun modu
         for col, dfn in [
             ("wins",          "INTEGER"),
             ("season_result", "TEXT"),
             ("sim_era",       "TEXT"),
+            ("mode",          "TEXT"),
         ]:
             try:
                 conn.execute(f"ALTER TABLE lineup_games ADD COLUMN {col} {dfn}")

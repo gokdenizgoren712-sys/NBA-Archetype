@@ -7,6 +7,7 @@ import SeasonSimPanel from "../game/SeasonSimPanel";
 import { COACHES } from "../game/coaches";
 import { getPlayerTags } from "../game/awards";
 import CourtBoard from "../game/CourtBoard";
+import { TIER_ORDER, TIER_QUOTA, TIER_COLORS, TIER_DESC, tierOf, countTiers, firstOpenTier } from "../game/tiers";
 
 const POSITIONS = ["PG", "SG", "SF", "PF", "C"];
 
@@ -189,27 +190,40 @@ function SpinWheel({ items, spinning, targetIdx, label }) {
 }
 
 // ── Oyuncu kartı ─────────────────────────────────────────────────────────────
-function PlayerCard({ player, season, discover, onClick, dimmed }) {
+function PlayerCard({ player, season, discover, onClick, dimmed, tier=null, tierFull=false }) {
   const eligible = getEligiblePos(player);
   const primary  = eligible[0];
   const stat = (k,d=1) => player[k]!=null ? (+player[k]).toFixed(d) : "—";
   const era = getEra(season);
   const overall = player.overall_score != null ? Math.round(player.overall_score * 100) : null;
+  const blocked = dimmed || tierFull;
   return (
-    <button onClick={onClick} disabled={dimmed}
+    <button onClick={onClick} disabled={blocked}
       className={`w-full text-left border rounded-xl p-2.5 transition-all group
-        ${dimmed?"opacity-30 cursor-not-allowed border-slate-800 bg-slate-900/50"
+        ${blocked?"opacity-30 cursor-not-allowed border-slate-800 bg-slate-900/50"
                 :discover?"border-emerald-700/60 hover:border-emerald-500/80 hover:bg-slate-800 bg-slate-900 cursor-pointer"
                          :"border-slate-700 hover:border-blue-500/60 hover:bg-slate-800 bg-slate-900 cursor-pointer"}`}>
-      {/* İsim + era chip */}
+      {/* İsim + tier + era chip */}
       <div className="flex items-start justify-between gap-1 mb-1.5">
         <div className={`text-sm font-medium leading-tight truncate ${discover?"text-emerald-200":"text-white group-hover:text-blue-200"}`}>
           {player.PLAYER_NAME}
         </div>
-        <span className={`text-[8.5px] px-1.5 py-0.5 rounded border shrink-0 font-medium ${era.bg} ${era.color}`}>
-          {era.short}
+        <span className="flex items-center gap-1 shrink-0">
+          {tier&&(
+            <span className="text-[9px] w-4.5 px-1 py-0.5 rounded border font-black leading-none"
+              style={{color:TIER_COLORS[tier],borderColor:TIER_COLORS[tier]+"66",background:TIER_COLORS[tier]+"14"}}
+              title={`${tier} tier — ${TIER_DESC[tier]}${tierFull?" (quota full)":""}`}>
+              {tier}
+            </span>
+          )}
+          <span className={`text-[8.5px] px-1.5 py-0.5 rounded border font-medium ${era.bg} ${era.color}`}>
+            {era.short}
+          </span>
         </span>
       </div>
+      {tierFull&&(
+        <div className="text-[8.5px] text-red-400/80 mb-1">tier quota full</div>
+      )}
       {/* İstatistikler */}
       <div className="flex gap-2 text-[10.5px] text-slate-400 mb-1.5 flex-wrap">
         <span>PTS <span className="text-slate-200 font-medium">{stat("PTS")}</span></span>
@@ -362,7 +376,7 @@ function analyzeLineup(fit, lineup, roundHistory=[]) {
 }
 
 // ── Sonuç ekranı ──────────────────────────────────────────────────────────────
-function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, affinityMatrix, simEra, coach }) {
+function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, affinityMatrix, simEra, coach, mode="classic" }) {
   const { isLoggedIn, token } = useAuth();
   const analysis  = analyzeLineup(fit, lineup, roundHistory);
   const eraResult = computeLineupEraFit(lineup);
@@ -395,15 +409,15 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
     fetch("/api/game/score", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ pct, grade, lineup: players }),
+      body: JSON.stringify({ pct, grade, lineup: players, mode }),
     }).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Leaderboard
+  // Leaderboard — mod bazlı
   useEffect(() => {
-    fetch("/api/leaderboard?limit=10").then(r => r.json()).then(d => setLeaderboard(d.entries || [])).catch(() => {});
-  }, []);
+    fetch(`/api/leaderboard?limit=10&mode=${mode}`).then(r => r.json()).then(d => setLeaderboard(d.entries || [])).catch(() => {});
+  }, [mode]);
   const gColor = pct>=85?"text-blue-300":pct>=75?"text-sky-300":pct>=65?"text-emerald-300":pct>=55?"text-amber-300":"text-red-400";
 
   // Per-oyuncu → pozisyona göre eşle (computeLineupFit POSITIONS sırasında çağrıldı)
@@ -702,7 +716,9 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
       {/* Leaderboard */}
       {leaderboard && leaderboard.length > 0 && (
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-2">
-          <div className="text-[10.5px] text-slate-600 uppercase tracking-widest mb-1">Top Scores</div>
+          <div className="text-[10.5px] text-slate-600 uppercase tracking-widest mb-1">
+            Top Scores{mode==="salarycap"?" — 💰 Salary Cap":""}
+          </div>
           {leaderboard.slice(0, 10).map((entry, i) => (
             <div key={i} className="flex items-center gap-2 text-[11.5px]">
               <span className="text-slate-700 w-5 text-right shrink-0 font-mono">{i + 1}.</span>
@@ -941,6 +957,14 @@ export default function LineupGame() {
   // Simülasyon era'sı (v3.5): sezon simülasyonunun oynanacağı dönem
   const [simEra, setSimEra] = useState(null);
 
+  // Oyun modu (Faz 3b): classic | salarycap
+  const [mode, setMode] = useState("classic");
+  const modeRef = useRef("classic");
+  useEffect(()=>{ modeRef.current = mode; },[mode]);
+  const guaranteeRef = useRef(0);    // salary cap: art arda kaç spin'de seçilebilir tier çıkmadı
+  const wildcardRef  = useRef(false); // 15 denemede tier bulunamadı → herkes seçilebilir
+  const startSpinRef = useRef(null);  // fetchPlayers → startFullSpin döngüsel referansı
+
   // Koç draft'ı (Faz 2)
   const [coach, setCoach]               = useState(null);
   const [coachOptions, setCoachOptions] = useState([]);
@@ -1017,10 +1041,31 @@ export default function LineupGame() {
         const taken=Object.values(lineupRef.current).filter(Boolean).map(x=>x.PLAYER_NAME);
         const list=(d.players||[]).filter(p=>!taken.includes(p.PLAYER_NAME));
         if(list.length===0){ onEmpty(); return; }
+
+        // Salary Cap garantisi: rosterda hâlâ açık kotalı tier'dan oyuncu olmalı.
+        // Yoksa otomatik yeniden çevir (15 denemeden sonra wildcard: herkes seçilebilir).
+        if(modeRef.current==="salarycap" && !wildcardRef.current){
+          const counts=countTiers(Object.values(lineupRef.current));
+          const pickable=list.some(p=>counts[tierOf(p)]<TIER_QUOTA[tierOf(p)]);
+          if(!pickable){
+            guaranteeRef.current++;
+            if(guaranteeRef.current>=15){
+              wildcardRef.current=true;
+              setStatusMsg("Tier hunt exhausted — wildcard round: anyone is pickable");
+            } else {
+              setStatusMsg(`No open-tier players on this roster — respinning (${guaranteeRef.current})...`);
+              setTimeout(()=>startSpinRef.current&&startSpinRef.current(),650);
+              return;
+            }
+          } else {
+            guaranteeRef.current=0;
+          }
+        }
+
         setPlayers(list);
         pendingRoundRef.current={season,team,available:list};
         setPhase("pick_player");
-        setStatusMsg("");
+        if(!wildcardRef.current) setStatusMsg("");
       })
       .catch(()=>{ setStatusMsg("API hatası"); setPhase("idle"); });
   },[lang]);
@@ -1088,6 +1133,9 @@ export default function LineupGame() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[seasons, lang, fetchPlayers]);
+
+  // fetchPlayers içindeki otomatik respin için güncel referans
+  useEffect(()=>{ startSpinRef.current = startFullSpin; },[startFullSpin]);
 
   // ── Joker: sadece takım çevir (mevcut takım hariç) ───────────────────────
   const jokerReTeam = useCallback(()=>{
@@ -1162,12 +1210,24 @@ export default function LineupGame() {
 
   // ── Oyuncu seç ────────────────────────────────────────────────────────────
   const handlePickPlayer = (player) => {
+    let enrichedPick = player;
+    // Salary Cap: dolu tier'dan seçilemez; wildcard'da ilk açık tier'a sayılır
+    if(mode==="salarycap"){
+      const counts=countTiers(Object.values(lineupRef.current));
+      const t=tierOf(player);
+      if(wildcardRef.current){
+        enrichedPick={...player,_tierOverride:firstOpenTier(counts)};
+      } else if(counts[t]>=TIER_QUOTA[t]){
+        return; // kart zaten disabled — guard
+      }
+    }
     if(pendingRoundRef.current){
-      roundHistoryRef.current = [...roundHistoryRef.current, {...pendingRoundRef.current, picked: player}];
+      roundHistoryRef.current = [...roundHistoryRef.current, {...pendingRoundRef.current, picked: enrichedPick}];
       pendingRoundRef.current = null;
     }
-    setPickedPlayer(player);
+    setPickedPlayer(enrichedPick);
     setDiscoverActive(false);
+    setStatusMsg("");
     setPhase("pick_pos");
   };
 
@@ -1221,6 +1281,8 @@ export default function LineupGame() {
     setDoubleActive(false);
     setDiscoverActive(false);
     setSimEra(null);
+    guaranteeRef.current=0;
+    wildcardRef.current=false;
     roundHistoryRef.current=[];
     pendingRoundRef.current=null;
     setPhase("idle");
@@ -1280,6 +1342,26 @@ export default function LineupGame() {
           {primaryCount>0&&<span className="text-[10.5px] text-yellow-400">⭐×{primaryCount}</span>}
         </div>
       )}
+
+      {/* Salary Cap kota takibi */}
+      {mode==="salarycap"&&phase!=="idle"&&phase!=="pick_era"&&phase!=="complete"&&(()=>{
+        const counts=countTiers(Object.values(lineup));
+        return (
+          <div className="flex gap-1.5">
+            {TIER_ORDER.map(t=>{
+              const full=counts[t]>=TIER_QUOTA[t];
+              return (
+                <div key={t} title={TIER_DESC[t]}
+                  className={`flex-1 rounded-lg border p-1 text-center transition-all
+                    ${full?"border-emerald-700/60 bg-emerald-950/20":"border-slate-800 bg-slate-900/60"}`}>
+                  <div className="text-xs font-black leading-none" style={{color:TIER_COLORS[t]}}>{t}</div>
+                  <div className={`text-[9px] mt-0.5 ${full?"text-emerald-400":"text-slate-500"}`}>{counts[t]}/{TIER_QUOTA[t]}</div>
+                </div>
+              );
+            })}
+          </div>
+        );
+      })()}
 
       {/* Jokerler (sadece pick_player fazında) */}
       {phase==="pick_player"&&(
@@ -1381,10 +1463,27 @@ export default function LineupGame() {
               </p>
             </div>
           </div>
+          {/* Mod seçimi */}
+          <div className="grid grid-cols-2 gap-2">
+            <button onClick={()=>setMode("classic")}
+              className={`text-left rounded-xl border p-3 transition-all
+                ${mode==="classic"?"border-blue-500 bg-blue-900/20":"border-slate-800 bg-slate-900/60 hover:border-slate-600"}`}>
+              <div className="text-sm font-bold text-white">🎰 Classic</div>
+              <div className="text-[10px] text-slate-500 mt-1 leading-snug">No restrictions — pure wheel luck. Archetypes hidden until the end.</div>
+            </button>
+            <button onClick={()=>setMode("salarycap")}
+              className={`text-left rounded-xl border p-3 transition-all
+                ${mode==="salarycap"?"border-violet-500 bg-violet-900/20":"border-slate-800 bg-slate-900/60 hover:border-slate-600"}`}>
+              <div className="text-sm font-bold text-white">💰 Salary Cap</div>
+              <div className="text-[10px] text-slate-500 mt-1 leading-snug">
+                Tier quotas: <span style={{color:TIER_COLORS.S}}>2 S</span> · <span style={{color:TIER_COLORS.A}}>2 A</span> · <span style={{color:TIER_COLORS.B}}>2 B</span> · <span style={{color:TIER_COLORS.C}}>2 C</span> · <span style={{color:TIER_COLORS.D}}>1 D</span>. Tiers visible; every spin guarantees an open tier.
+              </div>
+            </button>
+          </div>
           <div className="text-center">
             <button onClick={()=>setPhase("pick_era")} disabled={seasons.length===0}
               className="px-10 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 text-white rounded-xl font-semibold text-base transition-colors">
-              {seasons.length===0?"Loading...":"🎰 Start Game"}
+              {seasons.length===0?"Loading...":mode==="salarycap"?"💰 Start Salary Cap Draft":"🎰 Start Game"}
             </button>
           </div>
         </div>
@@ -1442,7 +1541,15 @@ export default function LineupGame() {
             <span className="text-xs text-slate-500">— pick a player</span>
           </div>
           <div className="grid grid-cols-2 gap-2 max-h-80 overflow-y-auto">
-            {players.map((p,i)=><PlayerCard key={i} player={p} season={chosenSeason} discover={discoverActive} onClick={()=>handlePickPlayer(p)} dimmed={false}/>)}
+            {(()=>{
+              const counts = mode==="salarycap" ? countTiers(Object.values(lineup)) : null;
+              return players.map((p,i)=>{
+                const t = counts ? tierOf(p) : null;
+                const full = counts && !wildcardRef.current && counts[t]>=TIER_QUOTA[t];
+                return <PlayerCard key={i} player={p} season={chosenSeason} discover={discoverActive}
+                  onClick={()=>handlePickPlayer(p)} dimmed={false} tier={t} tierFull={full}/>;
+              });
+            })()}
           </div>
         </div>
       )}
@@ -1576,7 +1683,7 @@ export default function LineupGame() {
       {/* === COMPLETE === */}
       {phase==="complete"&&fitResult&&(
         <div className="max-w-2xl mx-auto space-y-3">
-          <ScoreReveal fit={fitResult} lineup={lineup} primaryCount={primaryCount} roundHistory={roundHistoryRef.current} onReset={resetGame} lang={lang} affinityMatrix={affinityMatrix} simEra={simEra} coach={coach}/>
+          <ScoreReveal fit={fitResult} lineup={lineup} primaryCount={primaryCount} roundHistory={roundHistoryRef.current} onReset={resetGame} lang={lang} affinityMatrix={affinityMatrix} simEra={simEra} coach={coach} mode={mode}/>
         </div>
       )}
     </div>
