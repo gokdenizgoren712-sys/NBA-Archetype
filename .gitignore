@@ -42,3 +42,4 @@ data/*
 !data/2025-26__merged_bref.parquet
 !data/2025-26__labeled.parquet
 !data/position_lookup.parquet
+!data/gleague__2025-26__player_scores.parquet
