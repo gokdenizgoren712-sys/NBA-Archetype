@@ -680,6 +680,8 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
             <div key={i} className="flex items-center gap-2 text-[12.5px]">
               <span className="text-slate-700 w-5 text-right shrink-0 font-mono">{i + 1}.</span>
               <span className="text-slate-300 flex-1 truncate">{entry.username}</span>
+              {entry.season_result === "THREEPEAT" && <span className="shrink-0" title="THREEPEAT — three straight simulated titles">👑</span>}
+              {entry.season_result === "REPEAT" && <span className="shrink-0" title="Back-to-back simulated champion">🏆🏆</span>}
               {entry.season_result === "CHAMPION" && <span className="shrink-0" title="Won a simulated championship">🏆</span>}
               {entry.wins != null && <span className="text-slate-600 shrink-0 text-[10px]">{entry.wins}W</span>}
               <span className={`font-bold shrink-0 ${entry.pct>=85?"text-blue-400":entry.pct>=78?"text-sky-300":entry.pct>=70?"text-emerald-400":entry.pct>=62?"text-amber-400":"text-red-400"}`}>

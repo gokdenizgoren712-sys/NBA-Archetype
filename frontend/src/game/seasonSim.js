@@ -51,32 +51,52 @@ export function benchCoverage(bench = []) {
            balanced: groups.has("G") && groups.has("F") && groups.has("C") };
 }
 
+// ── Dakika sistemi (v3.6 Faz D) ──────────────────────────────────────────────
+// Varsayılan rotasyon: 5 starter × 35dk + bench 25/15/13/12 = tam 240 dk.
+// Her dakika ±5 oynatılabilir; 36dk üstü fatigue cezası, 32dk altı starter
+// playoff'a taze bacak bonusu taşır.
+export const BASE_MINUTES = [35, 35, 35, 35, 35, 25, 15, 13, 12];
+export const MINUTE_FLEX  = 5;
+
+function fatigueOf(m)   { return Math.min(0.09, Math.max(0, m - 36) * 0.015); } // 39dk→−4.5%, 40dk→−6%
+function freshOf(mins)  { // starter dinçliği → playoff bonusu (cap +0.02)
+  return Math.min(0.02, mins.slice(0, 5).reduce((a, m) => a + Math.max(0, 32 - m) * 0.002, 0));
+}
+
 // ── Takım reytingi ───────────────────────────────────────────────────────────
-// extras: { bench: [], coach: null } — Faz 2. Starter'lar dakikanın ~%78'ini taşır.
+// extras: { bench, coach, minutes: [9 dk], agePenalty } — katkılar dakika-ağırlıklı.
 export function computeTeamRating(players, simEra, fit, affinity01 = null, extras = {}) {
-  const { bench = [], coach = null } = extras;
-  const profiles      = players.map(p => playerSimProfile(p, simEra));
-  const benchProfiles = bench.map(p => {
-    const prof = { ...playerSimProfile(p, simEra), bench: true };
-    // SIXTH MAN: bench'ten gelince +10% (starter'ken etkisiz)
-    if (isSixthMan(p.PLAYER_NAME)) {
-      prof.simQuality = clamp01(prof.simQuality * 1.10);
+  const { bench = [], coach = null, agePenalty = 0 } = extras;
+  const minutes = (extras.minutes && extras.minutes.length === players.length + bench.length)
+    ? extras.minutes
+    : BASE_MINUTES.slice(0, players.length + bench.length);
+
+  const mkProf = (p, i, isBench) => {
+    const prof = { ...playerSimProfile(p, simEra), bench: isBench, minutes: minutes[i] ?? (isBench ? 13 : 35) };
+    if (isBench && isSixthMan(p.PLAYER_NAME)) {
+      prof.simQuality = clamp01(prof.simQuality * 1.10);   // SIXTH MAN: sadece bench'te
       prof.sixth = true;
     }
+    prof.fatigue = fatigueOf(prof.minutes);
+    prof.effQ = clamp01(prof.simQuality * (1 - prof.fatigue));
     return prof;
-  });
+  };
+  const profiles      = players.map((p, i) => mkProf(p, i, false));
+  const benchProfiles = bench.map((p, i) => mkProf(p, players.length + i, true));
 
-  const startersQ = profiles.reduce((a, b) => a + b.simQuality, 0) / profiles.length;
-  const benchQ    = benchProfiles.length
-    ? benchProfiles.reduce((a, b) => a + b.simQuality, 0) / benchProfiles.length
-    : startersQ * 0.70;   // bench draft edilmediyse ligin zayıf bench varsayımı
-  const rosterQ   = 0.78 * startersQ + 0.22 * benchQ;
+  // Dakika-ağırlıklı kadro kalitesi (eski sabit 0.78/0.22 payların yerini aldı)
+  const all = [...profiles, ...benchProfiles];
+  const totalMin = all.reduce((a, p) => a + p.minutes, 0) || 240;
+  let rosterQ = all.reduce((a, p) => a + p.effQ * p.minutes, 0) / totalMin;
+  // Bench draft edilmemişse (eski çağrılar): kalan dakikalar zayıf bench varsayımı
+  if (!benchProfiles.length) {
+    const sQ = profiles.reduce((a, b) => a + b.effQ, 0) / profiles.length;
+    rosterQ = (rosterQ * totalMin + sQ * 0.70 * (240 - totalMin)) / 240;
+  }
 
-  // Yıldız gücü: bench yıldızı kısıtlı dakikada oynar (×0.85)
-  const starPower = Math.max(
-    ...profiles.map(p => p.simQuality),
-    ...benchProfiles.map(p => p.simQuality * 0.85),
-  );
+  // Yıldız gücü: dakikası kısılan yıldız o kadar taşıyamaz
+  const starPower = Math.max(...all.map(p => p.effQ * Math.min(1, p.minutes / 32)));
+  const fresh = freshOf(minutes);
 
   // Ödül tag'leri: MVP/DPOY/Duo → regular, yüzükler → playoff, FMVP → Finals
   const fx = awardEffects(players, bench);
@@ -92,7 +112,8 @@ export function computeTeamRating(players, simEra, fit, affinity01 = null, extra
   if (affinity01 != null) rating += (affinity01 - 0.65) * 0.15;
   rating += coachRatingBonus(coach);
   rating += fx.regular;
-  return { rating, profiles, benchProfiles, starPower, fx, benchBalanced: cover.balanced };
+  rating -= agePenalty;   // dynasty sezonları: kadro yaşlanır (Faz E)
+  return { rating, profiles, benchProfiles, starPower, fresh, fx, benchBalanced: cover.balanced };
 }
 
 // ── Tek maç ──────────────────────────────────────────────────────────────────
@@ -148,7 +169,7 @@ function winsToSeed(wins) {
 // ── Tam sezon ────────────────────────────────────────────────────────────────
 export function simulateSeason(players, simEra, fit, affinity01 = null, extras = {}) {
   const rand = Math.random;
-  const { rating, profiles, benchProfiles, starPower, fx, benchBalanced } =
+  const { rating, profiles, benchProfiles, starPower, fresh, fx, benchBalanced } =
     computeTeamRating(players, simEra, fit, affinity01, extras);
   const coach = extras.coach || null;
 
@@ -177,9 +198,9 @@ export function simulateSeason(players, simEra, fit, affinity01 = null, extras =
   const madePlayoffs = wins >= 41;
   const seed = madePlayoffs ? winsToSeed(wins) : null;
 
-  // Playoff koşusu: yıldız gücü + koç DNA'sı + Championship yüzük bonusu
+  // Playoff koşusu: yıldız gücü + koç DNA'sı + yüzükler + taze bacaklar (Faz D)
   const playoffRating = 0.82 * effRating + 0.18 * starPower
-                      + coachPlayoffBonus(coach) + (fx?.playoff ?? 0);
+                      + coachPlayoffBonus(coach) + (fx?.playoff ?? 0) + (fresh ?? 0);
   const playoffRounds = [];
   let champion = false;
   if (madePlayoffs) {
@@ -213,10 +234,13 @@ export function simulateSeason(players, simEra, fit, affinity01 = null, extras =
 function computeSeasonAwards({ profiles, benchProfiles, players, bench, wins, champion }, rand) {
   const factor = prof => prof ? prof.simQuality / Math.max(0.35, prof.overall) : 1;
   const line = (pl, prof, isBench) => {
-    const f = factor(prof) * (isBench ? 0.55 : 1.0);
+    // Dakika payı: 35dk taban — 25dk'lık 6th man üretimin ~%71'ini, 12dk'lık ~%34'ünü verir
+    const mShare = Math.min(1.15, (prof.minutes ?? (isBench ? 13 : 35)) / 35);
+    const f = factor(prof) * mShare;
     const st = k => +(Math.max(0, parseFloat(pl[k] || 0)) * f).toFixed(1);
     return {
       name:  prof.name,
+      min:   prof.minutes ?? (isBench ? 13 : 35),
       pts: st("PTS"), reb: st("REB"), ast: st("AST"),
       stl: st("STL"), blk: st("BLK"),
       fg3: pl.FG3_PCT != null && !isNaN(+pl.FG3_PCT) ? Math.round(+pl.FG3_PCT * 100) : null,

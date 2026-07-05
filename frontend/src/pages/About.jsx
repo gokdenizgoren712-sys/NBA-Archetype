@@ -3,6 +3,19 @@ import { SEO } from "../hooks/useSEO";
 
 const CHANGELOG = [
   {
+    version: "v3.6 — Phase D+E",
+    date_en: "July 2026",
+    label_en: "Minutes, Fatigue & the THREEPEAT",
+    items_en: [
+      "Rotation editor before every sim: 35 min per starter, 25/15/13/12 off the bench (a real 240-minute game), each adjustable ±5 within a minute bank",
+      "Minutes drive everything: contributions and stat lines are minute-weighted (the old fixed 78/22 split is gone)",
+      "Fatigue: 37+ minutes bleeds rating (39 min ≈ −4.5%); resting starters under 32 banks playoff freshness (up to +2)",
+      "Contract curve + Timeless recalibrated to the REAL score distribution: supermax club is now Jokić/SGA/Dončić/Wemby (~30%), Timeless = the season's top five (≥75)",
+      "THE THREEPEAT: win it all, then defend the title — the roster ages every extra season. Three straight rings earns the 👑 crown on the leaderboard",
+      "Dynasty flow: back-to-back banner, dynasty-over epitaph, REPEAT/THREEPEAT recorded per player",
+    ],
+  },
+  {
     version: "v3.6 — Phase C3",
     date_en: "July 2026",
     label_en: "Team-Relative Contracts + Detailed Sim Stats",

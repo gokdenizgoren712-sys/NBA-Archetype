@@ -2466,7 +2466,7 @@ class SeasonResultBody(BaseModel):
     season_result: str   # CHAMPION | FINALS | CF | SEMI | R1 | MISSED
     sim_era: str = ""
 
-_VALID_SEASON_RESULTS = {"CHAMPION", "FINALS", "CF", "SEMI", "R1", "MISSED"}
+_VALID_SEASON_RESULTS = {"CHAMPION", "REPEAT", "THREEPEAT", "FINALS", "CF", "SEMI", "R1", "MISSED"}
 
 @app.post("/api/game/season-result")
 def save_season_result(body: SeasonResultBody, user=Depends(get_current_user)):
