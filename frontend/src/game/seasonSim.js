@@ -4,30 +4,36 @@
 //   sim kalitesi (overall × era-meta ağırlığı × era-uzaklık cezası)
 //   + pillar kapsaması + rol uyumu + arketip affinity.
 
-import { ERA_ARCH_WEIGHTS, getEra, eraIndex } from "./eras";
+import { getEra, eraIndex } from "./eras";
 import { coachRatingBonus, coachPlayoffBonus } from "./coaches";
 import { awardEffects, isTimeless, isSixthMan } from "./awards";
 
 const clamp01 = v => Math.min(1, Math.max(0, v));
 
-// Era uzaklık cezası — kendi dönemi = tam güç, her adım uzaklıkta artan kayıp
-const DIST_PENALTY = [1.00, 0.95, 0.89, 0.82, 0.74, 0.66];
+// Era uzaklık cezası (v3.6-B) — eraball modeli: era etkisi YALNIZCA seçilen
+// sim era'ya uzaklıktır; arketip-meta çarpanı kaldırıldı (arketipler artık
+// sadece lineup fit/coverage üzerinden konuşur). Her adım daha büyük kayıp.
+export const DIST_PENALTY = [1.00, 0.94, 0.86, 0.77, 0.67, 0.56];
+
+// Tek kaynak: draft skoru (LineupGame) ve sim aynı uzaklık hesabını kullanır.
+export function eraDistFactor(player, simEra) {
+  const homeEra  = getEra(player._season);
+  const dist     = Math.abs(eraIndex(homeEra) - eraIndex(simEra));
+  const timeless = isTimeless(player);
+  let distP = DIST_PENALTY[Math.min(dist, DIST_PENALTY.length - 1)];
+  if (timeless) distP = Math.max(distP, 0.95);   // TIMELESS: mesafe neredeyse işlemez
+  return { homeEra, dist, distP, timeless };
+}
 
 // ── Oyuncunun sim era'daki profili ───────────────────────────────────────────
 // _posPenalty: draft sırasında atanır (doğal=1.0, komşu mevki=0.90, uzak=0.75, FLEX=1.0)
-// TIMELESS (overall ≥ 0.90): era mesafe cezası neredeyse sıfırlanır
 export function playerSimProfile(player, simEra) {
   const overall = clamp01(parseFloat(player.overall_score || 0));
   const arch    = player.primary_arch || "";
-  const archW   = Math.min(1.15, Math.max(0.75, (ERA_ARCH_WEIGHTS[simEra.id] || {})[arch] ?? 1.0));
-  const homeEra = getEra(player._season);
-  const dist    = Math.abs(eraIndex(homeEra) - eraIndex(simEra));
-  const timeless = isTimeless(player);
-  let distP = DIST_PENALTY[Math.min(dist, DIST_PENALTY.length - 1)];
-  if (timeless) distP = Math.max(distP, 0.95);
+  const { homeEra, dist, distP, timeless } = eraDistFactor(player, simEra);
   const posP    = player._posPenalty ?? 1.0;
-  const simQuality = clamp01(overall * archW * distP * posP);
-  return { name: player.PLAYER_NAME, arch, homeEra, dist, archW, distP, posP, overall, simQuality, timeless };
+  const simQuality = clamp01(overall * distP * posP);
+  return { name: player.PLAYER_NAME, arch, homeEra, dist, distP, posP, overall, simQuality, timeless };
 }
 
 // ── Bench pozisyon dengesi ───────────────────────────────────────────────────

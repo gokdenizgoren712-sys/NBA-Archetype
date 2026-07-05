@@ -3,6 +3,19 @@ import { SEO } from "../hooks/useSEO";
 
 const CHANGELOG = [
   {
+    version: "v3.6 — Phase B",
+    date_en: "July 2026",
+    label_en: "Era Distance Model + 3P%",
+    items_en: [
+      "Era effect is now pure distance to YOUR chosen era (eraball model): same era full power, each step away costs more (−6% → −44%)",
+      "Archetype-meta multipliers removed from player quality — archetypes now speak only through lineup coverage, where they belong",
+      "Draft score and season sim share one era-distance formula; the score card shows 'built for the [era]'",
+      "TIMELESS greats (overall ≥ 90) ignore distance — Bird and Magic travel, their role players don't",
+      "3P% added to the pick list stats and sort tabs",
+      "Roster Breakdown rows show −N era distance and TL badges instead of meta arrows",
+    ],
+  },
+  {
     version: "v3.6 — Phase A",
     date_en: "July 2026",
     label_en: "Game UI Overhaul — Tags Panel + Unified Roster Table",

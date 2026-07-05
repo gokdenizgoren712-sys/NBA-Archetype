@@ -2,7 +2,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useLang } from "../contexts/LanguageContext";
 import { useAuth } from "../contexts/AuthContext";
 import { SEO } from "../hooks/useSEO";
-import { ERAS, ERA_ARCH_WEIGHTS, ERA_META_BLURB, getEra } from "../game/eras";
+import { ERAS, ERA_META_BLURB, getEra } from "../game/eras";
+import { eraDistFactor } from "../game/seasonSim";
 import SeasonSimPanel from "../game/SeasonSimPanel";
 import { COACHES } from "../game/coaches";
 import { getPlayerTags, TAG_INFO } from "../game/awards";
@@ -80,7 +81,9 @@ const POS_COLORS = {
 };
 
 // ── Per-oyuncu: boyutsal katkı + era kalitesi ────────────────────────────────
-function computePlayerFit(p) {
+// v3.6-B: era etkisi = SEÇİLEN sim era'ya uzaklık (eraball modeli).
+// Arketipler artık yalnızca coverage/lineup fit üzerinden konuşur.
+function computePlayerFit(p, simEra) {
   const _s = k => { const v = parseFloat(p[`score_${k}`] ?? 0); return isNaN(v) ? 0 : Math.max(0, v); };
   // Boyutsal katkılar — lineup coverage için max alınır, specialist cezalandırılmaz
   const creation  = Math.min(1, Math.max(_s("Ecosystem")*1.10, _s("Engine"), _s("Hub")*0.90, _s("Creator")*0.88, _s("Initiator")*0.80));
@@ -88,23 +91,20 @@ function computePlayerFit(p) {
   const defense   = Math.min(1, Math.max(_s("Anchor")*1.10, _s("Stopper"), _s("Two-Way")*0.90, _s("Force")*0.65));
   const finishing = Math.min(1, Math.max(_s("Finisher"), _s("Rim Runner")*0.95, _s("Force")*0.75, _s("Slashing")*0.82));
   const overall   = Math.min(1, Math.max(0, parseFloat(p.overall_score || 0)));
-  // Oyuncu kalitesi = overall × era faktörü × pozisyon cezası (Faz 2)
-  const era = getEra(p._season);
-  const arch = p.primary_arch || "";
-  const eraWeight = (ERA_ARCH_WEIGHTS[era.id] || {})[arch] ?? 1.0;
-  const eraFactor = Math.min(1.15, Math.max(0.75, eraWeight));
+  const { homeEra, dist, distP, timeless } = eraDistFactor(p, simEra || ERAS[5]);
   const posPenalty = p._posPenalty ?? 1.0;
-  const quality = Math.min(1, overall * eraFactor * posPenalty);
-  return { creation, spacing, defense, finishing, overall, quality, eraFactor, era, posPenalty };
+  const quality = Math.min(1, overall * distP * posPenalty);
+  return { creation, spacing, defense, finishing, overall, quality,
+           era: homeEra, dist, distP, timeless, posPenalty };
 }
 
 // ── Lineup fit hesaplama ──────────────────────────────────────────────────────
 // Mantık: Player Quality (oyuncular ne kadar iyi?) × Lineup Coverage (4 rol örtülüyor mu?)
-function computeLineupFit(players) {
+function computeLineupFit(players, simEra) {
   if (!players || players.length < 2) return null;
   const _s = (p, k) => { const v = parseFloat(p[`score_${k}`] ?? 0); return isNaN(v) ? 0 : Math.max(0, v); };
 
-  const perPlayer = players.map(p => computePlayerFit(p));
+  const perPlayer = players.map(p => computePlayerFit(p, simEra));
 
   // 1. Oyuncu kalitesi ortalaması (era-adjusted overall)
   const avgQuality = perPlayer.reduce((a, b) => a + b.quality, 0) / perPlayer.length;
@@ -208,12 +208,17 @@ function posGroupOf(p) {
 
 function PlayerRow({ player, discover, onClick, tier, tierFull, highlightStat }) {
   const [imgOk, setImgOk] = useState(true);
-  const stat = (k, d = 1) => player[k] != null ? (+player[k]).toFixed(d) : "—";
+  const stat = (k) => {
+    const v = player[k];
+    if (v == null || isNaN(+v)) return "—";
+    if (k === "FG3_PCT") return `${Math.round(+v * 100)}%`;
+    return (+v).toFixed(1);
+  };
   const overall = player.overall_score != null ? Math.round(player.overall_score * 100) : null;
   const tags = getPlayerTags(player);
   const url = headshotUrl(player);
   const cell = (k) => (
-    <span className={`w-9 text-right tabular-nums shrink-0 text-xs
+    <span className={`w-8 text-right tabular-nums shrink-0 text-xs
       ${highlightStat === k ? "font-bold" : "text-slate-500"}`}
       style={highlightStat === k ? { color: "#e2b34c" } : {}}>
       {stat(k)}
@@ -262,12 +267,16 @@ function PlayerRow({ player, discover, onClick, tier, tierFull, highlightStat })
         </span>
       )}
       {/* İstatistikler */}
-      {cell("PTS")}{cell("REB")}{cell("AST")}{cell("STL")}{cell("BLK")}
+      {cell("PTS")}{cell("REB")}{cell("AST")}{cell("FG3_PCT")}{cell("STL")}{cell("BLK")}
     </button>
   );
 }
 
-const SORT_KEYS = ["TAGGED", "PTS", "REB", "AST", "STL", "BLK"];
+// [alan, etiket] — 3P% alan adı FG3_PCT
+const SORT_KEYS = [
+  ["TAGGED", "TAGGED"], ["PTS", "PTS"], ["REB", "REB"], ["AST", "AST"],
+  ["FG3_PCT", "3P%"], ["STL", "STL"], ["BLK", "BLK"],
+];
 
 // ── Info Modal ────────────────────────────────────────────────────────────────
 function InfoModal({ open, onClose, title, children }) {
@@ -419,7 +428,14 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
     <div className="space-y-4">
       {/* Ana skor */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 text-center">
-        <div className="text-xs text-slate-500 uppercase tracking-widest mb-2">Lineup Fit</div>
+        <div className="text-xs text-slate-500 uppercase tracking-widest mb-1">Lineup Fit</div>
+        {simEra&&(
+          <div className="mb-2">
+            <span className={`text-[10px] px-2 py-0.5 rounded border ${simEra.bg} ${simEra.color}`}>
+              built for the {simEra.label}
+            </span>
+          </div>
+        )}
         <div className={`text-7xl font-black mb-1 ${pct>=78?"text-blue-400":pct>=62?"text-sky-400":"text-slate-300"}`}>{pct}</div>
         <div className={`text-3xl font-bold mb-1 ${gColor}`}>{grade}</div>
         {chemBonus > 0 && (
@@ -484,7 +500,7 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
         <div className="space-y-1">
           {POSITIONS.map(pos=>{
             const p=lineup[pos]; if(!p) return null;
-            const pp=perPlayerMap[pos] || computePlayerFit(p);
+            const pp=perPlayerMap[pos] || computePlayerFit(p, simEra);
             const qPct=Math.round(pp.quality*100);
             const isPrimary=getPrimaryPos(p)===pos;
             const pen=p._posPenalty??1;
@@ -501,8 +517,8 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
                   <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                     <span className="text-[11px] text-blue-400 font-medium">{p.primary_arch||"—"}</span>
                     <span className={`text-[10px] ${pp.era.color}`}>{pp.era.short} '{(p._season||"").slice(2,4)}</span>
-                    {pp.eraFactor>1.02&&<span className="text-[10px] text-emerald-500">↑era</span>}
-                    {pp.eraFactor<0.92&&<span className="text-[10px] text-red-500">↓era</span>}
+                    {pp.timeless&&<span className="text-[10px] text-purple-400" title="Timeless — era distance barely matters">TL</span>}
+                    {pp.dist>0&&!pp.timeless&&<span className="text-[10px] text-amber-500">−{pp.dist} era</span>}
                     {tags.map(t=>(
                       <span key={t.key} title={t.detail} className="text-[8.5px] px-1 py-px rounded font-bold leading-none"
                         style={{color:t.color,background:t.color+"1a",border:`1px solid ${t.color}44`}}>
@@ -521,7 +537,7 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
           {/* Bench satırları */}
           {BENCH_SLOTS.map(b=>{
             const p=lineup[b]; if(!p) return null;
-            const pp=computePlayerFit(p);
+            const pp=computePlayerFit(p, simEra);
             const qPct=Math.round(pp.quality*100);
             const tags=getPlayerTags(p,{onBench:true}).slice(0,2);
             return (
@@ -532,6 +548,8 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
                   <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                     <span className="text-[11px] text-blue-400/70">{p.primary_arch||"—"}</span>
                     <span className={`text-[10px] ${pp.era.color}`}>{pp.era.short} '{(p._season||"").slice(2,4)}</span>
+                    {pp.timeless&&<span className="text-[10px] text-purple-400">TL</span>}
+                    {pp.dist>0&&!pp.timeless&&<span className="text-[10px] text-amber-500">−{pp.dist} era</span>}
                     {tags.map(t=>(
                       <span key={t.key} title={t.detail} className="text-[8.5px] px-1 py-px rounded font-bold leading-none"
                         style={{color:t.color,background:t.color+"1a",border:`1px solid ${t.color}44`}}>
@@ -1386,7 +1404,7 @@ export default function LineupGame() {
         <div className="space-y-3 text-sm text-slate-300 leading-relaxed">
           <p>Player archetypes are <span className="text-white font-medium">hidden during the game</span> and revealed at the end. Use stats and position clues to guess each player's role before committing to a slot.</p>
           <p>Each archetype is a percentile score built from real NBA tracking and box-score data. The 12 roles range from <span className="text-orange-300">Engine</span> (usage, creation) to <span className="text-blue-300">Anchor</span> (rim protection, defensive rating).</p>
-          <p className="text-slate-400 text-xs">Final score = 45% Player Quality + 40% Lineup Coverage + 15% Role Fit. Quality is each player's overall score adjusted for their era's meta. Coverage checks whether your lineup collectively covers creation, spacing, defense, and finishing — one great specialist is enough for their pillar.</p>
+          <p className="text-slate-400 text-xs">Final score = 45% Player Quality + 40% Lineup Coverage + 15% Role Fit. Quality is each player's overall scaled by distance to your chosen sim era. Coverage is where archetypes live: does the lineup collectively cover creation, spacing, defense and finishing? One great specialist is enough for their pillar.</p>
           <div className="flex gap-2 pt-1 border-t border-slate-800">
             <a href="/glossary" className="text-xs underline underline-offset-2" style={{color:"var(--accent)"}}>Full Glossary</a>
             <span className="text-slate-700">·</span>
@@ -1404,10 +1422,10 @@ export default function LineupGame() {
               Each round the wheels spin: one for <span className="text-blue-400 font-medium">era</span>, one for <span className="text-blue-400 font-medium">team</span>. Pick one player from that roster, then slot them into a starting position or the bench — <span className="text-slate-200">9 spots total</span> (5 starters + 4 bench), and you can rearrange freely between picks. Off-position starters cost −10% / −25% unless they're <span className="text-violet-300">VERSATILE</span>. A bench covering Guard + Forward + Center earns a buff. Real-history tags feed the sim too: <span className="text-yellow-300">MVP</span>, <span className="text-sky-300">DPOY</span>, <span className="text-amber-300">🏆 Champion</span>, <span className="text-orange-300">Finals MVP</span>, <span className="text-orange-400">6th Man</span>, <span className="text-emerald-300">Dynamic Duo</span>, <span className="text-purple-300">Timeless</span>. Finish by drafting a <span className="text-slate-200">coach</span>.
             </p>
             <p className="text-sm text-slate-400 leading-relaxed">
-              After 5 picks your lineup is scored in two stages. First, each player's <span className="text-slate-300">quality</span> is adjusted by how meta their archetype was in their era — a Spacer in the Dead Ball era scores lower than in the Small Ball era. Then the lineup's <span className="text-slate-300">coverage</span> measures whether your roster collectively addresses Creation · Spacing · Defense · Finishing. One great specialist covers their pillar; duplicates don't stack.
+              After 9 picks your lineup is scored in two stages. First, each player's <span className="text-slate-300">quality</span> is their overall scaled by <span className="text-slate-300">distance to your chosen era</span> — a 90s legend loses power the further you simulate from the 90s (TIMELESS greats don't care). Then <span className="text-slate-300">coverage</span> measures whether your roster's archetypes collectively address Creation · Spacing · Defense · Finishing. One great specialist covers their pillar; duplicates don't stack.
             </p>
             <p className="text-sm text-slate-400 leading-relaxed">
-              Then the real test: a full <span className="text-emerald-400 font-medium">82-game season simulation</span> in the era you pick before drafting. Win 50%+ to make the playoffs, survive four best-of-7 rounds, and chase the ring. Archetypes off-meta in your sim era — and players far from their home decade — take penalties.
+              Then the real test: a full <span className="text-emerald-400 font-medium">82-game season simulation</span> in the era you picked. Win 50%+ to make the playoffs, survive four best-of-7 rounds, and chase the ring. Players far from their home decade take distance penalties; your archetype mix drives the coverage that wins games.
             </p>
             <div className="grid grid-cols-2 gap-2 pt-1">
               {[
@@ -1425,7 +1443,7 @@ export default function LineupGame() {
             </div>
             <div className="pt-1 border-t border-slate-800">
               <p className="text-[12.5px] text-slate-500 italic">
-                The formula: 45% avg player quality + 40% lineup coverage + 15% role fit. Quality rewards stars from dominant eras. Coverage demands one playmaker, 2–3 shooters, a defender, and a finisher. Role fit penalizes duplicate ball-handlers.
+                The formula: 45% avg player quality + 40% lineup coverage + 15% role fit. Quality = overall × era distance × position fit. Coverage demands one playmaker, 2–3 shooters, a defender, and a finisher. Role fit penalizes duplicate ball-handlers.
               </p>
             </div>
           </div>
@@ -1460,10 +1478,10 @@ export default function LineupGame() {
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
           <div>
             <div className="text-[11px] text-slate-400 uppercase tracking-widest mb-1">Step 1 — Pick Your Simulation Era</div>
-            <p className="text-xs text-slate-500 leading-relaxed">
-              Your season will be simulated under this era's meta. Draft accordingly — a Spacer
-              is gold in the Small Ball era and nearly worthless in the 80s. Players far from
-              their home era also take a distance penalty.
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Your whole run lives in this era. Every player's power scales with how far their
+              home decade is from it — one era off costs −6%, five eras off −44%. TIMELESS
+              greats ignore the distance. Draft close to home or pay the price.
             </p>
           </div>
           <div className="grid grid-cols-2 gap-2">
@@ -1543,14 +1561,14 @@ export default function LineupGame() {
               )}
             </div>
             {/* Alt bar: sıralama */}
-            <div className="flex items-center px-3 py-2 border-t gap-1" style={{borderColor:"rgba(30,41,59,.8)"}}>
-              <span className="text-[10px] tracking-widest text-slate-600 uppercase mr-1">Sort</span>
-              {SORT_KEYS.map(k=>(
-                <button key={k} onClick={()=>setSortKey(k)}
+            <div className="flex items-center px-3 py-2 border-t gap-1 flex-wrap" style={{borderColor:"rgba(30,41,59,.8)"}}>
+              <span className="text-[10px] tracking-widest text-slate-500 uppercase mr-1">Sort</span>
+              {SORT_KEYS.map(([field,label])=>(
+                <button key={field} onClick={()=>setSortKey(field)}
                   className={`px-2 py-1 rounded text-[10px] font-semibold tracking-wider transition-colors
-                    ${sortKey===k?"text-slate-900":"text-slate-500 hover:text-white"}`}
-                  style={sortKey===k?{background:"#e2b34c"}:{}}>
-                  {k==="TAGGED"?"TAGGED":k}
+                    ${sortKey===field?"text-slate-900":"text-slate-400 hover:text-white"}`}
+                  style={sortKey===field?{background:"#e2b34c"}:{}}>
+                  {label}
                 </button>
               ))}
             </div>
@@ -1650,7 +1668,7 @@ export default function LineupGame() {
                 onClick={()=>{
                   setCoach(c);
                   setMoveSrc(null);
-                  const fit=computeLineupFit(POSITIONS.map(p=>lineupRef.current[p]));
+                  const fit=computeLineupFit(POSITIONS.map(p=>lineupRef.current[p]), simEra);
                   setFitResult(fit);
                   setPhase("complete");
                 }}

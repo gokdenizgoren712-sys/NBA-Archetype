@@ -1800,6 +1800,12 @@ def game_players(season: str = Query("2025-26"), team: str = Query("")):
             hist_abbrevs = [a.upper() for a in _resolve_abbrev(team.upper(), season)]
             df = df[df["TEAM_ABBREVIATION"].str.upper().isin(hist_abbrevs)]
         df = _gp_filter(df, 10)
+        # hist_Base'den eksik stat sütunlarını merge et (FG3_PCT, FG_PCT, STL, BLK)
+        base_stats = _load_hist_base_stats(season)
+        if not base_stats.empty and "PLAYER_ID" in df.columns:
+            missing_cols = [c for c in base_stats.columns if c != "PLAYER_ID" and c not in df.columns]
+            if missing_cols:
+                df = df.merge(base_stats[["PLAYER_ID"] + missing_cols], on="PLAYER_ID", how="left")
 
     # NaN pozisyonları doldur, POS5 hesapla
     df = _fill_position_from_components(df)
@@ -1808,7 +1814,7 @@ def game_players(season: str = Query("2025-26"), team: str = Query("")):
     score_cols = [c for c in df.columns if c.startswith("score_")]
     keep = ["PLAYER_ID", "PLAYER_NAME", "primary_arch", "overall_score", "POSITION", "POS5",
             "TEAM_ABBREVIATION", "GP", "G", "MIN", "PTS", "REB", "AST",
-            "STL", "BLK", "TOV"] + score_cols
+            "STL", "BLK", "TOV", "FG3_PCT"] + score_cols
     keep = [c for c in keep if c in df.columns]
 
     df = df[keep].copy()
