@@ -3,6 +3,17 @@ import { SEO } from "../hooks/useSEO";
 
 const CHANGELOG = [
   {
+    version: "v3.6 — Phase C3",
+    date_en: "July 2026",
+    label_en: "Team-Relative Contracts + Detailed Sim Stats",
+    items_en: [
+      "Star premium: every roster's top 3 players carry contract floors of 14% / 10% / 7% — a weak team's franchise player never comes cheap (real cap logic, and a deliberate 'bad contract' trap)",
+      "Cost curve bottom degraded: 0.60→7%, 0.55→5%, floor 4% only for true end-of-bench — no more 'entire roster costs 4%' spins",
+      "Cheap-fill strategy survives: beyond the top 3, weak rosters are still bargain bins for bench spots",
+      "Season stat lines expanded: STL, BLK and 3P% per player plus a TEAM totals row",
+    ],
+  },
+  {
     version: "v3.6 — Phase C2",
     date_en: "July 2026",
     label_en: "Era Report + Timeless Rework",

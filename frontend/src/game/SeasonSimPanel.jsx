@@ -206,21 +206,40 @@ export default function SeasonSimPanel({ players, simEra, fit, affinity01, bench
               ) : (
                 <div className="text-[10.5px] text-slate-600 italic">No individual hardware this season.</div>
               )}
-              {result.statLines?.length > 0 && (
-                <div className="mt-1.5">
-                  <div className="grid grid-cols-[1fr_2.2rem_2.2rem_2.2rem] gap-x-1 text-[8.5px] text-slate-600 uppercase tracking-wider pb-1">
-                    <span>Player</span><span className="text-right">PTS</span><span className="text-right">REB</span><span className="text-right">AST</span>
-                  </div>
-                  {result.statLines.map((l, i) => (
-                    <div key={i} className={`grid grid-cols-[1fr_2.2rem_2.2rem_2.2rem] gap-x-1 text-[10px] leading-relaxed ${l.bench ? "text-slate-500" : "text-slate-300"}`}>
-                      <span className="truncate">{l.bench ? "· " : ""}{l.name?.split(" ").slice(-1)[0]}</span>
-                      <span className="text-right tabular-nums">{l.pts}</span>
-                      <span className="text-right tabular-nums">{l.reb}</span>
-                      <span className="text-right tabular-nums">{l.ast}</span>
+              {result.statLines?.length > 0 && (() => {
+                const COLS = "grid-cols-[1fr_2.2rem_2.2rem_2.2rem_2.2rem_2.2rem_2.4rem]";
+                const tot = k => +result.statLines.reduce((a, l) => a + (l[k] || 0), 0).toFixed(1);
+                const fg3s = result.statLines.filter(l => l.fg3 != null);
+                const fg3avg = fg3s.length ? Math.round(fg3s.reduce((a, l) => a + l.fg3, 0) / fg3s.length) : null;
+                return (
+                  <div className="mt-1.5">
+                    <div className={`grid ${COLS} gap-x-1 text-[8.5px] text-slate-500 uppercase tracking-wider pb-1`}>
+                      <span>Player</span><span className="text-right">PTS</span><span className="text-right">REB</span><span className="text-right">AST</span><span className="text-right">STL</span><span className="text-right">BLK</span><span className="text-right">3P%</span>
                     </div>
-                  ))}
-                </div>
-              )}
+                    {result.statLines.map((l, i) => (
+                      <div key={i} className={`grid ${COLS} gap-x-1 text-[10px] leading-relaxed ${l.bench ? "text-slate-500" : "text-slate-300"}`}>
+                        <span className="truncate">{l.bench ? "· " : ""}{l.name?.split(" ").slice(-1)[0]}</span>
+                        <span className="text-right tabular-nums">{l.pts}</span>
+                        <span className="text-right tabular-nums">{l.reb}</span>
+                        <span className="text-right tabular-nums">{l.ast}</span>
+                        <span className="text-right tabular-nums">{l.stl ?? "—"}</span>
+                        <span className="text-right tabular-nums">{l.blk ?? "—"}</span>
+                        <span className="text-right tabular-nums">{l.fg3 != null ? `${l.fg3}%` : "—"}</span>
+                      </div>
+                    ))}
+                    {/* Takım toplamları */}
+                    <div className={`grid ${COLS} gap-x-1 text-[10px] font-bold text-white border-t border-slate-800 mt-1 pt-1`}>
+                      <span>TEAM</span>
+                      <span className="text-right tabular-nums">{tot("pts")}</span>
+                      <span className="text-right tabular-nums">{tot("reb")}</span>
+                      <span className="text-right tabular-nums">{tot("ast")}</span>
+                      <span className="text-right tabular-nums">{tot("stl")}</span>
+                      <span className="text-right tabular-nums">{tot("blk")}</span>
+                      <span className="text-right tabular-nums">{fg3avg != null ? `${fg3avg}%` : "—"}</span>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           )}
 

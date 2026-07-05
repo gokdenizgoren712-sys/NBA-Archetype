@@ -214,11 +214,12 @@ function computeSeasonAwards({ profiles, benchProfiles, players, bench, wins, ch
   const factor = prof => prof ? prof.simQuality / Math.max(0.35, prof.overall) : 1;
   const line = (pl, prof, isBench) => {
     const f = factor(prof) * (isBench ? 0.55 : 1.0);
+    const st = k => +(Math.max(0, parseFloat(pl[k] || 0)) * f).toFixed(1);
     return {
       name:  prof.name,
-      pts:   +(Math.max(0, parseFloat(pl.PTS || 0)) * f).toFixed(1),
-      reb:   +(Math.max(0, parseFloat(pl.REB || 0)) * f).toFixed(1),
-      ast:   +(Math.max(0, parseFloat(pl.AST || 0)) * f).toFixed(1),
+      pts: st("PTS"), reb: st("REB"), ast: st("AST"),
+      stl: st("STL"), blk: st("BLK"),
+      fg3: pl.FG3_PCT != null && !isNaN(+pl.FG3_PCT) ? Math.round(+pl.FG3_PCT * 100) : null,
       q:     prof.simQuality,
       bench: isBench,
     };

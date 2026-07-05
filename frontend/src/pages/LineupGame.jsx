@@ -8,7 +8,7 @@ import SeasonSimPanel from "../game/SeasonSimPanel";
 import { COACHES } from "../game/coaches";
 import { getPlayerTags, TAG_INFO } from "../game/awards";
 import CourtBoard from "../game/CourtBoard";
-import { START_BUDGET, MIN_COST, costOf, costColor, totalSpent, maxSpendNow } from "../game/salary";
+import { START_BUDGET, MIN_COST, costColor, totalSpent, maxSpendNow, applyTeamPricing, priceOf } from "../game/salary";
 
 const POSITIONS = ["PG", "SG", "SF", "PF", "C"];
 
@@ -998,8 +998,11 @@ export default function LineupGame() {
       .then(r=>r.json())
       .then(d=>{
         const taken=Object.values(lineupRef.current).filter(Boolean).map(x=>x.PLAYER_NAME);
-        const list=(d.players||[]).filter(p=>!taken.includes(p.PLAYER_NAME));
+        let list=(d.players||[]).filter(p=>!taken.includes(p.PLAYER_NAME));
         if(list.length===0){ onEmpty(); return; }
+
+        // Takım içi fiyatlama: rosterın en iyi 3'üne yıldız primi tabanı
+        if(modeRef.current==="salarycap") list = applyTeamPricing(list);
 
         // Salary Cap garantisi: rosterda kalan bütçeyle alınabilir oyuncu olmalı
         // (kalan her slota %4 rezerv bırakarak). Yoksa otomatik yeniden çevir
@@ -1009,7 +1012,7 @@ export default function LineupGame() {
           const budgetLeft=START_BUDGET-totalSpent(lu);
           const slotsLeft=ALL_SLOTS.length-lu.filter(Boolean).length;
           const cap=maxSpendNow(budgetLeft, slotsLeft);
-          const pickable=list.some(p=>costOf(p)<=cap);
+          const pickable=list.some(p=>priceOf(p)<=cap);
           if(!pickable){
             guaranteeRef.current++;
             if(guaranteeRef.current>=15){
@@ -1177,7 +1180,7 @@ export default function LineupGame() {
     let enrichedPick = player;
     // Salary Cap: bütçeyi aşan sözleşme alınamaz (wildcard'da rezerv şartı düşer)
     if(mode==="salarycap"){
-      const c=costOf(player);
+      const c=priceOf(player);
       const lu=Object.values(lineupRef.current);
       const budgetLeft=START_BUDGET-totalSpent(lu);
       const slotsLeft=ALL_SLOTS.length-lu.filter(Boolean).length;
@@ -1479,7 +1482,7 @@ export default function LineupGame() {
                 ${mode==="salarycap"?"border-violet-500 bg-violet-900/20":"border-slate-800 bg-slate-900/60 hover:border-slate-600"}`}>
               <div className="text-sm font-bold text-white">💰 Salary Cap</div>
               <div className="text-[11px] text-slate-400 mt-1 leading-snug">
-                Start with a <span className="text-emerald-300 font-semibold">100% cap</span>. Every player costs a slice by quality — a superstar eats <span style={{color:"#a78bfa"}}>~30%</span>, a role player <span style={{color:"#fb923c"}}>4%</span>. Fit 9 contracts under the cap.
+                Start with a <span className="text-emerald-300 font-semibold">100% cap</span>. Every player costs a slice by quality — a superstar eats <span style={{color:"#a78bfa"}}>~30%</span>, a role player <span style={{color:"#fb923c"}}>4%</span>. Each roster's best men carry a star premium (14/10/7% floors) — nobody's franchise player comes cheap. Fit 9 contracts.
               </div>
             </button>
           </div>
@@ -1573,7 +1576,7 @@ export default function LineupGame() {
             {/* Satır listesi */}
             <div className="max-h-96 overflow-y-auto">
               {sorted.map((p,i)=>{
-                const c = salary ? costOf(p) : null;
+                const c = salary ? priceOf(p) : null;
                 const over = salary && c>spendCap;
                 return <PlayerRow key={i} player={p} discover={discoverActive}
                   onClick={()=>handlePickPlayer(p)} cost={c} unaffordable={over}
