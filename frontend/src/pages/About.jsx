@@ -3,6 +3,19 @@ import { SEO } from "../hooks/useSEO";
 
 const CHANGELOG = [
   {
+    version: "v3.6 — Phase C",
+    date_en: "July 2026",
+    label_en: "Salary Cap % + Open Archetypes",
+    items_en: [
+      "Salary Cap mode rebuilt: tier quotas (2S/2A/2B/2C/1D) replaced by a real 100% cap — every player costs a slice by quality (superstar ~30%, role player 4% minimum)",
+      "Contract price shown on every row; players over your spendable cap are locked. Each pick reserves 4% per remaining slot so you can always finish the roster",
+      "Spin guarantee reworked for budgets: rosters with nothing affordable auto-respin",
+      "Archetypes are now visible while drafting in both modes — overalls stay hidden. Contract price, stats and tags are your quality clues",
+      "Discover joker now reveals hidden overalls only",
+      "Start screen visualized: 4-step flow strip and a weighted formula bar instead of three paragraphs",
+    ],
+  },
+  {
     version: "v3.6 — Phase B",
     date_en: "July 2026",
     label_en: "Era Distance Model + 3P%",

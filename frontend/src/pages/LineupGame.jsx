@@ -8,7 +8,7 @@ import SeasonSimPanel from "../game/SeasonSimPanel";
 import { COACHES } from "../game/coaches";
 import { getPlayerTags, TAG_INFO } from "../game/awards";
 import CourtBoard from "../game/CourtBoard";
-import { TIER_ORDER, TIER_QUOTA, TIER_COLORS, TIER_DESC, tierOf, countTiers, firstOpenTier } from "../game/tiers";
+import { START_BUDGET, MIN_COST, costOf, costColor, totalSpent, maxSpendNow } from "../game/salary";
 
 const POSITIONS = ["PG", "SG", "SF", "PF", "C"];
 
@@ -206,7 +206,7 @@ function posGroupOf(p) {
   return "F";
 }
 
-function PlayerRow({ player, discover, onClick, tier, tierFull, highlightStat }) {
+function PlayerRow({ player, discover, onClick, cost, unaffordable, highlightStat }) {
   const [imgOk, setImgOk] = useState(true);
   const stat = (k) => {
     const v = player[k];
@@ -225,9 +225,9 @@ function PlayerRow({ player, discover, onClick, tier, tierFull, highlightStat })
     </span>
   );
   return (
-    <button onClick={onClick} disabled={tierFull}
+    <button onClick={onClick} disabled={unaffordable}
       className={`w-full flex items-center gap-2.5 px-2.5 py-2 border-b text-left transition-colors
-        ${tierFull ? "opacity-30 cursor-not-allowed" : "hover:bg-slate-800/70 cursor-pointer"}`}
+        ${unaffordable ? "opacity-30 cursor-not-allowed" : "hover:bg-slate-800/70 cursor-pointer"}`}
       style={{ borderColor: "rgba(30,41,59,.6)" }}>
       {/* Avatar */}
       <div className="w-9 h-9 rounded-full overflow-hidden shrink-0 border border-slate-700 bg-slate-800 flex items-center justify-center">
@@ -240,11 +240,13 @@ function PlayerRow({ player, discover, onClick, tier, tierFull, highlightStat })
           </span>
         )}
       </div>
-      {/* İsim + pozisyon + tag'ler */}
+      {/* İsim + pozisyon + arketip + tag'ler */}
       <div className="flex-1 min-w-0">
         <div className="text-[13px] font-semibold text-white truncate leading-tight">{player.PLAYER_NAME}</div>
         <div className="flex items-center gap-1.5 mt-0.5">
-          <span className="text-[10px] text-slate-500 truncate">{player.POSITION || player.POS5 || ""}</span>
+          <span className="text-[10px] text-slate-500 truncate shrink-0">{player.POSITION || player.POS5 || ""}</span>
+          {/* v3.6-C: arketip her zaman açık — overall gizli kalır */}
+          <span className="text-[10px] text-blue-400 font-medium shrink-0">{player.primary_arch || "—"}</span>
           {tags.slice(0, 3).map(t => (
             <span key={t.key} title={t.detail} className="text-[7.5px] px-1 py-px rounded font-bold leading-none shrink-0"
               style={{ color: t.color, background: t.color + "1a", border: `1px solid ${t.color}44` }}>
@@ -253,18 +255,17 @@ function PlayerRow({ player, discover, onClick, tier, tierFull, highlightStat })
           ))}
         </div>
       </div>
-      {/* Tier / discover chip */}
-      {tier && (
-        <span className="text-sm font-black shrink-0 w-4 text-center" style={{ color: TIER_COLORS[tier] }}
-          title={`${tier} — ${TIER_DESC[tier]}${tierFull ? " (quota full)" : ""}`}>
-          {tier}
+      {/* Sözleşme maliyeti (Salary Cap) */}
+      {cost != null && (
+        <span className="text-xs font-black shrink-0 tabular-nums px-1 py-0.5 rounded"
+          style={{ color: costColor(cost), background: costColor(cost) + "14", border: `1px solid ${costColor(cost)}44` }}
+          title={unaffordable ? `Costs ${cost}% — over your spendable cap` : `Contract: ${cost}% of the cap`}>
+          {cost}%
         </span>
       )}
-      {discover && (
-        <span className="flex items-center gap-1 shrink-0">
-          <span className="text-[9px] px-1 py-0.5 rounded border border-emerald-700/50 bg-emerald-900/30 text-emerald-300">{player.primary_arch || "—"}</span>
-          {overall != null && <span className="text-[9px] px-1 py-0.5 rounded border border-violet-700/50 bg-violet-900/30 text-violet-300 font-bold">{overall}</span>}
-        </span>
+      {/* Discover: yalnızca overall'ı ifşa eder */}
+      {discover && overall != null && (
+        <span className="text-[10px] px-1.5 py-0.5 rounded border border-violet-700/50 bg-violet-900/30 text-violet-300 font-bold shrink-0">{overall}</span>
       )}
       {/* İstatistikler */}
       {cell("PTS")}{cell("REB")}{cell("AST")}{cell("FG3_PCT")}{cell("STL")}{cell("BLK")}
@@ -1008,11 +1009,15 @@ export default function LineupGame() {
         const list=(d.players||[]).filter(p=>!taken.includes(p.PLAYER_NAME));
         if(list.length===0){ onEmpty(); return; }
 
-        // Salary Cap garantisi: rosterda hâlâ açık kotalı tier'dan oyuncu olmalı.
-        // Yoksa otomatik yeniden çevir (15 denemeden sonra wildcard: herkes seçilebilir).
+        // Salary Cap garantisi: rosterda kalan bütçeyle alınabilir oyuncu olmalı
+        // (kalan her slota %4 rezerv bırakarak). Yoksa otomatik yeniden çevir
+        // (15 denemeden sonra wildcard: rezerv şartı kalkar).
         if(modeRef.current==="salarycap" && !wildcardRef.current){
-          const counts=countTiers(Object.values(lineupRef.current));
-          const pickable=list.some(p=>counts[tierOf(p)]<TIER_QUOTA[tierOf(p)]);
+          const lu=Object.values(lineupRef.current);
+          const budgetLeft=START_BUDGET-totalSpent(lu);
+          const slotsLeft=ALL_SLOTS.length-lu.filter(Boolean).length;
+          const cap=maxSpendNow(budgetLeft, slotsLeft);
+          const pickable=list.some(p=>costOf(p)<=cap);
           if(!pickable){
             guaranteeRef.current++;
             if(guaranteeRef.current>=15){
@@ -1178,15 +1183,15 @@ export default function LineupGame() {
   // ── Oyuncu seç ────────────────────────────────────────────────────────────
   const handlePickPlayer = (player) => {
     let enrichedPick = player;
-    // Salary Cap: dolu tier'dan seçilemez; wildcard'da ilk açık tier'a sayılır
+    // Salary Cap: bütçeyi aşan sözleşme alınamaz (wildcard'da rezerv şartı düşer)
     if(mode==="salarycap"){
-      const counts=countTiers(Object.values(lineupRef.current));
-      const t=tierOf(player);
-      if(wildcardRef.current){
-        enrichedPick={...player,_tierOverride:firstOpenTier(counts)};
-      } else if(counts[t]>=TIER_QUOTA[t]){
-        return; // kart zaten disabled — guard
-      }
+      const c=costOf(player);
+      const lu=Object.values(lineupRef.current);
+      const budgetLeft=START_BUDGET-totalSpent(lu);
+      const slotsLeft=ALL_SLOTS.length-lu.filter(Boolean).length;
+      const cap=wildcardRef.current ? budgetLeft : maxSpendNow(budgetLeft, slotsLeft);
+      if(c>cap) return; // kart zaten disabled — guard
+      enrichedPick={...player,_cost:c};
     }
     if(pendingRoundRef.current){
       roundHistoryRef.current = [...roundHistoryRef.current, {...pendingRoundRef.current, picked: enrichedPick}];
@@ -1310,22 +1315,31 @@ export default function LineupGame() {
         </div>
       )}
 
-      {/* Salary Cap kota takibi */}
+      {/* Salary Cap bütçe barı */}
       {mode==="salarycap"&&phase!=="idle"&&phase!=="pick_era"&&phase!=="complete"&&(()=>{
-        const counts=countTiers(Object.values(lineup));
+        const budgetLeft=START_BUDGET-totalSpent(Object.values(lineup));
+        const slotsLeft=emptySlots.length;
+        const cap=Math.max(0, maxSpendNow(budgetLeft, slotsLeft));
         return (
-          <div className="flex gap-1.5">
-            {TIER_ORDER.map(t=>{
-              const full=counts[t]>=TIER_QUOTA[t];
-              return (
-                <div key={t} title={TIER_DESC[t]}
-                  className={`flex-1 rounded-lg border p-1 text-center transition-all
-                    ${full?"border-emerald-700/60 bg-emerald-950/20":"border-slate-800 bg-slate-900/60"}`}>
-                  <div className="text-xs font-black leading-none" style={{color:TIER_COLORS[t]}}>{t}</div>
-                  <div className={`text-[9px] mt-0.5 ${full?"text-emerald-400":"text-slate-500"}`}>{counts[t]}/{TIER_QUOTA[t]}</div>
-                </div>
-              );
-            })}
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-3">
+            <div className="flex items-baseline justify-between mb-1.5">
+              <span className="text-[11px] text-slate-400 uppercase tracking-widest">💰 Cap Space</span>
+              <span className={`text-2xl font-black tabular-nums leading-none
+                ${budgetLeft<=15?"text-red-400":budgetLeft<=35?"text-amber-300":"text-emerald-300"}`}>
+                {budgetLeft}<span className="text-sm">%</span>
+              </span>
+            </div>
+            <div className="h-2.5 bg-slate-800 rounded-full overflow-hidden">
+              <div className="h-full rounded-full transition-all duration-500"
+                style={{width:`${budgetLeft}%`,
+                  background:budgetLeft<=15?"#7f1d1d":budgetLeft<=35?"#b45309":"#047857"}}/>
+            </div>
+            {slotsLeft>0&&(
+              <div className="text-[10px] text-slate-500 mt-1.5">
+                {slotsLeft} contract{slotsLeft>1?"s":""} left · max <span className="text-slate-300 font-semibold">{cap}%</span> on this pick
+                {slotsLeft>1&&<span> (reserving {(slotsLeft-1)*MIN_COST}% for the rest)</span>}
+              </div>
+            )}
           </div>
         );
       })()}
@@ -1348,7 +1362,7 @@ export default function LineupGame() {
           )}
           {discoverActive&&(
             <div className="text-center text-xs text-emerald-400 mt-1.5 animate-pulse">
-              🔍 Discover active — archetypes and scores revealed this round
+              🔍 Discover active — hidden overalls revealed this round
             </div>
           )}
         </div>
@@ -1370,7 +1384,7 @@ export default function LineupGame() {
             ["📅","Year","Re-spin the season wheel. Jump to a completely different era."],
             ["⚡","Both","Re-spin both wheels at once. Full reset of the current round."],
             ["👥","Pick 2","Choose two players from the current roster in a single round."],
-            ["🔍","Discover","Reveal every player's archetype and overall score this round, then choose with full information."],
+            ["🔍","Discover","Reveal every player's hidden overall score this round, then choose with full information."],
           ].map(([icon,name,desc])=>(
             <div key={name} className="flex gap-3 items-start">
               <span className="text-xl shrink-0">{icon}</span>
@@ -1400,9 +1414,9 @@ export default function LineupGame() {
         </div>
       </InfoModal>
 
-      <InfoModal open={modal==="archetype"} onClose={()=>setModal(null)} title="??? Archetypes">
+      <InfoModal open={modal==="archetype"} onClose={()=>setModal(null)} title="🧬 Archetypes">
         <div className="space-y-3 text-sm text-slate-300 leading-relaxed">
-          <p>Player archetypes are <span className="text-white font-medium">hidden during the game</span> and revealed at the end. Use stats and position clues to guess each player's role before committing to a slot.</p>
+          <p>Every player's archetype is <span className="text-white font-medium">visible while you draft</span> — read the role, build the puzzle. What stays hidden is the <span className="text-white font-medium">overall score</span>: you know WHAT a player is, not how good. Stats, tags and contract price are your clues (or burn the Discover joker).</p>
           <p>Each archetype is a percentile score built from real NBA tracking and box-score data. The 12 roles range from <span className="text-orange-300">Engine</span> (usage, creation) to <span className="text-blue-300">Anchor</span> (rim protection, defensive rating).</p>
           <p className="text-slate-400 text-xs">Final score = 45% Player Quality + 40% Lineup Coverage + 15% Role Fit. Quality is each player's overall scaled by distance to your chosen sim era. Coverage is where archetypes live: does the lineup collectively cover creation, spacing, defense and finishing? One great specialist is enough for their pillar.</p>
           <div className="flex gap-2 pt-1 border-t border-slate-800">
@@ -1416,23 +1430,41 @@ export default function LineupGame() {
       {/* === IDLE === */}
       {phase==="idle"&&(
         <div className="space-y-3">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
-            <div className="text-[11px] text-slate-400 uppercase tracking-widest">How it works</div>
-            <p className="text-sm text-slate-300 leading-relaxed">
-              Each round the wheels spin: one for <span className="text-blue-400 font-medium">era</span>, one for <span className="text-blue-400 font-medium">team</span>. Pick one player from that roster, then slot them into a starting position or the bench — <span className="text-slate-200">9 spots total</span> (5 starters + 4 bench), and you can rearrange freely between picks. Off-position starters cost −10% / −25% unless they're <span className="text-violet-300">VERSATILE</span>. A bench covering Guard + Forward + Center earns a buff. Real-history tags feed the sim too: <span className="text-yellow-300">MVP</span>, <span className="text-sky-300">DPOY</span>, <span className="text-amber-300">🏆 Champion</span>, <span className="text-orange-300">Finals MVP</span>, <span className="text-orange-400">6th Man</span>, <span className="text-emerald-300">Dynamic Duo</span>, <span className="text-purple-300">Timeless</span>. Finish by drafting a <span className="text-slate-200">coach</span>.
-            </p>
-            <p className="text-sm text-slate-400 leading-relaxed">
-              After 9 picks your lineup is scored in two stages. First, each player's <span className="text-slate-300">quality</span> is their overall scaled by <span className="text-slate-300">distance to your chosen era</span> — a 90s legend loses power the further you simulate from the 90s (TIMELESS greats don't care). Then <span className="text-slate-300">coverage</span> measures whether your roster's archetypes collectively address Creation · Spacing · Defense · Finishing. One great specialist covers their pillar; duplicates don't stack.
-            </p>
-            <p className="text-sm text-slate-400 leading-relaxed">
-              Then the real test: a full <span className="text-emerald-400 font-medium">82-game season simulation</span> in the era you picked. Win 50%+ to make the playoffs, survive four best-of-7 rounds, and chase the ring. Players far from their home decade take distance penalties; your archetype mix drives the coverage that wins games.
-            </p>
-            <div className="grid grid-cols-2 gap-2 pt-1">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+            {/* 4 adımlı görsel akış */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {[
-                {key:"chemistry", icon:"⭐", title:"Chemistry",   desc:"Slot players into natural positions for a score bonus"},
-                {key:"jokers",    icon:"🃏", title:"Jokers",      desc:"Five one-time abilities to reshape your options"},
-                {key:"archetype", icon:"???",title:"Archetypes",  desc:"Hidden until the end — revealed alongside your score"},
-                {key:"tags",      icon:"🏷", title:"Player Tags", desc:"MVP, rings, duos... real history that feeds the sim"},
+                ["1","🎯","Pick your era","distance rules everything"],
+                ["2","🎰","Spin & draft 9","5 starters + 4 bench"],
+                ["3","🧠","Hire a coach","O/D grades + rings"],
+                ["4","🏆","Simulate 82","playoffs · awards · glory"],
+              ].map(([n,icon,title,sub])=>(
+                <div key={n} className="relative rounded-xl border border-slate-800 bg-slate-950/60 p-3 text-center">
+                  <div className="absolute top-1.5 left-2 text-[10px] font-black text-slate-600">{n}</div>
+                  <div className="text-2xl leading-none mb-1.5">{icon}</div>
+                  <div className="text-xs font-bold text-white leading-tight">{title}</div>
+                  <div className="text-[10px] text-slate-500 mt-0.5 leading-tight">{sub}</div>
+                </div>
+              ))}
+            </div>
+            {/* Skor formülü — görsel ağırlık şeridi */}
+            <div>
+              <div className="flex h-7 rounded-lg overflow-hidden text-[10.5px] font-bold">
+                <div className="flex items-center justify-center" style={{width:"45%",background:"#1D428A"}}>QUALITY 45%</div>
+                <div className="flex items-center justify-center" style={{width:"40%",background:"#274690"}}>COVERAGE 40%</div>
+                <div className="flex items-center justify-center text-slate-300" style={{width:"15%",background:"#1e293b"}}>ROLE 15%</div>
+              </div>
+              <p className="text-[11px] text-slate-500 mt-1.5">
+                Quality = overall × era distance × position fit · Coverage = your archetypes covering Creation / Spacing / Defense / Finishing
+              </p>
+            </div>
+            {/* Mekanik kartları */}
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                {key:"chemistry", icon:"⭐", title:"Chemistry",   desc:"Natural positions earn a score bonus"},
+                {key:"jokers",    icon:"🃏", title:"Jokers",      desc:"Five one-time abilities per game"},
+                {key:"archetype", icon:"🧬", title:"Archetypes",  desc:"Visible while you draft — overalls stay hidden"},
+                {key:"tags",      icon:"🏷", title:"Player Tags", desc:"MVP, rings, duos — real history feeds the sim"},
               ].map(({key,icon,title,desc})=>(
                 <button key={key} onClick={()=>setModal(key)}
                   className="bg-slate-800/60 hover:bg-slate-700/60 rounded-lg p-3 text-left transition-colors border border-slate-700/50 hover:border-slate-600">
@@ -1441,11 +1473,6 @@ export default function LineupGame() {
                 </button>
               ))}
             </div>
-            <div className="pt-1 border-t border-slate-800">
-              <p className="text-[12.5px] text-slate-500 italic">
-                The formula: 45% avg player quality + 40% lineup coverage + 15% role fit. Quality = overall × era distance × position fit. Coverage demands one playmaker, 2–3 shooters, a defender, and a finisher. Role fit penalizes duplicate ball-handlers.
-              </p>
-            </div>
           </div>
           {/* Mod seçimi */}
           <div className="grid grid-cols-2 gap-2">
@@ -1453,14 +1480,14 @@ export default function LineupGame() {
               className={`text-left rounded-xl border p-3 transition-all
                 ${mode==="classic"?"border-blue-500 bg-blue-900/20":"border-slate-800 bg-slate-900/60 hover:border-slate-600"}`}>
               <div className="text-sm font-bold text-white">🎰 Classic</div>
-              <div className="text-[10px] text-slate-500 mt-1 leading-snug">No restrictions — pure wheel luck. Archetypes hidden until the end.</div>
+              <div className="text-[11px] text-slate-400 mt-1 leading-snug">No cap, no limits — pure wheel luck. Overalls stay hidden; read the archetypes.</div>
             </button>
             <button onClick={()=>setMode("salarycap")}
               className={`text-left rounded-xl border p-3 transition-all
                 ${mode==="salarycap"?"border-violet-500 bg-violet-900/20":"border-slate-800 bg-slate-900/60 hover:border-slate-600"}`}>
               <div className="text-sm font-bold text-white">💰 Salary Cap</div>
-              <div className="text-[10px] text-slate-500 mt-1 leading-snug">
-                Tier quotas: <span style={{color:TIER_COLORS.S}}>2 S</span> · <span style={{color:TIER_COLORS.A}}>2 A</span> · <span style={{color:TIER_COLORS.B}}>2 B</span> · <span style={{color:TIER_COLORS.C}}>2 C</span> · <span style={{color:TIER_COLORS.D}}>1 D</span>. Tiers visible; every spin guarantees an open tier.
+              <div className="text-[11px] text-slate-400 mt-1 leading-snug">
+                Start with a <span className="text-emerald-300 font-semibold">100% cap</span>. Every player costs a slice by quality — a superstar eats <span style={{color:"#a78bfa"}}>~30%</span>, a role player <span style={{color:"#fb923c"}}>4%</span>. Fit 9 contracts under the cap.
               </div>
             </button>
           </div>
@@ -1518,7 +1545,11 @@ export default function LineupGame() {
 
       {/* === PICK PLAYER === */}
       {phase==="pick_player"&&(()=>{
-        const counts = mode==="salarycap" ? countTiers(Object.values(lineup)) : null;
+        const salary = mode==="salarycap";
+        const budgetLeft = salary ? START_BUDGET-totalSpent(Object.values(lineup)) : null;
+        const spendCap = salary
+          ? (wildcardRef.current ? budgetLeft : maxSpendNow(budgetLeft, emptySlots.length))
+          : null;
         let list = posFilter ? players.filter(p=>posGroupOf(p)===posFilter) : players;
         const sorted = [...list].sort((a,b)=>{
           if(sortKey==="TAGGED"){
@@ -1550,10 +1581,10 @@ export default function LineupGame() {
             {/* Satır listesi */}
             <div className="max-h-96 overflow-y-auto">
               {sorted.map((p,i)=>{
-                const t = counts ? tierOf(p) : null;
-                const full = counts && !wildcardRef.current && counts[t]>=TIER_QUOTA[t];
+                const c = salary ? costOf(p) : null;
+                const over = salary && c>spendCap;
                 return <PlayerRow key={i} player={p} discover={discoverActive}
-                  onClick={()=>handlePickPlayer(p)} tier={t} tierFull={full}
+                  onClick={()=>handlePickPlayer(p)} cost={c} unaffordable={over}
                   highlightStat={sortKey==="TAGGED"?"PTS":sortKey}/>;
               })}
               {sorted.length===0&&(
