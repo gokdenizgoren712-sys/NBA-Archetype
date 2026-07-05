@@ -3,6 +3,18 @@ import { SEO } from "../hooks/useSEO";
 
 const CHANGELOG = [
   {
+    version: "v3.6 — Phase C2",
+    date_en: "July 2026",
+    label_en: "Era Report + Timeless Rework",
+    items_en: [
+      "TIMELESS threshold lowered 90 → 85 overall — Durant/Curry-class stars now travel across eras like the true greats",
+      "Lineup Analysis replaced by the Era Report: pillar importance changes per era (Defense ×1.40 in Dead Ball, Spacing ×1.45 in Small Ball) with KEY/CORE/MINOR badges",
+      "Era weights feed the actual score: coverage is now the era-weighted pillar average — the same roster grades differently in different eras",
+      "Era weapon / era liability callouts: a weak KEY pillar warns it will cost you games; a strong MINOR pillar admits the era barely pays for it",
+      "Redundant sections removed: duplicate coverage bars and the generic verdict paragraph are gone — pillars live in one place",
+    ],
+  },
+  {
     version: "v3.6 — Phase C",
     date_en: "July 2026",
     label_en: "Salary Cap % + Open Archetypes",

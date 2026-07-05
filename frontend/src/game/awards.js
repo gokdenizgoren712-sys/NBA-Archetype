@@ -120,7 +120,9 @@ export const DUOS = [
   ["Penny Hardaway", "Shaquille O'Neal"],
 ];
 
-const TIMELESS_MIN_OVERALL = 0.90;   // era-aşırı yıldızlar: mesafe cezası neredeyse sıfır
+// Era-aşırı yıldızlar: mesafe cezası neredeyse sıfır. 0.90 çok darclı bir kulüptü
+// (KD/Curry tipi yıldızlar dışarıda kalıyordu) — 0.85'e indirildi (v3.6-C2).
+const TIMELESS_MIN_OVERALL = 0.85;
 
 // ── Tag açıklamaları (UI modalı için) ────────────────────────────────────────
 export const TAG_INFO = [
@@ -137,7 +139,7 @@ export const TAG_INFO = [
   { key: "VERSATILE", label: "Versatile",    color: "#a78bfa",
     desc: "Fits multiple positions without penalty — computed from the Versatile archetype tag, not hand-picked." },
   { key: "TIMELESS",  label: "Timeless",     color: "#c084fc",
-    desc: "All-time greats (overall ≥ 90) shrug off era distance. Minimal penalty no matter how far from home they play." },
+    desc: "All-time greats (overall ≥ 85) shrug off era distance. Minimal penalty no matter how far from home they play." },
   { key: "DUO",       label: "Dynamic Duo",  color: "#34d399",
     desc: "Draft both partners to activate a rating boost for the pair. Check a player's tag to see who the partner is." },
 ];

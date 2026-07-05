@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useLang } from "../contexts/LanguageContext";
 import { useAuth } from "../contexts/AuthContext";
 import { SEO } from "../hooks/useSEO";
-import { ERAS, ERA_META_BLURB, getEra } from "../game/eras";
+import { ERAS, ERA_META_BLURB, ERA_PILLAR_WEIGHTS, getEra } from "../game/eras";
 import { eraDistFactor } from "../game/seasonSim";
 import SeasonSimPanel from "../game/SeasonSimPanel";
 import { COACHES } from "../game/coaches";
@@ -110,12 +110,18 @@ function computeLineupFit(players, simEra) {
   const avgQuality = perPlayer.reduce((a, b) => a + b.quality, 0) / perPlayer.length;
 
   // 2. Lineup coverage — her pillar için en iyi oyuncunun katkısı yeterli mi?
+  // v3.6-C2: pillar'lar SEÇİLEN era'nın metasına göre ağırlıklanır (Dead Ball'da
+  // Defense ×1.40, Small Ball'da Spacing ×1.45). Aynı kadro farklı era'da farklı
+  // coverage alır — arketipler era ile takım seviyesinde konuşur.
   const creationCov  = Math.min(1, Math.max(...perPlayer.map(p => p.creation)));
   const nShooters    = perPlayer.filter(p => p.spacing >= 0.65).length;
   const spacingCov   = [0.10, 0.45, 0.82, 1.00, 0.88, 0.72][Math.min(nShooters, 5)];
   const defenseCov   = Math.min(1, Math.max(...perPlayer.map(p => p.defense)));
   const finishingCov = Math.min(1, Math.max(...perPlayer.map(p => p.finishing)));
-  const coverage     = (creationCov + spacingCov + defenseCov + finishingCov) / 4;
+  const W = ERA_PILLAR_WEIGHTS[(simEra || ERAS[5]).id] || { creation:1, spacing:1, defense:1, finishing:1 };
+  const wSum = W.creation + W.spacing + W.defense + W.finishing;
+  const coverage = (creationCov*W.creation + spacingCov*W.spacing
+                  + defenseCov*W.defense + finishingCov*W.finishing) / wSum;
 
   // 3. Role Fit — top dominansı cezası (sadece lineup seviyesinde)
   const ballDom = players.filter(p => Math.max(_s(p,"Engine")*1.05, _s(p,"Ecosystem")) >= 0.80).length;
@@ -322,24 +328,24 @@ const PILLAR_SCORE_KEYS = {
   roleFit:   ["Connector","Spacer"],
 };
 
-function analyzeLineup(fit, lineup, roundHistory=[]) {
+function analyzeLineup(fit, lineup, roundHistory=[], simEra=null) {
   const filled = POSITIONS.map(p=>lineup[p]).filter(Boolean);
+  const W = ERA_PILLAR_WEIGHTS[(simEra||ERAS[5]).id] || { creation:1, spacing:1, defense:1, finishing:1 };
   const pillars = [
-    { key:"creation",  label:"Creation",  val:fit.creation,
+    { key:"creation",  label:"Creation",  val:fit.creation,  w:W.creation,
       fix:"No true playmaker in the lineup. An Engine, Ecosystem, or Creator covers this pillar." },
-    { key:"spacing",   label:"Spacing",   val:fit.spacing,
+    { key:"spacing",   label:"Spacing",   val:fit.spacing,   w:W.spacing,
       fix:`${fit.nShooters} shooter${fit.nShooters===1?"":"s"} — optimal is 2–3. A Spacer, 3-and-D, or Gravity player covers this pillar.` },
-    { key:"defense",   label:"Defense",   val:fit.defense,
+    { key:"defense",   label:"Defense",   val:fit.defense,   w:W.defense,
       fix:"No defensive anchor. An Anchor, Stopper, or Two-Way player covers this pillar." },
-    { key:"finishing", label:"Finishing", val:fit.finishing,
+    { key:"finishing", label:"Finishing", val:fit.finishing, w:W.finishing,
       fix:"No one finishing at the rim. A Finisher, Rim Runner, or Force player covers this pillar." },
-    { key:"roleFit",   label:"Role Fit",  val:fit.roleFit,
-      fix:"Multiple ball-dominant players overlap. Replace one with an off-ball specialist." },
   ];
 
-  const sorted = [...pillars].sort((a,b)=>a.val-b.val);
-  const weakest = sorted[0];
-  const strongest = sorted[sorted.length-1];
+  // Era-ağırlıklı sıralama: açık = önem × eksik; silah = önem × değer.
+  // Small Ball'da 0.5'lik spacing, 0.5'lik finishing'den ÇOK daha büyük dert.
+  const weakest   = [...pillars].sort((a,b)=>(b.w*(1-b.val))-(a.w*(1-a.val)))[0];
+  const strongest = [...pillars].sort((a,b)=>(b.w*b.val)-(a.w*a.val))[0];
 
   const ballDomPlayers = fit.ballDomPlayers || filled.filter(p => {
     const _bs = (k) => parseFloat(p[`score_${k}`] ?? 0) || 0;
@@ -374,7 +380,7 @@ function analyzeLineup(fit, lineup, roundHistory=[]) {
 // ── Sonuç ekranı ──────────────────────────────────────────────────────────────
 function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, affinityMatrix, simEra, coach, mode="classic" }) {
   const { isLoggedIn, token } = useAuth();
-  const analysis  = analyzeLineup(fit, lineup, roundHistory);
+  const analysis  = analyzeLineup(fit, lineup, roundHistory, simEra);
   const chemBonus = primaryCount * 0.02;
   const rawScore  = fit.lineupScore;
   const totalScore = Math.min(1, rawScore + chemBonus);
@@ -460,26 +466,6 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
           ))}
         </div>
 
-        {/* Lineup Coverage detayı */}
-        <div className="mt-4 space-y-2 max-w-sm mx-auto text-left border-t border-slate-800 pt-3">
-          {[
-            ["Creation",  fit.creation],
-            [`Spacing (${fit.nShooters} shooters)`, fit.spacing],
-            ["Defense",   fit.defense],
-            ["Finishing", fit.finishing],
-          ].map(([label, val]) => {
-            const vp = Math.round((val||0)*100);
-            return (
-              <div key={label} className="flex items-center gap-2.5">
-                <span className="text-xs text-slate-300 w-32 text-right shrink-0">{label}</span>
-                <div className="flex-1 h-2 bg-slate-800 rounded-full overflow-hidden">
-                  <div className="h-full rounded-full" style={{width:`${vp}%`,background:vp>=75?"#1D428A":vp>=55?"#2a3d6b":"#7f1d1d"}}/>
-                </div>
-                <span className={`text-xs font-semibold w-6 text-right shrink-0 ${vp>=65?"text-blue-300":vp>=45?"text-slate-300":"text-red-400"}`}>{vp}</span>
-              </div>
-            );
-          })}
-        </div>
       </div>
 
       {/* Sezon simülasyonu (v3.5) */}
@@ -579,49 +565,69 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
         </div>
       </div>
 
-      {/* Post-game analysis */}
+      {/* Era Report — era-ağırlıklı kadro analizi (Lineup Analysis'in yerini aldı) */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
-        <div className="text-[11px] text-slate-400 uppercase tracking-widest">Lineup Analysis</div>
+        <div className="flex items-center justify-between">
+          <div className="text-[11px] text-slate-400 uppercase tracking-widest">Era Report</div>
+          {simEra&&<span className={`text-[10px] px-2 py-0.5 rounded border ${simEra.bg} ${simEra.color}`}>{simEra.label}</span>}
+        </div>
+        {simEra&&<p className="text-[12px] text-slate-500 italic leading-relaxed">{ERA_META_BLURB[simEra.id]}</p>}
 
-        {/* Güçlü yön */}
-        <div className="flex gap-2 items-start">
-          <span className="text-green-400 text-sm shrink-0">✓</span>
-          <div>
-            <span className="text-[12.5px] text-slate-300 font-medium">Strongest pillar: </span>
-            <span className="text-[12.5px] text-green-400">{analysis.strongest.label} ({Math.round(analysis.strongest.val*100)})</span>
-          </div>
+        {/* Era-ağırlıklı pillar tablosu */}
+        <div className="space-y-2">
+          {analysis.pillars.map(pl=>{
+            const vp = Math.round(pl.val*100);
+            const wLabel = pl.w>=1.2 ? "KEY" : pl.w>=0.95 ? "CORE" : "MINOR";
+            const wColor = pl.w>=1.2 ? "#facc15" : pl.w>=0.95 ? "#94a3b8" : "#475569";
+            return (
+              <div key={pl.key} className="flex items-center gap-2.5">
+                <span className="text-xs text-slate-300 w-20 text-right shrink-0">{pl.label}</span>
+                <span className="text-[8.5px] font-bold px-1 py-px rounded shrink-0 w-11 text-center"
+                  style={{color:wColor,border:`1px solid ${wColor}55`,background:wColor+"11"}}
+                  title={`This pillar's weight in the ${simEra?.label||"current era"}: ×${pl.w.toFixed(2)}`}>
+                  {wLabel}
+                </span>
+                <div className="flex-1 h-2 bg-slate-800 rounded-full overflow-hidden">
+                  <div className="h-full rounded-full" style={{width:`${vp}%`,background:vp>=75?"#1D428A":vp>=55?"#2a3d6b":"#7f1d1d"}}/>
+                </div>
+                <span className={`text-xs font-semibold w-6 text-right shrink-0 ${vp>=65?"text-blue-300":vp>=45?"text-slate-300":"text-red-400"}`}>{vp}</span>
+              </div>
+            );
+          })}
+          <p className="text-[10.5px] text-slate-600">
+            Coverage = era-weighted average · {fit.nShooters} shooter{fit.nShooters===1?"":"s"} in the lineup
+          </p>
         </div>
 
-        {/* Zayıf yön + öneri */}
-        <div className="flex gap-2 items-start">
-          <span className="text-red-400 text-sm shrink-0">✗</span>
-          <div>
-            <span className="text-[12.5px] text-slate-300 font-medium">Biggest gap: </span>
-            <span className="text-[12.5px] text-red-400">{analysis.weakest.label} ({Math.round(analysis.weakest.val*100)})</span>
-            <p className="text-[12.5px] text-slate-500 mt-0.5">{analysis.weakest.fix}</p>
+        {/* Era silahı + era açığı */}
+        <div className="border-t border-slate-800 pt-2.5 space-y-2.5">
+          <div className="flex gap-2 items-start">
+            <span className="text-green-400 text-sm shrink-0">⚡</span>
+            <p className="text-[12.5px] text-slate-300">
+              <span className="font-medium">Era weapon: </span>
+              <span className="text-green-400">{analysis.strongest.label} ({Math.round(analysis.strongest.val*100)})</span>
+              <span className="text-slate-500"> — {analysis.strongest.w>=1.2?"exactly what this era pays for.":analysis.strongest.w>=0.95?"solid currency in this era.":"strong, but this era barely values it."}</span>
+            </p>
+          </div>
+          <div className="flex gap-2 items-start">
+            <span className="text-red-400 text-sm shrink-0">🕳</span>
+            <div>
+              <p className="text-[12.5px] text-slate-300">
+                <span className="font-medium">Era liability: </span>
+                <span className="text-red-400">{analysis.weakest.label} ({Math.round(analysis.weakest.val*100)})</span>
+                {analysis.weakest.w>=1.2&&<span className="text-amber-400"> — a KEY pillar here, this will cost you games</span>}
+              </p>
+              <p className="text-[12px] text-slate-500 mt-0.5">{analysis.weakest.fix}</p>
+            </div>
           </div>
         </div>
 
         {/* Ball-dom uyarısı */}
-        {analysis.ballDom >= 1 && (
+        {analysis.ballDom >= 2 && (
           <div className="flex gap-2 items-start">
             <span className="text-amber-400 text-sm shrink-0">⚠</span>
-            <div>
-              <p className="text-[12.5px] text-amber-400/80">
-                Ball-dominant: {analysis.ballDomPlayers.join(", ")}
-                {analysis.ballDom === 1 ? " — one playmaker, optimal" : ` — ${analysis.ballDom} playmakers, role fit penalty applied`}
-              </p>
-              <p className="text-[10.5px] text-slate-600 mt-0.5">High usage on a weak team ≠ ball-dominant in a strong lineup context.</p>
-            </div>
-          </div>
-        )}
-
-        {/* Kimya notu */}
-        {analysis.primaryFits.length > 0 && (
-          <div className="flex gap-2 items-start">
-            <span className="text-yellow-400 text-sm shrink-0">⭐</span>
-            <p className="text-[12.5px] text-slate-400">
-              {analysis.primaryFits.map(p=>p.PLAYER_NAME?.split(" ").slice(-1)[0]).join(", ")} played in their natural position — chemistry bonus earned.
+            <p className="text-[12.5px] text-amber-400/80">
+              {analysis.ballDom} ball-dominant players ({analysis.ballDomPlayers.map(n=>n.split(" ").slice(-1)[0]).join(", ")}) — role fit penalty applied.
             </p>
           </div>
         )}
@@ -659,20 +665,6 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
           </div>
         )}
 
-        {/* Genel değerlendirme */}
-        <div className="pt-1 border-t border-slate-800">
-          <p className="text-[12.5px] text-slate-500 italic">
-            {pct>=85
-              ? "Championship-caliber construction. High-quality players across eras, all four pillars covered."
-              : pct>=78
-              ? "Strong lineup. Good player quality and solid role coverage — most gaps are minor."
-              : pct>=70
-              ? "Functional roster with a clear identity. One key archetype away from a well-rounded unit."
-              : pct>=62
-              ? "Uneven fit. Either the eras didn't favor your archetypes, or the roster has coverage gaps."
-              : "Significant mismatches — low player quality, missing pillars, or too many ball-handlers. The wheel was brutal."}
-          </p>
-        </div>
       </div>
 
       {/* Share butonu */}

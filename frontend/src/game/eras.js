@@ -20,6 +20,19 @@ export const ERA_ARCH_WEIGHTS = {
   parity:     { Engine:1.10, Ecosystem:1.15, Hub:1.05, Creator:1.05, Connector:1.10, Anchor:0.85, Force:0.80, Spacer:1.20, Finisher:1.00, Initiator:0.95, Stopper:1.05, "Rim Runner":1.05 },
 };
 
+// Her era'da kadro sütunlarının (pillar) önemi (v3.6-C2).
+// Oyuncu bazlı arch-meta çarpanı kaldırıldı; era-meta artık TAKIM kompozisyonu
+// seviyesinde konuşur: coverage = Σ(pillar × w) / Σw. Dead Ball'da savunman,
+// Small Ball'da şutörlerin seni taşır.
+export const ERA_PILLAR_WEIGHTS = {
+  magic_bird: { creation: 1.10, spacing: 0.55, defense: 1.10, finishing: 1.25 },
+  jordan:     { creation: 1.25, spacing: 0.70, defense: 1.15, finishing: 0.90 },
+  dead_ball:  { creation: 0.95, spacing: 0.75, defense: 1.40, finishing: 0.90 },
+  proto:      { creation: 1.10, spacing: 0.95, defense: 1.00, finishing: 0.95 },
+  small_ball: { creation: 1.10, spacing: 1.45, defense: 0.80, finishing: 0.65 },
+  parity:     { creation: 1.05, spacing: 1.20, defense: 1.00, finishing: 0.75 },
+};
+
 export const ERA_META_BLURB = {
   magic_bird: "Post play & team ball. Ecosystems and powerful bigs reign. Spacers barely exist.",
   jordan:     "Isolation era. Engines and Creators peak. Stoppers at a premium.",
