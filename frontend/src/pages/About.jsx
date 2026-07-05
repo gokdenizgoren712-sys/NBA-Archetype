@@ -3,6 +3,17 @@ import { SEO } from "../hooks/useSEO";
 
 const CHANGELOG = [
   {
+    version: "v3.6 — Phase A",
+    date_en: "July 2026",
+    label_en: "Game UI Overhaul — Tags Panel + Unified Roster Table",
+    items_en: [
+      "Player Tag Effects panel: a fourth mechanic card on the start screen opens an eraball-style color-striped guide for all 8 tags",
+      "Post-game screen decluttered: Final Lineup + Player Quality + Era Fit merged into one Roster Breakdown table (position, name, archetype, era, tags, quality bar) covering starters, bench and coach",
+      "Score card visualized: three weighted stat tiles (Quality 45% / Coverage 40% / Role Fit 15%) instead of text lists",
+      "Readability pass: faint labels brightened (slate-600 → slate-400), body fonts bumped, result page widened",
+    ],
+  },
+  {
     version: "v3.5.1",
     date_en: "July 2026",
     label_en: "Game Balance + Pick List Redesign",

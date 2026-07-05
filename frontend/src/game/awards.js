@@ -122,6 +122,26 @@ export const DUOS = [
 
 const TIMELESS_MIN_OVERALL = 0.90;   // era-aşırı yıldızlar: mesafe cezası neredeyse sıfır
 
+// ── Tag açıklamaları (UI modalı için) ────────────────────────────────────────
+export const TAG_INFO = [
+  { key: "MVP",       label: "MVP",          color: "#facc15",
+    desc: "Regular-season MVP winners. Boosts your team rating all season — the more MVPs on the roster, the bigger the boost (capped)." },
+  { key: "DPOY",      label: "DPOY",         color: "#38bdf8",
+    desc: "Defensive Player of the Year winners. Defensive impact beyond the stat sheet — season-long rating boost." },
+  { key: "CHAMPION",  label: "Champion",     color: "#fbbf24",
+    desc: "Championship rings as a key contributor. Elevates their game in the playoffs — every ring adds playoff rating." },
+  { key: "FMVP",      label: "Finals MVP",   color: "#fb923c",
+    desc: "Proven on the biggest stage. Activates only in the Finals series — the FMVP gene wins Game 7s." },
+  { key: "SIXTH",     label: "6th Man",      color: "#f97316",
+    desc: "Sixth Man of the Year winners. +10% impact when playing off the bench. No effect when starting." },
+  { key: "VERSATILE", label: "Versatile",    color: "#a78bfa",
+    desc: "Fits multiple positions without penalty — computed from the Versatile archetype tag, not hand-picked." },
+  { key: "TIMELESS",  label: "Timeless",     color: "#c084fc",
+    desc: "All-time greats (overall ≥ 90) shrug off era distance. Minimal penalty no matter how far from home they play." },
+  { key: "DUO",       label: "Dynamic Duo",  color: "#34d399",
+    desc: "Draft both partners to activate a rating boost for the pair. Check a player's tag to see who the partner is." },
+];
+
 // ── Tag çıkarımı ─────────────────────────────────────────────────────────────
 // Dönen: [{key, label, color, detail}] — UI chip'leri için
 export function getPlayerTags(player, { onBench = false } = {}) {

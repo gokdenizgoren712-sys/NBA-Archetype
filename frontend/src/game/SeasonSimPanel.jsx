@@ -71,7 +71,7 @@ export default function SeasonSimPanel({ players, simEra, fit, affinity01, bench
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
       <div className="flex items-center justify-between">
-        <div className="text-[10.5px] text-slate-600 uppercase tracking-widest">Season Simulation</div>
+        <div className="text-[11px] text-slate-400 uppercase tracking-widest">Season Simulation</div>
         <div className="flex items-center gap-1.5">
           {coach && (
             <span className="text-[9.5px] px-1.5 py-0.5 rounded border border-slate-700 text-slate-300"
@@ -108,7 +108,7 @@ export default function SeasonSimPanel({ players, simEra, fit, affinity01, bench
         <div className="space-y-3">
           {/* Running record */}
           <div className="text-center">
-            <div className="text-[9.5px] text-slate-600 uppercase tracking-widest mb-1">
+            <div className="text-[10.5px] text-slate-400 uppercase tracking-widest mb-1">
               {revealGames < 82 ? `Regular Season · ${month}` : `Final Record${result.seed ? ` · #${result.seed} seed` : ""}`}
             </div>
             <div className="text-4xl font-black text-white tabular-nums">
@@ -139,7 +139,7 @@ export default function SeasonSimPanel({ players, simEra, fit, affinity01, bench
           {/* Playoff bracket — tur tur */}
           {result.madePlayoffs && (stage === "playoffs" || stage === "done") && (
             <div className="space-y-1.5">
-              <div className="text-[9.5px] text-slate-600 uppercase tracking-widest">Playoffs</div>
+              <div className="text-[10.5px] text-slate-400 uppercase tracking-widest">Playoffs</div>
               {result.playoffRounds.slice(0, revealRounds).map((rd, i) => (
                 <div key={i} className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg border
                   ${rd.won ? "border-emerald-800/50 bg-emerald-950/20" : "border-red-900/50 bg-red-950/20"}`}>
@@ -172,7 +172,7 @@ export default function SeasonSimPanel({ players, simEra, fit, affinity01, bench
           {/* Oyuncu era performansı */}
           {stage === "done" && (
             <div className="space-y-1.5 border-t border-slate-800 pt-2.5">
-              <div className="text-[9.5px] text-slate-600 uppercase tracking-widest">Era Performance</div>
+              <div className="text-[10.5px] text-slate-400 uppercase tracking-widest">Era Performance</div>
               {[...result.profiles, ...(result.benchProfiles || [])].map((pr, i) => {
                 const qPct = Math.round(pr.simQuality * 100);
                 const metaUp   = pr.archW > 1.02;
@@ -199,7 +199,7 @@ export default function SeasonSimPanel({ players, simEra, fit, affinity01, bench
           {/* Sezon ödülleri + istatistikler */}
           {stage === "done" && (
             <div className="space-y-2 border-t border-slate-800 pt-2.5">
-              <div className="text-[9.5px] text-slate-600 uppercase tracking-widest">Season Awards</div>
+              <div className="text-[10.5px] text-slate-400 uppercase tracking-widest">Season Awards</div>
               {result.awards?.length > 0 ? (
                 <div className="space-y-1">
                   {result.awards.map((a, i) => (
@@ -230,7 +230,7 @@ export default function SeasonSimPanel({ players, simEra, fit, affinity01, bench
           {/* Aktif tag etkileri */}
           {stage === "done" && result.tagNotes?.length > 0 && (
             <div className="space-y-1 border-t border-slate-800 pt-2.5">
-              <div className="text-[9.5px] text-slate-600 uppercase tracking-widest">Active Tag Effects</div>
+              <div className="text-[10.5px] text-slate-400 uppercase tracking-widest">Active Tag Effects</div>
               {result.tagNotes.map((n, i) => (
                 <div key={i} className="text-[10.5px] text-slate-400">• {n}</div>
               ))}

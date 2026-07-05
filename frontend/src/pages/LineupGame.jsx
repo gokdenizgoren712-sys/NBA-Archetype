@@ -5,7 +5,7 @@ import { SEO } from "../hooks/useSEO";
 import { ERAS, ERA_ARCH_WEIGHTS, ERA_META_BLURB, getEra } from "../game/eras";
 import SeasonSimPanel from "../game/SeasonSimPanel";
 import { COACHES } from "../game/coaches";
-import { getPlayerTags } from "../game/awards";
+import { getPlayerTags, TAG_INFO } from "../game/awards";
 import CourtBoard from "../game/CourtBoard";
 import { TIER_ORDER, TIER_QUOTA, TIER_COLORS, TIER_DESC, tierOf, countTiers, firstOpenTier } from "../game/tiers";
 
@@ -135,32 +135,7 @@ function computeLineupFit(players) {
 }
 
 // ── Era sistemi — src/game/eras.js'ten import edilir ─────────────────────────
-
-const _ARCHES = ["Engine","Ecosystem","Hub","Connector","Creator","Anchor","Spacer","Finisher","Force","Initiator","Stopper","Rim Runner"];
-const _RANK_W  = [0.40, 0.25, 0.15, 0.12, 0.08];
-
-function computeEraFit(player, season) {
-  const era  = getEra(season || player._season);
-  const _ps  = (k) => parseFloat(player[`score_${k}`] ?? 0) || 0;
-  const top5 = _ARCHES
-    .map(a => ({ a, s: _ps(a), w: (ERA_ARCH_WEIGHTS[era.id] || {})[a] ?? 1.0 }))
-    .sort((x, y) => y.s - x.s)
-    .slice(0, 5);
-  // Skor-ağırlıklı ortalama era-meta ağırlığı (0.45..1.35) → 0..1 normalize.
-  // Eski formül (blendedS × blendedW × 5, 1'e clamp) oyuncu GÜCÜNÜ ölçüyordu:
-  // skorlar yüksekse hep 100'e yapışıyor, era metasıyla ilgisi kalmıyordu.
-  const sSum = top5.reduce((acc, x) => acc + x.s, 0) || 1;
-  const wAvg = top5.reduce((acc, x) => acc + x.s * x.w, 0) / sSum;
-  return Math.min(1, Math.max(0, (wAvg - 0.45) / 0.90));
-}
-
-function computeLineupEraFit(lineup) {
-  const filled = POSITIONS.map(p => lineup[p]).filter(Boolean);
-  if (!filled.length) return null;
-  const items = filled.map(p => ({ player: p, era: getEra(p._season), fit: computeEraFit(p) }));
-  const avg = items.reduce((a, b) => a + b.fit, 0) / items.length;
-  return { avg, items };
-}
+// (Era Fit paneli v3.6'da kaldırıldı; Faz B'de era etkisi dönem-uzaklığına taşınacak)
 
 // ── SpinWheel ─────────────────────────────────────────────────────────────────
 function SpinWheel({ items, spinning, targetIdx, label }) {
@@ -390,7 +365,6 @@ function analyzeLineup(fit, lineup, roundHistory=[]) {
 function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, affinityMatrix, simEra, coach, mode="classic" }) {
   const { isLoggedIn, token } = useAuth();
   const analysis  = analyzeLineup(fit, lineup, roundHistory);
-  const eraResult = computeLineupEraFit(lineup);
   const chemBonus = primaryCount * 0.02;
   const rawScore  = fit.lineupScore;
   const totalScore = Math.min(1, rawScore + chemBonus);
@@ -454,65 +428,40 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
           </div>
         )}
 
-        {/* Oyuncu kalitesi — per-player quality (overall × era) */}
-        <div className="mt-4 space-y-1.5 max-w-xs mx-auto text-left">
-          <div className="text-[9.5px] text-slate-600 uppercase tracking-widest mb-2 text-center">
-            Player Quality <span className="text-slate-700">avg {qualityPct}</span>
-          </div>
-          {POSITIONS.map(pos => {
-            const p = lineup[pos];
-            const pp = perPlayerMap[pos];
-            if (!p || !pp) return null;
-            const qPct = Math.round(pp.quality * 100);
-            const eraBonus = pp.eraFactor > 1.02;
-            const eraPenalty = pp.eraFactor < 0.92;
-            return (
-              <div key={pos} className="flex items-center gap-2">
-                <span className={`text-[8.5px] font-bold px-1 py-0.5 rounded border shrink-0 ${POS_COLORS[pos]||""}`}>{pos}</span>
-                <span className="text-[10.5px] text-white flex-1 truncate">{p.PLAYER_NAME?.split(" ").slice(-1)[0]}</span>
-                <span className={`text-[8.5px] shrink-0 ${pp.era.color}`}>{pp.era.short}</span>
-                {eraBonus && <span className="text-[8.5px] text-emerald-500 shrink-0">↑era</span>}
-                {eraPenalty && <span className="text-[8.5px] text-red-500 shrink-0">↓era</span>}
-                {(pp.posPenalty ?? 1) < 1 && <span className="text-[8.5px] text-red-400 shrink-0">↓pos</span>}
-                <div className="w-16 h-1.5 bg-slate-800 rounded-full overflow-hidden shrink-0">
-                  <div className="h-full rounded-full" style={{width:`${qPct}%`,background:qPct>=75?"#1D428A":qPct>=55?"#2a3d6b":"#7f1d1d"}}/>
-                </div>
-                <span className={`text-[10.5px] w-5 text-right shrink-0 ${qPct>=75?"text-blue-300":qPct>=55?"text-slate-400":"text-red-400"}`}>{qPct}</span>
-              </div>
-            );
-          })}
+        {/* Skor bileşenleri: 45% kalite + 40% kapsama + 15% rol — görsel özet */}
+        <div className="mt-5 grid grid-cols-3 gap-2 max-w-sm mx-auto">
+          {[
+            ["Quality",  qualityPct,                      "45%"],
+            ["Coverage", coveragePct,                     "40%"],
+            ["Role Fit", Math.round(fit.roleFit * 100),   "15%"],
+          ].map(([label, val, w]) => (
+            <div key={label} className="rounded-xl border border-slate-800 bg-slate-950/60 p-2.5 text-center">
+              <div className={`text-2xl font-black ${val>=75?"text-blue-300":val>=55?"text-slate-200":"text-red-400"}`}>{val}</div>
+              <div className="text-[10.5px] text-slate-400 mt-0.5">{label}</div>
+              <div className="text-[9.5px] text-slate-600">weight {w}</div>
+            </div>
+          ))}
         </div>
 
-        {/* Lineup Coverage */}
-        <div className="mt-4 space-y-1.5 max-w-xs mx-auto text-left border-t border-slate-800 pt-3">
-          <div className="text-[9.5px] text-slate-600 uppercase tracking-widest mb-2 text-center">
-            Lineup Coverage <span className="text-slate-700">avg {coveragePct}</span>
-          </div>
+        {/* Lineup Coverage detayı */}
+        <div className="mt-4 space-y-2 max-w-sm mx-auto text-left border-t border-slate-800 pt-3">
           {[
             ["Creation",  fit.creation],
-            [`Spacing (${fit.nShooters})`, fit.spacing],
+            [`Spacing (${fit.nShooters} shooters)`, fit.spacing],
             ["Defense",   fit.defense],
             ["Finishing", fit.finishing],
           ].map(([label, val]) => {
             const vp = Math.round((val||0)*100);
             return (
-              <div key={label} className="flex items-center gap-2">
-                <span className="text-[10.5px] text-slate-400 w-24 text-right shrink-0">{label}</span>
-                <div className="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+              <div key={label} className="flex items-center gap-2.5">
+                <span className="text-xs text-slate-300 w-32 text-right shrink-0">{label}</span>
+                <div className="flex-1 h-2 bg-slate-800 rounded-full overflow-hidden">
                   <div className="h-full rounded-full" style={{width:`${vp}%`,background:vp>=75?"#1D428A":vp>=55?"#2a3d6b":"#7f1d1d"}}/>
                 </div>
-                <span className={`text-[10.5px] w-5 text-right shrink-0 ${vp>=65?"text-blue-300":vp>=45?"text-slate-400":"text-red-400"}`}>{vp}</span>
+                <span className={`text-xs font-semibold w-6 text-right shrink-0 ${vp>=65?"text-blue-300":vp>=45?"text-slate-300":"text-red-400"}`}>{vp}</span>
               </div>
             );
           })}
-          {/* Role Fit */}
-          <div className="flex items-center gap-2 border-t border-slate-800 pt-1.5">
-            <span className="text-[10.5px] text-slate-400 w-24 text-right shrink-0">Role Fit</span>
-            <div className="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden">
-              <div className="h-full rounded-full" style={{width:`${Math.round(fit.roleFit*100)}%`,background:fit.roleFit>=0.80?"#1D428A":fit.roleFit>=0.65?"#2a3d6b":"#7f1d1d"}}/>
-            </div>
-            <span className={`text-[10.5px] w-5 text-right shrink-0 ${fit.roleFit>=0.65?"text-blue-300":"text-red-400"}`}>{Math.round(fit.roleFit*100)}</span>
-          </div>
         </div>
       </div>
 
@@ -526,116 +475,101 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
         affinity01={affinityScore != null ? affinityScore / 100 : null}
       />
 
-      {/* Lineup — arketip artık açık */}
+      {/* Roster Breakdown — tek birleşik tablo (lineup + kalite + era + tag) */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
-        <div className="text-[10.5px] text-slate-600 uppercase tracking-widest mb-3">Final Lineup</div>
-        <div className="space-y-2">
+        <div className="flex items-center justify-between mb-3">
+          <div className="text-[11px] text-slate-400 uppercase tracking-widest">Roster Breakdown</div>
+          <div className="text-xs text-slate-500">avg quality <span className="text-white font-bold">{qualityPct}</span></div>
+        </div>
+        <div className="space-y-1">
           {POSITIONS.map(pos=>{
             const p=lineup[pos]; if(!p) return null;
-            const isPrimary = getPrimaryPos(p) === pos;
-            const pen = p._posPenalty ?? 1;
+            const pp=perPlayerMap[pos] || computePlayerFit(p);
+            const qPct=Math.round(pp.quality*100);
+            const isPrimary=getPrimaryPos(p)===pos;
+            const pen=p._posPenalty??1;
+            const tags=getPlayerTags(p).slice(0,2);
             return (
-              <div key={pos} className="flex items-center gap-2">
-                <span className={`text-[9.5px] font-bold px-1.5 py-0.5 rounded border shrink-0 ${POS_COLORS[pos]||""}`}>{pos}</span>
-                <span className="text-sm text-white font-medium flex-1 min-w-0 truncate">{p.PLAYER_NAME}</span>
-                {isFlex(p)&&<span className="text-[8.5px] text-violet-400 shrink-0">VERS</span>}
-                {pen<1&&<span className="text-[9px] text-red-400 shrink-0">{pen<=0.75?"−25%":"−10%"}</span>}
-                <span className="text-[10.5px] text-blue-400 shrink-0">{p.primary_arch||"—"}</span>
-                <span className="text-[10.5px] text-slate-500 shrink-0">{(p._season||"").slice(0,4)}</span>
-                {isPrimary&&<span className="text-yellow-400 text-xs shrink-0">⭐</span>}
+              <div key={pos} className="flex items-center gap-2.5 py-1.5 border-b last:border-b-0" style={{borderColor:"rgba(30,41,59,.5)"}}>
+                <span className={`text-[10px] font-bold px-1.5 py-1 rounded border shrink-0 w-8 text-center ${POS_COLORS[pos]||""}`}>{pos}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[13px] text-white font-semibold truncate">{p.PLAYER_NAME}</span>
+                    {isPrimary&&<span className="text-yellow-400 text-[11px] shrink-0">⭐</span>}
+                    {pen<1&&<span className="text-[10px] text-red-400 shrink-0 font-medium">{pen<=0.75?"−25% pos":"−10% pos"}</span>}
+                  </div>
+                  <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                    <span className="text-[11px] text-blue-400 font-medium">{p.primary_arch||"—"}</span>
+                    <span className={`text-[10px] ${pp.era.color}`}>{pp.era.short} '{(p._season||"").slice(2,4)}</span>
+                    {pp.eraFactor>1.02&&<span className="text-[10px] text-emerald-500">↑era</span>}
+                    {pp.eraFactor<0.92&&<span className="text-[10px] text-red-500">↓era</span>}
+                    {tags.map(t=>(
+                      <span key={t.key} title={t.detail} className="text-[8.5px] px-1 py-px rounded font-bold leading-none"
+                        style={{color:t.color,background:t.color+"1a",border:`1px solid ${t.color}44`}}>
+                        {t.label}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <div className="w-20 h-2 bg-slate-800 rounded-full overflow-hidden shrink-0">
+                  <div className="h-full rounded-full" style={{width:`${qPct}%`,background:qPct>=75?"#1D428A":qPct>=55?"#2a3d6b":"#7f1d1d"}}/>
+                </div>
+                <span className={`text-[13px] font-bold w-7 text-right shrink-0 ${qPct>=75?"text-blue-300":qPct>=55?"text-slate-200":"text-red-400"}`}>{qPct}</span>
               </div>
             );
           })}
-          {BENCH_SLOTS.some(b=>lineup[b])&&(
-            <div className="border-t border-slate-800 pt-2 space-y-2">
-              {BENCH_SLOTS.map(b=>{
-                const p=lineup[b]; if(!p) return null;
-                return (
-                  <div key={b} className="flex items-center gap-2 opacity-80">
-                    <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded border border-slate-700 text-slate-500 shrink-0">BN</span>
-                    <span className="text-sm text-slate-200 flex-1 min-w-0 truncate">{p.PLAYER_NAME}</span>
-                    <span className="text-[10.5px] text-blue-400/70 shrink-0">{p.primary_arch||"—"}</span>
-                    <span className="text-[10.5px] text-slate-500 shrink-0">{(p._season||"").slice(0,4)}</span>
+          {/* Bench satırları */}
+          {BENCH_SLOTS.map(b=>{
+            const p=lineup[b]; if(!p) return null;
+            const pp=computePlayerFit(p);
+            const qPct=Math.round(pp.quality*100);
+            const tags=getPlayerTags(p,{onBench:true}).slice(0,2);
+            return (
+              <div key={b} className="flex items-center gap-2.5 py-1.5 border-b last:border-b-0 opacity-75" style={{borderColor:"rgba(30,41,59,.5)"}}>
+                <span className="text-[10px] font-bold px-1.5 py-1 rounded border border-slate-700 text-slate-500 shrink-0 w-8 text-center">BN</span>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[13px] text-slate-200 font-semibold truncate">{p.PLAYER_NAME}</div>
+                  <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                    <span className="text-[11px] text-blue-400/70">{p.primary_arch||"—"}</span>
+                    <span className={`text-[10px] ${pp.era.color}`}>{pp.era.short} '{(p._season||"").slice(2,4)}</span>
+                    {tags.map(t=>(
+                      <span key={t.key} title={t.detail} className="text-[8.5px] px-1 py-px rounded font-bold leading-none"
+                        style={{color:t.color,background:t.color+"1a",border:`1px solid ${t.color}44`}}>
+                        {t.label}
+                      </span>
+                    ))}
                   </div>
-                );
-              })}
-            </div>
-          )}
+                </div>
+                <div className="w-20 h-2 bg-slate-800 rounded-full overflow-hidden shrink-0">
+                  <div className="h-full rounded-full" style={{width:`${qPct}%`,background:"#334155"}}/>
+                </div>
+                <span className="text-[13px] font-bold w-7 text-right shrink-0 text-slate-400">{qPct}</span>
+              </div>
+            );
+          })}
+          {/* Koç */}
           {coach&&(
-            <div className="border-t border-slate-800 pt-2 flex items-center gap-2">
-              <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded border border-slate-600 text-slate-300 shrink-0">🧠</span>
-              <span className="text-sm text-white font-medium flex-1 truncate">{coach.name}</span>
-              <span className="text-[10px] font-mono text-slate-400 shrink-0">O:{coach.off} D:{coach.def}</span>
-              {coach.champs>0&&<span className="text-[10px] text-yellow-400 shrink-0">🏆×{coach.champs}</span>}
-              {coach.tag&&<span className="text-[8.5px] px-1 rounded bg-violet-900/40 text-violet-300 shrink-0">{coach.tag}</span>}
+            <div className="flex items-center gap-2.5 pt-2">
+              <span className="text-[13px] shrink-0 w-8 text-center">🧠</span>
+              <span className="text-[13px] text-white font-semibold flex-1 truncate">{coach.name}</span>
+              <span className="text-[11px] font-mono text-slate-400 shrink-0">O:{coach.off} · D:{coach.def}</span>
+              {coach.champs>0&&<span className="text-[11px] text-yellow-400 shrink-0">🏆×{coach.champs}</span>}
+              {coach.tag&&<span className="text-[9px] px-1 py-0.5 rounded bg-violet-900/40 text-violet-300 shrink-0">{coach.tag}</span>}
             </div>
           )}
         </div>
       </div>
 
-      {/* Era Fit */}
-      {eraResult && (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div className="text-[10.5px] text-slate-600 uppercase tracking-widest">Era Fit</div>
-            <div className="text-right">
-              <span className={`text-lg font-bold ${eraResult.avg>=0.75?"text-emerald-400":eraResult.avg>=0.55?"text-amber-400":"text-red-400"}`}>
-                {Math.round(eraResult.avg*100)}
-              </span>
-              <span className="text-[10.5px] text-slate-500 ml-1">avg</span>
-            </div>
-          </div>
-          <div className="space-y-2.5">
-            {eraResult.items.map(({player:p, era, fit}, i) => {
-              const fitPct = Math.round(fit*100);
-              const arch = p.primary_arch || "—";
-              const weight = (ERA_ARCH_WEIGHTS[era.id]||{})[arch] ?? 1.0;
-              const isBonus = weight > 1.0;
-              const isPenalty = weight < 0.85;
-              return (
-                <div key={i} className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className={`text-[8.5px] px-1.5 py-0.5 rounded border shrink-0 ${era.bg} ${era.color}`}>{era.short}</span>
-                    <span className="text-xs text-white font-medium flex-1 truncate">{p.PLAYER_NAME}</span>
-                    <span className={`text-[10.5px] font-bold shrink-0 ${fitPct>=75?"text-emerald-400":fitPct>=55?"text-amber-400":"text-red-400"}`}>{fitPct}</span>
-                  </div>
-                  <div className="flex items-center gap-2 pl-0">
-                    <div className="flex-1 h-1 bg-slate-800 rounded-full overflow-hidden">
-                      <div className={`h-full rounded-full ${fitPct>=75?"bg-emerald-500":fitPct>=55?"bg-amber-500":"bg-red-700"}`}
-                           style={{width:`${fitPct}%`}}/>
-                    </div>
-                    <span className={`text-[9.5px] shrink-0 ${isBonus?"text-emerald-500":isPenalty?"text-red-500":"text-slate-600"}`}>
-                      {arch} {isBonus?`↑${Math.round((weight-1)*100)}%`:isPenalty?`↓${Math.round((1-weight)*100)}%`:""}
-                    </span>
-                  </div>
-                  {isPenalty && (
-                    <p className="text-[9.5px] text-slate-600 pl-0 leading-tight">
-                      {arch} was off-meta in the {era.label} — {ERA_META_BLURB[era.id]}
-                    </p>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-          <div className="mt-3 pt-2 border-t border-slate-800">
-            <p className="text-[10.5px] text-slate-500 italic leading-relaxed">
-              Era Fit measures how well each player's archetype aligned with the meta of their era.
-              A Spacer from the Dead Ball era scores low — not because they were bad, but because spacing wasn't the league's currency yet.
-            </p>
-          </div>
-        </div>
-      )}
-
       {/* Post-game analysis */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
-        <div className="text-[10.5px] text-slate-600 uppercase tracking-widest">Lineup Analysis</div>
+        <div className="text-[11px] text-slate-400 uppercase tracking-widest">Lineup Analysis</div>
 
         {/* Güçlü yön */}
         <div className="flex gap-2 items-start">
           <span className="text-green-400 text-sm shrink-0">✓</span>
           <div>
-            <span className="text-[11.5px] text-slate-300 font-medium">Strongest pillar: </span>
-            <span className="text-[11.5px] text-green-400">{analysis.strongest.label} ({Math.round(analysis.strongest.val*100)})</span>
+            <span className="text-[12.5px] text-slate-300 font-medium">Strongest pillar: </span>
+            <span className="text-[12.5px] text-green-400">{analysis.strongest.label} ({Math.round(analysis.strongest.val*100)})</span>
           </div>
         </div>
 
@@ -643,9 +577,9 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
         <div className="flex gap-2 items-start">
           <span className="text-red-400 text-sm shrink-0">✗</span>
           <div>
-            <span className="text-[11.5px] text-slate-300 font-medium">Biggest gap: </span>
-            <span className="text-[11.5px] text-red-400">{analysis.weakest.label} ({Math.round(analysis.weakest.val*100)})</span>
-            <p className="text-[11.5px] text-slate-500 mt-0.5">{analysis.weakest.fix}</p>
+            <span className="text-[12.5px] text-slate-300 font-medium">Biggest gap: </span>
+            <span className="text-[12.5px] text-red-400">{analysis.weakest.label} ({Math.round(analysis.weakest.val*100)})</span>
+            <p className="text-[12.5px] text-slate-500 mt-0.5">{analysis.weakest.fix}</p>
           </div>
         </div>
 
@@ -654,7 +588,7 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
           <div className="flex gap-2 items-start">
             <span className="text-amber-400 text-sm shrink-0">⚠</span>
             <div>
-              <p className="text-[11.5px] text-amber-400/80">
+              <p className="text-[12.5px] text-amber-400/80">
                 Ball-dominant: {analysis.ballDomPlayers.join(", ")}
                 {analysis.ballDom === 1 ? " — one playmaker, optimal" : ` — ${analysis.ballDom} playmakers, role fit penalty applied`}
               </p>
@@ -667,7 +601,7 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
         {analysis.primaryFits.length > 0 && (
           <div className="flex gap-2 items-start">
             <span className="text-yellow-400 text-sm shrink-0">⭐</span>
-            <p className="text-[11.5px] text-slate-400">
+            <p className="text-[12.5px] text-slate-400">
               {analysis.primaryFits.map(p=>p.PLAYER_NAME?.split(" ").slice(-1)[0]).join(", ")} played in their natural position — chemistry bonus earned.
             </p>
           </div>
@@ -682,10 +616,10 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
             <div className="flex gap-2 items-start">
               <span className="text-blue-400 text-sm shrink-0">💡</span>
               <div>
-                <p className="text-[11.5px] text-slate-300 font-medium">
+                <p className="text-[12.5px] text-slate-300 font-medium">
                   Better pick for {analysis.weakest.label}:
                 </p>
-                <p className="text-[11.5px] text-slate-400 mt-0.5">
+                <p className="text-[12.5px] text-slate-400 mt-0.5">
                   <span className="text-white font-semibold">{alt.PLAYER_NAME}</span>
                   {" "}<span className="text-slate-500">({altArch}, overall {altPct})</span>
                   {" "}— {altTeam} · {altSeason} — was available this game. Would have covered your lineup's {analysis.weakest.label.toLowerCase()} gap.
@@ -699,7 +633,7 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
         {affinityScore != null && (
           <div className="flex gap-2 items-start">
             <span className="text-violet-400 text-sm shrink-0">⬡</span>
-            <p className="text-[11.5px] text-slate-400">
+            <p className="text-[12.5px] text-slate-400">
               Archetype affinity: <span className="text-violet-400 font-semibold">{affinityScore}</span>
               <span className="text-slate-600"> — avg pairwise synergy</span>
             </p>
@@ -708,7 +642,7 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
 
         {/* Genel değerlendirme */}
         <div className="pt-1 border-t border-slate-800">
-          <p className="text-[11.5px] text-slate-500 italic">
+          <p className="text-[12.5px] text-slate-500 italic">
             {pct>=85
               ? "Championship-caliber construction. High-quality players across eras, all four pillars covered."
               : pct>=78
@@ -728,11 +662,11 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
       {/* Leaderboard */}
       {leaderboard && leaderboard.length > 0 && (
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-2">
-          <div className="text-[10.5px] text-slate-600 uppercase tracking-widest mb-1">
+          <div className="text-[11px] text-slate-400 uppercase tracking-widest mb-1">
             Top Scores{mode==="salarycap"?" — 💰 Salary Cap":""}
           </div>
           {leaderboard.slice(0, 10).map((entry, i) => (
-            <div key={i} className="flex items-center gap-2 text-[11.5px]">
+            <div key={i} className="flex items-center gap-2 text-[12.5px]">
               <span className="text-slate-700 w-5 text-right shrink-0 font-mono">{i + 1}.</span>
               <span className="text-slate-300 flex-1 truncate">{entry.username}</span>
               {entry.season_result === "CHAMPION" && <span className="shrink-0" title="Won a simulated championship">🏆</span>}
@@ -917,7 +851,7 @@ function ShareCard({ pct, grade, fit, lineup }) {
 
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
-      <div className="text-[10.5px] text-slate-600 uppercase tracking-widest">Share Your Result</div>
+      <div className="text-[11px] text-slate-400 uppercase tracking-widest">Share Your Result</div>
 
       {/* Preview */}
       {preview ? (
@@ -1006,7 +940,7 @@ export default function LineupGame() {
   const [doubleActive, setDoubleActive]   = useState(false);
   const [discoverActive, setDiscoverActive] = useState(false);
   // Info modals
-  const [modal, setModal] = useState(null); // "chemistry" | "jokers" | "archetype"
+  const [modal, setModal] = useState(null); // "chemistry" | "jokers" | "archetype" | "tags"
 
   const lineupRef = useRef(lineup);
   useEffect(()=>{ lineupRef.current=lineup; },[lineup]);
@@ -1428,7 +1362,23 @@ export default function LineupGame() {
               </div>
             </div>
           ))}
-          <p className="text-[11.5px] text-slate-600 pt-1 border-t border-slate-800">Each joker can be used once per game.</p>
+          <p className="text-[12.5px] text-slate-600 pt-1 border-t border-slate-800">Each joker can be used once per game.</p>
+        </div>
+      </InfoModal>
+
+      <InfoModal open={modal==="tags"} onClose={()=>setModal(null)} title="🏷 Player Tag Effects">
+        <div className="space-y-2 max-h-[62vh] overflow-y-auto pr-1">
+          {TAG_INFO.map(t=>(
+            <div key={t.key} className="rounded-lg p-2.5"
+              style={{background:t.color+"0d",borderLeft:`3px solid ${t.color}`}}>
+              <div className="text-[13px] font-bold" style={{color:t.color}}>{t.label}</div>
+              <div className="text-xs text-slate-300 leading-relaxed mt-0.5">{t.desc}</div>
+            </div>
+          ))}
+          <p className="text-[11px] text-slate-500 italic pt-1">
+            Tags come from real award history (1983+) and live archetype data.
+            They're visible on every player row — hover a chip to see its effect.
+          </p>
         </div>
       </InfoModal>
 
@@ -1449,7 +1399,7 @@ export default function LineupGame() {
       {phase==="idle"&&(
         <div className="space-y-3">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
-            <div className="text-[10.5px] text-slate-600 uppercase tracking-widest">How it works</div>
+            <div className="text-[11px] text-slate-400 uppercase tracking-widest">How it works</div>
             <p className="text-sm text-slate-300 leading-relaxed">
               Each round the wheels spin: one for <span className="text-blue-400 font-medium">era</span>, one for <span className="text-blue-400 font-medium">team</span>. Pick one player from that roster, then slot them into a starting position or the bench — <span className="text-slate-200">9 spots total</span> (5 starters + 4 bench), and you can rearrange freely between picks. Off-position starters cost −10% / −25% unless they're <span className="text-violet-300">VERSATILE</span>. A bench covering Guard + Forward + Center earns a buff. Real-history tags feed the sim too: <span className="text-yellow-300">MVP</span>, <span className="text-sky-300">DPOY</span>, <span className="text-amber-300">🏆 Champion</span>, <span className="text-orange-300">Finals MVP</span>, <span className="text-orange-400">6th Man</span>, <span className="text-emerald-300">Dynamic Duo</span>, <span className="text-purple-300">Timeless</span>. Finish by drafting a <span className="text-slate-200">coach</span>.
             </p>
@@ -1459,21 +1409,22 @@ export default function LineupGame() {
             <p className="text-sm text-slate-400 leading-relaxed">
               Then the real test: a full <span className="text-emerald-400 font-medium">82-game season simulation</span> in the era you pick before drafting. Win 50%+ to make the playoffs, survive four best-of-7 rounds, and chase the ring. Archetypes off-meta in your sim era — and players far from their home decade — take penalties.
             </p>
-            <div className="grid grid-cols-3 gap-2 pt-1">
+            <div className="grid grid-cols-2 gap-2 pt-1">
               {[
                 {key:"chemistry", icon:"⭐", title:"Chemistry",   desc:"Slot players into natural positions for a score bonus"},
                 {key:"jokers",    icon:"🃏", title:"Jokers",      desc:"Five one-time abilities to reshape your options"},
                 {key:"archetype", icon:"???",title:"Archetypes",  desc:"Hidden until the end — revealed alongside your score"},
+                {key:"tags",      icon:"🏷", title:"Player Tags", desc:"MVP, rings, duos... real history that feeds the sim"},
               ].map(({key,icon,title,desc})=>(
                 <button key={key} onClick={()=>setModal(key)}
-                  className="bg-slate-800/60 hover:bg-slate-700/60 rounded-lg p-2.5 text-left transition-colors border border-slate-700/50 hover:border-slate-600">
-                  <div className="text-[13px] font-bold text-white mb-0.5">{icon} {title}</div>
-                  <div className="text-[10.5px] text-slate-500 leading-relaxed">{desc}</div>
+                  className="bg-slate-800/60 hover:bg-slate-700/60 rounded-lg p-3 text-left transition-colors border border-slate-700/50 hover:border-slate-600">
+                  <div className="text-sm font-bold text-white mb-0.5">{icon} {title}</div>
+                  <div className="text-[11px] text-slate-400 leading-relaxed">{desc}</div>
                 </button>
               ))}
             </div>
             <div className="pt-1 border-t border-slate-800">
-              <p className="text-[11.5px] text-slate-500 italic">
+              <p className="text-[12.5px] text-slate-500 italic">
                 The formula: 45% avg player quality + 40% lineup coverage + 15% role fit. Quality rewards stars from dominant eras. Coverage demands one playmaker, 2–3 shooters, a defender, and a finisher. Role fit penalizes duplicate ball-handlers.
               </p>
             </div>
@@ -1508,7 +1459,7 @@ export default function LineupGame() {
       {phase==="pick_era"&&(
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
           <div>
-            <div className="text-[10.5px] text-slate-600 uppercase tracking-widest mb-1">Step 1 — Pick Your Simulation Era</div>
+            <div className="text-[11px] text-slate-400 uppercase tracking-widest mb-1">Step 1 — Pick Your Simulation Era</div>
             <p className="text-xs text-slate-500 leading-relaxed">
               Your season will be simulated under this era's meta. Draft accordingly — a Spacer
               is gold in the Small Ball era and nearly worthless in the 80s. Players far from
@@ -1687,7 +1638,7 @@ export default function LineupGame() {
       {phase==="pick_coach"&&(
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
           <div>
-            <div className="text-[10.5px] text-slate-600 uppercase tracking-widest mb-1">Final Step — Draft a Coach</div>
+            <div className="text-[11px] text-slate-400 uppercase tracking-widest mb-1">Final Step — Draft a Coach</div>
             <p className="text-xs text-slate-500 leading-relaxed">
               Offense and Defense grades shift your team rating all season. Championship rings add
               playoff DNA — the more rings, the bigger the boost when the lights are brightest.
@@ -1735,7 +1686,7 @@ export default function LineupGame() {
 
       {/* === COMPLETE === */}
       {phase==="complete"&&fitResult&&(
-        <div className="max-w-2xl mx-auto space-y-3">
+        <div className="max-w-3xl mx-auto space-y-3">
           <ScoreReveal fit={fitResult} lineup={lineup} primaryCount={primaryCount} roundHistory={roundHistoryRef.current} onReset={resetGame} lang={lang} affinityMatrix={affinityMatrix} simEra={simEra} coach={coach} mode={mode}/>
         </div>
       )}
