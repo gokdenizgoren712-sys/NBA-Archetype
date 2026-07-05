@@ -144,9 +144,12 @@ function computeEraFit(player, season) {
     .map(a => ({ a, s: _ps(a), w: (ERA_ARCH_WEIGHTS[era.id] || {})[a] ?? 1.0 }))
     .sort((x, y) => y.s - x.s)
     .slice(0, 5);
-  const blendedW = top5.reduce((acc, x, i) => acc + _RANK_W[i] * x.w, 0);
-  const blendedS = top5.reduce((acc, x, i) => acc + _RANK_W[i] * x.s, 0);
-  return Math.min(1, blendedW * blendedS * 5);
+  // Skor-ağırlıklı ortalama era-meta ağırlığı (0.45..1.35) → 0..1 normalize.
+  // Eski formül (blendedS × blendedW × 5, 1'e clamp) oyuncu GÜCÜNÜ ölçüyordu:
+  // skorlar yüksekse hep 100'e yapışıyor, era metasıyla ilgisi kalmıyordu.
+  const sSum = top5.reduce((acc, x) => acc + x.s, 0) || 1;
+  const wAvg = top5.reduce((acc, x) => acc + x.s * x.w, 0) / sSum;
+  return Math.min(1, Math.max(0, (wAvg - 0.45) / 0.90));
 }
 
 function computeLineupEraFit(lineup) {
@@ -189,75 +192,6 @@ function SpinWheel({ items, spinning, targetIdx, label }) {
   );
 }
 
-// ── Oyuncu kartı ─────────────────────────────────────────────────────────────
-function PlayerCard({ player, season, discover, onClick, dimmed, tier=null, tierFull=false }) {
-  const eligible = getEligiblePos(player);
-  const primary  = eligible[0];
-  const stat = (k,d=1) => player[k]!=null ? (+player[k]).toFixed(d) : "—";
-  const era = getEra(season);
-  const overall = player.overall_score != null ? Math.round(player.overall_score * 100) : null;
-  const blocked = dimmed || tierFull;
-  return (
-    <button onClick={onClick} disabled={blocked}
-      className={`w-full text-left border rounded-xl p-2.5 transition-all group
-        ${blocked?"opacity-30 cursor-not-allowed border-slate-800 bg-slate-900/50"
-                :discover?"border-emerald-700/60 hover:border-emerald-500/80 hover:bg-slate-800 bg-slate-900 cursor-pointer"
-                         :"border-slate-700 hover:border-blue-500/60 hover:bg-slate-800 bg-slate-900 cursor-pointer"}`}>
-      {/* İsim + tier + era chip */}
-      <div className="flex items-start justify-between gap-1 mb-1.5">
-        <div className={`text-sm font-medium leading-tight truncate ${discover?"text-emerald-200":"text-white group-hover:text-blue-200"}`}>
-          {player.PLAYER_NAME}
-        </div>
-        <span className="flex items-center gap-1 shrink-0">
-          {tier&&(
-            <span className="text-[9px] w-4.5 px-1 py-0.5 rounded border font-black leading-none"
-              style={{color:TIER_COLORS[tier],borderColor:TIER_COLORS[tier]+"66",background:TIER_COLORS[tier]+"14"}}
-              title={`${tier} tier — ${TIER_DESC[tier]}${tierFull?" (quota full)":""}`}>
-              {tier}
-            </span>
-          )}
-          <span className={`text-[8.5px] px-1.5 py-0.5 rounded border font-medium ${era.bg} ${era.color}`}>
-            {era.short}
-          </span>
-        </span>
-      </div>
-      {tierFull&&(
-        <div className="text-[8.5px] text-red-400/80 mb-1">tier quota full</div>
-      )}
-      {/* İstatistikler */}
-      <div className="flex gap-2 text-[10.5px] text-slate-400 mb-1.5 flex-wrap">
-        <span>PTS <span className="text-slate-200 font-medium">{stat("PTS")}</span></span>
-        <span>REB <span className="text-slate-200 font-medium">{stat("REB")}</span></span>
-        <span>AST <span className="text-slate-200 font-medium">{stat("AST")}</span></span>
-        <span>STL <span className="text-slate-200 font-medium">{stat("STL")}</span></span>
-        <span>BLK <span className="text-slate-200 font-medium">{stat("BLK")}</span></span>
-      </div>
-      {/* Mevkiler + arketip */}
-      <div className="flex gap-1 flex-wrap">
-        {eligible.map(p=>(
-          <span key={p} className={`text-[9.5px] px-1.5 py-0.5 rounded border font-bold ${p===primary?"ring-1 ring-blue-400/40":""} ${POS_COLORS[p]||"bg-slate-800 text-slate-400 border-slate-700"}`}>
-            {p}{p===primary?" ★":""}
-          </span>
-        ))}
-        {discover ? (
-          <span className="ml-auto flex items-center gap-1">
-            <span className="text-[9.5px] px-1.5 py-0.5 rounded border border-emerald-700/50 bg-emerald-900/30 text-emerald-300 font-medium">
-              {player.primary_arch || "—"}
-            </span>
-            {overall != null && (
-              <span className="text-[9.5px] px-1.5 py-0.5 rounded border border-violet-700/50 bg-violet-900/30 text-violet-300 font-bold">
-                {overall}
-              </span>
-            )}
-          </span>
-        ) : (
-          <span className="ml-auto text-[9.5px] px-1.5 py-0.5 rounded border border-slate-700 bg-slate-800 text-slate-500 font-mono">???</span>
-        )}
-      </div>
-    </button>
-  );
-}
-
 // ── Lineup slot ───────────────────────────────────────────────────────────────
 function LineupSlot({ pos, player, bench=false, selected=false, canTap=false, onTap }) {
   const isPrimary = !bench && player && getPrimaryPos(player) === pos;
@@ -282,6 +216,81 @@ function LineupSlot({ pos, player, bench=false, selected=false, canTap=false, on
     </div>
   );
 }
+
+// ── Oyuncu satırı (eraball tarzı liste) ──────────────────────────────────────
+function headshotUrl(p) {
+  return p.PLAYER_ID ? `https://cdn.nba.com/headshots/nba/latest/260x190/${p.PLAYER_ID}.png` : null;
+}
+
+function posGroupOf(p) {
+  const raw = String(p?.POS5 || p?.POSITION || "").toUpperCase().trim();
+  if (raw === "C" || raw.startsWith("CENTER")) return "C";
+  if (raw === "PG" || raw === "SG" || raw.startsWith("G") || raw.includes("GUARD")) return "G";
+  return "F";
+}
+
+function PlayerRow({ player, discover, onClick, tier, tierFull, highlightStat }) {
+  const [imgOk, setImgOk] = useState(true);
+  const stat = (k, d = 1) => player[k] != null ? (+player[k]).toFixed(d) : "—";
+  const overall = player.overall_score != null ? Math.round(player.overall_score * 100) : null;
+  const tags = getPlayerTags(player);
+  const url = headshotUrl(player);
+  const cell = (k) => (
+    <span className={`w-9 text-right tabular-nums shrink-0 text-xs
+      ${highlightStat === k ? "font-bold" : "text-slate-500"}`}
+      style={highlightStat === k ? { color: "#e2b34c" } : {}}>
+      {stat(k)}
+    </span>
+  );
+  return (
+    <button onClick={onClick} disabled={tierFull}
+      className={`w-full flex items-center gap-2.5 px-2.5 py-2 border-b text-left transition-colors
+        ${tierFull ? "opacity-30 cursor-not-allowed" : "hover:bg-slate-800/70 cursor-pointer"}`}
+      style={{ borderColor: "rgba(30,41,59,.6)" }}>
+      {/* Avatar */}
+      <div className="w-9 h-9 rounded-full overflow-hidden shrink-0 border border-slate-700 bg-slate-800 flex items-center justify-center">
+        {url && imgOk ? (
+          <img src={url} alt="" loading="lazy" onError={() => setImgOk(false)}
+            className="w-full h-full object-cover object-top" />
+        ) : (
+          <span className="text-[11px] font-bold text-slate-500">
+            {player.PLAYER_NAME?.split(" ").map(w => w[0]).slice(0, 2).join("")}
+          </span>
+        )}
+      </div>
+      {/* İsim + pozisyon + tag'ler */}
+      <div className="flex-1 min-w-0">
+        <div className="text-[13px] font-semibold text-white truncate leading-tight">{player.PLAYER_NAME}</div>
+        <div className="flex items-center gap-1.5 mt-0.5">
+          <span className="text-[10px] text-slate-500 truncate">{player.POSITION || player.POS5 || ""}</span>
+          {tags.slice(0, 3).map(t => (
+            <span key={t.key} title={t.detail} className="text-[7.5px] px-1 py-px rounded font-bold leading-none shrink-0"
+              style={{ color: t.color, background: t.color + "1a", border: `1px solid ${t.color}44` }}>
+              {t.label}
+            </span>
+          ))}
+        </div>
+      </div>
+      {/* Tier / discover chip */}
+      {tier && (
+        <span className="text-sm font-black shrink-0 w-4 text-center" style={{ color: TIER_COLORS[tier] }}
+          title={`${tier} — ${TIER_DESC[tier]}${tierFull ? " (quota full)" : ""}`}>
+          {tier}
+        </span>
+      )}
+      {discover && (
+        <span className="flex items-center gap-1 shrink-0">
+          <span className="text-[9px] px-1 py-0.5 rounded border border-emerald-700/50 bg-emerald-900/30 text-emerald-300">{player.primary_arch || "—"}</span>
+          {overall != null && <span className="text-[9px] px-1 py-0.5 rounded border border-violet-700/50 bg-violet-900/30 text-violet-300 font-bold">{overall}</span>}
+        </span>
+      )}
+      {/* İstatistikler */}
+      {cell("PTS")}{cell("REB")}{cell("AST")}{cell("STL")}{cell("BLK")}
+    </button>
+  );
+}
+
+const SORT_KEYS = ["TAGGED", "PTS", "REB", "AST", "STL", "BLK"];
 
 // ── Info Modal ────────────────────────────────────────────────────────────────
 function InfoModal({ open, onClose, title, children }) {
@@ -978,6 +987,8 @@ export default function LineupGame() {
   const [fitResult, setFitResult]   = useState(null);
   const [statusMsg, setStatusMsg]   = useState("");
   const [moveSrc, setMoveSrc]       = useState(null); // saha üzerinde taşınan slot
+  const [posFilter, setPosFilter]   = useState("");   // pick listesi G/F/C filtresi
+  const [sortKey, setSortKey]       = useState("PTS"); // pick listesi sıralaması
 
   // Çark
   const [spinSeasons, setSpinS] = useState(false);
@@ -1064,6 +1075,7 @@ export default function LineupGame() {
 
         setPlayers(list);
         pendingRoundRef.current={season,team,available:list};
+        setPosFilter("");
         setPhase("pick_player");
         if(!wildcardRef.current) setStatusMsg("");
       })
@@ -1533,26 +1545,64 @@ export default function LineupGame() {
       )}
 
       {/* === PICK PLAYER === */}
-      {phase==="pick_player"&&(
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3">
-          <div className="flex items-center gap-2 mb-3 flex-wrap">
-            <span className="bg-blue-600/20 border border-blue-500/30 text-blue-300 text-xs font-mono px-2 py-0.5 rounded-lg">{chosenSeason}</span>
-            <span className="bg-slate-800 border border-slate-700 text-white text-xs font-mono px-2 py-0.5 rounded-lg">{chosenTeam}</span>
-            <span className="text-xs text-slate-500">— pick a player</span>
-          </div>
-          <div className="grid grid-cols-2 gap-2 max-h-80 overflow-y-auto">
-            {(()=>{
-              const counts = mode==="salarycap" ? countTiers(Object.values(lineup)) : null;
-              return players.map((p,i)=>{
+      {phase==="pick_player"&&(()=>{
+        const counts = mode==="salarycap" ? countTiers(Object.values(lineup)) : null;
+        let list = posFilter ? players.filter(p=>posGroupOf(p)===posFilter) : players;
+        const sorted = [...list].sort((a,b)=>{
+          if(sortKey==="TAGGED"){
+            const ta=getPlayerTags(a).length, tb=getPlayerTags(b).length;
+            if(tb!==ta) return tb-ta;
+            return (parseFloat(b.PTS||0)||0)-(parseFloat(a.PTS||0)||0);
+          }
+          return (parseFloat(b[sortKey]||0)||0)-(parseFloat(a[sortKey]||0)||0);
+        });
+        return (
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+            {/* Üst bar: takım-dönem + G/F/C filtre + sayı */}
+            <div className="flex items-center gap-2 px-3 py-2.5 border-b flex-wrap" style={{borderColor:"rgba(30,41,59,.8)"}}>
+              <span className="text-[11px] font-mono tracking-widest text-slate-400 uppercase">
+                {chosenTeam} · {chosenSeason}
+              </span>
+              <span className="ml-auto flex items-center border rounded-lg overflow-hidden" style={{borderColor:"#334155"}}>
+                {["G","F","C"].map(g=>(
+                  <button key={g} onClick={()=>setPosFilter(f=>f===g?"":g)}
+                    className={`px-2.5 py-1 text-[11px] font-bold transition-colors border-r last:border-r-0
+                      ${posFilter===g?"bg-slate-200 text-slate-900":"text-slate-400 hover:text-white"}`}
+                    style={{borderColor:"#334155"}}>
+                    {g}
+                  </button>
+                ))}
+              </span>
+              <span className="text-[11px] text-slate-500 tabular-nums">{sorted.length}</span>
+            </div>
+            {/* Satır listesi */}
+            <div className="max-h-96 overflow-y-auto">
+              {sorted.map((p,i)=>{
                 const t = counts ? tierOf(p) : null;
                 const full = counts && !wildcardRef.current && counts[t]>=TIER_QUOTA[t];
-                return <PlayerCard key={i} player={p} season={chosenSeason} discover={discoverActive}
-                  onClick={()=>handlePickPlayer(p)} dimmed={false} tier={t} tierFull={full}/>;
-              });
-            })()}
+                return <PlayerRow key={i} player={p} discover={discoverActive}
+                  onClick={()=>handlePickPlayer(p)} tier={t} tierFull={full}
+                  highlightStat={sortKey==="TAGGED"?"PTS":sortKey}/>;
+              })}
+              {sorted.length===0&&(
+                <div className="py-8 text-center text-xs text-slate-600">No players in this group — clear the filter.</div>
+              )}
+            </div>
+            {/* Alt bar: sıralama */}
+            <div className="flex items-center px-3 py-2 border-t gap-1" style={{borderColor:"rgba(30,41,59,.8)"}}>
+              <span className="text-[10px] tracking-widest text-slate-600 uppercase mr-1">Sort</span>
+              {SORT_KEYS.map(k=>(
+                <button key={k} onClick={()=>setSortKey(k)}
+                  className={`px-2 py-1 rounded text-[10px] font-semibold tracking-wider transition-colors
+                    ${sortKey===k?"text-slate-900":"text-slate-500 hover:text-white"}`}
+                  style={sortKey===k?{background:"#e2b34c"}:{}}>
+                  {k==="TAGGED"?"TAGGED":k}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* === PICK POSITION === */}
       {phase==="pick_pos"&&pickedPlayer&&(()=>{

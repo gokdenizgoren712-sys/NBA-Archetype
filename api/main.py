@@ -1806,7 +1806,7 @@ def game_players(season: str = Query("2025-26"), team: str = Query("")):
     df["POS5"] = _assign_pos5(df)
 
     score_cols = [c for c in df.columns if c.startswith("score_")]
-    keep = ["PLAYER_NAME", "primary_arch", "overall_score", "POSITION", "POS5",
+    keep = ["PLAYER_ID", "PLAYER_NAME", "primary_arch", "overall_score", "POSITION", "POS5",
             "TEAM_ABBREVIATION", "GP", "G", "MIN", "PTS", "REB", "AST",
             "STL", "BLK", "TOV"] + score_cols
     keep = [c for c in keep if c in df.columns]
