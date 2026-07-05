@@ -3,6 +3,17 @@ import { SEO } from "../hooks/useSEO";
 
 const CHANGELOG = [
   {
+    version: "v3.5.1",
+    date_en: "July 2026",
+    label_en: "Game Balance + Pick List Redesign",
+    items_en: [
+      "Player pick screen rebuilt as a scouting list: headshots, award tag chips, tier letters, sortable stat columns (TAGGED/PTS/REB/AST/STL/BLK) and a G/F/C position filter",
+      "Draft score formula reworked: 45% player quality + 40% coverage + 15% role fit (weighted sum) — the old multiplication crushed every draft into the 47-57 band",
+      "Grades recalibrated: S ≥ 85, A ≥ 78, B ≥ 70, C ≥ 62 — a typical draft lands C+/B, a great one is genuinely reachable",
+      "Era Fit panel fixed: it now actually measures how well a player's archetype profile matched their era's meta (the old ×5 formula saturated at 100 for any good player)",
+    ],
+  },
+  {
     version: "v3.5 — Phase 3b",
     date_en: "July 2026",
     label_en: "Salary Cap Draft Mode",

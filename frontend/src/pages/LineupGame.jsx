@@ -121,8 +121,10 @@ function computeLineupFit(players) {
   const ballDom = players.filter(p => Math.max(_s(p,"Engine")*1.05, _s(p,"Ecosystem")) >= 0.80).length;
   const roleFit = Math.max(0, 1 - Math.max(0, (ballDom - 1) * 0.15));
 
-  // 4. Final: quality × coverage × role_fit
-  const lineupScore = Math.min(1, avgQuality * coverage * roleFit);
+  // 4. Final: ağırlıklı toplam (v3.5.1). Eski çarpım formülü skoru 40-55
+  // bandına eziyordu — iki 0.6'lık faktörün çarpımı 0.36 eder. Toplamla
+  // her faktörün katkısı görünür kalır ve S notu ulaşılabilir olur.
+  const lineupScore = Math.min(1, 0.45 * avgQuality + 0.40 * coverage + 0.15 * roleFit);
 
   return {
     creation: creationCov, spacing: spacingCov,
@@ -393,7 +395,8 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
   const rawScore  = fit.lineupScore;
   const totalScore = Math.min(1, rawScore + chemBonus);
   const pct  = Math.round(totalScore * 100);
-  const grade = pct>=85?"S":pct>=75?"A":pct>=65?"B":pct>=55?"C":"D";
+  // Eşikler ağırlıklı-toplam bandına göre: tipik çekiliş ~66-72 (C+/B), iyi ~78 (A), efsane 85+ (S)
+  const grade = pct>=85?"S":pct>=78?"A":pct>=70?"B":pct>=62?"C":"D";
 
   // Archetype affinity score
   const affinityScore = (() => {
@@ -427,7 +430,7 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
   useEffect(() => {
     fetch(`/api/leaderboard?limit=10&mode=${mode}`).then(r => r.json()).then(d => setLeaderboard(d.entries || [])).catch(() => {});
   }, [mode]);
-  const gColor = pct>=85?"text-blue-300":pct>=75?"text-sky-300":pct>=65?"text-emerald-300":pct>=55?"text-amber-300":"text-red-400";
+  const gColor = pct>=85?"text-blue-300":pct>=78?"text-sky-300":pct>=70?"text-emerald-300":pct>=62?"text-amber-300":"text-red-400";
 
   // Per-oyuncu → pozisyona göre eşle (computeLineupFit POSITIONS sırasında çağrıldı)
   const perPlayerMap = {};
@@ -443,7 +446,7 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
       {/* Ana skor */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 text-center">
         <div className="text-xs text-slate-500 uppercase tracking-widest mb-2">Lineup Fit</div>
-        <div className={`text-7xl font-black mb-1 ${pct>=75?"text-blue-400":pct>=55?"text-sky-400":"text-slate-300"}`}>{pct}</div>
+        <div className={`text-7xl font-black mb-1 ${pct>=78?"text-blue-400":pct>=62?"text-sky-400":"text-slate-300"}`}>{pct}</div>
         <div className={`text-3xl font-bold mb-1 ${gColor}`}>{grade}</div>
         {chemBonus > 0 && (
           <div className="text-xs text-yellow-400 mb-2">
@@ -708,11 +711,11 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
           <p className="text-[11.5px] text-slate-500 italic">
             {pct>=85
               ? "Championship-caliber construction. High-quality players across eras, all four pillars covered."
-              : pct>=75
+              : pct>=78
               ? "Strong lineup. Good player quality and solid role coverage — most gaps are minor."
-              : pct>=65
+              : pct>=70
               ? "Functional roster with a clear identity. One key archetype away from a well-rounded unit."
-              : pct>=55
+              : pct>=62
               ? "Uneven fit. Either the eras didn't favor your archetypes, or the roster has coverage gaps."
               : "Significant mismatches — low player quality, missing pillars, or too many ball-handlers. The wheel was brutal."}
           </p>
@@ -734,7 +737,7 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
               <span className="text-slate-300 flex-1 truncate">{entry.username}</span>
               {entry.season_result === "CHAMPION" && <span className="shrink-0" title="Won a simulated championship">🏆</span>}
               {entry.wins != null && <span className="text-slate-600 shrink-0 text-[10px]">{entry.wins}W</span>}
-              <span className={`font-bold shrink-0 ${entry.pct>=85?"text-blue-400":entry.pct>=72?"text-sky-300":entry.pct>=58?"text-emerald-400":entry.pct>=42?"text-amber-400":"text-red-400"}`}>
+              <span className={`font-bold shrink-0 ${entry.pct>=85?"text-blue-400":entry.pct>=78?"text-sky-300":entry.pct>=70?"text-emerald-400":entry.pct>=62?"text-amber-400":"text-red-400"}`}>
                 {entry.pct}
               </span>
               <span className="text-slate-600 shrink-0 w-4">{entry.grade}</span>
@@ -1433,7 +1436,7 @@ export default function LineupGame() {
         <div className="space-y-3 text-sm text-slate-300 leading-relaxed">
           <p>Player archetypes are <span className="text-white font-medium">hidden during the game</span> and revealed at the end. Use stats and position clues to guess each player's role before committing to a slot.</p>
           <p>Each archetype is a percentile score built from real NBA tracking and box-score data. The 12 roles range from <span className="text-orange-300">Engine</span> (usage, creation) to <span className="text-blue-300">Anchor</span> (rim protection, defensive rating).</p>
-          <p className="text-slate-400 text-xs">Final score = Player Quality × Lineup Coverage × Role Fit. Quality is each player's overall score adjusted for their era's meta. Coverage checks whether your lineup collectively covers creation, spacing, defense, and finishing — one great specialist is enough for their pillar.</p>
+          <p className="text-slate-400 text-xs">Final score = 45% Player Quality + 40% Lineup Coverage + 15% Role Fit. Quality is each player's overall score adjusted for their era's meta. Coverage checks whether your lineup collectively covers creation, spacing, defense, and finishing — one great specialist is enough for their pillar.</p>
           <div className="flex gap-2 pt-1 border-t border-slate-800">
             <a href="/glossary" className="text-xs underline underline-offset-2" style={{color:"var(--accent)"}}>Full Glossary</a>
             <span className="text-slate-700">·</span>
@@ -1471,7 +1474,7 @@ export default function LineupGame() {
             </div>
             <div className="pt-1 border-t border-slate-800">
               <p className="text-[11.5px] text-slate-500 italic">
-                The formula: avg player quality × lineup coverage × role fit. Quality rewards stars from dominant eras. Coverage demands one playmaker, 2–3 shooters, a defender, and a finisher. Role fit penalizes duplicate ball-handlers.
+                The formula: 45% avg player quality + 40% lineup coverage + 15% role fit. Quality rewards stars from dominant eras. Coverage demands one playmaker, 2–3 shooters, a defender, and a finisher. Role fit penalizes duplicate ball-handlers.
               </p>
             </div>
           </div>
