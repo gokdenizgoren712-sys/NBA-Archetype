@@ -36,7 +36,7 @@ export function eraDistFactor(player, simEra) {
   const effDist  = Math.max(0, Math.min(DIST_PENALTY.length - 1, rawDist + fitShift));
   const timeless = isTimeless(player);
   let distP = DIST_PENALTY[effDist];
-  if (timeless) distP = Math.max(distP, 0.95);   // TIMELESS: mesafe neredeyse işlemez
+  if (timeless) distP = 1.0;   // TIMELESS: era mesafesi TAMAMEN sıfır (gerçekten zamansız)
   return { homeEra, dist: rawDist, effDist, fitShift, distP, timeless };
 }
 

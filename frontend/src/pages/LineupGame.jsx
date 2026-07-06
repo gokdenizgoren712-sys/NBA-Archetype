@@ -495,13 +495,16 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
         <div className="flex items-center justify-between mb-3">
           <div className="text-[11px] text-slate-400 uppercase tracking-widest">Roster Breakdown</div>
-          <div className="text-xs text-slate-500">avg quality <span className="text-white font-bold">{qualityPct}</span></div>
+          <div className="text-xs text-slate-500">
+            <span className="text-slate-600">ovr → qual · </span>avg <span className="text-white font-bold">{qualityPct}</span>
+          </div>
         </div>
         <div className="space-y-1">
           {POSITIONS.map(pos=>{
             const p=lineup[pos]; if(!p) return null;
             const pp=perPlayerMap[pos] || computePlayerFit(p, simEra);
             const qPct=Math.round(pp.quality*100);
+            const base=Math.round((parseFloat(p.overall_score)||0)*100);
             const isPrimary=getPrimaryPos(p)===pos;
             const pen=p._posPenalty??1;
             const tags=getPlayerTags(p).slice(0,2);
@@ -517,7 +520,7 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
                   <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                     <span className="text-[11px] text-blue-400 font-medium">{p.primary_arch||"—"}</span>
                     <span className={`text-[10px] ${pp.era.color}`}>{pp.era.short} '{(p._season||"").slice(2,4)}</span>
-                    {pp.timeless&&<span className="text-[10px] text-purple-400" title="Timeless — era distance barely matters">TL</span>}
+                    {pp.timeless&&<span className="text-[10px] text-purple-400" title="Timeless — era distance fully ignored">TL</span>}
                     {!pp.timeless&&pp.fitShift<0&&<span className="text-[10px] text-emerald-400" title="Archetype fits this era — one era closer">fits</span>}
                     {pp.dist>0&&!pp.timeless&&<span className="text-[10px] text-amber-500">−{pp.dist} era</span>}
                     {tags.map(t=>(
@@ -528,7 +531,12 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
                     ))}
                   </div>
                 </div>
-                <div className="w-20 h-2 bg-slate-800 rounded-full overflow-hidden shrink-0">
+                {/* base overall → quality (oyun bitti, ham overall açık) */}
+                <span className="text-[10px] text-slate-500 tabular-nums shrink-0 w-11 text-right"
+                  title={`Raw overall ${base} (hidden during the draft) → ${qPct} after era distance & position`}>
+                  <span className="text-slate-600">ovr</span> {base}
+                </span>
+                <div className="w-16 h-2 bg-slate-800 rounded-full overflow-hidden shrink-0">
                   <div className="h-full rounded-full" style={{width:`${qPct}%`,background:qPct>=75?"#1D428A":qPct>=55?"#2a3d6b":"#7f1d1d"}}/>
                 </div>
                 <span className={`text-[13px] font-bold w-7 text-right shrink-0 ${qPct>=75?"text-blue-300":qPct>=55?"text-slate-200":"text-red-400"}`}>{qPct}</span>
@@ -540,6 +548,7 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
             const p=lineup[b]; if(!p) return null;
             const pp=computePlayerFit(p, simEra);
             const qPct=Math.round(pp.quality*100);
+            const base=Math.round((parseFloat(p.overall_score)||0)*100);
             const tags=getPlayerTags(p,{onBench:true}).slice(0,2);
             return (
               <div key={b} className="flex items-center gap-2.5 py-1.5 border-b last:border-b-0 opacity-75" style={{borderColor:"rgba(30,41,59,.5)"}}>
@@ -560,7 +569,11 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
                     ))}
                   </div>
                 </div>
-                <div className="w-20 h-2 bg-slate-800 rounded-full overflow-hidden shrink-0">
+                <span className="text-[10px] text-slate-500 tabular-nums shrink-0 w-11 text-right"
+                  title={`Raw overall ${base} → ${qPct} after era distance & position`}>
+                  <span className="text-slate-600">ovr</span> {base}
+                </span>
+                <div className="w-16 h-2 bg-slate-800 rounded-full overflow-hidden shrink-0">
                   <div className="h-full rounded-full" style={{width:`${qPct}%`,background:"#334155"}}/>
                 </div>
                 <span className="text-[13px] font-bold w-7 text-right shrink-0 text-slate-400">{qPct}</span>

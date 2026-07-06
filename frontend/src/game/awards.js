@@ -143,7 +143,7 @@ export const TAG_INFO = [
   { key: "VERSATILE", label: "Versatile",    color: "#a78bfa",
     desc: "Fits multiple positions without penalty — computed from the Versatile archetype tag, not hand-picked." },
   { key: "TIMELESS",  label: "Timeless",     color: "#c084fc",
-    desc: "All-time-great peak seasons (overall ≥ 85) shrug off era distance. Minimal penalty no matter how far from home they play — think peak Jordan, Magic, Bird." },
+    desc: "All-time-great peak seasons (overall ≥ 85) are fully era-proof — zero distance penalty no matter how far from home they play. Think peak Jordan, Magic, Hakeem." },
   { key: "DUO",       label: "Dynamic Duo",  color: "#34d399",
     desc: "Draft both partners to activate a rating boost for the pair. Check a player's tag to see who the partner is." },
 ];
@@ -163,7 +163,7 @@ export function getPlayerTags(player, { onBench = false } = {}) {
   if (FMVP_COUNT[name]) tags.push({ key: "FMVP",     label: `FMVP×${FMVP_COUNT[name]}`,     color: "#fb923c", detail: "Boost in Finals games" });
   if (SIXTH_MAN.has(name)) tags.push({ key: "SIXTH", label: "6TH MAN",                       color: "#f97316", detail: onBench ? "Active: +10% off the bench" : "Boost only when on the bench" });
   if (versatile) tags.push({ key: "VERSATILE", label: "VERSATILE", color: "#a78bfa", detail: "Plays any position with no penalty" });
-  if (overall >= TIMELESS_MIN_OVERALL) tags.push({ key: "TIMELESS", label: "TIMELESS", color: "#c084fc", detail: "Minimal era distance penalty" });
+  if (overall >= TIMELESS_MIN_OVERALL) tags.push({ key: "TIMELESS", label: "TIMELESS", color: "#c084fc", detail: "No era-distance penalty at all" });
 
   const partners = DUOS.filter(d => d.includes(name)).map(d => d.find(n => n !== name));
   if (partners.length) tags.push({ key: "DUO", label: "DYNAMIC DUO", color: "#34d399", detail: `Partner: ${partners.join(" / ")}` });
