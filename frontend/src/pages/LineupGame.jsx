@@ -201,11 +201,12 @@ function SpinWheel({ items, spinning, targetIdx, label }) {
       <div className="relative w-32 rounded-xl overflow-hidden border border-slate-800 bg-slate-950">
         <div className="pointer-events-none absolute inset-x-0 top-0 h-14 z-10" style={{background:"linear-gradient(to bottom,#020817,transparent)"}}/>
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-14 z-10" style={{background:"linear-gradient(to top,#020817,transparent)"}}/>
-        <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-10 border-y border-blue-500/30 bg-blue-500/5 z-0"/>
+        <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-10 border-y z-0"
+          style={{borderColor:"var(--accent-border)",background:"var(--accent-dim)"}}/>
         <div className="py-1">
           {visible.map(({off,item})=>(
-            <div key={off} className={`h-10 flex items-center justify-center font-mono px-1 text-center text-xs ${off===0?"text-white font-bold":"text-slate-500"}`}
-              style={{opacity:Math.max(0.07,1-Math.abs(off)*0.40)}}>
+            <div key={off} className={`h-10 flex items-center justify-center font-mono px-1 text-center text-xs ${off===0?"font-bold":""}`}
+              style={{opacity:Math.max(0.07,1-Math.abs(off)*0.40), color: off===0 ? "var(--accent)" : "#64748b"}}>
               {item}
             </div>
           ))}
@@ -222,7 +223,7 @@ function LineupSlot({ pos, player, bench=false, selected=false, canTap=false, on
   return (
     <div onClick={()=>canTap&&onTap&&onTap(pos)}
       className={`flex-1 rounded-lg p-1.5 border text-center min-w-0 transition-all
-      ${selected?"border-yellow-400 shadow-[0_0_8px_rgba(250,204,21,.35)]":player?(bench?"border-slate-600/50 bg-slate-800/30":"border-blue-500/40 bg-blue-900/15"):"border-slate-800 bg-slate-900/60"}
+      ${selected?"border-amber-400 shadow-[0_0_8px_rgba(245,158,11,.35)]":player?(bench?"border-slate-600/50 bg-slate-800/30":"border-amber-500/40 bg-amber-900/10"):"border-slate-800 bg-slate-900/60"}
       ${canTap?"cursor-pointer":""}`}>
       <div className={`text-[8.5px] uppercase tracking-wider mb-0.5 ${bench?"text-slate-600":POS_COLORS[pos]?.split(" ")[1]||"text-slate-600"}`}>{posLabel}</div>
       {player ? (
@@ -764,7 +765,8 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
       )}
 
       <button onClick={onReset}
-        className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-semibold transition-colors inline-flex items-center justify-center gap-2">
+        className="w-full py-3 rounded-xl font-semibold transition-opacity hover:opacity-90 inline-flex items-center justify-center gap-2 text-slate-950"
+        style={{background:"var(--accent)"}}>
         <LoopIcon size={15} /> Play Again
       </button>
     </div>
@@ -1383,7 +1385,7 @@ export default function LineupGame() {
             </span>
           )}
           <div className="flex-1 h-1 bg-slate-800 rounded-full overflow-hidden">
-            <div className="h-full bg-blue-500 rounded-full transition-all duration-500" style={{width:`${(filledSlots.length/ALL_SLOTS.length)*100}%`}}/>
+            <div className="h-full rounded-full transition-all duration-500" style={{width:`${(filledSlots.length/ALL_SLOTS.length)*100}%`,background:"var(--accent)"}}/>
           </div>
           <span className="text-[10.5px] text-slate-500">{filledSlots.length}/{ALL_SLOTS.length}</span>
           {primaryCount>0&&<span className="text-[10.5px] text-yellow-400 inline-flex items-center gap-0.5"><StarIcon size={10} />×{primaryCount}</span>}
@@ -1572,7 +1574,8 @@ export default function LineupGame() {
           </div>
           <div className="text-center">
             <button onClick={()=>setPhase("pick_era")} disabled={seasons.length===0}
-              className="px-10 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 text-white rounded-xl font-semibold text-base transition-colors inline-flex items-center justify-center gap-2">
+              className="px-10 py-3 rounded-xl font-semibold text-base transition-opacity hover:opacity-90 disabled:opacity-50 inline-flex items-center justify-center gap-2 text-slate-950"
+              style={{background: seasons.length===0 ? "#334155" : "var(--accent)"}}>
               {seasons.length===0?"Loading..."
                 :mode==="salarycap"?<><CapIcon size={17} /> Start Salary Cap Draft</>
                 :<><WheelIcon size={17} /> Start Game</>}
@@ -1709,7 +1712,7 @@ export default function LineupGame() {
         const eligible=getEligiblePos(pickedPlayer);
         const primary=eligible[0];
         return (
-          <div className="bg-slate-900 border border-blue-500/30 rounded-2xl p-4">
+          <div className="bg-slate-900 rounded-2xl p-4" style={{border:"1px solid var(--accent-border)"}}>
             <div className="flex items-start justify-between mb-3">
               <div className="min-w-0">
                 <div className="text-white font-semibold flex items-center gap-2 flex-wrap">
