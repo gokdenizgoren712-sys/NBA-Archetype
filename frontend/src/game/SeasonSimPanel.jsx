@@ -271,23 +271,24 @@ export default function SeasonSimPanel({ players, simEra, fit, affinity01, bench
           {/* Oyuncu era performansı */}
           {stage === "done" && (
             <div className="space-y-1.5 border-t border-slate-800 pt-2.5">
-              <div className="text-[10.5px] text-slate-400 uppercase tracking-widest">Era Performance</div>
+              <div className="text-xs text-slate-300 uppercase tracking-widest font-semibold">Era Performance</div>
               {[...result.profiles, ...(result.benchProfiles || [])].map((pr, i) => {
                 const qPct = Math.round(pr.simQuality * 100);
                 return (
                   <div key={i} className={`flex items-center gap-2 ${pr.bench ? "opacity-70" : ""}`}>
-                    {pr.bench && <span className="text-[8px] px-1 rounded bg-slate-800 text-slate-500 shrink-0">B</span>}
-                    <span className="text-[10.5px] text-white flex-1 truncate">{pr.name?.split(" ").slice(-1)[0]}</span>
-                    <span className="text-[9px] text-slate-500 shrink-0 tabular-nums">{pr.minutes}m</span>
-                    {pr.fatigue > 0 && <span className="text-[8.5px] text-red-400 shrink-0">−{Math.round(pr.fatigue*100)}% tired</span>}
-                    <span className="text-[9px] text-slate-600 shrink-0">{pr.arch}</span>
-                    {pr.timeless && <span className="text-[8.5px] text-purple-400 shrink-0" title="Timeless — era distance barely matters">TL</span>}
-                    {pr.dist > 0 && !pr.timeless && <span className="text-[8.5px] text-amber-600 shrink-0">−{pr.dist} era</span>}
-                    {pr.posP != null && pr.posP < 1 && <span className="text-[8.5px] text-red-400 shrink-0">{pr.posP <= 0.75 ? "−25% pos" : "−10% pos"}</span>}
-                    <div className="w-16 h-1.5 bg-slate-800 rounded-full overflow-hidden shrink-0">
+                    {pr.bench && <span className="text-[9px] px-1 rounded bg-slate-800 text-slate-500 shrink-0">B</span>}
+                    <span className="text-[13px] text-white flex-1 truncate">{pr.name?.split(" ").slice(-1)[0]}</span>
+                    <span className="text-[11px] text-slate-500 shrink-0 tabular-nums">{pr.minutes}m</span>
+                    {pr.fatigue > 0 && <span className="text-[10px] text-red-400 shrink-0">−{Math.round(pr.fatigue*100)}% tired</span>}
+                    <span className="text-[11px] text-slate-500 shrink-0">{pr.arch}</span>
+                    {pr.timeless && <span className="text-[10px] font-bold text-purple-400 shrink-0" title="Timeless — era distance barely matters">TL</span>}
+                    {!pr.timeless && pr.fitShift < 0 && <span className="text-[10px] text-emerald-400 shrink-0" title="Archetype fits this era — travels one era closer">fits era</span>}
+                    {pr.dist > 0 && !pr.timeless && <span className="text-[10px] text-amber-500 shrink-0">−{pr.dist} era</span>}
+                    {pr.posP != null && pr.posP < 1 && <span className="text-[10px] text-red-400 shrink-0">{pr.posP <= 0.75 ? "−25% pos" : "−10% pos"}</span>}
+                    <div className="w-20 h-2 bg-slate-800 rounded-full overflow-hidden shrink-0">
                       <div className="h-full rounded-full" style={{ width: `${qPct}%`, background: qPct >= 70 ? "#059669" : qPct >= 50 ? "#2a3d6b" : "#7f1d1d" }} />
                     </div>
-                    <span className="text-[10.5px] w-5 text-right text-slate-400 shrink-0">{qPct}</span>
+                    <span className="text-[13px] font-semibold w-6 text-right text-slate-300 shrink-0">{qPct}</span>
                   </div>
                 );
               })}

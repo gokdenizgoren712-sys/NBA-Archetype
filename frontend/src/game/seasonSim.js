@@ -4,25 +4,40 @@
 //   sim kalitesi (overall × era-meta ağırlığı × era-uzaklık cezası)
 //   + pillar kapsaması + rol uyumu + arketip affinity.
 
-import { getEra, eraIndex } from "./eras";
+import { getEra, eraIndex, ERA_PILLAR_WEIGHTS, ARCH_PILLAR } from "./eras";
 import { coachRatingBonus, coachPlayoffBonus } from "./coaches";
 import { awardEffects, isTimeless, isSixthMan } from "./awards";
 
 const clamp01 = v => Math.min(1, Math.max(0, v));
 
-// Era uzaklık cezası (v3.6-B) — eraball modeli: era etkisi YALNIZCA seçilen
-// sim era'ya uzaklıktır; arketip-meta çarpanı kaldırıldı (arketipler artık
-// sadece lineup fit/coverage üzerinden konuşur). Her adım daha büyük kayıp.
-export const DIST_PENALTY = [1.00, 0.94, 0.86, 0.77, 0.67, 0.56];
+// Era uzaklık cezası (v3.6-C5) — YUMUŞATILDI. Eski eğri [1,.94,.86,.77,.67,.56]
+// 5 era uzakta −%44 yiyordu; 48 overall'lık bir rol oyuncusu 0.32'ye düşüp takım
+// ortalamasını eziyordu. Yeni eğri max −%22.
+export const DIST_PENALTY = [1.00, 0.97, 0.93, 0.88, 0.83, 0.78];
+
+// Arketip-era uyumu, uzaklığı MODÜLE eder (arketip-kör değil artık).
+// Oyuncunun sütununu sim era ÇOK seviyorsa (≥1.15) bir era daha yakınmış gibi
+// davranır (−1); hiç değer vermiyorsa (≤0.80) bir era daha uzakmış gibi (+1).
+// Ör: Jordan-era Spacer'ı Parity'ye alırsan (spacing 1.20) "1 era yakın" sayılır.
+// Yalnızca gerçekten seyahat edenlere uygulanır (ev era'sında etki yok → Phase B
+// ilkesi korunur: ev-era arketip değeri coverage'ın işi, bireysel kalitenin değil).
+export function eraFitShift(arch, simEra) {
+  const pillar = ARCH_PILLAR[arch];
+  if (!pillar) return 0;
+  const w = (ERA_PILLAR_WEIGHTS[simEra.id] || {})[pillar] ?? 1.0;
+  return w >= 1.15 ? -1 : w <= 0.80 ? 1 : 0;
+}
 
 // Tek kaynak: draft skoru (LineupGame) ve sim aynı uzaklık hesabını kullanır.
 export function eraDistFactor(player, simEra) {
   const homeEra  = getEra(player._season);
-  const dist     = Math.abs(eraIndex(homeEra) - eraIndex(simEra));
+  const rawDist  = Math.abs(eraIndex(homeEra) - eraIndex(simEra));
+  const fitShift = rawDist === 0 ? 0 : eraFitShift(player.primary_arch || "", simEra);
+  const effDist  = Math.max(0, Math.min(DIST_PENALTY.length - 1, rawDist + fitShift));
   const timeless = isTimeless(player);
-  let distP = DIST_PENALTY[Math.min(dist, DIST_PENALTY.length - 1)];
+  let distP = DIST_PENALTY[effDist];
   if (timeless) distP = Math.max(distP, 0.95);   // TIMELESS: mesafe neredeyse işlemez
-  return { homeEra, dist, distP, timeless };
+  return { homeEra, dist: rawDist, effDist, fitShift, distP, timeless };
 }
 
 // ── Oyuncunun sim era'daki profili ───────────────────────────────────────────
@@ -30,10 +45,10 @@ export function eraDistFactor(player, simEra) {
 export function playerSimProfile(player, simEra) {
   const overall = clamp01(parseFloat(player.overall_score || 0));
   const arch    = player.primary_arch || "";
-  const { homeEra, dist, distP, timeless } = eraDistFactor(player, simEra);
+  const { homeEra, dist, fitShift, distP, timeless } = eraDistFactor(player, simEra);
   const posP    = player._posPenalty ?? 1.0;
   const simQuality = clamp01(overall * distP * posP);
-  return { name: player.PLAYER_NAME, arch, homeEra, dist, distP, posP, overall, simQuality, timeless };
+  return { name: player.PLAYER_NAME, arch, homeEra, dist, fitShift, distP, posP, overall, simQuality, timeless };
 }
 
 // ── Bench pozisyon dengesi ───────────────────────────────────────────────────

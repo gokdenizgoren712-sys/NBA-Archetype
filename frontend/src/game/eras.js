@@ -20,17 +20,34 @@ export const ERA_ARCH_WEIGHTS = {
   parity:     { Engine:1.10, Ecosystem:1.15, Hub:1.05, Creator:1.05, Connector:1.10, Anchor:0.85, Force:0.80, Spacer:1.20, Finisher:1.00, Initiator:0.95, Stopper:1.05, "Rim Runner":1.05 },
 };
 
-// Her era'da kadro sütunlarının (pillar) önemi (v3.6-C2).
-// Oyuncu bazlı arch-meta çarpanı kaldırıldı; era-meta artık TAKIM kompozisyonu
-// seviyesinde konuşur: coverage = Σ(pillar × w) / Σw. Dead Ball'da savunman,
-// Small Ball'da şutörlerin seni taşır.
+// Her era'da kadro sütunlarının (pillar) önemi (v3.6-C5: 5 sütun).
+// Eski "Defense" tek blok, Rim Protection + Perimeter D olarak ayrıldı — çünkü
+// eralar bu ikisinde GERÇEKTEN ayrışır (Dead Ball iç savunma, Small Ball switch
+// eden çevre savunması ister; tek "Defense" bunu ifade edemiyordu).
+// coverage = Σ(pillar × w) / Σw. Bu ağırlıklar hem coverage'ı hem oyuncunun
+// era-uzaklık kaymasını (eraFitShift) besler.
+export const PILLARS = ["creation", "spacing", "rim_protection", "perimeter_d", "finishing"];
+export const PILLAR_LABELS = {
+  creation: "Creation", spacing: "Spacing", rim_protection: "Rim Protection",
+  perimeter_d: "Perimeter D", finishing: "Finishing",
+};
 export const ERA_PILLAR_WEIGHTS = {
-  magic_bird: { creation: 1.10, spacing: 0.55, defense: 1.10, finishing: 1.25 },
-  jordan:     { creation: 1.25, spacing: 0.70, defense: 1.15, finishing: 0.90 },
-  dead_ball:  { creation: 0.95, spacing: 0.75, defense: 1.40, finishing: 0.90 },
-  proto:      { creation: 1.10, spacing: 0.95, defense: 1.00, finishing: 0.95 },
-  small_ball: { creation: 1.10, spacing: 1.45, defense: 0.80, finishing: 0.65 },
-  parity:     { creation: 1.05, spacing: 1.20, defense: 1.00, finishing: 0.75 },
+  magic_bird: { creation: 1.10, spacing: 0.55, rim_protection: 1.20, perimeter_d: 0.95, finishing: 1.20 },
+  jordan:     { creation: 1.25, spacing: 0.70, rim_protection: 1.05, perimeter_d: 1.25, finishing: 0.90 },
+  dead_ball:  { creation: 0.90, spacing: 0.70, rim_protection: 1.45, perimeter_d: 1.20, finishing: 0.90 },
+  proto:      { creation: 1.10, spacing: 0.95, rim_protection: 1.00, perimeter_d: 1.00, finishing: 0.95 },
+  small_ball: { creation: 1.10, spacing: 1.45, rim_protection: 0.60, perimeter_d: 1.15, finishing: 0.70 },
+  parity:     { creation: 1.05, spacing: 1.20, rim_protection: 0.80, perimeter_d: 1.15, finishing: 0.80 },
+};
+
+// Bir arketip hangi sütunun "adamı"dır — era-uzaklık kayması bundan türer.
+export const ARCH_PILLAR = {
+  Engine: "creation", Ecosystem: "creation", Hub: "creation", Creator: "creation",
+  Initiator: "creation", Connector: "creation",
+  Spacer: "spacing",
+  Anchor: "rim_protection", Force: "rim_protection",
+  Stopper: "perimeter_d",
+  Finisher: "finishing", "Rim Runner": "finishing",
 };
 
 export const ERA_META_BLURB = {

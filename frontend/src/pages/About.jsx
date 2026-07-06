@@ -3,6 +3,18 @@ import { SEO } from "../hooks/useSEO";
 
 const CHANGELOG = [
   {
+    version: "v3.6 — Phase C5",
+    date_en: "July 2026",
+    label_en: "5-Pillar Era Report + Archetype-Aware Distance",
+    items_en: [
+      "Era Report expanded from 4 pillars to 5: 'Defense' split into Rim Protection + Perimeter D — eras genuinely differ here (Dead Ball wants rim protection, Small Ball wants switchable perimeter D), which one lumped column couldn't express",
+      "Era distance penalty softened: a far-era player now loses at most 22% (was 44%) — a 48-overall role player no longer collapses to 0.32 and drags the team average",
+      "Distance is now archetype-aware: if your archetype fits the sim era (a Spacer going to a spacing era), you travel one era closer; if it clashes, one era further. A 'fits era' tag shows when it triggers",
+      "Timeless threshold already at 75 keeps the league's top five era-proof",
+      "Era Performance and Era Report fonts enlarged for readability",
+    ],
+  },
+  {
     version: "v3.6 — Phase D+E",
     date_en: "July 2026",
     label_en: "Minutes, Fatigue & the THREEPEAT",

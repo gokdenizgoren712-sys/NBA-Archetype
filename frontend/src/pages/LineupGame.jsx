@@ -91,17 +91,19 @@ const POS_COLORS = {
 // Arketipler artık yalnızca coverage/lineup fit üzerinden konuşur.
 function computePlayerFit(p, simEra) {
   const _s = k => { const v = parseFloat(p[`score_${k}`] ?? 0); return isNaN(v) ? 0 : Math.max(0, v); };
-  // Boyutsal katkılar — lineup coverage için max alınır, specialist cezalandırılmaz
-  const creation  = Math.min(1, Math.max(_s("Ecosystem")*1.10, _s("Engine"), _s("Hub")*0.90, _s("Creator")*0.88, _s("Initiator")*0.80));
-  const spacing   = Math.min(1, Math.max(_s("Spacer"), _s("3-and-D")*0.90, _s("Stretch")*0.85, _s("Gravity")*0.95, _s("Three-Level")*0.80));
-  const defense   = Math.min(1, Math.max(_s("Anchor")*1.10, _s("Stopper"), _s("Two-Way")*0.90, _s("Force")*0.65));
-  const finishing = Math.min(1, Math.max(_s("Finisher"), _s("Rim Runner")*0.95, _s("Force")*0.75, _s("Slashing")*0.82));
-  const overall   = Math.min(1, Math.max(0, parseFloat(p.overall_score || 0)));
-  const { homeEra, dist, distP, timeless } = eraDistFactor(p, simEra || ERAS[5]);
+  // Boyutsal katkılar — lineup coverage için max alınır, specialist cezalandırılmaz.
+  // v3.6-C5: Defense → Rim Protection (iç) + Perimeter D (çevre) olarak ayrıldı.
+  const creation   = Math.min(1, Math.max(_s("Ecosystem")*1.10, _s("Engine"), _s("Hub")*0.90, _s("Creator")*0.88, _s("Initiator")*0.80));
+  const spacing    = Math.min(1, Math.max(_s("Spacer"), _s("3-and-D")*0.90, _s("Stretch")*0.85, _s("Gravity")*0.95, _s("Three-Level")*0.80));
+  const rimProt    = Math.min(1, Math.max(_s("Anchor")*1.10, _s("Force")*0.80, _s("Rim Runner")*0.45));
+  const perimD     = Math.min(1, Math.max(_s("Stopper"), _s("Two-Way")*0.92, _s("Point-of-Attack")*0.90, _s("Defensive")*0.90));
+  const finishing  = Math.min(1, Math.max(_s("Finisher"), _s("Rim Runner")*0.95, _s("Force")*0.75, _s("Slashing")*0.82));
+  const overall    = Math.min(1, Math.max(0, parseFloat(p.overall_score || 0)));
+  const { homeEra, dist, fitShift, distP, timeless } = eraDistFactor(p, simEra || ERAS[5]);
   const posPenalty = p._posPenalty ?? 1.0;
   const quality = Math.min(1, overall * distP * posPenalty);
-  return { creation, spacing, defense, finishing, overall, quality,
-           era: homeEra, dist, distP, timeless, posPenalty };
+  return { creation, spacing, rimProt, perimD, finishing, overall, quality,
+           era: homeEra, dist, fitShift, distP, timeless, posPenalty };
 }
 
 // ── Lineup fit hesaplama ──────────────────────────────────────────────────────
@@ -116,18 +118,21 @@ function computeLineupFit(players, simEra) {
   const avgQuality = perPlayer.reduce((a, b) => a + b.quality, 0) / perPlayer.length;
 
   // 2. Lineup coverage — her pillar için en iyi oyuncunun katkısı yeterli mi?
-  // v3.6-C2: pillar'lar SEÇİLEN era'nın metasına göre ağırlıklanır (Dead Ball'da
-  // Defense ×1.40, Small Ball'da Spacing ×1.45). Aynı kadro farklı era'da farklı
-  // coverage alır — arketipler era ile takım seviyesinde konuşur.
+  // v3.6-C5: 5 sütun, SEÇİLEN era'nın metasına göre ağırlıklı (Dead Ball rim
+  // protection ×1.45, Small Ball spacing ×1.45 & rim ×0.60). Aynı kadro farklı
+  // era'da farklı coverage alır — arketipler era ile takım seviyesinde konuşur.
   const creationCov  = Math.min(1, Math.max(...perPlayer.map(p => p.creation)));
   const nShooters    = perPlayer.filter(p => p.spacing >= 0.65).length;
   const spacingCov   = [0.10, 0.45, 0.82, 1.00, 0.88, 0.72][Math.min(nShooters, 5)];
-  const defenseCov   = Math.min(1, Math.max(...perPlayer.map(p => p.defense)));
+  const rimCov       = Math.min(1, Math.max(...perPlayer.map(p => p.rimProt)));
+  const perimCov     = Math.min(1, Math.max(...perPlayer.map(p => p.perimD)));
   const finishingCov = Math.min(1, Math.max(...perPlayer.map(p => p.finishing)));
-  const W = ERA_PILLAR_WEIGHTS[(simEra || ERAS[5]).id] || { creation:1, spacing:1, defense:1, finishing:1 };
-  const wSum = W.creation + W.spacing + W.defense + W.finishing;
-  const coverage = (creationCov*W.creation + spacingCov*W.spacing
-                  + defenseCov*W.defense + finishingCov*W.finishing) / wSum;
+  const W = ERA_PILLAR_WEIGHTS[(simEra || ERAS[5]).id];
+  const covVals = { creation: creationCov, spacing: spacingCov, rim_protection: rimCov,
+                    perimeter_d: perimCov, finishing: finishingCov };
+  let wSum = 0, wDot = 0;
+  for (const k of Object.keys(W)) { wSum += W[k]; wDot += covVals[k] * W[k]; }
+  const coverage = wDot / wSum;
 
   // 3. Role Fit — top dominansı cezası (sadece lineup seviyesinde)
   const ballDom = players.filter(p => Math.max(_s(p,"Engine")*1.05, _s(p,"Ecosystem")) >= 0.80).length;
@@ -139,8 +144,8 @@ function computeLineupFit(players, simEra) {
   const lineupScore = Math.min(1, 0.45 * avgQuality + 0.40 * coverage + 0.15 * roleFit);
 
   return {
-    creation: creationCov, spacing: spacingCov,
-    defense: defenseCov,   finishing: finishingCov,
+    creation: creationCov, spacing: spacingCov, rim_protection: rimCov,
+    perimeter_d: perimCov, finishing: finishingCov,
     roleFit, nShooters, coverage, avgQuality,
     lineupScore, perPlayer,
   };
@@ -325,27 +330,29 @@ function JokerBtn({ Icon, label, available, onClick }) {
 }
 
 // ── Post-game analiz ──────────────────────────────────────────────────────────
-// Pillar → hangi score_ kolonları yüksek olmalı
+// Pillar → hangi score_ kolonları yüksek olmalı (bestAlt önerisi için)
 const PILLAR_SCORE_KEYS = {
-  creation:  ["Engine","Ecosystem","Creator","Hub","Initiator"],
-  spacing:   ["Spacer","Three-Level","Gravity","Shotmaker"],
-  defense:   ["Anchor","Stopper","Two-Way","Force"],
-  finishing: ["Finisher","Rim Runner","Force"],
-  roleFit:   ["Connector","Spacer"],
+  creation:       ["Engine","Ecosystem","Creator","Hub","Initiator"],
+  spacing:        ["Spacer","Three-Level","Gravity","Shotmaker"],
+  rim_protection: ["Anchor","Force"],
+  perimeter_d:    ["Stopper","Two-Way","Point-of-Attack","Defensive"],
+  finishing:      ["Finisher","Rim Runner","Force"],
 };
 
 function analyzeLineup(fit, lineup, roundHistory=[], simEra=null) {
   const filled = POSITIONS.map(p=>lineup[p]).filter(Boolean);
-  const W = ERA_PILLAR_WEIGHTS[(simEra||ERAS[5]).id] || { creation:1, spacing:1, defense:1, finishing:1 };
+  const W = ERA_PILLAR_WEIGHTS[(simEra||ERAS[5]).id];
   const pillars = [
     { key:"creation",  label:"Creation",  val:fit.creation,  w:W.creation,
-      fix:"No true playmaker in the lineup. An Engine, Ecosystem, or Creator covers this pillar." },
+      fix:"No true playmaker. An Engine, Ecosystem, Hub or Creator covers this." },
     { key:"spacing",   label:"Spacing",   val:fit.spacing,   w:W.spacing,
-      fix:`${fit.nShooters} shooter${fit.nShooters===1?"":"s"} — optimal is 2–3. A Spacer, 3-and-D, or Gravity player covers this pillar.` },
-    { key:"defense",   label:"Defense",   val:fit.defense,   w:W.defense,
-      fix:"No defensive anchor. An Anchor, Stopper, or Two-Way player covers this pillar." },
+      fix:`${fit.nShooters} shooter${fit.nShooters===1?"":"s"} — optimal is 2–3. A Spacer, 3-and-D or Gravity player covers this.` },
+    { key:"rim_protection", label:"Rim Protection", val:fit.rim_protection, w:W.rim_protection,
+      fix:"No interior deterrent. An Anchor or Force protects the rim." },
+    { key:"perimeter_d", label:"Perimeter D", val:fit.perimeter_d, w:W.perimeter_d,
+      fix:"No on-ball stopper. A Stopper, Two-Way or Point-of-Attack defender covers the perimeter." },
     { key:"finishing", label:"Finishing", val:fit.finishing, w:W.finishing,
-      fix:"No one finishing at the rim. A Finisher, Rim Runner, or Force player covers this pillar." },
+      fix:"No one finishing at the rim. A Finisher, Rim Runner or Force covers this." },
   ];
 
   // Era-ağırlıklı sıralama: açık = önem × eksik; silah = önem × değer.
@@ -511,6 +518,7 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
                     <span className="text-[11px] text-blue-400 font-medium">{p.primary_arch||"—"}</span>
                     <span className={`text-[10px] ${pp.era.color}`}>{pp.era.short} '{(p._season||"").slice(2,4)}</span>
                     {pp.timeless&&<span className="text-[10px] text-purple-400" title="Timeless — era distance barely matters">TL</span>}
+                    {!pp.timeless&&pp.fitShift<0&&<span className="text-[10px] text-emerald-400" title="Archetype fits this era — one era closer">fits</span>}
                     {pp.dist>0&&!pp.timeless&&<span className="text-[10px] text-amber-500">−{pp.dist} era</span>}
                     {tags.map(t=>(
                       <span key={t.key} title={t.detail} className="text-[8.5px] px-1 py-px rounded font-bold leading-none"
@@ -542,6 +550,7 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
                     <span className="text-[11px] text-blue-400/70">{p.primary_arch||"—"}</span>
                     <span className={`text-[10px] ${pp.era.color}`}>{pp.era.short} '{(p._season||"").slice(2,4)}</span>
                     {pp.timeless&&<span className="text-[10px] text-purple-400">TL</span>}
+                    {!pp.timeless&&pp.fitShift<0&&<span className="text-[10px] text-emerald-400" title="Archetype fits this era">fits</span>}
                     {pp.dist>0&&!pp.timeless&&<span className="text-[10px] text-amber-500">−{pp.dist} era</span>}
                     {tags.map(t=>(
                       <span key={t.key} title={t.detail} className="text-[8.5px] px-1 py-px rounded font-bold leading-none"
@@ -572,58 +581,58 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
       </div>
 
       {/* Era Report — era-ağırlıklı kadro analizi (Lineup Analysis'in yerini aldı) */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3.5">
         <div className="flex items-center justify-between">
-          <div className="text-[11px] text-slate-400 uppercase tracking-widest">Era Report</div>
-          {simEra&&<span className={`text-[10px] px-2 py-0.5 rounded border ${simEra.bg} ${simEra.color}`}>{simEra.label}</span>}
+          <div className="text-xs text-slate-300 uppercase tracking-widest font-semibold">Era Report</div>
+          {simEra&&<span className={`text-[11px] px-2 py-0.5 rounded border ${simEra.bg} ${simEra.color}`}>{simEra.label}</span>}
         </div>
-        {simEra&&<p className="text-[12px] text-slate-500 italic leading-relaxed">{ERA_META_BLURB[simEra.id]}</p>}
+        {simEra&&<p className="text-[13px] text-slate-400 italic leading-relaxed">{ERA_META_BLURB[simEra.id]}</p>}
 
         {/* Era-ağırlıklı pillar tablosu */}
-        <div className="space-y-2">
+        <div className="space-y-2.5">
           {analysis.pillars.map(pl=>{
             const vp = Math.round(pl.val*100);
             const wLabel = pl.w>=1.2 ? "KEY" : pl.w>=0.95 ? "CORE" : "MINOR";
             const wColor = pl.w>=1.2 ? "#facc15" : pl.w>=0.95 ? "#94a3b8" : "#475569";
             return (
               <div key={pl.key} className="flex items-center gap-2.5">
-                <span className="text-xs text-slate-300 w-20 text-right shrink-0">{pl.label}</span>
-                <span className="text-[8.5px] font-bold px-1 py-px rounded shrink-0 w-11 text-center"
+                <span className="text-[13px] text-slate-200 w-24 text-right shrink-0">{pl.label}</span>
+                <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded shrink-0 w-14 text-center"
                   style={{color:wColor,border:`1px solid ${wColor}55`,background:wColor+"11"}}
                   title={`This pillar's weight in the ${simEra?.label||"current era"}: ×${pl.w.toFixed(2)}`}>
                   {wLabel}
                 </span>
-                <div className="flex-1 h-2 bg-slate-800 rounded-full overflow-hidden">
+                <div className="flex-1 h-2.5 bg-slate-800 rounded-full overflow-hidden">
                   <div className="h-full rounded-full" style={{width:`${vp}%`,background:vp>=75?"#1D428A":vp>=55?"#2a3d6b":"#7f1d1d"}}/>
                 </div>
-                <span className={`text-xs font-semibold w-6 text-right shrink-0 ${vp>=65?"text-blue-300":vp>=45?"text-slate-300":"text-red-400"}`}>{vp}</span>
+                <span className={`text-sm font-bold w-7 text-right shrink-0 ${vp>=65?"text-blue-300":vp>=45?"text-slate-200":"text-red-400"}`}>{vp}</span>
               </div>
             );
           })}
-          <p className="text-[10.5px] text-slate-600">
+          <p className="text-[11.5px] text-slate-500">
             Coverage = era-weighted average · {fit.nShooters} shooter{fit.nShooters===1?"":"s"} in the lineup
           </p>
         </div>
 
         {/* Era silahı + era açığı */}
-        <div className="border-t border-slate-800 pt-2.5 space-y-2.5">
+        <div className="border-t border-slate-800 pt-3 space-y-2.5">
           <div className="flex gap-2 items-start">
-            <span className="text-green-400 shrink-0 mt-0.5"><BoltIcon size={15} /></span>
-            <p className="text-[12.5px] text-slate-300">
-              <span className="font-medium">Era weapon: </span>
+            <span className="text-green-400 shrink-0 mt-0.5"><BoltIcon size={16} /></span>
+            <p className="text-sm text-slate-300">
+              <span className="font-semibold">Era weapon: </span>
               <span className="text-green-400">{analysis.strongest.label} ({Math.round(analysis.strongest.val*100)})</span>
-              <span className="text-slate-500"> — {analysis.strongest.w>=1.2?"exactly what this era pays for.":analysis.strongest.w>=0.95?"solid currency in this era.":"strong, but this era barely values it."}</span>
+              <span className="text-slate-400"> — {analysis.strongest.w>=1.2?"exactly what this era pays for.":analysis.strongest.w>=0.95?"solid currency in this era.":"strong, but this era barely values it."}</span>
             </p>
           </div>
           <div className="flex gap-2 items-start">
-            <span className="text-red-400 shrink-0 mt-0.5"><GapIcon size={15} /></span>
+            <span className="text-red-400 shrink-0 mt-0.5"><GapIcon size={16} /></span>
             <div>
-              <p className="text-[12.5px] text-slate-300">
-                <span className="font-medium">Era liability: </span>
+              <p className="text-sm text-slate-300">
+                <span className="font-semibold">Era liability: </span>
                 <span className="text-red-400">{analysis.weakest.label} ({Math.round(analysis.weakest.val*100)})</span>
                 {analysis.weakest.w>=1.2&&<span className="text-amber-400"> — a KEY pillar here, this will cost you games</span>}
               </p>
-              <p className="text-[12px] text-slate-500 mt-0.5">{analysis.weakest.fix}</p>
+              <p className="text-[13px] text-slate-500 mt-0.5">{analysis.weakest.fix}</p>
             </div>
           </div>
         </div>
@@ -631,8 +640,8 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
         {/* Ball-dom uyarısı */}
         {analysis.ballDom >= 2 && (
           <div className="flex gap-2 items-start">
-            <span className="text-amber-400 shrink-0 mt-0.5"><WarnIcon size={15} /></span>
-            <p className="text-[12.5px] text-amber-400/80">
+            <span className="text-amber-400 shrink-0 mt-0.5"><WarnIcon size={16} /></span>
+            <p className="text-sm text-amber-400/80">
               {analysis.ballDom} ball-dominant players ({analysis.ballDomPlayers.map(n=>n.split(" ").slice(-1)[0]).join(", ")}) — role fit penalty applied.
             </p>
           </div>
@@ -808,11 +817,11 @@ function ShareCard({ pct, grade, fit, lineup }) {
     ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(20, sepY); ctx.lineTo(W - 20, sepY); ctx.stroke();
 
-    // Pillar barlar
+    // Pillar barlar (paylaşım kartı 2×2 kalsın: rim+perim → tek "Defense" özeti)
     const pillars = [
       ["Creation",  fit.creation],
       ["Spacing",   fit.spacing],
-      ["Defense",   fit.defense],
+      ["Defense",   Math.max(fit.rim_protection || 0, fit.perimeter_d || 0)],
       ["Finishing", fit.finishing],
     ];
     const barY = sepY + 14;
