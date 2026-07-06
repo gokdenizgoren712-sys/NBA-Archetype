@@ -54,28 +54,47 @@ const POS_STRING_MAP = {
   "PF-C": ["PF","C"],  "C-PF": ["C","PF"],
 };
 
-function getEligiblePos(player) {
-  // POS5 (backend hesaplı) → POSITION (raw) → arketip fallback
-  const raw = (player.POS5 || player.POSITION || "").toUpperCase().trim();
-  if (raw && POS_STRING_MAP[raw]) return POS_STRING_MAP[raw];
-  return ARCH_POSITIONS[player.primary_arch] || POSITIONS;
+const _POS5 = ["PG","SG","SF","PF","C"];
+
+// Birincil mevki: backend POS5 → POSITION eşleme → arketip fallback
+function getPrimaryPos(player) {
+  const p = String(player.POS5 || "").toUpperCase().trim();
+  if (_POS5.includes(p)) return p;
+  const raw = String(player.POSITION || "").toUpperCase().trim();
+  if (raw && POS_STRING_MAP[raw]) return POS_STRING_MAP[raw][0];
+  return (ARCH_POSITIONS[player.primary_arch] || POSITIONS)[0];
 }
-function getPrimaryPos(player) { return getEligiblePos(player)[0]; }
+// İkincil mevki: backend POS5_SECONDARY (BBref "SG-PG"/"PF-C" verisi + stat
+// heuristik). Yoksa POSITION eşlemesinin 2. mevkisi; o da yoksa null.
+function getSecondaryPos(player) {
+  const s = String(player.POS5_SECONDARY || "").toUpperCase().trim();
+  if (_POS5.includes(s) && s !== getPrimaryPos(player)) return s;
+  const raw = String(player.POSITION || "").toUpperCase().trim();
+  const mapped = POS_STRING_MAP[raw];
+  if (mapped && mapped[1] && mapped[1] !== getPrimaryPos(player)) return mapped[1];
+  return null;
+}
+// Uygun mevkiler = [birincil, (varsa) ikincil]
+function getEligiblePos(player) {
+  const prim = getPrimaryPos(player);
+  const sec  = getSecondaryPos(player);
+  return sec ? [prim, sec] : [prim];
+}
 
 // ── Faz 2: bench + pozisyon cezası ───────────────────────────────────────────
 const BENCH_SLOTS = ["B1","B2","B3","B4"];
 const ALL_SLOTS   = [...POSITIONS, ...BENCH_SLOTS];
 
-// FLEX: Versatile tag'i geçen oyuncular her mevkide cezasız (LeBron/Jokic tipi)
+// VERSATILE artık "her mevki bedava" DEĞİL — sadece İKİNCİL mevkide ceza yemez.
 function isFlex(player) { return isVersatile(player); }
 
-// Doğal mevki = ceza yok; 1 adım uzak = −10%; 2+ adım = −25%; bench = ceza yok
+// Birincil = ceza yok; ikincil = versatile ? yok : −10%; başka her yer = −25%.
 function posPenaltyFor(player, pos) {
-  if (!POSITIONS.includes(pos)) return 1.0;
-  if (isFlex(player)) return 1.0;
-  const nat = getPrimaryPos(player);
-  const d = Math.abs(POSITIONS.indexOf(pos) - POSITIONS.indexOf(nat));
-  return d === 0 ? 1.0 : d === 1 ? 0.90 : 0.75;
+  if (!POSITIONS.includes(pos)) return 1.0;   // bench
+  if (pos === getPrimaryPos(player)) return 1.0;
+  const sec = getSecondaryPos(player);
+  if (sec && pos === sec) return isVersatile(player) ? 1.0 : 0.90;
+  return 0.75;   // mevki dışı — versatile bile olsa (her yeri oynayamaz)
 }
 
 const POS_COLORS = {
@@ -1714,7 +1733,7 @@ export default function LineupGame() {
                 className="text-slate-600 hover:text-slate-300 text-xs shrink-0">← Back</button>
             </div>
             <div className="text-xs text-slate-500 mb-2 inline-flex items-center gap-1 flex-wrap">
-              <span>Which position? (</span><StarIcon size={10} /><span>= primary → chemistry bonus{isFlex(pickedPlayer)?" · VERSATILE: no penalty anywhere":" · off-position costs −10% / −25%"})</span>
+              <span>Which position? (</span><StarIcon size={10} /><span>= primary → chemistry bonus · secondary spot −10%{isFlex(pickedPlayer)?" (free — VERSATILE)":""}, elsewhere −25%)</span>
             </div>
             <div className="flex gap-2 flex-wrap">
               {POSITIONS.filter(p=>!lineup[p]).map(pos=>{

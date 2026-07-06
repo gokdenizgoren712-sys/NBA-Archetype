@@ -140,7 +140,7 @@ export const TAG_INFO = [
   { key: "SIXTH",     label: "6th Man",      color: "#f97316",
     desc: "Sixth Man of the Year winners. +10% impact when playing off the bench. No effect when starting." },
   { key: "VERSATILE", label: "Versatile",    color: "#a78bfa",
-    desc: "Fits multiple positions without penalty — computed from the Versatile archetype tag, not hand-picked." },
+    desc: "Plays their SECONDARY position with no penalty (a normal player takes −10% there). Not a play-anywhere pass — off both spots still costs −25%." },
   { key: "TIMELESS",  label: "Timeless",     color: "#c084fc",
     desc: "All-time-great peak seasons (overall ≥ 85) are fully era-proof — zero distance penalty no matter how far from home they play. Think peak Jordan, Magic, Hakeem." },
   { key: "DUO",       label: "Dynamic Duo",  color: "#34d399",
@@ -160,7 +160,7 @@ export function getPlayerTags(player, { onBench = false } = {}) {
   if (RING_COUNT[name]) tags.push({ key: "CHAMPION", abbr: "R",  label: `Rings×${RING_COUNT[name]}`, color: "#fbbf24", detail: `${RING_COUNT[name]} rings — playoff rating boost` });
   if (FMVP_COUNT[name]) tags.push({ key: "FMVP",     abbr: "FM", label: `FMVP×${FMVP_COUNT[name]}`, color: "#fb923c", detail: `${FMVP_COUNT[name]}× Finals MVP — boost in Finals games` });
   if (SIXTH_MAN.has(name)) tags.push({ key: "SIXTH", abbr: "6M", label: "6th Man",                  color: "#f97316", detail: onBench ? "6th Man — active: +10% off the bench" : "6th Man — boost only when benched" });
-  if (isVersatile(player)) tags.push({ key: "VERSATILE", abbr: "V", label: "Versatile",             color: "#a78bfa", detail: "Versatile — plays any position with no penalty" });
+  if (isVersatile(player)) tags.push({ key: "VERSATILE", abbr: "V", label: "Versatile",             color: "#a78bfa", detail: "Versatile — no penalty at their secondary position" });
   if (isTimeless(player)) tags.push({ key: "TIMELESS", abbr: "TL", label: "Timeless",               color: "#c084fc", detail: "Timeless — no era-distance penalty at all" });
 
   const partners = DUOS.filter(d => d.includes(name)).map(d => d.find(n => n !== name));

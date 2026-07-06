@@ -1923,6 +1923,17 @@ def game_players(season: str = Query("2025-26"), team: str = Query("")):
     # NaN pozisyonları doldur, POS5 hesapla
     df = _fill_position_from_components(df)
     df["POS5"] = _assign_pos5(df)
+    # İkincil mevki: BBref POS_SECONDARY (gerçek "SG-PG"/"PF-C" verisi) varsa
+    # onu kullan, yoksa stat-heuristik (asist→guard, blok/boy→C ikincil).
+    _sec_heur = _assign_secondary_pos(df, df["POS5"])
+    if "POS_SECONDARY" in df.columns:
+        _bref_sec = df["POS_SECONDARY"].astype(str).str.strip().str.upper()
+        _valid = _bref_sec.isin(["PG", "SG", "SF", "PF", "C"])
+        df["POS5_SECONDARY"] = _bref_sec.where(_valid, _sec_heur)
+    else:
+        df["POS5_SECONDARY"] = _sec_heur
+    # İkincil primary'yle aynıysa temizle (tek pozisyonluk oyuncu)
+    df.loc[df["POS5_SECONDARY"] == df["POS5"], "POS5_SECONDARY"] = ""
     # TIMELESS: hibrit (sezon top-2 + taban 0.80) — frontend bunu okur
     if "overall_score" in df.columns:
         df["is_timeless"] = (df["overall_score"] >= tl_cutoff).astype(bool)
@@ -1932,7 +1943,7 @@ def game_players(season: str = Query("2025-26"), team: str = Query("")):
 
     score_cols = [c for c in df.columns if c.startswith("score_")]
     keep = ["PLAYER_ID", "PLAYER_NAME", "primary_arch", "overall_score", "POSITION", "POS5",
-            "TEAM_ABBREVIATION", "GP", "G", "MIN", "PTS", "REB", "AST",
+            "POS5_SECONDARY", "TEAM_ABBREVIATION", "GP", "G", "MIN", "PTS", "REB", "AST",
             "STL", "BLK", "TOV", "FG3_PCT", "is_timeless", "is_versatile"] + score_cols
     keep = [c for c in keep if c in df.columns]
 
