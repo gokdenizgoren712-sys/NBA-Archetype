@@ -14,4 +14,6 @@ python-jose[cryptography]>=3.3
 pydantic[email]>=2.0
 python-multipart>=0.0.9
 slowapi>=0.1.9
-euroleague-api>=0.1  # EuroLeague veri çekme (src/fetch_euroleague.py)
+# NOT: euroleague-api RUNTIME'da gerekmez — sunucu yalnız commit'li parquet'i
+# okur. Yalnızca veri çekerken lazım: `pip install euroleague-api` (fetch_euroleague.py).
+# requirements'a konulunca build'i uzatıp deploy'u düşürüyordu, o yüzden çıkarıldı.

@@ -1865,6 +1865,11 @@ def game_teams(season: str = Query("2025-26")):
         df = _gp_filter(df, 10)
         raw = df["TEAM_ABBREVIATION"].dropna().unique().tolist()
 
+    # Multi-team sözde-takımları (2TM/3TM/TOT — sezon içi takas totali) çıkar;
+    # bunlar game_players'da filtrelendiği için "no data" respin'e yol açıyordu.
+    _multi = {"2TM", "3TM", "4TM", "5TM", "TOT"}
+    raw = [t for t in raw if str(t).upper() not in _multi]
+
     # Tarihsel kısaltmalar → modern kısaltmalar
     modern = sorted({_HIST_TO_MODERN.get(t, t) for t in raw})
     return {"teams": modern}
