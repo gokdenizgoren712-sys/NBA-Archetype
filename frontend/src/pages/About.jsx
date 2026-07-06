@@ -3,6 +3,18 @@ import { SEO } from "../hooks/useSEO";
 
 const CHANGELOG = [
   {
+    version: "v3.7.3",
+    date_en: "July 2026",
+    label_en: "Draft UX Pass + Versatile Fix",
+    items_en: [
+      "VERSATILE was silently broken — the modern threshold (0.75) sat above the actual max score (0.746) and historical data used a different column, so NO player ever got the tag or the FLEX no-penalty perk. Now computed server-side as the top ~15% of each season's pool; stars like Jokić, Dončić, Giannis, Grant Hill correctly read as versatile",
+      "Player pick list redesigned: horizontally scrollable on mobile / narrow panels with the name + archetype + tags pinned to the left, so names are never clipped. Tags are now compact colored initials (M, DP, R, TL...) instead of long labels, with taller rows and a TAG-count column + column headers",
+      "Position-pick screen now shows the player's archetype and PTS/REB/AST/3P% (archetypes are open, overall stays hidden)",
+      "Roster panel: the half-court is shorter and the page wider, so the bench and coach fit without scrolling",
+      "Start-screen copy refreshed to the current era-distance model (−3% to −22%, archetype-aware shift, top-2 Timeless)",
+    ],
+  },
+  {
     version: "v3.7.2",
     date_en: "July 2026",
     label_en: "Timeless Rework — Era-Fair + Fully Era-Proof",

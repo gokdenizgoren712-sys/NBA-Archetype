@@ -153,18 +153,18 @@ export function getPlayerTags(player, { onBench = false } = {}) {
   if (!player) return [];
   const name = player.PLAYER_NAME || "";
   const tags = [];
-  const versatile = (parseFloat(player["score_Versatile"] ?? 0) || 0) >= 0.75;
 
-  if (MVP_COUNT[name])  tags.push({ key: "MVP",      label: `MVP×${MVP_COUNT[name]}`,       color: "#facc15", detail: "Regular season rating boost" });
-  if (DPOY_COUNT[name]) tags.push({ key: "DPOY",     label: `DPOY×${DPOY_COUNT[name]}`,     color: "#38bdf8", detail: "Defensive rating boost" });
-  if (RING_COUNT[name]) tags.push({ key: "CHAMPION", label: `🏆×${RING_COUNT[name]}`,       color: "#fbbf24", detail: "Playoff rating boost per ring" });
-  if (FMVP_COUNT[name]) tags.push({ key: "FMVP",     label: `FMVP×${FMVP_COUNT[name]}`,     color: "#fb923c", detail: "Boost in Finals games" });
-  if (SIXTH_MAN.has(name)) tags.push({ key: "SIXTH", label: "6TH MAN",                       color: "#f97316", detail: onBench ? "Active: +10% off the bench" : "Boost only when on the bench" });
-  if (versatile) tags.push({ key: "VERSATILE", label: "VERSATILE", color: "#a78bfa", detail: "Plays any position with no penalty" });
-  if (isTimeless(player)) tags.push({ key: "TIMELESS", label: "TIMELESS", color: "#c084fc", detail: "No era-distance penalty at all" });
+  // abbr = kompakt rozet (baş harf); label = tam ad
+  if (MVP_COUNT[name])  tags.push({ key: "MVP",      abbr: "M",  label: `MVP×${MVP_COUNT[name]}`,   color: "#facc15", detail: `${MVP_COUNT[name]}× MVP — regular-season rating boost` });
+  if (DPOY_COUNT[name]) tags.push({ key: "DPOY",     abbr: "DP", label: `DPOY×${DPOY_COUNT[name]}`, color: "#38bdf8", detail: `${DPOY_COUNT[name]}× DPOY — defensive rating boost` });
+  if (RING_COUNT[name]) tags.push({ key: "CHAMPION", abbr: "R",  label: `Rings×${RING_COUNT[name]}`, color: "#fbbf24", detail: `${RING_COUNT[name]} rings — playoff rating boost` });
+  if (FMVP_COUNT[name]) tags.push({ key: "FMVP",     abbr: "FM", label: `FMVP×${FMVP_COUNT[name]}`, color: "#fb923c", detail: `${FMVP_COUNT[name]}× Finals MVP — boost in Finals games` });
+  if (SIXTH_MAN.has(name)) tags.push({ key: "SIXTH", abbr: "6M", label: "6th Man",                  color: "#f97316", detail: onBench ? "6th Man — active: +10% off the bench" : "6th Man — boost only when benched" });
+  if (isVersatile(player)) tags.push({ key: "VERSATILE", abbr: "V", label: "Versatile",             color: "#a78bfa", detail: "Versatile — plays any position with no penalty" });
+  if (isTimeless(player)) tags.push({ key: "TIMELESS", abbr: "TL", label: "Timeless",               color: "#c084fc", detail: "Timeless — no era-distance penalty at all" });
 
   const partners = DUOS.filter(d => d.includes(name)).map(d => d.find(n => n !== name));
-  if (partners.length) tags.push({ key: "DUO", label: "DYNAMIC DUO", color: "#34d399", detail: `Partner: ${partners.join(" / ")}` });
+  if (partners.length) tags.push({ key: "DUO", abbr: "DD", label: "Dynamic Duo", color: "#34d399", detail: `Dynamic Duo — draft ${partners.join(" / ")} too for a boost` });
 
   return tags;
 }
@@ -174,6 +174,13 @@ export function isTimeless(player) {
   // yoksa mutlak eşiğe düş.
   if (player?.is_timeless != null) return !!player.is_timeless;
   return (parseFloat(player?.overall_score || 0) || 0) >= TIMELESS_FALLBACK;
+}
+
+export function isVersatile(player) {
+  // Backend havuz-göreli bayrağı (üst ~%15) varsa onu kullan; yoksa
+  // modern score_Versatile eşiğine düş (0.68 ~ üst %10, eski 0.75 max'ın üstündeydi).
+  if (player?.is_versatile != null) return !!player.is_versatile;
+  return (parseFloat(player?.["score_Versatile"] ?? 0) || 0) >= 0.68;
 }
 
 export function isSixthMan(name) { return SIXTH_MAN.has(name); }

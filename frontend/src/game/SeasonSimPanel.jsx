@@ -281,7 +281,7 @@ export default function SeasonSimPanel({ players, simEra, fit, affinity01, bench
                     <span className="text-[11px] text-slate-500 shrink-0 tabular-nums">{pr.minutes}m</span>
                     {pr.fatigue > 0 && <span className="text-[10px] text-red-400 shrink-0">−{Math.round(pr.fatigue*100)}% tired</span>}
                     <span className="text-[11px] text-slate-500 shrink-0">{pr.arch}</span>
-                    {pr.timeless && <span className="text-[10px] font-bold text-purple-400 shrink-0" title="Timeless — era distance barely matters">TL</span>}
+                    {pr.timeless && <span className="text-[10px] font-bold text-purple-400 shrink-0" title="Timeless — era distance fully ignored">TL</span>}
                     {!pr.timeless && pr.fitShift < 0 && <span className="text-[10px] text-emerald-400 shrink-0" title="Archetype fits this era — travels one era closer">fits era</span>}
                     {pr.dist > 0 && !pr.timeless && <span className="text-[10px] text-amber-500 shrink-0">−{pr.dist} era</span>}
                     {pr.posP != null && pr.posP < 1 && <span className="text-[10px] text-red-400 shrink-0">{pr.posP <= 0.75 ? "−25% pos" : "−10% pos"}</span>}

@@ -6,7 +6,7 @@ import { ERAS, ERA_META_BLURB, ERA_PILLAR_WEIGHTS, getEra } from "../game/eras";
 import { eraDistFactor } from "../game/seasonSim";
 import SeasonSimPanel from "../game/SeasonSimPanel";
 import { COACHES } from "../game/coaches";
-import { getPlayerTags, TAG_INFO } from "../game/awards";
+import { getPlayerTags, TAG_INFO, isVersatile } from "../game/awards";
 import CourtBoard from "../game/CourtBoard";
 import { START_BUDGET, MIN_COST, costColor, totalSpent, maxSpendNow, applyTeamPricing, priceOf } from "../game/salary";
 import {
@@ -67,7 +67,7 @@ const BENCH_SLOTS = ["B1","B2","B3","B4"];
 const ALL_SLOTS   = [...POSITIONS, ...BENCH_SLOTS];
 
 // FLEX: Versatile tag'i geçen oyuncular her mevkide cezasız (LeBron/Jokic tipi)
-function isFlex(player) { return (parseFloat(player?.["score_Versatile"] ?? 0) || 0) >= 0.75; }
+function isFlex(player) { return isVersatile(player); }
 
 // Doğal mevki = ceza yok; 1 adım uzak = −10%; 2+ adım = −25%; bench = ceza yok
 function posPenaltyFor(player, pos) {
@@ -223,6 +223,17 @@ function posGroupOf(p) {
   return "F";
 }
 
+// Kompakt tag rozeti — baş harf + renk (uzun label yerine)
+function TagBadge({ t }) {
+  return (
+    <span title={t.detail}
+      className="inline-flex items-center justify-center text-[8.5px] font-bold rounded leading-none shrink-0 px-1 h-[15px] min-w-[15px]"
+      style={{ color: t.color, background: t.color + "22", border: `1px solid ${t.color}66` }}>
+      {t.abbr}
+    </span>
+  );
+}
+
 function PlayerRow({ player, discover, onClick, cost, unaffordable, highlightStat }) {
   const [imgOk, setImgOk] = useState(true);
   const stat = (k) => {
@@ -235,7 +246,7 @@ function PlayerRow({ player, discover, onClick, cost, unaffordable, highlightSta
   const tags = getPlayerTags(player);
   const url = headshotUrl(player);
   const cell = (k) => (
-    <span className={`w-8 text-right tabular-nums shrink-0 text-xs
+    <span className={`w-9 text-right tabular-nums shrink-0 text-xs
       ${highlightStat === k ? "font-bold" : "text-slate-500"}`}
       style={highlightStat === k ? { color: "#e2b34c" } : {}}>
       {stat(k)}
@@ -243,35 +254,36 @@ function PlayerRow({ player, discover, onClick, cost, unaffordable, highlightSta
   );
   return (
     <button onClick={onClick} disabled={unaffordable}
-      className={`w-full flex items-center gap-2.5 px-2.5 py-2 border-b text-left transition-colors
-        ${unaffordable ? "opacity-30 cursor-not-allowed" : "hover:bg-slate-800/70 cursor-pointer"}`}
+      className={`w-full min-w-[560px] flex items-center gap-2 pr-3 py-2.5 border-b text-left transition-colors
+        ${unaffordable ? "opacity-30 cursor-not-allowed" : "hover:bg-slate-800/70 cursor-pointer group"}`}
       style={{ borderColor: "rgba(30,41,59,.6)" }}>
-      {/* Avatar */}
-      <div className="w-9 h-9 rounded-full overflow-hidden shrink-0 border border-slate-700 bg-slate-800 flex items-center justify-center">
-        {url && imgOk ? (
-          <img src={url} alt="" loading="lazy" onError={() => setImgOk(false)}
-            className="w-full h-full object-cover object-top" />
-        ) : (
-          <span className="text-[11px] font-bold text-slate-500">
-            {player.PLAYER_NAME?.split(" ").map(w => w[0]).slice(0, 2).join("")}
-          </span>
-        )}
-      </div>
-      {/* İsim + pozisyon + arketip + tag'ler */}
-      <div className="flex-1 min-w-0">
-        <div className="text-[13px] font-semibold text-white truncate leading-tight">{player.PLAYER_NAME}</div>
-        <div className="flex items-center gap-1.5 mt-0.5">
-          <span className="text-[10px] text-slate-500 truncate shrink-0">{player.POSITION || player.POS5 || ""}</span>
-          {/* v3.6-C: arketip her zaman açık — overall gizli kalır */}
-          <span className="text-[10px] text-blue-400 font-medium shrink-0">{player.primary_arch || "—"}</span>
-          {tags.slice(0, 3).map(t => (
-            <span key={t.key} title={t.detail} className="text-[7.5px] px-1 py-px rounded font-bold leading-none shrink-0"
-              style={{ color: t.color, background: t.color + "1a", border: `1px solid ${t.color}44` }}>
-              {t.label}
+      {/* Sabit sol blok (yatay kaydırmada pinli): avatar + isim + arketip + rozetler */}
+      <div className="sticky left-0 z-10 flex items-center gap-2 pl-3 pr-2 py-0.5 shrink-0 w-[240px]"
+        style={{ background: "var(--bg-surface, #0f172a)" }}>
+        <div className="w-9 h-9 rounded-full overflow-hidden shrink-0 border border-slate-700 bg-slate-800 flex items-center justify-center">
+          {url && imgOk ? (
+            <img src={url} alt="" loading="lazy" onError={() => setImgOk(false)}
+              className="w-full h-full object-cover object-top" />
+          ) : (
+            <span className="text-[11px] font-bold text-slate-500">
+              {player.PLAYER_NAME?.split(" ").map(w => w[0]).slice(0, 2).join("")}
             </span>
-          ))}
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="text-[13px] font-semibold text-white truncate leading-tight">{player.PLAYER_NAME}</div>
+          <div className="flex items-center gap-1 mt-0.5">
+            <span className="text-[10px] text-slate-500 shrink-0">{player.POSITION || player.POS5 || ""}</span>
+            <span className="text-[10px] text-blue-400 font-medium truncate">{player.primary_arch || "—"}</span>
+            {tags.slice(0, 3).map(t => <TagBadge key={t.key} t={t} />)}
+          </div>
         </div>
       </div>
+      {/* TAG sayısı sütunu */}
+      <span className="w-8 text-center shrink-0 text-xs tabular-nums"
+        title={tags.length ? tags.map(t => t.label).join(" · ") : "No tags"}>
+        {tags.length ? <span className="text-slate-300 font-bold">{tags.length}</span> : <span className="text-slate-700">–</span>}
+      </span>
       {/* Sözleşme maliyeti (Salary Cap) */}
       {cost != null && (
         <span className="text-xs font-black shrink-0 tabular-nums px-1 py-0.5 rounded"
@@ -1303,7 +1315,7 @@ export default function LineupGame() {
       description="Build the greatest 5-man lineup in NBA history. Pick players from any era — 1983 to today — and see how well your roster fits together across archetypes and eras."
       path="/game"
     />
-    <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-3 pb-6">
+    <div className="p-4 sm:p-6 max-w-[1400px] mx-auto space-y-3 pb-6">
 
       {/* Başlık */}
       <div>
@@ -1317,7 +1329,7 @@ export default function LineupGame() {
       <div className="flex flex-col lg:flex-row gap-4 items-start">
 
       {/* ── SOL PANEL: kontroller ── */}
-      <div className="w-full lg:w-[430px] shrink-0 min-w-0 space-y-3">
+      <div className="w-full lg:w-[460px] shrink-0 min-w-0 space-y-3">
 
       {/* Lineup bar (mobil) — desktop'ta sağdaki saha görünümü kullanılır */}
       <div className="flex gap-1 lg:hidden">
@@ -1546,9 +1558,10 @@ export default function LineupGame() {
           <div>
             <div className="text-[11px] text-slate-400 uppercase tracking-widest mb-1">Step 1 — Pick Your Simulation Era</div>
             <p className="text-xs text-slate-400 leading-relaxed">
-              Your whole run lives in this era. Every player's power scales with how far their
-              home decade is from it — one era off costs −6%, five eras off −44%. TIMELESS
-              greats ignore the distance. Draft close to home or pay the price.
+              Your whole run lives in this era. Every player's power scales with distance from
+              their home decade (one era off ≈ −3%, five eras ≈ −22%) — but an archetype the era
+              loves travels one era closer, one it dumps travels one further. TIMELESS greats
+              (a season's top 2) ignore distance entirely.
             </p>
           </div>
           <div className="grid grid-cols-2 gap-2">
@@ -1618,8 +1631,23 @@ export default function LineupGame() {
               </span>
               <span className="text-[11px] text-slate-500 tabular-nums">{sorted.length}</span>
             </div>
-            {/* Satır listesi */}
-            <div className="max-h-96 overflow-y-auto">
+            {/* Satır listesi — yatay kaydırmalı (mobil/dar panelde stat'lar kayar,
+                isim+arketip+tag'ler solda pinli kalır) */}
+            <div className="max-h-[26rem] overflow-auto">
+              {/* Kolon başlıkları */}
+              {sorted.length>0&&(
+                <div className="min-w-[560px] flex items-center gap-2 pr-3 py-1 border-b sticky top-0 z-20"
+                  style={{borderColor:"rgba(30,41,59,.8)",background:"var(--bg-surface,#0f172a)"}}>
+                  <span className="sticky left-0 pl-3 pr-2 w-[240px] shrink-0 text-[9px] uppercase tracking-wider text-slate-600"
+                    style={{background:"var(--bg-surface,#0f172a)"}}>Player</span>
+                  <span className="w-8 text-center shrink-0 text-[9px] uppercase text-slate-600" title="Tag count">TAG</span>
+                  {salary&&<span className="text-[9px] uppercase text-slate-600 shrink-0 w-9 text-right">$</span>}
+                  {discoverActive&&<span className="text-[9px] uppercase text-slate-600 shrink-0">OVR</span>}
+                  {["PTS","REB","AST","3P%","STL","BLK"].map(h=>(
+                    <span key={h} className="w-9 text-right shrink-0 text-[9px] uppercase text-slate-600">{h}</span>
+                  ))}
+                </div>
+              )}
               {sorted.map((p,i)=>{
                 const c = salary ? priceOf(p) : null;
                 const over = salary && c>spendCap;
@@ -1654,33 +1682,36 @@ export default function LineupGame() {
         return (
           <div className="bg-slate-900 border border-blue-500/30 rounded-2xl p-4">
             <div className="flex items-start justify-between mb-3">
-              <div>
-                <div className="text-white font-semibold">{pickedPlayer.PLAYER_NAME}</div>
+              <div className="min-w-0">
+                <div className="text-white font-semibold flex items-center gap-2 flex-wrap">
+                  {pickedPlayer.PLAYER_NAME}
+                  <span className="text-[11px] text-blue-400 font-medium">{pickedPlayer.primary_arch||"—"}</span>
+                </div>
                 <div className="text-xs text-slate-500 mt-0.5">{chosenSeason} · {chosenTeam}</div>
-                <div className="flex gap-1 mt-1.5 flex-wrap">
+                {/* İstatistikler (arketip her zaman açık, overall gizli) */}
+                <div className="flex gap-3 mt-1.5">
+                  {[["PTS","PTS"],["REB","REB"],["AST","AST"],["FG3_PCT","3P%"]].map(([k,l])=>{
+                    const v=pickedPlayer[k];
+                    const disp=v==null||isNaN(+v)?"—":k==="FG3_PCT"?`${Math.round(+v*100)}%`:(+v).toFixed(1);
+                    return (
+                      <div key={k} className="text-center">
+                        <div className="text-[13px] font-bold text-white tabular-nums">{disp}</div>
+                        <div className="text-[8.5px] uppercase tracking-wide text-slate-600">{l}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="flex gap-1 mt-2 flex-wrap items-center">
                   {eligible.map(p=>(
                     <span key={p} className={`text-[9.5px] px-1.5 py-0.5 rounded border font-bold inline-flex items-center gap-0.5 ${POS_COLORS[p]||""}`}>
                       {p}{p===primary&&<StarIcon size={9} />}
                     </span>
                   ))}
+                  {getPlayerTags(pickedPlayer).map(t=><TagBadge key={t.key} t={t} />)}
                 </div>
-                {(()=>{
-                  const tags=getPlayerTags(pickedPlayer);
-                  return tags.length>0&&(
-                    <div className="flex gap-1 mt-1.5 flex-wrap">
-                      {tags.map(t=>(
-                        <span key={t.key} title={t.detail}
-                          className="text-[8.5px] px-1.5 py-0.5 rounded border font-semibold"
-                          style={{color:t.color,borderColor:t.color+"55",background:t.color+"14"}}>
-                          {t.label}
-                        </span>
-                      ))}
-                    </div>
-                  );
-                })()}
               </div>
               <button onClick={()=>{setPickedPlayer(null);setPhase("pick_player");}}
-                className="text-slate-600 hover:text-slate-300 text-xs">← Back</button>
+                className="text-slate-600 hover:text-slate-300 text-xs shrink-0">← Back</button>
             </div>
             <div className="text-xs text-slate-500 mb-2 inline-flex items-center gap-1 flex-wrap">
               <span>Which position? (</span><StarIcon size={10} /><span>= primary → chemistry bonus{isFlex(pickedPlayer)?" · VERSATILE: no penalty anywhere":" · off-position costs −10% / −25%"})</span>

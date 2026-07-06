@@ -1912,6 +1912,13 @@ def game_players(season: str = Query("2025-26"), team: str = Query("")):
             if missing_cols:
                 df = df.merge(base_stats[["PLAYER_ID"] + missing_cols], on="PLAYER_ID", how="left")
 
+    # VERSATILE eşiği (takım filtresinden ÖNCE, tam havuzdan) — modern
+    # score_Versatile (0-1), tarihsel versatility_score (0-9 skala) farklı
+    # kolonlar; ikisi de havuzun üst ~%15'i versatile sayılır.
+    _vcol = "score_Versatile" if "score_Versatile" in full.columns else (
+        "versatility_score" if "versatility_score" in full.columns else None)
+    v_cut = float(full[_vcol].quantile(0.85)) if _vcol and full[_vcol].notna().any() else None
+
     df = df.copy()
     # NaN pozisyonları doldur, POS5 hesapla
     df = _fill_position_from_components(df)
@@ -1919,11 +1926,14 @@ def game_players(season: str = Query("2025-26"), team: str = Query("")):
     # TIMELESS: hibrit (sezon top-2 + taban 0.80) — frontend bunu okur
     if "overall_score" in df.columns:
         df["is_timeless"] = (df["overall_score"] >= tl_cutoff).astype(bool)
+    # VERSATILE: havuzun üst ~%15'i (FLEX + tag) — frontend bunu okur
+    if _vcol and v_cut is not None and _vcol in df.columns:
+        df["is_versatile"] = (df[_vcol].fillna(-1) >= v_cut).astype(bool)
 
     score_cols = [c for c in df.columns if c.startswith("score_")]
     keep = ["PLAYER_ID", "PLAYER_NAME", "primary_arch", "overall_score", "POSITION", "POS5",
             "TEAM_ABBREVIATION", "GP", "G", "MIN", "PTS", "REB", "AST",
-            "STL", "BLK", "TOV", "FG3_PCT", "is_timeless"] + score_cols
+            "STL", "BLK", "TOV", "FG3_PCT", "is_timeless", "is_versatile"] + score_cols
     keep = [c for c in keep if c in df.columns]
 
     df = df[keep].copy()

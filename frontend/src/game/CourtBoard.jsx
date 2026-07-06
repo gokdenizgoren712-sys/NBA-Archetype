@@ -74,8 +74,8 @@ export default function CourtBoard({ lineup, coach, moveSrc, canRearrange, onSlo
         )}
       </div>
 
-      {/* Yarım saha */}
-      <div className="relative w-full" style={{ aspectRatio: "10/9" }}>
+      {/* Yarım saha — yüksekliği sınırlandı ki bench + koç viewport'a sığsın */}
+      <div className="relative w-full max-w-[400px] mx-auto" style={{ aspectRatio: "10/8" }}>
         <svg viewBox="0 0 400 360" className="absolute inset-0 w-full h-full" preserveAspectRatio="none">
           {/* Zemin çizgileri */}
           <rect x="6" y="6" width="388" height="348" rx="8" fill="none" stroke="#1e293b" strokeWidth="2" />
