@@ -5,6 +5,7 @@
 import { useState, useRef, useEffect } from "react";
 import { simulateSeason, BASE_MINUTES, MINUTE_FLEX } from "./seasonSim";
 import { useAuth } from "../contexts/AuthContext";
+import { CoachIcon, TrophyIcon, CrownIcon, PlayIcon, LoopIcon } from "./GameIcons";
 
 const MONTHS = ["OCT", "NOV", "DEC", "JAN", "FEB", "MAR", "APR"];
 
@@ -111,15 +112,19 @@ export default function SeasonSimPanel({ players, simEra, fit, affinity01, bench
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
       <div className="flex items-center justify-between">
-        <div className="text-[11px] text-slate-400 uppercase tracking-widest">
-          Season Simulation{stage!=="idle"&&dynasty.year>1?` · Year ${dynasty.year}`:""}
-          {stage!=="idle"&&dynasty.titles>0&&<span className="text-yellow-400 ml-1">{"🏆".repeat(Math.min(dynasty.titles,3))}</span>}
+        <div className="text-[11px] text-slate-400 uppercase tracking-widest flex items-center gap-1">
+          <span>Season Simulation{stage!=="idle"&&dynasty.year>1?` · Year ${dynasty.year}`:""}</span>
+          {stage!=="idle"&&dynasty.titles>0&&(
+            <span className="text-yellow-400 flex items-center gap-0.5">
+              {Array.from({length:Math.min(dynasty.titles,3)}).map((_,i)=><TrophyIcon key={i} size={12}/>)}
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-1.5">
           {coach && (
-            <span className="text-[9.5px] px-1.5 py-0.5 rounded border border-slate-700 text-slate-300"
+            <span className="text-[9.5px] px-1.5 py-0.5 rounded border border-slate-700 text-slate-300 inline-flex items-center gap-1"
               title={`O:${coach.off} D:${coach.def}${coach.champs ? ` · ${coach.champs}× champ` : ""}`}>
-              🧠 {coach.name.split(" ").slice(-1)[0]}
+              <CoachIcon size={11} /> {coach.name.split(" ").slice(-1)[0]}
             </span>
           )}
           <span className={`text-[9.5px] px-1.5 py-0.5 rounded border ${simEra.bg} ${simEra.color}`}>{simEra.label}</span>
@@ -166,8 +171,8 @@ export default function SeasonSimPanel({ players, simEra, fit, affinity01, bench
           </div>
 
           <button onClick={run}
-            className="w-full py-3 bg-emerald-700 hover:bg-emerald-600 text-white rounded-xl font-semibold transition-colors">
-            ▶ Simulate Season
+            className="w-full py-3 bg-emerald-700 hover:bg-emerald-600 text-white rounded-xl font-semibold transition-colors inline-flex items-center justify-center gap-2">
+            <PlayIcon size={16} /> Simulate Season
           </button>
           {!isLoggedIn && (
             <p className="text-[10.5px] text-slate-600 text-center">Log in to record season results on the leaderboard.</p>
@@ -233,10 +238,10 @@ export default function SeasonSimPanel({ players, simEra, fit, affinity01, bench
                 : result.champion
                 ? "border-yellow-600/60 bg-gradient-to-b from-yellow-900/40 to-amber-950/30"
                 : "border-slate-700 bg-slate-800/40"}`}>
-              <div className={`font-black ${dynasty.titles>=3?"text-2xl text-yellow-200":result.champion?"text-lg text-yellow-300":"text-lg text-slate-300"}`}>
-                {dynasty.titles >= 3 ? "👑 THREEPEAT — DYNASTY COMPLETE"
-                  : result.champion && dynasty.titles === 2 ? "🏆🏆 BACK-TO-BACK CHAMPIONS"
-                  : result.champion ? "🏆 NBA CHAMPIONS"
+              <div className={`font-black inline-flex items-center gap-1.5 ${dynasty.titles>=3?"text-2xl text-yellow-200":result.champion?"text-lg text-yellow-300":"text-lg text-slate-300"}`}>
+                {dynasty.titles >= 3 ? <><CrownIcon size={24} /> THREEPEAT — DYNASTY COMPLETE</>
+                  : result.champion && dynasty.titles === 2 ? <><TrophyIcon size={18} /><TrophyIcon size={18} /> BACK-TO-BACK CHAMPIONS</>
+                  : result.champion ? <><TrophyIcon size={18} /> NBA CHAMPIONS</>
                   : result.resultLabel}
               </div>
               {dynasty.ended && dynasty.titles > 0 && !result.champion && (
@@ -256,7 +261,7 @@ export default function SeasonSimPanel({ players, simEra, fit, affinity01, bench
             <button onClick={defend}
               className="w-full py-3 rounded-xl font-bold transition-colors text-slate-900"
               style={{background:"linear-gradient(90deg,#facc15,#f59e0b)"}}>
-              👑 Defend the Title — Season {dynasty.year + 1}
+              <span className="inline-flex items-center justify-center gap-1.5"><CrownIcon size={16} /> Defend the Title — Season {dynasty.year + 1}</span>
               <span className="block text-[10px] font-medium mt-0.5 opacity-80">
                 {dynasty.titles === 2 ? "One more for the THREEPEAT" : "The roster ages: −1.2 rating per extra season"}
               </span>
@@ -353,7 +358,7 @@ export default function SeasonSimPanel({ players, simEra, fit, affinity01, bench
           {stage === "done" && (
             <button onClick={run}
               className="w-full py-2 rounded-xl text-sm font-medium border border-slate-700 text-slate-300 hover:border-emerald-600 hover:text-emerald-300 transition-colors">
-              🔁 Run It Back
+              <span className="inline-flex items-center gap-1.5"><LoopIcon size={14} /> Run It Back</span>
               <span className="text-[9.5px] text-slate-600 ml-1.5">(fresh dynasty — only your first counts for the board)</span>
             </button>
           )}

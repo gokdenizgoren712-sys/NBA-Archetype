@@ -81,7 +81,7 @@ function TopBar() {
       {/* Logo */}
       <button onClick={() => navigate("/game")}
         className="flex items-center gap-2 hover:opacity-75 transition-opacity">
-        <span className="text-base">🏀</span>
+        <NBAIcon size={18} />
         <span className="font-bold text-sm tracking-wide hidden sm:block" style={{ color: "var(--accent)" }}>
           NBA Archetype
         </span>

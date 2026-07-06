@@ -3,6 +3,7 @@
 // Slot tıklama ile oyuncular oyun boyunca yer değiştirebilir (move/swap).
 
 import { benchCoverage } from "./seasonSim";
+import { StarIcon, CoachIcon, TrophyIcon } from "./GameIcons";
 
 const POSITIONS   = ["PG", "SG", "SF", "PF", "C"];
 const BENCH_SLOTS = ["B1", "B2", "B3", "B4"];
@@ -48,9 +49,9 @@ function CourtSpot({ pos, player, isPrimary, selected, canTap, onTap }) {
           <span className="text-[11px] font-bold" style={{ color: POS_RING[pos] }}>{pos}</span>
         )}
       </div>
-      <span className="text-[8.5px] mt-1 font-semibold tracking-wide"
+      <span className="text-[8.5px] mt-1 font-semibold tracking-wide inline-flex items-center gap-0.5"
         style={{ color: player ? POS_RING[pos] : "#475569" }}>
-        {pos}{isPrimary ? " ⭐" : ""}
+        {pos}{isPrimary && <span className="text-yellow-400"><StarIcon size={8} /></span>}
       </span>
     </button>
   );
@@ -146,10 +147,12 @@ export default function CourtBoard({ lineup, coach, moveSrc, canRearrange, onSlo
       {/* Koç */}
       {coach && (
         <div className="flex items-center gap-2 border-t border-slate-800 pt-2">
-          <span className="text-sm">🧠</span>
+          <span className="text-slate-300"><CoachIcon size={15} /></span>
           <span className="text-xs text-white font-medium flex-1 truncate">{coach.name}</span>
           <span className="text-[9.5px] font-mono text-slate-400">O:{coach.off} D:{coach.def}</span>
-          {coach.champs > 0 && <span className="text-[9.5px] text-yellow-400">🏆×{coach.champs}</span>}
+          {coach.champs > 0 && (
+            <span className="text-[9.5px] text-yellow-400 inline-flex items-center gap-0.5"><TrophyIcon size={10} />×{coach.champs}</span>
+          )}
         </div>
       )}
     </div>

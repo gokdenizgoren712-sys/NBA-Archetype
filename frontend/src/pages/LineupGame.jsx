@@ -9,6 +9,12 @@ import { COACHES } from "../game/coaches";
 import { getPlayerTags, TAG_INFO } from "../game/awards";
 import CourtBoard from "../game/CourtBoard";
 import { START_BUDGET, MIN_COST, costColor, totalSpent, maxSpendNow, applyTeamPricing, priceOf } from "../game/salary";
+import {
+  StarIcon, CoachIcon, TrophyIcon, CrownIcon, CapIcon, TargetIcon, WheelIcon,
+  CardsIcon, TagIcon, DnaIcon, RefreshIcon, CalendarIcon, BoltIcon, UsersIcon,
+  SearchIcon, LoopIcon, GapIcon, WarnIcon, EyeIcon, LinkIcon, CheckIcon,
+  DownloadIcon, XLogoIcon, DiceIcon,
+} from "../game/GameIcons";
 
 const POSITIONS = ["PG", "SG", "SF", "PF", "C"];
 
@@ -191,7 +197,7 @@ function LineupSlot({ pos, player, bench=false, selected=false, canTap=false, on
             {player.PLAYER_NAME?.split(" ").slice(-1)[0]}
           </div>
           <div className="text-[8.5px] text-slate-500">{(player._season||"").slice(0,4)}</div>
-          {isPrimary && <div className="text-[8.5px] text-yellow-400">⭐</div>}
+          {isPrimary && <div className="text-yellow-400 flex justify-center mt-0.5"><StarIcon size={9} /></div>}
         </>
       ) : (
         <div className="text-slate-700 text-sm">—</div>
@@ -306,13 +312,13 @@ function InfoModal({ open, onClose, title, children }) {
 }
 
 // ── Joker butonu ──────────────────────────────────────────────────────────────
-function JokerBtn({ icon, label, available, onClick }) {
+function JokerBtn({ Icon, label, available, onClick }) {
   return (
     <button onClick={onClick} disabled={!available}
-      className={`flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-lg border text-center transition-all
+      className={`flex flex-col items-center gap-1 px-2 py-1.5 rounded-lg border text-center transition-all
         ${available?"border-amber-700/60 bg-amber-900/20 hover:bg-amber-900/40 cursor-pointer text-amber-300"
                   :"border-slate-800 bg-slate-900/40 cursor-not-allowed text-slate-600"}`}>
-      <span className="text-base leading-none">{icon}</span>
+      <Icon size={16} />
       <span className="text-[9.5px] leading-tight whitespace-nowrap">{label}</span>
     </button>
   );
@@ -447,7 +453,7 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
         <div className={`text-3xl font-bold mb-1 ${gColor}`}>{grade}</div>
         {chemBonus > 0 && (
           <div className="text-xs text-yellow-400 mb-2">
-            ⭐ Chemistry Bonus: +{primaryCount} primary slot (+{Math.round(chemBonus*100)} pts)
+            <span className="inline-flex items-center gap-1"><StarIcon size={11} /> Chemistry Bonus: +{primaryCount} primary slot (+{Math.round(chemBonus*100)} pts)</span>
           </div>
         )}
 
@@ -498,7 +504,7 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
                     <span className="text-[13px] text-white font-semibold truncate">{p.PLAYER_NAME}</span>
-                    {isPrimary&&<span className="text-yellow-400 text-[11px] shrink-0">⭐</span>}
+                    {isPrimary&&<span className="text-yellow-400 shrink-0"><StarIcon size={11} /></span>}
                     {pen<1&&<span className="text-[10px] text-red-400 shrink-0 font-medium">{pen<=0.75?"−25% pos":"−10% pos"}</span>}
                   </div>
                   <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
@@ -555,10 +561,10 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
           {/* Koç */}
           {coach&&(
             <div className="flex items-center gap-2.5 pt-2">
-              <span className="text-[13px] shrink-0 w-8 text-center">🧠</span>
+              <span className="shrink-0 w-8 flex justify-center text-slate-300"><CoachIcon size={15} /></span>
               <span className="text-[13px] text-white font-semibold flex-1 truncate">{coach.name}</span>
               <span className="text-[11px] font-mono text-slate-400 shrink-0">O:{coach.off} · D:{coach.def}</span>
-              {coach.champs>0&&<span className="text-[11px] text-yellow-400 shrink-0">🏆×{coach.champs}</span>}
+              {coach.champs>0&&<span className="text-[11px] text-yellow-400 shrink-0 inline-flex items-center gap-0.5"><TrophyIcon size={11} />×{coach.champs}</span>}
               {coach.tag&&<span className="text-[9px] px-1 py-0.5 rounded bg-violet-900/40 text-violet-300 shrink-0">{coach.tag}</span>}
             </div>
           )}
@@ -602,7 +608,7 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
         {/* Era silahı + era açığı */}
         <div className="border-t border-slate-800 pt-2.5 space-y-2.5">
           <div className="flex gap-2 items-start">
-            <span className="text-green-400 text-sm shrink-0">⚡</span>
+            <span className="text-green-400 shrink-0 mt-0.5"><BoltIcon size={15} /></span>
             <p className="text-[12.5px] text-slate-300">
               <span className="font-medium">Era weapon: </span>
               <span className="text-green-400">{analysis.strongest.label} ({Math.round(analysis.strongest.val*100)})</span>
@@ -610,7 +616,7 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
             </p>
           </div>
           <div className="flex gap-2 items-start">
-            <span className="text-red-400 text-sm shrink-0">🕳</span>
+            <span className="text-red-400 shrink-0 mt-0.5"><GapIcon size={15} /></span>
             <div>
               <p className="text-[12.5px] text-slate-300">
                 <span className="font-medium">Era liability: </span>
@@ -625,7 +631,7 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
         {/* Ball-dom uyarısı */}
         {analysis.ballDom >= 2 && (
           <div className="flex gap-2 items-start">
-            <span className="text-amber-400 text-sm shrink-0">⚠</span>
+            <span className="text-amber-400 shrink-0 mt-0.5"><WarnIcon size={15} /></span>
             <p className="text-[12.5px] text-amber-400/80">
               {analysis.ballDom} ball-dominant players ({analysis.ballDomPlayers.map(n=>n.split(" ").slice(-1)[0]).join(", ")}) — role fit penalty applied.
             </p>
@@ -673,16 +679,17 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
       {/* Leaderboard */}
       {leaderboard && leaderboard.length > 0 && (
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-2">
-          <div className="text-[11px] text-slate-400 uppercase tracking-widest mb-1">
-            Top Scores{mode==="salarycap"?" — 💰 Salary Cap":""}
+          <div className="text-[11px] text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1">
+            <span>Top Scores</span>
+            {mode==="salarycap"&&<span className="inline-flex items-center gap-1 text-emerald-400">— <CapIcon size={12} /> Salary Cap</span>}
           </div>
           {leaderboard.slice(0, 10).map((entry, i) => (
             <div key={i} className="flex items-center gap-2 text-[12.5px]">
               <span className="text-slate-700 w-5 text-right shrink-0 font-mono">{i + 1}.</span>
               <span className="text-slate-300 flex-1 truncate">{entry.username}</span>
-              {entry.season_result === "THREEPEAT" && <span className="shrink-0" title="THREEPEAT — three straight simulated titles">👑</span>}
-              {entry.season_result === "REPEAT" && <span className="shrink-0" title="Back-to-back simulated champion">🏆🏆</span>}
-              {entry.season_result === "CHAMPION" && <span className="shrink-0" title="Won a simulated championship">🏆</span>}
+              {entry.season_result === "THREEPEAT" && <span className="shrink-0 text-yellow-300" title="THREEPEAT — three straight simulated titles"><CrownIcon size={13} /></span>}
+              {entry.season_result === "REPEAT" && <span className="shrink-0 text-yellow-400 inline-flex" title="Back-to-back simulated champion"><TrophyIcon size={12} /><TrophyIcon size={12} /></span>}
+              {entry.season_result === "CHAMPION" && <span className="shrink-0 text-yellow-400" title="Won a simulated championship"><TrophyIcon size={12} /></span>}
               {entry.wins != null && <span className="text-slate-600 shrink-0 text-[10px]">{entry.wins}W</span>}
               <span className={`font-bold shrink-0 ${entry.pct>=85?"text-blue-400":entry.pct>=78?"text-sky-300":entry.pct>=70?"text-emerald-400":entry.pct>=62?"text-amber-400":"text-red-400"}`}>
                 {entry.pct}
@@ -694,8 +701,8 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
       )}
 
       <button onClick={onReset}
-        className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-semibold transition-colors">
-        🔄 Play Again
+        className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-semibold transition-colors inline-flex items-center justify-center gap-2">
+        <LoopIcon size={15} /> Play Again
       </button>
     </div>
   );
@@ -729,10 +736,18 @@ function ShareCard({ pct, grade, fit, lineup }) {
     ctx.fillStyle = "#f59e0b";
     ctx.fillRect(0, 0, W, 3);
 
-    // Başlık
+    // Başlık — çizilmiş basketbol topu ikonu (emoji yerine)
+    const bx = 26, by = 24, br = 7;
+    ctx.strokeStyle = "#f59e0b";
+    ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.arc(bx, by, br, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(bx, by - br); ctx.lineTo(bx, by + br); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(bx - br, by); ctx.lineTo(bx + br, by); ctx.stroke();
+    ctx.beginPath(); ctx.arc(bx - br, by, br, -0.9, 0.9); ctx.stroke();
+    ctx.beginPath(); ctx.arc(bx + br, by, br, Math.PI - 0.9, Math.PI + 0.9); ctx.stroke();
     ctx.font = "bold 13px system-ui, -apple-system, sans-serif";
     ctx.fillStyle = "#f59e0b";
-    ctx.fillText("🏀 NBA Archetype", 20, 28);
+    ctx.fillText("NBA Archetype", 38, 28);
 
     ctx.font = "10px system-ui";
     ctx.fillStyle = "#475569";
@@ -873,32 +888,32 @@ function ShareCard({ pct, grade, fit, lineup }) {
         </div>
       ) : (
         <button onClick={generate}
-          className="w-full py-2.5 rounded-xl text-sm font-medium transition-colors border border-slate-700 hover:border-slate-500"
+          className="w-full py-2.5 rounded-xl text-sm font-medium transition-colors border border-slate-700 hover:border-slate-500 inline-flex items-center justify-center gap-2"
           style={{ color: "#94a3b8" }}>
-          👁 Preview Card
+          <EyeIcon size={15} /> Preview Card
         </button>
       )}
 
       {/* Butonlar */}
       <div className="grid grid-cols-3 gap-2">
         <button onClick={download}
-          className="py-2 rounded-lg text-xs font-medium transition-colors"
+          className="py-2 rounded-lg text-xs font-medium transition-colors inline-flex items-center justify-center gap-1.5"
           style={{ background: "#1e293b", color: "#94a3b8", border: "1px solid #334155" }}
           onMouseEnter={e => e.currentTarget.style.background = "#334155"}
           onMouseLeave={e => e.currentTarget.style.background = "#1e293b"}>
-          ↓ Save PNG
+          <DownloadIcon size={13} /> Save PNG
         </button>
         <button onClick={tweet}
-          className="py-2 rounded-lg text-xs font-bold transition-colors"
+          className="py-2 rounded-lg text-xs font-bold transition-colors inline-flex items-center justify-center gap-1.5"
           style={{ background: "#0f172a", color: "#e2e8f0", border: "1px solid #1d4ed8" }}
           onMouseEnter={e => e.currentTarget.style.background = "#1d4ed8"}
           onMouseLeave={e => e.currentTarget.style.background = "#0f172a"}>
-          𝕏 Tweet
+          <XLogoIcon size={12} /> Tweet
         </button>
         <button onClick={copyLink}
-          className="py-2 rounded-lg text-xs font-medium transition-colors"
+          className="py-2 rounded-lg text-xs font-medium transition-colors inline-flex items-center justify-center gap-1.5"
           style={{ background: "#1e293b", color: copied ? "#34d399" : "#94a3b8", border: "1px solid #334155" }}>
-          {copied ? "✓ Copied!" : "🔗 Copy Link"}
+          {copied ? <><CheckIcon size={13} /> Copied!</> : <><LinkIcon size={13} /> Copy Link</>}
         </button>
       </div>
     </div>
@@ -1308,7 +1323,7 @@ export default function LineupGame() {
             <div className="h-full bg-blue-500 rounded-full transition-all duration-500" style={{width:`${(filledSlots.length/ALL_SLOTS.length)*100}%`}}/>
           </div>
           <span className="text-[10.5px] text-slate-500">{filledSlots.length}/{ALL_SLOTS.length}</span>
-          {primaryCount>0&&<span className="text-[10.5px] text-yellow-400">⭐×{primaryCount}</span>}
+          {primaryCount>0&&<span className="text-[10.5px] text-yellow-400 inline-flex items-center gap-0.5"><StarIcon size={10} />×{primaryCount}</span>}
         </div>
       )}
 
@@ -1320,7 +1335,7 @@ export default function LineupGame() {
         return (
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-3">
             <div className="flex items-baseline justify-between mb-1.5">
-              <span className="text-[11px] text-slate-400 uppercase tracking-widest">💰 Cap Space</span>
+              <span className="text-[11px] text-slate-400 uppercase tracking-widest inline-flex items-center gap-1.5"><CapIcon size={13} /> Cap Space</span>
               <span className={`text-2xl font-black tabular-nums leading-none
                 ${budgetLeft<=15?"text-red-400":budgetLeft<=35?"text-amber-300":"text-emerald-300"}`}>
                 {budgetLeft}<span className="text-sm">%</span>
@@ -1346,45 +1361,47 @@ export default function LineupGame() {
         <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-2">
           <div className="text-[9.5px] text-slate-600 uppercase tracking-widest mb-1.5 text-center">Jokers</div>
           <div className="flex gap-1.5 justify-center">
-            <JokerBtn icon="🔄" label="Team"     available={jokers.reTeam}   onClick={jokerReTeam}/>
-            <JokerBtn icon="📅" label="Year"     available={jokers.reYear}   onClick={jokerReYear}/>
-            <JokerBtn icon="⚡" label="Both"     available={jokers.reBoth}   onClick={jokerReBoth}/>
-            <JokerBtn icon="👥" label="Pick 2"   available={jokers.double&&!doubleActive&&emptySlots.length>=2} onClick={jokerDouble}/>
-            <JokerBtn icon="🔍" label="Discover" available={jokers.discover&&!discoverActive} onClick={jokerDiscover}/>
+            <JokerBtn Icon={RefreshIcon}  label="Team"     available={jokers.reTeam}   onClick={jokerReTeam}/>
+            <JokerBtn Icon={CalendarIcon} label="Year"     available={jokers.reYear}   onClick={jokerReYear}/>
+            <JokerBtn Icon={BoltIcon}     label="Both"     available={jokers.reBoth}   onClick={jokerReBoth}/>
+            <JokerBtn Icon={UsersIcon}    label="Pick 2"   available={jokers.double&&!doubleActive&&emptySlots.length>=2} onClick={jokerDouble}/>
+            <JokerBtn Icon={SearchIcon}   label="Discover" available={jokers.discover&&!discoverActive} onClick={jokerDiscover}/>
           </div>
           {doubleActive&&(
-            <div className="text-center text-xs text-amber-400 mt-1.5 animate-pulse">
-              👥 Double pick active — choose 2 players
+            <div className="flex items-center justify-center gap-1.5 text-xs text-amber-400 mt-1.5 animate-pulse">
+              <UsersIcon size={13} /> Double pick active — choose 2 players
             </div>
           )}
           {discoverActive&&(
-            <div className="text-center text-xs text-emerald-400 mt-1.5 animate-pulse">
-              🔍 Discover active — hidden overalls revealed this round
+            <div className="flex items-center justify-center gap-1.5 text-xs text-emerald-400 mt-1.5 animate-pulse">
+              <SearchIcon size={13} /> Discover active — hidden overalls revealed this round
             </div>
           )}
         </div>
       )}
 
       {/* Info modals */}
-      <InfoModal open={modal==="chemistry"} onClose={()=>setModal(null)} title="⭐ Chemistry">
+      <InfoModal open={modal==="chemistry"} onClose={()=>setModal(null)}
+        title={<span className="inline-flex items-center gap-2"><span className="text-yellow-400"><StarIcon size={17} /></span> Chemistry</span>}>
         <div className="space-y-3 text-sm text-slate-300 leading-relaxed">
           <p>Each player has a <span className="text-white font-medium">primary position</span> based on their archetype and real-life role. When you slot a player into their primary position, you earn a chemistry point.</p>
           <p>At the end of the game, each chemistry point adds <span className="text-yellow-300 font-medium">+2 to your final score</span> (up to +10 for a perfect lineup).</p>
-          <p className="text-slate-400 text-xs">A star (⭐) marks the primary slot button. You can still place players in other positions — sometimes a mismatched role is the right tactical call.</p>
+          <p className="text-slate-400 text-xs">A star marks the primary slot button. You can still place players in other positions — sometimes a mismatched role is the right tactical call.</p>
         </div>
       </InfoModal>
 
-      <InfoModal open={modal==="jokers"} onClose={()=>setModal(null)} title="🃏 Jokers">
+      <InfoModal open={modal==="jokers"} onClose={()=>setModal(null)}
+        title={<span className="inline-flex items-center gap-2"><span className="text-amber-300"><CardsIcon size={17} /></span> Jokers</span>}>
         <div className="space-y-3">
           {[
-            ["🔄","Team","Re-spin the team wheel. Get a different roster from the same season."],
-            ["📅","Year","Re-spin the season wheel. Jump to a completely different era."],
-            ["⚡","Both","Re-spin both wheels at once. Full reset of the current round."],
-            ["👥","Pick 2","Choose two players from the current roster in a single round."],
-            ["🔍","Discover","Reveal every player's hidden overall score this round, then choose with full information."],
-          ].map(([icon,name,desc])=>(
+            [RefreshIcon,"Team","Re-spin the team wheel. Get a different roster from the same season."],
+            [CalendarIcon,"Year","Re-spin the season wheel. Jump to a completely different era."],
+            [BoltIcon,"Both","Re-spin both wheels at once. Full reset of the current round."],
+            [UsersIcon,"Pick 2","Choose two players from the current roster in a single round."],
+            [SearchIcon,"Discover","Reveal every player's hidden overall score this round, then choose with full information."],
+          ].map(([Icon,name,desc])=>(
             <div key={name} className="flex gap-3 items-start">
-              <span className="text-xl shrink-0">{icon}</span>
+              <span className="shrink-0 text-amber-300 mt-0.5"><Icon size={18} /></span>
               <div>
                 <div className="text-white font-medium text-sm">{name}</div>
                 <div className="text-slate-400 text-xs leading-relaxed">{desc}</div>
@@ -1395,7 +1412,8 @@ export default function LineupGame() {
         </div>
       </InfoModal>
 
-      <InfoModal open={modal==="tags"} onClose={()=>setModal(null)} title="🏷 Player Tag Effects">
+      <InfoModal open={modal==="tags"} onClose={()=>setModal(null)}
+        title={<span className="inline-flex items-center gap-2"><span className="text-slate-300"><TagIcon size={16} /></span> Player Tag Effects</span>}>
         <div className="space-y-2 max-h-[62vh] overflow-y-auto pr-1">
           {TAG_INFO.map(t=>(
             <div key={t.key} className="rounded-lg p-2.5"
@@ -1411,7 +1429,8 @@ export default function LineupGame() {
         </div>
       </InfoModal>
 
-      <InfoModal open={modal==="archetype"} onClose={()=>setModal(null)} title="🧬 Archetypes">
+      <InfoModal open={modal==="archetype"} onClose={()=>setModal(null)}
+        title={<span className="inline-flex items-center gap-2"><span className="text-blue-300"><DnaIcon size={16} /></span> Archetypes</span>}>
         <div className="space-y-3 text-sm text-slate-300 leading-relaxed">
           <p>Every player's archetype is <span className="text-white font-medium">visible while you draft</span> — read the role, build the puzzle. What stays hidden is the <span className="text-white font-medium">overall score</span>: you know WHAT a player is, not how good. Stats, tags and contract price are your clues (or burn the Discover joker).</p>
           <p>Each archetype is a percentile score built from real NBA tracking and box-score data. The 12 roles range from <span className="text-orange-300">Engine</span> (usage, creation) to <span className="text-blue-300">Anchor</span> (rim protection, defensive rating).</p>
@@ -1431,14 +1450,14 @@ export default function LineupGame() {
             {/* 4 adımlı görsel akış */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {[
-                ["1","🎯","Pick your era","distance rules everything"],
-                ["2","🎰","Spin & draft 9","5 starters + 4 bench"],
-                ["3","🧠","Hire a coach","O/D grades + rings"],
-                ["4","🏆","Simulate 82","playoffs · awards · glory"],
-              ].map(([n,icon,title,sub])=>(
+                ["1",TargetIcon,"text-rose-300","Pick your era","distance rules everything"],
+                ["2",WheelIcon,"text-blue-300","Spin & draft 9","5 starters + 4 bench"],
+                ["3",CoachIcon,"text-emerald-300","Hire a coach","O/D grades + rings"],
+                ["4",TrophyIcon,"text-yellow-300","Simulate 82","playoffs · awards · glory"],
+              ].map(([n,Icon,color,title,sub])=>(
                 <div key={n} className="relative rounded-xl border border-slate-800 bg-slate-950/60 p-3 text-center">
                   <div className="absolute top-1.5 left-2 text-[10px] font-black text-slate-600">{n}</div>
-                  <div className="text-2xl leading-none mb-1.5">{icon}</div>
+                  <div className={`flex justify-center mb-1.5 ${color}`}><Icon size={26} /></div>
                   <div className="text-xs font-bold text-white leading-tight">{title}</div>
                   <div className="text-[10px] text-slate-500 mt-0.5 leading-tight">{sub}</div>
                 </div>
@@ -1458,14 +1477,14 @@ export default function LineupGame() {
             {/* Mekanik kartları */}
             <div className="grid grid-cols-2 gap-2">
               {[
-                {key:"chemistry", icon:"⭐", title:"Chemistry",   desc:"Natural positions earn a score bonus"},
-                {key:"jokers",    icon:"🃏", title:"Jokers",      desc:"Five one-time abilities per game"},
-                {key:"archetype", icon:"🧬", title:"Archetypes",  desc:"Visible while you draft — overalls stay hidden"},
-                {key:"tags",      icon:"🏷", title:"Player Tags", desc:"MVP, rings, duos — real history feeds the sim"},
-              ].map(({key,icon,title,desc})=>(
+                {key:"chemistry", Icon:StarIcon, color:"text-yellow-400", title:"Chemistry",   desc:"Natural positions earn a score bonus"},
+                {key:"jokers",    Icon:CardsIcon, color:"text-amber-300", title:"Jokers",      desc:"Five one-time abilities per game"},
+                {key:"archetype", Icon:DnaIcon, color:"text-blue-300", title:"Archetypes",  desc:"Visible while you draft — overalls stay hidden"},
+                {key:"tags",      Icon:TagIcon, color:"text-slate-300", title:"Player Tags", desc:"MVP, rings, duos — real history feeds the sim"},
+              ].map(({key,Icon,color,title,desc})=>(
                 <button key={key} onClick={()=>setModal(key)}
                   className="bg-slate-800/60 hover:bg-slate-700/60 rounded-lg p-3 text-left transition-colors border border-slate-700/50 hover:border-slate-600">
-                  <div className="text-sm font-bold text-white mb-0.5">{icon} {title}</div>
+                  <div className="text-sm font-bold text-white mb-0.5 flex items-center gap-1.5"><span className={color}><Icon size={15} /></span> {title}</div>
                   <div className="text-[11px] text-slate-400 leading-relaxed">{desc}</div>
                 </button>
               ))}
@@ -1476,13 +1495,13 @@ export default function LineupGame() {
             <button onClick={()=>setMode("classic")}
               className={`text-left rounded-xl border p-3 transition-all
                 ${mode==="classic"?"border-blue-500 bg-blue-900/20":"border-slate-800 bg-slate-900/60 hover:border-slate-600"}`}>
-              <div className="text-sm font-bold text-white">🎰 Classic</div>
+              <div className="text-sm font-bold text-white flex items-center gap-1.5"><span className="text-blue-300"><WheelIcon size={15} /></span> Classic</div>
               <div className="text-[11px] text-slate-400 mt-1 leading-snug">No cap, no limits — pure wheel luck. Overalls stay hidden; read the archetypes.</div>
             </button>
             <button onClick={()=>setMode("salarycap")}
               className={`text-left rounded-xl border p-3 transition-all
                 ${mode==="salarycap"?"border-violet-500 bg-violet-900/20":"border-slate-800 bg-slate-900/60 hover:border-slate-600"}`}>
-              <div className="text-sm font-bold text-white">💰 Salary Cap</div>
+              <div className="text-sm font-bold text-white flex items-center gap-1.5"><span className="text-emerald-300"><CapIcon size={15} /></span> Salary Cap</div>
               <div className="text-[11px] text-slate-400 mt-1 leading-snug">
                 Start with a <span className="text-emerald-300 font-semibold">100% cap</span>. Every player costs a slice by quality — a superstar eats <span style={{color:"#a78bfa"}}>~30%</span>, a role player <span style={{color:"#fb923c"}}>4%</span>. Each roster's best men carry a star premium (14/10/7% floors) — nobody's franchise player comes cheap. Fit 9 contracts.
               </div>
@@ -1490,8 +1509,10 @@ export default function LineupGame() {
           </div>
           <div className="text-center">
             <button onClick={()=>setPhase("pick_era")} disabled={seasons.length===0}
-              className="px-10 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 text-white rounded-xl font-semibold text-base transition-colors">
-              {seasons.length===0?"Loading...":mode==="salarycap"?"💰 Start Salary Cap Draft":"🎰 Start Game"}
+              className="px-10 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 text-white rounded-xl font-semibold text-base transition-colors inline-flex items-center justify-center gap-2">
+              {seasons.length===0?"Loading..."
+                :mode==="salarycap"?<><CapIcon size={17} /> Start Salary Cap Draft</>
+                :<><WheelIcon size={17} /> Start Game</>}
             </button>
           </div>
         </div>
@@ -1521,8 +1542,8 @@ export default function LineupGame() {
           </div>
           <button
             onClick={()=>{setSimEra(ERAS[Math.floor(Math.random()*ERAS.length)]);startFullSpin();}}
-            className="w-full py-2.5 rounded-xl text-sm font-medium border border-slate-700 text-slate-300 hover:border-blue-500 hover:text-blue-300 transition-colors">
-            🎲 Random Era
+            className="w-full py-2.5 rounded-xl text-sm font-medium border border-slate-700 text-slate-300 hover:border-blue-500 hover:text-blue-300 transition-colors inline-flex items-center justify-center gap-2">
+            <DiceIcon size={15} /> Random Era
           </button>
         </div>
       )}
@@ -1616,8 +1637,8 @@ export default function LineupGame() {
                 <div className="text-xs text-slate-500 mt-0.5">{chosenSeason} · {chosenTeam}</div>
                 <div className="flex gap-1 mt-1.5 flex-wrap">
                   {eligible.map(p=>(
-                    <span key={p} className={`text-[9.5px] px-1.5 py-0.5 rounded border font-bold ${POS_COLORS[p]||""}`}>
-                      {p}{p===primary?" ★":""}
+                    <span key={p} className={`text-[9.5px] px-1.5 py-0.5 rounded border font-bold inline-flex items-center gap-0.5 ${POS_COLORS[p]||""}`}>
+                      {p}{p===primary&&<StarIcon size={9} />}
                     </span>
                   ))}
                 </div>
@@ -1639,8 +1660,8 @@ export default function LineupGame() {
               <button onClick={()=>{setPickedPlayer(null);setPhase("pick_player");}}
                 className="text-slate-600 hover:text-slate-300 text-xs">← Back</button>
             </div>
-            <div className="text-xs text-slate-500 mb-2">
-              Which position? (★ = primary → chemistry bonus{isFlex(pickedPlayer)?" · VERSATILE: no penalty anywhere":" · off-position costs −10% / −25%"})
+            <div className="text-xs text-slate-500 mb-2 inline-flex items-center gap-1 flex-wrap">
+              <span>Which position? (</span><StarIcon size={10} /><span>= primary → chemistry bonus{isFlex(pickedPlayer)?" · VERSATILE: no penalty anywhere":" · off-position costs −10% / −25%"})</span>
             </div>
             <div className="flex gap-2 flex-wrap">
               {POSITIONS.filter(p=>!lineup[p]).map(pos=>{
@@ -1654,7 +1675,7 @@ export default function LineupGame() {
                       ${isPrim?"bg-amber-900/30 border-amber-500/60 text-amber-200 hover:bg-amber-600 hover:text-white"
                                :isElig?"bg-slate-800 border-slate-600 text-white hover:bg-blue-700 hover:border-blue-500"
                                       :"bg-slate-900/50 border-slate-800 text-slate-500 hover:bg-slate-800"}`}>
-                    <div>{pos}{isPrim?" ⭐":""}</div>
+                    <div className="inline-flex items-center gap-1 justify-center">{pos}{isPrim&&<StarIcon size={11} />}</div>
                     {penLabel&&<div className="text-[8.5px] font-medium text-red-400/90">{penLabel}</div>}
                     {!penLabel&&!isPrim&&isFlex(pickedPlayer)&&<div className="text-[8.5px] font-medium text-violet-400">vers.</div>}
                   </button>
@@ -1708,7 +1729,7 @@ export default function LineupGame() {
                   <span className="text-[10px] font-mono"><span className="text-slate-500">DEF</span> <span className={`font-bold ${c.def.startsWith("A")?"text-emerald-400":c.def.startsWith("B")?"text-sky-300":c.def.startsWith("C")?"text-amber-400":"text-red-400"}`}>{c.def}</span></span>
                 </div>
                 <div className="flex items-center gap-1.5 mt-1.5 min-h-[16px]">
-                  {c.champs>0&&<span className="text-[9.5px] text-yellow-400">🏆×{c.champs}</span>}
+                  {c.champs>0&&<span className="text-[9.5px] text-yellow-400 inline-flex items-center gap-0.5"><TrophyIcon size={10} />×{c.champs}</span>}
                   {c.tag&&<span className="text-[8.5px] px-1 py-0.5 rounded bg-violet-900/40 text-violet-300 border border-violet-700/40">{c.tag}</span>}
                 </div>
               </button>
