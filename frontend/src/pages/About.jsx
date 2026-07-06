@@ -3,12 +3,14 @@ import { SEO } from "../hooks/useSEO";
 
 const CHANGELOG = [
   {
-    version: "v3.7.1",
+    version: "v3.7.2",
     date_en: "July 2026",
-    label_en: "Timeless Threshold Fix",
+    label_en: "Timeless Rework — Era-Fair + Fully Era-Proof",
     items_en: [
-      "TIMELESS raised back from 0.75 to 0.85 overall. The 0.75 cut was calibrated only on modern scores (max 0.877), but the game mostly drafts historical players whose overalls run higher (max 0.980) — so 0.75 was tagging ~12 players per historical season, including borderline stars like Gary Payton (0.76)",
-      "At 0.85 only genuine all-time-great peak seasons travel era-proof (~2 per season: peak Jordan, Magic, Hakeem, Isiah, LeBron, Jokić). A great-but-not-legendary season now correctly eats the era-distance penalty when played far from home",
+      "TIMELESS is now hybrid & era-fair: a player must be a top-2 overall of their SEASON AND above 0.80. This fixes the cross-season scale gap (2001-02 tops out at 0.756, 1984-85 at 0.95) — low-ceiling seasons produce no timeless player (Gary Payton stays out), inflated seasons no longer over-grant (1984-85 drops from ~7 to 2)",
+      "TIMELESS now zeroes the era-distance penalty entirely (was −5% floor) — a timeless player's quality equals their raw overall × position fit, truly era-proof",
+      "Post-game Roster Breakdown reveals each player's raw overall next to the era/position-adjusted quality, so 'quality = overall − era distance' is legible (overalls stay hidden during the draft)",
+      "Season-relative selection is computed server-side from the full season pool, so it's fair whether you drafted 2025-26 (Jokić + SGA) or 1988-89 (Hakeem + Magic)",
     ],
   },
   {

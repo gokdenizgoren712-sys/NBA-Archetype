@@ -1871,25 +1871,40 @@ def game_teams(season: str = Query("2025-26")):
 
 
 @app.get("/api/game/players")
+def _timeless_cutoff(overall_series, n: int = 2, floor: float = 0.80) -> float:
+    """TIMELESS hibrit eşiği: sezonun en iyi n oyuncusu VE overall >= floor.
+    Eşik = max(floor, n. en yüksek overall). Düşük tavanlı sezon (2001-02 max
+    0.756) → floor'a takılır, hiç timeless çıkmaz. Şişik sezon (1984-85) →
+    yalnız gerçek top-n timeless olur (sabit eşikteki aşırı-cömertlik biter)."""
+    vals = overall_series.dropna().sort_values(ascending=False)
+    if len(vals) == 0:
+        return 1.0
+    nth = float(vals.iloc[min(n, len(vals)) - 1])
+    return max(floor, nth)
+
+
 def game_players(season: str = Query("2025-26"), team: str = Query("")):
     """Oyun için oyuncu listesi. Modern takım adı (BKN) tarihsel karşılığa (NJN)
-    otomatik çevrilir; score_* kolonları dahil döner."""
+    otomatik çevrilir; score_* kolonları + is_timeless bayrağı döner."""
     if season == "2025-26":
-        df = _load_scores().copy()
-        if team:
-            df = df[df["TEAM_ABBREVIATION"].str.upper() == team.upper()]
-        df = _gp_filter(df, 20)
+        full = _load_scores().copy()
+        full = _gp_filter(full, 20)
+        tl_cutoff = _timeless_cutoff(full["overall_score"]) if "overall_score" in full.columns else 1.0
+        df = full[full["TEAM_ABBREVIATION"].str.upper() == team.upper()] if team else full
     else:
-        df = _load_historical().copy()
-        df = df[df["SEASON"] == season]
+        full = _load_historical().copy()
+        full = full[full["SEASON"] == season]
         # Multi-team (2TM/3TM/TOT) satırlarını filtrele — sadece per-takım satırları kalsın
         _multi = {"2TM","3TM","4TM","TOT"}
-        if "TEAM_ABBREVIATION" in df.columns:
-            df = df[~df["TEAM_ABBREVIATION"].str.upper().isin(_multi)]
+        if "TEAM_ABBREVIATION" in full.columns:
+            full = full[~full["TEAM_ABBREVIATION"].str.upper().isin(_multi)]
+        full = _gp_filter(full, 10)
+        # Sezonun tam havuzundan timeless eşiği (takım filtresinden ÖNCE)
+        tl_cutoff = _timeless_cutoff(full["overall_score"]) if "overall_score" in full.columns else 1.0
+        df = full
         if team and "TEAM_ABBREVIATION" in df.columns:
             hist_abbrevs = [a.upper() for a in _resolve_abbrev(team.upper(), season)]
             df = df[df["TEAM_ABBREVIATION"].str.upper().isin(hist_abbrevs)]
-        df = _gp_filter(df, 10)
         # hist_Base'den eksik stat sütunlarını merge et (FG3_PCT, FG_PCT, STL, BLK)
         base_stats = _load_hist_base_stats(season)
         if not base_stats.empty and "PLAYER_ID" in df.columns:
@@ -1897,14 +1912,18 @@ def game_players(season: str = Query("2025-26"), team: str = Query("")):
             if missing_cols:
                 df = df.merge(base_stats[["PLAYER_ID"] + missing_cols], on="PLAYER_ID", how="left")
 
+    df = df.copy()
     # NaN pozisyonları doldur, POS5 hesapla
     df = _fill_position_from_components(df)
     df["POS5"] = _assign_pos5(df)
+    # TIMELESS: hibrit (sezon top-2 + taban 0.80) — frontend bunu okur
+    if "overall_score" in df.columns:
+        df["is_timeless"] = (df["overall_score"] >= tl_cutoff).astype(bool)
 
     score_cols = [c for c in df.columns if c.startswith("score_")]
     keep = ["PLAYER_ID", "PLAYER_NAME", "primary_arch", "overall_score", "POSITION", "POS5",
             "TEAM_ABBREVIATION", "GP", "G", "MIN", "PTS", "REB", "AST",
-            "STL", "BLK", "TOV", "FG3_PCT"] + score_cols
+            "STL", "BLK", "TOV", "FG3_PCT", "is_timeless"] + score_cols
     keep = [c for c in keep if c in df.columns]
 
     df = df[keep].copy()

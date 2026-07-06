@@ -120,13 +120,12 @@ export const DUOS = [
   ["Penny Hardaway", "Shaquille O'Neal"],
 ];
 
-// Era-aşırı yıldızlar: mesafe cezası neredeyse sıfır.
-// v3.6-C6: 0.75 geri 0.85'e alındı. 0.75 SADECE modern dağılıma (max 0.877)
-// kalibre edilmişti; ama oyun çoğunlukla TARİHSEL oyuncu çekiyor ve tarihsel
-// overall'lar şişik (max 0.980). 0.75'te her tarihsel sezon ~12-13 oyuncuya
-// timeless veriyordu (Gary Payton 0.756 dahil). 0.85'te sezon başına ~2.3
-// gerçek efsane (zirve Jordan/Magic/Bird/Isiah) — "her devirde oynar" hissi.
-const TIMELESS_MIN_OVERALL = 0.85;
+// TIMELESS artık HİBRİT (v3.7.2): backend her oyuncuya `is_timeless` bayrağı
+// koyuyor = sezonunun en iyi ~2'si VE overall >= 0.80. Bu, overall skorlarının
+// sezonlar arası tutarsız ölçeğini (2001-02 max 0.756 vs 1984-85 max 0.95)
+// era-adil şekilde çözer: düşük-tavanlı sezon hiç timeless üretmez, şişik sezon
+// yalnız gerçek top-2'yi verir. Bayrak yoksa (eski/kenar durum) 0.85'e düş.
+const TIMELESS_FALLBACK = 0.85;
 
 // ── Tag açıklamaları (UI modalı için) ────────────────────────────────────────
 export const TAG_INFO = [
@@ -154,7 +153,6 @@ export function getPlayerTags(player, { onBench = false } = {}) {
   if (!player) return [];
   const name = player.PLAYER_NAME || "";
   const tags = [];
-  const overall = parseFloat(player.overall_score || 0) || 0;
   const versatile = (parseFloat(player["score_Versatile"] ?? 0) || 0) >= 0.75;
 
   if (MVP_COUNT[name])  tags.push({ key: "MVP",      label: `MVP×${MVP_COUNT[name]}`,       color: "#facc15", detail: "Regular season rating boost" });
@@ -163,7 +161,7 @@ export function getPlayerTags(player, { onBench = false } = {}) {
   if (FMVP_COUNT[name]) tags.push({ key: "FMVP",     label: `FMVP×${FMVP_COUNT[name]}`,     color: "#fb923c", detail: "Boost in Finals games" });
   if (SIXTH_MAN.has(name)) tags.push({ key: "SIXTH", label: "6TH MAN",                       color: "#f97316", detail: onBench ? "Active: +10% off the bench" : "Boost only when on the bench" });
   if (versatile) tags.push({ key: "VERSATILE", label: "VERSATILE", color: "#a78bfa", detail: "Plays any position with no penalty" });
-  if (overall >= TIMELESS_MIN_OVERALL) tags.push({ key: "TIMELESS", label: "TIMELESS", color: "#c084fc", detail: "No era-distance penalty at all" });
+  if (isTimeless(player)) tags.push({ key: "TIMELESS", label: "TIMELESS", color: "#c084fc", detail: "No era-distance penalty at all" });
 
   const partners = DUOS.filter(d => d.includes(name)).map(d => d.find(n => n !== name));
   if (partners.length) tags.push({ key: "DUO", label: "DYNAMIC DUO", color: "#34d399", detail: `Partner: ${partners.join(" / ")}` });
@@ -172,7 +170,10 @@ export function getPlayerTags(player, { onBench = false } = {}) {
 }
 
 export function isTimeless(player) {
-  return (parseFloat(player?.overall_score || 0) || 0) >= TIMELESS_MIN_OVERALL;
+  // Backend hibrit bayrağı (sezon top-2 + taban 0.80) varsa onu kullan;
+  // yoksa mutlak eşiğe düş.
+  if (player?.is_timeless != null) return !!player.is_timeless;
+  return (parseFloat(player?.overall_score || 0) || 0) >= TIMELESS_FALLBACK;
 }
 
 export function isSixthMan(name) { return SIXTH_MAN.has(name); }
