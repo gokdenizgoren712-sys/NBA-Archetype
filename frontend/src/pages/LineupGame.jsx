@@ -778,7 +778,7 @@ function ShareCard({ pct, grade, fit, lineup }) {
   const [preview, setPreview] = useState(null);
   const [copied, setCopied]   = useState(false);
 
-  const SITE_URL = "https://nba-archetypes.onrender.com";
+  const SITE_URL = "https://nba-archetype.onrender.com";
 
   const buildCanvas = () => {
     const W = 520, H = 420;

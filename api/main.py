@@ -50,7 +50,7 @@ SMTP_PORT        = int(os.environ.get("SMTP_PORT", "587"))
 SMTP_USER        = os.environ.get("SMTP_USER", "")
 SMTP_PASS        = os.environ.get("SMTP_PASS", "")
 SMTP_FROM        = os.environ.get("SMTP_FROM", SMTP_USER)
-SITE_URL         = os.environ.get("SITE_URL", "https://nba-archetypes.onrender.com")
+SITE_URL         = os.environ.get("SITE_URL", "https://nba-archetype.onrender.com")
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
 
 def _send_email(to: str, subject: str, html: str):
@@ -73,7 +73,7 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://nba-archetypes.onrender.com"] if IS_PROD else ["*"],
+    allow_origins=["https://nba-archetype.onrender.com"] if IS_PROD else ["*"],
     allow_methods=["GET", "POST", "DELETE", "PUT"],
     allow_headers=["Authorization", "Content-Type"],
 )
@@ -551,7 +551,7 @@ def _safe(df: pd.DataFrame) -> list[dict]:
 
 # ─── SEO ──────────────────────────────────────────────────────────────────────
 
-BASE_URL = "https://nba-archetypes.onrender.com"
+BASE_URL = "https://nba-archetype.onrender.com"
 STATIC_ROUTES = ["/", "/players", "/explore", "/compare", "/lineups", "/affinity", "/glossary", "/game", "/about"]
 
 @app.get("/robots.txt", response_class=PlainTextResponse, include_in_schema=False)
@@ -1875,7 +1875,6 @@ def game_teams(season: str = Query("2025-26")):
     return {"teams": modern}
 
 
-@app.get("/api/game/players")
 def _timeless_cutoff(overall_series, n: int = 2, floor: float = 0.80) -> float:
     """TIMELESS hibrit eşiği: sezonun en iyi n oyuncusu VE overall >= floor.
     Eşik = max(floor, n. en yüksek overall). Düşük tavanlı sezon (2001-02 max
@@ -1888,6 +1887,7 @@ def _timeless_cutoff(overall_series, n: int = 2, floor: float = 0.80) -> float:
     return max(floor, nth)
 
 
+@app.get("/api/game/players")
 def game_players(season: str = Query("2025-26"), team: str = Query("")):
     """Oyun için oyuncu listesi. Modern takım adı (BKN) tarihsel karşılığa (NJN)
     otomatik çevrilir; score_* kolonları + is_timeless bayrağı döner."""

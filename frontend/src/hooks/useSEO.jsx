@@ -1,6 +1,6 @@
 import { Helmet } from "react-helmet-async";
 
-const BASE = "https://nba-archetypes.onrender.com";
+const BASE = "https://nba-archetype.onrender.com";
 const OG_IMAGE = `${BASE}/og-image.png`;
 
 export function SEO({ title, description, path = "", noindex = false }) {
