@@ -88,13 +88,23 @@ const ALL_SLOTS   = [...POSITIONS, ...BENCH_SLOTS];
 // VERSATILE artık "her mevki bedava" DEĞİL — sadece İKİNCİL mevkide ceza yemez.
 function isFlex(player) { return isVersatile(player); }
 
-// Birincil = ceza yok; ikincil = versatile ? yok : −10%; başka her yer = −25%.
+// Birincil = ceza yok; ikincil = versatile ? yok : −10%.
+// Versatile ayrıca span'e bitişik 3. mevkide −25% yerine −10% yer (küçük upgrade);
+// daha uzak mevkiler herkes için −25% (her yeri oynayamaz).
 function posPenaltyFor(player, pos) {
   if (!POSITIONS.includes(pos)) return 1.0;   // bench
-  if (pos === getPrimaryPos(player)) return 1.0;
+  const prim = getPrimaryPos(player);
+  if (pos === prim) return 1.0;
   const sec = getSecondaryPos(player);
   if (sec && pos === sec) return isVersatile(player) ? 1.0 : 0.90;
-  return 0.75;   // mevki dışı — versatile bile olsa (her yeri oynayamaz)
+  // Ne birincil ne ikincil — birincil/ikincil bloğuna uzaklık
+  const idx = POSITIONS.indexOf(pos);
+  const spanDist = Math.min(
+    Math.abs(idx - POSITIONS.indexOf(prim)),
+    sec ? Math.abs(idx - POSITIONS.indexOf(sec)) : 99,
+  );
+  if (isVersatile(player) && spanDist === 1) return 0.90;   // versatile 3. mevki −10%
+  return 0.75;   // mevki dışı −25%
 }
 
 const POS_COLORS = {
@@ -1733,7 +1743,7 @@ export default function LineupGame() {
                 className="text-slate-600 hover:text-slate-300 text-xs shrink-0">← Back</button>
             </div>
             <div className="text-xs text-slate-500 mb-2 inline-flex items-center gap-1 flex-wrap">
-              <span>Which position? (</span><StarIcon size={10} /><span>= primary → chemistry bonus · secondary spot −10%{isFlex(pickedPlayer)?" (free — VERSATILE)":""}, elsewhere −25%)</span>
+              <span>Which position? (</span><StarIcon size={10} /><span>= primary → chemistry bonus · secondary −10%{isFlex(pickedPlayer)?", next-nearest −10% (VERSATILE), rest −25%":", elsewhere −25%"})</span>
             </div>
             <div className="flex gap-2 flex-wrap">
               {POSITIONS.filter(p=>!lineup[p]).map(pos=>{

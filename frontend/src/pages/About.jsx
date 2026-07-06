@@ -9,7 +9,7 @@ const CHANGELOG = [
     items_en: [
       "Every player now has a data-driven secondary position: some SGs back up PG, others SF; some PFs slide to C, others to SF. Sourced from Basketball-Reference dual codes (SG-PG, PF-C) where available, otherwise inferred from the stat profile (assists → guard, blocks/height → center)",
       "Position penalties rebuilt around it: primary spot free, SECONDARY spot −10%, anywhere else −25%",
-      "VERSATILE reworked — it no longer means 'play anywhere free'. It now just removes the −10% at a player's secondary position (they still can't cover every spot). More realistic and it makes the tag meaningful without being overpowered",
+      "VERSATILE reworked — it no longer means 'play anywhere free'. It removes the −10% at a player's secondary position AND softens the next-nearest position from −25% to −10%. Far-off spots are still a full −25% (they can't cover every position). Meaningful without being overpowered",
     ],
   },
   {
