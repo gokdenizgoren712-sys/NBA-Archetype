@@ -3,6 +3,15 @@ import { SEO } from "../hooks/useSEO";
 
 const CHANGELOG = [
   {
+    version: "v3.7.1",
+    date_en: "July 2026",
+    label_en: "Timeless Threshold Fix",
+    items_en: [
+      "TIMELESS raised back from 0.75 to 0.85 overall. The 0.75 cut was calibrated only on modern scores (max 0.877), but the game mostly drafts historical players whose overalls run higher (max 0.980) — so 0.75 was tagging ~12 players per historical season, including borderline stars like Gary Payton (0.76)",
+      "At 0.85 only genuine all-time-great peak seasons travel era-proof (~2 per season: peak Jordan, Magic, Hakeem, Isiah, LeBron, Jokić). A great-but-not-legendary season now correctly eats the era-distance penalty when played far from home",
+    ],
+  },
+  {
     version: "v3.7",
     date_en: "July 2026",
     label_en: "EuroLeague Is Live",

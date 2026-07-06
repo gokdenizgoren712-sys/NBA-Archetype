@@ -121,11 +121,12 @@ export const DUOS = [
 ];
 
 // Era-aşırı yıldızlar: mesafe cezası neredeyse sıfır.
-// v3.6-C4: eşik GERÇEK dağılıma kalibre edildi (p99). 2025-26'da 0.85+ ligde
-// SADECE 1 kişi vardı (Jokić 0.877); 0.75+ ise ~5 kişi (Jokić/SGA/Dončić/
-// Wemby/Cade) — "sezonun all-time great'leri" hissine denk gelen bant.
-// 42 tarihsel sezonda da 0.85+ ortalaması 2.3 kişiydi.
-const TIMELESS_MIN_OVERALL = 0.75;
+// v3.6-C6: 0.75 geri 0.85'e alındı. 0.75 SADECE modern dağılıma (max 0.877)
+// kalibre edilmişti; ama oyun çoğunlukla TARİHSEL oyuncu çekiyor ve tarihsel
+// overall'lar şişik (max 0.980). 0.75'te her tarihsel sezon ~12-13 oyuncuya
+// timeless veriyordu (Gary Payton 0.756 dahil). 0.85'te sezon başına ~2.3
+// gerçek efsane (zirve Jordan/Magic/Bird/Isiah) — "her devirde oynar" hissi.
+const TIMELESS_MIN_OVERALL = 0.85;
 
 // ── Tag açıklamaları (UI modalı için) ────────────────────────────────────────
 export const TAG_INFO = [
@@ -142,7 +143,7 @@ export const TAG_INFO = [
   { key: "VERSATILE", label: "Versatile",    color: "#a78bfa",
     desc: "Fits multiple positions without penalty — computed from the Versatile archetype tag, not hand-picked." },
   { key: "TIMELESS",  label: "Timeless",     color: "#c084fc",
-    desc: "The season's top handful (overall ≥ 75 — roughly the league's five best) shrug off era distance. Minimal penalty no matter how far from home they play." },
+    desc: "All-time-great peak seasons (overall ≥ 85) shrug off era distance. Minimal penalty no matter how far from home they play — think peak Jordan, Magic, Bird." },
   { key: "DUO",       label: "Dynamic Duo",  color: "#34d399",
     desc: "Draft both partners to activate a rating boost for the pair. Check a player's tag to see who the partner is." },
 ];
