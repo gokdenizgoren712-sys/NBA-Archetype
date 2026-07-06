@@ -55,6 +55,10 @@ export const api = {
   gleaguePlayers:      (p) => get("/gleague/players", p),
   gleaguePlayerScores: (name) => get(`/gleague/players/${encodeURIComponent(name)}/scores`),
 
+  // EuroLeague
+  euroleaguePlayers:      (p) => get("/euroleague/players", p),
+  euroleaguePlayerScores: (name) => get(`/euroleague/players/${encodeURIComponent(name)}/scores`),
+
   // Meta
   meta: () => get("/meta"),
 

@@ -3,6 +3,18 @@ import { SEO } from "../hooks/useSEO";
 
 const CHANGELOG = [
   {
+    version: "v3.7",
+    date_en: "July 2026",
+    label_en: "EuroLeague Is Live",
+    items_en: [
+      "EuroLeague added as a full league page (nav + mobile): 208 players from the official euroleague.net feed, archetype-scored within EuroLeague's own percentiles",
+      "Same split-pane experience as NBA/G-League — search, position & archetype filters, radar + core-score detail panels, player headshots",
+      "Data pipeline: src/fetch_euroleague.py maps EuroLeague stats to the shared scoring engine (FALLBACK signatures, BPM proxy). Positions are inferred from box-score profile since the feed omits them",
+      "Note: archetype thresholds are still NBA-calibrated, so EuroLeague skews toward Creator — league-specific tuning is a follow-up. Cross-league comparison stays off by design (each league scored internally)",
+      "NCAA remains a placeholder — no clean public API makes it a larger, separate effort",
+    ],
+  },
+  {
     version: "v3.6 — Phase C5",
     date_en: "July 2026",
     label_en: "5-Pillar Era Report + Archetype-Aware Distance",

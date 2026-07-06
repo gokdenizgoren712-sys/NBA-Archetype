@@ -43,3 +43,4 @@ data/*
 !data/2025-26__labeled.parquet
 !data/position_lookup.parquet
 !data/gleague__2025-26__player_scores.parquet
+!data/euroleague__2025-26__player_scores.parquet

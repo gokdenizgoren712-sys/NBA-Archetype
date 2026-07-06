@@ -156,8 +156,8 @@ function SideNav() {
 }
 
 /* ── Alt nav (mobile) — 2 satır ─────────────────────────────────── */
-// NCAA + EUR are Coming Soon → mobilde gösterme, sidebar'da erişilebilir
-const BOTTOM_NAV = NAV.filter(n => n.to !== "/ncaa" && n.to !== "/euroleague");
+// NCAA hâlâ Coming Soon → mobilde gösterme, sidebar'da erişilebilir
+const BOTTOM_NAV = NAV.filter(n => n.to !== "/ncaa");
 
 function BottomNav() {
   const location = useLocation();
