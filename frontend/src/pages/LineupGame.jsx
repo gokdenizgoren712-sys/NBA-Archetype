@@ -3,7 +3,7 @@ import { useLang } from "../contexts/LanguageContext";
 import { useAuth } from "../contexts/AuthContext";
 import { SEO } from "../hooks/useSEO";
 import { ERAS, ERA_META_BLURB, ERA_PILLAR_WEIGHTS, getEra } from "../game/eras";
-import { eraDistFactor } from "../game/seasonSim";
+import { eraDistFactor, topArchWeights } from "../game/seasonSim";
 import SeasonSimPanel from "../game/SeasonSimPanel";
 import { COACHES } from "../game/coaches";
 import { getPlayerTags, TAG_INFO, isVersatile } from "../game/awards";
@@ -151,8 +151,15 @@ function computeLineupFit(players, simEra) {
   // protection ×1.45, Small Ball spacing ×1.45 & rim ×0.60). Aynı kadro farklı
   // era'da farklı coverage alır — arketipler era ile takım seviyesinde konuşur.
   const creationCov  = Math.min(1, Math.max(...perPlayer.map(p => p.creation)));
-  const nShooters    = perPlayer.filter(p => p.spacing >= 0.65).length;
-  const spacingCov   = [0.10, 0.45, 0.82, 1.00, 0.88, 0.72][Math.min(nShooters, 5)];
+  // v3.8 spacing: sert 0.65 eşiği + sayı-tablosu yerine YUMUŞAK, büyüklük-duyarlı.
+  // Her oyuncu spacing 0.45→0.70 arası kısmi "şutör" sayılır (0.66→~0.84, 0.95→1).
+  // Etkin şutör sayısı interpolasyonlu tabloya girer — 2-3 hâlâ optimal, ama iki
+  // elit şutör iki sınırda şutörden daha iyi spacing verir.
+  const effShooters  = perPlayer.reduce((a,p)=>a+Math.max(0,Math.min(1,(p.spacing-0.45)/0.25)),0);
+  const nShooters    = perPlayer.filter(p => p.spacing >= 0.65).length;   // gösterim (tam sayı)
+  const _stbl = [0.12, 0.48, 0.84, 1.00, 0.90, 0.74];
+  const _si = Math.min(5, effShooters), _lo = Math.floor(_si);
+  const spacingCov   = Math.min(1, _stbl[_lo] + (_stbl[Math.min(5,_lo+1)]-_stbl[_lo])*(_si-_lo));
   const rimCov       = Math.min(1, Math.max(...perPlayer.map(p => p.rimProt)));
   const perimCov     = Math.min(1, Math.max(...perPlayer.map(p => p.perimD)));
   const finishingCov = Math.min(1, Math.max(...perPlayer.map(p => p.finishing)));
@@ -163,9 +170,12 @@ function computeLineupFit(players, simEra) {
   for (const k of Object.keys(W)) { wSum += W[k]; wDot += covVals[k] * W[k]; }
   const coverage = wDot / wSum;
 
-  // 3. Role Fit — top dominansı cezası (sadece lineup seviyesinde)
+  // 3. Role Fit — top-dominansı cezası. v3.8: 2 ball-dominant oyuncu ARTIK çok
+  // minimal (−%5) — birçok elit ikili (Jordan+Pippen, LeBron+Wade, SGA+Williams)
+  // iki topu domine eden yıldızla çalışır. Asıl darboğaz 3+: [0,0,-5,-22,-42,-58].
   const ballDom = players.filter(p => Math.max(_s(p,"Engine")*1.05, _s(p,"Ecosystem")) >= 0.80).length;
-  const roleFit = Math.max(0, 1 - Math.max(0, (ballDom - 1) * 0.15));
+  const BALLDOM_PEN = [0, 0, 0.05, 0.22, 0.42, 0.58];
+  const roleFit = Math.max(0, 1 - (BALLDOM_PEN[Math.min(ballDom, 5)] ?? 0.58));
 
   // 4. Final: ağırlıklı toplam (v3.5.1). Eski çarpım formülü skoru 40-55
   // bandına eziyordu — iki 0.6'lık faktörün çarpımı 0.36 eder. Toplamla
@@ -443,16 +453,27 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
   // Eşikler ağırlıklı-toplam bandına göre: tipik çekiliş ~66-72 (C+/B), iyi ~78 (A), efsane 85+ (S)
   const grade = pct>=85?"S":pct>=78?"A":pct>=70?"B":pct>=62?"C":"D";
 
-  // Archetype affinity score
+  // Archetype affinity score — v3.8: her oyuncunun TOP-3 arketibinin ağırlıklı
+  // profili üzerinden (sadece birincil arketip değil). Çift affinity'si iki
+  // oyuncunun tüm arketip-çifti kombinasyonlarının ağırlıklı ortalamasıdır.
   const affinityScore = (() => {
-    const filled = POSITIONS.map(p => lineup[p]).filter(Boolean);
-    const archs  = filled.map(p => p.primary_arch).filter(Boolean);
-    if (archs.length < 2 || !affinityMatrix) return null;
+    const filledP = POSITIONS.map(p => lineup[p]).filter(Boolean);
+    if (filledP.length < 2 || !affinityMatrix) return null;
+    const profiles = filledP.map(p => topArchWeights(p, 3));
+    const pairAff = (wa, wb) => {
+      let total = 0, wsum = 0;
+      for (const [aA, wA] of wa) for (const [aB, wB] of wb) {
+        const v = affinityMatrix[aA]?.[aB] ?? affinityMatrix[aB]?.[aA] ?? 0.65;
+        const w = wA * wB;
+        total += v * w; wsum += w;
+      }
+      return wsum > 0 ? total / wsum : 0.65;
+    };
     let total = 0, count = 0;
-    for (let i = 0; i < archs.length; i++)
-      for (let j = i+1; j < archs.length; j++) {
-        const v = affinityMatrix[archs[i]]?.[archs[j]] ?? affinityMatrix[archs[j]]?.[archs[i]];
-        if (v != null) { total += v; count++; }
+    for (let i = 0; i < profiles.length; i++)
+      for (let j = i + 1; j < profiles.length; j++) {
+        if (!profiles[i].length || !profiles[j].length) continue;
+        total += pairAff(profiles[i], profiles[j]); count++;
       }
     return count > 0 ? Math.round((total / count) * 100) : null;
   })();
@@ -1480,16 +1501,24 @@ export default function LineupGame() {
       <InfoModal open={modal==="tags"} onClose={()=>setModal(null)}
         title={<span className="inline-flex items-center gap-2"><span className="text-slate-300"><TagIcon size={16} /></span> Player Tag Effects</span>}>
         <div className="space-y-2 max-h-[62vh] overflow-y-auto pr-1">
+          <p className="text-[11px] text-slate-500 leading-relaxed pb-1">
+            On player rows tags show as small colored initials. Here's what each means:
+          </p>
           {TAG_INFO.map(t=>(
-            <div key={t.key} className="rounded-lg p-2.5"
+            <div key={t.key} className="rounded-lg p-2.5 flex items-start gap-2.5"
               style={{background:t.color+"0d",borderLeft:`3px solid ${t.color}`}}>
-              <div className="text-[13px] font-bold" style={{color:t.color}}>{t.label}</div>
-              <div className="text-xs text-slate-300 leading-relaxed mt-0.5">{t.desc}</div>
+              {/* baş harf rozeti = satırlarda göründüğü hâli */}
+              <span className="shrink-0 mt-0.5 inline-flex items-center justify-center text-[10px] font-bold rounded px-1.5 h-[18px] min-w-[18px]"
+                style={{color:t.color,background:t.color+"22",border:`1px solid ${t.color}66`}}>{t.abbr}</span>
+              <div className="min-w-0">
+                <div className="text-[13px] font-bold" style={{color:t.color}}>{t.label}</div>
+                <div className="text-xs text-slate-300 leading-relaxed mt-0.5">{t.desc}</div>
+              </div>
             </div>
           ))}
           <p className="text-[11px] text-slate-500 italic pt-1">
             Tags come from real award history (1983+) and live archetype data.
-            They're visible on every player row — hover a chip to see its effect.
+            Click a player to see their tags full-size with effects.
           </p>
         </div>
       </InfoModal>
@@ -1739,12 +1768,27 @@ export default function LineupGame() {
                       {p}{p===primary&&<StarIcon size={9} />}
                     </span>
                   ))}
-                  {getPlayerTags(pickedPlayer).map(t=><TagBadge key={t.key} t={t} />)}
                 </div>
               </div>
               <button onClick={()=>{setPickedPlayer(null);setPhase("pick_player");}}
                 className="text-slate-600 hover:text-slate-300 text-xs shrink-0">← Back</button>
             </div>
+            {/* Tag'ler büyütülmüş — tam ad + etkisi (oyuncuya tıklayınca ne olduğu net) */}
+            {(()=>{ const tg=getPlayerTags(pickedPlayer); return tg.length>0&&(
+              <div className="mb-3 grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                {tg.map(t=>(
+                  <div key={t.key} className="rounded-lg px-2 py-1.5 flex items-start gap-2"
+                    style={{background:t.color+"14",border:`1px solid ${t.color}44`}}>
+                    <span className="shrink-0 mt-0.5 inline-flex items-center justify-center text-[10px] font-bold rounded px-1 h-[16px] min-w-[16px]"
+                      style={{color:t.color,background:t.color+"22",border:`1px solid ${t.color}66`}}>{t.abbr}</span>
+                    <div className="min-w-0">
+                      <div className="text-[11.5px] font-bold leading-tight" style={{color:t.color}}>{t.label}</div>
+                      <div className="text-[10.5px] text-slate-400 leading-snug">{t.detail}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ); })()}
             <div className="text-xs text-slate-500 mb-2 inline-flex items-center gap-1 flex-wrap">
               <span>Which position? (</span><StarIcon size={10} /><span>= primary → chemistry bonus · secondary −10%{isFlex(pickedPlayer)?", next-nearest −10% (VERSATILE), rest −25%":", elsewhere −25%"})</span>
             </div>

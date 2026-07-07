@@ -129,21 +129,21 @@ const TIMELESS_FALLBACK = 0.85;
 
 // ── Tag açıklamaları (UI modalı için) ────────────────────────────────────────
 export const TAG_INFO = [
-  { key: "MVP",       label: "MVP",          color: "#facc15",
+  { key: "MVP",       abbr: "M",  label: "MVP",          color: "#facc15",
     desc: "Regular-season MVP winners. Boosts your team rating all season — the more MVPs on the roster, the bigger the boost (capped)." },
-  { key: "DPOY",      label: "DPOY",         color: "#38bdf8",
+  { key: "DPOY",      abbr: "DP", label: "DPOY",         color: "#38bdf8",
     desc: "Defensive Player of the Year winners. Defensive impact beyond the stat sheet — season-long rating boost." },
-  { key: "CHAMPION",  label: "Champion",     color: "#fbbf24",
+  { key: "CHAMPION",  abbr: "R",  label: "Champion",     color: "#fbbf24",
     desc: "Championship rings as a key contributor. Elevates their game in the playoffs — every ring adds playoff rating." },
-  { key: "FMVP",      label: "Finals MVP",   color: "#fb923c",
+  { key: "FMVP",      abbr: "FM", label: "Finals MVP",   color: "#fb923c",
     desc: "Proven on the biggest stage. Activates only in the Finals series — the FMVP gene wins Game 7s." },
-  { key: "SIXTH",     label: "6th Man",      color: "#f97316",
+  { key: "SIXTH",     abbr: "6M", label: "6th Man",      color: "#f97316",
     desc: "Sixth Man of the Year winners. +10% impact when playing off the bench. No effect when starting." },
-  { key: "VERSATILE", label: "Versatile",    color: "#a78bfa",
+  { key: "VERSATILE", abbr: "V",  label: "Versatile",    color: "#a78bfa",
     desc: "Plays their SECONDARY position with no penalty (normal players take −10%), and the next-nearest position costs only −10% instead of −25%. Still not a play-anywhere pass — far-off spots are full −25%." },
-  { key: "TIMELESS",  label: "Timeless",     color: "#c084fc",
+  { key: "TIMELESS",  abbr: "TL", label: "Timeless",     color: "#c084fc",
     desc: "All-time-great peak seasons (overall ≥ 85) are fully era-proof — zero distance penalty no matter how far from home they play. Think peak Jordan, Magic, Hakeem." },
-  { key: "DUO",       label: "Dynamic Duo",  color: "#34d399",
+  { key: "DUO",       abbr: "DD", label: "Dynamic Duo",  color: "#34d399",
     desc: "Draft both partners to activate a rating boost for the pair. Check a player's tag to see who the partner is." },
 ];
 

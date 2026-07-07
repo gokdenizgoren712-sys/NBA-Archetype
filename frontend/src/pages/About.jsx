@@ -3,6 +3,18 @@ import { SEO } from "../hooks/useSEO";
 
 const CHANGELOG = [
   {
+    version: "v3.8",
+    date_en: "July 2026",
+    label_en: "Top-3 Archetype Weighting + Fit Tuning",
+    items_en: [
+      "Archetype affinity now uses each player's TOP-3 archetypes (score-weighted), not just their primary. A 0.85-Spacer / 0.82-Stopper wing is finally read as both, and pair chemistry blends every archetype combination — no more primary-only evaluation",
+      "Era-fit shift is top-3 weighted too: whether a player travels one era closer/further now reflects their whole profile, not a single label",
+      "Spacing reworked: the old hard 0.65 count threshold ignored shooter quality (two 0.66 shooters == two 0.95 shooters). Now magnitude-aware and smooth — two elite shooters space the floor better than two borderline ones, 2–3 still optimal",
+      "Ball-dominant penalty for TWO stars softened from −15% to −5% (many all-time duos share the ball fine). 3+ still escalates hard (−22 / −42 / −58%)",
+      "Player tags legend on the start screen shows the row initials (M, DP, R, TL...) with meanings; clicking a player expands their tags full-size with effects",
+    ],
+  },
+  {
     version: "v3.7.4",
     date_en: "July 2026",
     label_en: "Real Secondary Positions + Focused Versatile",

@@ -15,24 +15,48 @@ const clamp01 = v => Math.min(1, Math.max(0, v));
 // ortalamasını eziyordu. Yeni eğri max −%22.
 export const DIST_PENALTY = [1.00, 0.97, 0.93, 0.88, 0.83, 0.78];
 
+// 12 core arketip — top-N hesapları bunun üzerinden.
+export const CORE_NOUNS = ["Engine","Ecosystem","Hub","Connector","Creator","Anchor",
+                           "Spacer","Finisher","Force","Initiator","Stopper","Rim Runner"];
+
+// Oyuncunun en yüksek skorlu ilk N arketibi, skorla normalize AĞIRLIKLAR olarak.
+// [[arch, weight], ...]. Böylece "sadece birincil arketip" saçmalığından çıkıp
+// oyuncunun gerçek profilini (ör. 0.85 Spacer + 0.82 Stopper + 0.6 Connector)
+// tüm arketip-tabanlı hesaplarda kullanabiliyoruz.
+export function topArchWeights(player, n = 3) {
+  const scored = CORE_NOUNS
+    .map(a => [a, parseFloat(player?.[`score_${a}`] ?? 0) || 0])
+    .filter(([, s]) => s > 0)
+    .sort((x, y) => y[1] - x[1])
+    .slice(0, n);
+  const sum = scored.reduce((acc, [, s]) => acc + s, 0);
+  if (sum <= 0) return player?.primary_arch ? [[player.primary_arch, 1]] : [];
+  return scored.map(([a, s]) => [a, s / sum]);
+}
+
 // Arketip-era uyumu, uzaklığı MODÜLE eder (arketip-kör değil artık).
-// Oyuncunun sütununu sim era ÇOK seviyorsa (≥1.15) bir era daha yakınmış gibi
-// davranır (−1); hiç değer vermiyorsa (≤0.80) bir era daha uzakmış gibi (+1).
-// Ör: Jordan-era Spacer'ı Parity'ye alırsan (spacing 1.20) "1 era yakın" sayılır.
-// Yalnızca gerçekten seyahat edenlere uygulanır (ev era'sında etki yok → Phase B
-// ilkesi korunur: ev-era arketip değeri coverage'ın işi, bireysel kalitenin değil).
-export function eraFitShift(arch, simEra) {
-  const pillar = ARCH_PILLAR[arch];
-  if (!pillar) return 0;
-  const w = (ERA_PILLAR_WEIGHTS[simEra.id] || {})[pillar] ?? 1.0;
-  return w >= 1.15 ? -1 : w <= 0.80 ? 1 : 0;
+// v3.8: primary yerine TOP-3 arketibin ağırlıklı pillar-era uyumu. Oyuncunun
+// sütunlarını sim era ortalamada ÇOK seviyorsa (≥1.15) bir era daha yakınmış gibi
+// (−1); hiç değer vermiyorsa (≤0.80) bir era daha uzakmış gibi (+1). Yalnızca
+// seyahat edenlere (ev era'sında etki yok → Phase B ilkesi korunur).
+export function eraFitShift(player, simEra) {
+  const weights = topArchWeights(player, 3);
+  if (!weights.length) return 0;
+  let wAvg = 0, wsum = 0;
+  for (const [arch, w] of weights) {
+    const pillar = ARCH_PILLAR[arch];
+    const eraW = pillar ? ((ERA_PILLAR_WEIGHTS[simEra.id] || {})[pillar] ?? 1.0) : 1.0;
+    wAvg += w * eraW; wsum += w;
+  }
+  wAvg = wsum > 0 ? wAvg / wsum : 1.0;
+  return wAvg >= 1.15 ? -1 : wAvg <= 0.80 ? 1 : 0;
 }
 
 // Tek kaynak: draft skoru (LineupGame) ve sim aynı uzaklık hesabını kullanır.
 export function eraDistFactor(player, simEra) {
   const homeEra  = getEra(player._season);
   const rawDist  = Math.abs(eraIndex(homeEra) - eraIndex(simEra));
-  const fitShift = rawDist === 0 ? 0 : eraFitShift(player.primary_arch || "", simEra);
+  const fitShift = rawDist === 0 ? 0 : eraFitShift(player, simEra);
   const effDist  = Math.max(0, Math.min(DIST_PENALTY.length - 1, rawDist + fitShift));
   const timeless = isTimeless(player);
   let distP = DIST_PENALTY[effDist];
