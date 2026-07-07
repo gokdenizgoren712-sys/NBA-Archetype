@@ -59,6 +59,11 @@ def enrich_season(season: str) -> pd.DataFrame:
         missing = [c for c in base_stats.columns if c != "PLAYER_ID" and c not in df.columns]
         if missing:
             df = df.merge(base_stats[["PLAYER_ID"] + missing], on="PLAYER_ID", how="left")
+    # Rebounding % (pace-bağımsız, cross-era) — bref_advanced'ten (P2 testi)
+    bref_p = ROOT / "data" / f"{season}__bref_advanced.parquet"
+    if bref_p.exists():
+        _b = pd.read_parquet(bref_p, columns=["PLAYER_NAME", "TRB_PCT_bref"]).drop_duplicates("PLAYER_NAME")
+        df = df.merge(_b, on="PLAYER_NAME", how="left").rename(columns={"TRB_PCT_bref": "REB_PCT"})
     df = M._fill_position_from_components(df)
     df["POS5"] = M._assign_pos5(df)
     sec = M._assign_secondary_pos(df, df["POS5"])
@@ -74,7 +79,7 @@ def enrich_season(season: str) -> pd.DataFrame:
     score_cols = [c for c in df.columns if c.startswith("score_")]
     keep = ["PLAYER_ID", "PLAYER_NAME", "primary_arch", "overall_score", "POSITION", "POS5",
             "POS5_SECONDARY", "TEAM_ABBREVIATION", "GP", "MIN", "PTS", "REB", "AST",
-            "STL", "BLK", "TOV", "FG3_PCT", "is_timeless", "_season"] + score_cols
+            "STL", "BLK", "TOV", "FG3_PCT", "REB_PCT", "is_timeless", "_season"] + score_cols
     keep = [c for c in keep if c in df.columns]
     return df[keep].copy()
 

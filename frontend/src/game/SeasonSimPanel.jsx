@@ -3,7 +3,7 @@
 // dynasty modu: şampiyonluğu savun → back-to-back → THREEPEAT.
 
 import { useState, useRef, useEffect } from "react";
-import { simulateSeason, BASE_MINUTES, MINUTE_FLEX } from "./seasonSim";
+import { simulateSeason, BASE_MINUTES, MINUTE_FLEX, agePenaltyFor } from "./seasonSim";
 import { useAuth } from "../contexts/AuthContext";
 import { CoachIcon, TrophyIcon, CrownIcon, PlayIcon, LoopIcon } from "./GameIcons";
 
@@ -88,11 +88,11 @@ export default function SeasonSimPanel({ players, simEra, fit, affinity01, bench
     if (isFirst && isLoggedIn && token) postResult(res, res.resultKey);
   };
 
-  // Faz E: şampiyonluğu savun — kadro her sezon yaşlanır (rating −0.012/yıl)
+  // Faz E: şampiyonluğu savun — kadro her sezon yaşlanır (S6: hızlanan eğri, agePenaltyFor)
   const defend = () => {
     const nextYear = dynasty.year + 1;
     const res = simulateSeason(players, simEra, fit, affinity01,
-      { bench, coach, minutes, agePenalty: 0.012 * (nextYear - 1) });
+      { bench, coach, minutes, agePenalty: agePenaltyFor(nextYear) });
     const newTitles = res.champion ? dynasty.titles + 1 : dynasty.titles;
     setDynasty({ year: nextYear, titles: newTitles, ended: !res.champion });
     animate(res, () => {

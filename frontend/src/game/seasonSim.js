@@ -97,9 +97,17 @@ export function benchCoverage(bench = []) {
 export const BASE_MINUTES = [35, 35, 35, 35, 35, 25, 15, 13, 12];
 export const MINUTE_FLEX  = 5;
 
-function fatigueOf(m)   { return Math.min(0.09, Math.max(0, m - 36) * 0.015); } // 39dk→−4.5%, 40dk→−6%
+// Fatigue (S6): 35dk üstü HIZLANAN yük (lineer değil). 36→~%0.6, 38→~%3, 40→~%7, 42→cap %10.
+// Yıldızı aşırı oynatmak (40dk+) belirgin cezalı → dakika yönetimi anlamlı.
+function fatigueOf(m)   { return Math.min(0.10, Math.pow(Math.max(0, m - 35), 1.5) * 0.006); }
 function freshOf(mins)  { // starter dinçliği → playoff bonusu (cap +0.02)
   return Math.min(0.02, mins.slice(0, 5).reduce((a, m) => a + Math.max(0, 32 - m) * 0.002, 0));
+}
+// Dynasty yaşlanma (S6): lineer DEĞİL, hızlanan. Kadro çekirdeği her yıl yaşlanır,
+// düşüş yıllar geçtikçe dikleşir. year=1→0, y2→~0.013, y3→~0.032, y5→~0.087 (5-peat çok zor).
+export function agePenaltyFor(year) {
+  const y = Math.max(0, (year || 1) - 1);
+  return 0.008 * y + 0.005 * Math.pow(y, 1.7);
 }
 
 // ── Takım reytingi ───────────────────────────────────────────────────────────
@@ -144,13 +152,14 @@ export function computeTeamRating(players, simEra, fit, affinity01 = null, extra
 
   // NOT: rating bilerek clamp'lenmez — süper takımlar 1.0 tavanına yapışırsa
   // pozisyon/koç farkları tavanda kaybolur; logistic her aralıkla çalışır.
-  // roleFit (ball-dominant cezası) SIM rating'inden ÇIKARILDI (v3.9 / RF-decouple):
-  // çok-yıldızlı (2+ ball-dominant) takımlar gerçekte daha çok kazanır ama roleFit
-  // onları cezalandırıp galibiyet tahminini bozuyordu (cetvel ablasyonu: within-season
-  // Spearman 0.756→0.776). Draft-notu (lineupScore) roleFit'i KORUR — iki amaç ayrı.
+  // roleFit (v3.9.2): ÖNCE decouple edildi (eski sert eğri [0,0,.05,.22,.42,.58]
+  // tahmini bozuyordu → within 0.756), SONRA lineupScore veri-dürüst hafif eğriye
+  // [.06,.04,0,0,0,.06] çekilince SIM'e GERİ eklendi — yalnız 1-ball-dom'u (gerçekten
+  // daha az kazanır: 38.6W) hafif cezalar, 2-4 nötr. Cetvel: within 0.782→0.783 (+).
   let rating = 0.42 * rosterQ
              + 0.18 * starPower
-             + 0.28 * (fit?.coverage ?? 0.5);
+             + 0.28 * (fit?.coverage ?? 0.5)
+             + 0.12 * (fit?.roleFit  ?? 1.0);
   if (affinity01 != null) rating += (affinity01 - 0.65) * 0.15;
   rating += coachRatingBonus(coach);
   rating += fx.regular;
@@ -163,14 +172,14 @@ export function computeTeamRating(players, simEra, fit, affinity01 = null, extra
 // rating dağılımından (backtest fit) örneklenir. Ortalama takım .500 oynar
 // (oto-merkez); k gerçekçi yelpaze verir. Eski k=4.5 + karışım her şeyi
 // 30-54W'ye sıkıştırıyordu (cetvel: RMSE 10.0→7.9). NOT: rating formülü değişince
-// (ör. RF-decouple roleFit'i çıkardı → μ 0.662→0.560) fit_s4.mjs ile YENİDEN fit et.
-export const OPP_MEAN   = 0.560;
-export const OPP_STD    = 0.053;
+// fit_s4.mjs ile YENİDEN fit et (roleFit geri eklenince μ 0.560→0.679, k=9 kaldı).
+export const OPP_MEAN   = 0.679;
+export const OPP_STD    = 0.054;
 export const LOGISTIC_K = 9.0;
 // Playoff serileri regular sezondan daha yumuşak eğimli: gerçek 7-maçlık seriler
 // daha çok sürpriz barındırır; k=11 favoriyi kilitleyip şampiyon title%'i ~%44'e
 // çıkarıyordu. PLAYOFF_K en iyi takımı NBA-gerçekçi ~%25-30 title'a çeker.
-export const PLAYOFF_K  = 6.0;   // sanity: gerçek şampiyonlar ~%27 title (NBA'de en iyi takım ~%25)
+export const PLAYOFF_K  = 9.5;   // sanity: gerçek şampiyonlar ~%27 title (roleFit geri eklenince μ yükseldi → yeniden tune)
 
 // Box-Muller standart normal (0,1)
 function randNormal(rand) {
@@ -192,14 +201,20 @@ function sampleOpponent(rand) {
   return Math.max(0.30, Math.min(0.95, OPP_MEAN + OPP_STD * randNormal(rand)));
 }
 
-// Playoff rakipleri: yeni self-consistent merkeze göre (S4). Rakip = lig
-// dağılımının üst kuantilleri (tur ilerledikçe güçlenir): μ + z·σ, z=[0.6,1.1,1.7,2.3].
+// Playoff rakip modeli (S5): rakip gücü hem TUR'a (survivorlar güçlenir) hem
+// SENİN SEED'İNE bağlı. Üst seed erken turlarda daha zayıf rakip görür + daha çok
+// ev sahibi olur (bracket avantajı). 1-seed R1'de ~8-seed'le (−0.5σ), 8-seed
+// R1'de ~1-seed'le (+3σ, brutal). Finals'te seed önemini yitirir (iki elit takım).
 const PLAYOFF_ROUNDS = [
-  { key: "R1",   label: "First Round",       base: OPP_MEAN + 0.6 * OPP_STD },  // ~0.688
-  { key: "SEMI", label: "Conf. Semifinals",  base: OPP_MEAN + 1.1 * OPP_STD },  // ~0.710
-  { key: "CF",   label: "Conf. Finals",      base: OPP_MEAN + 1.7 * OPP_STD },  // ~0.737
-  { key: "F",    label: "NBA Finals",        base: OPP_MEAN + 2.3 * OPP_STD },  // ~0.763
+  { key: "R1",   label: "First Round" },
+  { key: "SEMI", label: "Conf. Semifinals" },
+  { key: "CF",   label: "Conf. Finals" },
+  { key: "F",    label: "NBA Finals" },
 ];
+const RB_Z      = [1.2, 1.45, 1.75, 2.15]; // tur bazlı rakip gücü — oyun-hissi için yumuşatıldı (üst seed'ler daha ödüllü)
+const SE_Z      = [1.9, 0.9, 0.4, 0.1];    // seed'in rakibi kolaylaştırma etkisi (turla söner)
+const HOME_MAX  = [4, 3, 2, 2];            // bu seed'e kadar ev sahibi (üst seed daha çok hosts)
+const OPP_Z_CAP = 1.9;   // Cinderella tabanı: alt seed'lere rakip gücü tavanı (6→~%0.6, 8→~%0.2 title)
 
 // Best-of-7, 2-2-1-1-1 formatı. boost: seri bazlı ek reyting (ör. FMVP geni Finals'te)
 function playSeries(myRating, opp, homeAdv, rand, boost = 0) {
@@ -266,9 +281,11 @@ export function simulateSeason(players, simEra, fit, affinity01 = null, extras =
   if (madePlayoffs) {
     for (let r = 0; r < PLAYOFF_ROUNDS.length; r++) {
       const round = PLAYOFF_ROUNDS[r];
-      const seedEdge = r === 0 ? (8 - seed) * 0.008 : 0;   // yüksek seed R1'de daha zayıf rakip
-      const opp = clamp01(round.base + (rand() - 0.5) * 0.05 - seedEdge);
-      const homeAdv = r === 3 ? rand() < 0.5 : seed <= 4;
+      // Seed-duyarlı rakip (S5): üst seed erken turlarda daha zayıf rakip görür.
+      const seedAdv = (4.5 - seed) / 3.5;   // +1 (1-seed) .. −1 (8-seed)
+      const oppZ = Math.max(-1.0, Math.min(OPP_Z_CAP, RB_Z[r] - SE_Z[r] * seedAdv));
+      const opp = clamp01(OPP_MEAN + OPP_STD * oppZ + (rand() - 0.5) * 0.05);
+      const homeAdv = r === 3 ? (seed <= 2 || rand() < 0.5) : seed <= HOME_MAX[r];
       // FMVP geni yalnızca Finals serisinde devreye girer
       const seriesBoost = r === 3 ? (fx?.finals ?? 0) : 0;
       const series = playSeries(playoffRating, opp, homeAdv, rand, seriesBoost);
@@ -310,42 +327,44 @@ function computeSeasonAwards({ profiles, benchProfiles, players, bench, wins, ch
   };
   const starterLines = players.map((pl, i) => line(pl, profiles[i], false));
   const benchLines   = bench.map((pl, i) => line(pl, benchProfiles[i], true));
-
   const awards = [];
-  const best = starterLines.reduce((a, b) => (b.q > a.q ? b : a), starterLines[0]);
 
-  // League MVP: 55+ galibiyet + dominant sezon → şans, kalite ve galibiyetle artar
-  if (best && wins >= 55 && best.q >= 0.85) {
-    const odds = Math.min(0.85, (best.q - 0.80) * 3 + (wins - 55) * 0.02);
-    if (rand() < odds) awards.push(`🏅 League MVP — ${best.name}`);
+  // S7: ödüller SİMÜLE box-line'a dayanır (sabit q-eşiği + rastgele zar yerine
+  // üretim-tabanlı bar). MVP adaylığı = skor + all-around; DPOY = savunma
+  // üretimi (STL/BLK) + savunma arketibi. Böylece 30/8/7'lik bir sezon MVP çeker.
+  const mvpScore = l => l.pts + 0.45 * (l.ast + l.reb);
+  const mvpBest = starterLines.reduce((a, b) => (mvpScore(b) > mvpScore(a) ? b : a), starterLines[0]);
+
+  // League MVP: elit üretim + iyi takım (bar ~30 eşdeğer, galibiyetle artar)
+  if (mvpBest && wins >= 50) {
+    const odds = Math.min(0.88, (mvpScore(mvpBest) - 30) * 0.06 + (wins - 50) * 0.015);
+    if (rand() < odds) awards.push(`🏅 League MVP — ${mvpBest.name}`);
   }
-  // All-NBA / All-Star seçimleri
+  // All-NBA / All-Star: kalite tabanlı tier seçimi
   for (const l of starterLines) {
     if (l.q >= 0.80)      awards.push(`🌟 All-NBA — ${l.name}`);
     else if (l.q >= 0.70) awards.push(`⭐ All-Star — ${l.name}`);
   }
-  // DPOY: en iyi savunma kompoziti (Anchor/Stopper/Two-Way) × sim etkinliği
-  const defs = players.map((pl, i) => ({
-    name: profiles[i].name,
-    d: Math.max(
-      parseFloat(pl["score_Anchor"] || 0), parseFloat(pl["score_Stopper"] || 0),
-      parseFloat(pl["score_Two-Way"] || 0),
-    ) * factor(profiles[i]),
-  }));
-  const defBest = defs.reduce((a, b) => (b.d > a.d ? b : a), defs[0]);
-  if (defBest && defBest.d >= 0.80 && wins >= 48 && rand() < Math.min(0.7, (defBest.d - 0.72) * 2.5)) {
-    awards.push(`🛡 Defensive POY — ${defBest.name}`);
+  // DPOY: simüle savunma üretimi (STL + BLK) + savunma arketibi + takım başarısı
+  const dpoyScore = (l, i) => l.stl + l.blk * 1.5
+    + Math.max(parseFloat(players[i]["score_Anchor"] || 0), parseFloat(players[i]["score_Stopper"] || 0),
+               parseFloat(players[i]["score_Two-Way"] || 0)) * 3.0;
+  let dBest = 0;
+  for (let i = 1; i < starterLines.length; i++)
+    if (dpoyScore(starterLines[i], i) > dpoyScore(starterLines[dBest], dBest)) dBest = i;
+  if (starterLines.length && wins >= 46) {
+    const odds = Math.min(0.75, (dpoyScore(starterLines[dBest], dBest) - 4.2) * 0.14 + (wins - 46) * 0.01);
+    if (rand() < odds) awards.push(`🛡 Defensive POY — ${starterLines[dBest].name}`);
   }
-  // 6th Man: en iyi bench oyuncusu (gerçek 6MOY tag'i şansı artırır)
+  // 6th Man: en iyi bench (üretim-tabanlı); gerçek 6MOY tag'i şansı artırır
   if (benchLines.length) {
-    const b6 = benchLines.reduce((a, b) => (b.q > a.q ? b : a), benchLines[0]);
+    const b6 = benchLines.reduce((a, b) => (mvpScore(b) > mvpScore(a) ? b : a), benchLines[0]);
     const hasTag = benchProfiles.find(p => p.name === b6.name)?.sixth;
-    if (b6.q >= 0.50 && rand() < (hasTag ? 0.70 : 0.30)) {
+    if (mvpScore(b6) >= 14 && rand() < (hasTag ? 0.72 : 0.32))
       awards.push(`🔥 Sixth Man of the Year — ${b6.name}`);
-    }
   }
-  // Finals MVP: şampiyonlukta en iyi starter
-  if (champion && best) awards.push(`🏆 Finals MVP — ${best.name}`);
+  // Finals MVP: şampiyonlukta en iyi üretim
+  if (champion && mvpBest) awards.push(`🏆 Finals MVP — ${mvpBest.name}`);
 
   return { statLines: [...starterLines, ...benchLines], awards };
 }

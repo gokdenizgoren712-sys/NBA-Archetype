@@ -21,7 +21,7 @@ const spearman = (x, y) => pearson(ranks(x), ranks(y));
 
 // eğriler (index = ballDom sayısı 0..5), roleFit = 1 - PEN[n]
 const PEN_OLD = [0, 0, 0.05, 0.22, 0.42, 0.58];
-const PEN_NEW = [0.10, 0.05, 0.00, 0.12, 0.25, 0.40];   // 2 ideal, 1 yakın, 0/3+ cezalı
+const PEN_NEW = [0.06, 0.04, 0.00, 0.00, 0.00, 0.06];   // veri-dürüst final: 1 hafif, 2-4 nötr, 0/5 hafif
 const bd = st => st.filter(p => Math.max((parseFloat(p["score_Engine"]) || 0) * 1.05, parseFloat(p["score_Ecosystem"]) || 0) >= 0.80).length;
 
 const rows = { 0: [], 1: [], 2: [] };
