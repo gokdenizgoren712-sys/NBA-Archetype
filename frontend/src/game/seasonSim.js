@@ -155,29 +155,46 @@ export function computeTeamRating(players, simEra, fit, affinity01 = null, extra
   return { rating, profiles, benchProfiles, starPower, fresh, fx, benchBalanced: cover.balanced };
 }
 
-// ── Tek maç ──────────────────────────────────────────────────────────────────
+// ── Rakip modeli + tek maç (S4: cetvele fit edildi) ──────────────────────────
+// v3.9: sabit el-yapımı karışım YERİNE self-consistent rakip — rakipler takım
+// rating dağılımından (backtest fit: μ=0.662, σ=0.044) örneklenir. Ortalama
+// takım .500 oynar (oto-merkez); k=11 gerçekçi yelpaze (~13-60W) verir. Eski
+// k=4.5 + karışım her şeyi 30-54W'ye sıkıştırıyordu (cetvel: RMSE 10.0→8.1).
+export const OPP_MEAN   = 0.662;
+export const OPP_STD    = 0.044;
+export const LOGISTIC_K = 11.0;
+// Playoff serileri regular sezondan daha yumuşak eğimli: gerçek 7-maçlık seriler
+// daha çok sürpriz barındırır; k=11 favoriyi kilitleyip şampiyon title%'i ~%44'e
+// çıkarıyordu. PLAYOFF_K en iyi takımı NBA-gerçekçi ~%25-30 title'a çeker.
+export const PLAYOFF_K  = 6.0;   // sanity: gerçek şampiyonlar ~%27 title (NBA'de en iyi takım ~%25)
+
+// Box-Muller standart normal (0,1)
+function randNormal(rand) {
+  let u = 0, v = 0;
+  while (u === 0) u = rand();
+  while (v === 0) v = rand();
+  return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+}
+
 // Maç günü formu jitter'ı: aynı kadro her koşuda aynı sonucu almaz.
-// k=4.5: yumuşak eğim — süper takım bile her maçı almaz (82-0 imkânsız olmalı).
-function playGame(rating, opp, home, rand) {
+function playGame(rating, opp, home, rand, k = LOGISTIC_K) {
   const jitter = (rand() - 0.5) * 0.16;
   const diff   = (rating + jitter) - opp + (home ? 0.03 : -0.03);
-  return rand() < 1 / (1 + Math.exp(-4.5 * diff));
+  return rand() < 1 / (1 + Math.exp(-k * diff));
 }
 
-// Lig rakip dağılımı: %22 contender, %56 orta, %22 tanker (ortalama ≈ 0.61
-// → rating 0.60 civarı bir lineup ~.500 oynar)
+// Rakip = lig dağılımından örnek (self-consistent). Ortalama takım (0.662) → .500.
 function sampleOpponent(rand) {
-  const r = rand();
-  if (r < 0.22) return 0.70 + rand() * 0.16;
-  if (r < 0.78) return 0.52 + rand() * 0.18;
-  return 0.38 + rand() * 0.14;
+  return Math.max(0.30, Math.min(0.95, OPP_MEAN + OPP_STD * randNormal(rand)));
 }
 
+// Playoff rakipleri: yeni self-consistent merkeze göre (S4). Rakip = lig
+// dağılımının üst kuantilleri (tur ilerledikçe güçlenir): μ + z·σ, z=[0.6,1.1,1.7,2.3].
 const PLAYOFF_ROUNDS = [
-  { key: "R1",   label: "First Round",       base: 0.61 },
-  { key: "SEMI", label: "Conf. Semifinals",  base: 0.69 },
-  { key: "CF",   label: "Conf. Finals",      base: 0.76 },
-  { key: "F",    label: "NBA Finals",        base: 0.83 },
+  { key: "R1",   label: "First Round",       base: OPP_MEAN + 0.6 * OPP_STD },  // ~0.688
+  { key: "SEMI", label: "Conf. Semifinals",  base: OPP_MEAN + 1.1 * OPP_STD },  // ~0.710
+  { key: "CF",   label: "Conf. Finals",      base: OPP_MEAN + 1.7 * OPP_STD },  // ~0.737
+  { key: "F",    label: "NBA Finals",        base: OPP_MEAN + 2.3 * OPP_STD },  // ~0.763
 ];
 
 // Best-of-7, 2-2-1-1-1 formatı. boost: seri bazlı ek reyting (ör. FMVP geni Finals'te)
@@ -187,7 +204,7 @@ function playSeries(myRating, opp, homeAdv, rand, boost = 0) {
   while (w < 4 && l < 4) {
     const gameNo = w + l;
     const home = [0, 1, 4, 6].includes(gameNo) ? homeAdv : !homeAdv;
-    const won = playGame(myRating + boost, opp, home, rand);
+    const won = playGame(myRating + boost, opp, home, rand, PLAYOFF_K);
     games.push(won);
     won ? w++ : l++;
   }
