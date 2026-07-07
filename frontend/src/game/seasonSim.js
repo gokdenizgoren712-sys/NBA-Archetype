@@ -144,10 +144,13 @@ export function computeTeamRating(players, simEra, fit, affinity01 = null, extra
 
   // NOT: rating bilerek clamp'lenmez — süper takımlar 1.0 tavanına yapışırsa
   // pozisyon/koç farkları tavanda kaybolur; logistic her aralıkla çalışır.
+  // roleFit (ball-dominant cezası) SIM rating'inden ÇIKARILDI (v3.9 / RF-decouple):
+  // çok-yıldızlı (2+ ball-dominant) takımlar gerçekte daha çok kazanır ama roleFit
+  // onları cezalandırıp galibiyet tahminini bozuyordu (cetvel ablasyonu: within-season
+  // Spearman 0.756→0.776). Draft-notu (lineupScore) roleFit'i KORUR — iki amaç ayrı.
   let rating = 0.42 * rosterQ
              + 0.18 * starPower
-             + 0.28 * (fit?.coverage ?? 0.5)
-             + 0.12 * (fit?.roleFit  ?? 1.0);
+             + 0.28 * (fit?.coverage ?? 0.5);
   if (affinity01 != null) rating += (affinity01 - 0.65) * 0.15;
   rating += coachRatingBonus(coach);
   rating += fx.regular;
@@ -157,12 +160,13 @@ export function computeTeamRating(players, simEra, fit, affinity01 = null, extra
 
 // ── Rakip modeli + tek maç (S4: cetvele fit edildi) ──────────────────────────
 // v3.9: sabit el-yapımı karışım YERİNE self-consistent rakip — rakipler takım
-// rating dağılımından (backtest fit: μ=0.662, σ=0.044) örneklenir. Ortalama
-// takım .500 oynar (oto-merkez); k=11 gerçekçi yelpaze (~13-60W) verir. Eski
-// k=4.5 + karışım her şeyi 30-54W'ye sıkıştırıyordu (cetvel: RMSE 10.0→8.1).
-export const OPP_MEAN   = 0.662;
-export const OPP_STD    = 0.044;
-export const LOGISTIC_K = 11.0;
+// rating dağılımından (backtest fit) örneklenir. Ortalama takım .500 oynar
+// (oto-merkez); k gerçekçi yelpaze verir. Eski k=4.5 + karışım her şeyi
+// 30-54W'ye sıkıştırıyordu (cetvel: RMSE 10.0→7.9). NOT: rating formülü değişince
+// (ör. RF-decouple roleFit'i çıkardı → μ 0.662→0.560) fit_s4.mjs ile YENİDEN fit et.
+export const OPP_MEAN   = 0.560;
+export const OPP_STD    = 0.053;
+export const LOGISTIC_K = 9.0;
 // Playoff serileri regular sezondan daha yumuşak eğimli: gerçek 7-maçlık seriler
 // daha çok sürpriz barındırır; k=11 favoriyi kilitleyip şampiyon title%'i ~%44'e
 // çıkarıyordu. PLAYOFF_K en iyi takımı NBA-gerçekçi ~%25-30 title'a çeker.

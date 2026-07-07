@@ -61,12 +61,14 @@ export function computeLineupFit(players, simEra) {
   for (const k of Object.keys(W)) { wSum += W[k]; wDot += covVals[k] * W[k]; }
   const coverage = wDot / wSum;
 
-  // 3. Role Fit — top-dominansı cezası. v3.8: 2 ball-dominant oyuncu ARTIK çok
-  // minimal (−%5) — birçok elit ikili (Jordan+Pippen, LeBron+Wade, SGA+Williams)
-  // iki topu domine eden yıldızla çalışır. Asıl darboğaz 3+: [0,0,-5,-22,-42,-58].
+  // 3. Role Fit — v3.9 veri-dürüst eğri. Cetvel (514 takım): ball-dom sayısı
+  // galibiyeti neredeyse hiç belirlemiyor (1→38.6W hafif kötü, 2/3/4+→~42-43W;
+  // sahte 3+ cezası yok — çok-yıldızlı takımlar iyi kazanır). roleFit sim
+  // rating'inden ÇIKARILDI (RF-decouple); burada draft-notu için yalnızca hafif
+  // nudge kaldı: 1 hafif (−4%), 2-4 nötr, 0/5 hafif (creator yok / aşırı top-hog).
   const ballDom = players.filter(p => Math.max(_s(p,"Engine")*1.05, _s(p,"Ecosystem")) >= 0.80).length;
-  const BALLDOM_PEN = [0, 0, 0.05, 0.22, 0.42, 0.58];
-  const roleFit = Math.max(0, 1 - (BALLDOM_PEN[Math.min(ballDom, 5)] ?? 0.58));
+  const BALLDOM_PEN = [0.06, 0.04, 0.00, 0.00, 0.00, 0.06];
+  const roleFit = Math.max(0, 1 - (BALLDOM_PEN[Math.min(ballDom, 5)] ?? 0.06));
 
   // 4. Final: ağırlıklı toplam (v3.5.1). Eski çarpım formülü skoru 40-55
   // bandına eziyordu — iki 0.6'lık faktörün çarpımı 0.36 eder. Toplamla
