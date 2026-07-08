@@ -28,5 +28,6 @@ COPY --from=frontend /app/frontend/dist ./frontend/dist
 
 ENV PORT=8000
 EXPOSE 8000
-# Railway $PORT sağlar; yoksa 8000
-CMD ["sh", "-c", "uvicorn api.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+# PORT'u Python kendisi okur (api/main.py __main__) — shell/exec form, $PORT
+# genişlemesi derdi yok. Railway PORT'u runtime'da enjekte eder; yoksa 8000.
+CMD ["python", "-m", "api.main"]

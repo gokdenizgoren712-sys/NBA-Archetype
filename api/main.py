@@ -2762,3 +2762,18 @@ if frontend_dist.exists():
         return FileResponse(str(index))
 
     app.mount("/assets", StaticFiles(directory=str(frontend_dist / "assets")), name="assets")
+
+
+# ─── Prod entrypoint ─────────────────────────────────────────────────────────
+# PORT'u shell'e bırakmayız: Python env'den kendisi okur (Railway/Render güvenli).
+# `python -m api.main` ile çalışır; shell/exec form farkı, $PORT genişlemesi derdi yok.
+if __name__ == "__main__":
+    import os
+    import uvicorn
+
+    uvicorn.run(
+        "api.main:app",
+        host="0.0.0.0",
+        port=int(os.environ.get("PORT", "8000")),
+        workers=int(os.environ.get("WEB_CONCURRENCY", "1")),  # 512MB'de 1 worker
+    )
