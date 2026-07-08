@@ -7,6 +7,14 @@ WORKDIR /app/frontend
 COPY frontend/package*.json ./
 RUN npm install
 COPY frontend/ ./
+# Vite build-time değişkenleri: Railway service variable'ları ARG olarak gelir,
+# ENV yapıp `npm run build`'e sunuyoruz (yoksa bundle'a gömülmez → özellik ölü).
+ARG VITE_GOOGLE_CLIENT_ID=""
+ARG VITE_CLOUDINARY_CLOUD_NAME=""
+ARG VITE_CLOUDINARY_UPLOAD_PRESET=""
+ENV VITE_GOOGLE_CLIENT_ID=$VITE_GOOGLE_CLIENT_ID \
+    VITE_CLOUDINARY_CLOUD_NAME=$VITE_CLOUDINARY_CLOUD_NAME \
+    VITE_CLOUDINARY_UPLOAD_PRESET=$VITE_CLOUDINARY_UPLOAD_PRESET
 RUN npm run build
 
 # ── Stage 2: Python runtime ──
