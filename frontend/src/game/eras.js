@@ -31,13 +31,19 @@ export const PILLAR_LABELS = {
   creation: "Creation", spacing: "Spacing", rim_protection: "Rim Protection",
   perimeter_d: "Perimeter D", finishing: "Finishing",
 };
+// v3.11 (P4): gerçek dönem 3PAr'ından (3PA/FGA) TÜREVİ + Dead Ball savunma anlatısı.
+// Ölçülen 3PAr: magic_bird 0.055 → jordan 0.155 → dead_ball 0.191 → proto 0.235
+// → small_ball 0.328 → parity 0.403. spacing 3PAr'la doğru, rim ters orantılı türetildi
+// (corr el-yazımı vs 3PAr: spacing 0.89). Düzeltme: parity artık EN yüksek spacing
+// (en çok 3 atan dönem — eski el-yazımı small_ball'u yanlışlıkla üste koymuştu).
+// Dead Ball rim/perim, 3PAr'ın kaçırdığı fiziksel-savunma dönemi için elle korundu.
 export const ERA_PILLAR_WEIGHTS = {
-  magic_bird: { creation: 1.10, spacing: 0.55, rim_protection: 1.20, perimeter_d: 0.95, finishing: 1.20 },
-  jordan:     { creation: 1.25, spacing: 0.70, rim_protection: 1.05, perimeter_d: 1.25, finishing: 0.90 },
-  dead_ball:  { creation: 0.90, spacing: 0.70, rim_protection: 1.45, perimeter_d: 1.20, finishing: 0.90 },
-  proto:      { creation: 1.10, spacing: 0.95, rim_protection: 1.00, perimeter_d: 1.00, finishing: 0.95 },
-  small_ball: { creation: 1.10, spacing: 1.45, rim_protection: 0.60, perimeter_d: 1.15, finishing: 0.70 },
-  parity:     { creation: 1.05, spacing: 1.20, rim_protection: 0.80, perimeter_d: 1.15, finishing: 0.80 },
+  magic_bird: { creation: 1.10, spacing: 0.55, rim_protection: 1.35, perimeter_d: 0.95, finishing: 1.15 },
+  jordan:     { creation: 1.10, spacing: 0.82, rim_protection: 1.14, perimeter_d: 1.05, finishing: 1.04 },
+  dead_ball:  { creation: 1.00, spacing: 0.85, rim_protection: 1.40, perimeter_d: 1.18, finishing: 0.95 },
+  proto:      { creation: 1.10, spacing: 1.04, rim_protection: 0.96, perimeter_d: 1.11, finishing: 0.94 },
+  small_ball: { creation: 1.10, spacing: 1.30, rim_protection: 0.76, perimeter_d: 1.19, finishing: 0.84 },
+  parity:     { creation: 1.10, spacing: 1.50, rim_protection: 0.60, perimeter_d: 1.25, finishing: 0.75 },
 };
 
 // Bir arketip hangi sütunun "adamı"dır — era-uzaklık kayması bundan türer.

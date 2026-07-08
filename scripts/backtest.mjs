@@ -18,7 +18,7 @@ import { ERAS } from "../frontend/src/game/eras.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..");
-const BT = join(ROOT, "data", "backtest");
+const BT = join(ROOT, "data", process.env.BT_DIR || "backtest");   // modern için BT_DIR=backtest_modern
 const MULTI = new Set(["2TM", "3TM", "4TM", "TOT"]);
 const MC_RUNS = 50;   // her takım için Monte-Carlo sezon sayısı
 

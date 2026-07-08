@@ -3,6 +3,28 @@ import { SEO } from "../hooks/useSEO";
 
 const CHANGELOG = [
   {
+    version: "v3.10",
+    date_en: "July 2026",
+    label_en: "Playoff Realism + Game-Feel (Backtest-Tuned)",
+    items_en: [
+      "Playoffs are now seed-aware: a 1-seed faces the 8-seed and hosts every round, while an 8-seed draws the 1-seed and rarely has home court. Championship odds by seed now read ~45% (1st), ~25% (2nd), tapering to a rare Cinderella tail — tuned to feel like a game while staying grounded in a real bracket",
+      "Fatigue and dynasty aging are now accelerating curves, not flat lines: overplaying a star past 40 minutes bites harder, and a dynasty's title odds fall off faster each year (a comfortable three-peat, a very hard five-peat)",
+      "Season awards are driven by the simulated box-score line instead of fixed thresholds — MVP goes to the real production leaders and Defensive POY correctly lands on elite defenders (Draymond Green, Mutombo, Duncan)",
+      "Roster-balance (ball-dominant) penalty rebuilt from real data: it barely predicts wins, so the old harsh curve became a light, data-honest nudge that stays consistent between the draft grade and the simulation",
+    ],
+  },
+  {
+    version: "v3.9",
+    date_en: "July 2026",
+    label_en: "Backtest-Validated Simulation Overhaul",
+    items_en: [
+      "Built a headless backtest that runs the real simulation against 514 actual historical team-seasons (18 champion seasons across all 6 eras). Every tuning decision is now measured against real win totals instead of guessed — the model's win-prediction correlation and error are tracked directly",
+      "Fixed cross-era player ratings at the root: pre-1990 seasons were missing Basketball-Reference BPM, silently inflating those players ~15%. Fetched the real BPM and recomputed — 1980s stars now sit on the same scale as modern ones (pooled win-correlation jumped 0.62 → 0.72, and the 80s era nearly doubled its accuracy)",
+      "Rebuilt the opponent model: instead of a fixed hand-authored league, opponents are drawn self-consistently from the actual team-strength distribution and the win curve was fit to real data. The sim can finally produce realistic 12–66 win seasons (it was stuck compressing everything into 30–59)",
+      "Verified the whole rating formula against the backtest — several suspected issues (star double-counting, coverage depth, rebounding, affinity weight) turned out to already be optimal, while the ball-dominant penalty was found to hurt and was fixed",
+    ],
+  },
+  {
     version: "v3.8",
     date_en: "July 2026",
     label_en: "Top-3 Archetype Weighting + Fit Tuning",

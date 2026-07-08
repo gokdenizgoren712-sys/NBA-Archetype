@@ -3,7 +3,7 @@
 // LineupGame.jsx'ten ÇIKARILDI. Amaç: hem UI hem headless backtest
 // (scripts/backtest.mjs) AYNI skorlama mantığını kullansın — tek kaynak.
 // React'sız, saf fonksiyonlar; Node'dan da import edilebilir.
-import { eraDistFactor, topArchWeights } from "./seasonSim";
+import { eraDistFactor, topArchWeights, eraMetaFactor } from "./seasonSim";
 import { ERAS, ERA_PILLAR_WEIGHTS } from "./eras";
 
 // ── Per-oyuncu: boyutsal katkı + era kalitesi ────────────────────────────────
@@ -21,7 +21,7 @@ export function computePlayerFit(p, simEra) {
   const overall    = Math.min(1, Math.max(0, parseFloat(p.overall_score || 0)));
   const { homeEra, dist, fitShift, distP, timeless } = eraDistFactor(p, simEra || ERAS[5]);
   const posPenalty = p._posPenalty ?? 1.0;
-  const quality = Math.min(1, overall * distP * posPenalty);
+  const quality = Math.min(1, overall * distP * posPenalty * eraMetaFactor(p, simEra || ERAS[5]));
   return { creation, spacing, rimProt, perimD, finishing, overall, quality,
            era: homeEra, dist, fitShift, distP, timeless, posPenalty };
 }

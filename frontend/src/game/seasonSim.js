@@ -64,6 +64,31 @@ export function eraDistFactor(player, simEra) {
   return { homeEra, dist: rawDist, effDist, fitShift, distP, timeless };
 }
 
+// ── Era-meta kalite faktörü (v3.11 / P4) ─────────────────────────────────────
+// Oyuncunun arketibinin (top-3 ağırlıklı) sim-era'daki pillar ağırlığına göre
+// kalitesini modüle eder: şutör spacing döneminde ↑, rim döneminde ↓. Coverage'ın
+// (MAX, doygun) aksine kaliteye uygulanınca era-meta HEM hissedilir HEM doğru
+// (cetvel: same-era within-season Spearman 0.783→0.786, era-fit gerçek sinyal).
+const ERA_META_AMP = 0.30;
+const _ERA_MEAN_W = {};
+for (const _e of Object.keys(ERA_PILLAR_WEIGHTS)) {
+  const _v = Object.values(ERA_PILLAR_WEIGHTS[_e]);
+  _ERA_MEAN_W[_e] = _v.reduce((a, b) => a + b, 0) / _v.length;
+}
+export function eraMetaFactor(player, simEra) {
+  if (!simEra || !ERA_PILLAR_WEIGHTS[simEra.id]) return 1;
+  const w = topArchWeights(player, 3);
+  if (!w.length) return 1;
+  let acc = 0, ws = 0;
+  for (const [arch, wt] of w) {
+    const pil = ARCH_PILLAR[arch];
+    const ew = pil ? (ERA_PILLAR_WEIGHTS[simEra.id][pil] ?? 1) : 1;
+    acc += wt * ew; ws += wt;
+  }
+  const raw = (ws > 0 ? acc / ws : 1) / (_ERA_MEAN_W[simEra.id] || 1);
+  return 1 - ERA_META_AMP + ERA_META_AMP * raw;
+}
+
 // ── Oyuncunun sim era'daki profili ───────────────────────────────────────────
 // _posPenalty: draft sırasında atanır (doğal=1.0, komşu mevki=0.90, uzak=0.75, FLEX=1.0)
 export function playerSimProfile(player, simEra) {
@@ -71,7 +96,7 @@ export function playerSimProfile(player, simEra) {
   const arch    = player.primary_arch || "";
   const { homeEra, dist, fitShift, distP, timeless } = eraDistFactor(player, simEra);
   const posP    = player._posPenalty ?? 1.0;
-  const simQuality = clamp01(overall * distP * posP);
+  const simQuality = clamp01(overall * distP * posP * eraMetaFactor(player, simEra));
   return { name: player.PLAYER_NAME, arch, homeEra, dist, fitShift, distP, posP, overall, simQuality, timeless };
 }
 
@@ -173,9 +198,9 @@ export function computeTeamRating(players, simEra, fit, affinity01 = null, extra
 // (oto-merkez); k gerçekçi yelpaze verir. Eski k=4.5 + karışım her şeyi
 // 30-54W'ye sıkıştırıyordu (cetvel: RMSE 10.0→7.9). NOT: rating formülü değişince
 // fit_s4.mjs ile YENİDEN fit et (roleFit geri eklenince μ 0.560→0.679, k=9 kaldı).
-export const OPP_MEAN   = 0.679;
-export const OPP_STD    = 0.054;
-export const LOGISTIC_K = 9.0;
+export const OPP_MEAN   = 0.682;
+export const OPP_STD    = 0.055;
+export const LOGISTIC_K = 8.5;
 // Playoff serileri regular sezondan daha yumuşak eğimli: gerçek 7-maçlık seriler
 // daha çok sürpriz barındırır; k=11 favoriyi kilitleyip şampiyon title%'i ~%44'e
 // çıkarıyordu. PLAYOFF_K en iyi takımı NBA-gerçekçi ~%25-30 title'a çeker.
