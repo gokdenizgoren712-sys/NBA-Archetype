@@ -44,7 +44,9 @@ async def _json_500(request: Request, exc: Exception):
 
 # ─── Middleware ────────────────────────────────────────────────────────────────
 
-IS_PROD   = os.environ.get("RENDER") == "true"
+IS_PROD   = (os.environ.get("RENDER") == "true"
+             or os.environ.get("RAILWAY_ENVIRONMENT") is not None
+             or os.environ.get("IS_PROD") == "true")
 SMTP_HOST        = os.environ.get("SMTP_HOST", "")
 SMTP_PORT        = int(os.environ.get("SMTP_PORT", "587"))
 SMTP_USER        = os.environ.get("SMTP_USER", "")
@@ -73,7 +75,7 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://nba-archetype.onrender.com"] if IS_PROD else ["*"],
+    allow_origins=[SITE_URL] if IS_PROD else ["*"],
     allow_methods=["GET", "POST", "DELETE", "PUT"],
     allow_headers=["Authorization", "Content-Type"],
 )
@@ -551,7 +553,7 @@ def _safe(df: pd.DataFrame) -> list[dict]:
 
 # ─── SEO ──────────────────────────────────────────────────────────────────────
 
-BASE_URL = "https://nba-archetype.onrender.com"
+BASE_URL = SITE_URL   # env-driven (Render: onrender default; Railway: SITE_URL set edilir)
 STATIC_ROUTES = ["/", "/players", "/explore", "/compare", "/lineups", "/affinity", "/glossary", "/game", "/about"]
 
 @app.get("/robots.txt", response_class=PlainTextResponse, include_in_schema=False)

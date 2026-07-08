@@ -1,6 +1,7 @@
 import { Helmet } from "react-helmet-async";
 
-const BASE = "https://nba-archetype.onrender.com";
+// Domain-agnostik: hangi origin'de servis edilirse o (Render/Railway/custom domain)
+const BASE = typeof window !== "undefined" ? window.location.origin : "https://nba-archetype.onrender.com";
 const OG_IMAGE = `${BASE}/og-image.png`;
 
 export function SEO({ title, description, path = "", noindex = false }) {

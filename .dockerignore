@@ -1,0 +1,19 @@
+# Build hızı + imaj boyutu: dev artefaktlarını hariç tut
+**/node_modules
+.git
+.gitignore
+**/__pycache__
+*.pyc
+frontend/dist
+scripts
+.claude
+memory
+*.md
+CLAUDE.md
+api_err.txt
+api_out.txt
+api_out*.txt
+# Dev-only backtest verisi (canlı app kullanmaz)
+data/backtest
+data/backtest_modern
+data/*.BEFORE_G1.parquet
