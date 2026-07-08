@@ -1457,7 +1457,7 @@ export default function LineupGame() {
             {/* 4 adımlı görsel akış */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {[
-                ["1",TargetIcon,"text-rose-300","Pick your era","distance rules everything"],
+                ["1",TargetIcon,"text-rose-300","Pick your era","distance + style fit"],
                 ["2",WheelIcon,"text-blue-300","Spin & draft 9","5 starters + 4 bench"],
                 ["3",CoachIcon,"text-emerald-300","Hire a coach","O/D grades + rings"],
                 ["4",TrophyIcon,"text-yellow-300","Simulate 82","playoffs · awards · glory"],
@@ -1478,7 +1478,7 @@ export default function LineupGame() {
                 <div className="flex items-center justify-center text-slate-300" style={{width:"15%",background:"#1e293b"}}>ROLE 15%</div>
               </div>
               <p className="text-[11px] text-slate-500 mt-1.5">
-                Quality = overall × era distance × position fit · Coverage = your archetypes covering Creation / Spacing / Defense / Finishing
+                Quality = overall × era fit (distance + style) × position · Coverage = your archetypes covering Creation / Spacing / Defense / Finishing
               </p>
             </div>
             {/* Mekanik kartları */}
@@ -1702,6 +1702,12 @@ export default function LineupGame() {
                 ))}
               </div>
             ); })()}
+            {/* Desktop: court spot'una tıkla; Mobil: butonlar (court yok) */}
+            <div className="hidden lg:flex items-center gap-1.5 text-[13px] text-amber-300 mt-1 mb-1">
+              <span className="text-base leading-none">↘</span>
+              <span>Pick a spot on the court or bench to place <span className="font-semibold">{pickedPlayer.PLAYER_NAME?.split(" ").slice(-1)[0]}</span></span>
+            </div>
+            <div className="lg:hidden">
             <div className="text-xs text-slate-500 mb-2 inline-flex items-center gap-1 flex-wrap">
               <span>Which position? (</span><StarIcon size={10} /><span>= primary → chemistry bonus · secondary −10%{isFlex(pickedPlayer)?", next-nearest −10% (VERSATILE), rest −25%":", elsewhere −25%"})</span>
             </div>
@@ -1739,6 +1745,7 @@ export default function LineupGame() {
                 </div>
               </>
             )}
+            </div>
           </div>
         );
       })()}
@@ -1786,7 +1793,11 @@ export default function LineupGame() {
       <div className="hidden lg:block flex-1 min-w-0">
         <div className="sticky top-2">
           <CourtBoard lineup={lineup} coach={coach} moveSrc={moveSrc}
-            canRearrange={canRearrange} onSlotTap={handleSlotTap} getPrimaryPos={getPrimaryPos}/>
+            canRearrange={canRearrange} onSlotTap={handleSlotTap} getPrimaryPos={getPrimaryPos}
+            placing={phase==="pick_pos"&&!!pickedPlayer}
+            placingEligible={pickedPlayer?getEligiblePos(pickedPlayer):[]}
+            placingPenalties={pickedPlayer?Object.fromEntries(POSITIONS.map(p=>[p,posPenaltyFor(pickedPlayer,p)])):{}}
+            onPlace={handlePickPos}/>
         </div>
       </div>
 
