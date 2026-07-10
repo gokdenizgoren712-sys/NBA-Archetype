@@ -422,6 +422,36 @@ def _load_scores() -> pd.DataFrame:
     return df
 
 
+def _apply_prospect(df: pd.DataFrame) -> pd.DataFrame:
+    """P3 prospect alanlarını ekle (floor/ceiling/grade/tier + strengths/weaknesses).
+    Hata olursa loader'ı bozmadan df'i döner."""
+    try:
+        from prospect import add_prospect_fields
+        return add_prospect_fields(df)
+    except Exception as e:
+        print(f"[UYARI] prospect fields: {e}", flush=True)
+        return df
+
+
+def _prospect_dict(row) -> Optional[dict]:
+    """Detail endpoint için prospect alt-objesi (yoksa None)."""
+    if "prospect_grade" not in row.index or pd.isna(row.get("prospect_grade")):
+        return None
+    def _num(k):
+        return round(float(row[k]), 1) if k in row.index and pd.notna(row.get(k)) else None
+    def _lst(k):
+        v = row.get(k)
+        return list(v) if v is not None and not isinstance(v, float) else []
+    return {
+        "grade":      _num("prospect_grade"),
+        "tier":       row.get("prospect_tier", ""),
+        "floor":      _num("prospect_floor"),
+        "ceiling":    _num("prospect_ceiling"),
+        "strengths":  _lst("strengths"),
+        "weaknesses": _lst("weaknesses"),
+    }
+
+
 @lru_cache(maxsize=1)
 def _load_gleague_scores() -> pd.DataFrame:
     """G-League player scores — gleague__2025-26__player_scores.parquet."""
@@ -441,6 +471,7 @@ def _load_gleague_scores() -> pd.DataFrame:
             if pct >= 0.50: return "Starter"
             return "Role Player"
         df["overall_tier"] = df["overall_pct"].apply(_tier)
+    df = _apply_prospect(df)   # P3: floor/ceiling/grade/tier + güçlü/zayıf
     return df
 
 
@@ -485,6 +516,7 @@ def _load_ncaa_scores() -> pd.DataFrame:
             if pct >= 0.50: return "Starter"
             return "Role Player"
         df["overall_tier"] = df["overall_pct"].apply(_tier)
+    df = _apply_prospect(df)   # P3: floor/ceiling/grade/tier + güçlü/zayıf
     return df
 
 
@@ -1522,6 +1554,7 @@ def get_gleague_player_scores(player_name: str):
         "overall_tier":     row.get("overall_tier",""),
         "scores":           core_scores,
         "age":              round(float(row["AGE"]),1) if "AGE" in row.index and pd.notna(row.get("AGE")) else None,
+        "prospect":         _prospect_dict(row),
         "confidence_margin": _confidence_margin(gp),
         "league":           "gleague",
     }
@@ -1670,6 +1703,7 @@ def get_ncaa_player_scores(player_name: str):
         "overall_pct":      round(float(row["overall_pct"]),3)   if pd.notna(row.get("overall_pct"))   else None,
         "overall_tier":     row.get("overall_tier",""),
         "scores":           core_scores,
+        "prospect":         _prospect_dict(row),
         "confidence_margin": _confidence_margin(gp),
         "league":           "ncaa",
     }
