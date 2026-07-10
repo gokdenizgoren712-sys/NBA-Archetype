@@ -1,29 +1,33 @@
 import { BrowserRouter, Routes, Route, NavLink, Navigate, useNavigate, useLocation } from "react-router-dom";
-import { useState, useEffect } from "react";
-import Players       from "./pages/Players";
-import Lineups       from "./pages/Lineups";
-import Glossary      from "./pages/Glossary";
-import About         from "./pages/About";
-import Explore       from "./pages/Explore";
-import Compare       from "./pages/Compare";
-import Affinity      from "./pages/Affinity";
-import LineupGame    from "./pages/LineupGame";
-import Blog          from "./pages/Blog";
-import BlogPost      from "./pages/BlogPost";
-import Login         from "./pages/Login";
-import Register      from "./pages/Register";
-import Profile       from "./pages/Profile";
-import ArticleList    from "./pages/admin/ArticleList";
-import ArticleEditor  from "./pages/admin/ArticleEditor";
-import UserList       from "./pages/admin/UserList";
-import CorrectionList from "./pages/admin/CorrectionList";
-import GLeague        from "./pages/GLeague";
-import NCAAPage       from "./pages/NCAAPage";
-import EuroLeaguePage from "./pages/EuroLeaguePage";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { NBAIcon, GLeagueIcon, NCAAIcon, EuroLeagueIcon } from "./components/LeagueIcons";
-import ForgotPassword from "./pages/ForgotPassword";
-import ResetPassword  from "./pages/ResetPassword";
-import PlayerProfile  from "./pages/PlayerProfile";
+
+// Route sayfaları LAZY — her biri kendi chunk'ına bölünür. Ağır lib'ler böylece
+// initial bundle'dan çıkar: tiptap→ArticleEditor chunk'ı, recharts→paylaşılan radar
+// chunk'ı, oyun sim→LineupGame chunk'ı. İlk yükte sadece kabuk + router iner.
+const Players        = lazy(() => import("./pages/Players"));
+const Lineups        = lazy(() => import("./pages/Lineups"));
+const Glossary       = lazy(() => import("./pages/Glossary"));
+const About          = lazy(() => import("./pages/About"));
+const Explore        = lazy(() => import("./pages/Explore"));
+const Compare        = lazy(() => import("./pages/Compare"));
+const Affinity       = lazy(() => import("./pages/Affinity"));
+const LineupGame     = lazy(() => import("./pages/LineupGame"));
+const Blog           = lazy(() => import("./pages/Blog"));
+const BlogPost       = lazy(() => import("./pages/BlogPost"));
+const Login          = lazy(() => import("./pages/Login"));
+const Register       = lazy(() => import("./pages/Register"));
+const Profile        = lazy(() => import("./pages/Profile"));
+const ArticleList    = lazy(() => import("./pages/admin/ArticleList"));
+const ArticleEditor  = lazy(() => import("./pages/admin/ArticleEditor"));
+const UserList       = lazy(() => import("./pages/admin/UserList"));
+const CorrectionList = lazy(() => import("./pages/admin/CorrectionList"));
+const GLeague        = lazy(() => import("./pages/GLeague"));
+const NCAAPage       = lazy(() => import("./pages/NCAAPage"));
+const EuroLeaguePage = lazy(() => import("./pages/EuroLeaguePage"));
+const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
+const ResetPassword  = lazy(() => import("./pages/ResetPassword"));
+const PlayerProfile  = lazy(() => import("./pages/PlayerProfile"));
 import { ThemeProvider, useTheme } from "./contexts/ThemeContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
@@ -192,6 +196,16 @@ function BottomNav() {
 }
 
 /* ── Inner app ───────────────────────────────────────────────────── */
+// Lazy sayfa chunk'ı inerken gösterilen hafif fallback (Suspense).
+function PageLoading() {
+  return (
+    <div className="h-full w-full flex items-center justify-center"
+         style={{ color: "var(--text-muted)" }}>
+      <div className="animate-pulse text-sm tracking-wide">yükleniyor…</div>
+    </div>
+  );
+}
+
 function AppInner() {
   return (
     <BrowserRouter>
@@ -202,6 +216,7 @@ function AppInner() {
           <SideNav />
 
           <main className="flex-1 min-h-0 overflow-hidden">
+            <Suspense fallback={<PageLoading />}>
             <Routes>
               <Route path="/"                         element={<Navigate to="/game" replace />} />
               <Route path="/game"                     element={<LineupGame />} />
@@ -236,6 +251,7 @@ function AppInner() {
               <Route path="/ncaa"                     element={<NCAAPage />} />
               <Route path="/euroleague"               element={<EuroLeaguePage />} />
             </Routes>
+            </Suspense>
           </main>
         </div>
 
