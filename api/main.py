@@ -442,6 +442,16 @@ def _prospect_dict(row) -> Optional[dict]:
     def _lst(k):
         v = row.get(k)
         return list(v) if v is not None and not isinstance(v, float) else []
+    # P4: 1983+ NBA giriş-profili komparabılları ("genç X'e benziyor")
+    comps = []
+    try:
+        from comparables import find_comparables, SC as _SC
+        vec = [float(row.get(c, 0) or 0) for c in _SC]
+        comps = find_comparables(vec, DATA / "historical__labeled.parquet",
+                                 k=4, pos=row.get("POS5") or row.get("POSITION"))
+    except Exception as e:
+        print(f"[UYARI] comparables: {e}", flush=True)
+
     return {
         "grade":      _num("prospect_grade"),
         "tier":       row.get("prospect_tier", ""),
@@ -449,6 +459,7 @@ def _prospect_dict(row) -> Optional[dict]:
         "ceiling":    _num("prospect_ceiling"),
         "strengths":  _lst("strengths"),
         "weaknesses": _lst("weaknesses"),
+        "comparables": comps,
     }
 
 

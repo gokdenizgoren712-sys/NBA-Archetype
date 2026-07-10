@@ -20,6 +20,15 @@ const TIER_COLOR = {
   "Longshot":       "#94a3b8",   // slate
 };
 
+const OUTCOME_COLOR = {
+  "Superstar":       "#a855f7",
+  "All-Star":        "#3b82f6",
+  "Quality Starter": "#10b981",
+  "Starter":         "#22c55e",
+  "Rotation":        "#f59e0b",
+  "Fringe":          "#94a3b8",
+};
+
 const POS_COLOR = {
   PG: "text-violet-400", SG: "text-blue-400",
   SF: "text-emerald-400", PF: "text-orange-400", C: "text-red-400",
@@ -176,6 +185,29 @@ function NCAADetailPanel({ selected, detail, tab, setTab }) {
                     </div>
                   </div>
                 </div>
+
+                {/* Comparables — NBA giriş-profili benzerliği */}
+                {(detail.prospect.comparables || []).length > 0 && (
+                  <div>
+                    <div className="text-[10px] uppercase tracking-wider mb-1.5" style={{ color: NCAA_COLOR }}>
+                      NBA'de benziyor
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      {detail.prospect.comparables.map((c, i) => (
+                        <div key={i} className="flex items-center justify-between text-xs px-2 py-1.5 rounded"
+                          style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
+                          <span style={{ color: "var(--text-primary)" }}>{c.name}</span>
+                          <span className="text-[10px]" style={{ color: OUTCOME_COLOR[c.outcome] || "var(--text-muted)" }}>
+                            {c.outcome}{c.peak_bpm != null ? ` · BPM ${c.peak_bpm}` : ""}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="text-[9px] mt-1" style={{ color: "var(--text-faint)" }}>
+                      Giriş (rookie) arketip profili benzerliği · zirve = kariyer sonucu
+                    </div>
+                  </div>
+                )}
               </div>
               ) : (
                 <div className="p-8 text-center text-sm" style={{ color: "var(--text-muted)" }}>
