@@ -59,6 +59,10 @@ export const api = {
   euroleaguePlayers:      (p) => get("/euroleague/players", p),
   euroleaguePlayerScores: (name) => get(`/euroleague/players/${encodeURIComponent(name)}/scores`),
 
+  // NCAA D-I
+  ncaaPlayers:      (p) => get("/ncaa/players", p),
+  ncaaPlayerScores: (name) => get(`/ncaa/players/${encodeURIComponent(name)}/scores`),
+
   // Meta
   meta: () => get("/meta"),
 

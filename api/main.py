@@ -467,6 +467,28 @@ def _load_euroleague_scores() -> pd.DataFrame:
 
 
 @lru_cache(maxsize=1)
+def _load_ncaa_scores() -> pd.DataFrame:
+    """NCAA D-I player scores — ncaa__2025-26__player_scores.parquet."""
+    p = DATA / "ncaa__2025-26__player_scores.parquet"
+    if not p.exists():
+        raise FileNotFoundError("NCAA data not found. Run: python src/fetch_ncaa.py")
+    df = pd.read_parquet(p)
+    score_cols = [c for c in df.columns if c.startswith("score_")]
+    df[score_cols] = df[score_cols].fillna(0)
+    df["POS5"] = _assign_pos5(df)
+    if "overall_score" in df.columns:
+        df["overall_pct"] = df["overall_score"].rank(pct=True, na_option="keep").round(3)
+        def _tier(pct):
+            if pd.isna(pct): return ""
+            if pct >= 0.90: return "Elite"
+            if pct >= 0.75: return "Star"
+            if pct >= 0.50: return "Starter"
+            return "Role Player"
+        df["overall_tier"] = df["overall_pct"].apply(_tier)
+    return df
+
+
+@lru_cache(maxsize=1)
 def _load_labeled() -> pd.DataFrame:
     return pd.read_parquet(DATA / "2025-26__labeled.parquet")
 
@@ -627,6 +649,7 @@ def clear_cache():
     _load_scores.cache_clear()
     _load_gleague_scores.cache_clear()
     _load_euroleague_scores.cache_clear()
+    _load_ncaa_scores.cache_clear()
     _load_labeled.cache_clear()
     _load_duo_compat.cache_clear()
     _load_lineup_compat.cache_clear()
@@ -1576,8 +1599,77 @@ def get_euroleague_player_scores(player_name: str):
 
 
 @app.get("/api/ncaa/players")
-def get_ncaa_players():
-    return {"coming_soon": True, "players": [], "total": 0, "message": "NCAA data pipeline coming later"}
+def get_ncaa_players(
+    search:   Optional[str] = Query(None),
+    position: Optional[str] = Query(None),
+    arch:     Optional[str] = Query(None),
+    sort_by:  str = Query("overall_score"),
+    limit:    int = Query(80, ge=1, le=500),
+    offset:   int = Query(0, ge=0),
+):
+    try:
+        df = _load_ncaa_scores().copy()
+    except FileNotFoundError:
+        return {"coming_soon": False, "players": [], "total": 0,
+                "message": "Run python src/fetch_ncaa.py to fetch NCAA data"}
+
+    if search:
+        df = df[df["PLAYER_NAME"].str.contains(search, case=False, na=False)]
+    if position:
+        pos_upper = position.upper()
+        if pos_upper in ("PG", "SG", "SF", "PF", "C") and "POS5" in df.columns:
+            df = df[df["POS5"] == pos_upper]
+        elif "POSITION" in df.columns:
+            df = df[df["POSITION"].str.contains(position, case=False, na=False)]
+    if arch:
+        df = df[df["primary_arch"].str.lower() == arch.lower()]
+
+    valid_sort = sort_by if sort_by in df.columns else "overall_score"
+    df = df.sort_values(valid_sort, ascending=False, na_position="last")
+
+    total = len(df)
+    page  = df.iloc[offset: offset + limit]
+    return {"total": total, "offset": offset, "limit": limit, "players": _safe(page)}
+
+
+@app.get("/api/ncaa/players/{player_name}/scores")
+def get_ncaa_player_scores(player_name: str):
+    try:
+        df = _load_ncaa_scores()
+    except FileNotFoundError:
+        raise HTTPException(status_code=503, detail="NCAA data not available")
+
+    match = df[df["PLAYER_NAME"].str.lower() == player_name.lower()]
+    if match.empty:
+        match = df[df["PLAYER_NAME"].str.contains(player_name, case=False, na=False)]
+    if match.empty:
+        raise HTTPException(status_code=404, detail=f"{player_name} not found in NCAA")
+
+    row = match.iloc[0]
+    score_cols = [c for c in df.columns if c.startswith("score_")]
+    score_cols_core = [c for c in score_cols if c.replace("score_","") in CORE_NOUNS]
+    core_scores = {c.replace("score_",""):round(float(row[c]),3) for c in score_cols_core}
+    gp = int(row.get("GP", 30)) if pd.notna(row.get("GP")) else 30
+
+    return {
+        "name":             row["PLAYER_NAME"],
+        "team":             row.get("TEAM_ABBREVIATION",""),
+        "conference":       row.get("CONFERENCE",""),
+        "class":            row.get("CLASS",""),
+        "position":         row.get("POSITION",""),
+        "pos5":             row.get("POS5",""),
+        "gp":               gp,
+        "pts":              round(float(row["PTS"]),1) if "PTS" in row.index and pd.notna(row.get("PTS")) else None,
+        "reb":              round(float(row["REB"]),1) if "REB" in row.index and pd.notna(row.get("REB")) else None,
+        "ast":              round(float(row["AST"]),1) if "AST" in row.index and pd.notna(row.get("AST")) else None,
+        "primary_arch":     row.get("primary_arch",""),
+        "overall_score":    round(float(row["overall_score"]),3) if pd.notna(row.get("overall_score")) else None,
+        "overall_pct":      round(float(row["overall_pct"]),3)   if pd.notna(row.get("overall_pct"))   else None,
+        "overall_tier":     row.get("overall_tier",""),
+        "scores":           core_scores,
+        "confidence_margin": _confidence_margin(gp),
+        "league":           "ncaa",
+    }
 
 
 # ─── Takım bazlı endpointler ──────────────────────────────────────────────────

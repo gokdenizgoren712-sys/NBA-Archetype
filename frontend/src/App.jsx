@@ -160,8 +160,8 @@ function SideNav() {
 }
 
 /* ── Alt nav (mobile) — 2 satır ─────────────────────────────────── */
-// NCAA hâlâ Coming Soon → mobilde gösterme, sidebar'da erişilebilir
-const BOTTOM_NAV = NAV.filter(n => n.to !== "/ncaa");
+// NCAA artık canlı → mobil alt nav'da da göster
+const BOTTOM_NAV = NAV;
 
 function BottomNav() {
   const location = useLocation();

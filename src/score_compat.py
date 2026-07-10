@@ -140,6 +140,10 @@ def build_score_table(season: str = "2025-26", league: str = "nba") -> pd.DataFr
     for col in ["OBPM", "DBPM", "USG_PCT", "DEF_RATING", "OFF_RATING", "NET_RATING"]:
         if col in df.columns:
             out[col] = df[col].values
+    # Lig-özel bağlam kolonları (varsa taşı — NCAA: konferans + sınıf)
+    for col in ["CONFERENCE", "CLASS"]:
+        if col in df.columns:
+            out[col] = df[col].values
 
     for c in ALL_COMP_COLS:
         if c in scores.columns:
@@ -197,6 +201,21 @@ def build_score_table(season: str = "2025-26", league: str = "nba") -> pd.DataFr
                 return noun
             return ranked[0][0] if ranked else ""
         out["primary_arch"] = out.apply(_pick_arch, axis=1)
+
+        # ── G4: NBA-dışı lig kalibrasyonu ────────────────────────────────────
+        # FALLBACK yolu (tracking/hustle metrik yok) skorları sistematik olarak
+        # sıkıştırır → ham argmax birkaç arketipe yığılır (5-7 arketip boş kalır).
+        # Çözüm: primary_arch'ı LİG-İÇİ z-skor ile yeniden ata. Her arketip skoru
+        # kendi lig dağılımında standardize edilir; oyuncu, o arketipte lig
+        # ortalamasından en çok saptığı yere atanır → dağılım dengelenir, büyük-
+        # adam arketipleri (Anchor/Rim Runner) yüzeye çıkar. Skorlar zaten
+        # pozisyon-penalty'li olduğundan z pozisyona duyarlı kalır.
+        # NBA'e UYGULANMAZ: zengin metriklerle zaten iyi kalibre (test_g4 doğruladı).
+        if league != "nba":
+            _M = out[core_score_cols].astype(float).fillna(0.0)
+            _mu, _sd = _M.mean(), _M.std().replace(0, 1)
+            _Z = (_M - _mu) / _sd
+            out["primary_arch"] = _Z.idxmax(axis=1).str.replace("score_", "", regex=False)
 
     # Playoff blending: playoff parquet varsa comp_score'u harmanlıyoruz.
     # overall = 0.70 * reg_comp + 0.30 * playoff_comp  (GP_playoff >= 5 şartı)
