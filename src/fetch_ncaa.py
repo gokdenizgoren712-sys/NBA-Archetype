@@ -31,6 +31,10 @@ sys.path.insert(0, str(ROOT / "config"))
 MIN_GP  = 15
 MIN_MPG = 8.0
 
+# SOS: konferans gücüne göre üretim iskontosu. En güçlü konf → 1.0, en zayıf → 1-K_SOS.
+# K_SOS varsayılan; P5 backtest'te NBA-sonucu yordama gücüne göre ayarlanacak.
+K_SOS = 0.15
+
 # Torvik rol etiketi ([64]) → engine NBA_POSITION_MAP anahtarı
 ROLE_MAP = {
     "Pure PG":    "Guard",
@@ -104,11 +108,48 @@ def _fetch_raw(year: int) -> list:
     return data
 
 
+def _conf_strength(year: int) -> dict:
+    """Konferans gücü = üye takımların ortalama AdjEM'i. Torvik getgamestats'ten
+    ([27] = maç-bazlı opponent-adjusted marj) türetilir. Dönüş: {conf: adjem}.
+    getgamestats CSV cache'lenir (~5MB)."""
+    import csv, io
+    import numpy as np
+    from collections import defaultdict
+    games_p = DATA_DIR / f"ncaa__torvik_games__{year}.csv"
+    if games_p.exists():
+        txt = games_p.read_text(encoding="utf-8")
+    else:
+        url = f"https://barttorvik.com/getgamestats.php?year={year}&csv=1"
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        print(f"  Torvik maç-stats çekiliyor (SOS): {url}")
+        txt = urllib.request.urlopen(req, timeout=90).read().decode("utf-8", "ignore")
+        games_p.write_text(txt, encoding="utf-8")
+        time.sleep(0.5)
+    team_margins = defaultdict(list); team_conf = {}
+    for r in csv.reader(io.StringIO(txt)):
+        try:
+            team_margins[r[2]].append(float(r[27])); team_conf[r[2]] = r[3]
+        except Exception:
+            continue
+    team_adjem = {t: float(np.mean(m)) for t, m in team_margins.items() if len(m) >= 5}
+    conf_teams = defaultdict(list)
+    for t, ae in team_adjem.items():
+        conf_teams[team_conf[t]].append(ae)
+    return {c: float(np.mean(v)) for c, v in conf_teams.items() if len(v) >= 2}
+
+
 def fetch_ncaa(season_label: str = "2025-26") -> pd.DataFrame:
     from datetime import date
     year = _season_year(season_label)
     rows = _fetch_raw(year)
     draft_ref = date(year, 6, 25)   # ~draft gecesi → prospect yaşı bu referansla
+
+    conf_str = _conf_strength(year)   # {conf: AdjEM} — SOS için
+    if conf_str:
+        _amax, _amin = max(conf_str.values()), min(conf_str.values())
+        _arange = (_amax - _amin) or 1.0
+    else:
+        _amax = _amin = 0.0; _arange = 1.0
 
     recs = []
     for r in rows:
@@ -140,6 +181,9 @@ def fetch_ncaa(season_label: str = "2025-26") -> pd.DataFrame:
             "PLAYER_NAME":        r[0],
             "TEAM_ABBREVIATION":  r[1],
             "CONFERENCE":         r[2],
+            "CONF_ADJEM":         conf_str.get(r[2]),
+            "SOS_FACTOR":         (1 - K_SOS * (_amax - conf_str[r[2]]) / _arange)
+                                  if r[2] in conf_str else 1.0,
             "CLASS":              r[25],
             "AGE":                _age_on(r[66], draft_ref),
             "BIRTHDATE":          r[66],

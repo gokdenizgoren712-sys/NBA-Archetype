@@ -140,8 +140,8 @@ def build_score_table(season: str = "2025-26", league: str = "nba") -> pd.DataFr
     for col in ["OBPM", "DBPM", "USG_PCT", "DEF_RATING", "OFF_RATING", "NET_RATING"]:
         if col in df.columns:
             out[col] = df[col].values
-    # Lig-özel bağlam + prospect kolonları (varsa taşı — yaş, konferans, sınıf)
-    for col in ["AGE", "CONFERENCE", "CLASS"]:
+    # Lig-özel bağlam + prospect kolonları (varsa taşı — yaş, konferans, sınıf, SOS)
+    for col in ["AGE", "CONFERENCE", "CLASS", "CONF_ADJEM", "SOS_FACTOR"]:
         if col in df.columns:
             out[col] = df[col].values
 
