@@ -2148,11 +2148,18 @@ import re as _re
 
 init_db()
 
-# Teşhis: app.db gerçekte nereye yazıyor? Volume kalıcılığını loglardan doğrulamak için.
+# Teşhis: app.db gerçekte nereye yazıyor + kaç satır var? Volume kalıcılığını
+# loglardan doğrulamak için. Restart sonrası sayılar 0'a düşüyorsa persistence bozuk.
 # /data/... → volume (kalıcı) ; /app/data/... → image (restart'ta sıfırlanır)
 import api.db as _dbmod
-print(f"[startup] DB_PATH = {_dbmod.DB_PATH.resolve()}  (exists={_dbmod.DB_PATH.exists()})",
-      flush=True)
+try:
+    with get_conn() as _c:
+        _u = _c.execute("SELECT COUNT(*) FROM users").fetchone()[0]
+        _g = _c.execute("SELECT COUNT(*) FROM lineup_games").fetchone()[0]
+    print(f"[startup] DB_PATH = {_dbmod.DB_PATH.resolve()}  users={_u}  lineup_games={_g}",
+          flush=True)
+except Exception as _e:
+    print(f"[startup] DB_PATH diag failed: {_e}", flush=True)
 
 # ── Pydantic modelleri ────────────────────────────────────────────────────────
 
