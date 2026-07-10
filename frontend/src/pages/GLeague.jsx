@@ -49,6 +49,11 @@ function GLeagueDetailPanel({ selected, detail, tab, setTab }) {
                 G-Lg
               </span>
             </div>
+            {detail?.age != null && (
+              <div className="text-[10px] mt-1" style={{ color: "var(--text-faint)" }}>
+                Age {detail.age}
+              </div>
+            )}
           </div>
           {detail?.overall_score != null && (
             <div className="text-right shrink-0">

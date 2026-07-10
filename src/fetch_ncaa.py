@@ -80,6 +80,16 @@ def _height_in(s) -> float:
         return 0.0
 
 
+def _age_on(birth_str, ref_date) -> float:
+    """'1999-10-15' + referans tarih → yaş (yıl, 1 ondalık). Bozuksa None."""
+    try:
+        from datetime import date
+        y, m, d = map(int, str(birth_str).split("-"))
+        return round((ref_date - date(y, m, d)).days / 365.25, 1)
+    except Exception:
+        return None
+
+
 def _fetch_raw(year: int) -> list:
     """Torvik getadvstats — ham JSON (cache'li)."""
     raw_p = DATA_DIR / f"ncaa__torvik_raw__{year}.json"
@@ -95,8 +105,10 @@ def _fetch_raw(year: int) -> list:
 
 
 def fetch_ncaa(season_label: str = "2025-26") -> pd.DataFrame:
+    from datetime import date
     year = _season_year(season_label)
     rows = _fetch_raw(year)
+    draft_ref = date(year, 6, 25)   # ~draft gecesi → prospect yaşı bu referansla
 
     recs = []
     for r in rows:
@@ -129,6 +141,8 @@ def fetch_ncaa(season_label: str = "2025-26") -> pd.DataFrame:
             "TEAM_ABBREVIATION":  r[1],
             "CONFERENCE":         r[2],
             "CLASS":              r[25],
+            "AGE":                _age_on(r[66], draft_ref),
+            "BIRTHDATE":          r[66],
             "IMAGE_URL":          "",
             "POSITION":           ROLE_MAP.get(r[64], "Forward"),
             "TORVIK_ROLE":        r[64],

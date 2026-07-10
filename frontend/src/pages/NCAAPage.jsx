@@ -50,10 +50,11 @@ function NCAADetailPanel({ selected, detail, tab, setTab }) {
                 NCAA
               </span>
             </div>
-            {/* NCAA-özel: konferans + sınıf */}
-            {(detail?.conference || detail?.class) && (
+            {/* NCAA-özel: konferans · sınıf · yaş */}
+            {(detail?.conference || detail?.class || detail?.age != null) && (
               <div className="text-[10px] mt-1" style={{ color: "var(--text-faint)" }}>
-                {detail.conference}{detail.conference && detail.class ? " · " : ""}{detail.class}
+                {[detail.conference, detail.class, detail.age != null ? `${detail.age}y` : null]
+                  .filter(Boolean).join(" · ")}
               </div>
             )}
           </div>

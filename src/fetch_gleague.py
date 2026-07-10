@@ -128,6 +128,11 @@ def merge_gleague(tables: dict, season: str = "2025-26") -> pd.DataFrame:
     if "POSITION" not in merged.columns:
         merged["POSITION"] = ""
 
+    # Yaş (bio) — prospect sistemi için taşı
+    if bio is not None and not bio.empty and "AGE" in bio.columns and "AGE" not in merged.columns:
+        merged = merged.merge(bio[["PLAYER_ID", "PLAYER_NAME", "AGE"]],
+                              on=["PLAYER_ID", "PLAYER_NAME"], how="left")
+
     return merged.reset_index(drop=True)
 
 

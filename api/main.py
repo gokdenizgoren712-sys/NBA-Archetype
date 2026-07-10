@@ -1521,6 +1521,7 @@ def get_gleague_player_scores(player_name: str):
         "overall_pct":      round(float(row["overall_pct"]),3)   if pd.notna(row.get("overall_pct"))   else None,
         "overall_tier":     row.get("overall_tier",""),
         "scores":           core_scores,
+        "age":              round(float(row["AGE"]),1) if "AGE" in row.index and pd.notna(row.get("AGE")) else None,
         "confidence_margin": _confidence_margin(gp),
         "league":           "gleague",
     }
@@ -1593,6 +1594,7 @@ def get_euroleague_player_scores(player_name: str):
         "overall_pct":      round(float(row["overall_pct"]),3)   if pd.notna(row.get("overall_pct"))   else None,
         "overall_tier":     row.get("overall_tier",""),
         "scores":           core_scores,
+        "age":              round(float(row["AGE"]),1) if "AGE" in row.index and pd.notna(row.get("AGE")) else None,
         "confidence_margin": _confidence_margin(gp),
         "league":           "euroleague",
     }
@@ -1656,6 +1658,7 @@ def get_ncaa_player_scores(player_name: str):
         "team":             row.get("TEAM_ABBREVIATION",""),
         "conference":       row.get("CONFERENCE",""),
         "class":            row.get("CLASS",""),
+        "age":              round(float(row["AGE"]),1) if "AGE" in row.index and pd.notna(row.get("AGE")) else None,
         "position":         row.get("POSITION",""),
         "pos5":             row.get("POS5",""),
         "gp":               gp,
