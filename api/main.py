@@ -2148,6 +2148,12 @@ import re as _re
 
 init_db()
 
+# Teşhis: app.db gerçekte nereye yazıyor? Volume kalıcılığını loglardan doğrulamak için.
+# /data/... → volume (kalıcı) ; /app/data/... → image (restart'ta sıfırlanır)
+import api.db as _dbmod
+print(f"[startup] DB_PATH = {_dbmod.DB_PATH.resolve()}  (exists={_dbmod.DB_PATH.exists()})",
+      flush=True)
+
 # ── Pydantic modelleri ────────────────────────────────────────────────────────
 
 class RegisterBody(BaseModel):
