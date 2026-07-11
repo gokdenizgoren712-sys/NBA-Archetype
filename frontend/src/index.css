@@ -2,6 +2,19 @@
 
 /* ── Tailwind v4: palette overrides ──────────────────────────────── */
 @theme {
+  /* Primary Arch — Data-Driven Basketball Identity (design system) */
+  --color-darkBg:      #0b0b0b;
+  --color-surfaceBg:   #131313;
+  --color-surfaceCard: #1a1a1a;
+  --color-brandBlue:   #1d428a;
+  --color-brandRed:    #c8102e;
+  --color-yamabuki:    #FFB11B;
+  --color-asagi:       #00A3AF;
+
+  /* Typography — Rajdhani (display/logo) + Outfit (body) */
+  --font-logo: "Rajdhani", ui-sans-serif, sans-serif;
+  --font-sans: "Outfit", ui-sans-serif, sans-serif;
+
   /* Remap violet → amber/gold (NBA accent) */
   --color-violet-50:  #fffbeb;
   --color-violet-100: #fef3c7;

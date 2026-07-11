@@ -1,6 +1,8 @@
 import { BrowserRouter, Routes, Route, NavLink, Navigate, useNavigate, useLocation } from "react-router-dom";
 import { useState, useEffect, lazy, Suspense } from "react";
-import { NBAIcon, GLeagueIcon, NCAAIcon, EuroLeagueIcon } from "./components/LeagueIcons";
+import { Logo, GameIcon, NBAIcon, GLeagueIcon, NCAAIcon, EuroLeagueIcon,
+         LineupsIcon, ExploreIcon, CompareIcon, AffinityIcon, BlogIcon,
+         GlossaryIcon, AboutIcon, AdminIcon } from "./components/BrandIcons";
 
 // Route sayfaları LAZY — her biri kendi chunk'ına bölünür. Ağır lib'ler böylece
 // initial bundle'dan çıkar: tiptap→ArticleEditor chunk'ı, recharts→paylaşılan radar
@@ -35,18 +37,18 @@ import { api } from "./api";
 
 /* ── Nav config ──────────────────────────────────────────────────── */
 const NAV = [
-  { to: "/game",       icon: "⬡",                label: "Game"    },
-  { to: "/players",    icon: <NBAIcon />,         label: "NBA"     },
-  { to: "/gleague",    icon: <GLeagueIcon />,     label: "G-Lg"   },
-  { to: "/ncaa",       icon: <NCAAIcon />,        label: "NCAA"    },
-  { to: "/euroleague", icon: <EuroLeagueIcon />,  label: "EUR"     },
-  { to: "/lineups",    icon: "☰",                label: "Lineups" },
-  { to: "/explore",    icon: "◎",                label: "Explore" },
-  { to: "/compare",    icon: "⇌",                label: "Compare" },
-  { to: "/affinity",   icon: "⬡",                label: "Affinity"},
-  { to: "/blog",       icon: "✍",                label: "Blog"    },
-  { to: "/glossary",   icon: "≡",                label: "Glossary"},
-  { to: "/about",      icon: "ℹ",                label: "About"   },
+  { to: "/game",       Icon: GameIcon,       label: "Game"    },
+  { to: "/players",    Icon: NBAIcon,        label: "NBA"     },
+  { to: "/gleague",    Icon: GLeagueIcon,    label: "G-Lg"    },
+  { to: "/ncaa",       Icon: NCAAIcon,       label: "NCAA"    },
+  { to: "/euroleague", Icon: EuroLeagueIcon, label: "EUR"     },
+  { to: "/lineups",    Icon: LineupsIcon,    label: "Lineups" },
+  { to: "/explore",    Icon: ExploreIcon,    label: "Explore" },
+  { to: "/compare",    Icon: CompareIcon,    label: "Compare" },
+  { to: "/affinity",   Icon: AffinityIcon,   label: "Affinity"},
+  { to: "/blog",       Icon: BlogIcon,       label: "Blog"    },
+  { to: "/glossary",   Icon: GlossaryIcon,   label: "Glossary"},
+  { to: "/about",      Icon: AboutIcon,      label: "About"   },
 ];
 
 /* ── User button (top-right) ─────────────────────────────────────── */
@@ -55,16 +57,14 @@ function UserButton() {
   const navigate = useNavigate();
   if (!isLoggedIn) return (
     <button onClick={() => navigate("/login")}
-      className="px-2.5 py-1 rounded text-xs font-medium transition-colors"
-      style={{ background: "var(--accent)", color: "#000" }}>
+      className="px-3 py-1 rounded-lg text-xs font-medium bg-yamabuki text-darkBg hover:bg-white transition-colors">
       Log In
     </button>
   );
   return (
     <button onClick={() => navigate("/profile")}
-      className="w-7 h-7 flex items-center justify-center rounded-full text-xs font-bold"
-      title={user.username}
-      style={{ background: "var(--accent)", color: "#000" }}>
+      className="w-7 h-7 flex items-center justify-center rounded-full text-xs font-bold font-logo bg-yamabuki text-darkBg"
+      title={user.username}>
       {user.username?.[0]?.toUpperCase()}
     </button>
   );
@@ -79,18 +79,15 @@ function TopBar() {
   useEffect(() => { api.meta().then(setMeta).catch(() => {}); }, []);
 
   return (
-    <header className="h-11 shrink-0 flex items-center px-4 gap-3 border-b"
-      style={{ background: "var(--bg-surface)", borderColor: "rgba(200,16,46,0.22)" }}>
+    <header className="h-12 shrink-0 flex items-center px-4 gap-3 border-b border-gray-800 bg-darkBg">
 
-      {/* Logo */}
+      {/* Logo — 12-gen Dodecagon + PRIMARY ARCH */}
       <button onClick={() => navigate("/game")}
-        className="flex items-center gap-2 hover:opacity-75 transition-opacity">
-        <NBAIcon size={18} />
-        <span className="font-bold text-sm tracking-wide hidden sm:block" style={{ color: "var(--accent)" }}>
-          NBA Archetype
-        </span>
-        <span className="font-bold text-sm tracking-wide sm:hidden" style={{ color: "var(--accent)" }}>
-          NBA
+        className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+        <Logo size={30} />
+        <span className="font-logo text-lg tracking-widest hidden sm:flex leading-none pt-0.5">
+          <span className="font-semibold text-white">PRIMARY</span>
+          <span className="font-bold text-yamabuki ml-1">ARCH</span>
         </span>
       </button>
 
@@ -132,26 +129,24 @@ function SideNav() {
 
   const items = [
     ...NAV,
-    ...(isAdmin ? [{ to: "/admin/articles", icon: "⚙", label: "Admin" }] : []),
+    ...(isAdmin ? [{ to: "/admin/articles", Icon: AdminIcon, label: "Admin" }] : []),
   ];
 
   return (
-    <aside className="hidden md:flex flex-col w-14 shrink-0 border-r pt-2 pb-4"
-      style={{ background: "var(--bg-surface)", borderColor: "rgba(200,16,46,0.38)" }}>
+    <aside className="hidden md:flex flex-col w-16 shrink-0 border-r border-gray-800 bg-darkBg pt-2 pb-4">
       {items.map(n => {
         const active = location.pathname === n.to || location.pathname.startsWith(n.to + "/");
         return (
           <NavLink key={n.to} to={n.to} title={n.label}
-            className="relative flex flex-col items-center justify-center h-12 text-lg transition-colors group"
-            style={{ color: active ? "var(--accent)" : "var(--text-muted)" }}
+            className={`group relative flex flex-col items-center justify-center h-14 gap-1 transition-colors
+              ${active ? "text-white" : "text-gray-400 hover:text-white"}`}
           >
             {/* active indicator */}
             {active && (
-              <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-r"
-                style={{ background: "var(--accent)" }} />
+              <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 rounded-r bg-yamabuki" />
             )}
-            <span className="leading-none">{n.icon}</span>
-            <span className="text-[8px] mt-0.5 font-medium tracking-wide opacity-70">{n.label}</span>
+            <n.Icon size={22} />
+            <span className="font-logo text-[9px] font-semibold tracking-wider uppercase">{n.label}</span>
           </NavLink>
         );
       })}
@@ -172,11 +167,11 @@ function BottomNav() {
         const active = location.pathname === n.to;
         return (
           <NavLink key={n.to} to={n.to}
-            className="flex-1 flex flex-col items-center justify-center py-1.5 text-base transition-colors"
-            style={{ color: active ? "var(--accent)" : "var(--text-muted)" }}
+            className={`group flex-1 flex flex-col items-center justify-center py-1.5 gap-0.5 transition-colors
+              ${active ? "text-white" : "text-gray-400"}`}
           >
-            <span className="leading-none text-sm">{n.icon}</span>
-            <span className="text-[8px] mt-0.5 font-medium">{n.label}</span>
+            <n.Icon size={18} />
+            <span className="font-logo text-[8px] font-semibold tracking-wide uppercase">{n.label}</span>
           </NavLink>
         );
       })}
@@ -185,10 +180,9 @@ function BottomNav() {
 
   const mid = Math.ceil(BOTTOM_NAV.length / 2);
   return (
-    <nav className="md:hidden shrink-0 border-t"
-      style={{ background: "var(--bg-surface)", borderColor: "rgba(200,16,46,0.30)" }}>
+    <nav className="md:hidden shrink-0 border-t border-gray-800 bg-darkBg">
       <Row items={BOTTOM_NAV.slice(0, mid)} />
-      <div className="border-t" style={{ borderColor: "var(--border)" }}>
+      <div className="border-t border-gray-800">
         <Row items={BOTTOM_NAV.slice(mid)} />
       </div>
     </nav>
@@ -201,7 +195,7 @@ function PageLoading() {
   return (
     <div className="h-full w-full flex items-center justify-center"
          style={{ color: "var(--text-muted)" }}>
-      <div className="animate-pulse text-sm tracking-wide">yükleniyor…</div>
+      <div className="animate-pulse font-logo text-sm tracking-widest uppercase">Loading…</div>
     </div>
   );
 }
