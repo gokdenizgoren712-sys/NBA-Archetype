@@ -18,7 +18,13 @@ import pandas as pd
 CORE_NOUNS = ["Engine", "Ecosystem", "Hub", "Connector", "Creator", "Anchor",
               "Spacer", "Finisher", "Force", "Initiator", "Stopper", "Rim Runner"]
 
-# ── Ayarlanabilir varsayılanlar (P5'te kalibre edilecek) ──────────────────────
+# ── Kalibre edilmiş sabitler (P5 backtest cetveli: 5 sınıf → gerçek NBA peak BPM) ──
+# Üretim sinyali = OBPM+PTS persantili (overall_pct breadth'inden İYİ: Spearman
+# 0.14→0.20). SOS persantili + üretim harmanı → 0.26 (mevcut 0.19'dan ~%37 güçlü).
+W_OBPM     = 0.50     # üretim harmanında OBPM payı
+W_PTS      = 0.50     # üretim harmanında PTS payı
+W_PROD     = 0.60     # floor'da üretim payı
+W_SOS      = 0.40     # floor'da SOS-persantil payı
 W_FLOOR    = 0.40     # nota floor katkısı
 W_CEILING  = 0.60     # nota ceiling katkısı (upside odaklı)
 YOUNG_AGE  = 18.0     # tam projeksiyon yaşı (bu ve altı → maks upside)
@@ -53,16 +59,20 @@ def add_prospect_fields(df: pd.DataFrame) -> pd.DataFrame:
     if n == 0:
         return out
 
-    # overall_pct yoksa overall_score'dan üret (lig-içi persantil)
-    if "overall_pct" not in out.columns and "overall_score" in out.columns:
-        out["overall_pct"] = out["overall_score"].rank(pct=True, na_option="keep")
-
-    overall = out["overall_pct"].fillna(out["overall_pct"].median()) if "overall_pct" in out else pd.Series(0.5, index=out.index)
-    sos = out["SOS_FACTOR"].fillna(1.0) if "SOS_FACTOR" in out.columns else pd.Series(1.0, index=out.index)
     age = out["AGE"] if "AGE" in out.columns else pd.Series(np.nan, index=out.index)
 
-    # ── FLOOR (nba_fit): şu anki üretim seviyesi × SOS iskontosu, 0-100 ──
-    floor = (overall * sos * 100).clip(0, 100)
+    def _pctl(col):
+        """Lig/sınıf-içi persantil (0-1). Kolon yoksa/boşsa nötr 0.5."""
+        if col in out.columns and out[col].notna().any():
+            return out[col].rank(pct=True).fillna(0.5)
+        return pd.Series(0.5, index=out.index)
+
+    # ── FLOOR (nba_fit): üretim (OBPM+PTS persantili) + SOS-persantili, 0-100 ──
+    # P5 cetveli: bu sinyal overall_pct breadth'inden belirgin daha yordayıcı.
+    prodmix = W_OBPM * _pctl("OBPM") + W_PTS * _pctl("PTS")
+    sos_p = _pctl("CONF_ADJEM")                      # NCAA: konf gücü; G-League: 0.5 (nötr)
+    prod01 = (W_PROD * prodmix + W_SOS * sos_p).clip(0, 1)
+    floor = (prod01 * 100).clip(0, 100)
 
     # ── CEILING: yaş-projeksiyonlu. Genç oyuncu kalan headroom'un bir kısmını kazanır ──
     yf = age.apply(_youth_factor)
