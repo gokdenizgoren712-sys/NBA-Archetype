@@ -16,6 +16,16 @@ const POS_COLOR = {
   SF: "text-emerald-400", PF: "text-orange-400", C: "text-red-400",
 };
 
+const GLG = "#A8263F";
+const TIER_COLOR = {
+  "Elite Prospect": "#a855f7", "First-Round": "#3b82f6", "Rotation Upside": "#10b981",
+  "Developmental": "#f59e0b", "Longshot": "#94a3b8",
+};
+const OUTCOME_COLOR = {
+  "Superstar": "#a855f7", "All-Star": "#3b82f6", "Quality Starter": "#10b981",
+  "Starter": "#22c55e", "Rotation": "#f59e0b", "Fringe": "#94a3b8",
+};
+
 function topPct(pct) {
   if (pct == null) return null;
   const p = Math.round(pct * 100);
@@ -72,7 +82,7 @@ function GLeagueDetailPanel({ selected, detail, tab, setTab }) {
 
       {/* Tabs */}
       <div className="flex shrink-0 border-b" style={{ borderColor: "var(--border)" }}>
-        {[["radar", "Radar"], ["scores", "Scores"]].map(([k, l]) => (
+        {[["prospect", "Prospect"], ["radar", "Radar"], ["scores", "Scores"]].map(([k, l]) => (
           <button key={k} onClick={() => setTab(k)}
             className="flex-1 py-2 text-xs font-medium transition-colors"
             style={{
@@ -93,6 +103,91 @@ function GLeagueDetailPanel({ selected, detail, tab, setTab }) {
                 style={{ background: "rgba(245,158,11,.10)", color: "#f59e0b", border: "1px solid rgba(245,158,11,.25)" }}>
                 ⚠ Small sample ({selected.GP} games)
               </div>
+            )}
+
+            {tab === "prospect" && (
+              detail.prospect ? (
+              <div className="p-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-4xl font-bold leading-none"
+                      style={{ color: TIER_COLOR[detail.prospect.tier] || "var(--accent)" }}>
+                      {detail.prospect.grade}
+                    </div>
+                    <div className="text-[10px] uppercase tracking-wide mt-1" style={{ color: "var(--text-faint)" }}>
+                      Prospect Grade
+                    </div>
+                  </div>
+                  <span className="px-3 py-1 rounded-full text-xs font-semibold"
+                    style={{
+                      background: (TIER_COLOR[detail.prospect.tier] || "#888") + "22",
+                      color: TIER_COLOR[detail.prospect.tier] || "var(--text-primary)",
+                      border: `1px solid ${(TIER_COLOR[detail.prospect.tier] || "#888")}55`,
+                    }}>
+                    {detail.prospect.tier}
+                  </span>
+                </div>
+
+                <div>
+                  <div className="flex justify-between text-[10px] mb-1" style={{ color: "var(--text-muted)" }}>
+                    <span>Floor (now) <b style={{ color: "var(--text-primary)" }}>{detail.prospect.floor}</b></span>
+                    <span>Ceiling <b style={{ color: "var(--text-primary)" }}>{detail.prospect.ceiling}</b></span>
+                  </div>
+                  <div className="h-2 rounded-full overflow-hidden" style={{ background: "var(--bg-elevated)" }}>
+                    <div className="h-full rounded-full" style={{
+                      width: `${detail.prospect.ceiling}%`,
+                      background: `linear-gradient(90deg, ${GLG}, ${TIER_COLOR[detail.prospect.tier] || "#a855f7"})`,
+                    }} />
+                  </div>
+                  <div className="text-[9px] mt-1" style={{ color: "var(--text-faint)" }}>
+                    NBA-uygunluk → yaş-projeksiyonlu tavan
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <div className="text-[10px] uppercase tracking-wider mb-1.5" style={{ color: "#10b981" }}>İyi olduğu</div>
+                    <div className="flex flex-col gap-1">
+                      {(detail.prospect.strengths || []).map(s => (
+                        <span key={s} className="text-xs px-2 py-1 rounded"
+                          style={{ background: "rgba(16,185,129,.10)", color: "#10b981", border: "1px solid rgba(16,185,129,.25)" }}>{s}</span>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] uppercase tracking-wider mb-1.5" style={{ color: "#ef4444" }}>Zayıf olduğu</div>
+                    <div className="flex flex-col gap-1">
+                      {(detail.prospect.weaknesses || []).map(w => (
+                        <span key={w} className="text-xs px-2 py-1 rounded"
+                          style={{ background: "rgba(239,68,68,.10)", color: "#ef4444", border: "1px solid rgba(239,68,68,.25)" }}>{w}</span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {(detail.prospect.comparables || []).length > 0 && (
+                  <div>
+                    <div className="text-[10px] uppercase tracking-wider mb-1.5" style={{ color: GLG }}>NBA'de benziyor</div>
+                    <div className="flex flex-col gap-1">
+                      {detail.prospect.comparables.map((c, i) => (
+                        <div key={i} className="flex items-center justify-between text-xs px-2 py-1.5 rounded"
+                          style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
+                          <span style={{ color: "var(--text-primary)" }}>{c.name}</span>
+                          <span className="text-[10px]" style={{ color: OUTCOME_COLOR[c.outcome] || "var(--text-muted)" }}>
+                            {c.outcome}{c.peak_bpm != null ? ` · BPM ${c.peak_bpm}` : ""}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="text-[9px] mt-1" style={{ color: "var(--text-faint)" }}>
+                      Giriş (rookie) arketip profili benzerliği · zirve = kariyer sonucu
+                    </div>
+                  </div>
+                )}
+              </div>
+              ) : (
+                <div className="p-8 text-center text-sm" style={{ color: "var(--text-muted)" }}>Prospect verisi yok</div>
+              )
             )}
 
             {tab === "radar" && (
@@ -155,7 +250,7 @@ export default function GLeague() {
 
   const [selected, setSelected] = useState(null);
   const [detail, setDetail]     = useState(null);
-  const [tab, setTab]           = useState("radar");
+  const [tab, setTab]           = useState("prospect");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -181,7 +276,7 @@ export default function GLeague() {
   useEffect(() => { load(); }, [load]);
 
   const openPlayer = async (p) => {
-    setSelected(p); setDetail(null); setTab("radar");
+    setSelected(p); setDetail(null); setTab("prospect");
     try {
       const sc = await api.gleaguePlayerScores(p.PLAYER_NAME);
       setDetail(sc);
