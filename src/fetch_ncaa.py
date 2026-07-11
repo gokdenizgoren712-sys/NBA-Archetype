@@ -27,9 +27,10 @@ DATA_DIR.mkdir(exist_ok=True)
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "config"))
 
-# Rotasyon filtresi: gürültüyü (kısa süre oynayanlar) at, persantil havuzunu temiz tut
-MIN_GP  = 15
-MIN_MPG = 8.0
+# Rotasyon filtresi: gürültüyü (kısa süre oynayanlar) at, persantil havuzunu temiz tut.
+# GP≥10 & MPG≥5: rotasyon minimumu korunur ama kapsam genişler (~3457→3903).
+MIN_GP  = 10
+MIN_MPG = 5.0
 
 # SOS: konferans gücüne göre üretim iskontosu. En güçlü konf → 1.0, en zayıf → 1-K_SOS.
 # K_SOS varsayılan; P5 backtest'te NBA-sonucu yordama gücüne göre ayarlanacak.

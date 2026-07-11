@@ -106,6 +106,8 @@ def fetch_euroleague(season_label: str = "2025-26") -> pd.DataFrame:
     out["PLAYER_NAME"]       = trad["player.name"].map(_norm_name)
     out["TEAM_ABBREVIATION"] = trad.get("player.team.code", trad.get("player.team.name", "")).astype(str)
     out["IMAGE_URL"]         = trad.get("player.imageUrl", "")
+    if "player.age" in trad.columns:
+        out["AGE"] = pd.to_numeric(trad["player.age"], errors="coerce")
 
     out["GP"]  = pd.to_numeric(trad["gamesPlayed"], errors="coerce").fillna(0)
     out["MIN"] = pd.to_numeric(trad["minutesPlayed"], errors="coerce").fillna(0)
