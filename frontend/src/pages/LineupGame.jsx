@@ -1284,8 +1284,8 @@ export default function LineupGame() {
 
       {/* Başlık */}
       <div>
-        <h1 className="text-xl font-bold text-white">Lineup Builder</h1>
-        <p className="text-xs text-slate-500 mt-0.5">
+        <h1 className="font-logo text-2xl font-bold text-white tracking-wide">Lineup Builder</h1>
+        <p className="text-xs text-gray-500 mt-1">
           Each round the wheels pick a random era and team. Draft 9 players — 5 starters, 4 bench — then a coach, and take them through a full season.
         </p>
       </div>
@@ -1453,20 +1453,20 @@ export default function LineupGame() {
       {/* === IDLE === */}
       {phase==="idle"&&(
         <div className="space-y-3">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+          <div className="bg-surfaceBg border border-gray-800 rounded-2xl p-5 space-y-4">
             {/* 4 adımlı görsel akış */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {[
-                ["1",TargetIcon,"text-rose-300","Pick your era","distance + style fit"],
-                ["2",WheelIcon,"text-blue-300","Spin & draft 9","5 starters + 4 bench"],
-                ["3",CoachIcon,"text-emerald-300","Hire a coach","O/D grades + rings"],
-                ["4",TrophyIcon,"text-yellow-300","Simulate 82","playoffs · awards · glory"],
+                ["1",TargetIcon,"text-asagi","Pick your era","distance + style fit"],
+                ["2",WheelIcon,"text-yamabuki","Spin & draft 9","5 starters + 4 bench"],
+                ["3",CoachIcon,"text-brandBlue","Hire a coach","O/D grades + rings"],
+                ["4",TrophyIcon,"text-yamabuki","Simulate 82","playoffs · awards · glory"],
               ].map(([n,Icon,color,title,sub])=>(
-                <div key={n} className="relative rounded-xl border border-slate-800 bg-slate-950/60 p-3 text-center">
-                  <div className="absolute top-1.5 left-2 text-[10px] font-black text-slate-600">{n}</div>
+                <div key={n} className="relative rounded-xl border border-gray-800 bg-surfaceCard p-3 text-center">
+                  <div className="absolute top-1.5 left-2 font-logo text-[10px] font-bold text-gray-600">{n}</div>
                   <div className={`flex justify-center mb-1.5 ${color}`}><Icon size={26} /></div>
-                  <div className="text-xs font-bold text-white leading-tight">{title}</div>
-                  <div className="text-[10px] text-slate-500 mt-0.5 leading-tight">{sub}</div>
+                  <div className="font-logo text-xs font-bold text-white leading-tight">{title}</div>
+                  <div className="text-[10px] text-gray-500 mt-0.5 leading-tight">{sub}</div>
                 </div>
               ))}
             </div>
@@ -1484,15 +1484,15 @@ export default function LineupGame() {
             {/* Mekanik kartları */}
             <div className="grid grid-cols-2 gap-2">
               {[
-                {key:"chemistry", Icon:StarIcon, color:"text-yellow-400", title:"Chemistry",   desc:"Natural positions earn a score bonus"},
-                {key:"jokers",    Icon:CardsIcon, color:"text-amber-300", title:"Jokers",      desc:"Five one-time abilities per game"},
-                {key:"archetype", Icon:DnaIcon, color:"text-blue-300", title:"Archetypes",  desc:"Visible while you draft — overalls stay hidden"},
-                {key:"tags",      Icon:TagIcon, color:"text-slate-300", title:"Player Tags", desc:"MVP, rings, duos — real history feeds the sim"},
+                {key:"chemistry", Icon:StarIcon, color:"text-yamabuki", title:"Chemistry",   desc:"Natural positions earn a score bonus"},
+                {key:"jokers",    Icon:CardsIcon, color:"text-yamabuki", title:"Jokers",      desc:"Five one-time abilities per game"},
+                {key:"archetype", Icon:DnaIcon, color:"text-asagi", title:"Archetypes",  desc:"Visible while you draft — overalls stay hidden"},
+                {key:"tags",      Icon:TagIcon, color:"text-brandRed", title:"Player Tags", desc:"MVP, rings, duos — real history feeds the sim"},
               ].map(({key,Icon,color,title,desc})=>(
                 <button key={key} onClick={()=>setModal(key)}
-                  className="bg-slate-800/60 hover:bg-slate-700/60 rounded-lg p-3 text-left transition-colors border border-slate-700/50 hover:border-slate-600">
-                  <div className="text-sm font-bold text-white mb-0.5 flex items-center gap-1.5"><span className={color}><Icon size={15} /></span> {title}</div>
-                  <div className="text-[11px] text-slate-400 leading-relaxed">{desc}</div>
+                  className="bg-surfaceCard hover:bg-gray-800 rounded-lg p-3 text-left transition-colors border border-gray-800 hover:border-gray-700">
+                  <div className="font-logo text-sm font-bold text-white mb-0.5 flex items-center gap-1.5"><span className={color}><Icon size={15} /></span> {title}</div>
+                  <div className="text-[11px] text-gray-400 leading-relaxed">{desc}</div>
                 </button>
               ))}
             </div>
@@ -1501,23 +1501,22 @@ export default function LineupGame() {
           <div className="grid grid-cols-2 gap-2">
             <button onClick={()=>setMode("classic")}
               className={`text-left rounded-xl border p-3 transition-all
-                ${mode==="classic"?"border-blue-500 bg-blue-900/20":"border-slate-800 bg-slate-900/60 hover:border-slate-600"}`}>
-              <div className="text-sm font-bold text-white flex items-center gap-1.5"><span className="text-blue-300"><WheelIcon size={15} /></span> Classic</div>
-              <div className="text-[11px] text-slate-400 mt-1 leading-snug">No cap, no limits — pure wheel luck. Overalls stay hidden; read the archetypes.</div>
+                ${mode==="classic"?"border-brandBlue bg-brandBlue/10 shadow-[0_0_15px_rgba(29,66,138,0.15)]":"border-gray-800 bg-surfaceCard hover:border-gray-700"}`}>
+              <div className="font-logo text-base font-bold text-white flex items-center gap-1.5"><span className="text-brandBlue"><WheelIcon size={15} /></span> Classic</div>
+              <div className="text-[11px] text-gray-400 mt-1 leading-snug">No cap, no limits — pure wheel luck. Overalls stay hidden; read the archetypes.</div>
             </button>
             <button onClick={()=>setMode("salarycap")}
               className={`text-left rounded-xl border p-3 transition-all
-                ${mode==="salarycap"?"border-violet-500 bg-violet-900/20":"border-slate-800 bg-slate-900/60 hover:border-slate-600"}`}>
-              <div className="text-sm font-bold text-white flex items-center gap-1.5"><span className="text-emerald-300"><CapIcon size={15} /></span> Salary Cap</div>
-              <div className="text-[11px] text-slate-400 mt-1 leading-snug">
+                ${mode==="salarycap"?"border-yamabuki bg-yamabuki/10 shadow-[0_0_15px_rgba(255,177,27,0.15)]":"border-gray-800 bg-surfaceCard hover:border-gray-700"}`}>
+              <div className="font-logo text-base font-bold text-white flex items-center gap-1.5"><span className="text-asagi"><CapIcon size={15} /></span> Salary Cap</div>
+              <div className="text-[11px] text-gray-400 mt-1 leading-snug">
                 Start with a <span className="text-emerald-300 font-semibold">100% cap</span>. Every player costs a slice by quality — a superstar eats <span style={{color:"#a78bfa"}}>~30%</span>, a role player <span style={{color:"#fb923c"}}>4%</span>. Each roster's best men carry a star premium (14/10/7% floors) — nobody's franchise player comes cheap. Fit 9 contracts.
               </div>
             </button>
           </div>
           <div className="text-center">
             <button onClick={()=>setPhase("pick_era")} disabled={seasons.length===0}
-              className="px-10 py-3 rounded-xl font-semibold text-base transition-opacity hover:opacity-90 disabled:opacity-50 inline-flex items-center justify-center gap-2 text-slate-950"
-              style={{background: seasons.length===0 ? "#334155" : "var(--accent)"}}>
+              className="px-16 py-3 rounded-xl font-logo font-bold text-xl inline-flex items-center justify-center gap-2 transition-colors duration-200 disabled:opacity-50 text-darkBg bg-yamabuki hover:bg-white disabled:bg-gray-700 disabled:hover:bg-gray-700 shadow-[0_0_20px_rgba(255,177,27,0.3)]">
               {seasons.length===0?"Loading..."
                 :mode==="salarycap"?<><CapIcon size={17} /> Start Salary Cap Draft</>
                 :<><WheelIcon size={17} /> Start Game</>}
