@@ -22,8 +22,8 @@ export function ThemeProvider({ children }) {
     } else {
       root.classList.add("dark");
       root.classList.remove("light");
-      document.body.style.background = "#030307";
-      document.body.style.color = "#eef0f5";
+      document.body.style.background = "#0b0b0b";
+      document.body.style.color = "#e5e5e5";
     }
   }, [theme]);
 

@@ -44,18 +44,19 @@
 
 /* ── CSS custom properties ───────────────────────────────────────── */
 :root {
-  --bg-base:      #030307;
-  --bg-surface:   #07070d;
-  --bg-elevated:  #0c0d19;
-  --border:       #161826;
-  --accent:       #f59e0b;
-  --accent-dim:   rgba(245,158,11,0.12);
-  --accent-border:rgba(245,158,11,0.30);
-  --text-primary: #e2e8f0;
-  --text-muted:   #718096;
-  --text-faint:   #252a40;
-  --nba-red:      #C8102E;
-  --nba-blue:     #1D428A;
+  /* Primary Arch dark palette — chrome ile aynı */
+  --bg-base:      #0b0b0b;
+  --bg-surface:   #131313;
+  --bg-elevated:  #1a1a1a;
+  --border:       #262626;
+  --accent:       #FFB11B;   /* yamabuki */
+  --accent-dim:   rgba(255,177,27,0.12);
+  --accent-border:rgba(255,177,27,0.32);
+  --text-primary: #e5e5e5;
+  --text-muted:   #8a8a8a;
+  --text-faint:   #3a3a3a;
+  --nba-red:      #c8102e;
+  --nba-blue:     #1d428a;
 }
 
 html.light {
