@@ -52,8 +52,10 @@ def _age_penalty(age):
     return float(np.clip(1 - OLD_SLOPE * max(0.0, age - OLD_THRESH), AGE_PEN_MIN, 1.0))
 
 
-def add_prospect_fields(df: pd.DataFrame) -> pd.DataFrame:
-    """df'e prospect kolonları ekler (in-place döner)."""
+def add_prospect_fields(df: pd.DataFrame, max_age=None) -> pd.DataFrame:
+    """df'e prospect kolonları ekler (in-place döner).
+    max_age verilirse (ör. EuroLeague=21) o yaşın üstü + yaşı bilinmeyen oyuncuların
+    prospect notu NaN yapılır (prospect değil) — ama persantil havuzuna katkı sürer."""
     out = df.copy()
     n = len(out)
     if n == 0:
@@ -104,4 +106,12 @@ def add_prospect_fields(df: pd.DataFrame) -> pd.DataFrame:
     out["prospect_youth"]   = yf.round(3)
     out["strengths"]  = out.apply(lambda r: _rank_arch(r, top=True),  axis=1)
     out["weaknesses"] = out.apply(lambda r: _rank_arch(r, top=False), axis=1)
+
+    # Yaş-kapısı (EuroLeague=21): üst yaş + yaşı bilinmeyen → prospect NaN.
+    # Persantiller tüm havuza göre hesaplandı (genç, pro'lara göre değerlenir).
+    if max_age is not None:
+        non = (age > max_age) | age.isna()
+        for c in ["prospect_floor", "prospect_ceiling", "prospect_grade", "prospect_youth"]:
+            out.loc[non, c] = np.nan
+        out.loc[non, "prospect_tier"] = ""
     return out

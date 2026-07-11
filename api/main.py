@@ -422,12 +422,12 @@ def _load_scores() -> pd.DataFrame:
     return df
 
 
-def _apply_prospect(df: pd.DataFrame) -> pd.DataFrame:
+def _apply_prospect(df: pd.DataFrame, max_age=None) -> pd.DataFrame:
     """P3 prospect alanlarını ekle (floor/ceiling/grade/tier + strengths/weaknesses).
-    Hata olursa loader'ı bozmadan df'i döner."""
+    max_age: bu yaşın üstü prospect NaN (EuroLeague=21). Hata olursa df'i döner."""
     try:
         from prospect import add_prospect_fields
-        return add_prospect_fields(df)
+        return add_prospect_fields(df, max_age=max_age)
     except Exception as e:
         print(f"[UYARI] prospect fields: {e}", flush=True)
         return df
@@ -505,6 +505,7 @@ def _load_euroleague_scores() -> pd.DataFrame:
             if pct >= 0.50: return "Starter"
             return "Role Player"
         df["overall_tier"] = df["overall_pct"].apply(_tier)
+    df = _apply_prospect(df, max_age=20)   # EuroLeague: sadece 21 yaş altı (draft-and-stash gençleri)
     return df
 
 
@@ -1639,6 +1640,7 @@ def get_euroleague_player_scores(player_name: str):
         "overall_tier":     row.get("overall_tier",""),
         "scores":           core_scores,
         "age":              round(float(row["AGE"]),1) if "AGE" in row.index and pd.notna(row.get("AGE")) else None,
+        "prospect":         _prospect_dict(row),
         "confidence_margin": _confidence_margin(gp),
         "league":           "euroleague",
     }
