@@ -1789,7 +1789,7 @@ export default function LineupGame() {
       </div>{/* sol panel sonu */}
 
       {/* ── SAĞ PANEL: yarım saha (desktop) — setup pane ile hizalı, sabit genişlik ── */}
-      <div className="hidden lg:block w-full lg:w-[540px] shrink-0 min-w-0">
+      <div className="hidden lg:block w-full lg:w-[640px] shrink-0 min-w-0">
         <div className="sticky top-2">
           <CourtBoard lineup={lineup} coach={coach} moveSrc={moveSrc}
             canRearrange={canRearrange} onSlotTap={handleSlotTap} getPrimaryPos={getPrimaryPos}

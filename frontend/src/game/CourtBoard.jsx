@@ -11,13 +11,13 @@ import { StarIcon, CoachIcon, TrophyIcon } from "./GameIcons";
 const POSITIONS   = ["PG", "SG", "SF", "PF", "C"];
 const BENCH_SLOTS = ["B1", "B2", "B3", "B4"];
 
-// Referans koordinatları (yarım saha, % top/left)
+// Geniş yarım saha üzerindeki % konumlar — sepet üstte
 const SPOT = {
-  C:  { left: "65%", top: "18%" },
-  PF: { left: "30%", top: "35%" },
-  SF: { left: "15%", top: "60%" },
-  SG: { left: "85%", top: "60%" },
-  PG: { left: "50%", top: "80%" },
+  C:  { left: "50%", top: "24%" },
+  PF: { left: "31%", top: "41%" },
+  SF: { left: "15%", top: "68%" },
+  SG: { left: "85%", top: "68%" },
+  PG: { left: "50%", top: "83%" },
 };
 
 // Referans mevki renkleri
@@ -105,20 +105,29 @@ export default function CourtBoard({ lineup, coach, moveSrc, canRearrange, onSlo
 
       {/* Court solda (blueprint), bench SAĞDA dikey */}
       <div className="flex gap-3 items-stretch">
-        {/* Aspect viewBox (300×400 = 3:4) ile AYNI → SVG letterbox'suz doldurur,
-            % mevki düğümleri kort çizgileriyle hizalanır */}
-        <div className="relative flex-1 min-w-0" style={{ aspectRatio: "3 / 4" }}>
-          {/* Blueprint yarım saha (referans) — opacity-60 */}
-          <svg viewBox="0 0 300 400" preserveAspectRatio="xMidYMid meet"
+        {/* Geniş yarım saha — aspect viewBox (460×380) ile AYNI → letterbox yok,
+            % mevki düğümleri kort çizgileriyle hizalı. Landscape → sağı doldurur,
+            oranlar doğru (3pt arkı FT dairesini çevreler, içinden geçmez). */}
+        <div className="relative flex-1 min-w-0" style={{ aspectRatio: "470 / 500" }}>
+          {/* Blueprint yarım saha (nearly-square) — opacity-60 */}
+          <svg viewBox="0 0 470 500" preserveAspectRatio="xMidYMid meet"
             className="absolute inset-0 w-full h-full opacity-60"
-            fill="none" stroke="#2a2a2a" strokeWidth="2" strokeLinecap="round">
-            <rect x="10" y="10" width="280" height="380" />
-            <rect x="100" y="10" width="100" height="140" />
-            <path d="M 100 150 A 50 50 0 0 0 200 150" />
-            <path d="M 100 150 A 50 50 0 0 1 200 150" strokeDasharray="6 6" />
-            <path d="M 25 10 V 80 C 25 220 275 220 275 80 V 10" />
-            <line x1="130" y1="25" x2="170" y2="25" stroke="#c8102e" strokeWidth="3" />
-            <circle cx="150" cy="35" r="8" stroke="#c8102e" />
+            fill="none" stroke="#2a2a2a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            {/* dış sınır */}
+            <rect x="10" y="10" width="450" height="480" />
+            {/* boyalı alan (key) */}
+            <rect x="190" y="10" width="90" height="185" />
+            {/* FT dairesi: üst yarı düz, alt yarı kesikli */}
+            <path d="M 190 195 A 45 45 0 0 1 280 195" />
+            <path d="M 190 195 A 45 45 0 0 0 280 195" strokeDasharray="6 6" />
+            {/* 3'lük çizgisi: köşe dikmeleri + geniş yay (FT dairesini çevreler) */}
+            <path d="M 45 10 V 110 C 45 330 425 330 425 110 V 10" />
+            {/* pota + backboard (kırmızı) */}
+            <line x1="210" y1="30" x2="260" y2="30" stroke="#c8102e" strokeWidth="3" />
+            <circle cx="235" cy="43" r="8" stroke="#c8102e" />
+            {/* orta saha çizgisi + merkez yarım daire */}
+            <line x1="10" y1="485" x2="460" y2="485" />
+            <path d="M 191 485 A 44 44 0 0 1 279 485" />
           </svg>
 
           {POSITIONS.map(pos => {
