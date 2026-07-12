@@ -11,12 +11,12 @@ import { StarIcon, CoachIcon, TrophyIcon } from "./GameIcons";
 const POSITIONS   = ["PG", "SG", "SF", "PF", "C"];
 const BENCH_SLOTS = ["B1", "B2", "B3", "B4"];
 
-// Geniş yarım saha üzerindeki % konumlar — sepet üstte, doğal 5'li dizilim
+// Geniş yarım saha üzerindeki % konumlar — sepet üstte, dengeli 5'li dizilim
 const SPOT = {
-  C:  { left: "50%", top: "22%" },   // boyalı alan, sepete yakın
-  PF: { left: "32%", top: "41%" },   // sol elbow / kısa köşe
-  SF: { left: "16%", top: "63%" },   // sol kanat
-  SG: { left: "84%", top: "63%" },   // sağ kanat
+  C:  { left: "42%", top: "22%" },   // sol blok (sepete yakın)
+  PF: { left: "62%", top: "36%" },   // sağ elbow — C'yi dengeler
+  SF: { left: "16%", top: "62%" },   // sol kanat
+  SG: { left: "84%", top: "62%" },   // sağ kanat
   PG: { left: "50%", top: "82%" },   // üst / top of the key
 };
 
@@ -108,9 +108,10 @@ export default function CourtBoard({ lineup, coach, moveSrc, canRearrange, onSlo
         {/* Geniş yarım saha — aspect viewBox (460×380) ile AYNI → letterbox yok,
             % mevki düğümleri kort çizgileriyle hizalı. Landscape → sağı doldurur,
             oranlar doğru (3pt arkı FT dairesini çevreler, içinden geçmez). */}
-        <div className="relative flex-1 min-w-0" style={{ aspectRatio: "470 / 500" }}>
-          {/* Blueprint yarım saha (nearly-square) — opacity-60 */}
-          <svg viewBox="0 0 470 500" preserveAspectRatio="xMidYMid meet"
+        <div className="relative flex-1 min-w-0" style={{ aspectRatio: "484 / 493" }}>
+          {/* Blueprint yarım saha — none ile kutuyu tam doldurur (düğümler hizalı),
+              kutu biraz kısaltıldı ki roster kartı kenarı mode kartlarıyla hizalansın */}
+          <svg viewBox="0 0 470 500" preserveAspectRatio="none"
             className="absolute inset-0 w-full h-full opacity-60"
             fill="none" stroke="#2a2a2a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             {/* dış sınır */}
