@@ -105,7 +105,9 @@ export default function CourtBoard({ lineup, coach, moveSrc, canRearrange, onSlo
 
       {/* Court solda (blueprint), bench SAĞDA dikey */}
       <div className="flex gap-3 items-stretch">
-        <div className="relative flex-1 min-w-0 max-w-[420px]" style={{ aspectRatio: "10/9" }}>
+        {/* Aspect viewBox (300×400 = 3:4) ile AYNI → SVG letterbox'suz doldurur,
+            % mevki düğümleri kort çizgileriyle hizalanır */}
+        <div className="relative flex-1 min-w-0" style={{ aspectRatio: "3 / 4" }}>
           {/* Blueprint yarım saha (referans) — opacity-60 */}
           <svg viewBox="0 0 300 400" preserveAspectRatio="xMidYMid meet"
             className="absolute inset-0 w-full h-full opacity-60"
