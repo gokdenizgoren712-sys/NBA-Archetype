@@ -11,13 +11,13 @@ import { StarIcon, CoachIcon, TrophyIcon } from "./GameIcons";
 const POSITIONS   = ["PG", "SG", "SF", "PF", "C"];
 const BENCH_SLOTS = ["B1", "B2", "B3", "B4"];
 
-// Geniş yarım saha üzerindeki % konumlar — sepet üstte
+// Geniş yarım saha üzerindeki % konumlar — sepet üstte, doğal 5'li dizilim
 const SPOT = {
-  C:  { left: "50%", top: "24%" },
-  PF: { left: "31%", top: "41%" },
-  SF: { left: "15%", top: "68%" },
-  SG: { left: "85%", top: "68%" },
-  PG: { left: "50%", top: "83%" },
+  C:  { left: "50%", top: "22%" },   // boyalı alan, sepete yakın
+  PF: { left: "32%", top: "41%" },   // sol elbow / kısa köşe
+  SF: { left: "16%", top: "63%" },   // sol kanat
+  SG: { left: "84%", top: "63%" },   // sağ kanat
+  PG: { left: "50%", top: "82%" },   // üst / top of the key
 };
 
 // Referans mevki renkleri

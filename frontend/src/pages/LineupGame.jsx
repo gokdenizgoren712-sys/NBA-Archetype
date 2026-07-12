@@ -137,8 +137,8 @@ function SpinWheel({ items, spinning, targetIdx, label }) {
   const visible=[-2,-1,0,1,2].map(off=>({off,item:items[((centerIdx+off)%items.length+items.length)%items.length]}));
   return (
     <div className="flex flex-col items-center select-none">
-      <div className="text-[10.5px] text-slate-500 uppercase tracking-widest mb-2">{label}</div>
-      <div className="relative w-32 rounded-xl overflow-hidden border border-slate-800 bg-slate-950">
+      <div className="text-[10.5px] text-gray-500 uppercase tracking-widest mb-2">{label}</div>
+      <div className="relative w-32 rounded-xl overflow-hidden border border-gray-800 bg-darkBg">
         <div className="pointer-events-none absolute inset-x-0 top-0 h-14 z-10" style={{background:"linear-gradient(to bottom,#020817,transparent)"}}/>
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-14 z-10" style={{background:"linear-gradient(to top,#020817,transparent)"}}/>
         <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-10 border-y z-0"
@@ -163,19 +163,19 @@ function LineupSlot({ pos, player, bench=false, selected=false, canTap=false, on
   return (
     <div onClick={()=>canTap&&onTap&&onTap(pos)}
       className={`flex-1 rounded-lg p-1.5 border text-center min-w-0 transition-all
-      ${selected?"border-amber-400 shadow-[0_0_8px_rgba(245,158,11,.35)]":player?(bench?"border-slate-600/50 bg-slate-800/30":"border-amber-500/40 bg-amber-900/10"):"border-slate-800 bg-slate-900/60"}
+      ${selected?"border-amber-400 shadow-[0_0_8px_rgba(245,158,11,.35)]":player?(bench?"border-gray-600/50 bg-surfaceCard/30":"border-amber-500/40 bg-amber-900/10"):"border-gray-800 bg-surfaceBg/60"}
       ${canTap?"cursor-pointer":""}`}>
-      <div className={`text-[8.5px] uppercase tracking-wider mb-0.5 ${bench?"text-slate-600":POS_COLORS[pos]?.split(" ")[1]||"text-slate-600"}`}>{posLabel}</div>
+      <div className={`text-[8.5px] uppercase tracking-wider mb-0.5 ${bench?"text-gray-600":POS_COLORS[pos]?.split(" ")[1]||"text-gray-600"}`}>{posLabel}</div>
       {player ? (
         <>
           <div className="text-[10.5px] text-white font-semibold truncate leading-tight">
             {player.PLAYER_NAME?.split(" ").slice(-1)[0]}
           </div>
-          <div className="text-[8.5px] text-slate-500">{(player._season||"").slice(0,4)}</div>
+          <div className="text-[8.5px] text-gray-500">{(player._season||"").slice(0,4)}</div>
           {isPrimary && <div className="text-yellow-400 flex justify-center mt-0.5"><StarIcon size={9} /></div>}
         </>
       ) : (
-        <div className="text-slate-700 text-sm">—</div>
+        <div className="text-gray-700 text-sm">—</div>
       )}
     </div>
   );
@@ -217,7 +217,7 @@ function PlayerRow({ player, discover, onClick, cost, unaffordable, highlightSta
   const url = headshotUrl(player);
   const cell = (k) => (
     <span className={`w-9 text-right tabular-nums shrink-0 text-xs
-      ${highlightStat === k ? "font-bold" : "text-slate-500"}`}
+      ${highlightStat === k ? "font-bold" : "text-gray-500"}`}
       style={highlightStat === k ? { color: "#e2b34c" } : {}}>
       {stat(k)}
     </span>
@@ -225,17 +225,17 @@ function PlayerRow({ player, discover, onClick, cost, unaffordable, highlightSta
   return (
     <button onClick={onClick} disabled={unaffordable}
       className={`w-full min-w-[560px] flex items-center gap-2 pr-3 py-2.5 border-b text-left transition-colors
-        ${unaffordable ? "opacity-30 cursor-not-allowed" : "hover:bg-slate-800/70 cursor-pointer group"}`}
+        ${unaffordable ? "opacity-30 cursor-not-allowed" : "hover:bg-surfaceCard/70 cursor-pointer group"}`}
       style={{ borderColor: "rgba(30,41,59,.6)" }}>
       {/* Sabit sol blok (yatay kaydırmada pinli): avatar + isim + arketip + rozetler */}
       <div className="sticky left-0 z-10 flex items-center gap-2 pl-3 pr-2 py-0.5 shrink-0 w-[240px]"
         style={{ background: "var(--bg-surface, #0f172a)" }}>
-        <div className="w-9 h-9 rounded-full overflow-hidden shrink-0 border border-slate-700 bg-slate-800 flex items-center justify-center">
+        <div className="w-9 h-9 rounded-full overflow-hidden shrink-0 border border-gray-700 bg-surfaceCard flex items-center justify-center">
           {url && imgOk ? (
             <img src={url} alt="" loading="lazy" onError={() => setImgOk(false)}
               className="w-full h-full object-cover object-top" />
           ) : (
-            <span className="text-[11px] font-bold text-slate-500">
+            <span className="text-[11px] font-bold text-gray-500">
               {player.PLAYER_NAME?.split(" ").map(w => w[0]).slice(0, 2).join("")}
             </span>
           )}
@@ -243,7 +243,7 @@ function PlayerRow({ player, discover, onClick, cost, unaffordable, highlightSta
         <div className="min-w-0 flex-1">
           <div className="text-[13px] font-semibold text-white truncate leading-tight">{player.PLAYER_NAME}</div>
           <div className="flex items-center gap-1 mt-0.5">
-            <span className="text-[10px] text-slate-500 shrink-0">{player.POSITION || player.POS5 || ""}</span>
+            <span className="text-[10px] text-gray-500 shrink-0">{player.POSITION || player.POS5 || ""}</span>
             <span className="text-[10px] text-blue-400 font-medium truncate">{player.primary_arch || "—"}</span>
             {tags.slice(0, 3).map(t => <TagBadge key={t.key} t={t} />)}
           </div>
@@ -252,7 +252,7 @@ function PlayerRow({ player, discover, onClick, cost, unaffordable, highlightSta
       {/* TAG sayısı sütunu */}
       <span className="w-8 text-center shrink-0 text-xs tabular-nums"
         title={tags.length ? tags.map(t => t.label).join(" · ") : "No tags"}>
-        {tags.length ? <span className="text-slate-300 font-bold">{tags.length}</span> : <span className="text-slate-700">–</span>}
+        {tags.length ? <span className="text-gray-300 font-bold">{tags.length}</span> : <span className="text-gray-700">–</span>}
       </span>
       {/* Sözleşme maliyeti (Salary Cap) */}
       {cost != null && (
@@ -285,12 +285,12 @@ function InfoModal({ open, onClose, title, children }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
          onClick={onClose}>
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-      <div className="relative bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-sm w-full shadow-2xl
+      <div className="relative bg-surfaceBg border border-gray-700 rounded-2xl p-6 max-w-sm w-full shadow-2xl
                       animate-[fadeScaleIn_0.18s_ease-out]"
            onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-white font-bold text-base">{title}</h3>
-          <button onClick={onClose} className="text-slate-500 hover:text-white text-xl leading-none">×</button>
+          <button onClick={onClose} className="text-gray-500 hover:text-white text-xl leading-none">×</button>
         </div>
         {children}
       </div>
@@ -304,7 +304,7 @@ function JokerBtn({ Icon, label, available, onClick }) {
     <button onClick={onClick} disabled={!available}
       className={`flex flex-col items-center gap-1 px-2 py-1.5 rounded-lg border text-center transition-all
         ${available?"border-amber-700/60 bg-amber-900/20 hover:bg-amber-900/40 cursor-pointer text-amber-300"
-                  :"border-slate-800 bg-slate-900/40 cursor-not-allowed text-slate-600"}`}>
+                  :"border-gray-800 bg-surfaceBg/40 cursor-not-allowed text-gray-600"}`}>
       <Icon size={16} />
       <span className="text-[9.5px] leading-tight whitespace-nowrap">{label}</span>
     </button>
@@ -423,8 +423,8 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
   return (
     <div className="space-y-4">
       {/* Ana skor */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 text-center">
-        <div className="text-xs text-slate-500 uppercase tracking-widest mb-1">Lineup Fit</div>
+      <div className="bg-surfaceBg border border-gray-800 rounded-2xl p-6 text-center">
+        <div className="text-xs text-gray-500 uppercase tracking-widest mb-1">Lineup Fit</div>
         {simEra&&(
           <div className="mb-2">
             <span className={`text-[10px] px-2 py-0.5 rounded border ${simEra.bg} ${simEra.color}`}>
@@ -432,7 +432,7 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
             </span>
           </div>
         )}
-        <div className={`text-7xl font-black mb-1 ${pct>=78?"text-blue-400":pct>=62?"text-sky-400":"text-slate-300"}`}>{pct}</div>
+        <div className={`text-7xl font-black mb-1 ${pct>=78?"text-blue-400":pct>=62?"text-sky-400":"text-gray-300"}`}>{pct}</div>
         <div className={`text-3xl font-bold mb-1 ${gColor}`}>{grade}</div>
         {chemBonus > 0 && (
           <div className="text-xs text-yellow-400 mb-2">
@@ -447,10 +447,10 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
             ["Coverage", coveragePct,                     "40%"],
             ["Role Fit", Math.round(fit.roleFit * 100),   "15%"],
           ].map(([label, val, w]) => (
-            <div key={label} className="rounded-xl border border-slate-800 bg-slate-950/60 p-2.5 text-center">
-              <div className={`text-2xl font-black ${val>=75?"text-blue-300":val>=55?"text-slate-200":"text-red-400"}`}>{val}</div>
-              <div className="text-[10.5px] text-slate-400 mt-0.5">{label}</div>
-              <div className="text-[9.5px] text-slate-600">weight {w}</div>
+            <div key={label} className="rounded-xl border border-gray-800 bg-darkBg/60 p-2.5 text-center">
+              <div className={`text-2xl font-black ${val>=75?"text-blue-300":val>=55?"text-gray-200":"text-red-400"}`}>{val}</div>
+              <div className="text-[10.5px] text-gray-400 mt-0.5">{label}</div>
+              <div className="text-[9.5px] text-gray-600">weight {w}</div>
             </div>
           ))}
         </div>
@@ -468,11 +468,11 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
       />
 
       {/* Roster Breakdown — tek birleşik tablo (lineup + kalite + era + tag) */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
+      <div className="bg-surfaceBg border border-gray-800 rounded-2xl p-4">
         <div className="flex items-center justify-between mb-3">
-          <div className="text-[11px] text-slate-400 uppercase tracking-widest">Roster Breakdown</div>
-          <div className="text-xs text-slate-500">
-            <span className="text-slate-600">ovr → qual · </span>avg <span className="text-white font-bold">{qualityPct}</span>
+          <div className="text-[11px] text-gray-400 uppercase tracking-widest">Roster Breakdown</div>
+          <div className="text-xs text-gray-500">
+            <span className="text-gray-600">ovr → qual · </span>avg <span className="text-white font-bold">{qualityPct}</span>
           </div>
         </div>
         <div className="space-y-1">
@@ -508,14 +508,14 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
                   </div>
                 </div>
                 {/* base overall → quality (oyun bitti, ham overall açık) */}
-                <span className="text-[10px] text-slate-500 tabular-nums shrink-0 w-11 text-right"
+                <span className="text-[10px] text-gray-500 tabular-nums shrink-0 w-11 text-right"
                   title={`Raw overall ${base} (hidden during the draft) → ${qPct} after era distance & position`}>
-                  <span className="text-slate-600">ovr</span> {base}
+                  <span className="text-gray-600">ovr</span> {base}
                 </span>
-                <div className="w-16 h-2 bg-slate-800 rounded-full overflow-hidden shrink-0">
+                <div className="w-16 h-2 bg-surfaceCard rounded-full overflow-hidden shrink-0">
                   <div className="h-full rounded-full" style={{width:`${qPct}%`,background:qPct>=75?"#1D428A":qPct>=55?"#2a3d6b":"#7f1d1d"}}/>
                 </div>
-                <span className={`text-[13px] font-bold w-7 text-right shrink-0 ${qPct>=75?"text-blue-300":qPct>=55?"text-slate-200":"text-red-400"}`}>{qPct}</span>
+                <span className={`text-[13px] font-bold w-7 text-right shrink-0 ${qPct>=75?"text-blue-300":qPct>=55?"text-gray-200":"text-red-400"}`}>{qPct}</span>
               </div>
             );
           })}
@@ -528,9 +528,9 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
             const tags=getPlayerTags(p,{onBench:true}).slice(0,2);
             return (
               <div key={b} className="flex items-center gap-2.5 py-1.5 border-b last:border-b-0 opacity-75" style={{borderColor:"rgba(30,41,59,.5)"}}>
-                <span className="text-[10px] font-bold px-1.5 py-1 rounded border border-slate-700 text-slate-500 shrink-0 w-8 text-center">BN</span>
+                <span className="text-[10px] font-bold px-1.5 py-1 rounded border border-gray-700 text-gray-500 shrink-0 w-8 text-center">BN</span>
                 <div className="flex-1 min-w-0">
-                  <div className="text-[13px] text-slate-200 font-semibold truncate">{p.PLAYER_NAME}</div>
+                  <div className="text-[13px] text-gray-200 font-semibold truncate">{p.PLAYER_NAME}</div>
                   <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                     <span className="text-[11px] text-blue-400/70">{p.primary_arch||"—"}</span>
                     <span className={`text-[10px] ${pp.era.color}`}>{pp.era.short} '{(p._season||"").slice(2,4)}</span>
@@ -545,23 +545,23 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
                     ))}
                   </div>
                 </div>
-                <span className="text-[10px] text-slate-500 tabular-nums shrink-0 w-11 text-right"
+                <span className="text-[10px] text-gray-500 tabular-nums shrink-0 w-11 text-right"
                   title={`Raw overall ${base} → ${qPct} after era distance & position`}>
-                  <span className="text-slate-600">ovr</span> {base}
+                  <span className="text-gray-600">ovr</span> {base}
                 </span>
-                <div className="w-16 h-2 bg-slate-800 rounded-full overflow-hidden shrink-0">
-                  <div className="h-full rounded-full" style={{width:`${qPct}%`,background:"#334155"}}/>
+                <div className="w-16 h-2 bg-surfaceCard rounded-full overflow-hidden shrink-0">
+                  <div className="h-full rounded-full" style={{width:`${qPct}%`,background:"#262626"}}/>
                 </div>
-                <span className="text-[13px] font-bold w-7 text-right shrink-0 text-slate-400">{qPct}</span>
+                <span className="text-[13px] font-bold w-7 text-right shrink-0 text-gray-400">{qPct}</span>
               </div>
             );
           })}
           {/* Koç */}
           {coach&&(
             <div className="flex items-center gap-2.5 pt-2">
-              <span className="shrink-0 w-8 flex justify-center text-slate-300"><CoachIcon size={15} /></span>
+              <span className="shrink-0 w-8 flex justify-center text-gray-300"><CoachIcon size={15} /></span>
               <span className="text-[13px] text-white font-semibold flex-1 truncate">{coach.name}</span>
-              <span className="text-[11px] font-mono text-slate-400 shrink-0">O:{coach.off} · D:{coach.def}</span>
+              <span className="text-[11px] font-mono text-gray-400 shrink-0">O:{coach.off} · D:{coach.def}</span>
               {coach.champs>0&&<span className="text-[11px] text-yellow-400 shrink-0 inline-flex items-center gap-0.5"><TrophyIcon size={11} />×{coach.champs}</span>}
               {coach.tag&&<span className="text-[9px] px-1 py-0.5 rounded bg-violet-900/40 text-violet-300 shrink-0">{coach.tag}</span>}
             </div>
@@ -570,12 +570,12 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
       </div>
 
       {/* Era Report — era-ağırlıklı kadro analizi (Lineup Analysis'in yerini aldı) */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3.5">
+      <div className="bg-surfaceBg border border-gray-800 rounded-2xl p-4 space-y-3.5">
         <div className="flex items-center justify-between">
-          <div className="text-xs text-slate-300 uppercase tracking-widest font-semibold">Era Report</div>
+          <div className="text-xs text-gray-300 uppercase tracking-widest font-semibold">Era Report</div>
           {simEra&&<span className={`text-[11px] px-2 py-0.5 rounded border ${simEra.bg} ${simEra.color}`}>{simEra.label}</span>}
         </div>
-        {simEra&&<p className="text-[13px] text-slate-400 italic leading-relaxed">{ERA_META_BLURB[simEra.id]}</p>}
+        {simEra&&<p className="text-[13px] text-gray-400 italic leading-relaxed">{ERA_META_BLURB[simEra.id]}</p>}
 
         {/* Era-ağırlıklı pillar tablosu */}
         <div className="space-y-2.5">
@@ -585,43 +585,43 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
             const wColor = pl.w>=1.2 ? "#facc15" : pl.w>=0.95 ? "#94a3b8" : "#475569";
             return (
               <div key={pl.key} className="flex items-center gap-2.5">
-                <span className="text-[13px] text-slate-200 w-24 text-right shrink-0">{pl.label}</span>
+                <span className="text-[13px] text-gray-200 w-24 text-right shrink-0">{pl.label}</span>
                 <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded shrink-0 w-14 text-center"
                   style={{color:wColor,border:`1px solid ${wColor}55`,background:wColor+"11"}}
                   title={`This pillar's weight in the ${simEra?.label||"current era"}: ×${pl.w.toFixed(2)}`}>
                   {wLabel}
                 </span>
-                <div className="flex-1 h-2.5 bg-slate-800 rounded-full overflow-hidden">
+                <div className="flex-1 h-2.5 bg-surfaceCard rounded-full overflow-hidden">
                   <div className="h-full rounded-full" style={{width:`${vp}%`,background:vp>=75?"#1D428A":vp>=55?"#2a3d6b":"#7f1d1d"}}/>
                 </div>
-                <span className={`text-sm font-bold w-7 text-right shrink-0 ${vp>=65?"text-blue-300":vp>=45?"text-slate-200":"text-red-400"}`}>{vp}</span>
+                <span className={`text-sm font-bold w-7 text-right shrink-0 ${vp>=65?"text-blue-300":vp>=45?"text-gray-200":"text-red-400"}`}>{vp}</span>
               </div>
             );
           })}
-          <p className="text-[11.5px] text-slate-500">
+          <p className="text-[11.5px] text-gray-500">
             Coverage = era-weighted average · {fit.nShooters} shooter{fit.nShooters===1?"":"s"} in the lineup
           </p>
         </div>
 
         {/* Era silahı + era açığı */}
-        <div className="border-t border-slate-800 pt-3 space-y-2.5">
+        <div className="border-t border-gray-800 pt-3 space-y-2.5">
           <div className="flex gap-2 items-start">
             <span className="text-green-400 shrink-0 mt-0.5"><BoltIcon size={16} /></span>
-            <p className="text-sm text-slate-300">
+            <p className="text-sm text-gray-300">
               <span className="font-semibold">Era weapon: </span>
               <span className="text-green-400">{analysis.strongest.label} ({Math.round(analysis.strongest.val*100)})</span>
-              <span className="text-slate-400"> — {analysis.strongest.w>=1.2?"exactly what this era pays for.":analysis.strongest.w>=0.95?"solid currency in this era.":"strong, but this era barely values it."}</span>
+              <span className="text-gray-400"> — {analysis.strongest.w>=1.2?"exactly what this era pays for.":analysis.strongest.w>=0.95?"solid currency in this era.":"strong, but this era barely values it."}</span>
             </p>
           </div>
           <div className="flex gap-2 items-start">
             <span className="text-red-400 shrink-0 mt-0.5"><GapIcon size={16} /></span>
             <div>
-              <p className="text-sm text-slate-300">
+              <p className="text-sm text-gray-300">
                 <span className="font-semibold">Era liability: </span>
                 <span className="text-red-400">{analysis.weakest.label} ({Math.round(analysis.weakest.val*100)})</span>
                 {analysis.weakest.w>=1.2&&<span className="text-amber-400"> — a KEY pillar here, this will cost you games</span>}
               </p>
-              <p className="text-[13px] text-slate-500 mt-0.5">{analysis.weakest.fix}</p>
+              <p className="text-[13px] text-gray-500 mt-0.5">{analysis.weakest.fix}</p>
             </div>
           </div>
         </div>
@@ -645,12 +645,12 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
             <div className="flex gap-2 items-start">
               <span className="text-blue-400 text-sm shrink-0">💡</span>
               <div>
-                <p className="text-[12.5px] text-slate-300 font-medium">
+                <p className="text-[12.5px] text-gray-300 font-medium">
                   Better pick for {analysis.weakest.label}:
                 </p>
-                <p className="text-[12.5px] text-slate-400 mt-0.5">
+                <p className="text-[12.5px] text-gray-400 mt-0.5">
                   <span className="text-white font-semibold">{alt.PLAYER_NAME}</span>
-                  {" "}<span className="text-slate-500">({altArch}, overall {altPct})</span>
+                  {" "}<span className="text-gray-500">({altArch}, overall {altPct})</span>
                   {" "}— {altTeam} · {altSeason} — was available this game. Would have covered your lineup's {analysis.weakest.label.toLowerCase()} gap.
                 </p>
               </div>
@@ -662,9 +662,9 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
         {affinityScore != null && (
           <div className="flex gap-2 items-start">
             <span className="text-violet-400 text-sm shrink-0">⬡</span>
-            <p className="text-[12.5px] text-slate-400">
+            <p className="text-[12.5px] text-gray-400">
               Archetype affinity: <span className="text-violet-400 font-semibold">{affinityScore}</span>
-              <span className="text-slate-600"> — avg pairwise synergy</span>
+              <span className="text-gray-600"> — avg pairwise synergy</span>
             </p>
           </div>
         )}
@@ -676,30 +676,30 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
 
       {/* Leaderboard */}
       {leaderboard && leaderboard.length > 0 && (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-2">
-          <div className="text-[11px] text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1">
+        <div className="bg-surfaceBg border border-gray-800 rounded-2xl p-4 space-y-2">
+          <div className="text-[11px] text-gray-400 uppercase tracking-widest mb-1 flex items-center gap-1">
             <span>Top Scores</span>
             {mode==="salarycap"&&<span className="inline-flex items-center gap-1 text-emerald-400">— <CapIcon size={12} /> Salary Cap</span>}
           </div>
           {leaderboard.slice(0, 10).map((entry, i) => (
             <div key={i} className="flex items-center gap-2 text-[12.5px]">
-              <span className="text-slate-700 w-5 text-right shrink-0 font-mono">{i + 1}.</span>
-              <span className="text-slate-300 flex-1 truncate">{entry.username}</span>
+              <span className="text-gray-700 w-5 text-right shrink-0 font-mono">{i + 1}.</span>
+              <span className="text-gray-300 flex-1 truncate">{entry.username}</span>
               {entry.season_result === "THREEPEAT" && <span className="shrink-0 text-yellow-300" title="THREEPEAT — three straight simulated titles"><CrownIcon size={13} /></span>}
               {entry.season_result === "REPEAT" && <span className="shrink-0 text-yellow-400 inline-flex" title="Back-to-back simulated champion"><TrophyIcon size={12} /><TrophyIcon size={12} /></span>}
               {entry.season_result === "CHAMPION" && <span className="shrink-0 text-yellow-400" title="Won a simulated championship"><TrophyIcon size={12} /></span>}
-              {entry.wins != null && <span className="text-slate-600 shrink-0 text-[10px]">{entry.wins}W</span>}
+              {entry.wins != null && <span className="text-gray-600 shrink-0 text-[10px]">{entry.wins}W</span>}
               <span className={`font-bold shrink-0 ${entry.pct>=85?"text-blue-400":entry.pct>=78?"text-sky-300":entry.pct>=70?"text-emerald-400":entry.pct>=62?"text-amber-400":"text-red-400"}`}>
                 {entry.pct}
               </span>
-              <span className="text-slate-600 shrink-0 w-4">{entry.grade}</span>
+              <span className="text-gray-600 shrink-0 w-4">{entry.grade}</span>
             </div>
           ))}
         </div>
       )}
 
       <button onClick={onReset}
-        className="w-full py-3 rounded-xl font-semibold transition-opacity hover:opacity-90 inline-flex items-center justify-center gap-2 text-slate-950"
+        className="w-full py-3 rounded-xl font-semibold transition-opacity hover:opacity-90 inline-flex items-center justify-center gap-2 text-gray-950"
         style={{background:"var(--accent)"}}>
         <LoopIcon size={15} /> Play Again
       </button>
@@ -727,7 +727,7 @@ function ShareCard({ pct, grade, fit, lineup }) {
     ctx.fillRect(0, 0, W, H);
 
     // Border
-    ctx.strokeStyle = "#1e293b";
+    ctx.strokeStyle = "#1a1a1a";
     ctx.lineWidth = 1;
     ctx.strokeRect(0.5, 0.5, W - 1, H - 1);
 
@@ -764,7 +764,7 @@ function ShareCard({ pct, grade, fit, lineup }) {
     ctx.fillText(grade, W - 80, 95);
 
     ctx.font = "9px system-ui";
-    ctx.fillStyle = "#334155";
+    ctx.fillStyle = "#262626";
     ctx.fillText("FIT SCORE", W - 80, 110);
     ctx.textAlign = "left";
 
@@ -795,7 +795,7 @@ function ShareCard({ pct, grade, fit, lineup }) {
 
       // Sezon
       ctx.font = "9px system-ui";
-      ctx.fillStyle = "#334155";
+      ctx.fillStyle = "#262626";
       ctx.fillText(`'${season}`, 310, y + 4);
 
       y += 22;
@@ -803,7 +803,7 @@ function ShareCard({ pct, grade, fit, lineup }) {
 
     // Ayırıcı
     const sepY = y + 6;
-    ctx.strokeStyle = "#1e293b";
+    ctx.strokeStyle = "#1a1a1a";
     ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(20, sepY); ctx.lineTo(W - 20, sepY); ctx.stroke();
 
@@ -826,7 +826,7 @@ function ShareCard({ pct, grade, fit, lineup }) {
       ctx.fillStyle = "#64748b";
       ctx.fillText(label, x, rowY);
 
-      ctx.fillStyle = "#1e293b";
+      ctx.fillStyle = "#1a1a1a";
       ctx.beginPath();
       ctx.roundRect(x, rowY + 4, BAR_W, BAR_H, 2);
       ctx.fill();
@@ -843,7 +843,7 @@ function ShareCard({ pct, grade, fit, lineup }) {
 
     // Site URL (watermark)
     ctx.font = "9px system-ui";
-    ctx.fillStyle = "#1e293b";
+    ctx.fillStyle = "#1a1a1a";
     ctx.textAlign = "right";
     ctx.fillText(SITE_URL, W - 20, H - 14);
     ctx.textAlign = "left";
@@ -877,17 +877,17 @@ function ShareCard({ pct, grade, fit, lineup }) {
   };
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
-      <div className="text-[11px] text-slate-400 uppercase tracking-widest">Share Your Result</div>
+    <div className="bg-surfaceBg border border-gray-800 rounded-2xl p-4 space-y-3">
+      <div className="text-[11px] text-gray-400 uppercase tracking-widest">Share Your Result</div>
 
       {/* Preview */}
       {preview ? (
-        <div className="rounded-xl overflow-hidden border border-slate-700">
+        <div className="rounded-xl overflow-hidden border border-gray-700">
           <img src={preview} alt="score card" className="w-full" />
         </div>
       ) : (
         <button onClick={generate}
-          className="w-full py-2.5 rounded-xl text-sm font-medium transition-colors border border-slate-700 hover:border-slate-500 inline-flex items-center justify-center gap-2"
+          className="w-full py-2.5 rounded-xl text-sm font-medium transition-colors border border-gray-700 hover:border-gray-500 inline-flex items-center justify-center gap-2"
           style={{ color: "#94a3b8" }}>
           <EyeIcon size={15} /> Preview Card
         </button>
@@ -897,9 +897,9 @@ function ShareCard({ pct, grade, fit, lineup }) {
       <div className="grid grid-cols-3 gap-2">
         <button onClick={download}
           className="py-2 rounded-lg text-xs font-medium transition-colors inline-flex items-center justify-center gap-1.5"
-          style={{ background: "#1e293b", color: "#94a3b8", border: "1px solid #334155" }}
-          onMouseEnter={e => e.currentTarget.style.background = "#334155"}
-          onMouseLeave={e => e.currentTarget.style.background = "#1e293b"}>
+          style={{ background: "#1a1a1a", color: "#94a3b8", border: "1px solid #262626" }}
+          onMouseEnter={e => e.currentTarget.style.background = "#262626"}
+          onMouseLeave={e => e.currentTarget.style.background = "#1a1a1a"}>
           <DownloadIcon size={13} /> Save PNG
         </button>
         <button onClick={tweet}
@@ -911,7 +911,7 @@ function ShareCard({ pct, grade, fit, lineup }) {
         </button>
         <button onClick={copyLink}
           className="py-2 rounded-lg text-xs font-medium transition-colors inline-flex items-center justify-center gap-1.5"
-          style={{ background: "#1e293b", color: copied ? "#34d399" : "#94a3b8", border: "1px solid #334155" }}>
+          style={{ background: "#1a1a1a", color: copied ? "#34d399" : "#94a3b8", border: "1px solid #262626" }}>
           {copied ? <><CheckIcon size={13} /> Copied!</> : <><LinkIcon size={13} /> Copy Link</>}
         </button>
       </div>
@@ -1318,10 +1318,10 @@ export default function LineupGame() {
               SIM: {simEra.short}
             </span>
           )}
-          <div className="flex-1 h-1 bg-slate-800 rounded-full overflow-hidden">
+          <div className="flex-1 h-1 bg-surfaceCard rounded-full overflow-hidden">
             <div className="h-full rounded-full transition-all duration-500" style={{width:`${(filledSlots.length/ALL_SLOTS.length)*100}%`,background:"var(--accent)"}}/>
           </div>
-          <span className="text-[10.5px] text-slate-500">{filledSlots.length}/{ALL_SLOTS.length}</span>
+          <span className="text-[10.5px] text-gray-500">{filledSlots.length}/{ALL_SLOTS.length}</span>
           {primaryCount>0&&<span className="text-[10.5px] text-yellow-400 inline-flex items-center gap-0.5"><StarIcon size={10} />×{primaryCount}</span>}
         </div>
       )}
@@ -1332,22 +1332,22 @@ export default function LineupGame() {
         const slotsLeft=emptySlots.length;
         const cap=Math.max(0, maxSpendNow(budgetLeft, slotsLeft));
         return (
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-3">
+          <div className="bg-surfaceBg border border-gray-800 rounded-xl p-3">
             <div className="flex items-baseline justify-between mb-1.5">
-              <span className="text-[11px] text-slate-400 uppercase tracking-widest inline-flex items-center gap-1.5"><CapIcon size={13} /> Cap Space</span>
+              <span className="text-[11px] text-gray-400 uppercase tracking-widest inline-flex items-center gap-1.5"><CapIcon size={13} /> Cap Space</span>
               <span className={`text-2xl font-black tabular-nums leading-none
                 ${budgetLeft<=15?"text-red-400":budgetLeft<=35?"text-amber-300":"text-emerald-300"}`}>
                 {budgetLeft}<span className="text-sm">%</span>
               </span>
             </div>
-            <div className="h-2.5 bg-slate-800 rounded-full overflow-hidden">
+            <div className="h-2.5 bg-surfaceCard rounded-full overflow-hidden">
               <div className="h-full rounded-full transition-all duration-500"
                 style={{width:`${budgetLeft}%`,
                   background:budgetLeft<=15?"#7f1d1d":budgetLeft<=35?"#b45309":"#047857"}}/>
             </div>
             {slotsLeft>0&&(
-              <div className="text-[10px] text-slate-500 mt-1.5">
-                {slotsLeft} contract{slotsLeft>1?"s":""} left · max <span className="text-slate-300 font-semibold">{cap}%</span> on this pick
+              <div className="text-[10px] text-gray-500 mt-1.5">
+                {slotsLeft} contract{slotsLeft>1?"s":""} left · max <span className="text-gray-300 font-semibold">{cap}%</span> on this pick
                 {slotsLeft>1&&<span> (reserving {(slotsLeft-1)*MIN_COST}% for the rest)</span>}
               </div>
             )}
@@ -1357,8 +1357,8 @@ export default function LineupGame() {
 
       {/* Jokerler (sadece pick_player fazında) */}
       {phase==="pick_player"&&(
-        <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-2">
-          <div className="text-[9.5px] text-slate-600 uppercase tracking-widest mb-1.5 text-center">Jokers</div>
+        <div className="bg-surfaceBg/80 border border-gray-800 rounded-xl p-2">
+          <div className="text-[9.5px] text-gray-600 uppercase tracking-widest mb-1.5 text-center">Jokers</div>
           <div className="flex gap-1.5 justify-center">
             <JokerBtn Icon={RefreshIcon}  label="Team"     available={jokers.reTeam}   onClick={jokerReTeam}/>
             <JokerBtn Icon={CalendarIcon} label="Year"     available={jokers.reYear}   onClick={jokerReYear}/>
@@ -1382,10 +1382,10 @@ export default function LineupGame() {
       {/* Info modals */}
       <InfoModal open={modal==="chemistry"} onClose={()=>setModal(null)}
         title={<span className="inline-flex items-center gap-2"><span className="text-yellow-400"><StarIcon size={17} /></span> Chemistry</span>}>
-        <div className="space-y-3 text-sm text-slate-300 leading-relaxed">
+        <div className="space-y-3 text-sm text-gray-300 leading-relaxed">
           <p>Each player has a <span className="text-white font-medium">primary position</span> based on their archetype and real-life role. When you slot a player into their primary position, you earn a chemistry point.</p>
           <p>At the end of the game, each chemistry point adds <span className="text-yellow-300 font-medium">+2 to your final score</span> (up to +10 for a perfect lineup).</p>
-          <p className="text-slate-400 text-xs">A star marks the primary slot button. You can still place players in other positions — sometimes a mismatched role is the right tactical call.</p>
+          <p className="text-gray-400 text-xs">A star marks the primary slot button. You can still place players in other positions — sometimes a mismatched role is the right tactical call.</p>
         </div>
       </InfoModal>
 
@@ -1403,18 +1403,18 @@ export default function LineupGame() {
               <span className="shrink-0 text-amber-300 mt-0.5"><Icon size={18} /></span>
               <div>
                 <div className="text-white font-medium text-sm">{name}</div>
-                <div className="text-slate-400 text-xs leading-relaxed">{desc}</div>
+                <div className="text-gray-400 text-xs leading-relaxed">{desc}</div>
               </div>
             </div>
           ))}
-          <p className="text-[12.5px] text-slate-600 pt-1 border-t border-slate-800">Each joker can be used once per game.</p>
+          <p className="text-[12.5px] text-gray-600 pt-1 border-t border-gray-800">Each joker can be used once per game.</p>
         </div>
       </InfoModal>
 
       <InfoModal open={modal==="tags"} onClose={()=>setModal(null)}
-        title={<span className="inline-flex items-center gap-2"><span className="text-slate-300"><TagIcon size={16} /></span> Player Tag Effects</span>}>
+        title={<span className="inline-flex items-center gap-2"><span className="text-gray-300"><TagIcon size={16} /></span> Player Tag Effects</span>}>
         <div className="space-y-2 max-h-[62vh] overflow-y-auto pr-1">
-          <p className="text-[11px] text-slate-500 leading-relaxed pb-1">
+          <p className="text-[11px] text-gray-500 leading-relaxed pb-1">
             On player rows tags show as small colored initials. Here's what each means:
           </p>
           {TAG_INFO.map(t=>(
@@ -1425,11 +1425,11 @@ export default function LineupGame() {
                 style={{color:t.color,background:t.color+"22",border:`1px solid ${t.color}66`}}>{t.abbr}</span>
               <div className="min-w-0">
                 <div className="text-[13px] font-bold" style={{color:t.color}}>{t.label}</div>
-                <div className="text-xs text-slate-300 leading-relaxed mt-0.5">{t.desc}</div>
+                <div className="text-xs text-gray-300 leading-relaxed mt-0.5">{t.desc}</div>
               </div>
             </div>
           ))}
-          <p className="text-[11px] text-slate-500 italic pt-1">
+          <p className="text-[11px] text-gray-500 italic pt-1">
             Tags come from real award history (1983+) and live archetype data.
             Click a player to see their tags full-size with effects.
           </p>
@@ -1438,13 +1438,13 @@ export default function LineupGame() {
 
       <InfoModal open={modal==="archetype"} onClose={()=>setModal(null)}
         title={<span className="inline-flex items-center gap-2"><span className="text-blue-300"><DnaIcon size={16} /></span> Archetypes</span>}>
-        <div className="space-y-3 text-sm text-slate-300 leading-relaxed">
+        <div className="space-y-3 text-sm text-gray-300 leading-relaxed">
           <p>Every player's archetype is <span className="text-white font-medium">visible while you draft</span> — read the role, build the puzzle. What stays hidden is the <span className="text-white font-medium">overall score</span>: you know WHAT a player is, not how good. Stats, tags and contract price are your clues (or burn the Discover joker).</p>
           <p>Each archetype is a percentile score built from real NBA tracking and box-score data. The 12 roles range from <span className="text-orange-300">Engine</span> (usage, creation) to <span className="text-blue-300">Anchor</span> (rim protection, defensive rating).</p>
-          <p className="text-slate-400 text-xs">Final score = 45% Player Quality + 40% Lineup Coverage + 15% Role Fit. Quality is each player's overall scaled by distance to your chosen sim era. Coverage is where archetypes live: does the lineup collectively cover creation, spacing, defense and finishing? One great specialist is enough for their pillar.</p>
-          <div className="flex gap-2 pt-1 border-t border-slate-800">
+          <p className="text-gray-400 text-xs">Final score = 45% Player Quality + 40% Lineup Coverage + 15% Role Fit. Quality is each player's overall scaled by distance to your chosen sim era. Coverage is where archetypes live: does the lineup collectively cover creation, spacing, defense and finishing? One great specialist is enough for their pillar.</p>
+          <div className="flex gap-2 pt-1 border-t border-gray-800">
             <a href="/glossary" className="text-xs underline underline-offset-2" style={{color:"var(--accent)"}}>Full Glossary</a>
-            <span className="text-slate-700">·</span>
+            <span className="text-gray-700">·</span>
             <a href="/about" className="text-xs underline underline-offset-2" style={{color:"var(--accent)"}}>About the System</a>
           </div>
         </div>
@@ -1475,9 +1475,9 @@ export default function LineupGame() {
               <div className="flex h-7 rounded-lg overflow-hidden text-[10.5px] font-bold">
                 <div className="flex items-center justify-center" style={{width:"45%",background:"#1D428A"}}>QUALITY 45%</div>
                 <div className="flex items-center justify-center" style={{width:"40%",background:"#274690"}}>COVERAGE 40%</div>
-                <div className="flex items-center justify-center text-slate-300" style={{width:"15%",background:"#1e293b"}}>ROLE 15%</div>
+                <div className="flex items-center justify-center text-gray-300" style={{width:"15%",background:"#1a1a1a"}}>ROLE 15%</div>
               </div>
-              <p className="text-[11px] text-slate-500 mt-1.5">
+              <p className="text-[11px] text-gray-500 mt-1.5">
                 Quality = overall × era fit (distance + style) × position · Coverage = your archetypes covering Creation / Spacing / Defense / Finishing
               </p>
             </div>
@@ -1527,10 +1527,10 @@ export default function LineupGame() {
 
       {/* === PICK SIM ERA === */}
       {phase==="pick_era"&&(
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
+        <div className="bg-surfaceBg border border-gray-800 rounded-2xl p-5 space-y-3">
           <div>
-            <div className="text-[11px] text-slate-400 uppercase tracking-widest mb-1">Step 1 — Pick Your Simulation Era</div>
-            <p className="text-xs text-slate-400 leading-relaxed">
+            <div className="text-[11px] text-gray-400 uppercase tracking-widest mb-1">Step 1 — Pick Your Simulation Era</div>
+            <p className="text-xs text-gray-400 leading-relaxed">
               Your whole run lives in this era. Every player's power scales with distance from
               their home decade (one era off ≈ −3%, five eras ≈ −22%) — but an archetype the era
               loves travels one era closer, one it dumps travels one further. TIMELESS greats
@@ -1543,14 +1543,14 @@ export default function LineupGame() {
                 onClick={()=>{setSimEra(era);startFullSpin();}}
                 className={`text-left rounded-xl border p-3 transition-all hover:scale-[1.02] ${era.bg}`}>
                 <div className={`text-sm font-bold ${era.color}`}>{era.label}</div>
-                <div className="text-[9.5px] text-slate-500 mt-0.5">{era.years[0]}–{Math.min(era.years[1],2026)}</div>
-                <div className="text-[10px] text-slate-400 mt-1.5 leading-snug">{ERA_META_BLURB[era.id]}</div>
+                <div className="text-[9.5px] text-gray-500 mt-0.5">{era.years[0]}–{Math.min(era.years[1],2026)}</div>
+                <div className="text-[10px] text-gray-400 mt-1.5 leading-snug">{ERA_META_BLURB[era.id]}</div>
               </button>
             ))}
           </div>
           <button
             onClick={()=>{setSimEra(ERAS[Math.floor(Math.random()*ERAS.length)]);startFullSpin();}}
-            className="w-full py-2.5 rounded-xl text-sm font-medium border border-slate-700 text-slate-300 hover:border-blue-500 hover:text-blue-300 transition-colors inline-flex items-center justify-center gap-2">
+            className="w-full py-2.5 rounded-xl text-sm font-medium border border-gray-700 text-gray-300 hover:border-blue-500 hover:text-blue-300 transition-colors inline-flex items-center justify-center gap-2">
             <DiceIcon size={15} /> Random Era
           </button>
         </div>
@@ -1558,12 +1558,12 @@ export default function LineupGame() {
 
       {/* === SPIN / FETCHING === */}
       {isSpinPhase&&(
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+        <div className="bg-surfaceBg border border-gray-800 rounded-2xl p-5">
           <div className="flex justify-center gap-8 mb-4">
             <SpinWheel items={seasons} spinning={spinSeasons} targetIdx={targetSIdx} label={lang==="tr"?"Sezon":"Season"}/>
             <SpinWheel items={teamPool.length>0?teamPool:["..."]} spinning={spinTeams} targetIdx={targetTIdx} label={lang==="tr"?"Takım":"Team"}/>
           </div>
-          <p className="text-center text-xs text-slate-500 animate-pulse">
+          <p className="text-center text-xs text-gray-500 animate-pulse">
             {statusMsg||(phase==="spin_season"?"Picking season...":phase==="spin_team"?"Picking team...":"Loading...")}
           </p>
         </div>
@@ -1586,38 +1586,38 @@ export default function LineupGame() {
           return (parseFloat(b[sortKey]||0)||0)-(parseFloat(a[sortKey]||0)||0);
         });
         return (
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+          <div className="bg-surfaceBg border border-gray-800 rounded-2xl overflow-hidden">
             {/* Üst bar: takım-dönem + G/F/C filtre + sayı */}
             <div className="flex items-center gap-2 px-3 py-2.5 border-b flex-wrap" style={{borderColor:"rgba(30,41,59,.8)"}}>
-              <span className="text-[11px] font-mono tracking-widest text-slate-400 uppercase">
+              <span className="text-[11px] font-mono tracking-widest text-gray-400 uppercase">
                 {chosenTeam} · {chosenSeason}
               </span>
-              <span className="ml-auto flex items-center border rounded-lg overflow-hidden" style={{borderColor:"#334155"}}>
+              <span className="ml-auto flex items-center border rounded-lg overflow-hidden" style={{borderColor:"#262626"}}>
                 {["G","F","C"].map(g=>(
                   <button key={g} onClick={()=>setPosFilter(f=>f===g?"":g)}
-                    className={`px-2.5 py-1 text-[11px] font-bold transition-colors border-r last:border-r-0
-                      ${posFilter===g?"bg-slate-200 text-slate-900":"text-slate-400 hover:text-white"}`}
-                    style={{borderColor:"#334155"}}>
+                    className={`px-2.5 py-1 font-logo text-[11px] font-bold transition-colors border-r last:border-r-0
+                      ${posFilter===g?"bg-yamabuki text-darkBg":"text-gray-400 hover:text-white"}`}
+                    style={{borderColor:"#262626"}}>
                     {g}
                   </button>
                 ))}
               </span>
-              <span className="text-[11px] text-slate-500 tabular-nums">{sorted.length}</span>
+              <span className="text-[11px] text-gray-500 tabular-nums">{sorted.length}</span>
             </div>
             {/* Satır listesi — yatay kaydırmalı (mobil/dar panelde stat'lar kayar,
                 isim+arketip+tag'ler solda pinli kalır) */}
-            <div className="max-h-[26rem] overflow-auto">
+            <div className="max-h-[calc(100vh-22rem)] overflow-auto">
               {/* Kolon başlıkları */}
               {sorted.length>0&&(
-                <div className="min-w-[560px] flex items-center gap-2 pr-3 py-1 border-b sticky top-0 z-20"
-                  style={{borderColor:"rgba(30,41,59,.8)",background:"var(--bg-surface,#0f172a)"}}>
-                  <span className="sticky left-0 pl-3 pr-2 w-[240px] shrink-0 text-[9px] uppercase tracking-wider text-slate-600"
-                    style={{background:"var(--bg-surface,#0f172a)"}}>Player</span>
-                  <span className="w-8 text-center shrink-0 text-[9px] uppercase text-slate-600" title="Tag count">TAG</span>
-                  {salary&&<span className="text-[9px] uppercase text-slate-600 shrink-0 w-9 text-right">$</span>}
-                  {discoverActive&&<span className="text-[9px] uppercase text-slate-600 shrink-0">OVR</span>}
-                  {["PTS","REB","AST","3P%","STL","BLK"].map(h=>(
-                    <span key={h} className="w-9 text-right shrink-0 text-[9px] uppercase text-slate-600">{h}</span>
+                <div className="min-w-[560px] flex items-center gap-2 pr-3 py-1.5 border-b border-gray-800 sticky top-0 z-20 bg-surfaceBg">
+                  <span className="sticky left-0 pl-3 pr-2 w-[240px] shrink-0 font-logo text-[9px] uppercase tracking-wider text-gray-500 bg-surfaceBg">Player</span>
+                  <button onClick={()=>setSortKey("TAGGED")} title="Sort by tag count"
+                    className={`w-8 text-center shrink-0 font-logo text-[9px] uppercase transition-colors ${sortKey==="TAGGED"?"text-yamabuki font-bold":"text-gray-500 hover:text-white"}`}>TAG</button>
+                  {salary&&<span className="font-logo text-[9px] uppercase text-gray-500 shrink-0 w-9 text-right">$</span>}
+                  {discoverActive&&<span className="font-logo text-[9px] uppercase text-gray-500 shrink-0">OVR</span>}
+                  {[["PTS","PTS"],["REB","REB"],["AST","AST"],["3P%","FG3_PCT"],["STL","STL"],["BLK","BLK"]].map(([h,f])=>(
+                    <button key={h} onClick={()=>setSortKey(f)}
+                      className={`w-9 text-right shrink-0 font-logo text-[9px] uppercase transition-colors ${sortKey===f?"text-yamabuki font-bold":"text-gray-500 hover:text-white"}`}>{h}</button>
                   ))}
                 </div>
               )}
@@ -1629,17 +1629,16 @@ export default function LineupGame() {
                   highlightStat={sortKey==="TAGGED"?"PTS":sortKey}/>;
               })}
               {sorted.length===0&&(
-                <div className="py-8 text-center text-xs text-slate-600">No players in this group — clear the filter.</div>
+                <div className="py-8 text-center text-xs text-gray-600">No players in this group — clear the filter.</div>
               )}
             </div>
             {/* Alt bar: sıralama */}
-            <div className="flex items-center px-3 py-2 border-t gap-1 flex-wrap" style={{borderColor:"rgba(30,41,59,.8)"}}>
-              <span className="text-[10px] tracking-widest text-slate-500 uppercase mr-1">Sort</span>
+            <div className="flex items-center px-3 py-2 border-t border-gray-800 gap-1 flex-wrap">
+              <span className="font-logo text-[10px] tracking-widest text-gray-500 uppercase mr-1">Sort</span>
               {SORT_KEYS.map(([field,label])=>(
                 <button key={field} onClick={()=>setSortKey(field)}
-                  className={`px-2 py-1 rounded text-[10px] font-semibold tracking-wider transition-colors
-                    ${sortKey===field?"text-slate-900":"text-slate-400 hover:text-white"}`}
-                  style={sortKey===field?{background:"#e2b34c"}:{}}>
+                  className={`px-2 py-1 rounded font-logo text-[10px] font-semibold tracking-wider transition-colors
+                    ${sortKey===field?"bg-yamabuki text-darkBg":"text-gray-500 hover:text-white"}`}>
                   {label}
                 </button>
               ))}
@@ -1653,14 +1652,14 @@ export default function LineupGame() {
         const eligible=getEligiblePos(pickedPlayer);
         const primary=eligible[0];
         return (
-          <div className="bg-slate-900 rounded-2xl p-4" style={{border:"1px solid var(--accent-border)"}}>
+          <div className="bg-surfaceBg rounded-2xl p-4" style={{border:"1px solid var(--accent-border)"}}>
             <div className="flex items-start justify-between mb-3">
               <div className="min-w-0">
                 <div className="text-white font-semibold flex items-center gap-2 flex-wrap">
                   {pickedPlayer.PLAYER_NAME}
                   <span className="text-[11px] text-blue-400 font-medium">{pickedPlayer.primary_arch||"—"}</span>
                 </div>
-                <div className="text-xs text-slate-500 mt-0.5">{chosenSeason} · {chosenTeam}</div>
+                <div className="text-xs text-gray-500 mt-0.5">{chosenSeason} · {chosenTeam}</div>
                 {/* İstatistikler (arketip her zaman açık, overall gizli) */}
                 <div className="flex gap-3 mt-1.5">
                   {[["PTS","PTS"],["REB","REB"],["AST","AST"],["FG3_PCT","3P%"]].map(([k,l])=>{
@@ -1669,7 +1668,7 @@ export default function LineupGame() {
                     return (
                       <div key={k} className="text-center">
                         <div className="text-[13px] font-bold text-white tabular-nums">{disp}</div>
-                        <div className="text-[8.5px] uppercase tracking-wide text-slate-600">{l}</div>
+                        <div className="text-[8.5px] uppercase tracking-wide text-gray-600">{l}</div>
                       </div>
                     );
                   })}
@@ -1683,7 +1682,7 @@ export default function LineupGame() {
                 </div>
               </div>
               <button onClick={()=>{setPickedPlayer(null);setPhase("pick_player");}}
-                className="text-slate-600 hover:text-slate-300 text-xs shrink-0">← Back</button>
+                className="text-gray-600 hover:text-gray-300 text-xs shrink-0">← Back</button>
             </div>
             {/* Tag'ler büyütülmüş — tam ad + etkisi (oyuncuya tıklayınca ne olduğu net) */}
             {(()=>{ const tg=getPlayerTags(pickedPlayer); return tg.length>0&&(
@@ -1695,7 +1694,7 @@ export default function LineupGame() {
                       style={{color:t.color,background:t.color+"22",border:`1px solid ${t.color}66`}}>{t.abbr}</span>
                     <div className="min-w-0">
                       <div className="text-[11.5px] font-bold leading-tight" style={{color:t.color}}>{t.label}</div>
-                      <div className="text-[10.5px] text-slate-400 leading-snug">{t.detail}</div>
+                      <div className="text-[10.5px] text-gray-400 leading-snug">{t.detail}</div>
                     </div>
                   </div>
                 ))}
@@ -1707,7 +1706,7 @@ export default function LineupGame() {
               <span>Pick a spot on the court or bench to place <span className="font-semibold">{pickedPlayer.PLAYER_NAME?.split(" ").slice(-1)[0]}</span></span>
             </div>
             <div className="lg:hidden">
-            <div className="text-xs text-slate-500 mb-2 inline-flex items-center gap-1 flex-wrap">
+            <div className="text-xs text-gray-500 mb-2 inline-flex items-center gap-1 flex-wrap">
               <span>Which position? (</span><StarIcon size={10} /><span>= primary → chemistry bonus · secondary −10%{isFlex(pickedPlayer)?", next-nearest −10% (VERSATILE), rest −25%":", elsewhere −25%"})</span>
             </div>
             <div className="flex gap-2 flex-wrap">
@@ -1720,8 +1719,8 @@ export default function LineupGame() {
                   <button key={pos} onClick={()=>handlePickPos(pos)}
                     className={`flex-1 min-w-[3rem] py-2 border rounded-xl font-bold text-sm transition-all
                       ${isPrim?"bg-amber-900/30 border-amber-500/60 text-amber-200 hover:bg-amber-600 hover:text-white"
-                               :isElig?"bg-slate-800 border-slate-600 text-white hover:bg-blue-700 hover:border-blue-500"
-                                      :"bg-slate-900/50 border-slate-800 text-slate-500 hover:bg-slate-800"}`}>
+                               :isElig?"bg-surfaceCard border-gray-600 text-white hover:bg-blue-700 hover:border-blue-500"
+                                      :"bg-surfaceBg/50 border-gray-800 text-gray-500 hover:bg-surfaceCard"}`}>
                     <div className="inline-flex items-center gap-1 justify-center">{pos}{isPrim&&<StarIcon size={11} />}</div>
                     {penLabel&&<div className="text-[8.5px] font-medium text-red-400/90">{penLabel}</div>}
                     {!penLabel&&!isPrim&&isFlex(pickedPlayer)&&<div className="text-[8.5px] font-medium text-violet-400">vers.</div>}
@@ -1731,13 +1730,13 @@ export default function LineupGame() {
             </div>
             {BENCH_SLOTS.some(b=>!lineup[b])&&(
               <>
-                <div className="text-xs text-slate-500 mt-3 mb-2">
+                <div className="text-xs text-gray-500 mt-3 mb-2">
                   Or send to the bench — no position penalty, but reduced minutes (~22% of the load)
                 </div>
                 <div className="flex gap-2">
                   {BENCH_SLOTS.filter(b=>!lineup[b]).map(b=>(
                     <button key={b} onClick={()=>handlePickPos(b)}
-                      className="flex-1 py-2 border rounded-xl font-bold text-sm transition-all bg-slate-900/70 border-slate-700 text-slate-400 hover:bg-slate-700 hover:text-white">
+                      className="flex-1 py-2 border rounded-xl font-bold text-sm transition-all bg-surfaceBg/70 border-gray-700 text-gray-400 hover:bg-surfaceCard hover:text-white">
                       {b}
                     </button>
                   ))}
@@ -1751,10 +1750,10 @@ export default function LineupGame() {
 
       {/* === PICK COACH === */}
       {phase==="pick_coach"&&(
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
+        <div className="bg-surfaceBg border border-gray-800 rounded-2xl p-5 space-y-3">
           <div>
-            <div className="text-[11px] text-slate-400 uppercase tracking-widest mb-1">Final Step — Draft a Coach</div>
-            <p className="text-xs text-slate-500 leading-relaxed">
+            <div className="text-[11px] text-gray-400 uppercase tracking-widest mb-1">Final Step — Draft a Coach</div>
+            <p className="text-xs text-gray-500 leading-relaxed">
               Offense and Defense grades shift your team rating all season. Championship rings add
               playoff DNA — the more rings, the bigger the boost when the lights are brightest.
             </p>
@@ -1769,12 +1768,12 @@ export default function LineupGame() {
                   setFitResult(fit);
                   setPhase("complete");
                 }}
-                className="text-left rounded-xl border border-slate-700 bg-slate-800/50 p-3 transition-all hover:border-blue-500 hover:scale-[1.02]">
+                className="text-left rounded-xl border border-gray-700 bg-surfaceCard/50 p-3 transition-all hover:border-blue-500 hover:scale-[1.02]">
                 <div className="text-sm font-bold text-white">{c.name}</div>
-                <div className="text-[9.5px] text-slate-500 mt-0.5">{c.years}</div>
+                <div className="text-[9.5px] text-gray-500 mt-0.5">{c.years}</div>
                 <div className="flex items-center gap-2 mt-2">
-                  <span className="text-[10px] font-mono"><span className="text-slate-500">OFF</span> <span className={`font-bold ${c.off.startsWith("A")?"text-emerald-400":c.off.startsWith("B")?"text-sky-300":c.off.startsWith("C")?"text-amber-400":"text-red-400"}`}>{c.off}</span></span>
-                  <span className="text-[10px] font-mono"><span className="text-slate-500">DEF</span> <span className={`font-bold ${c.def.startsWith("A")?"text-emerald-400":c.def.startsWith("B")?"text-sky-300":c.def.startsWith("C")?"text-amber-400":"text-red-400"}`}>{c.def}</span></span>
+                  <span className="text-[10px] font-mono"><span className="text-gray-500">OFF</span> <span className={`font-bold ${c.off.startsWith("A")?"text-emerald-400":c.off.startsWith("B")?"text-sky-300":c.off.startsWith("C")?"text-amber-400":"text-red-400"}`}>{c.off}</span></span>
+                  <span className="text-[10px] font-mono"><span className="text-gray-500">DEF</span> <span className={`font-bold ${c.def.startsWith("A")?"text-emerald-400":c.def.startsWith("B")?"text-sky-300":c.def.startsWith("C")?"text-amber-400":"text-red-400"}`}>{c.def}</span></span>
                 </div>
                 <div className="flex items-center gap-1.5 mt-1.5 min-h-[16px]">
                   {c.champs>0&&<span className="text-[9.5px] text-yellow-400 inline-flex items-center gap-0.5"><TrophyIcon size={10} />×{c.champs}</span>}
