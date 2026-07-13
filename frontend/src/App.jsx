@@ -30,7 +30,7 @@ const EuroLeaguePage = lazy(() => import("./pages/EuroLeaguePage"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const ResetPassword  = lazy(() => import("./pages/ResetPassword"));
 const PlayerProfile  = lazy(() => import("./pages/PlayerProfile"));
-import { ThemeProvider, useTheme } from "./contexts/ThemeContext";
+import { ThemeProvider } from "./contexts/ThemeContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { api } from "./api";
@@ -73,7 +73,6 @@ function UserButton() {
 /* ── Top bar ─────────────────────────────────────────────────────── */
 function TopBar() {
   const navigate = useNavigate();
-  const { theme, toggle } = useTheme();
   const [meta, setMeta] = useState(null);
 
   useEffect(() => { api.meta().then(setMeta).catch(() => {}); }, []);
@@ -106,15 +105,6 @@ function TopBar() {
           onMouseEnter={e => e.currentTarget.style.color = "var(--text-primary)"}
           onMouseLeave={e => e.currentTarget.style.color = "var(--text-muted)"}
         >↺</button>
-
-        <button
-          onClick={toggle}
-          title={theme === "dark" ? "Light mode" : "Dark mode"}
-          className="w-7 h-7 flex items-center justify-center rounded text-sm transition-colors"
-          style={{ color: "var(--text-muted)", border: "1px solid var(--border)" }}
-          onMouseEnter={e => e.currentTarget.style.color = "var(--text-primary)"}
-          onMouseLeave={e => e.currentTarget.style.color = "var(--text-muted)"}
-        >{theme === "dark" ? "☀" : "🌙"}</button>
 
         <UserButton />
       </div>

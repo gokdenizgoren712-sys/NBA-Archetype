@@ -1,40 +1,19 @@
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useEffect } from "react";
 
-const ThemeContext = createContext(null);
+/* Primary Arch dark-committed — light tema kaldırıldı. */
+const ThemeContext = createContext({ theme: "dark" });
 
 export function ThemeProvider({ children }) {
-  const [theme, setTheme] = useState(() => {
-    const saved = localStorage.getItem("nba_theme") || "dark";
-    // İlk render öncesi class'ı hemen uygula (flash önleme)
-    const root = document.documentElement;
-    root.classList.add(saved);
-    root.classList.remove(saved === "dark" ? "light" : "dark");
-    return saved;
-  });
-
   useEffect(() => {
     const root = document.documentElement;
-    if (theme === "light") {
-      root.classList.add("light");
-      root.classList.remove("dark");
-      document.body.style.background = "#d4d8e8";
-      document.body.style.color = "#141720";
-    } else {
-      root.classList.add("dark");
-      root.classList.remove("light");
-      document.body.style.background = "#0b0b0b";
-      document.body.style.color = "#e5e5e5";
-    }
-  }, [theme]);
-
-  const toggle = () => {
-    const next = theme === "dark" ? "light" : "dark";
-    localStorage.setItem("nba_theme", next);
-    setTheme(next);
-  };
+    root.classList.add("dark");
+    root.classList.remove("light");
+    document.body.style.background = "#0b0b0b";
+    document.body.style.color = "#e5e5e5";
+  }, []);
 
   return (
-    <ThemeContext.Provider value={{ theme, toggle }}>
+    <ThemeContext.Provider value={{ theme: "dark" }}>
       {children}
     </ThemeContext.Provider>
   );

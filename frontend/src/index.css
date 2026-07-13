@@ -59,19 +59,6 @@
   --nba-blue:     #1d428a;
 }
 
-html.light {
-  --bg-base:      #f0f2f8;
-  --bg-surface:   #e4e8f2;
-  --bg-elevated:  #d8dde8;
-  --border:       #c4cad8;
-  --accent:       #d97706;
-  --accent-dim:   rgba(217,119,6,0.10);
-  --accent-border:rgba(217,119,6,0.30);
-  --text-primary: #141720;
-  --text-muted:   #4a5568;
-  --text-faint:   #a0aec0;
-}
-
 /* ── Modal animasyon ─────────────────────────────────────────────── */
 @keyframes fadeScaleIn {
   from { opacity: 0; transform: scale(0.93); }
@@ -94,36 +81,6 @@ body {
 
 /* Başlıklar → Rajdhani (font-logo); font-sans class'ı ile override edilebilir */
 h1, h2, h3, h4 { font-family: var(--font-logo); }
-
-/* ── Light mode overrides ────────────────────────────────────────── */
-html.light body                  { background: var(--bg-base); color: var(--text-primary); }
-html.light .bg-slate-950         { background-color: #f0f2f8; }
-html.light .bg-slate-900         { background-color: #e4e8f2; }
-html.light .bg-slate-800         { background-color: #d8dde8; }
-html.light .bg-slate-800\/50,
-html.light .bg-slate-800\/60     { background-color: rgba(216,221,232,0.8); }
-html.light .bg-slate-700         { background-color: #c4cad8; }
-html.light .border-slate-700\/50,
-html.light .border-slate-700\/60 { border-color: rgba(180,186,200,0.7); }
-
-html.light .text-white           { color: #141720; }
-html.light .text-slate-100       { color: #141720; }
-html.light .text-slate-200       { color: #1e2235; }
-html.light .text-slate-300       { color: #2a3148; }
-html.light .text-slate-400       { color: #4a5568; }
-html.light .text-slate-500       { color: #718096; }
-html.light .text-slate-600       { color: #a0aec0; }
-
-html.light .border-slate-800     { border-color: #c4cad8; }
-html.light .border-slate-700     { border-color: #b0b8cc; }
-
-html.light input,
-html.light textarea,
-html.light select                { background-color: #e4e8f2; color: #141720; border-color: #c4cad8; }
-html.light input::placeholder,
-html.light textarea::placeholder { color: #718096; }
-
-html.light .hover\:bg-slate-800:hover { background-color: #c4cad8; }
 
 /* ── Scrollbar ───────────────────────────────────────────────────── */
 ::-webkit-scrollbar        { width: 4px; height: 4px; }
