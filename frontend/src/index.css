@@ -15,18 +15,18 @@
   --font-logo: "Rajdhani", ui-sans-serif, sans-serif;
   --font-sans: "Outfit", ui-sans-serif, sans-serif;
 
-  /* Remap violet → amber/gold (NBA accent) */
-  --color-violet-50:  #fffbeb;
-  --color-violet-100: #fef3c7;
-  --color-violet-200: #fde68a;
-  --color-violet-300: #fcd34d;
-  --color-violet-400: #fbbf24;
-  --color-violet-500: #f59e0b;
-  --color-violet-600: #d97706;
-  --color-violet-700: #b45309;
-  --color-violet-800: #92400e;
-  --color-violet-900: #78350f;
-  --color-violet-950: #451a03;
+  /* Remap violet → yamabuki (Primary Arch gold accent) */
+  --color-violet-50:  #fff8e6;
+  --color-violet-100: #ffedb8;
+  --color-violet-200: #ffe08a;
+  --color-violet-300: #ffcc4d;
+  --color-violet-400: #FFB11B;
+  --color-violet-500: #e89b0e;
+  --color-violet-600: #c27f08;
+  --color-violet-700: #8f5d06;
+  --color-violet-800: #5c3c04;
+  --color-violet-900: #3d2803;
+  --color-violet-950: #1f1401;
 
   /* Deep black slate */
   --color-slate-950: #030307;
@@ -89,8 +89,11 @@ body {
   margin: 0;
   background: var(--bg-base);
   color: var(--text-primary);
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family: var(--font-sans);   /* Outfit — gövde */
 }
+
+/* Başlıklar → Rajdhani (font-logo); font-sans class'ı ile override edilebilir */
+h1, h2, h3, h4 { font-family: var(--font-logo); }
 
 /* ── Light mode overrides ────────────────────────────────────────── */
 html.light body                  { background: var(--bg-base); color: var(--text-primary); }

@@ -111,7 +111,7 @@ const POS_COLORS = {
   PG:"bg-blue-900/60 text-blue-300 border-blue-700/50",
   SG:"bg-sky-900/60 text-sky-300 border-sky-700/50",
   SF:"bg-emerald-900/60 text-emerald-300 border-emerald-700/50",
-  PF:"bg-amber-900/60 text-amber-300 border-amber-700/50",
+  PF:"bg-yamabuki/60 text-yamabuki border-yamabuki/50",
   C: "bg-red-900/60 text-red-300 border-red-700/50",
 };
 
@@ -163,7 +163,7 @@ function LineupSlot({ pos, player, bench=false, selected=false, canTap=false, on
   return (
     <div onClick={()=>canTap&&onTap&&onTap(pos)}
       className={`flex-1 rounded-lg p-1.5 border text-center min-w-0 transition-all
-      ${selected?"border-amber-400 shadow-[0_0_8px_rgba(245,158,11,.35)]":player?(bench?"border-gray-600/50 bg-surfaceCard/30":"border-amber-500/40 bg-amber-900/10"):"border-gray-800 bg-surfaceBg/60"}
+      ${selected?"border-yamabuki shadow-[0_0_8px_rgba(245,158,11,.35)]":player?(bench?"border-gray-600/50 bg-surfaceCard/30":"border-yamabuki/40 bg-yamabuki/10"):"border-gray-800 bg-surfaceBg/60"}
       ${canTap?"cursor-pointer":""}`}>
       <div className={`text-[8.5px] uppercase tracking-wider mb-0.5 ${bench?"text-gray-600":POS_COLORS[pos]?.split(" ")[1]||"text-gray-600"}`}>{posLabel}</div>
       {player ? (
@@ -172,7 +172,7 @@ function LineupSlot({ pos, player, bench=false, selected=false, canTap=false, on
             {player.PLAYER_NAME?.split(" ").slice(-1)[0]}
           </div>
           <div className="text-[8.5px] text-gray-500">{(player._season||"").slice(0,4)}</div>
-          {isPrimary && <div className="text-yellow-400 flex justify-center mt-0.5"><StarIcon size={9} /></div>}
+          {isPrimary && <div className="text-yamabuki flex justify-center mt-0.5"><StarIcon size={9} /></div>}
         </>
       ) : (
         <div className="text-gray-700 text-sm">—</div>
@@ -229,7 +229,7 @@ function PlayerRow({ player, discover, onClick, cost, unaffordable, highlightSta
       style={{ borderColor: "rgba(30,41,59,.6)" }}>
       {/* Sabit sol blok (yatay kaydırmada pinli): avatar + isim + arketip + rozetler */}
       <div className="sticky left-0 z-10 flex items-center gap-2 pl-3 pr-2 py-0.5 shrink-0 w-[240px]"
-        style={{ background: "var(--bg-surface, #0f172a)" }}>
+        style={{ background: "var(--bg-surface, #131313)" }}>
         <div className="w-9 h-9 rounded-full overflow-hidden shrink-0 border border-gray-700 bg-surfaceCard flex items-center justify-center">
           {url && imgOk ? (
             <img src={url} alt="" loading="lazy" onError={() => setImgOk(false)}
@@ -303,7 +303,7 @@ function JokerBtn({ Icon, label, available, onClick }) {
   return (
     <button onClick={onClick} disabled={!available}
       className={`flex flex-col items-center gap-1 px-2 py-1.5 rounded-lg border text-center transition-all
-        ${available?"border-amber-700/60 bg-amber-900/20 hover:bg-amber-900/40 cursor-pointer text-amber-300"
+        ${available?"border-yamabuki/60 bg-yamabuki/20 hover:bg-yamabuki/40 cursor-pointer text-yamabuki"
                   :"border-gray-800 bg-surfaceBg/40 cursor-not-allowed text-gray-600"}`}>
       <Icon size={16} />
       <span className="text-[9.5px] leading-tight whitespace-nowrap">{label}</span>
@@ -409,7 +409,7 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
   useEffect(() => {
     fetch(`/api/leaderboard?limit=10&mode=${mode}`).then(r => r.json()).then(d => setLeaderboard(d.entries || [])).catch(() => {});
   }, [mode]);
-  const gColor = pct>=85?"text-blue-300":pct>=78?"text-sky-300":pct>=70?"text-emerald-300":pct>=62?"text-amber-300":"text-red-400";
+  const gColor = pct>=85?"text-blue-300":pct>=78?"text-sky-300":pct>=70?"text-emerald-300":pct>=62?"text-yamabuki":"text-red-400";
 
   // Per-oyuncu → pozisyona göre eşle (computeLineupFit POSITIONS sırasında çağrıldı)
   const perPlayerMap = {};
@@ -435,7 +435,7 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
         <div className={`text-7xl font-black mb-1 ${pct>=78?"text-blue-400":pct>=62?"text-sky-400":"text-gray-300"}`}>{pct}</div>
         <div className={`text-3xl font-bold mb-1 ${gColor}`}>{grade}</div>
         {chemBonus > 0 && (
-          <div className="text-xs text-yellow-400 mb-2">
+          <div className="text-xs text-yamabuki mb-2">
             <span className="inline-flex items-center gap-1"><StarIcon size={11} /> Chemistry Bonus: +{primaryCount} primary slot (+{Math.round(chemBonus*100)} pts)</span>
           </div>
         )}
@@ -490,7 +490,7 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
                     <span className="text-[13px] text-white font-semibold truncate">{p.PLAYER_NAME}</span>
-                    {isPrimary&&<span className="text-yellow-400 shrink-0"><StarIcon size={11} /></span>}
+                    {isPrimary&&<span className="text-yamabuki shrink-0"><StarIcon size={11} /></span>}
                     {pen<1&&<span className="text-[10px] text-red-400 shrink-0 font-medium">{pen<=0.75?"−25% pos":"−10% pos"}</span>}
                   </div>
                   <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
@@ -498,7 +498,7 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
                     <span className={`text-[10px] ${pp.era.color}`}>{pp.era.short} '{(p._season||"").slice(2,4)}</span>
                     {pp.timeless&&<span className="text-[10px] text-purple-400" title="Timeless — era distance fully ignored">TL</span>}
                     {!pp.timeless&&pp.fitShift<0&&<span className="text-[10px] text-emerald-400" title="Archetype fits this era — one era closer">fits</span>}
-                    {pp.dist>0&&!pp.timeless&&<span className="text-[10px] text-amber-500">−{pp.dist} era</span>}
+                    {pp.dist>0&&!pp.timeless&&<span className="text-[10px] text-yamabuki">−{pp.dist} era</span>}
                     {tags.map(t=>(
                       <span key={t.key} title={t.detail} className="text-[8.5px] px-1 py-px rounded font-bold leading-none"
                         style={{color:t.color,background:t.color+"1a",border:`1px solid ${t.color}44`}}>
@@ -536,7 +536,7 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
                     <span className={`text-[10px] ${pp.era.color}`}>{pp.era.short} '{(p._season||"").slice(2,4)}</span>
                     {pp.timeless&&<span className="text-[10px] text-purple-400">TL</span>}
                     {!pp.timeless&&pp.fitShift<0&&<span className="text-[10px] text-emerald-400" title="Archetype fits this era">fits</span>}
-                    {pp.dist>0&&!pp.timeless&&<span className="text-[10px] text-amber-500">−{pp.dist} era</span>}
+                    {pp.dist>0&&!pp.timeless&&<span className="text-[10px] text-yamabuki">−{pp.dist} era</span>}
                     {tags.map(t=>(
                       <span key={t.key} title={t.detail} className="text-[8.5px] px-1 py-px rounded font-bold leading-none"
                         style={{color:t.color,background:t.color+"1a",border:`1px solid ${t.color}44`}}>
@@ -562,7 +562,7 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
               <span className="shrink-0 w-8 flex justify-center text-gray-300"><CoachIcon size={15} /></span>
               <span className="text-[13px] text-white font-semibold flex-1 truncate">{coach.name}</span>
               <span className="text-[11px] font-mono text-gray-400 shrink-0">O:{coach.off} · D:{coach.def}</span>
-              {coach.champs>0&&<span className="text-[11px] text-yellow-400 shrink-0 inline-flex items-center gap-0.5"><TrophyIcon size={11} />×{coach.champs}</span>}
+              {coach.champs>0&&<span className="text-[11px] text-yamabuki shrink-0 inline-flex items-center gap-0.5"><TrophyIcon size={11} />×{coach.champs}</span>}
               {coach.tag&&<span className="text-[9px] px-1 py-0.5 rounded bg-violet-900/40 text-violet-300 shrink-0">{coach.tag}</span>}
             </div>
           )}
@@ -619,7 +619,7 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
               <p className="text-sm text-gray-300">
                 <span className="font-semibold">Era liability: </span>
                 <span className="text-red-400">{analysis.weakest.label} ({Math.round(analysis.weakest.val*100)})</span>
-                {analysis.weakest.w>=1.2&&<span className="text-amber-400"> — a KEY pillar here, this will cost you games</span>}
+                {analysis.weakest.w>=1.2&&<span className="text-yamabuki"> — a KEY pillar here, this will cost you games</span>}
               </p>
               <p className="text-[13px] text-gray-500 mt-0.5">{analysis.weakest.fix}</p>
             </div>
@@ -629,8 +629,8 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
         {/* Ball-dom uyarısı */}
         {analysis.ballDom >= 2 && (
           <div className="flex gap-2 items-start">
-            <span className="text-amber-400 shrink-0 mt-0.5"><WarnIcon size={16} /></span>
-            <p className="text-sm text-amber-400/80">
+            <span className="text-yamabuki shrink-0 mt-0.5"><WarnIcon size={16} /></span>
+            <p className="text-sm text-yamabuki/80">
               {analysis.ballDom} ball-dominant players ({analysis.ballDomPlayers.map(n=>n.split(" ").slice(-1)[0]).join(", ")}) — role fit penalty applied.
             </p>
           </div>
@@ -685,11 +685,11 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
             <div key={i} className="flex items-center gap-2 text-[12.5px]">
               <span className="text-gray-700 w-5 text-right shrink-0 font-mono">{i + 1}.</span>
               <span className="text-gray-300 flex-1 truncate">{entry.username}</span>
-              {entry.season_result === "THREEPEAT" && <span className="shrink-0 text-yellow-300" title="THREEPEAT — three straight simulated titles"><CrownIcon size={13} /></span>}
-              {entry.season_result === "REPEAT" && <span className="shrink-0 text-yellow-400 inline-flex" title="Back-to-back simulated champion"><TrophyIcon size={12} /><TrophyIcon size={12} /></span>}
-              {entry.season_result === "CHAMPION" && <span className="shrink-0 text-yellow-400" title="Won a simulated championship"><TrophyIcon size={12} /></span>}
+              {entry.season_result === "THREEPEAT" && <span className="shrink-0 text-yamabuki" title="THREEPEAT — three straight simulated titles"><CrownIcon size={13} /></span>}
+              {entry.season_result === "REPEAT" && <span className="shrink-0 text-yamabuki inline-flex" title="Back-to-back simulated champion"><TrophyIcon size={12} /><TrophyIcon size={12} /></span>}
+              {entry.season_result === "CHAMPION" && <span className="shrink-0 text-yamabuki" title="Won a simulated championship"><TrophyIcon size={12} /></span>}
               {entry.wins != null && <span className="text-gray-600 shrink-0 text-[10px]">{entry.wins}W</span>}
-              <span className={`font-bold shrink-0 ${entry.pct>=85?"text-blue-400":entry.pct>=78?"text-sky-300":entry.pct>=70?"text-emerald-400":entry.pct>=62?"text-amber-400":"text-red-400"}`}>
+              <span className={`font-bold shrink-0 ${entry.pct>=85?"text-blue-400":entry.pct>=78?"text-sky-300":entry.pct>=70?"text-emerald-400":entry.pct>=62?"text-yamabuki":"text-red-400"}`}>
                 {entry.pct}
               </span>
               <span className="text-gray-600 shrink-0 w-4">{entry.grade}</span>
@@ -904,9 +904,9 @@ function ShareCard({ pct, grade, fit, lineup }) {
         </button>
         <button onClick={tweet}
           className="py-2 rounded-lg text-xs font-bold transition-colors inline-flex items-center justify-center gap-1.5"
-          style={{ background: "#0f172a", color: "#e2e8f0", border: "1px solid #1d4ed8" }}
+          style={{ background: "#131313", color: "#e2e8f0", border: "1px solid #1d4ed8" }}
           onMouseEnter={e => e.currentTarget.style.background = "#1d4ed8"}
-          onMouseLeave={e => e.currentTarget.style.background = "#0f172a"}>
+          onMouseLeave={e => e.currentTarget.style.background = "#131313"}>
           <XLogoIcon size={12} /> Tweet
         </button>
         <button onClick={copyLink}
@@ -1306,7 +1306,7 @@ export default function LineupGame() {
           selected={moveSrc===pos} canTap={canRearrange} onTap={handleSlotTap}/>)}
       </div>
       {canRearrange&&moveSrc&&(
-        <p className="text-[9.5px] text-yellow-400/90 lg:hidden">Moving {lineup[moveSrc]?.PLAYER_NAME?.split(" ").slice(-1)[0]} — tap a destination slot</p>
+        <p className="text-[9.5px] text-yamabuki/90 lg:hidden">Moving {lineup[moveSrc]?.PLAYER_NAME?.split(" ").slice(-1)[0]} — tap a destination slot</p>
       )}
 
       {/* İlerleme */}
@@ -1322,7 +1322,7 @@ export default function LineupGame() {
             <div className="h-full rounded-full transition-all duration-500" style={{width:`${(filledSlots.length/ALL_SLOTS.length)*100}%`,background:"var(--accent)"}}/>
           </div>
           <span className="text-[10.5px] text-gray-500">{filledSlots.length}/{ALL_SLOTS.length}</span>
-          {primaryCount>0&&<span className="text-[10.5px] text-yellow-400 inline-flex items-center gap-0.5"><StarIcon size={10} />×{primaryCount}</span>}
+          {primaryCount>0&&<span className="text-[10.5px] text-yamabuki inline-flex items-center gap-0.5"><StarIcon size={10} />×{primaryCount}</span>}
         </div>
       )}
 
@@ -1336,7 +1336,7 @@ export default function LineupGame() {
             <div className="flex items-baseline justify-between mb-1.5">
               <span className="text-[11px] text-gray-400 uppercase tracking-widest inline-flex items-center gap-1.5"><CapIcon size={13} /> Cap Space</span>
               <span className={`text-2xl font-black tabular-nums leading-none
-                ${budgetLeft<=15?"text-red-400":budgetLeft<=35?"text-amber-300":"text-emerald-300"}`}>
+                ${budgetLeft<=15?"text-red-400":budgetLeft<=35?"text-yamabuki":"text-emerald-300"}`}>
                 {budgetLeft}<span className="text-sm">%</span>
               </span>
             </div>
@@ -1367,7 +1367,7 @@ export default function LineupGame() {
             <JokerBtn Icon={SearchIcon}   label="Discover" available={jokers.discover&&!discoverActive} onClick={jokerDiscover}/>
           </div>
           {doubleActive&&(
-            <div className="flex items-center justify-center gap-1.5 text-xs text-amber-400 mt-1.5 animate-pulse">
+            <div className="flex items-center justify-center gap-1.5 text-xs text-yamabuki mt-1.5 animate-pulse">
               <UsersIcon size={13} /> Double pick active — choose 2 players
             </div>
           )}
@@ -1381,16 +1381,16 @@ export default function LineupGame() {
 
       {/* Info modals */}
       <InfoModal open={modal==="chemistry"} onClose={()=>setModal(null)}
-        title={<span className="inline-flex items-center gap-2"><span className="text-yellow-400"><StarIcon size={17} /></span> Chemistry</span>}>
+        title={<span className="inline-flex items-center gap-2"><span className="text-yamabuki"><StarIcon size={17} /></span> Chemistry</span>}>
         <div className="space-y-3 text-sm text-gray-300 leading-relaxed">
           <p>Each player has a <span className="text-white font-medium">primary position</span> based on their archetype and real-life role. When you slot a player into their primary position, you earn a chemistry point.</p>
-          <p>At the end of the game, each chemistry point adds <span className="text-yellow-300 font-medium">+2 to your final score</span> (up to +10 for a perfect lineup).</p>
+          <p>At the end of the game, each chemistry point adds <span className="text-yamabuki font-medium">+2 to your final score</span> (up to +10 for a perfect lineup).</p>
           <p className="text-gray-400 text-xs">A star marks the primary slot button. You can still place players in other positions — sometimes a mismatched role is the right tactical call.</p>
         </div>
       </InfoModal>
 
       <InfoModal open={modal==="jokers"} onClose={()=>setModal(null)}
-        title={<span className="inline-flex items-center gap-2"><span className="text-amber-300"><CardsIcon size={17} /></span> Jokers</span>}>
+        title={<span className="inline-flex items-center gap-2"><span className="text-yamabuki"><CardsIcon size={17} /></span> Jokers</span>}>
         <div className="space-y-3">
           {[
             [RefreshIcon,"Team","Re-spin the team wheel. Get a different roster from the same season."],
@@ -1400,7 +1400,7 @@ export default function LineupGame() {
             [SearchIcon,"Discover","Reveal every player's hidden overall score this round, then choose with full information."],
           ].map(([Icon,name,desc])=>(
             <div key={name} className="flex gap-3 items-start">
-              <span className="shrink-0 text-amber-300 mt-0.5"><Icon size={18} /></span>
+              <span className="shrink-0 text-yamabuki mt-0.5"><Icon size={18} /></span>
               <div>
                 <div className="text-white font-medium text-sm">{name}</div>
                 <div className="text-gray-400 text-xs leading-relaxed">{desc}</div>
@@ -1701,7 +1701,7 @@ export default function LineupGame() {
               </div>
             ); })()}
             {/* Desktop: court spot'una tıkla; Mobil: butonlar (court yok) */}
-            <div className="hidden lg:flex items-center gap-1.5 text-[13px] text-amber-300 mt-1 mb-1">
+            <div className="hidden lg:flex items-center gap-1.5 text-[13px] text-yamabuki mt-1 mb-1">
               <span className="text-base leading-none">↘</span>
               <span>Pick a spot on the court or bench to place <span className="font-semibold">{pickedPlayer.PLAYER_NAME?.split(" ").slice(-1)[0]}</span></span>
             </div>
@@ -1718,7 +1718,7 @@ export default function LineupGame() {
                 return (
                   <button key={pos} onClick={()=>handlePickPos(pos)}
                     className={`flex-1 min-w-[3rem] py-2 border rounded-xl font-bold text-sm transition-all
-                      ${isPrim?"bg-amber-900/30 border-amber-500/60 text-amber-200 hover:bg-amber-600 hover:text-white"
+                      ${isPrim?"bg-yamabuki/30 border-yamabuki/60 text-yamabuki hover:bg-yamabuki hover:text-white"
                                :isElig?"bg-surfaceCard border-gray-600 text-white hover:bg-blue-700 hover:border-blue-500"
                                       :"bg-surfaceBg/50 border-gray-800 text-gray-500 hover:bg-surfaceCard"}`}>
                     <div className="inline-flex items-center gap-1 justify-center">{pos}{isPrim&&<StarIcon size={11} />}</div>
@@ -1772,11 +1772,11 @@ export default function LineupGame() {
                 <div className="text-sm font-bold text-white">{c.name}</div>
                 <div className="text-[9.5px] text-gray-500 mt-0.5">{c.years}</div>
                 <div className="flex items-center gap-2 mt-2">
-                  <span className="text-[10px] font-mono"><span className="text-gray-500">OFF</span> <span className={`font-bold ${c.off.startsWith("A")?"text-emerald-400":c.off.startsWith("B")?"text-sky-300":c.off.startsWith("C")?"text-amber-400":"text-red-400"}`}>{c.off}</span></span>
-                  <span className="text-[10px] font-mono"><span className="text-gray-500">DEF</span> <span className={`font-bold ${c.def.startsWith("A")?"text-emerald-400":c.def.startsWith("B")?"text-sky-300":c.def.startsWith("C")?"text-amber-400":"text-red-400"}`}>{c.def}</span></span>
+                  <span className="text-[10px] font-mono"><span className="text-gray-500">OFF</span> <span className={`font-bold ${c.off.startsWith("A")?"text-emerald-400":c.off.startsWith("B")?"text-sky-300":c.off.startsWith("C")?"text-yamabuki":"text-red-400"}`}>{c.off}</span></span>
+                  <span className="text-[10px] font-mono"><span className="text-gray-500">DEF</span> <span className={`font-bold ${c.def.startsWith("A")?"text-emerald-400":c.def.startsWith("B")?"text-sky-300":c.def.startsWith("C")?"text-yamabuki":"text-red-400"}`}>{c.def}</span></span>
                 </div>
                 <div className="flex items-center gap-1.5 mt-1.5 min-h-[16px]">
-                  {c.champs>0&&<span className="text-[9.5px] text-yellow-400 inline-flex items-center gap-0.5"><TrophyIcon size={10} />×{c.champs}</span>}
+                  {c.champs>0&&<span className="text-[9.5px] text-yamabuki inline-flex items-center gap-0.5"><TrophyIcon size={10} />×{c.champs}</span>}
                   {c.tag&&<span className="text-[8.5px] px-1 py-0.5 rounded bg-violet-900/40 text-violet-300 border border-violet-700/40">{c.tag}</span>}
                 </div>
               </button>

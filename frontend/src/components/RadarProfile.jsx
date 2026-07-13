@@ -42,7 +42,7 @@ function CustomTooltip({ active, payload }) {
   if (!active || !payload?.length) return null;
   const d = payload[0].payload;
   return (
-    <div className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs">
+    <div className="bg-surfaceBg border border-gray-700 rounded-lg px-3 py-2 text-xs">
       <div className="font-semibold text-white">{d.comp}</div>
       {payload.map((p, i) => (
         <div key={i} style={{ color: p.color }}>
@@ -82,7 +82,7 @@ export default function RadarProfile({
   return (
     <ResponsiveContainer width="100%" height={320}>
       <RadarChart data={data} cx="50%" cy="50%">
-        <PolarGrid stroke="#334155" />
+        <PolarGrid stroke="#262626" />
         <PolarAngleAxis
           dataKey="comp"
           tick={{ fill: "#94a3b8", fontSize: 10 }}

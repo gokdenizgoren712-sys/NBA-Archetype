@@ -1,6 +1,6 @@
 /* Custom SVG icons for the Lineup Builder game — replaces emoji.
    All inherit the surrounding text colour via currentColor, so wrapping
-   them in a `text-yellow-400` span etc. tints them. */
+   them in a `text-yamabuki` span etc. tints them. */
 
 const base = (size) => ({
   width: size, height: size, viewBox: "0 0 24 24",

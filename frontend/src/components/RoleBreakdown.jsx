@@ -18,7 +18,7 @@ const SLOTS = [
 
 const slotColor = (v) => {
   if (v >= 0.70) return { bar: "bg-emerald-500", text: "text-emerald-400" };
-  if (v >= 0.55) return { bar: "bg-amber-500",   text: "text-amber-400" };
+  if (v >= 0.55) return { bar: "bg-yamabuki",   text: "text-yamabuki" };
   return          { bar: "bg-rose-600",            text: "text-rose-400" };
 };
 
@@ -34,11 +34,11 @@ export default function RoleBreakdown({ roleScores = {}, compact = false }) {
           return (
             <div key={key} title={`${key}: ${Math.round(v * 100)}`}
               className="flex flex-col items-center gap-0.5">
-              <div className="w-5 h-10 bg-slate-800 rounded-sm overflow-hidden flex flex-col-reverse">
+              <div className="w-5 h-10 bg-surfaceCard rounded-sm overflow-hidden flex flex-col-reverse">
                 <div className={`${bar} w-full transition-all`}
                   style={{ height: `${Math.round(v * 100)}%` }} />
               </div>
-              <span className="text-[8px] text-slate-600 font-mono">{short}</span>
+              <span className="text-[8px] text-gray-600 font-mono">{short}</span>
             </div>
           );
         })}
@@ -54,8 +54,8 @@ export default function RoleBreakdown({ roleScores = {}, compact = false }) {
         const { bar, text } = slotColor(v);
         return (
           <div key={key} className="flex items-center gap-2">
-            <span className="w-28 text-[10px] text-slate-500 shrink-0 text-right">{label}</span>
-            <div className="flex-1 h-2 bg-slate-800 rounded-full overflow-hidden">
+            <span className="w-28 text-[10px] text-gray-500 shrink-0 text-right">{label}</span>
+            <div className="flex-1 h-2 bg-surfaceCard rounded-full overflow-hidden">
               <div className={`h-full ${bar} rounded-full transition-all`}
                 style={{ width: `${pct}%` }} />
             </div>

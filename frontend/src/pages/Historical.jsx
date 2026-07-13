@@ -7,8 +7,8 @@ const TIER_COLOR = {
   Elite:        "bg-blue-500/20 text-blue-300",
   Versatile:    "bg-sky-500/20 text-sky-300",
   Contributor:  "bg-emerald-500/20 text-emerald-300",
-  "Role Player":"bg-slate-700 text-slate-400",
-  Specialist:   "bg-slate-800 text-slate-500",
+  "Role Player":"bg-surfaceCard text-gray-400",
+  Specialist:   "bg-surfaceCard text-gray-500",
 };
 
 // Sıralanabilir sütun tanımları
@@ -32,7 +32,7 @@ const COLUMNS = [
 ];
 
 function SortIcon({ col, sortCol, sortAsc }) {
-  if (col !== sortCol) return <span className="text-slate-700 ml-1">↕</span>;
+  if (col !== sortCol) return <span className="text-gray-700 ml-1">↕</span>;
   return <span className="text-blue-400 ml-1">{sortAsc ? "↑" : "↓"}</span>;
 }
 
@@ -126,9 +126,9 @@ export default function Historical() {
     <div className="flex h-full">
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Toolbar */}
-        <div className="p-4 border-b border-slate-800 bg-slate-950 flex flex-wrap gap-2 items-center">
+        <div className="p-4 border-b border-gray-800 bg-darkBg flex flex-wrap gap-2 items-center">
           <select value={season} onChange={e => setSeason(e.target.value)}
-            className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500">
+            className="bg-surfaceBg border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500">
             {seasons.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
 
@@ -138,7 +138,7 @@ export default function Historical() {
                 ? "bg-violet-500/15 text-violet-300 border-violet-500/30"
                 : dataEra === "hustle"
                 ? "bg-sky-500/15 text-sky-300 border-sky-500/30"
-                : "bg-slate-700/40 text-slate-400 border-slate-600/30"
+                : "bg-surfaceCard/40 text-gray-400 border-gray-600/30"
             }`}
               title={
                 dataEra === "tracking"
@@ -152,11 +152,11 @@ export default function Historical() {
             </span>
           )}
 
-          <div className="flex rounded-lg overflow-hidden border border-slate-700">
+          <div className="flex rounded-lg overflow-hidden border border-gray-700">
             {Object.entries(TABS_LABEL).map(([k, l]) => (
               <button key={k} onClick={() => setTab(k)}
                 className={`px-3 py-1.5 text-xs font-medium transition-colors ${
-                  tab === k ? "bg-blue-600 text-white" : "bg-slate-900 text-slate-400 hover:text-white"
+                  tab === k ? "bg-blue-600 text-white" : "bg-surfaceBg text-gray-400 hover:text-white"
                 }`}>{l}</button>
             ))}
           </div>
@@ -170,11 +170,11 @@ export default function Historical() {
                 debounceRef.current = setTimeout(() => setSearch(e.target.value), 350);
               }}
               placeholder={lang === "tr" ? "Oyuncu ara..." : "Search player..."}
-              className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500"
+              className="bg-surfaceBg border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white placeholder:text-gray-600 focus:outline-none focus:border-blue-500"
             />
           )}
           {tab === "players" && (
-            <span className="text-xs text-slate-500">{total} {lang === "tr" ? "oyuncu" : "players"}</span>
+            <span className="text-xs text-gray-500">{total} {lang === "tr" ? "oyuncu" : "players"}</span>
           )}
         </div>
 
@@ -182,13 +182,13 @@ export default function Historical() {
         <div className="flex-1 overflow-auto">
           {tab === "players" && (
             loadingP ? (
-              <div className="p-8 text-center text-slate-500">
+              <div className="p-8 text-center text-gray-500">
                 {lang === "tr" ? "Yükleniyor..." : "Loading..."}
               </div>
             ) : (
               <table className="w-full text-sm border-collapse">
                 <thead>
-                  <tr className="border-b border-slate-800 text-slate-400 text-xs sticky top-0 bg-slate-950 z-10">
+                  <tr className="border-b border-gray-800 text-gray-400 text-xs sticky top-0 bg-darkBg z-10">
                     <th className="p-3 text-left w-6">#</th>
                     {COLUMNS.filter(c => c.key !== "Bileşenler").map(col => (
                       <th key={col.key}
@@ -211,11 +211,11 @@ export default function Historical() {
                   {players.map((p, i) => (
                     <tr key={i}
                       onClick={() => openPlayer(p.PLAYER_NAME)}
-                      className={`border-b border-slate-800/50 cursor-pointer transition-colors ${
-                        selected === p.PLAYER_NAME ? "bg-blue-900/20" : "hover:bg-slate-800/40"
+                      className={`border-b border-gray-800/50 cursor-pointer transition-colors ${
+                        selected === p.PLAYER_NAME ? "bg-blue-900/20" : "hover:bg-surfaceCard/40"
                       }`}
                     >
-                      <td className="p-3 text-slate-600 text-xs">{i + 1}</td>
+                      <td className="p-3 text-gray-600 text-xs">{i + 1}</td>
                       {COLUMNS.filter(c => c.key !== "Bileşenler").map(col => {
                         if (col.key === "overall_score") {
                           const v = p[col.key];
@@ -226,9 +226,9 @@ export default function Historical() {
                                 <span className={`font-bold ${
                                   score >= 80 ? "text-blue-400" :
                                   score >= 65 ? "text-sky-400" :
-                                  score >= 50 ? "text-slate-300" : "text-slate-500"
+                                  score >= 50 ? "text-gray-300" : "text-gray-500"
                                 }`}>{score}</span>
-                              ) : <span className="text-slate-600">—</span>}
+                              ) : <span className="text-gray-600">—</span>}
                             </td>
                           );
                         }
@@ -244,10 +244,10 @@ export default function Historical() {
                           return (
                             <td key={col.key} className="p-3 text-center">
                               {pos ? (
-                                <span className={`text-xs px-1.5 py-0.5 rounded font-mono ${POS_COLOR[pos] || "bg-slate-700 text-slate-400"}`}>
+                                <span className={`text-xs px-1.5 py-0.5 rounded font-mono ${POS_COLOR[pos] || "bg-surfaceCard text-gray-400"}`}>
                                   {pos}
                                 </span>
-                              ) : <span className="text-slate-600">—</span>}
+                              ) : <span className="text-gray-600">—</span>}
                             </td>
                           );
                         }
@@ -265,8 +265,8 @@ export default function Historical() {
                             col.key === "PLAYER_NAME"
                               ? "font-medium text-white"
                               : col.numeric
-                                ? "text-slate-300 tabular-nums"
-                                : "text-slate-400 text-xs"
+                                ? "text-gray-300 tabular-nums"
+                                : "text-gray-400 text-xs"
                           }`}>
                             {display}
                           </td>
@@ -280,20 +280,20 @@ export default function Historical() {
           )}
 
           {tab === "lineups" && season === "2025-26" && (
-            <div className="p-8 text-center text-slate-500 text-sm">
+            <div className="p-8 text-center text-gray-500 text-sm">
               {lang === "tr"
                 ? "2025-26 için teorik lineup'ları görmek üzere '5'li Uyum' sayfasını kullanın."
                 : "For 2025-26 theoretical lineups, visit the 5-Man Fit page."}
             </div>
           )}
           {tab === "lineups" && season !== "2025-26" && (
-            loadingL ? <div className="p-8 text-center text-slate-500">Loading...</div> :
+            loadingL ? <div className="p-8 text-center text-gray-500">Loading...</div> :
             <div className="p-4 space-y-2">
               {lineups.map((lu, i) => (
-                <div key={i} className="bg-slate-900 border border-slate-800 rounded-xl p-3">
+                <div key={i} className="bg-surfaceBg border border-gray-800 rounded-xl p-3">
                   <div className="flex items-start justify-between">
                     <div>
-                      <span className="text-slate-500 text-xs mr-2">{i+1}</span>
+                      <span className="text-gray-500 text-xs mr-2">{i+1}</span>
                       <span className="text-white text-sm font-medium">
                         {[lu.Oyuncu_1,lu.Oyuncu_2,lu.Oyuncu_3,lu.Oyuncu_4,lu.Oyuncu_5]
                           .filter(Boolean).join(" · ")}
@@ -303,10 +303,10 @@ export default function Historical() {
                       {Math.round(lu.Uyum_Skoru*100)}
                     </div>
                   </div>
-                  <div className="flex gap-4 mt-2 text-xs text-slate-500">
-                    <span>Coverage: <span className="text-slate-300">{Math.round(lu.Kapsama*100)}</span></span>
-                    <span>Depth: <span className="text-slate-300">{Math.round(lu.Derinlik*100)}</span></span>
-                    <span>Strong Roles: <span className="text-slate-300">{lu.Guclu_Rol}</span></span>
+                  <div className="flex gap-4 mt-2 text-xs text-gray-500">
+                    <span>Coverage: <span className="text-gray-300">{Math.round(lu.Kapsama*100)}</span></span>
+                    <span>Depth: <span className="text-gray-300">{Math.round(lu.Derinlik*100)}</span></span>
+                    <span>Strong Roles: <span className="text-gray-300">{lu.Guclu_Rol}</span></span>
                   </div>
                 </div>
               ))}
@@ -317,33 +317,33 @@ export default function Historical() {
 
       {/* Oyuncu detay paneli */}
       {selDetail && (
-        <div className="w-80 border-l border-slate-800 bg-slate-950 flex flex-col overflow-y-auto shrink-0">
-          <div className="p-4 border-b border-slate-800 flex justify-between items-start">
+        <div className="w-80 border-l border-gray-800 bg-darkBg flex flex-col overflow-y-auto shrink-0">
+          <div className="p-4 border-b border-gray-800 flex justify-between items-start">
             <div>
               <div className="font-bold text-white text-sm">{selDetail.name}</div>
               <div className="flex items-center gap-1.5 mt-0.5">
                 {selDetail.position && (() => {
                   const POS_COLOR = { PG:"bg-violet-500/20 text-violet-300", SG:"bg-blue-500/20 text-blue-300", SF:"bg-emerald-500/20 text-emerald-300", PF:"bg-orange-500/20 text-orange-300", C:"bg-red-500/20 text-red-300" };
-                  return <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${POS_COLOR[selDetail.position]||"bg-slate-700 text-slate-400"}`}>{selDetail.position}</span>;
+                  return <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${POS_COLOR[selDetail.position]||"bg-surfaceCard text-gray-400"}`}>{selDetail.position}</span>;
                 })()}
-                <span className="text-xs text-slate-500">{selDetail.team} · {season}</span>
+                <span className="text-xs text-gray-500">{selDetail.team} · {season}</span>
               </div>
               {selDetail.primary_arch && (
                 <div className="text-xs text-blue-400 mt-0.5">{selDetail.primary_arch}</div>
               )}
             </div>
             <button onClick={() => { setSelected(null); setSelDetail(null); setCareer(null); }}
-              className="text-slate-500 hover:text-white text-lg leading-none">×</button>
+              className="text-gray-500 hover:text-white text-lg leading-none">×</button>
           </div>
           <div className="p-3">
             <RadarProfile scores={selDetail.scores} name={selDetail.name} />
             {/* Overall score */}
             {selDetail.overall_score != null && (
               <div className="mt-3 text-center">
-                <div className="text-xs text-slate-500 mb-1">Overall Score</div>
+                <div className="text-xs text-gray-500 mb-1">Overall Score</div>
                 <div className={`text-2xl font-bold ${
                   selDetail.overall_score >= 0.80 ? "text-blue-400" :
-                  selDetail.overall_score >= 0.65 ? "text-sky-400" : "text-slate-300"
+                  selDetail.overall_score >= 0.65 ? "text-sky-400" : "text-gray-300"
                 }`}>{Math.round(selDetail.overall_score * 100)}</div>
               </div>
             )}
@@ -351,20 +351,20 @@ export default function Historical() {
           {/* Arketip bileşen skorları */}
           {selDetail.scores && Object.keys(selDetail.scores).length > 0 && (
             <div className="px-3 pb-2 mt-1">
-              <div className="text-[10px] text-slate-600 uppercase tracking-wider mb-2">Bileşen Skorları</div>
+              <div className="text-[10px] text-gray-600 uppercase tracking-wider mb-2">Bileşen Skorları</div>
               <div className="space-y-1">
                 {Object.entries(selDetail.scores)
                   .sort(([, a], [, b]) => b - a)
                   .map(([noun, score]) => {
                     const pct = Math.round(score * 100);
-                    const barCls = score >= 0.80 ? "bg-blue-500" : score >= 0.65 ? "bg-blue-600/70" : "bg-slate-700";
+                    const barCls = score >= 0.80 ? "bg-blue-500" : score >= 0.65 ? "bg-blue-600/70" : "bg-surfaceCard";
                     return (
                       <div key={noun} className="flex items-center gap-2">
-                        <span className="text-[10px] text-slate-500 w-24 truncate">{noun}</span>
-                        <div className="flex-1 h-1 bg-slate-800 rounded-full">
+                        <span className="text-[10px] text-gray-500 w-24 truncate">{noun}</span>
+                        <div className="flex-1 h-1 bg-surfaceCard rounded-full">
                           <div className={`h-full rounded-full ${barCls}`} style={{ width: `${pct}%` }} />
                         </div>
-                        <span className={`text-[10px] w-5 text-right ${score >= 0.80 ? "text-blue-400" : score >= 0.65 ? "text-sky-400" : "text-slate-500"}`}>{pct}</span>
+                        <span className={`text-[10px] w-5 text-right ${score >= 0.80 ? "text-blue-400" : score >= 0.65 ? "text-sky-400" : "text-gray-500"}`}>{pct}</span>
                       </div>
                     );
                   })}
@@ -374,7 +374,7 @@ export default function Historical() {
 
           {/* Kariyer sparkline */}
           {careerLoading && (
-            <div className="px-3 pb-2 text-xs text-slate-600 text-center">Loading career...</div>
+            <div className="px-3 pb-2 text-xs text-gray-600 text-center">Loading career...</div>
           )}
           {career && career.seasons?.length > 1 && (() => {
             const pts = career.seasons.filter(s => s.overall_score != null);
@@ -389,7 +389,7 @@ export default function Historical() {
             const curIdx = pts.findIndex(s => s.season === season);
             return (
               <div className="px-3 pb-3 mt-1">
-                <div className="text-[10px] text-slate-600 mb-1 uppercase tracking-wider">Career Overall</div>
+                <div className="text-[10px] text-gray-600 mb-1 uppercase tracking-wider">Career Overall</div>
                 <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} style={{ overflow: "visible" }}>
                   <polyline points={polyline} fill="none" stroke="#3b82f6" strokeWidth={1.5} />
                   {pts.map((s, i) => (
@@ -399,7 +399,7 @@ export default function Historical() {
                     />
                   ))}
                 </svg>
-                <div className="flex justify-between text-[9px] text-slate-600 mt-0.5">
+                <div className="flex justify-between text-[9px] text-gray-600 mt-0.5">
                   <span>{pts[0].season}</span>
                   <span>{pts[pts.length-1].season}</span>
                 </div>

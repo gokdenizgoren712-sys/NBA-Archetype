@@ -19,8 +19,8 @@ const ARCH_COLOR = {
   Spacer: "text-cyan-400 border-cyan-500/40",
   Finisher: "text-lime-400 border-lime-500/40",
   Force: "text-red-400 border-red-500/40",
-  Initiator: "text-yellow-400 border-yellow-500/40",
-  Stopper: "text-slate-300 border-slate-500/40",
+  Initiator: "text-yamabuki border-yamabuki/40",
+  Stopper: "text-gray-300 border-gray-500/40",
   "Rim Runner": "text-emerald-400 border-emerald-500/40",
 };
 
@@ -131,7 +131,7 @@ export default function PlayerProfile() {
   };
 
   const arch = detail?.primary_arch || "";
-  const archColor = ARCH_COLOR[arch] || "text-slate-400 border-slate-600/40";
+  const archColor = ARCH_COLOR[arch] || "text-gray-400 border-gray-600/40";
   const overall = detail?.overall_score != null ? Math.round(detail.overall_score * 100) : null;
   const pct = detail?.overall_pct != null ? Math.round(detail.overall_pct * 100) : null;
   const topPctLabel = pct == null ? null : pct >= 99 ? "<1%" : `${100 - pct}%`;

@@ -22,15 +22,15 @@ const corrColor = (v) => {
   if (v >= 0.60) return "bg-blue-500";
   if (v >= 0.40) return "bg-sky-500";
   if (v >= 0.25) return "bg-emerald-500";
-  if (v >= 0.10) return "bg-slate-500";
-  return "bg-slate-700";
+  if (v >= 0.10) return "bg-gray-600";
+  return "bg-surfaceCard";
 };
 
 const corrText = (v) => {
   if (v >= 0.60) return "text-blue-400";
   if (v >= 0.40) return "text-sky-400";
   if (v >= 0.25) return "text-emerald-400";
-  return "text-slate-500";
+  return "text-gray-500";
 };
 
 export default function RoleImpactChart() {
@@ -56,15 +56,15 @@ export default function RoleImpactChart() {
   const maxCorr = Math.max(...roles.map(r => r.net_corr));
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden mb-6">
+    <div className="bg-surfaceBg border border-gray-800 rounded-2xl overflow-hidden mb-6">
       {/* Header — tıklanınca genişler */}
       <button
         onClick={() => setOpen(o => !o)}
-        className="w-full p-4 flex items-center justify-between hover:bg-slate-800/50 transition-colors"
+        className="w-full p-4 flex items-center justify-between hover:bg-surfaceCard/50 transition-colors"
       >
         <div className="flex items-center gap-3">
           <span className="text-white font-semibold text-sm">Season Role Impact</span>
-          <span className="text-xs text-slate-500">{data.season} · {data.n_qualified} players</span>
+          <span className="text-xs text-gray-500">{data.season} · {data.n_qualified} players</span>
           {/* Mini preview — top 3 rolls */}
           {!open && (
             <div className="flex gap-1.5 ml-2">
@@ -77,23 +77,23 @@ export default function RoleImpactChart() {
                   {ROLE_SHORT[slot] || slot}
                 </span>
               ))}
-              <span className="text-slate-600 text-[10px] self-center">→ wins</span>
+              <span className="text-gray-600 text-[10px] self-center">→ wins</span>
             </div>
           )}
         </div>
-        <span className="text-slate-500 text-sm">{open ? "−" : "+"}</span>
+        <span className="text-gray-500 text-sm">{open ? "−" : "+"}</span>
       </button>
 
       {open && (
         <div className="px-4 pb-4">
           {/* Insight text */}
-          <div className="text-xs text-slate-400 bg-slate-800/60 rounded-lg p-3 mb-4 leading-relaxed">
+          <div className="text-xs text-gray-400 bg-surfaceCard/60 rounded-lg p-3 mb-4 leading-relaxed">
             <span className="text-blue-300 font-medium">Bu sezonun kazandıran formülü: </span>
             {data.by_impact[0]} (r={roles.find(r=>r.slot===data.by_impact[0])?.net_corr.toFixed(2)}) ve{" "}
             {data.by_impact[1]} (r={roles.find(r=>r.slot===data.by_impact[1])?.net_corr.toFixed(2)})
             {" "}kazanmayla en güçlü ilişkili roller.{" "}
-            <span className="text-slate-300">Floor Spacing</span> ise ligin yalnızca{" "}
-            <span className="text-amber-400">
+            <span className="text-gray-300">Floor Spacing</span> ise ligin yalnızca{" "}
+            <span className="text-yamabuki">
               {(data.roles.find(r=>r.slot==="Floor Spacing")?.coverage_rate * 100).toFixed(0)}%
             </span>'inde bulunuyor — bu yüzden en iyi teorik lineuplaarda bile spacing slotu kırmızı çıkıyor.
           </div>
@@ -103,7 +103,7 @@ export default function RoleImpactChart() {
             {[["impact","Win Correlation"],["coverage","League Coverage"],["avg","Avg Score"]].map(([k,l])=>(
               <button key={k} onClick={() => setSort(k)}
                 className={`text-[10px] px-2 py-1 rounded transition-colors ${
-                  sort === k ? "bg-blue-700 text-white" : "bg-slate-800 text-slate-400 hover:text-white"
+                  sort === k ? "bg-blue-700 text-white" : "bg-surfaceCard text-gray-400 hover:text-white"
                 }`}>{l}</button>
             ))}
           </div>
@@ -125,11 +125,11 @@ export default function RoleImpactChart() {
 
               return (
                 <div key={r.slot} className="flex items-center gap-2">
-                  <span className="w-6 text-[9px] text-slate-600 font-mono shrink-0">
+                  <span className="w-6 text-[9px] text-gray-600 font-mono shrink-0">
                     {ROLE_SHORT[r.slot]}
                   </span>
-                  <span className="w-32 text-[10px] text-slate-400 shrink-0 truncate">{r.slot}</span>
-                  <div className="flex-1 h-3 bg-slate-800 rounded-full overflow-hidden">
+                  <span className="w-32 text-[10px] text-gray-400 shrink-0 truncate">{r.slot}</span>
+                  <div className="flex-1 h-3 bg-surfaceCard rounded-full overflow-hidden">
                     <div
                       className={`h-full ${corrColor(r.net_corr)} rounded-full transition-all`}
                       style={{ width: `${Math.max(barW, 2)}%` }}
@@ -142,7 +142,7 @@ export default function RoleImpactChart() {
                       ? `${(r.coverage_rate*100).toFixed(0)}%`
                       : (r.avg_score*100).toFixed(0)}
                   </span>
-                  <span className="w-28 text-[9px] text-slate-600 shrink-0">{secondary}</span>
+                  <span className="w-28 text-[9px] text-gray-600 shrink-0">{secondary}</span>
                 </div>
               );
             })}

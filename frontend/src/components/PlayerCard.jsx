@@ -12,8 +12,8 @@ const ARCH_COLOR = {
   Spacer:       "text-cyan-400    border-cyan-500/40",
   Finisher:     "text-lime-400    border-lime-500/40",
   Force:        "text-red-400     border-red-500/40",
-  Initiator:    "text-yellow-400  border-yellow-500/40",
-  Stopper:      "text-slate-300   border-slate-500/40",
+  Initiator:    "text-yamabuki  border-yamabuki/40",
+  Stopper:      "text-gray-300   border-gray-500/40",
   "Rim Runner": "text-emerald-400 border-emerald-500/40",
 };
 
@@ -25,7 +25,7 @@ const tl = n => TAG_LABEL[n] || n;
 
 export default function PlayerCard({ player, rank, onClick, discover, season }) {
   const arch  = player.primary_arch || "";
-  const color = ARCH_COLOR[arch] || "text-slate-400 border-slate-600/40";
+  const color = ARCH_COLOR[arch] || "text-gray-400 border-gray-600/40";
   const hasOverall = player.overall_score != null;
   const overall = hasOverall ? Math.round(player.overall_score * 100) : null;
   const tier  = player.overall_tier || "";
@@ -38,7 +38,7 @@ export default function PlayerCard({ player, rank, onClick, discover, season }) 
     .sort((a, b) => b[1] - a[1])
     .slice(0, 3);
 
-  const rankColor = rank === 1 ? "text-yellow-400" : rank <= 3 ? "text-amber-400" : rank <= 10 ? "text-orange-400" : "text-slate-600";
+  const rankColor = rank === 1 ? "text-yamabuki" : rank <= 3 ? "text-yamabuki" : rank <= 10 ? "text-orange-400" : "text-gray-600";
 
   const pts = player.PTS != null ? Number(player.PTS).toFixed(1) : null;
   const reb = player.REB != null ? Number(player.REB).toFixed(1) : null;
