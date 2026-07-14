@@ -133,7 +133,7 @@ def build_score_table(season: str = "2025-26", league: str = "nba") -> pd.DataFr
         out["GP"]  = df["GP"].values
     if "MIN" in df.columns:
         out["MIN"] = df["MIN"].values
-    for col in ["PTS","REB","AST","STL","BLK","FGM","FG_PCT","TS_PCT","FG3A","FTA","PLAYER_HEIGHT_INCHES"]:
+    for col in ["PTS","REB","AST","STL","BLK","FGM","FG_PCT","TS_PCT","FG3M","FG3A","FG3_PCT","FTA","PLAYER_HEIGHT_INCHES"]:
         if col in df.columns:
             out[col] = df[col].values
     # OBPM/DBPM: merged_bref'ten geliyorsa player_scores'a taşı
