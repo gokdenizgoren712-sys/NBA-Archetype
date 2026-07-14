@@ -147,10 +147,16 @@ def fetch_euroleague(season_label: str = "2025-26") -> pd.DataFrame:
         adv2["REB_PCT"] = _pct(adv["reboundsPercentage"])
     out = out.merge(adv2, on="PLAYER_ID", how="left")
 
-    # USG proxy: possessions/oyun payı yoksa (FGA+0.44*FTA+TOV) temelli basit tahmin
+    # USG proxy: takım-payı/possessions verisi yok → (FGA+0.44*FTA+TOV) hacmi MIN'e göre
+    # dakika-normalize edilir (36-dk eşdeğeri), sonra [0,0.35] aralığına ölçeklenir.
+    # Normalize etmeden ham hacim kullanmak, aynı toplam şut+ciroya sahip bir starter'la
+    # bench oyuncusuna EŞİT usage veriyordu — az dakikada aynı hacim, gerçekte DAHA
+    # yüksek usage demektir.
     if "USG_PCT" not in out.columns:
         usage = out["FGA"] + 0.44 * out["FTA"] + out["TOV"]
-        out["USG_PCT"] = (usage / usage.max()).fillna(0) * 0.35 if usage.max() else 0
+        min_safe = out["MIN"].replace(0, pd.NA)
+        usage_per36 = (usage / min_safe * 36).fillna(0)
+        out["USG_PCT"] = (usage_per36 / usage_per36.max()).fillna(0) * 0.35 if usage_per36.max() else 0
 
     # Pozisyon: euroleague vermiyor → stat çıkarımı (engine mask'i için)
     out["POSITION"] = out.apply(_infer_position, axis=1)

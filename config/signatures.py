@@ -670,6 +670,3 @@ FALLBACK_SIGNATURES = {
     },
     # Modifier fallback'leri yok — tarihsel analizde sadece core nouns
 }
-
-# Doğrulanmamış bileşenler (az örnek)
-LOW_SAMPLE_COMPONENTS: set = set()

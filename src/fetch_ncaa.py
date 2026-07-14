@@ -32,20 +32,26 @@ sys.path.insert(0, str(ROOT / "config"))
 MIN_GP  = 10
 MIN_MPG = 5.0
 
-# SOS: konferans gücüne göre üretim iskontosu. En güçlü konf → 1.0, en zayıf → 1-K_SOS.
-# K_SOS varsayılan; P5 backtest'te NBA-sonucu yordama gücüne göre ayarlanacak.
-K_SOS = 0.15
+# SOS: CONF_ADJEM (konferans ortalama AdjEM) hesaplanır ve prospect.py'de
+# lig-içi PERSANTİL olarak kullanılır (bkz. prospect.py _pctl("CONF_ADJEM"),
+# W_SOS=0.40 — P5 backtest'te bu yolla kalibre edildi). Önceden burada ayrıca
+# bir K_SOS-ıskontolu SOS_FACTOR çarpanı da üretiliyordu ama hiçbir yerde
+# tüketilmiyordu (ölü kod) — kaldırıldı, tek SOS sinyali CONF_ADJEM.
 
-# Torvik rol etiketi ([64]) → engine NBA_POSITION_MAP anahtarı
+# Torvik rol etiketi ([64]) → kısa pozisyon kodu (PG/SG/SF/PF/C).
+# NOT: signatures.NOUN_POSITION_MASK bu kısa kodları bekliyor — uzun-form
+# ("Guard", "Forward-Center"...) hiçbir zaman eşleşmediği için Engine/Hub/
+# Anchor/Spacer/Finisher/Force/Rim Runner skorları TÜM NCAA oyuncularında
+# ~0.30 POS_PENALTY tavanına çarpıyordu (bkz. score_compat.py POS_PENALTY).
 ROLE_MAP = {
-    "Pure PG":    "Guard",
-    "Scoring PG": "Guard",
-    "Combo G":    "Guard",
-    "Wing G":     "Guard-Forward",   # {Guard, Wing}
-    "Wing F":     "Forward-Guard",   # {Forward, Wing}
-    "Stretch 4":  "Forward",
-    "PF/C":       "Forward-Center",  # {Big, Forward}
-    "C":          "Center",          # {Big, Center}
+    "Pure PG":    "PG",
+    "Scoring PG": "PG",
+    "Combo G":    "SG",
+    "Wing G":     "SG",
+    "Wing F":     "SF",
+    "Stretch 4":  "PF",
+    "PF/C":       "PF",
+    "C":          "C",
 }
 
 # Torvik getadvstats kolon indeksleri (aritmetik kimliklerle doğrulandı)
@@ -145,12 +151,7 @@ def fetch_ncaa(season_label: str = "2025-26") -> pd.DataFrame:
     rows = _fetch_raw(year)
     draft_ref = date(year, 6, 25)   # ~draft gecesi → prospect yaşı bu referansla
 
-    conf_str = _conf_strength(year)   # {conf: AdjEM} — SOS için
-    if conf_str:
-        _amax, _amin = max(conf_str.values()), min(conf_str.values())
-        _arange = (_amax - _amin) or 1.0
-    else:
-        _amax = _amin = 0.0; _arange = 1.0
+    conf_str = _conf_strength(year)   # {conf: AdjEM} — SOS için (prospect.py persantili)
 
     recs = []
     for r in rows:
@@ -170,9 +171,14 @@ def fetch_ncaa(season_label: str = "2025-26") -> pd.DataFrame:
         oreb = _f(r[57]); dreb = _f(r[58]); reb = _f(r[59])
         ast  = _f(r[60]); stl = _f(r[61]); blk = _f(r[62])
 
-        # TOV per-game: TO%[12] tanımından — TOV = TO%·(FGA+0.44·FTA)/(1-TO%)
+        # TOV per-game: TO%[12] tanımından — TOV = TO%·(FGA+0.44·FTA)/(1-TO%).
+        # to_frac<=0: gerçek sıfır-ciro oranı, tov=0.0 doğru. to_frac>=0.99: formül patlar
+        # (payda~0), NaN — "eksik veri" ile "gerçek sıfır"ı ayırmak için 0.0 yerine NaN.
         to_frac = _f(r[12]) / 100.0
-        tov = to_frac * (fga + 0.44 * fta) / (1 - to_frac) if 0 < to_frac < 0.99 else 0.0
+        if to_frac >= 0.99:
+            tov = float("nan")
+        else:
+            tov = to_frac * (fga + 0.44 * fta) / (1 - to_frac) if to_frac > 0 else 0.0
 
         poss = fga + 0.44 * fta + tov       # per-game
         rim_m = _f(r[36]) / gp   # rim (paint) yapılan per-game → PCT_PTS_PAINT için
@@ -183,13 +189,11 @@ def fetch_ncaa(season_label: str = "2025-26") -> pd.DataFrame:
             "TEAM_ABBREVIATION":  r[1],
             "CONFERENCE":         r[2],
             "CONF_ADJEM":         conf_str.get(r[2]),
-            "SOS_FACTOR":         (1 - K_SOS * (_amax - conf_str[r[2]]) / _arange)
-                                  if r[2] in conf_str else 1.0,
             "CLASS":              r[25],
             "AGE":                _age_on(r[66], draft_ref),
             "BIRTHDATE":          r[66],
             "IMAGE_URL":          "",
-            "POSITION":           ROLE_MAP.get(r[64], "Forward"),
+            "POSITION":           ROLE_MAP.get(r[64], "SF"),
             "TORVIK_ROLE":        r[64],
             "PLAYER_HEIGHT_INCHES": _height_in(r[26]),
             # ham box (sezon toplamı)

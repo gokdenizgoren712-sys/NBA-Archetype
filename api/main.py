@@ -3,7 +3,7 @@ NBA Arketip API — FastAPI backend
 Parquet dosyalarını okuyup JSON olarak sunar.
 """
 
-import sys, json, os, time, logging, secrets, smtplib
+import sys, json, os, time, logging, secrets, smtplib, unicodedata
 from pathlib import Path
 from functools import lru_cache
 from typing import Optional
@@ -150,6 +150,42 @@ async def rate_limit(request: Request, call_next):
             return JSONResponse({"detail": "Too many requests"}, status_code=429,
                                 headers={"Retry-After": str(RL_WINDOW)})
     return await call_next(request)
+
+
+# ─── İsim eşleştirme: aksan/büyük-küçük harf duyarsız ──────────────────────────
+# Önceden her endpoint kendi .str.lower()==/​.str.contains(case=False) çiftini
+# yazıyordu, hiçbiri aksan temizlemiyordu — "Jokic" yazan kullanıcı "Jokić"i
+# bulamıyordu (4 ligde de, tüm /players/{name}/scores + comparables + similar
+# endpoint'lerinde). Tek noktadan normalize edilip her çağrı noktasında kullanılır.
+
+def _fold(s) -> str:
+    """Aksan/diakritik temizle + küçük harfe çevir (NFKD + combining-mark strip)."""
+    if s is None:
+        return ""
+    s = unicodedata.normalize("NFKD", str(s))
+    s = "".join(c for c in s if not unicodedata.combining(c))
+    return s.lower()
+
+
+def _match_player(df: pd.DataFrame, query: str, col: str = "PLAYER_NAME") -> pd.DataFrame:
+    """Oyuncu adı eşleştirme: önce tam eşleşme, sonra substring — ikisi de
+    aksan + büyük/küçük harf duyarsız. Boş sonuç için df.iloc[0:0] döner."""
+    if col not in df.columns or not query:
+        return df.iloc[0:0]
+    folded = df[col].map(_fold)
+    q = _fold(query)
+    exact = df[folded == q]
+    if not exact.empty:
+        return exact
+    return df[folded.str.contains(q, na=False, regex=False)]
+
+
+def _search_player(df: pd.DataFrame, query: str, col: str = "PLAYER_NAME") -> pd.DataFrame:
+    """Canlı arama kutusu filtresi (liste endpoint'leri) — substring, aksan/harf duyarsız."""
+    if col not in df.columns or not query:
+        return df
+    q = _fold(query)
+    return df[df[col].map(_fold).str.contains(q, na=False, regex=False)]
 
 
 # ─── Cache: parquet dosyalarını bir kez yükle ──────────────────────────────────
@@ -463,12 +499,65 @@ def _prospect_dict(row) -> Optional[dict]:
     }
 
 
-@lru_cache(maxsize=1)
-def _load_gleague_scores() -> pd.DataFrame:
-    """G-League player scores — gleague__2025-26__player_scores.parquet."""
-    p = DATA / "gleague__2025-26__player_scores.parquet"
+@app.get("/api/comparables")
+def get_comparables(
+    name:    str = Query(..., description="Oyuncu adı"),
+    league:  str = Query("nba", description="nba | gleague | ncaa | euroleague"),
+    season:  str = Query("2025-26"),
+    k:       int = Query(5, ge=1, le=20),
+):
+    """Bağımsız comparables sorgusu — herhangi bir ligden herhangi bir oyuncu için
+    1983+ NBA giriş-profili (rookie sezon) benzerleri. Önceden yalnızca G-League/NCAA/
+    EuroLeague'in /scores yanıtına gömülüydü (prospect gate'ine bağlıydı, NBA'de hiç
+    yoktu) — bu artık yaş/prospect kısıtından bağımsız, tek başına sorgulanabilir."""
+    loaders = {
+        "nba":        lambda: _load_scores(),
+        "gleague":    lambda: _load_gleague_scores(season),
+        "ncaa":       lambda: _load_ncaa_scores(season),
+        "euroleague": lambda: _load_euroleague_scores(season),
+    }
+    if league not in loaders:
+        raise HTTPException(400, f"Unknown league '{league}'. Use nba|gleague|ncaa|euroleague")
+    try:
+        df = loaders[league]()
+    except FileNotFoundError:
+        raise HTTPException(503, f"{league} data not available")
+
+    match = _match_player(df, name)
+    if match.empty:
+        raise HTTPException(404, f"{name} not found in {league}")
+    row = match.iloc[0]
+
+    from comparables import find_comparables, SC as _SC
+    vec = [float(row.get(c, 0) or 0) for c in _SC]
+    comps = find_comparables(vec, DATA / "historical__labeled.parquet",
+                             k=k, pos=row.get("POS5") or row.get("POSITION"))
+    return {
+        "name":         row["PLAYER_NAME"],
+        "league":       league,
+        "primary_arch": row.get("primary_arch", ""),
+        "comparables":  comps,
+    }
+
+
+def _league_seasons(league: str) -> list[str]:
+    """Diskte cache'lenmiş {league}__{season}__player_scores.parquet dosyalarından
+    mevcut sezon listesini çıkarır (en yeni önce)."""
+    prefix = f"{league}__"
+    suffix = "__player_scores.parquet"
+    out = []
+    for p in DATA.glob(f"{prefix}*{suffix}"):
+        season = p.name[len(prefix):-len(suffix)]
+        out.append(season)
+    return sorted(out, reverse=True)
+
+
+@lru_cache(maxsize=8)
+def _load_gleague_scores(season: str = "2025-26") -> pd.DataFrame:
+    """G-League player scores — gleague__{season}__player_scores.parquet."""
+    p = DATA / f"gleague__{season}__player_scores.parquet"
     if not p.exists():
-        raise FileNotFoundError("G-League data not found. Run: python src/fetch_gleague.py")
+        raise FileNotFoundError(f"G-League {season} data not found. Run: python src/fetch_gleague.py --season {season}")
     df = pd.read_parquet(p)
     score_cols = [c for c in df.columns if c.startswith("score_")]
     df[score_cols] = df[score_cols].fillna(0)
@@ -486,12 +575,12 @@ def _load_gleague_scores() -> pd.DataFrame:
     return df
 
 
-@lru_cache(maxsize=1)
-def _load_euroleague_scores() -> pd.DataFrame:
-    """EuroLeague player scores — euroleague__2025-26__player_scores.parquet."""
-    p = DATA / "euroleague__2025-26__player_scores.parquet"
+@lru_cache(maxsize=8)
+def _load_euroleague_scores(season: str = "2025-26") -> pd.DataFrame:
+    """EuroLeague player scores — euroleague__{season}__player_scores.parquet."""
+    p = DATA / f"euroleague__{season}__player_scores.parquet"
     if not p.exists():
-        raise FileNotFoundError("EuroLeague data not found. Run: python src/fetch_euroleague.py")
+        raise FileNotFoundError(f"EuroLeague {season} data not found. Run: python src/fetch_euroleague.py --season {season}")
     df = pd.read_parquet(p)
     score_cols = [c for c in df.columns if c.startswith("score_")]
     df[score_cols] = df[score_cols].fillna(0)
@@ -505,16 +594,23 @@ def _load_euroleague_scores() -> pd.DataFrame:
             if pct >= 0.50: return "Starter"
             return "Role Player"
         df["overall_tier"] = df["overall_pct"].apply(_tier)
-    df = _apply_prospect(df, max_age=20)   # EuroLeague: sadece 21 yaş altı (draft-and-stash gençleri)
+    # EuroLeague: draft-and-stash gençleri — age>20 (yani 21+) prospect notu almaz.
+    # AGE feed'de hiç yoksa (age.isna() tümü True) prospect.py fail-closed davranır:
+    # HERKES prospect notundan düşer, sessizce. Bunu görünür kılmak için uyar.
+    if "AGE" in df.columns and df["AGE"].notna().sum() == 0 and len(df) > 0:
+        print(f"[UYARI] EuroLeague AGE kolonu tamamen boş — prospect notu HİÇBİR oyuncuya "
+              f"verilmeyecek (fail-closed). euroleague-api feed'inde player.age eksik olabilir.",
+              flush=True)
+    df = _apply_prospect(df, max_age=20)
     return df
 
 
-@lru_cache(maxsize=1)
-def _load_ncaa_scores() -> pd.DataFrame:
-    """NCAA D-I player scores — ncaa__2025-26__player_scores.parquet."""
-    p = DATA / "ncaa__2025-26__player_scores.parquet"
+@lru_cache(maxsize=8)
+def _load_ncaa_scores(season: str = "2025-26") -> pd.DataFrame:
+    """NCAA D-I player scores — ncaa__{season}__player_scores.parquet."""
+    p = DATA / f"ncaa__{season}__player_scores.parquet"
     if not p.exists():
-        raise FileNotFoundError("NCAA data not found. Run: python src/fetch_ncaa.py")
+        raise FileNotFoundError(f"NCAA {season} data not found. Run: python src/fetch_ncaa.py --season {season}")
     df = pd.read_parquet(p)
     score_cols = [c for c in df.columns if c.startswith("score_")]
     df[score_cols] = df[score_cols].fillna(0)
@@ -530,11 +626,6 @@ def _load_ncaa_scores() -> pd.DataFrame:
         df["overall_tier"] = df["overall_pct"].apply(_tier)
     df = _apply_prospect(df)   # P3: floor/ceiling/grade/tier + güçlü/zayıf
     return df
-
-
-@lru_cache(maxsize=1)
-def _load_labeled() -> pd.DataFrame:
-    return pd.read_parquet(DATA / "2025-26__labeled.parquet")
 
 
 @lru_cache(maxsize=1)
@@ -694,7 +785,6 @@ def clear_cache():
     _load_gleague_scores.cache_clear()
     _load_euroleague_scores.cache_clear()
     _load_ncaa_scores.cache_clear()
-    _load_labeled.cache_clear()
     _load_duo_compat.cache_clear()
     _load_lineup_compat.cache_clear()
     _load_lineup_compat_positional.cache_clear()
@@ -746,7 +836,9 @@ def get_players(
     position:  Optional[str] = Query(None),
     arch:      Optional[str] = Query(None, description="Core noun filtre (primary_arch)"),
     modifier:  Optional[str] = Query(None, description="Modifier tag filtre (score >= threshold)"),
+    tier:      Optional[str] = Query(None, description="Tier filtre (Elite | Star | Starter | Role Player)"),
     min_score: float = Query(0.0, ge=0, le=1),
+    min_gp:    Optional[int] = Query(None, ge=0, description="Minimum oynanan maç"),
     sort_by:   str = Query("overall_score", description="Sıralama: overall_score | PTS | REB | AST"),
     limit:     int = Query(50, ge=1, le=500),
     offset:    int = Query(0, ge=0),
@@ -756,7 +848,7 @@ def get_players(
     df = _load_scores().copy()
 
     if search:
-        df = df[df["PLAYER_NAME"].str.contains(search, case=False, na=False)]
+        df = _search_player(df, search)
     if team:
         df = df[df["TEAM_ABBREVIATION"].str.upper() == team.upper()]
     if position:
@@ -773,8 +865,12 @@ def get_players(
             from signatures import COMPONENT_SIGNATURES as _CS
             thr = _CS.get(modifier, {}).get("percentile_threshold", 0.75)
             df = df[df[col] >= thr]
+    if tier and "overall_tier" in df.columns:
+        df = df[df["overall_tier"].str.lower() == tier.lower()]
     if min_score > 0 and "overall_score" in df.columns:
         df = df[df["overall_score"] >= min_score]
+    if min_gp is not None and "GP" in df.columns:
+        df = df[df["GP"] >= min_gp]
 
     valid_sort = sort_by if sort_by in df.columns else "overall_score"
     df = df.sort_values(valid_sort, ascending=False, na_position="last")
@@ -794,10 +890,7 @@ def get_players(
 def get_player_scores(player_name: str):
     """Tek oyuncunun bileşen skor profili."""
     df = _load_scores()
-    match = df[df["PLAYER_NAME"].str.lower() == player_name.lower()]
-    if match.empty:
-        # Fuzzy fallback
-        match = df[df["PLAYER_NAME"].str.contains(player_name, case=False, na=False)]
+    match = _match_player(df, player_name)
     if match.empty:
         raise HTTPException(status_code=404, detail=f"{player_name} not found")
 
@@ -1054,9 +1147,7 @@ def custom_lineup_compat(body: dict):
     players_data = []
     for name in names:
         nm = name.strip()
-        row = scores[scores["PLAYER_NAME"].str.lower() == nm.lower()]
-        if row.empty:
-            row = scores[scores["PLAYER_NAME"].str.contains(nm, case=False, na=False)]
+        row = _match_player(scores, nm)
         if not row.empty:
             r = row.iloc[0]
             pd_entry = {
@@ -1078,9 +1169,7 @@ def custom_lineup_compat(body: dict):
         player_career_scores = {}
         for name in names:
             nm = name.strip()
-            rows = hist[hist["PLAYER_NAME"].str.lower() == nm.lower()]
-            if rows.empty:
-                rows = hist[hist["PLAYER_NAME"].str.contains(nm, case=False, na=False)]
+            rows = _match_player(hist, nm)
             if not rows.empty:
                 last3 = rows.sort_values("SEASON").tail(3)
                 valid = last3["overall_score"].dropna()
@@ -1336,7 +1425,7 @@ def get_historical(
                 df = df.merge(base_stats[["PLAYER_ID"] + missing_cols], on="PLAYER_ID", how="left")
 
     if search:
-        df = df[df["PLAYER_NAME"].str.contains(search, case=False, na=False)]
+        df = _search_player(df, search)
 
     if season == "2025-26":
         # score_ sütunlarından bileşen listesi (threshold 0.50)
@@ -1498,23 +1587,36 @@ def get_historical_lineup(season: str, limit: int = Query(30, ge=1, le=100)):
 
 # ─── G-League endpoints ───────────────────────────────────────────────────────
 
+@app.get("/api/gleague/seasons")
+def get_gleague_seasons():
+    return {"seasons": _league_seasons("gleague")}
+
+
 @app.get("/api/gleague/players")
 def get_gleague_players(
+    season:   str = Query("2025-26"),
     search:   Optional[str] = Query(None),
+    team:     Optional[str] = Query(None),
     position: Optional[str] = Query(None),
     arch:     Optional[str] = Query(None),
+    tier:     Optional[str] = Query(None, description="Prospect tier filtre (Elite Prospect|First-Round|Rotation Upside|Developmental|Longshot)"),
+    min_gp:   Optional[int] = Query(None, ge=0, description="Minimum oynanan maç"),
+    min_age:  Optional[float] = Query(None, ge=0),
+    max_age:  Optional[float] = Query(None, ge=0),
     sort_by:  str = Query("overall_score"),
     limit:    int = Query(80, ge=1, le=500),
     offset:   int = Query(0, ge=0),
 ):
     try:
-        df = _load_gleague_scores().copy()
+        df = _load_gleague_scores(season).copy()
     except FileNotFoundError:
         return {"coming_soon": False, "players": [], "total": 0,
                 "message": "Run python src/fetch_gleague.py to fetch G-League data"}
 
     if search:
-        df = df[df["PLAYER_NAME"].str.contains(search, case=False, na=False)]
+        df = _search_player(df, search)
+    if team and "TEAM_ABBREVIATION" in df.columns:
+        df = df[df["TEAM_ABBREVIATION"].str.upper() == team.upper()]
     if position:
         pos_upper = position.upper()
         if pos_upper in ("PG", "SG", "SF", "PF", "C") and "POS5" in df.columns:
@@ -1523,6 +1625,14 @@ def get_gleague_players(
             df = df[df["POSITION"].str.contains(position, case=False, na=False)]
     if arch:
         df = df[df["primary_arch"].str.lower() == arch.lower()]
+    if tier and "prospect_tier" in df.columns:
+        df = df[df["prospect_tier"].str.lower() == tier.lower()]
+    if min_gp is not None and "GP" in df.columns:
+        df = df[df["GP"] >= min_gp]
+    if min_age is not None and "AGE" in df.columns:
+        df = df[df["AGE"] >= min_age]
+    if max_age is not None and "AGE" in df.columns:
+        df = df[df["AGE"] <= max_age]
 
     valid_sort = sort_by if sort_by in df.columns else "overall_score"
     df = df.sort_values(valid_sort, ascending=False, na_position="last")
@@ -1533,15 +1643,13 @@ def get_gleague_players(
 
 
 @app.get("/api/gleague/players/{player_name}/scores")
-def get_gleague_player_scores(player_name: str):
+def get_gleague_player_scores(player_name: str, season: str = "2025-26"):
     try:
-        df = _load_gleague_scores()
+        df = _load_gleague_scores(season)
     except FileNotFoundError:
         raise HTTPException(status_code=503, detail="G-League data not available")
 
-    match = df[df["PLAYER_NAME"].str.lower() == player_name.lower()]
-    if match.empty:
-        match = df[df["PLAYER_NAME"].str.contains(player_name, case=False, na=False)]
+    match = _match_player(df, player_name)
     if match.empty:
         raise HTTPException(status_code=404, detail=f"{player_name} not found in G-League")
 
@@ -1572,23 +1680,36 @@ def get_gleague_player_scores(player_name: str):
     }
 
 
+@app.get("/api/euroleague/seasons")
+def get_euroleague_seasons():
+    return {"seasons": _league_seasons("euroleague")}
+
+
 @app.get("/api/euroleague/players")
 def get_euroleague_players(
+    season:   str = Query("2025-26"),
     search:   Optional[str] = Query(None),
+    team:     Optional[str] = Query(None),
     position: Optional[str] = Query(None),
     arch:     Optional[str] = Query(None),
+    tier:     Optional[str] = Query(None, description="Prospect tier filtre (Elite Prospect|First-Round|Rotation Upside|Developmental|Longshot)"),
+    min_gp:   Optional[int] = Query(None, ge=0, description="Minimum oynanan maç"),
+    min_age:  Optional[float] = Query(None, ge=0),
+    max_age:  Optional[float] = Query(None, ge=0, description="Roster yaş filtresi — sunucu-taraflı prospect max_age=20 kapısından BAĞIMSIZ"),
     sort_by:  str = Query("overall_score"),
     limit:    int = Query(80, ge=1, le=500),
     offset:   int = Query(0, ge=0),
 ):
     try:
-        df = _load_euroleague_scores().copy()
+        df = _load_euroleague_scores(season).copy()
     except FileNotFoundError:
         return {"coming_soon": False, "players": [], "total": 0,
                 "message": "Run python src/fetch_euroleague.py to fetch EuroLeague data"}
 
     if search:
-        df = df[df["PLAYER_NAME"].str.contains(search, case=False, na=False)]
+        df = _search_player(df, search)
+    if team and "TEAM_ABBREVIATION" in df.columns:
+        df = df[df["TEAM_ABBREVIATION"].str.upper() == team.upper()]
     if position:
         pos_upper = position.upper()
         if pos_upper in ("PG", "SG", "SF", "PF", "C") and "POS5" in df.columns:
@@ -1597,6 +1718,14 @@ def get_euroleague_players(
             df = df[df["POSITION"].str.contains(position, case=False, na=False)]
     if arch:
         df = df[df["primary_arch"].str.lower() == arch.lower()]
+    if tier and "prospect_tier" in df.columns:
+        df = df[df["prospect_tier"].str.lower() == tier.lower()]
+    if min_gp is not None and "GP" in df.columns:
+        df = df[df["GP"] >= min_gp]
+    if min_age is not None and "AGE" in df.columns:
+        df = df[df["AGE"] >= min_age]
+    if max_age is not None and "AGE" in df.columns:
+        df = df[df["AGE"] <= max_age]
 
     valid_sort = sort_by if sort_by in df.columns else "overall_score"
     df = df.sort_values(valid_sort, ascending=False, na_position="last")
@@ -1607,15 +1736,13 @@ def get_euroleague_players(
 
 
 @app.get("/api/euroleague/players/{player_name}/scores")
-def get_euroleague_player_scores(player_name: str):
+def get_euroleague_player_scores(player_name: str, season: str = "2025-26"):
     try:
-        df = _load_euroleague_scores()
+        df = _load_euroleague_scores(season)
     except FileNotFoundError:
         raise HTTPException(status_code=503, detail="EuroLeague data not available")
 
-    match = df[df["PLAYER_NAME"].str.lower() == player_name.lower()]
-    if match.empty:
-        match = df[df["PLAYER_NAME"].str.contains(player_name, case=False, na=False)]
+    match = _match_player(df, player_name)
     if match.empty:
         raise HTTPException(status_code=404, detail=f"{player_name} not found in EuroLeague")
 
@@ -1646,23 +1773,37 @@ def get_euroleague_player_scores(player_name: str):
     }
 
 
+@app.get("/api/ncaa/seasons")
+def get_ncaa_seasons():
+    return {"seasons": _league_seasons("ncaa")}
+
+
 @app.get("/api/ncaa/players")
 def get_ncaa_players(
+    season:   str = Query("2025-26"),
     search:   Optional[str] = Query(None),
+    team:     Optional[str] = Query(None),
     position: Optional[str] = Query(None),
     arch:     Optional[str] = Query(None),
+    tier:     Optional[str] = Query(None, description="Prospect tier filtre (Elite Prospect|First-Round|Rotation Upside|Developmental|Longshot)"),
+    conference: Optional[str] = Query(None, description="Konferans filtre (CONFERENCE alanı)"),
+    min_gp:   Optional[int] = Query(None, ge=0, description="Minimum oynanan maç"),
+    min_age:  Optional[float] = Query(None, ge=0),
+    max_age:  Optional[float] = Query(None, ge=0),
     sort_by:  str = Query("overall_score"),
     limit:    int = Query(80, ge=1, le=500),
     offset:   int = Query(0, ge=0),
 ):
     try:
-        df = _load_ncaa_scores().copy()
+        df = _load_ncaa_scores(season).copy()
     except FileNotFoundError:
         return {"coming_soon": False, "players": [], "total": 0,
                 "message": "Run python src/fetch_ncaa.py to fetch NCAA data"}
 
     if search:
-        df = df[df["PLAYER_NAME"].str.contains(search, case=False, na=False)]
+        df = _search_player(df, search)
+    if team and "TEAM_ABBREVIATION" in df.columns:
+        df = df[df["TEAM_ABBREVIATION"].str.upper() == team.upper()]
     if position:
         pos_upper = position.upper()
         if pos_upper in ("PG", "SG", "SF", "PF", "C") and "POS5" in df.columns:
@@ -1671,6 +1812,16 @@ def get_ncaa_players(
             df = df[df["POSITION"].str.contains(position, case=False, na=False)]
     if arch:
         df = df[df["primary_arch"].str.lower() == arch.lower()]
+    if conference and "CONFERENCE" in df.columns:
+        df = df[df["CONFERENCE"].str.lower() == conference.lower()]
+    if tier and "prospect_tier" in df.columns:
+        df = df[df["prospect_tier"].str.lower() == tier.lower()]
+    if min_gp is not None and "GP" in df.columns:
+        df = df[df["GP"] >= min_gp]
+    if min_age is not None and "AGE" in df.columns:
+        df = df[df["AGE"] >= min_age]
+    if max_age is not None and "AGE" in df.columns:
+        df = df[df["AGE"] <= max_age]
 
     valid_sort = sort_by if sort_by in df.columns else "overall_score"
     df = df.sort_values(valid_sort, ascending=False, na_position="last")
@@ -1681,15 +1832,13 @@ def get_ncaa_players(
 
 
 @app.get("/api/ncaa/players/{player_name}/scores")
-def get_ncaa_player_scores(player_name: str):
+def get_ncaa_player_scores(player_name: str, season: str = "2025-26"):
     try:
-        df = _load_ncaa_scores()
+        df = _load_ncaa_scores(season)
     except FileNotFoundError:
         raise HTTPException(status_code=503, detail="NCAA data not available")
 
-    match = df[df["PLAYER_NAME"].str.lower() == player_name.lower()]
-    if match.empty:
-        match = df[df["PLAYER_NAME"].str.contains(player_name, case=False, na=False)]
+    match = _match_player(df, player_name)
     if match.empty:
         raise HTTPException(status_code=404, detail=f"{player_name} not found in NCAA")
 
@@ -1788,7 +1937,7 @@ def get_historical_player_scores(season: str, player_name: str):
         # score_* kolonları sürekli [0,1] percentile — boolean kolon değil
         comp_avail = [c for c in COMP_COLS if f"score_{c}" in df.columns]
 
-    match = df[df["PLAYER_NAME"].str.contains(player_name, case=False, na=False)]
+    match = _match_player(df, player_name)
     if match.empty:
         raise HTTPException(404, f"{player_name} not found ({season})")
     row = match.iloc[0]
@@ -1819,7 +1968,7 @@ def get_historical_player_scores(season: str, player_name: str):
                             continue
                         s = score_component(pct_df, tag, mod_sigs)
                         # Bu oyuncunun satırını bul
-                        p_match = mdf[mdf["PLAYER_NAME"].str.contains(player_name, case=False, na=False)]
+                        p_match = _match_player(mdf, player_name)
                         if p_match.empty:
                             continue
                         idx = p_match.index[0]
@@ -1879,7 +2028,7 @@ def post_historical_custom_lineup(season: str, body: dict):
     score_cols = [c for c in df.columns if c.startswith("score_") and c.replace("score_","") in ALL_COMP_COLS]
     matched = []
     for name in names:
-        hit = df[df["PLAYER_NAME"].str.contains(name, case=False, na=False)]
+        hit = _match_player(df, name)
         if not hit.empty:
             matched.append(hit.iloc[0])
 
@@ -1984,6 +2133,7 @@ def _gp_filter(df: pd.DataFrame, min_gp: int = 15) -> pd.DataFrame:
 @app.get("/api/game/seasons")
 def game_seasons():
     """Mevcut tüm sezonlar — oyun için (güncel + tarihsel)."""
+    _auto_invalidate()
     seasons = ["2025-26"]
     hist = _load_historical()
     if not hist.empty and "SEASON" in hist.columns:
@@ -1996,6 +2146,7 @@ def game_seasons():
 def game_teams(season: str = Query("2025-26")):
     """Belirtilen sezonda veri olan takımlar.
     Tarihsel kısaltmalar (NJN, SEA…) modern karşılıklarına (BKN, OKC…) çevrilir."""
+    _auto_invalidate()
     if season == "2025-26":
         df = _load_scores()
         if df.empty or "TEAM_ABBREVIATION" not in df.columns:
@@ -2035,6 +2186,7 @@ def _timeless_cutoff(overall_series, n: int = 2, floor: float = 0.80) -> float:
 def game_players(season: str = Query("2025-26"), team: str = Query("")):
     """Oyun için oyuncu listesi. Modern takım adı (BKN) tarihsel karşılığa (NJN)
     otomatik çevrilir; score_* kolonları + is_timeless bayrağı döner."""
+    _auto_invalidate()
     if season == "2025-26":
         full = _load_scores().copy()
         full = _gp_filter(full, 20)
@@ -2116,9 +2268,7 @@ def get_similar_players(player_name: str, n: int = Query(10, ge=1, le=50)):
     df = _load_scores()
 
     # Sorgu oyuncusunu bul
-    match = df[df["PLAYER_NAME"].str.lower() == player_name.lower()]
-    if match.empty:
-        match = df[df["PLAYER_NAME"].str.contains(player_name, case=False, na=False)]
+    match = _match_player(df, player_name)
     if match.empty:
         raise HTTPException(status_code=404, detail=f"{player_name} not found")
 
@@ -2172,10 +2322,8 @@ def get_player_career(name: str = Query(..., description="Oyuncu adı")):
     if hist.empty:
         raise HTTPException(status_code=503, detail="historical__labeled.parquet yok")
 
-    # Önce tam isim eşleştirme
-    match = hist[hist["PLAYER_NAME"].str.lower() == name.lower()]
-    if match.empty:
-        match = hist[hist["PLAYER_NAME"].str.contains(name, case=False, na=False)]
+    # Önce tam isim eşleştirme (aksan/harf duyarsız)
+    match = _match_player(hist, name)
     if match.empty:
         raise HTTPException(status_code=404, detail=f"{name} not found in career data")
 
@@ -2868,7 +3016,6 @@ def apply_corrections(user=Depends(require_admin)):
             from src.score_compat import build_score_table
             build_score_table("2025-26")
             _load_scores.cache_clear()
-            _load_labeled.cache_clear()
             _load_lineup_compat.cache_clear()
         except Exception as e:
             import logging; logging.getLogger(__name__).error("apply-corrections rebuild: %s", e)

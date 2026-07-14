@@ -15,7 +15,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "config"))
-from signatures import (COMPONENT_SIGNATURES, LOW_SAMPLE_COMPONENTS,
+from signatures import (COMPONENT_SIGNATURES,
                         FALLBACK_SIGNATURES, MODERN_ONLY_METRICS)
 
 
@@ -110,7 +110,7 @@ def validate_components(positives: pd.DataFrame, ground_truth: dict,
         rows.append({
             "component": comp, "n_true": n_pos, "TP": tp, "FP": fp, "FN": fn,
             "precision": round(prec, 3), "recall": round(rec, 3), "F1": round(f1, 3),
-            "validatable": comp not in LOW_SAMPLE_COMPONENTS and n_pos >= 2,
+            "validatable": n_pos >= 2,
         })
     return pd.DataFrame(rows).sort_values(["validatable", "n_true"], ascending=[False, False])
 

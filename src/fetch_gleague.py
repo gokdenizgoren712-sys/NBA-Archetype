@@ -32,6 +32,27 @@ def _cache_path(season: str, name: str) -> Path:
     return DATA_DIR / f"gleague__{safe}__{name}.parquet"
 
 
+def _infer_position(row) -> str:
+    """LeagueDashPlayerBioStats league_id=20 için POSITION/PLAYER_POSITION
+    kolonu dönmüyor — per-game stat'tan PG/SG/SF/PF/C tahmini.
+    G-League PerGame hacmi NBA'e yakın (aynı per_mode_detailed="PerGame"),
+    eşikler NBA tipik pozisyon dağılımına göre kalibre edildi (526 oyunculuk
+    gerçek dağılımla doğrulandı: PG~15%, SG~17%, SF~34%, PF~13%, C~20%).
+    Engine'in NOUN_POSITION_MASK'i için makul bir pozisyon yeterli."""
+    ast = float(row.get("AST", 0) or 0)
+    reb = float(row.get("REB", 0) or 0)
+    blk = float(row.get("BLK", 0) or 0)
+    if reb >= 7.0 or blk >= 1.2:
+        return "C"
+    if reb >= 5.3:
+        return "PF"
+    if ast >= 3.5 and reb < 5.0:
+        return "PG"
+    if ast >= 1.8:
+        return "SG"
+    return "SF"
+
+
 def fetch_gleague_stats(season: str = "2025-26") -> dict:
     from nba_api.stats.endpoints import leaguedashplayerstats, leaguedashplayerbiostats
 
@@ -127,6 +148,13 @@ def merge_gleague(tables: dict, season: str = "2025-26") -> pd.DataFrame:
 
     if "POSITION" not in merged.columns:
         merged["POSITION"] = ""
+
+    # Bio endpoint'i G-League için POSITION vermiyor (boş kalıyor) — bu durumda
+    # stat-eşikli tahminle doldur (bkz. _infer_position). Boş olmayan gerçek
+    # değerler varsa dokunulmaz.
+    _blank = merged["POSITION"].fillna("").astype(str).str.strip().eq("")
+    if _blank.any():
+        merged.loc[_blank, "POSITION"] = merged.loc[_blank].apply(_infer_position, axis=1)
 
     # Yaş (bio) — prospect sistemi için taşı
     if bio is not None and not bio.empty and "AGE" in bio.columns and "AGE" not in merged.columns:

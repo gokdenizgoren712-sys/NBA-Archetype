@@ -5,17 +5,17 @@ Temel fikir:
   Boolean (var/yok) yerine her oyuncunun her bileşen için [0..1]
   ham percentile skoru kullanılır.
 
-  Duo uyumu:
-    coverage   = mean(max(s_a[c], s_b[c]))         # birlikte ne kadar güçlü
-    complement = 1 - cosine_similarity(s_a, s_b)    # profiller ne kadar farklı
-    affinity   = affinity_matrix[arch_a, arch_b]    # tarihsel arketip uyumu
-    duo_score  = 0.45*coverage + 0.30*complement + 0.25*affinity
+  Duo uyumu (bkz. _duo_role_score, 11 boyutlu rol vektörü üzerinden):
+    coverage   = mean(max(rv_a[slot], rv_b[slot]))    # birlikte ne kadar güçlü
+    complement = (#slot rv_a≫rv_b + #slot rv_b≫rv_a) / (2×11)  # kaç slotta biri
+                 diğerine belirgin (>0.05) üstün — cosine DEĞİL, dominance sayımı
+    affinity   = affinity_matrix[arch_a, arch_b]       # tarihsel arketip uyumu
+    duo_score  = 0.40*coverage + 0.30*complement + 0.30*affinity
 
-  5'li uyum:
-    coverage   = mean(max(s1..s5)[c])               # her rol ne kadar kapanmış
-    balance    = 1 - std(max_scores)                # dengeli mi, tek boyutlu mu
-    depth      = n_comp_with_max>0.75 / n_comp      # kaç bileşende gerçekten güçlü
-    lineup_score = 0.50*coverage + 0.25*balance + 0.25*depth
+  5'li uyum (bkz. _lineup_role_score) — coverage/balance/depth DEĞİL, 5 basketbol
+  sütunu üzerinden (her sütunun kendi alt-formülü var, fonksiyon docstring'ine bak):
+    lineup_score = 0.28*Creation + 0.27*Spacing + 0.22*Defense
+                 + 0.12*Finishing + 0.11*"Role Fit" + synergy_bonus (Creation×Spacing, ≤0.05)
 """
 
 import sys, json
@@ -141,7 +141,7 @@ def build_score_table(season: str = "2025-26", league: str = "nba") -> pd.DataFr
         if col in df.columns:
             out[col] = df[col].values
     # Lig-özel bağlam + prospect kolonları (varsa taşı — yaş, konferans, sınıf, SOS)
-    for col in ["AGE", "CONFERENCE", "CLASS", "CONF_ADJEM", "SOS_FACTOR"]:
+    for col in ["AGE", "CONFERENCE", "CLASS", "CONF_ADJEM"]:
         if col in df.columns:
             out[col] = df[col].values
 
@@ -247,9 +247,12 @@ def build_score_table(season: str = "2025-26", league: str = "nba") -> pd.DataFr
         except Exception as e:
             print(f"[UYARI] playoff blend hatası: {e}")
 
-    # overall_score: saf bileşen ağırlıklı ortalaması (BPM ÇIKARILDI — circular validation).
-    # BPM hem Engine/Ecosystem metriğinde kullanılıyor hem de overall validator'ı olamazdı.
-    # BPM artık yalnızca referans alanı olarak saklanır (/api/players/{name}/scores'da görünür).
+    # overall_score = 0.60·comp_score + 0.40·BPM (aşağıda). BPM overall_score'un kendi
+    # VALİDATÖRÜ olarak kullanılamaz (BPM zaten Engine/Ecosystem/Connector/Anchor'ın bir
+    # girdisi — bu circular olurdu) — o kontrol bilinçli olarak kaldırıldı. Ama BPM'i
+    # overall_score'un BİR BİLEŞENİ olarak blend etmek ayrı bir şey: percentile-composite
+    # (comp_score) ile ayrı-kanaldan bir "kazanma etkisi" sinyalini birleştiren bir ensemble,
+    # bkz. aşağıdaki BPM bloğundaki not.
     if core_score_cols:
         noun_cols = [c for c in CORE_NOUNS if f"score_{c}" in out.columns]
         weights   = [NOUN_WEIGHTS.get(c, 1.0) for c in noun_cols]

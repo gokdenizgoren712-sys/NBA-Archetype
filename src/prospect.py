@@ -1,7 +1,7 @@
 """
 Prospect / scouting kağıdı hesabı (P3).
 
-Skorlanmış bir lig tablosuna (score_*, overall_pct, AGE, SOS_FACTOR) prospect
+Skorlanmış bir lig tablosuna (score_*, overall_pct, AGE, CONF_ADJEM) prospect
 alanları ekler. Kullanıcının istediği 4 boyut:
   - nba_fit  (floor)   : şu anki üretim seviyesi, SOS-ayarlı → "NBA'e uygunluk"
   - ceiling  (potential): yaş-projeksiyonlu tavan (genç = daha çok tavan)
@@ -9,8 +9,14 @@ alanları ekler. Kullanıcının istediği 4 boyut:
   - strengths/weaknesses: en yüksek/düşük arketipler
 
 Yaş, üniversite prospektlerinde NBA başarısının #1 yordayıcısıdır (üretim sabitken
-genç = daha iyi) — model bunu merkeze alır. Ağırlıklar/eğri VARSAYILAN; P5 backtest'te
-gerçek NBA sonuçlarına karşı ayarlanacak.
+genç = daha iyi) — model bunu merkeze alır.
+
+Kalibrasyon durumu (KARIŞTIRMA — iki farklı sabit grubu var):
+  - Üretim/floor harmanı (W_OBPM/W_PTS/W_PROD/W_SOS): P5 backtest cetveliyle gerçek
+    NBA peak-BPM'e karşı DOĞRULANDI (Spearman 0.14→0.20, aşağıdaki bloğa bakın).
+  - Ceiling/grade/yaş-eğrisi sabitleri (W_FLOOR/W_CEILING/YOUNG_AGE/OLD_AGE/MAX_PROJ/
+    OLD_THRESH/OLD_SLOPE/AGE_PEN_MIN): hâlâ VARSAYILAN — P5 bu grubu kapsamadı,
+    gerçek NBA sonucuna karşı ayrıca doğrulanmadı.
 """
 import numpy as np
 import pandas as pd

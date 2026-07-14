@@ -19,6 +19,19 @@ def _zscore(series: pd.Series) -> pd.Series:
     return (series - series.mean()) / std
 
 
+# ── Gerçek B-Ref BPM'e kalibrasyon hedefi ───────────────────────────────────
+# 2025-26 NBA'de real OBPM/DBPM (bref merge) İLE proxy'nin aynı oyuncu havuzunda
+# YAN YANA hesaplanmasıyla ölçüldü (582 oyuncu). Önceki sabit ×3.5/×2.5 çarpanı
+# obpm_raw/dbpm_raw'ın std≈1 olduğunu varsayıyordu ama 4-bileşenli ağırlıklı
+# z-skor toplamının doğal std'si ~0.55-0.6 — bu yüzden proxy sistematik olarak
+# dar kalıyordu (std 1.98 vs gerçek 3.38 OBPM'de), ki bu da NCAA/G-League/
+# EuroLeague'de aynı [-5,15] overall_score kırpma aralığını gerçek BPM kadar
+# hiç dolduramamaları demekti (bkz. score_compat.py bpm_norm). Şimdi obpm_raw/
+# dbpm_raw yeniden z-skorlanıp bu ölçülmüş hedef dağılıma taşınıyor.
+_OBPM_TARGET_MEAN, _OBPM_TARGET_STD = -1.21, 3.38
+_DBPM_TARGET_MEAN, _DBPM_TARGET_STD = -0.18, 1.65
+
+
 def compute_bpm(df: pd.DataFrame) -> pd.DataFrame:
     """
     Mevcut nba_api kolonlarından OBPM, DBPM, BPM proxy üretir.
@@ -72,9 +85,10 @@ def compute_bpm(df: pd.DataFrame) -> pd.DataFrame:
 
     dbpm_raw = 0.50 * drtg_z + 0.30 * stl_z + 0.20 * blk_z
 
-    # Gerçekçi ölçeğe normalize (B-Ref lig ortalaması ≈ 0; elite ≈ +6..+10)
-    df["OBPM"] = (obpm_raw * 3.5).round(2)
-    df["DBPM"] = (dbpm_raw * 2.5).round(2)
+    # Ham ağırlıklı-z-skor toplamını YENİDEN z-skorla (std tam 1 garanti), sonra
+    # gerçek B-Ref dağılımına taşı — bkz. yukarıdaki kalibrasyon notu.
+    df["OBPM"] = (_zscore(obpm_raw) * _OBPM_TARGET_STD + _OBPM_TARGET_MEAN).round(2)
+    df["DBPM"] = (_zscore(dbpm_raw) * _DBPM_TARGET_STD + _DBPM_TARGET_MEAN).round(2)
     df["BPM"]  = (df["OBPM"] + df["DBPM"]).round(2)
 
     return df
