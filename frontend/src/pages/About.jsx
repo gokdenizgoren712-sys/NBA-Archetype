@@ -4,6 +4,20 @@ import { Logo } from "../components/BrandIcons";
 
 const CHANGELOG = [
   {
+    version: "v4.0",
+    date_en: "July 2026",
+    label_en: "Multi-League Scoring Overhaul + Brand Completion",
+    items_en: [
+      "Fixed the highest-impact scoring bug in the system: NCAA and G-League player positions were stored in a format the archetype engine's position mask didn't recognize, silently capping 7 of the 12 core archetype scores (Engine, Hub, Anchor, Spacer, Finisher, Force, Rim Runner) at ~0.30 for every player in both leagues. Repaired at the source and every affected season regenerated — overall scores and primary archetypes across NCAA and G-League are meaningful for the first time",
+      "Recalibrated the BPM proxy used for NCAA, G-League, and EuroLeague against real Basketball-Reference BPM (measured side-by-side on 582 NBA players, OBPM correlation 0.82): the old fixed multiplier compressed the proxy's spread to barely half of real BPM's, so non-NBA leagues could never reach the top of the scoring range NBA players do. Now they can",
+      "G-League, NCAA, and EuroLeague gained real season selectors, team/conference filters, and prospect tier / minimum-games / age filters — previously locked to one hardcoded season with no way to narrow the player pool",
+      "Player search is now accent-insensitive everywhere — 'Jokic' finds 'Jokić', 'Doncic' finds 'Dončić' — across every league's player lookups, the comparables engine, and search boxes",
+      "The comparables engine ('projects like a young X') is now its own endpoint, usable for any player in any league instead of being locked inside prospect cards only",
+      "Tracked down and fixed a real bug behind missing 3-point percentages in the Lineup Builder: a stat the game needed was never actually being written into the live score table for any league, and separately, the game's player cache could go stale indefinitely once a server had been running for a while",
+      "Finished the Primary Arch brand pass across the whole app: fully retired the light theme, completed the Rajdhani/Outfit typography and yamabuki/asagi color system on every remaining page including admin and auth screens, and translated the last user-facing Turkish strings that had slipped through (prospect tabs, error messages) to English",
+    ],
+  },
+  {
     version: "v3.10",
     date_en: "July 2026",
     label_en: "Playoff Realism + Game-Feel (Backtest-Tuned)",
