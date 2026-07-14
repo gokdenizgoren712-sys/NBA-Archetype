@@ -34,9 +34,9 @@ function TwoStageResult({ result }) {
     <div className="space-y-3">
       {/* Grade + Skor */}
       <div className="flex items-center gap-3">
-        <span className="text-4xl font-black" style={{ color: gradeColor }}>{fit.grade}</span>
+        <span className="font-logo text-4xl font-black" style={{ color: gradeColor }}>{fit.grade}</span>
         <div>
-          <div className="text-lg font-bold" style={{ color: gradeColor }}>{fit.pct}%</div>
+          <div className="font-logo text-lg font-bold tabular-nums" style={{ color: gradeColor }}>{fit.pct}%</div>
           <div className="text-[10px]" style={{ color: "var(--text-muted)" }}>
             Quality {Math.round(fit.avgQuality * 100)} · Coverage {Math.round(fit.coverage * 100)} · Fit {Math.round(fit.roleFit * 100)}
           </div>
@@ -188,7 +188,7 @@ function HistLineupCard({ lu, rank }) {
         </div>
       </div>
       <div className="shrink-0 text-center">
-        <div className="text-lg font-bold" style={{ color: SCORE_COLOR(score) }}>
+        <div className="font-logo text-lg font-bold tabular-nums" style={{ color: SCORE_COLOR(score) }}>
           {Math.round(score * 100)}
         </div>
         <div className="text-[8px]" style={{ color: "var(--text-faint)" }}>Fit</div>
@@ -222,13 +222,13 @@ function RealLineupCard({ lu, rank }) {
       <div className="flex gap-4 shrink-0">
         {fit != null && (
           <div className="text-center">
-            <div className="text-lg font-bold" style={{ color: SCORE_COLOR(fit) }}>{Math.round(fit * 100)}</div>
+            <div className="font-logo text-lg font-bold tabular-nums" style={{ color: SCORE_COLOR(fit) }}>{Math.round(fit * 100)}</div>
             <div className="text-[9px]" style={{ color: "var(--text-faint)" }}>Fit</div>
           </div>
         )}
         {net != null && (
           <div className="text-center">
-            <div className="text-lg font-bold" style={{ color: netColor }}>{net > 0 ? "+" : ""}{net.toFixed(1)}</div>
+            <div className="font-logo text-lg font-bold tabular-nums" style={{ color: netColor }}>{net > 0 ? "+" : ""}{net.toFixed(1)}</div>
             <div className="text-[9px]" style={{ color: "var(--text-faint)" }}>NET RTG</div>
           </div>
         )}

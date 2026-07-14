@@ -299,7 +299,7 @@ export default function Historical() {
                           .filter(Boolean).join(" · ")}
                       </span>
                     </div>
-                    <div className="text-xl font-bold text-blue-400 shrink-0">
+                    <div className="font-logo text-xl font-bold tabular-nums text-blue-400 shrink-0">
                       {Math.round(lu.Uyum_Skoru*100)}
                     </div>
                   </div>
@@ -320,7 +320,7 @@ export default function Historical() {
         <div className="w-80 border-l border-gray-800 bg-darkBg flex flex-col overflow-y-auto shrink-0">
           <div className="p-4 border-b border-gray-800 flex justify-between items-start">
             <div>
-              <div className="font-bold text-white text-sm">{selDetail.name}</div>
+              <div className="font-logo font-bold text-white text-sm">{selDetail.name}</div>
               <div className="flex items-center gap-1.5 mt-0.5">
                 {selDetail.position && (() => {
                   const POS_COLOR = { PG:"bg-violet-500/20 text-violet-300", SG:"bg-blue-500/20 text-blue-300", SF:"bg-emerald-500/20 text-emerald-300", PF:"bg-orange-500/20 text-orange-300", C:"bg-red-500/20 text-red-300" };
@@ -341,7 +341,7 @@ export default function Historical() {
             {selDetail.overall_score != null && (
               <div className="mt-3 text-center">
                 <div className="text-xs text-gray-500 mb-1">Overall Score</div>
-                <div className={`text-2xl font-bold ${
+                <div className={`font-logo text-2xl font-bold tabular-nums ${
                   selDetail.overall_score >= 0.80 ? "text-blue-400" :
                   selDetail.overall_score >= 0.65 ? "text-sky-400" : "text-gray-300"
                 }`}>{Math.round(selDetail.overall_score * 100)}</div>
@@ -351,7 +351,7 @@ export default function Historical() {
           {/* Arketip bileşen skorları */}
           {selDetail.scores && Object.keys(selDetail.scores).length > 0 && (
             <div className="px-3 pb-2 mt-1">
-              <div className="text-[10px] text-gray-600 uppercase tracking-wider mb-2">Bileşen Skorları</div>
+              <div className="text-[10px] text-gray-600 uppercase tracking-wider mb-2">Component Scores</div>
               <div className="space-y-1">
                 {Object.entries(selDetail.scores)
                   .sort(([, a], [, b]) => b - a)

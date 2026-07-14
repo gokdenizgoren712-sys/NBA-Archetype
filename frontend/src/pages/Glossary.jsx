@@ -21,13 +21,13 @@ const ERAS = [
   },
   {
     short: "Dead Ball", label: "Dead Ball Era", years: "1999–2008",
-    color: "#94a3b8", meta: "Physical defense, post play, deliberately slow pace",
+    color: "#9ca3af", meta: "Physical defense, post play, deliberately slow pace",
     desc: "The league's lowest-scoring era since the shot clock. Physical hand-checking rules rewarded defensive specialists. Interior bigs (Shaq, Duncan, KG) defined championship rosters.",
     top: ["Anchor ×1.25","Stopper ×1.20","Force ×1.15"],
     low: ["Spacer ×0.55","Ecosystem ×0.85","Connector ×0.85"],
   },
   {
-    short: "Proto ST", label: "Proto Super Team Era", years: "2008–2014",
+    short: "Super Team", label: "Super Team Era", years: "2008–2014",
     color: "#60a5fa", meta: "Pick-and-roll revolution, emerging stretch bigs",
     desc: "The post-handcheck era opened up driving lanes. Pick-and-roll became the primary offensive system. Stretch bigs started emerging — Dirk proved a shooting big could win a title.",
     top: ["Engine ×1.10","Creator ×1.05","Rim Runner ×1.10"],

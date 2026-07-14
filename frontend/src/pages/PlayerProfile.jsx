@@ -6,6 +6,7 @@ import RadarProfile from "../components/RadarProfile";
 import ScoreBar from "../components/ScoreBar";
 import PlayerCard from "../components/PlayerCard";
 import { useAuth } from "../contexts/AuthContext";
+import { FlagIcon } from "../components/BrandIcons";
 
 const CORE = ["Engine","Ecosystem","Hub","Connector","Creator","Anchor","Spacer","Finisher","Force","Initiator","Stopper","Rim Runner"];
 
@@ -81,7 +82,7 @@ function CareerChart({ seasons }) {
 function Section({ title, children }) {
   return (
     <div className="p-5 rounded" style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
-      <div className="text-[10px] uppercase tracking-wider mb-3" style={{ color: "var(--text-faint)" }}>{title}</div>
+      <div className="font-logo text-[10px] font-semibold uppercase tracking-wider mb-3" style={{ color: "var(--text-faint)" }}>{title}</div>
       {children}
     </div>
   );
@@ -144,7 +145,7 @@ export default function PlayerProfile() {
 
   const seoDesc = detail
     ? `${name} (${arch})${pts ? `: ${pts} PTS · ${reb} REB · ${ast} AST` : ""}${overall ? ` · Overall: ${overall}` : ""}. Radar profile, career timeline, and similar players.`
-    : `${name} — NBA Archetype profile.`;
+    : `${name} — Primary Arch profile.`;
 
   if (loading) return (
     <div className="h-full flex items-center justify-center" style={{ color: "var(--text-muted)" }}>
@@ -163,7 +164,7 @@ export default function PlayerProfile() {
   return (
     <>
       <SEO
-        title={`${name} — NBA Archetype`}
+        title={name}
         description={seoDesc}
         path={`/players/${encodeURIComponent(name)}`}
       />
@@ -214,11 +215,11 @@ export default function PlayerProfile() {
                       style={{ color: "var(--text-faint)", border: "1px solid var(--border)" }}
                       onMouseEnter={e => e.currentTarget.style.color = "var(--text-muted)"}
                       onMouseLeave={e => e.currentTarget.style.color = "var(--text-faint)"}
-                    >⚑ flag</button>
+                    ><span className="inline-flex items-center gap-1"><FlagIcon size={10} /> flag</span></button>
                   )}
                   {isSmallSample && (
                     <span className="text-[9px] px-1.5 py-0.5 rounded font-medium"
-                      style={{ background: "rgba(245,158,11,.15)", color: "#f59e0b" }}>
+                      style={{ background: "rgba(255,177,27,.15)", color: "#FFB11B" }}>
                       ~small sample
                     </span>
                   )}
@@ -227,7 +228,7 @@ export default function PlayerProfile() {
 
               {overall != null && (
                 <div className="text-right shrink-0">
-                  <div className="text-3xl font-bold" style={{ color: "var(--accent)" }}>{overall}</div>
+                  <div className="font-logo text-3xl font-bold tabular-nums" style={{ color: "var(--accent)" }}>{overall}</div>
                   {topPctLabel && (
                     <div className="text-[10px]" style={{ color: "var(--text-muted)" }}>top {topPctLabel}</div>
                   )}
@@ -237,7 +238,7 @@ export default function PlayerProfile() {
 
             {isSmallSample && (
               <div className="mt-3 px-3 py-1.5 rounded text-[11px]"
-                style={{ background: "rgba(245,158,11,.10)", color: "#f59e0b", border: "1px solid rgba(245,158,11,.25)" }}>
+                style={{ background: "rgba(255,177,27,.10)", color: "#FFB11B", border: "1px solid rgba(255,177,27,.25)" }}>
                 ⚠ Small sample ({gp} games) — scores may be unstable
               </div>
             )}
@@ -280,7 +281,7 @@ export default function PlayerProfile() {
               <div className="flex flex-wrap gap-2">
                 {detail.active_modifiers.map(m => (
                   <span key={m} className="text-xs px-2.5 py-1 rounded font-medium"
-                    style={{ background: "rgba(245,158,11,.12)", color: "#f59e0b", border: "1px solid rgba(245,158,11,.3)" }}>
+                    style={{ background: "rgba(255,177,27,.12)", color: "#FFB11B", border: "1px solid rgba(255,177,27,.3)" }}>
                     {m}
                   </span>
                 ))}

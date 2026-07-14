@@ -263,3 +263,12 @@ export function DiceIcon({ size = 16 }) {
     </svg>
   );
 }
+
+export function LightbulbIcon({ size = 16 }) {
+  return (
+    <svg {...base(size)}>
+      <path d="M9 18h6M10 21h4" {...S} />
+      <path d="M12 3a6 6 0 00-3.5 10.9c.5.4.8 1 .8 1.6v.5h5.4v-.5c0-.6.3-1.2.8-1.6A6 6 0 0012 3z" {...S} />
+    </svg>
+  );
+}

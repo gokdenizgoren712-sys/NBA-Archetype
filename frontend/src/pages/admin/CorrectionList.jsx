@@ -48,12 +48,12 @@ function RefreshPanel({ token }) {
   const running = status?.running || triggering;
 
   return (
-    <div className="p-4 rounded space-y-3" style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
+    <div className="p-4 rounded-lg space-y-3" style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
       <div className="text-[10px] uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>Data Pipeline</div>
 
       <div className="flex items-center gap-3">
         <button onClick={trigger} disabled={running}
-          className="text-xs px-4 py-1.5 rounded font-medium"
+          className="text-xs px-4 py-1.5 rounded-lg font-medium"
           style={{ background: running ? "var(--border)" : "var(--accent)", color: running ? "var(--text-faint)" : "#000" }}>
           {running ? "Running…" : "Refresh Now"}
         </button>
@@ -76,7 +76,7 @@ function RefreshPanel({ token }) {
             {status.status === "running" || running ? "running" : status.status}
           </span></div>
           {status.errors?.length > 0 && (
-            <div className="text-[10px] mt-1 p-2 rounded" style={{ background: "rgba(239,68,68,.08)", color: "#f87171" }}>
+            <div className="text-[10px] mt-1 p-2 rounded-lg" style={{ background: "rgba(239,68,68,.08)", color: "#f87171" }}>
               {status.errors[0]}
             </div>
           )}
@@ -144,12 +144,12 @@ export default function CorrectionList() {
           </h1>
           <div className="flex gap-2">
             <Link to="/admin/articles"
-              className="text-xs px-3 py-1.5 rounded"
+              className="text-xs px-3 py-1.5 rounded-lg"
               style={{ border: "1px solid var(--border)", color: "var(--text-muted)" }}>
               Articles
             </Link>
             <Link to="/admin/users"
-              className="text-xs px-3 py-1.5 rounded"
+              className="text-xs px-3 py-1.5 rounded-lg"
               style={{ border: "1px solid var(--border)", color: "var(--text-muted)" }}>
               Users
             </Link>
@@ -160,7 +160,7 @@ export default function CorrectionList() {
         <div className="flex gap-1 mb-4">
           {TABS.map(t => (
             <button key={t} onClick={() => setTab(t)}
-              className="text-xs px-4 py-1.5 rounded capitalize"
+              className="text-xs px-4 py-1.5 rounded-lg capitalize"
               style={{
                 background: tab === t ? "var(--accent-dim)" : "transparent",
                 color: tab === t ? "var(--accent)" : "var(--text-muted)",
@@ -175,7 +175,7 @@ export default function CorrectionList() {
         {tab === "approved" && (
           <div className="flex items-center gap-3 mb-4">
             <button onClick={applyApproved} disabled={applying}
-              className="text-xs px-4 py-1.5 rounded font-medium"
+              className="text-xs px-4 py-1.5 rounded-lg font-medium"
               style={{ background: "var(--accent)", color: "#000" }}>
               {applying ? "Applying…" : "Apply Approved →"}
             </button>
@@ -197,7 +197,7 @@ export default function CorrectionList() {
         ) : (
           <div className="space-y-2">
             {rows.map(r => (
-              <div key={r.id} className="p-4 rounded flex items-start justify-between gap-4"
+              <div key={r.id} className="p-4 rounded-lg flex items-start justify-between gap-4"
                 style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
                 <div className="min-w-0 space-y-1">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -205,11 +205,11 @@ export default function CorrectionList() {
                       {r.player_name}
                     </span>
                     <span className="text-xs" style={{ color: "var(--text-faint)" }}>{r.season}</span>
-                    <span className="text-xs px-2 py-0.5 rounded" style={{ background: "rgba(239,68,68,.15)", color: "#f87171" }}>
+                    <span className="text-xs px-2 py-0.5 rounded-lg" style={{ background: "rgba(239,68,68,.15)", color: "#f87171" }}>
                       {r.current_arch}
                     </span>
                     <span className="text-[10px]" style={{ color: "var(--text-faint)" }}>→</span>
-                    <span className="text-xs px-2 py-0.5 rounded" style={{ background: "rgba(74,222,128,.12)", color: "#4ade80" }}>
+                    <span className="text-xs px-2 py-0.5 rounded-lg" style={{ background: "rgba(74,222,128,.12)", color: "#4ade80" }}>
                       {r.suggested_arch}
                     </span>
                   </div>
@@ -224,12 +224,12 @@ export default function CorrectionList() {
                 {tab === "pending" && (
                   <div className="flex gap-2 shrink-0">
                     <button onClick={() => patch(r.id, "approved")}
-                      className="text-xs px-3 py-1 rounded"
+                      className="text-xs px-3 py-1 rounded-lg"
                       style={{ background: "rgba(74,222,128,.15)", color: "#4ade80", border: "1px solid rgba(74,222,128,.3)" }}>
                       Approve
                     </button>
                     <button onClick={() => patch(r.id, "rejected")}
-                      className="text-xs px-3 py-1 rounded"
+                      className="text-xs px-3 py-1 rounded-lg"
                       style={{ background: "rgba(239,68,68,.12)", color: "#f87171", border: "1px solid rgba(239,68,68,.25)" }}>
                       Reject
                     </button>
@@ -237,14 +237,14 @@ export default function CorrectionList() {
                 )}
                 {tab === "approved" && (
                   <button onClick={() => patch(r.id, "rejected")}
-                    className="text-xs px-3 py-1 rounded"
+                    className="text-xs px-3 py-1 rounded-lg"
                     style={{ color: "var(--text-faint)", border: "1px solid var(--border)" }}>
                     Revoke
                   </button>
                 )}
                 {tab === "rejected" && (
                   <button onClick={() => patch(r.id, "pending")}
-                    className="text-xs px-3 py-1 rounded"
+                    className="text-xs px-3 py-1 rounded-lg"
                     style={{ color: "var(--text-faint)", border: "1px solid var(--border)" }}>
                     Re-open
                   </button>

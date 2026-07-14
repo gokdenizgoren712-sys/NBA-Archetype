@@ -260,7 +260,7 @@ export default function SeasonSimPanel({ players, simEra, fit, affinity01, bench
           {stage === "done" && result.champion && dynasty.titles < 3 && (
             <button onClick={defend}
               className="w-full py-3 rounded-xl font-bold transition-colors text-gray-900"
-              style={{background:"linear-gradient(90deg,#facc15,#f59e0b)"}}>
+              style={{background:"linear-gradient(90deg,#FFD470,#FFB11B)"}}>
               <span className="inline-flex items-center justify-center gap-1.5"><CrownIcon size={16} /> Defend the Title — Season {dynasty.year + 1}</span>
               <span className="block text-[10px] font-medium mt-0.5 opacity-80">
                 {dynasty.titles === 2 ? "One more for the THREEPEAT" : "The roster ages: −1.2 rating per extra season"}

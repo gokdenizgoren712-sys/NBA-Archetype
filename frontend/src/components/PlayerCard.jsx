@@ -51,13 +51,13 @@ export default function PlayerCard({ player, rank, onClick, discover, season }) 
       style={{
         background: "var(--bg-elevated)",
         border: discover
-          ? "1px solid rgba(245,158,11,0.5)"
+          ? "1px solid rgba(255,177,27,0.5)"
           : "1px solid var(--border)",
         borderRadius: 8,
         padding: "14px 16px",
       }}
-      onMouseEnter={e => e.currentTarget.style.borderColor = discover ? "rgba(245,158,11,0.8)" : "var(--accent-border)"}
-      onMouseLeave={e => e.currentTarget.style.borderColor = discover ? "rgba(245,158,11,0.5)" : "var(--border)"}
+      onMouseEnter={e => e.currentTarget.style.borderColor = discover ? "rgba(255,177,27,0.8)" : "var(--accent-border)"}
+      onMouseLeave={e => e.currentTarget.style.borderColor = discover ? "rgba(255,177,27,0.5)" : "var(--border)"}
     >
       {/* Header row */}
       <div className="flex items-start justify-between mb-2.5">
@@ -66,7 +66,7 @@ export default function PlayerCard({ player, rank, onClick, discover, season }) 
             <span className={`text-xs font-bold shrink-0 mt-0.5 ${rankColor}`}>#{rank}</span>
           )}
           <div className="min-w-0">
-            <div className="font-semibold text-sm leading-tight truncate" style={{ color: "var(--text-primary)" }}>
+            <div className="font-logo font-semibold text-sm leading-tight truncate" style={{ color: "var(--text-primary)" }}>
               {player.PLAYER_NAME}
             </div>
             <div className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
@@ -80,7 +80,7 @@ export default function PlayerCard({ player, rank, onClick, discover, season }) 
         <div className="text-right shrink-0 ml-2">
           {hasOverall ? (
             <>
-              <div className="text-lg font-bold" style={{ color: "var(--accent)" }}>{overall}</div>
+              <div className="font-logo text-lg font-bold tabular-nums" style={{ color: "var(--accent)" }}>{overall}</div>
               {topPctLabel && (
                 <div className="text-[10px]" style={{ color: "var(--text-muted)" }}>top {topPctLabel}</div>
               )}
@@ -107,7 +107,7 @@ export default function PlayerCard({ player, rank, onClick, discover, season }) 
         )}
         {player.GP != null && Number(player.GP) < 20 && (
           <span className="text-[9px] px-1.5 py-0.5 rounded font-medium"
-            style={{ background: "rgba(245,158,11,.15)", color: "#f59e0b" }}>
+            style={{ background: "rgba(255,177,27,.15)", color: "#FFB11B" }}>
             ~small sample
           </span>
         )}

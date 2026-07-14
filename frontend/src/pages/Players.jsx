@@ -180,7 +180,7 @@ function DetailPanel({ selected, detail, isCurrent, season, tab, setTab,
           <>
             {selected?.GP != null && Number(selected.GP) < 20 && (
               <div className="mx-4 mt-3 px-3 py-1.5 rounded text-[11px]"
-                style={{ background: "rgba(245,158,11,.10)", color: "#f59e0b", border: "1px solid rgba(245,158,11,.25)" }}>
+                style={{ background: "rgba(255,177,27,.10)", color: "#FFB11B", border: "1px solid rgba(255,177,27,.25)" }}>
                 ⚠ Small sample ({selected.GP} games) — scores may be unstable
               </div>
             )}
@@ -335,6 +335,8 @@ export default function Players() {
   const [pos, setPos]               = useState("");
   const [arch, setArch]             = useState("");
   const [team, setTeam]             = useState("");
+  const [tier, setTier]             = useState("");
+  const [minGp, setMinGp]           = useState("");
   const [sortBy, setSortBy]         = useState("overall_score");
 
   const [players, setPlayers]   = useState([]);
@@ -367,7 +369,7 @@ export default function Players() {
     setSelected(null); setDetail(null);
     setSimilar(null); setCareer(null);
     setSearch(""); setSearchInput("");
-    setPos(""); setArch(""); setTeam("");
+    setPos(""); setArch(""); setTeam(""); setTier(""); setMinGp("");
     setSortBy("overall_score");
     setPlayers([]); setTotal(0);
   }, [season]);
@@ -381,6 +383,8 @@ export default function Players() {
         if (team)   params.team   = team;
         if (pos)    params.position = pos;
         if (arch)   params.arch   = arch;
+        if (tier)   params.tier   = tier;
+        if (minGp)  params.min_gp = minGp;
         const data = await api.players(params);
         setPlayers(data.players || []);
         setTotal(data.total || 0);
@@ -389,15 +393,16 @@ export default function Players() {
         if (search) params.search = search;
         const data = await api.historical(season, params);
         let rows = data.players || [];
-        if (pos)  rows = rows.filter(p => (p.POSITION || "") === pos);
-        if (arch) rows = rows.filter(p => (p.primary_arch || "") === arch);
-        if (team) rows = rows.filter(p => (p.TEAM_ABBREVIATION || "") === team);
+        if (pos)   rows = rows.filter(p => (p.POSITION || "") === pos);
+        if (arch)  rows = rows.filter(p => (p.primary_arch || "") === arch);
+        if (team)  rows = rows.filter(p => (p.TEAM_ABBREVIATION || "") === team);
+        if (minGp) rows = rows.filter(p => Number(p.GP || 0) >= Number(minGp));
         setPlayers(rows);
         setTotal(data.total || rows.length);
       }
     } catch (e) { console.error(e); }
     setLoading(false);
-  }, [isCurrent, season, search, team, pos, arch, sortBy]);
+  }, [isCurrent, season, search, team, pos, arch, tier, minGp, sortBy]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -426,8 +431,8 @@ export default function Players() {
     setCareerLoading(false);
   };
 
-  const clearFilters = () => { setSearch(""); setSearchInput(""); setPos(""); setArch(""); setTeam(""); };
-  const hasFilters = search || pos || arch || team;
+  const clearFilters = () => { setSearch(""); setSearchInput(""); setPos(""); setArch(""); setTeam(""); setTier(""); setMinGp(""); };
+  const hasFilters = search || pos || arch || team || tier || minGp;
 
   const toCardPlayer = (p) => ({ ...p, overall_tier: p.overall_tier || "" });
 
@@ -494,6 +499,14 @@ export default function Players() {
         {selectEl(pos, setPos, POSITIONS.filter(Boolean), "Position")}
         {selectEl(arch, setArch, CORE, "Archetype")}
         {selectEl(team, setTeam, isCurrent ? teamList : histTeams, "Team")}
+        {isCurrent && selectEl(tier, setTier, ["Elite", "Star", "Starter", "Role Player"], "Tier")}
+
+        {/* Min GP */}
+        <input type="number" min="0" value={minGp} onChange={e => setMinGp(e.target.value)}
+          placeholder="Min GP" title="Minimum games played"
+          className="w-[84px] rounded px-3 py-1.5 text-sm focus:outline-none"
+          style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
+        />
 
         {/* Sort */}
         <select value={sortBy} onChange={e => setSortBy(e.target.value)}

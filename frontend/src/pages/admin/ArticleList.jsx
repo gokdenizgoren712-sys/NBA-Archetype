@@ -40,17 +40,17 @@ export default function ArticleList() {
           <h1 className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>Articles</h1>
           <div className="flex gap-2">
             <Link to="/admin/users"
-              className="px-3 py-1.5 rounded text-sm"
+              className="px-3 py-1.5 rounded-lg text-sm"
               style={{ background: "var(--bg-elevated)", color: "var(--text-muted)", border: "1px solid var(--border)" }}>
               Users
             </Link>
             <Link to="/admin/corrections"
-              className="px-3 py-1.5 rounded text-sm"
+              className="px-3 py-1.5 rounded-lg text-sm"
               style={{ background: "var(--bg-elevated)", color: "var(--text-muted)", border: "1px solid var(--border)" }}>
               Corrections
             </Link>
             <Link to="/admin/articles/new"
-              className="px-3 py-1.5 rounded text-sm font-semibold"
+              className="px-3 py-1.5 rounded-lg text-sm font-semibold"
               style={{ background: "var(--accent)", color: "#000" }}>
               + New Article
             </Link>
@@ -62,7 +62,7 @@ export default function ArticleList() {
         ) : articles.length === 0 ? (
           <p style={{ color: "var(--text-muted)" }}>No articles yet. Create your first one!</p>
         ) : (
-          <div className="rounded overflow-hidden border" style={{ borderColor: "var(--border)" }}>
+          <div className="rounded-lg overflow-hidden border" style={{ borderColor: "var(--border)" }}>
             <table className="w-full text-sm">
               <thead style={{ background: "var(--bg-elevated)" }}>
                 <tr>
@@ -83,9 +83,9 @@ export default function ArticleList() {
                     </td>
                     <td className="px-4 py-3 text-xs font-mono" style={{ color: "var(--text-muted)" }}>{a.slug}</td>
                     <td className="px-4 py-3">
-                      <span className="px-2 py-0.5 rounded text-xs font-medium"
+                      <span className="px-2 py-0.5 rounded-lg text-xs font-medium"
                         style={{
-                          background: a.status === "published" ? "rgba(34,197,94,.15)" : "rgba(148,163,184,.15)",
+                          background: a.status === "published" ? "rgba(34,197,94,.15)" : "rgba(156,163,175,.15)",
                           color: a.status === "published" ? "#4ade80" : "var(--text-muted)",
                         }}>
                         {a.status === "published" ? "Published" : "Draft"}
@@ -97,12 +97,12 @@ export default function ArticleList() {
                     <td className="px-4 py-3">
                       <div className="flex gap-2">
                         <Link to={`/admin/articles/${a.id}/edit`}
-                          className="px-2 py-1 rounded text-xs"
+                          className="px-2 py-1 rounded-lg text-xs"
                           style={{ background: "var(--bg-elevated)", color: "var(--text-primary)", border: "1px solid var(--border)" }}>
                           Edit
                         </Link>
                         <button onClick={() => deleteArticle(a.id)}
-                          className="px-2 py-1 rounded text-xs text-red-400 hover:text-red-300"
+                          className="px-2 py-1 rounded-lg text-xs text-red-400 hover:text-red-300"
                           style={{ border: "1px solid rgba(248,113,113,.3)" }}>
                           Delete
                         </button>

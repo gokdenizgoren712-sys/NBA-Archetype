@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route, NavLink, Navigate, useNavigate, useLocati
 import { useState, useEffect, lazy, Suspense } from "react";
 import { Logo, GameIcon, NBAIcon, GLeagueIcon, NCAAIcon, EuroLeagueIcon,
          LineupsIcon, ExploreIcon, CompareIcon, AffinityIcon, BlogIcon,
-         GlossaryIcon, AboutIcon, AdminIcon } from "./components/BrandIcons";
+         GlossaryIcon, AboutIcon, AdminIcon, RefreshIcon } from "./components/BrandIcons";
 
 // Route sayfaları LAZY — her biri kendi chunk'ına bölünür. Ağır lib'ler böylece
 // initial bundle'dan çıkar: tiptap→ArticleEditor chunk'ı, recharts→paylaşılan radar
@@ -104,7 +104,7 @@ function TopBar() {
           style={{ color: "var(--text-muted)", border: "1px solid var(--border)" }}
           onMouseEnter={e => e.currentTarget.style.color = "var(--text-primary)"}
           onMouseLeave={e => e.currentTarget.style.color = "var(--text-muted)"}
-        >↺</button>
+        ><RefreshIcon size={15} /></button>
 
         <UserButton />
       </div>

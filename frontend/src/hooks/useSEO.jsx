@@ -5,7 +5,7 @@ const BASE = typeof window !== "undefined" ? window.location.origin : "https://n
 const OG_IMAGE = `${BASE}/og-image.png`;
 
 export function SEO({ title, description, path = "", noindex = false }) {
-  const fullTitle = title ? `${title} | NBA Archetype` : "NBA Archetype — Identify Every Player's True Role";
+  const fullTitle = title ? `${title} | Primary Arch` : "Primary Arch — Identify Every Player's True Role";
   const url = `${BASE}${path}`;
 
   return (

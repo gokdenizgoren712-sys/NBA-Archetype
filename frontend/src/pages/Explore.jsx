@@ -4,10 +4,11 @@ import { useLang } from "../contexts/LanguageContext";
 import ScoreBar from "../components/ScoreBar";
 import SplitPane from "../components/SplitPane";
 import { SEO } from "../hooks/useSEO";
+import { Logo } from "../components/BrandIcons";
 
 const ARCH_COLORS = {
   Engine:       "#fb923c",
-  Ecosystem:    "#f59e0b",
+  Ecosystem:    "#d97706",
   Hub:          "#34d399",
   Connector:    "#38bdf8",
   Creator:      "#a78bfa",
@@ -16,7 +17,7 @@ const ARCH_COLORS = {
   Finisher:     "#f472b6",
   Force:        "#ef4444",
   Initiator:    "#facc15",
-  Stopper:      "#94a3b8",
+  Stopper:      "#9ca3af",
   "Rim Runner": "#4ade80",
 };
 
@@ -76,7 +77,7 @@ function PlayerDetail({ player }) {
   if (!player) return (
     <div className="flex items-center justify-center h-full">
       <div className="text-center">
-        <div className="text-4xl mb-3 opacity-10">◎</div>
+        <div className="flex justify-center mb-3 opacity-10"><Logo size={44} /></div>
         <div className="text-sm" style={{ color: "var(--text-muted)" }}>Click a dot on the map</div>
       </div>
     </div>
@@ -94,7 +95,7 @@ function PlayerDetail({ player }) {
     <div className="p-4">
       {/* Header */}
       <div className="mb-4 pb-4 border-b" style={{ borderColor: "var(--border)" }}>
-        <div className="font-bold text-base" style={{ color: "var(--text-primary)" }}>
+        <div className="font-logo font-bold text-base" style={{ color: "var(--text-primary)" }}>
           {player.PLAYER_NAME}
         </div>
         <div className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
@@ -106,7 +107,7 @@ function PlayerDetail({ player }) {
             {player.primary_arch}
           </span>
           {overall != null && (
-            <span className="text-2xl font-bold" style={{ color: "var(--accent)" }}>{overall}</span>
+            <span className="font-logo text-2xl font-bold tabular-nums" style={{ color: "var(--accent)" }}>{overall}</span>
           )}
         </div>
       </div>
@@ -215,7 +216,7 @@ export default function Explore() {
   return (
     <>
     <SEO
-      title="Explore NBA Archetypes"
+      title="Explore Archetypes"
       description="Explore all NBA player archetypes with projections, percentile scores, and role breakdowns. Filter by position, archetype, and modifier tags across 40+ seasons."
       path="/explore"
     />
@@ -309,7 +310,7 @@ export default function Explore() {
                 {/* Player dots */}
                 {filtered.map((p, i) => {
                   const cx = toSvgX(p.x), cy = toSvgY(p.y);
-                  const col = ARCH_COLORS[p.primary_arch] || "#94a3b8";
+                  const col = ARCH_COLORS[p.primary_arch] || "#9ca3af";
                   const isHover    = hover?.PLAYER_NAME === p.PLAYER_NAME;
                   const isSelected = selected?.PLAYER_NAME === p.PLAYER_NAME;
                   const isSearch   = searchQ && p.PLAYER_NAME?.toLowerCase().includes(searchQ.toLowerCase());

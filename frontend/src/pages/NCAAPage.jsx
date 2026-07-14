@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Search } from "lucide-react";
 import { api } from "../api";
 import { SEO } from "../hooks/useSEO";
@@ -16,8 +16,8 @@ const TIER_COLOR = {
   "Elite Prospect": "#a855f7",   // mor
   "First-Round":    "#3b82f6",   // mavi
   "Rotation Upside":"#10b981",   // yeşil
-  "Developmental":  "#f59e0b",   // amber
-  "Longshot":       "#94a3b8",   // slate
+  "Developmental":  "#d97706",   // bronz-amber (yamabukiden ayrık)
+  "Longshot":       "#9ca3af",   // slate
 };
 
 const OUTCOME_COLOR = {
@@ -25,8 +25,8 @@ const OUTCOME_COLOR = {
   "All-Star":        "#3b82f6",
   "Quality Starter": "#10b981",
   "Starter":         "#22c55e",
-  "Rotation":        "#f59e0b",
-  "Fringe":          "#94a3b8",
+  "Rotation":        "#d97706",
+  "Fringe":          "#9ca3af",
 };
 
 const POS_COLOR = {
@@ -50,7 +50,7 @@ function NCAADetailPanel({ selected, detail, tab, setTab }) {
       <div className="p-4 border-b shrink-0" style={{ borderColor: "var(--border)" }}>
         <div className="flex items-start justify-between">
           <div>
-            <div className="font-bold text-sm" style={{ color: "var(--text-primary)" }}>
+            <div className="font-logo font-bold text-sm" style={{ color: "var(--text-primary)" }}>
               {selected.PLAYER_NAME}
             </div>
             <div className="flex items-center gap-2 mt-1 flex-wrap">
@@ -77,7 +77,7 @@ function NCAADetailPanel({ selected, detail, tab, setTab }) {
           </div>
           {detail?.overall_score != null && (
             <div className="text-right shrink-0">
-              <div className="text-2xl font-bold" style={{ color: "var(--accent)" }}>
+              <div className="font-logo text-2xl font-bold tabular-nums" style={{ color: "var(--accent)" }}>
                 {Math.round(detail.overall_score * 100)}
               </div>
               {detail.overall_pct != null && (
@@ -110,7 +110,7 @@ function NCAADetailPanel({ selected, detail, tab, setTab }) {
           <>
             {selected?.GP != null && Number(selected.GP) < 15 && (
               <div className="mx-4 mt-3 px-3 py-1.5 rounded text-[11px]"
-                style={{ background: "rgba(245,158,11,.10)", color: "#f59e0b", border: "1px solid rgba(245,158,11,.25)" }}>
+                style={{ background: "rgba(255,177,27,.10)", color: "#FFB11B", border: "1px solid rgba(255,177,27,.25)" }}>
                 ⚠ Small sample ({selected.GP} games)
               </div>
             )}
@@ -152,7 +152,7 @@ function NCAADetailPanel({ selected, detail, tab, setTab }) {
                     }} />
                   </div>
                   <div className="text-[9px] mt-1" style={{ color: "var(--text-faint)" }}>
-                    NBA-uygunluk (SOS-ayarlı) → yaş-projeksiyonlu tavan
+                    NBA readiness (SOS-adjusted) → age-projected ceiling
                   </div>
                 </div>
 
@@ -160,7 +160,7 @@ function NCAADetailPanel({ selected, detail, tab, setTab }) {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <div className="text-[10px] uppercase tracking-wider mb-1.5" style={{ color: "#10b981" }}>
-                      İyi olduğu
+                      Strengths
                     </div>
                     <div className="flex flex-col gap-1">
                       {(detail.prospect.strengths || []).map(s => (
@@ -173,7 +173,7 @@ function NCAADetailPanel({ selected, detail, tab, setTab }) {
                   </div>
                   <div>
                     <div className="text-[10px] uppercase tracking-wider mb-1.5" style={{ color: "#ef4444" }}>
-                      Zayıf olduğu
+                      Weaknesses
                     </div>
                     <div className="flex flex-col gap-1">
                       {(detail.prospect.weaknesses || []).map(w => (
@@ -186,11 +186,11 @@ function NCAADetailPanel({ selected, detail, tab, setTab }) {
                   </div>
                 </div>
 
-                {/* Comparables — NBA giriş-profili benzerliği */}
+                {/* Comparables — NBA entry-profile similarity */}
                 {(detail.prospect.comparables || []).length > 0 && (
                   <div>
                     <div className="text-[10px] uppercase tracking-wider mb-1.5" style={{ color: NCAA_COLOR }}>
-                      NBA'de benziyor
+                      Similar to
                     </div>
                     <div className="flex flex-col gap-1">
                       {detail.prospect.comparables.map((c, i) => (
@@ -204,14 +204,14 @@ function NCAADetailPanel({ selected, detail, tab, setTab }) {
                       ))}
                     </div>
                     <div className="text-[9px] mt-1" style={{ color: "var(--text-faint)" }}>
-                      Giriş (rookie) arketip profili benzerliği · zirve = kariyer sonucu
+                      Entry (rookie) archetype profile similarity · peak = career outcome
                     </div>
                   </div>
                 )}
               </div>
               ) : (
                 <div className="p-8 text-center text-sm" style={{ color: "var(--text-muted)" }}>
-                  Prospect verisi yok
+                  No prospect data
                 </div>
               )
             )}
@@ -262,10 +262,16 @@ function NCAADetailPanel({ selected, detail, tab, setTab }) {
 
 /* ── Main component ──────────────────────────────────────────────── */
 export default function NCAAPage() {
+  const [seasons, setSeasons]         = useState(["2025-26"]);
+  const [season, setSeason]           = useState("2025-26");
   const [search, setSearch]           = useState("");
   const [searchInput, setSearchInput] = useState("");
+  const [conference, setConference]   = useState("");
   const [pos, setPos]                 = useState("");
   const [arch, setArch]               = useState("");
+  const [tier, setTier]               = useState("");
+  const [minGp, setMinGp]             = useState("");
+  const [maxAge, setMaxAge]           = useState("");
   const [sortBy, setSortBy]           = useState("overall_score");
 
   const [players, setPlayers] = useState([]);
@@ -278,13 +284,25 @@ export default function NCAAPage() {
   const [detail, setDetail]     = useState(null);
   const [tab, setTab]           = useState("prospect");
 
+  useEffect(() => {
+    api.ncaaSeasons().then(d => setSeasons(d.seasons?.length ? d.seasons : ["2025-26"])).catch(() => {});
+  }, []);
+
+  const confList = useMemo(() =>
+    [...new Set(players.map(p => p.CONFERENCE).filter(Boolean))].sort(),
+    [players]);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const params = { limit: 80, sort_by: sortBy };
-      if (search) params.search   = search;
-      if (pos)    params.position = pos;
-      if (arch)   params.arch     = arch;
+      const params = { season, limit: 80, sort_by: sortBy };
+      if (search)     params.search     = search;
+      if (conference) params.conference = conference;
+      if (pos)        params.position   = pos;
+      if (arch)        params.arch       = arch;
+      if (tier)        params.tier       = tier;
+      if (minGp)       params.min_gp     = minGp;
+      if (maxAge)      params.max_age    = maxAge;
       const data = await api.ncaaPlayers(params);
       if (data.coming_soon) { setNoData(true); setPlayers([]); setTotal(0); }
       else {
@@ -297,25 +315,25 @@ export default function NCAAPage() {
       setNoData(true);
     }
     setLoading(false);
-  }, [search, pos, arch, sortBy]);
+  }, [season, search, conference, pos, arch, tier, minGp, maxAge, sortBy]);
 
   useEffect(() => { load(); }, [load]);
 
   const openPlayer = async (p) => {
     setSelected(p); setDetail(null); setTab("prospect");
     try {
-      const sc = await api.ncaaPlayerScores(p.PLAYER_NAME);
+      const sc = await api.ncaaPlayerScores(p.PLAYER_NAME, season);
       setDetail(sc);
     } catch (e) { console.error(e); }
   };
 
-  const clearFilters = () => { setSearch(""); setSearchInput(""); setPos(""); setArch(""); };
-  const hasFilters = search || pos || arch;
+  const clearFilters = () => { setSearch(""); setSearchInput(""); setConference(""); setPos(""); setArch(""); setTier(""); setMinGp(""); setMaxAge(""); };
+  const hasFilters = search || conference || pos || arch || tier || minGp || maxAge;
 
   return (
     <>
     <SEO
-      title="NCAA D-I — NBA Archetype"
+      title="NCAA D-I"
       description="NCAA Division I college basketball player archetype profiles — engine, anchor, spacer and more, scored within league context."
       path="/ncaa"
     />
@@ -332,9 +350,15 @@ export default function NCAAPage() {
         {/* League badge */}
         <div className="flex items-center gap-1.5 mr-1">
           <NCAAIcon size={16} />
-          <span className="text-xs font-semibold" style={{ color: NCAA_COLOR }}>NCAA</span>
-          <span className="text-[10px]" style={{ color: "var(--text-faint)" }}>D-I · 2025-26</span>
+          <span className="text-xs font-semibold" style={{ color: NCAA_COLOR }}>NCAA D-I</span>
         </div>
+
+        {/* Season */}
+        <select value={season} onChange={e => setSeason(e.target.value)}
+          className="rounded px-3 py-1.5 text-sm font-medium focus:outline-none"
+          style={{ background: "var(--accent-dim)", border: "1px solid var(--accent-border)", color: "var(--accent)" }}>
+          {seasons.map(s => <option key={s} value={s}>{s}</option>)}
+        </select>
 
         {/* Search */}
         <div className="relative flex-1 min-w-[140px]">
@@ -351,6 +375,14 @@ export default function NCAAPage() {
           />
         </div>
 
+        {/* Conference */}
+        <select value={conference} onChange={e => setConference(e.target.value)}
+          className="rounded px-3 py-1.5 text-sm focus:outline-none"
+          style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)", color: "var(--text-primary)" }}>
+          <option value="">Conference</option>
+          {confList.map(o => <option key={o} value={o}>{o}</option>)}
+        </select>
+
         {/* Position */}
         <select value={pos} onChange={e => setPos(e.target.value)}
           className="rounded px-3 py-1.5 text-sm focus:outline-none"
@@ -366,6 +398,28 @@ export default function NCAAPage() {
           <option value="">Archetype</option>
           {CORE.map(o => <option key={o} value={o}>{o}</option>)}
         </select>
+
+        {/* Prospect tier */}
+        <select value={tier} onChange={e => setTier(e.target.value)}
+          className="rounded px-3 py-1.5 text-sm focus:outline-none"
+          style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)", color: "var(--text-primary)" }}>
+          <option value="">Tier</option>
+          {Object.keys(TIER_COLOR).map(o => <option key={o} value={o}>{o}</option>)}
+        </select>
+
+        {/* Min GP */}
+        <input type="number" min="0" value={minGp} onChange={e => setMinGp(e.target.value)}
+          placeholder="Min GP" title="Minimum games played"
+          className="w-[84px] rounded px-3 py-1.5 text-sm focus:outline-none"
+          style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
+        />
+
+        {/* Max Age */}
+        <input type="number" min="0" value={maxAge} onChange={e => setMaxAge(e.target.value)}
+          placeholder="Max Age" title="Maximum age"
+          className="w-[84px] rounded px-3 py-1.5 text-sm focus:outline-none"
+          style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
+        />
 
         {/* Sort */}
         <select value={sortBy} onChange={e => setSortBy(e.target.value)}

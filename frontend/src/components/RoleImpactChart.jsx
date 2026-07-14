@@ -88,14 +88,14 @@ export default function RoleImpactChart() {
         <div className="px-4 pb-4">
           {/* Insight text */}
           <div className="text-xs text-gray-400 bg-surfaceCard/60 rounded-lg p-3 mb-4 leading-relaxed">
-            <span className="text-blue-300 font-medium">Bu sezonun kazandıran formülü: </span>
-            {data.by_impact[0]} (r={roles.find(r=>r.slot===data.by_impact[0])?.net_corr.toFixed(2)}) ve{" "}
+            <span className="text-blue-300 font-medium">This season's winning formula: </span>
+            {data.by_impact[0]} (r={roles.find(r=>r.slot===data.by_impact[0])?.net_corr.toFixed(2)}) and{" "}
             {data.by_impact[1]} (r={roles.find(r=>r.slot===data.by_impact[1])?.net_corr.toFixed(2)})
-            {" "}kazanmayla en güçlü ilişkili roller.{" "}
-            <span className="text-gray-300">Floor Spacing</span> ise ligin yalnızca{" "}
+            {" "}are the roles most strongly correlated with winning.{" "}
+            <span className="text-gray-300">Floor Spacing</span>, meanwhile, is only present in{" "}
             <span className="text-yamabuki">
               {(data.roles.find(r=>r.slot==="Floor Spacing")?.coverage_rate * 100).toFixed(0)}%
-            </span>'inde bulunuyor — bu yüzden en iyi teorik lineuplaarda bile spacing slotu kırmızı çıkıyor.
+            </span> of the league — which is why even the best theoretical lineups show a red spacing slot.
           </div>
 
           {/* Sort buttons */}

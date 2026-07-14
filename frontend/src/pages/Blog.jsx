@@ -32,7 +32,7 @@ export default function Blog() {
           <div className="space-y-4">
             {articles.map(a => (
               <Link key={a.id} to={`/blog/${a.slug}`}
-                className="block rounded overflow-hidden transition-opacity hover:opacity-80"
+                className="block rounded-xl overflow-hidden transition-opacity hover:opacity-80"
                 style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
                 {a.cover_image_url && (
                   <img src={a.cover_image_url} alt={a.title}

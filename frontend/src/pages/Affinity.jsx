@@ -29,7 +29,7 @@ const ARCH_COLOR = {
   Finisher:     "#f9a8d4",
   Force:        "#ef4444",
   Initiator:    "#facc15",
-  Stopper:      "#94a3b8",
+  Stopper:      "#9ca3af",
   "Rim Runner": "#34d399",
 };
 

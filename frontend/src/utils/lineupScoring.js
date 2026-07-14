@@ -10,7 +10,7 @@ export const ERAS = [
   { id:"magic_bird", label:"Magic vs Bird Era",    short:"80s",        years:[1979,1991] },
   { id:"jordan",     label:"Jordan Era",           short:"Jordan",     years:[1991,1999] },
   { id:"dead_ball",  label:"Dead Ball Era",        short:"Dead Ball",  years:[1999,2008] },
-  { id:"proto",      label:"Proto Super Team Era", short:"Proto ST",   years:[2008,2014] },
+  { id:"proto",      label:"Super Team Era",       short:"Super Team", years:[2008,2014] },
   { id:"small_ball", label:"Small Ball Era",       short:"Small Ball", years:[2014,2020] },
   { id:"parity",     label:"Parity Era",           short:"Parity",     years:[2020,2030] },
 ];
@@ -101,5 +101,5 @@ export const PILLAR_LABELS = {
 };
 
 export const GRADE_COLOR = {
-  S: "#f59e0b", A: "#22c55e", B: "#3b82f6", C: "#f97316", D: "#ef4444",
+  S: "#d97706", A: "#22c55e", B: "#3b82f6", C: "#f97316", D: "#ef4444",
 };

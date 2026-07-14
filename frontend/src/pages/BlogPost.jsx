@@ -69,7 +69,7 @@ export default function BlogPost() {
 
         {article.cover_image_url && (
           <img src={article.cover_image_url} alt={article.title}
-            className="w-full h-64 object-cover rounded mb-6" />
+            className="w-full h-64 object-cover rounded-xl mb-6" />
         )}
 
         <Link to="/blog" className="text-sm hover:underline mb-4 block" style={{ color: "var(--accent)" }}>
@@ -109,13 +109,12 @@ export default function BlogPost() {
                 onChange={e => setComment(e.target.value)}
                 rows={3}
                 placeholder="Write a comment…"
-                className="w-full px-3 py-2 rounded text-sm outline-none resize-none"
+                className="w-full px-3 py-2 rounded-lg text-sm outline-none resize-none"
                 style={{ background: "var(--bg-elevated)", color: "var(--text-primary)", border: "1px solid var(--border)" }}
               />
               {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
               <button onClick={submitComment} disabled={posting || !comment.trim()}
-                className="mt-2 px-4 py-1.5 rounded text-sm font-medium transition-opacity"
-                style={{ background: "var(--accent)", color: "#000", opacity: (posting || !comment.trim()) ? 0.5 : 1 }}>
+                className="mt-2 px-4 py-1.5 rounded-lg font-logo text-sm font-bold uppercase tracking-wide bg-yamabuki text-darkBg hover:bg-white transition-colors disabled:opacity-50">
                 {posting ? "Posting…" : "Post"}
               </button>
             </div>

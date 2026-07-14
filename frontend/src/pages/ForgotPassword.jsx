@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { SEO } from "../hooks/useSEO";
+import { MailIcon } from "../components/BrandIcons";
 
 export default function ForgotPassword() {
   const [email, setEmail]     = useState("");
@@ -37,9 +38,9 @@ export default function ForgotPassword() {
         </p>
 
         {sent ? (
-          <div className="text-center space-y-4 p-6 rounded"
+          <div className="text-center space-y-4 p-6 rounded-xl"
             style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
-            <div className="text-2xl">✉</div>
+            <div className="flex justify-center text-asagi"><MailIcon size={32} /></div>
             <p className="text-sm" style={{ color: "var(--text-primary)" }}>
               If that email is registered, a reset link has been sent.
             </p>
@@ -58,14 +59,13 @@ export default function ForgotPassword() {
                 type="email" required autoFocus
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                className="w-full px-3 py-2 rounded text-sm outline-none"
+                className="w-full px-3 py-2 rounded-lg text-sm outline-none"
                 style={{ background: "var(--bg-elevated)", color: "var(--text-primary)", border: "1px solid var(--border)" }}
               />
             </div>
             {error && <p className="text-sm text-red-400">{error}</p>}
             <button type="submit" disabled={loading}
-              className="w-full py-2 rounded text-sm font-semibold transition-opacity"
-              style={{ background: "var(--accent)", color: "#000", opacity: loading ? 0.6 : 1 }}>
+              className="w-full py-2.5 rounded-xl font-logo font-bold text-sm uppercase tracking-wide transition-colors bg-yamabuki text-darkBg hover:bg-white disabled:opacity-50">
               {loading ? "Sending…" : "Send Reset Link"}
             </button>
             <p className="text-center text-sm" style={{ color: "var(--text-muted)" }}>

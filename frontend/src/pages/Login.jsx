@@ -35,7 +35,7 @@ export default function Login() {
 
   return (
     <>
-    <SEO title="Log In" description="Log in to your NBA Archetype account." path="/login" noindex />
+    <SEO title="Log In" description="Log in to your Primary Arch account." path="/login" noindex />
     <div className="h-full flex items-center justify-center p-6" style={{ background: "var(--bg-base)" }}>
       <div className="w-full max-w-sm">
         <h1 className="text-2xl font-bold mb-6 text-center" style={{ color: "var(--text-primary)" }}>
@@ -49,7 +49,7 @@ export default function Login() {
               type="email" required autoFocus
               value={form.email}
               onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
-              className="w-full px-3 py-2 rounded text-sm outline-none"
+              className="w-full px-3 py-2 rounded-lg text-sm outline-none"
               style={{ background: "var(--bg-elevated)", color: "var(--text-primary)", border: "1px solid var(--border)" }}
             />
           </div>
@@ -64,7 +64,7 @@ export default function Login() {
               type="password" required
               value={form.password}
               onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
-              className="w-full px-3 py-2 rounded text-sm outline-none"
+              className="w-full px-3 py-2 rounded-lg text-sm outline-none"
               style={{ background: "var(--bg-elevated)", color: "var(--text-primary)", border: "1px solid var(--border)" }}
             />
           </div>
@@ -73,8 +73,7 @@ export default function Login() {
 
           <button
             type="submit" disabled={loading}
-            className="w-full py-2 rounded text-sm font-semibold transition-opacity"
-            style={{ background: "var(--accent)", color: "#000", opacity: loading ? 0.6 : 1 }}
+            className="w-full py-2.5 rounded-xl font-logo font-bold text-sm uppercase tracking-wide transition-colors bg-yamabuki text-darkBg hover:bg-white disabled:opacity-50"
           >
             {loading ? "Logging in…" : "Log In"}
           </button>

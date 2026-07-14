@@ -26,7 +26,7 @@ function Toolbar({ editor, onImageUpload, uploading }) {
     <button type="button"
       onClick={action}
       title={label}
-      className="px-2 py-1 rounded text-xs font-medium transition-colors"
+      className="px-2 py-1 rounded-lg text-xs font-medium transition-colors"
       style={{
         background: active ? "var(--accent)" : "var(--bg-elevated)",
         color: active ? "#000" : "var(--text-primary)",
@@ -58,7 +58,7 @@ function Toolbar({ editor, onImageUpload, uploading }) {
       {btn(() => editor.chain().focus().setHorizontalRule().run(), "──")}
       <div className="w-px mx-1" style={{ background: "var(--border)" }} />
       {btn(addLink, "🔗 Link")}
-      <label className="px-2 py-1 rounded text-xs font-medium cursor-pointer transition-colors"
+      <label className="px-2 py-1 rounded-lg text-xs font-medium cursor-pointer transition-colors"
         style={{
           background: "var(--bg-elevated)",
           color: uploading ? "var(--text-muted)" : "var(--text-primary)",
@@ -181,12 +181,12 @@ export default function ArticleEditor() {
             {error && <span className="text-xs text-red-400">{error}</span>}
             {saved && <span className="text-xs text-green-400">Kaydedildi ✓</span>}
             <button onClick={() => save("draft")} disabled={saving}
-              className="px-3 py-1.5 rounded text-sm"
+              className="px-3 py-1.5 rounded-lg text-sm"
               style={{ background: "var(--bg-elevated)", color: "var(--text-primary)", border: "1px solid var(--border)", opacity: saving ? 0.6 : 1 }}>
               Taslak Kaydet
             </button>
             <button onClick={() => save("published")} disabled={saving}
-              className="px-3 py-1.5 rounded text-sm font-semibold"
+              className="px-3 py-1.5 rounded-lg text-sm font-semibold"
               style={{ background: "var(--accent)", color: "#000", opacity: saving ? 0.6 : 1 }}>
               {saving ? "Kaydediliyor…" : "Yayınla"}
             </button>
@@ -200,7 +200,7 @@ export default function ArticleEditor() {
             placeholder="Başlık"
             value={meta.title}
             onChange={e => setMeta(m => ({ ...m, title: e.target.value, slug: slugify(e.target.value) }))}
-            className="w-full px-3 py-2 rounded text-lg font-bold outline-none"
+            className="w-full px-3 py-2 rounded-lg text-lg font-bold outline-none"
             style={{ background: "var(--bg-elevated)", color: "var(--text-primary)", border: "1px solid var(--border)" }}
           />
           <div className="flex gap-2">
@@ -209,13 +209,13 @@ export default function ArticleEditor() {
               placeholder="slug (otomatik)"
               value={meta.slug}
               onChange={e => setMeta(m => ({ ...m, slug: e.target.value }))}
-              className="flex-1 px-3 py-1.5 rounded text-sm font-mono outline-none"
+              className="flex-1 px-3 py-1.5 rounded-lg text-sm font-mono outline-none"
               style={{ background: "var(--bg-elevated)", color: "var(--text-muted)", border: "1px solid var(--border)" }}
             />
             <select
               value={meta.status}
               onChange={e => setMeta(m => ({ ...m, status: e.target.value }))}
-              className="px-3 py-1.5 rounded text-sm outline-none"
+              className="px-3 py-1.5 rounded-lg text-sm outline-none"
               style={{ background: "var(--bg-elevated)", color: "var(--text-primary)", border: "1px solid var(--border)" }}>
               <option value="draft">Taslak</option>
               <option value="published">Yayında</option>
@@ -225,14 +225,14 @@ export default function ArticleEditor() {
           {/* Kapak fotoğrafı */}
           <div className="flex items-center gap-3">
             {meta.cover_image_url ? (
-              <img src={meta.cover_image_url} alt="Kapak" className="h-16 w-28 object-cover rounded" />
+              <img src={meta.cover_image_url} alt="Kapak" className="h-16 w-28 object-cover rounded-lg" />
             ) : (
-              <div className="h-16 w-28 rounded flex items-center justify-center text-xs"
+              <div className="h-16 w-28 rounded-lg flex items-center justify-center text-xs"
                 style={{ background: "var(--bg-elevated)", color: "var(--text-muted)", border: "1px dashed var(--border)" }}>
                 Kapak yok
               </div>
             )}
-            <label className="px-3 py-1.5 rounded text-sm cursor-pointer"
+            <label className="px-3 py-1.5 rounded-lg text-sm cursor-pointer"
               style={{ background: "var(--bg-elevated)", color: "var(--text-primary)", border: "1px solid var(--border)" }}>
               {uploading ? "Yükleniyor…" : "Kapak Fotoğrafı Seç"}
               <input type="file" accept="image/*" className="hidden" onChange={uploadCover} disabled={uploading} />
@@ -245,7 +245,7 @@ export default function ArticleEditor() {
         </div>
 
         {/* Editor */}
-        <div className="rounded overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+        <div className="rounded-lg overflow-hidden" style={{ border: "1px solid var(--border)" }}>
           <Toolbar editor={editor} onImageUpload={uploadImage} uploading={uploading} />
           <div style={{ background: "var(--bg-surface)", minHeight: "500px" }}>
             <EditorContent editor={editor} />

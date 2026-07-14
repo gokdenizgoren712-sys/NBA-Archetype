@@ -79,13 +79,12 @@ export default function Profile() {
           <div className="flex gap-2">
             {data.user?.role === "admin" && (
               <Link to="/admin/articles"
-                className="px-3 py-1.5 rounded text-sm font-medium"
-                style={{ background: "var(--accent)", color: "#000" }}>
+                className="px-3 py-1.5 rounded-lg font-logo text-sm font-bold uppercase tracking-wide bg-yamabuki text-darkBg hover:bg-white transition-colors">
                 Admin Panel
               </Link>
             )}
             <button onClick={logout}
-              className="px-3 py-1.5 rounded text-sm"
+              className="px-3 py-1.5 rounded-lg text-sm"
               style={{ background: "var(--bg-elevated)", color: "var(--text-muted)", border: "1px solid var(--border)" }}>
               Sign out
             </button>
@@ -94,7 +93,7 @@ export default function Profile() {
 
         {/* Admin promotion — only for non-admin users */}
         {data.user?.role !== "admin" && (
-          <div className="mb-6 p-4 rounded" style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
+          <div className="mb-6 p-4 rounded-xl" style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
             <p className="text-xs mb-2 font-medium" style={{ color: "var(--text-muted)" }}>Have an admin invite code?</p>
             <div className="flex gap-2">
               <input
@@ -102,14 +101,13 @@ export default function Profile() {
                 value={promoteCode}
                 onChange={e => setPromoteCode(e.target.value)}
                 placeholder="Admin invite code"
-                className="flex-1 px-3 py-1.5 rounded text-sm outline-none"
+                className="flex-1 px-3 py-1.5 rounded-lg text-sm outline-none"
                 style={{ background: "var(--bg-surface)", color: "var(--text-primary)", border: "1px solid var(--border)" }}
               />
               <button
                 onClick={promoteToAdmin}
                 disabled={!promoteCode}
-                className="px-3 py-1.5 rounded text-sm font-medium"
-                style={{ background: "var(--accent)", color: "#000", opacity: promoteCode ? 1 : 0.5 }}>
+                className="px-3 py-1.5 rounded-lg font-logo text-sm font-bold uppercase tracking-wide bg-yamabuki text-darkBg hover:bg-white transition-colors disabled:opacity-50">
                 Upgrade
               </button>
             </div>
@@ -140,11 +138,11 @@ export default function Profile() {
                 No saved players yet. Open a player card and click the bookmark icon to save.
               </p>
             ) : data.saved_players.map(p => (
-              <div key={p.id} className="flex items-center justify-between p-3 rounded"
+              <div key={p.id} className="flex items-center justify-between p-3 rounded-lg"
                 style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
                 <div>
                   <Link to={`/players?q=${encodeURIComponent(p.player_name)}`}
-                    className="font-medium text-sm hover:underline"
+                    className="font-logo font-medium text-sm hover:underline"
                     style={{ color: "var(--text-primary)" }}>
                     {p.player_name}
                   </Link>
@@ -164,10 +162,10 @@ export default function Profile() {
                 No saved lineups yet. Build a custom lineup on the Lineups page and save it.
               </p>
             ) : data.saved_lineups.map(l => (
-              <div key={l.id} className="p-3 rounded"
+              <div key={l.id} className="p-3 rounded-lg"
                 style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
                 <div className="flex items-center justify-between mb-1">
-                  <span className="font-bold text-lg" style={{ color: "var(--accent)" }}>{l.grade}</span>
+                  <span className="font-logo font-bold text-lg" style={{ color: "var(--accent)" }}>{l.grade}</span>
                   <div className="flex items-center gap-2">
                     <span className="text-xs" style={{ color: "var(--text-muted)" }}>
                       {new Date(l.created_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
@@ -199,7 +197,7 @@ export default function Profile() {
                 No comments yet.
               </p>
             ) : data.comments.map(c => (
-              <div key={c.id} className="p-3 rounded"
+              <div key={c.id} className="p-3 rounded-lg"
                 style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
                 <Link to={`/blog/${c.article_slug}`}
                   className="text-xs font-medium hover:underline"

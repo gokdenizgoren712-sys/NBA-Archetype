@@ -20,16 +20,14 @@ const ARCH_COLOR = {
   Engine:      "#f97316",
   Ecosystem:   "#22c55e",
   Hub:         "#14b8a6",
-  Conductor:   "#06b6d4",
   Connector:   "#a855f7",
   Creator:     "#f43f5e",
-  Fulcrum:     "#f59e0b",
   Anchor:      "#3b82f6",
   Spacer:      "#38bdf8",
   Finisher:    "#84cc16",
   Force:       "#ef4444",
-  Initiator:   "#eab308",
-  Stopper:     "#94a3b8",
+  Initiator:   "#facc15",
+  Stopper:     "#9ca3af",
   "Rim Runner":"#10b981",
 };
 
@@ -69,28 +67,28 @@ export default function RadarProfile({
     .filter(c => scores[c] !== undefined)
     .map(c => ({
       comp:  c,
-      [name || "Oyuncu"]: scores[c] || 0,
-      ...(scores2 ? { [name2 || "Oyuncu 2"]: scores2[c] || 0 } : {}),
+      [name || "Player"]: scores[c] || 0,
+      ...(scores2 ? { [name2 || "Player 2"]: scores2[c] || 0 } : {}),
       ...(showHalo ? { [haloKey]: Math.min(1, (scores[c] || 0) + margin) } : {}),
     }));
 
   const color1 = pickColor(primaryArch);
-  const color2 = pickColor(primaryArch2) || "#f59e0b";
-  const key1   = name  || "Oyuncu";
-  const key2   = name2 || "Oyuncu 2";
+  const color2 = pickColor(primaryArch2);
+  const key1   = name  || "Player";
+  const key2   = name2 || "Player 2";
 
   return (
     <ResponsiveContainer width="100%" height={320}>
       <RadarChart data={data} cx="50%" cy="50%">
-        <PolarGrid stroke="#262626" />
+        <PolarGrid stroke="rgba(0,163,175,0.18)" />
         <PolarAngleAxis
           dataKey="comp"
-          tick={{ fill: "#94a3b8", fontSize: 10 }}
+          tick={{ fill: "#9ca3af", fontSize: 10 }}
         />
         <PolarRadiusAxis
           angle={90}
           domain={[0, 1]}
-          tick={{ fill: "#475569", fontSize: 9 }}
+          tick={{ fill: "rgba(0,163,175,0.55)", fontSize: 9 }}
           tickCount={3}
         />
         {/* Confidence halo — outer faint polygon */}
@@ -125,7 +123,7 @@ export default function RadarProfile({
           />
         )}
         <Tooltip content={<CustomTooltip />} />
-        {scores2 && <Legend wrapperStyle={{ fontSize: 11, color: "#94a3b8" }} />}
+        {scores2 && <Legend wrapperStyle={{ fontSize: 11, color: "#9ca3af" }} />}
       </RadarChart>
     </ResponsiveContainer>
   );

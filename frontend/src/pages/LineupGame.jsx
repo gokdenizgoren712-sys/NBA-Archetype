@@ -13,7 +13,7 @@ import {
   StarIcon, CoachIcon, TrophyIcon, CrownIcon, CapIcon, TargetIcon, WheelIcon,
   CardsIcon, TagIcon, DnaIcon, RefreshIcon, CalendarIcon, BoltIcon, UsersIcon,
   SearchIcon, LoopIcon, GapIcon, WarnIcon, EyeIcon, LinkIcon, CheckIcon,
-  DownloadIcon, XLogoIcon, DiceIcon,
+  DownloadIcon, XLogoIcon, DiceIcon, LightbulbIcon,
 } from "../game/GameIcons";
 
 const POSITIONS = ["PG", "SG", "SF", "PF", "C"];
@@ -163,7 +163,7 @@ function LineupSlot({ pos, player, bench=false, selected=false, canTap=false, on
   return (
     <div onClick={()=>canTap&&onTap&&onTap(pos)}
       className={`flex-1 rounded-lg p-1.5 border text-center min-w-0 transition-all
-      ${selected?"border-yamabuki shadow-[0_0_8px_rgba(245,158,11,.35)]":player?(bench?"border-gray-600/50 bg-surfaceCard/30":"border-yamabuki/40 bg-yamabuki/10"):"border-gray-800 bg-surfaceBg/60"}
+      ${selected?"border-yamabuki shadow-[0_0_8px_rgba(255,177,27,.35)]":player?(bench?"border-gray-600/50 bg-surfaceCard/30":"border-yamabuki/40 bg-yamabuki/10"):"border-gray-800 bg-surfaceBg/60"}
       ${canTap?"cursor-pointer":""}`}>
       <div className={`text-[8.5px] uppercase tracking-wider mb-0.5 ${bench?"text-gray-600":POS_COLORS[pos]?.split(" ")[1]||"text-gray-600"}`}>{posLabel}</div>
       {player ? (
@@ -241,7 +241,7 @@ function PlayerRow({ player, discover, onClick, cost, unaffordable, highlightSta
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="text-[13px] font-semibold text-white truncate leading-tight">{player.PLAYER_NAME}</div>
+          <div className="font-logo text-[13px] font-semibold text-white truncate leading-tight">{player.PLAYER_NAME}</div>
           <div className="flex items-center gap-1 mt-0.5">
             <span className="text-[10px] text-gray-500 shrink-0">{player.POSITION || player.POS5 || ""}</span>
             <span className="text-[10px] text-blue-400 font-medium truncate">{player.primary_arch || "—"}</span>
@@ -432,8 +432,8 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
             </span>
           </div>
         )}
-        <div className={`text-7xl font-black mb-1 ${pct>=78?"text-blue-400":pct>=62?"text-sky-400":"text-gray-300"}`}>{pct}</div>
-        <div className={`text-3xl font-bold mb-1 ${gColor}`}>{grade}</div>
+        <div className={`font-logo text-7xl font-black tabular-nums mb-1 ${pct>=78?"text-blue-400":pct>=62?"text-sky-400":"text-gray-300"}`}>{pct}</div>
+        <div className={`font-logo text-3xl font-bold mb-1 ${gColor}`}>{grade}</div>
         {chemBonus > 0 && (
           <div className="text-xs text-yamabuki mb-2">
             <span className="inline-flex items-center gap-1"><StarIcon size={11} /> Chemistry Bonus: +{primaryCount} primary slot (+{Math.round(chemBonus*100)} pts)</span>
@@ -582,7 +582,7 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
           {analysis.pillars.map(pl=>{
             const vp = Math.round(pl.val*100);
             const wLabel = pl.w>=1.2 ? "KEY" : pl.w>=0.95 ? "CORE" : "MINOR";
-            const wColor = pl.w>=1.2 ? "#facc15" : pl.w>=0.95 ? "#94a3b8" : "#475569";
+            const wColor = pl.w>=1.2 ? "#facc15" : pl.w>=0.95 ? "#9ca3af" : "#475569";
             return (
               <div key={pl.key} className="flex items-center gap-2.5">
                 <span className="text-[13px] text-gray-200 w-24 text-right shrink-0">{pl.label}</span>
@@ -643,7 +643,7 @@ function ScoreReveal({ fit, lineup, primaryCount, roundHistory, onReset, lang, a
           const altArch = alt.primary_arch || "unknown";
           return (
             <div className="flex gap-2 items-start">
-              <span className="text-blue-400 text-sm shrink-0">💡</span>
+              <span className="text-blue-400 shrink-0 mt-0.5"><LightbulbIcon size={14} /></span>
               <div>
                 <p className="text-[12.5px] text-gray-300 font-medium">
                   Better pick for {analysis.weakest.label}:
@@ -732,28 +732,28 @@ function ShareCard({ pct, grade, fit, lineup }) {
     ctx.strokeRect(0.5, 0.5, W - 1, H - 1);
 
     // Üst çizgi (accent)
-    ctx.fillStyle = "#f59e0b";
+    ctx.fillStyle = "#FFB11B";
     ctx.fillRect(0, 0, W, 3);
 
     // Başlık — çizilmiş basketbol topu ikonu (emoji yerine)
     const bx = 26, by = 24, br = 7;
-    ctx.strokeStyle = "#f59e0b";
+    ctx.strokeStyle = "#FFB11B";
     ctx.lineWidth = 1.4;
     ctx.beginPath(); ctx.arc(bx, by, br, 0, Math.PI * 2); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(bx, by - br); ctx.lineTo(bx, by + br); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(bx - br, by); ctx.lineTo(bx + br, by); ctx.stroke();
     ctx.beginPath(); ctx.arc(bx - br, by, br, -0.9, 0.9); ctx.stroke();
     ctx.beginPath(); ctx.arc(bx + br, by, br, Math.PI - 0.9, Math.PI + 0.9); ctx.stroke();
-    ctx.font = "bold 13px system-ui, -apple-system, sans-serif";
-    ctx.fillStyle = "#f59e0b";
-    ctx.fillText("NBA Archetype", 38, 28);
+    ctx.font = "bold 13px Rajdhani, system-ui, -apple-system, sans-serif";
+    ctx.fillStyle = "#FFB11B";
+    ctx.fillText("PRIMARY ARCH", 38, 28);
 
     ctx.font = "10px system-ui";
     ctx.fillStyle = "#475569";
     ctx.fillText("Lineup Builder", 20, 42);
 
     // Büyük skor
-    const scoreColor = pct >= 85 ? "#f59e0b" : pct >= 75 ? "#4a7fc1" : pct >= 65 ? "#34d399" : pct >= 55 ? "#fbbf24" : "#f87171";
+    const scoreColor = pct >= 85 ? "#d97706" : pct >= 75 ? "#4a7fc1" : pct >= 65 ? "#34d399" : pct >= 55 ? "#fbbf24" : "#f87171";
     ctx.font = "bold 72px system-ui";
     ctx.fillStyle = scoreColor;
     ctx.textAlign = "center";
@@ -790,7 +790,7 @@ function ShareCard({ pct, grade, fit, lineup }) {
 
       // Arch
       ctx.font = "10px system-ui";
-      ctx.fillStyle = "#94a3b8";
+      ctx.fillStyle = "#9ca3af";
       ctx.fillText(arch, 200, y + 4);
 
       // Sezon
@@ -865,7 +865,7 @@ function ShareCard({ pct, grade, fit, lineup }) {
   };
 
   const tweet = () => {
-    const text = `I scored ${pct}/100 (${grade}) on NBA Archetype Lineup Builder!\n\nBuild your all-time lineup across eras 🏀\n${SITE_URL}/game\n\n#NBAArchetype #NBA`;
+    const text = `I scored ${pct}/100 (${grade}) on Primary Arch Lineup Builder!\n\nBuild your all-time lineup across eras 🏀\n${SITE_URL}/game\n\n#PrimaryArch #NBA`;
     window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, "_blank", "noopener");
   };
 
@@ -888,7 +888,7 @@ function ShareCard({ pct, grade, fit, lineup }) {
       ) : (
         <button onClick={generate}
           className="w-full py-2.5 rounded-xl text-sm font-medium transition-colors border border-gray-700 hover:border-gray-500 inline-flex items-center justify-center gap-2"
-          style={{ color: "#94a3b8" }}>
+          style={{ color: "#9ca3af" }}>
           <EyeIcon size={15} /> Preview Card
         </button>
       )}
@@ -897,7 +897,7 @@ function ShareCard({ pct, grade, fit, lineup }) {
       <div className="grid grid-cols-3 gap-2">
         <button onClick={download}
           className="py-2 rounded-lg text-xs font-medium transition-colors inline-flex items-center justify-center gap-1.5"
-          style={{ background: "#1a1a1a", color: "#94a3b8", border: "1px solid #262626" }}
+          style={{ background: "#1a1a1a", color: "#9ca3af", border: "1px solid #262626" }}
           onMouseEnter={e => e.currentTarget.style.background = "#262626"}
           onMouseLeave={e => e.currentTarget.style.background = "#1a1a1a"}>
           <DownloadIcon size={13} /> Save PNG
@@ -911,7 +911,7 @@ function ShareCard({ pct, grade, fit, lineup }) {
         </button>
         <button onClick={copyLink}
           className="py-2 rounded-lg text-xs font-medium transition-colors inline-flex items-center justify-center gap-1.5"
-          style={{ background: "#1a1a1a", color: copied ? "#34d399" : "#94a3b8", border: "1px solid #262626" }}>
+          style={{ background: "#1a1a1a", color: copied ? "#34d399" : "#9ca3af", border: "1px solid #262626" }}>
           {copied ? <><CheckIcon size={13} /> Copied!</> : <><LinkIcon size={13} /> Copy Link</>}
         </button>
       </div>
@@ -1050,7 +1050,7 @@ export default function LineupGame() {
         setPhase("pick_player");
         if(!wildcardRef.current) setStatusMsg("");
       })
-      .catch(()=>{ setStatusMsg("API hatası"); setPhase("idle"); });
+      .catch(()=>{ setStatusMsg("API error"); setPhase("idle"); });
   },[lang]);
 
   // ── TAM SPIN: sezon → takım → oyuncular ──────────────────────────────────

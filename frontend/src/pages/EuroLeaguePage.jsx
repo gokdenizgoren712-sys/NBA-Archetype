@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Search } from "lucide-react";
 import { api } from "../api";
 import { SEO } from "../hooks/useSEO";
@@ -13,11 +13,11 @@ const POSITIONS = ["","PG","SG","SF","PF","C"];
 const EUR = "#FF6900";
 const TIER_COLOR = {
   "Elite Prospect": "#a855f7", "First-Round": "#3b82f6", "Rotation Upside": "#10b981",
-  "Developmental": "#f59e0b", "Longshot": "#94a3b8",
+  "Developmental": "#d97706", "Longshot": "#9ca3af",
 };
 const OUTCOME_COLOR = {
   "Superstar": "#a855f7", "All-Star": "#3b82f6", "Quality Starter": "#10b981",
-  "Starter": "#22c55e", "Rotation": "#f59e0b", "Fringe": "#94a3b8",
+  "Starter": "#22c55e", "Rotation": "#d97706", "Fringe": "#9ca3af",
 };
 
 const POS_COLOR = {
@@ -41,7 +41,7 @@ function EuroDetailPanel({ selected, detail, tab, setTab }) {
       <div className="p-4 border-b shrink-0" style={{ borderColor: "var(--border)" }}>
         <div className="flex items-start justify-between">
           <div>
-            <div className="font-bold text-sm" style={{ color: "var(--text-primary)" }}>
+            <div className="font-logo font-bold text-sm" style={{ color: "var(--text-primary)" }}>
               {selected.PLAYER_NAME}
             </div>
             <div className="flex items-center gap-2 mt-1 flex-wrap">
@@ -66,7 +66,7 @@ function EuroDetailPanel({ selected, detail, tab, setTab }) {
           </div>
           {detail?.overall_score != null && (
             <div className="text-right shrink-0">
-              <div className="text-2xl font-bold" style={{ color: "var(--accent)" }}>
+              <div className="font-logo text-2xl font-bold tabular-nums" style={{ color: "var(--accent)" }}>
                 {Math.round(detail.overall_score * 100)}
               </div>
               {detail.overall_pct != null && (
@@ -99,7 +99,7 @@ function EuroDetailPanel({ selected, detail, tab, setTab }) {
           <>
             {selected?.GP != null && Number(selected.GP) < 8 && (
               <div className="mx-4 mt-3 px-3 py-1.5 rounded text-[11px]"
-                style={{ background: "rgba(245,158,11,.10)", color: "#f59e0b", border: "1px solid rgba(245,158,11,.25)" }}>
+                style={{ background: "rgba(255,177,27,.10)", color: "#FFB11B", border: "1px solid rgba(255,177,27,.25)" }}>
                 ⚠ Small sample ({selected.GP} games)
               </div>
             )}
@@ -138,13 +138,13 @@ function EuroDetailPanel({ selected, detail, tab, setTab }) {
                     }} />
                   </div>
                   <div className="text-[9px] mt-1" style={{ color: "var(--text-faint)" }}>
-                    EuroLeague pro havuzuna göre üretim → yaş-projeksiyonlu tavan
+                    Production vs. EuroLeague pro pool → age-projected ceiling
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <div className="text-[10px] uppercase tracking-wider mb-1.5" style={{ color: "#10b981" }}>İyi olduğu</div>
+                    <div className="text-[10px] uppercase tracking-wider mb-1.5" style={{ color: "#10b981" }}>Strengths</div>
                     <div className="flex flex-col gap-1">
                       {(detail.prospect.strengths || []).map(s => (
                         <span key={s} className="text-xs px-2 py-1 rounded"
@@ -153,7 +153,7 @@ function EuroDetailPanel({ selected, detail, tab, setTab }) {
                     </div>
                   </div>
                   <div>
-                    <div className="text-[10px] uppercase tracking-wider mb-1.5" style={{ color: "#ef4444" }}>Zayıf olduğu</div>
+                    <div className="text-[10px] uppercase tracking-wider mb-1.5" style={{ color: "#ef4444" }}>Weaknesses</div>
                     <div className="flex flex-col gap-1">
                       {(detail.prospect.weaknesses || []).map(w => (
                         <span key={w} className="text-xs px-2 py-1 rounded"
@@ -165,7 +165,7 @@ function EuroDetailPanel({ selected, detail, tab, setTab }) {
 
                 {(detail.prospect.comparables || []).length > 0 && (
                   <div>
-                    <div className="text-[10px] uppercase tracking-wider mb-1.5" style={{ color: EUR }}>NBA'de benziyor</div>
+                    <div className="text-[10px] uppercase tracking-wider mb-1.5" style={{ color: EUR }}>Similar to</div>
                     <div className="flex flex-col gap-1">
                       {detail.prospect.comparables.map((c, i) => (
                         <div key={i} className="flex items-center justify-between text-xs px-2 py-1.5 rounded"
@@ -178,7 +178,7 @@ function EuroDetailPanel({ selected, detail, tab, setTab }) {
                       ))}
                     </div>
                     <div className="text-[9px] mt-1" style={{ color: "var(--text-faint)" }}>
-                      Giriş (rookie) arketip profili benzerliği · zirve = kariyer sonucu
+                      Entry (rookie) archetype profile similarity · peak = career outcome
                     </div>
                   </div>
                 )}
@@ -231,10 +231,16 @@ function EuroDetailPanel({ selected, detail, tab, setTab }) {
 
 /* ── Main component ──────────────────────────────────────────────── */
 export default function EuroLeaguePage() {
+  const [seasons, setSeasons]         = useState(["2025-26"]);
+  const [season, setSeason]           = useState("2025-26");
   const [search, setSearch]           = useState("");
   const [searchInput, setSearchInput] = useState("");
+  const [team, setTeam]               = useState("");
   const [pos, setPos]                 = useState("");
   const [arch, setArch]               = useState("");
+  const [tier, setTier]               = useState("");
+  const [minGp, setMinGp]             = useState("");
+  const [maxAge, setMaxAge]           = useState("");
   const [sortBy, setSortBy]           = useState("overall_score");
 
   const [players, setPlayers] = useState([]);
@@ -247,13 +253,25 @@ export default function EuroLeaguePage() {
   const [detail, setDetail]     = useState(null);
   const [tab, setTab]           = useState("radar");
 
+  useEffect(() => {
+    api.euroleagueSeasons().then(d => setSeasons(d.seasons?.length ? d.seasons : ["2025-26"])).catch(() => {});
+  }, []);
+
+  const teamList = useMemo(() =>
+    [...new Set(players.map(p => p.TEAM_ABBREVIATION).filter(Boolean))].sort(),
+    [players]);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const params = { limit: 80, sort_by: sortBy };
+      const params = { season, limit: 80, sort_by: sortBy };
       if (search) params.search   = search;
+      if (team)   params.team     = team;
       if (pos)    params.position = pos;
       if (arch)   params.arch     = arch;
+      if (tier)   params.tier     = tier;
+      if (minGp)  params.min_gp   = minGp;
+      if (maxAge) params.max_age  = maxAge;
       const data = await api.euroleaguePlayers(params);
       if (data.coming_soon || (!data.total && data.message)) {
         setNoData(true); setPlayers([]); setTotal(0);
@@ -267,26 +285,26 @@ export default function EuroLeaguePage() {
       setNoData(true);
     }
     setLoading(false);
-  }, [search, pos, arch, sortBy]);
+  }, [season, search, team, pos, arch, tier, minGp, maxAge, sortBy]);
 
   useEffect(() => { load(); }, [load]);
 
   const openPlayer = async (p) => {
     setSelected(p); setDetail(null); setTab("radar");
     try {
-      const sc = await api.euroleaguePlayerScores(p.PLAYER_NAME);
+      const sc = await api.euroleaguePlayerScores(p.PLAYER_NAME, season);
       setDetail(sc);
       if (sc?.prospect) setTab("prospect");   // U21 → prospect sekmesine geç
     } catch (e) { console.error(e); }
   };
 
-  const clearFilters = () => { setSearch(""); setSearchInput(""); setPos(""); setArch(""); };
-  const hasFilters = search || pos || arch;
+  const clearFilters = () => { setSearch(""); setSearchInput(""); setTeam(""); setPos(""); setArch(""); setTier(""); setMinGp(""); setMaxAge(""); };
+  const hasFilters = search || team || pos || arch || tier || minGp || maxAge;
 
   return (
     <>
     <SEO
-      title="EuroLeague — NBA Archetype"
+      title="EuroLeague"
       description="EuroLeague player archetype profiles — engine, anchor, spacer and more, scored within league context."
       path="/euroleague"
     />
@@ -304,8 +322,14 @@ export default function EuroLeaguePage() {
         <div className="flex items-center gap-1.5 mr-1">
           <EuroLeagueIcon size={16} />
           <span className="text-xs font-semibold" style={{ color: EUR }}>EuroLeague</span>
-          <span className="text-[10px]" style={{ color: "var(--text-faint)" }}>2025-26</span>
         </div>
+
+        {/* Season */}
+        <select value={season} onChange={e => setSeason(e.target.value)}
+          className="rounded px-3 py-1.5 text-sm font-medium focus:outline-none"
+          style={{ background: "var(--accent-dim)", border: "1px solid var(--accent-border)", color: "var(--accent)" }}>
+          {seasons.map(s => <option key={s} value={s}>{s}</option>)}
+        </select>
 
         {/* Search */}
         <div className="relative flex-1 min-w-[140px]">
@@ -322,6 +346,14 @@ export default function EuroLeaguePage() {
           />
         </div>
 
+        {/* Team */}
+        <select value={team} onChange={e => setTeam(e.target.value)}
+          className="rounded px-3 py-1.5 text-sm focus:outline-none"
+          style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)", color: "var(--text-primary)" }}>
+          <option value="">Team</option>
+          {teamList.map(o => <option key={o} value={o}>{o}</option>)}
+        </select>
+
         {/* Position */}
         <select value={pos} onChange={e => setPos(e.target.value)}
           className="rounded px-3 py-1.5 text-sm focus:outline-none"
@@ -337,6 +369,28 @@ export default function EuroLeaguePage() {
           <option value="">Archetype</option>
           {CORE.map(o => <option key={o} value={o}>{o}</option>)}
         </select>
+
+        {/* Prospect tier */}
+        <select value={tier} onChange={e => setTier(e.target.value)}
+          className="rounded px-3 py-1.5 text-sm focus:outline-none"
+          style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)", color: "var(--text-primary)" }}>
+          <option value="">Tier</option>
+          {Object.keys(TIER_COLOR).map(o => <option key={o} value={o}>{o}</option>)}
+        </select>
+
+        {/* Min GP */}
+        <input type="number" min="0" value={minGp} onChange={e => setMinGp(e.target.value)}
+          placeholder="Min GP" title="Minimum games played"
+          className="w-[84px] rounded px-3 py-1.5 text-sm focus:outline-none"
+          style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
+        />
+
+        {/* Max Age */}
+        <input type="number" min="0" value={maxAge} onChange={e => setMaxAge(e.target.value)}
+          placeholder="Max Age" title="Maximum age — roster filter, independent of the U21 prospect tab"
+          className="w-[84px] rounded px-3 py-1.5 text-sm focus:outline-none"
+          style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
+        />
 
         {/* Sort */}
         <select value={sortBy} onChange={e => setSortBy(e.target.value)}

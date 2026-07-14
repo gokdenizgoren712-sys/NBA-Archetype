@@ -9,13 +9,13 @@ import { SEO } from "../hooks/useSEO";
 const CORE = ["Engine","Ecosystem","Hub","Connector","Creator","Anchor","Spacer","Finisher","Force","Initiator","Stopper","Rim Runner"];
 
 const ARCH_COLOR = {
-  Engine: "#fb923c", Ecosystem: "#f59e0b", Hub: "#34d399",
+  Engine: "#fb923c", Ecosystem: "#d97706", Hub: "#34d399",
   Connector: "#38bdf8", Creator: "#a78bfa", Anchor: "#60a5fa",
   Spacer: "#6ee7b7", Finisher: "#f472b6", Force: "#ef4444",
-  Initiator: "#facc15", Stopper: "#94a3b8", "Rim Runner": "#4ade80",
+  Initiator: "#facc15", Stopper: "#9ca3af", "Rim Runner": "#4ade80",
 };
 
-const A_COLOR = "#f59e0b";
+const A_COLOR = "#FFB11B";
 const B_COLOR = "#60a5fa";
 
 function SeasonSelect({ value, onChange, seasons }) {
@@ -169,7 +169,7 @@ function PlayerHeader({ detail, loading, side, season }) {
     <div className="p-4 rounded" style={{ background: "var(--bg-elevated)", border: `1px solid ${sideColor}40` }}>
       <div className="flex items-start justify-between">
         <div>
-          <div className="font-bold text-base" style={{ color: sideColor }}>{detail.name}</div>
+          <div className="font-logo font-bold text-base" style={{ color: sideColor }}>{detail.name}</div>
           <div className="text-xs mt-0.5 flex items-center gap-1.5" style={{ color: "var(--text-muted)" }}>
             {detail.team} · {detail.position}
             {detail.season && detail.season !== "2025-26" && (

@@ -1,5 +1,6 @@
 import { useLang } from "../contexts/LanguageContext";
 import { SEO } from "../hooks/useSEO";
+import { Logo } from "../components/BrandIcons";
 
 const CHANGELOG = [
   {
@@ -457,8 +458,8 @@ export default function About() {
   return (
     <>
     <SEO
-      title="About NBA Archetype"
-      description="Learn how the NBA Archetype system works: 12 core roles, 22 modifier tags, percentile-based scoring across every season since 1983. Full changelog and methodology."
+      title="About"
+      description="Learn how the Primary Arch system works: 12 core roles, 22 modifier tags, percentile-based scoring across every season since 1983. Full changelog and methodology."
       path="/about"
     />
     <div className="h-full overflow-y-auto">
@@ -470,8 +471,8 @@ export default function About() {
 
             {/* Hero */}
             <div className="text-center pt-4 pb-2">
-              <div className="text-4xl mb-3">🏀</div>
-              <h1 className="text-xl font-bold mb-1" style={{ color: "var(--accent)" }}>NBA Archetype</h1>
+              <div className="flex justify-center mb-3"><Logo size={44} /></div>
+              <h1 className="font-logo text-xl font-bold mb-1 tracking-wide" style={{ color: "var(--accent)" }}>PRIMARY ARCH</h1>
               <p className="text-sm" style={{ color: "var(--text-muted)" }}>
                 Understanding basketball through identities, not just numbers.
               </p>

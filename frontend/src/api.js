@@ -53,15 +53,21 @@ export const api = {
 
   // G-League
   gleaguePlayers:      (p) => get("/gleague/players", p),
-  gleaguePlayerScores: (name) => get(`/gleague/players/${encodeURIComponent(name)}/scores`),
+  gleaguePlayerScores: (name, season = "2025-26") => get(`/gleague/players/${encodeURIComponent(name)}/scores`, { season }),
+  gleagueSeasons:      () => get("/gleague/seasons"),
 
   // EuroLeague
   euroleaguePlayers:      (p) => get("/euroleague/players", p),
-  euroleaguePlayerScores: (name) => get(`/euroleague/players/${encodeURIComponent(name)}/scores`),
+  euroleaguePlayerScores: (name, season = "2025-26") => get(`/euroleague/players/${encodeURIComponent(name)}/scores`, { season }),
+  euroleagueSeasons:      () => get("/euroleague/seasons"),
 
   // NCAA D-I
   ncaaPlayers:      (p) => get("/ncaa/players", p),
-  ncaaPlayerScores: (name) => get(`/ncaa/players/${encodeURIComponent(name)}/scores`),
+  ncaaPlayerScores: (name, season = "2025-26") => get(`/ncaa/players/${encodeURIComponent(name)}/scores`, { season }),
+  ncaaSeasons:      () => get("/ncaa/seasons"),
+
+  // Comparables (bağımsız — herhangi bir ligden herhangi bir oyuncu)
+  comparables: (name, league = "nba", p = {}) => get("/comparables", { name, league, ...p }),
 
   // Meta
   meta: () => get("/meta"),

@@ -51,7 +51,7 @@ export default function Register() {
         type={type} required
         value={form[key]}
         onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
-        className="w-full px-3 py-2 rounded text-sm outline-none"
+        className="w-full px-3 py-2 rounded-lg text-sm outline-none"
         style={{ background: "var(--bg-elevated)", color: "var(--text-primary)", border: "1px solid var(--border)" }}
       />
     </div>
@@ -59,7 +59,7 @@ export default function Register() {
 
   return (
     <>
-    <SEO title="Sign Up" description="Create your NBA Archetype account." path="/register" noindex />
+    <SEO title="Sign Up" description="Create your Primary Arch account." path="/register" noindex />
     <div className="h-full overflow-y-auto flex items-center justify-center p-6" style={{ background: "var(--bg-base)" }}>
       <div className="w-full max-w-sm py-8">
         <h1 className="text-2xl font-bold mb-6 text-center" style={{ color: "var(--text-primary)" }}>
@@ -82,7 +82,7 @@ export default function Register() {
                 value={form.admin_invite_code}
                 onChange={e => setForm(f => ({ ...f, admin_invite_code: e.target.value }))}
                 placeholder="Leave blank if you don't have one"
-                className="w-full px-3 py-2 rounded text-sm outline-none"
+                className="w-full px-3 py-2 rounded-lg text-sm outline-none"
                 style={{ background: "var(--bg-elevated)", color: "var(--text-primary)", border: "1px solid var(--border)" }}
               />
             </div>
@@ -97,8 +97,7 @@ export default function Register() {
 
           <button
             type="submit" disabled={loading}
-            className="w-full py-2 rounded text-sm font-semibold transition-opacity"
-            style={{ background: "var(--accent)", color: "#000", opacity: loading ? 0.6 : 1 }}
+            className="w-full py-2.5 rounded-xl font-logo font-bold text-sm uppercase tracking-wide transition-colors bg-yamabuki text-darkBg hover:bg-white disabled:opacity-50"
           >
             {loading ? "Creating account…" : "Sign Up"}
           </button>

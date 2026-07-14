@@ -129,3 +129,37 @@ export const AdminIcon = (p) => (
     <path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1" />
   </Svg>
 );
+
+/* ── Fonksiyonel ikonlar (nav dışı, aynı 24x24/1.5 stroke sistemi) ── */
+
+/* Refresh — döngü oku */
+export const RefreshIcon = (p) => (
+  <Svg {...p} className={`stroke-current ${p.className || ""}`}>
+    <path d="M4 12a8 8 0 0114-5.3M20 12a8 8 0 01-14 5.3" />
+    <path d="M18 4v4h-4M6 20v-4h4" />
+  </Svg>
+);
+
+/* Mail — zarf */
+export const MailIcon = (p) => (
+  <Svg {...p} className={`stroke-current ${p.className || ""}`}>
+    <rect x="3" y="5" width="18" height="14" rx="2" />
+    <path d="M3 7l9 6 9-6" />
+  </Svg>
+);
+
+/* Flag — bayrak */
+export const FlagIcon = (p) => (
+  <Svg {...p} className={`stroke-current ${p.className || ""}`}>
+    <path d="M5 3v18" />
+    <path d="M5 4h11l-2 4 2 4H5" />
+  </Svg>
+);
+
+/* Lightbulb — ipucu/fikir */
+export const LightbulbIcon = (p) => (
+  <Svg {...p} className={`stroke-current ${p.className || ""}`}>
+    <path d="M9 18h6M10 21h4" />
+    <path d="M12 3a6 6 0 00-3.5 10.9c.5.4.8 1 .8 1.6v.5h5.4v-.5c0-.6.3-1.2.8-1.6A6 6 0 0012 3z" />
+  </Svg>
+);
