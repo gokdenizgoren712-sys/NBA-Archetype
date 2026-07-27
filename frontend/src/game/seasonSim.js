@@ -215,7 +215,7 @@ function randNormal(rand) {
 }
 
 // Maç günü formu jitter'ı: aynı kadro her koşuda aynı sonucu almaz.
-function playGame(rating, opp, home, rand, k = LOGISTIC_K) {
+export function playGame(rating, opp, home, rand, k = LOGISTIC_K) {
   const jitter = (rand() - 0.5) * 0.16;
   const diff   = (rating + jitter) - opp + (home ? 0.03 : -0.03);
   return rand() < 1 / (1 + Math.exp(-k * diff));

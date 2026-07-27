@@ -1,28 +1,43 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { SEO } from "../hooks/useSEO";
 import { ERAS, ERA_META_BLURB } from "../game/eras";
-import { computeLineupFit } from "../game/lineupScore";
 import { COACHES } from "../game/coaches";
+import { getPlayerTags } from "../game/awards";
 import {
   POSITIONS, BENCH_SLOTS, ALL_SLOTS, getPrimaryPos, getEligiblePos, posPenaltyFor, POS_COLORS,
 } from "../game/positions";
+import { START_BUDGET, totalSpent, maxSpendNow, applyTeamPricing, priceOf } from "../game/salary";
+import { buildMatchup, simulateOneGame } from "../game/headToHead";
 import SpinWheel from "../game/SpinWheel";
 import LineupSlot from "../game/LineupSlot";
 import PlayerRow, { posGroupOf } from "../game/PlayerRow";
 import JokerBtn from "../game/JokerBtn";
 import {
-  StarIcon, CoachIcon, TrophyIcon, WheelIcon, CardsIcon, RefreshIcon,
-  CalendarIcon, BoltIcon, UsersIcon, SearchIcon, WarnIcon, DiceIcon,
+  StarIcon, CoachIcon, TrophyIcon, WheelIcon, CapIcon, RefreshIcon,
+  CalendarIcon, BoltIcon, UsersIcon, SearchIcon, WarnIcon, DiceIcon, PlayIcon,
 } from "../game/GameIcons";
 
 const EMPTY_LINEUP = { PG: null, SG: null, SF: null, PF: null, C: null, B1: null, B2: null, B3: null, B4: null };
 const EMPTY_JOKERS = { reTeam: true, reYear: true, reBoth: true, double: true, discover: true, ban: true };
 const other = (seat) => (seat === 1 ? 2 : 1);
 
+const SORT_KEYS = [
+  ["TAGGED", "TAGGED"], ["PTS", "PTS"], ["REB", "REB"], ["AST", "AST"],
+  ["FG3_PCT", "3P%"], ["STL", "STL"], ["BLK", "BLK"],
+];
+
+// Same Screen HER ZAMAN Salary Cap kuralıyla oynanır (Classic yok).
+function capFor(lineup) {
+  const filled = Object.values(lineup).filter(Boolean);
+  const budgetLeft = START_BUDGET - totalSpent(filled);
+  const slotsLeft = ALL_SLOTS.length - filled.length;
+  return { budgetLeft, cap: maxSpendNow(budgetLeft, slotsLeft) };
+}
+
 export default function SameScreenGame() {
   const [seasons, setSeasons] = useState([]);
   const [simEra, setSimEra] = useState(null);
-  // idle | era | spinning | drafting | placing | coach1 | coach2 | complete
+  // idle | era | spinning | drafting | placing | coach1 | coach2 | series | complete
   const [gamePhase, setGamePhase] = useState("idle");
 
   const [round, setRound] = useState(0);
@@ -45,16 +60,21 @@ export default function SameScreenGame() {
   const [doubleActive, setDoubleActive] = useState(false);
   const [discoverActive, setDiscoverActive] = useState(false);
   const [posFilter, setPosFilter] = useState("");
+  const [sortKey, setSortKey] = useState("PTS");
 
   const [bannedName, setBannedName] = useState(null);
   const [banVoided, setBanVoided] = useState(false);
   const [banPicking, setBanPicking] = useState(false); // waiting seat is choosing a ban target
 
   const [lineups, setLineups] = useState({ 1: { ...EMPTY_LINEUP }, 2: { ...EMPTY_LINEUP } });
+  const [moveSrc, setMoveSrc] = useState({ 1: null, 2: null });
   const [jokers, setJokers] = useState({ 1: { ...EMPTY_JOKERS }, 2: { ...EMPTY_JOKERS } });
   const [coachOptions, setCoachOptions] = useState([]);
   const [coaches, setCoaches] = useState({ 1: null, 2: null });
-  const [fitResults, setFitResults] = useState({ 1: null, 2: null });
+
+  const [matchup, setMatchup] = useState(null);
+  const [seriesGames, setSeriesGames] = useState([]);
+  const [seriesW, setSeriesW] = useState({ 1: 0, 2: 0 });
 
   const timerRef = useRef(null);
   const lineupsRef = useRef(lineups);
@@ -65,8 +85,7 @@ export default function SameScreenGame() {
     return () => clearTimeout(timerRef.current);
   }, []);
 
-  const openSlots = (seat) => ALL_SLOTS.filter(k => !lineupsRef.current[seat][k]);
-  const isFull = (seat) => openSlots(seat).length === 0;
+  const canRearrange = !["idle", "era", "series", "complete"].includes(gamePhase);
 
   // ── Round başlat: sezon+takım otomatik spin, sonra roster çek ─────────────
   const beginRound = useCallback((roundNum, participants, first) => {
@@ -123,8 +142,10 @@ export default function SameScreenGame() {
           ...Object.values(lineupsRef.current[1]).filter(Boolean).map(p => p.PLAYER_NAME),
           ...Object.values(lineupsRef.current[2]).filter(Boolean).map(p => p.PLAYER_NAME),
         ]);
-        const list = (d.players || []).filter(p => !taken.has(p.PLAYER_NAME));
+        let list = (d.players || []).filter(p => !taken.has(p.PLAYER_NAME));
         if (list.length < 2) { beginRound(roundNum, participants, first); return; }
+        // Same Screen her zaman Salary Cap: takım-içi yıldız fiyatlaması uygula
+        list = applyTeamPricing(list);
         setStatusMsg("");
         setPlayers(list);
         setGamePhase("drafting");
@@ -188,9 +209,17 @@ export default function SameScreenGame() {
 
   const pickPlayer = (player) => {
     if (bannedName === player.PLAYER_NAME && !banVoided) return; // banlı — seçilemez
-    setPickedPlayer(player);
+    const cost = priceOf(player);
+    const { cap } = capFor(lineupsRef.current[activeSeat]);
+    if (cost > cap) return; // kart zaten disabled — guard
+    setPickedPlayer({ ...player, _cost: cost });
     setDiscoverActive(false);
     setGamePhase("placing");
+  };
+
+  const cancelPick = () => {
+    setPickedPlayer(null);
+    setGamePhase("drafting");
   };
 
   const placePos = (pos) => {
@@ -239,17 +268,48 @@ export default function SameScreenGame() {
     beginRound(round + 1, participants, other(turnQueue[0]));
   };
 
+  // ── Saha üzerinde taşı / takas et (seat bazlı, LineupGame.jsx ile aynı mantık) ──
+  const handleSlotTap = (seat, slot) => {
+    const cur = lineupsRef.current[seat];
+    const src = moveSrc[seat];
+    if (src == null) {
+      if (cur[slot]) setMoveSrc(m => ({ ...m, [seat]: slot }));
+      return;
+    }
+    if (src === slot) { setMoveSrc(m => ({ ...m, [seat]: null })); return; }
+    const place = (pl, s) => pl ? {
+      ...pl, _assignedPos: s, _isBench: !POSITIONS.includes(s),
+      _posPenalty: posPenaltyFor(pl, s),
+      _isPrimary: POSITIONS.includes(s) && getPrimaryPos(pl) === s,
+    } : null;
+    const nl = { ...cur, [slot]: place(cur[src], slot), [src]: place(cur[slot], src) };
+    setLineups(prev => ({ ...prev, [seat]: nl }));
+    lineupsRef.current = { ...lineupsRef.current, [seat]: nl };
+    setMoveSrc(m => ({ ...m, [seat]: null }));
+  };
+
   const pickCoach = (seat, coach) => {
-    setCoaches(prev => ({ ...prev, [seat]: coach }));
     if (seat === 1) {
+      setCoaches(prev => ({ ...prev, 1: coach }));
       setCoachOptions([...COACHES].sort(() => Math.random() - 0.5).slice(0, 4));
       setGamePhase("coach2");
     } else {
-      const fit1 = computeLineupFit(Object.values(lineupsRef.current[1]).filter(Boolean), simEra);
-      const fit2 = computeLineupFit(Object.values(lineupsRef.current[2]).filter(Boolean), simEra);
-      setFitResults({ 1: fit1, 2: fit2 });
-      setGamePhase("complete");
+      const finalCoaches = { ...coaches, 2: coach };
+      setCoaches(finalCoaches);
+      const mu = buildMatchup(lineupsRef.current, finalCoaches, simEra);
+      setMatchup(mu);
+      setSeriesGames([]);
+      setSeriesW({ 1: 0, 2: 0 });
+      setGamePhase("series");
     }
+  };
+
+  const playNextGame = () => {
+    if (!matchup) return;
+    const gameIndex = seriesGames.length;
+    const result = simulateOneGame(matchup, gameIndex);
+    setSeriesGames(prev => [result, ...prev]);
+    setSeriesW(prev => ({ ...prev, [result.winner]: prev[result.winner] + 1 }));
   };
 
   const resetGame = () => {
@@ -258,29 +318,32 @@ export default function SameScreenGame() {
     setTurnQueue([1, 2]); setTurnPos(0);
     setChosenSeason(""); setChosenTeam(""); setTeamPool([]);
     setSpinS(false); setSpinT(false); setStatusMsg("");
-    setPlayers([]); setPickedPlayer(null); setDoubleActive(false); setDiscoverActive(false); setPosFilter("");
+    setPlayers([]); setPickedPlayer(null); setDoubleActive(false); setDiscoverActive(false); setPosFilter(""); setSortKey("PTS");
     setBannedName(null); setBanVoided(false); setBanPicking(false);
     setLineups({ 1: { ...EMPTY_LINEUP }, 2: { ...EMPTY_LINEUP } });
+    setMoveSrc({ 1: null, 2: null });
     setJokers({ 1: { ...EMPTY_JOKERS }, 2: { ...EMPTY_JOKERS } });
-    setCoachOptions([]); setCoaches({ 1: null, 2: null }); setFitResults({ 1: null, 2: null });
+    setCoachOptions([]); setCoaches({ 1: null, 2: null });
+    setMatchup(null); setSeriesGames([]); setSeriesW({ 1: 0, 2: 0 });
   };
 
   const isSpinPhase = gamePhase === "spinning";
+  const seriesOver = seriesW[1] >= 4 || seriesW[2] >= 4;
 
   return (
     <div className="h-full overflow-y-auto">
-      <SEO title="Same Screen — Lineup Builder" description="Two players draft head-to-head on one screen — same shared pool, snake order, BAN joker." path="/game/same-screen" />
+      <SEO title="Same Screen — Lineup Builder" description="Two players draft head-to-head on one screen — same shared pool, snake order, BAN joker, best-of-7 series." path="/game/same-screen" />
       <div className="p-4 sm:p-6 max-w-[1400px] mx-auto space-y-3 pb-6">
         <div>
           <h1 className="font-logo text-2xl font-bold text-white tracking-wide">Same Screen</h1>
           <p className="text-xs text-gray-500 mt-1">
-            One shared spin each round, both players draft from the same roster. Snake order. Each player has their own 5 jokers plus one shared-round BAN.
+            One shared spin each round, both players draft under a Salary Cap budget. Snake order. Each player has their own 5 jokers plus one shared-round BAN. Winner is decided in a best-of-7 series.
           </p>
         </div>
 
         {gamePhase === "idle" && (
           <div className="max-w-md mx-auto text-center bg-surfaceBg border border-gray-800 rounded-2xl p-6 space-y-4">
-            <p className="text-sm text-gray-400">Two players, one screen. Every round the wheel spins once — you both draft from the same team. Snake order keeps it fair. Watch out for BAN.</p>
+            <p className="text-sm text-gray-400">Two players, one screen. Every round the wheel spins once — you both draft from the same team under a shared-rules Salary Cap. Snake order keeps it fair. Watch out for BAN. Once both rosters are set, you'll play a best-of-7 series to decide the winner.</p>
             <button onClick={() => setGamePhase("era")}
               className="px-10 py-3 rounded-xl font-logo font-bold text-lg text-darkBg bg-yamabuki hover:bg-white transition-colors shadow-[0_0_20px_rgba(255,177,27,0.3)]">
               Start
@@ -336,11 +399,15 @@ export default function SameScreenGame() {
                     isActive={activeSeat === seat}
                     isWaiting={waitingSeat === seat}
                     lineup={lineups[seat]}
+                    moveSrc={moveSrc[seat]}
+                    canRearrange={canRearrange}
+                    onSlotTap={(pos) => handleSlotTap(seat, pos)}
                     jokers={jokers[seat]}
                     chosenTeam={chosenTeam} chosenSeason={chosenSeason}
                     players={players}
                     posFilter={activeSeat === seat ? posFilter : ""}
                     setPosFilter={setPosFilter}
+                    sortKey={sortKey} setSortKey={setSortKey}
                     pickedPlayer={activeSeat === seat ? pickedPlayer : null}
                     gamePhase={gamePhase}
                     doubleActive={doubleActive}
@@ -350,6 +417,7 @@ export default function SameScreenGame() {
                     banPicking={waitingSeat === seat && banPicking}
                     onPickPlayer={pickPlayer}
                     onPlacePos={placePos}
+                    onCancelPick={cancelPick}
                     onUseJoker={useJoker}
                     onActivateBan={() => activateBan(seat)}
                     onConfirmBan={confirmBan}
@@ -379,8 +447,13 @@ export default function SameScreenGame() {
           );
         })()}
 
+        {gamePhase === "series" && matchup && (
+          <SeriesPanel matchup={matchup} games={seriesGames} seriesW={seriesW} seriesOver={seriesOver}
+            onNextGame={playNextGame} onSeeResult={() => setGamePhase("complete")} />
+        )}
+
         {gamePhase === "complete" && (
-          <SameScreenResult lineups={lineups} coaches={coaches} fitResults={fitResults} onReset={resetGame} />
+          <SameScreenResult lineups={lineups} coaches={coaches} seriesW={seriesW} seriesGames={seriesGames} onReset={resetGame} />
         )}
       </div>
     </div>
@@ -389,12 +462,22 @@ export default function SameScreenGame() {
 
 // ── Tek oyuncunun paneli (mobil-tarzı, kortsuz) ──────────────────────────────
 function PlayerSeatPanel({
-  seat, isActive, isWaiting, lineup, jokers, chosenTeam, chosenSeason, players,
-  posFilter, setPosFilter, pickedPlayer, gamePhase, doubleActive, discoverActive,
-  bannedName, banVoided, banPicking, onPickPlayer, onPlacePos, onUseJoker, onActivateBan, onConfirmBan,
+  seat, isActive, isWaiting, lineup, moveSrc, canRearrange, onSlotTap, jokers, chosenTeam, chosenSeason, players,
+  posFilter, setPosFilter, sortKey, setSortKey, pickedPlayer, gamePhase, doubleActive, discoverActive,
+  bannedName, banVoided, banPicking, onPickPlayer, onPlacePos, onCancelPick, onUseJoker, onActivateBan, onConfirmBan,
 }) {
-  const list = posFilter ? players.filter(p => posGroupOf(p) === posFilter) : players;
+  const filtered = posFilter ? players.filter(p => posGroupOf(p) === posFilter) : players;
+  const list = [...filtered].sort((a, b) => {
+    if (sortKey === "TAGGED") {
+      const ta = getPlayerTags(a).length, tb = getPlayerTags(b).length;
+      if (tb !== ta) return tb - ta;
+      return (parseFloat(b.PTS || 0) || 0) - (parseFloat(a.PTS || 0) || 0);
+    }
+    return (parseFloat(b[sortKey] || 0) || 0) - (parseFloat(a[sortKey] || 0) || 0);
+  });
   const showBanEffective = bannedName && !banVoided;
+  const { budgetLeft, cap } = capFor(lineup);
+  const eligible = pickedPlayer ? getEligiblePos(pickedPlayer) : [];
 
   return (
     <div className={`rounded-2xl border p-3 space-y-2 ${isActive ? "border-yamabuki/50 bg-yamabuki/5" : "border-gray-800 bg-surfaceBg"}`}>
@@ -404,11 +487,27 @@ function PlayerSeatPanel({
         {isWaiting && <span className="text-[9.5px] px-2 py-0.5 rounded-full bg-gray-800 border border-gray-700 text-gray-400 uppercase tracking-wider">Waiting</span>}
       </div>
 
+      {/* Salary Cap bütçe barı */}
+      <div className="rounded-lg border border-gray-800 bg-surfaceBg/60 px-2 py-1.5">
+        <div className="flex items-center justify-between text-[10px]">
+          <span className="text-gray-500 uppercase tracking-wider flex items-center gap-1"><CapIcon size={11} /> Cap</span>
+          <span className={`font-black tabular-nums ${budgetLeft <= 15 ? "text-red-400" : budgetLeft <= 35 ? "text-yamabuki" : "text-emerald-300"}`}>{budgetLeft}%</span>
+        </div>
+        <div className="h-1.5 bg-surfaceCard rounded-full overflow-hidden mt-1">
+          <div className="h-full rounded-full" style={{ width: `${budgetLeft}%`, background: budgetLeft <= 15 ? "#7f1d1d" : budgetLeft <= 35 ? "#b45309" : "#047857" }} />
+        </div>
+      </div>
+
+      {canRearrange && moveSrc && (
+        <p className="text-[9.5px] text-yamabuki/90">Moving {lineup[moveSrc]?.PLAYER_NAME?.split(" ").slice(-1)[0]} — tap a destination slot</p>
+      )}
       <div className="flex gap-1">
-        {POSITIONS.map(pos => <LineupSlot key={pos} pos={pos} player={lineup[pos]} />)}
+        {POSITIONS.map(pos => <LineupSlot key={pos} pos={pos} player={lineup[pos]}
+          selected={moveSrc === pos} canTap={canRearrange} onTap={onSlotTap} />)}
       </div>
       <div className="flex gap-1 opacity-80">
-        {BENCH_SLOTS.map(pos => <LineupSlot key={pos} pos={pos} player={lineup[pos]} bench />)}
+        {BENCH_SLOTS.map(pos => <LineupSlot key={pos} pos={pos} player={lineup[pos]} bench
+          selected={moveSrc === pos} canTap={canRearrange} onTap={onSlotTap} />)}
       </div>
 
       {/* Joker çubuğu */}
@@ -430,10 +529,19 @@ function PlayerSeatPanel({
       {/* Aktif taraf için: pozisyon atama ekranı */}
       {isActive && gamePhase === "placing" && pickedPlayer && (
         <div className="rounded-xl border border-yamabuki/40 bg-yamabuki/5 p-2 space-y-2">
-          <div className="text-white text-sm font-semibold">{pickedPlayer.PLAYER_NAME} <span className="text-[11px] text-blue-400 ml-1">{pickedPlayer.primary_arch || "—"}</span></div>
+          <div className="flex items-start justify-between gap-2">
+            <div className="text-white text-sm font-semibold">{pickedPlayer.PLAYER_NAME} <span className="text-[11px] text-blue-400 ml-1">{pickedPlayer.primary_arch || "—"}</span></div>
+            <button onClick={onCancelPick} className="text-gray-500 hover:text-gray-300 text-[11px] shrink-0">← Back</button>
+          </div>
+          <div className="flex gap-1 flex-wrap items-center">
+            {eligible.map(p => (
+              <span key={p} className={`text-[9.5px] px-1.5 py-0.5 rounded border font-bold inline-flex items-center gap-0.5 ${POS_COLORS[p] || ""}`}>
+                {p}{p === eligible[0] && <StarIcon size={9} />}
+              </span>
+            ))}
+          </div>
           <div className="flex gap-1.5 flex-wrap">
             {POSITIONS.filter(p => !lineup[p]).map(pos => {
-              const eligible = getEligiblePos(pickedPlayer);
               const isElig = eligible.includes(pos);
               const isPrim = eligible[0] === pos;
               return (
@@ -469,14 +577,29 @@ function PlayerSeatPanel({
               ))}
             </span>
           </div>
+          {isActive && (
+            <div className="flex items-center gap-1 mb-1 flex-wrap">
+              <span className="font-logo text-[9px] tracking-widest text-gray-500 uppercase mr-1">Sort</span>
+              {SORT_KEYS.map(([field, label]) => (
+                <button key={field} onClick={() => setSortKey(field)}
+                  className={`px-1.5 py-0.5 rounded font-logo text-[9px] font-semibold tracking-wider transition-colors
+                    ${sortKey === field ? "bg-yamabuki text-darkBg" : "text-gray-500 hover:text-white"}`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
           <div className="max-h-80 overflow-auto border border-gray-800 rounded-lg">
             {list.map((p, i) => {
               const banned = isActive && bannedName === p.PLAYER_NAME && !banVoided;
+              const cost = priceOf(p);
+              const overCap = isActive && cost > cap;
               return (
                 <PlayerRow key={i} player={p} discover={isActive && discoverActive}
                   onClick={() => isWaiting && banPicking ? onConfirmBan(p) : onPickPlayer(p)}
-                  unaffordable={banned}
-                  highlightStat="PTS" />
+                  cost={cost}
+                  unaffordable={banned || overCap}
+                  highlightStat={sortKey === "TAGGED" ? "PTS" : sortKey} />
               );
             })}
             {list.length === 0 && <div className="py-6 text-center text-xs text-gray-600">No players in this group.</div>}
@@ -487,44 +610,127 @@ function PlayerSeatPanel({
   );
 }
 
-// ── Complete: iki oyuncuyu yan yana karşılaştır ─────────────────────────────
-function SameScreenResult({ lineups, coaches, fitResults, onReset }) {
-  const f1 = fitResults[1], f2 = fitResults[2];
-  const s1 = f1 ? Math.round(f1.lineupScore * 100) : 0;
-  const s2 = f2 ? Math.round(f2.lineupScore * 100) : 0;
-  const winner = s1 === s2 ? 0 : (s1 > s2 ? 1 : 2);
+// ── Seri: best-of-7, maç maç, her maçtan sonra box score ────────────────────
+function SeriesPanel({ matchup, games, seriesW, seriesOver, onNextGame, onSeeResult }) {
+  const leaderSeat = seriesW[1] === seriesW[2] ? 0 : (seriesW[1] > seriesW[2] ? 1 : 2);
+  return (
+    <div className="max-w-3xl mx-auto space-y-4">
+      <div className="text-center">
+        <div className="font-logo text-[11px] uppercase tracking-widest text-gray-500 mb-1">Best-of-7 Series</div>
+        <div className="font-logo text-4xl font-black text-white tabular-nums">
+          {seriesW[1]}<span className="text-gray-600 mx-2">–</span>{seriesW[2]}
+        </div>
+        <div className="text-xs text-gray-500 mt-1">
+          {seriesOver
+            ? `Player ${leaderSeat} wins the series ${Math.max(seriesW[1], seriesW[2])}-${Math.min(seriesW[1], seriesW[2])}`
+            : leaderSeat === 0 ? "Series tied" : `Player ${leaderSeat} leads`}
+        </div>
+      </div>
+
+      {!seriesOver && (
+        <div className="text-center">
+          <button onClick={onNextGame}
+            className="px-8 py-2.5 rounded-xl font-logo font-bold text-darkBg bg-yamabuki hover:bg-white transition-colors inline-flex items-center gap-2">
+            <PlayIcon size={15} /> {games.length === 0 ? "Simulate Game 1" : `Simulate Game ${games.length + 1}`}
+          </button>
+        </div>
+      )}
+      {seriesOver && (
+        <div className="text-center">
+          <button onClick={onSeeResult}
+            className="px-8 py-2.5 rounded-xl font-logo font-bold text-darkBg bg-yamabuki hover:bg-white transition-colors inline-flex items-center gap-2">
+            <TrophyIcon size={15} /> See Result
+          </button>
+        </div>
+      )}
+
+      <div className="space-y-3">
+        {games.map((g) => <GameBox key={g.gameIndex} game={g} />)}
+      </div>
+    </div>
+  );
+}
+
+const BOX_COLS = "grid-cols-[1fr_2rem_2rem_2rem_2rem_2rem_2rem]";
+function BoxTable({ lines }) {
+  return (
+    <div>
+      <div className={`grid ${BOX_COLS} gap-x-1 text-[8px] text-gray-500 uppercase tracking-wider pb-0.5`}>
+        <span>Player</span><span className="text-right">MIN</span><span className="text-right">PTS</span><span className="text-right">REB</span><span className="text-right">AST</span><span className="text-right">STL</span><span className="text-right">BLK</span>
+      </div>
+      {lines.map((l, i) => (
+        <div key={i} className={`grid ${BOX_COLS} gap-x-1 text-[10px] leading-relaxed ${l.bench ? "text-gray-500" : "text-gray-200"}`}>
+          <span className="truncate">{l.bench ? "· " : ""}{l.name?.split(" ").slice(-1)[0]}</span>
+          <span className="text-right tabular-nums">{l.min}</span>
+          <span className="text-right tabular-nums font-semibold">{l.pts}</span>
+          <span className="text-right tabular-nums">{l.reb}</span>
+          <span className="text-right tabular-nums">{l.ast}</span>
+          <span className="text-right tabular-nums">{l.stl}</span>
+          <span className="text-right tabular-nums">{l.blk}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function GameBox({ game }) {
+  return (
+    <div className="rounded-xl border border-gray-800 bg-surfaceBg p-3">
+      <div className="flex items-center justify-between mb-2">
+        <span className="font-logo text-xs font-bold text-white uppercase tracking-wide">Game {game.gameIndex + 1}</span>
+        <span className="text-[10px] text-gray-500">Home: Player {game.home}</span>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        {[1, 2].map(seat => (
+          <div key={seat} className={`rounded-lg p-2 ${game.winner === seat ? "bg-yamabuki/10 border border-yamabuki/40" : "bg-surfaceCard/40 border border-gray-800"}`}>
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[10.5px] font-bold text-white">Player {seat}</span>
+              <span className={`text-lg font-black tabular-nums ${game.winner === seat ? "text-yamabuki" : "text-gray-300"}`}>{game.teamPts[seat]}</span>
+            </div>
+            <BoxTable lines={game.box[seat]} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Complete: seri sonucu + rosterlar ────────────────────────────────────────
+function SameScreenResult({ lineups, coaches, seriesW, seriesGames, onReset }) {
+  const winner = seriesW[1] === seriesW[2] ? 0 : (seriesW[1] > seriesW[2] ? 1 : 2);
 
   return (
     <div className="max-w-3xl mx-auto space-y-4">
       <div className="text-center">
         <TrophyIcon size={32} />
         <div className="font-logo text-2xl font-bold text-white mt-1">
-          {winner === 0 ? "It's a tie!" : `Player ${winner} wins!`}
+          {winner === 0 ? "It's a tie!" : `Player ${winner} wins the series!`}
         </div>
+        <div className="font-logo text-3xl font-black text-white mt-1 tabular-nums">
+          {seriesW[1]}<span className="text-gray-600 mx-2">–</span>{seriesW[2]}
+        </div>
+        <div className="text-[11px] text-gray-500 mt-1">{seriesGames.length} game{seriesGames.length !== 1 ? "s" : ""} played</div>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {[1, 2].map(seat => {
-          const fit = fitResults[seat];
-          const score = fit ? Math.round(fit.lineupScore * 100) : 0;
-          return (
-            <div key={seat} className={`rounded-2xl border p-4 space-y-3 ${winner === seat ? "border-yamabuki bg-yamabuki/10" : "border-gray-800 bg-surfaceBg"}`}>
-              <div className="flex items-center justify-between">
-                <span className="font-logo text-base font-bold text-white">Player {seat}</span>
-                <span className="text-3xl font-black tabular-nums" style={{ color: winner === seat ? "var(--accent)" : "#e5e7eb" }}>{score}</span>
-              </div>
-              {coaches[seat] && (
-                <div className="text-[11px] text-gray-400 flex items-center gap-1"><CoachIcon size={12} /> {coaches[seat].name}</div>
-              )}
-              <div className="flex flex-wrap gap-1">
-                {POSITIONS.concat(BENCH_SLOTS).map(pos => lineups[seat][pos] && (
-                  <span key={pos} className={`text-[10px] px-1.5 py-0.5 rounded border ${POS_COLORS[pos] || "border-gray-700 text-gray-400"}`}>
-                    {lineups[seat][pos].PLAYER_NAME?.split(" ").slice(-1)[0]}
-                  </span>
-                ))}
-              </div>
+        {[1, 2].map(seat => (
+          <div key={seat} className={`rounded-2xl border p-4 space-y-3 ${winner === seat ? "border-yamabuki bg-yamabuki/10" : "border-gray-800 bg-surfaceBg"}`}>
+            <div className="flex items-center justify-between">
+              <span className="font-logo text-base font-bold text-white">Player {seat}</span>
+              <span className="text-3xl font-black tabular-nums" style={{ color: winner === seat ? "var(--accent)" : "#e5e7eb" }}>{seriesW[seat]}</span>
             </div>
-          );
-        })}
+            {coaches[seat] && (
+              <div className="text-[11px] text-gray-400 flex items-center gap-1"><CoachIcon size={12} /> {coaches[seat].name}</div>
+            )}
+            <div className="flex flex-wrap gap-1">
+              {POSITIONS.concat(BENCH_SLOTS).map(pos => lineups[seat][pos] && (
+                <span key={pos} className={`text-[10px] px-1.5 py-0.5 rounded border ${POS_COLORS[pos] || "border-gray-700 text-gray-400"}`}
+                  title={`${lineups[seat][pos]._cost ?? priceOf(lineups[seat][pos])}% cap`}>
+                  {lineups[seat][pos].PLAYER_NAME?.split(" ").slice(-1)[0]}
+                </span>
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
       <div className="text-center">
         <button onClick={onReset}
