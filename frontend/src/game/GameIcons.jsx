@@ -264,6 +264,24 @@ export function DiceIcon({ size = 16 }) {
   );
 }
 
+export function ScreenIcon({ size = 16 }) {
+  return (
+    <svg {...base(size)}>
+      <rect x="3" y="4.5" width="18" height="12" rx="1.5" {...S} />
+      <path d="M9 20 h6 M12 16.5 v3.5" {...S} />
+    </svg>
+  );
+}
+
+export function GlobeIcon({ size = 16 }) {
+  return (
+    <svg {...base(size)}>
+      <circle cx="12" cy="12" r="8.5" {...S} />
+      <path d="M3.5 12 h17 M12 3.5 a13 13 0 0 1 0 17 a13 13 0 0 1 0 -17" {...S} />
+    </svg>
+  );
+}
+
 export function LightbulbIcon({ size = 16 }) {
   return (
     <svg {...base(size)}>

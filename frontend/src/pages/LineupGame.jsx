@@ -1278,7 +1278,7 @@ export default function LineupGame() {
     <SEO
       title="Lineup Builder Game"
       description="Build the greatest 5-man lineup in NBA history. Pick players from any era — 1983 to today — and see how well your roster fits together across archetypes and eras."
-      path="/game"
+      path="/game/single"
     />
     <div className="p-4 sm:p-6 max-w-[1400px] mx-auto space-y-3 pb-6">
 
@@ -1290,7 +1290,99 @@ export default function LineupGame() {
         </p>
       </div>
 
-      {phase!=="complete"&&(
+      {/* === IDLE: kort ortada, bilgi panelleri iki yanda === */}
+      {phase==="idle"&&(
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_640px_1fr] gap-4 justify-center max-w-[1400px] mx-auto">
+
+          {/* ── SOL: nasıl oynanır ── */}
+          <div className="order-2 lg:order-1 space-y-3 lg:max-w-[340px] lg:justify-self-end">
+            <div className="bg-surfaceBg border border-gray-800 rounded-2xl p-4 space-y-3">
+              <div className="font-logo text-[11px] uppercase tracking-widest text-gray-500">How it works</div>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  ["1",TargetIcon,"text-asagi","Pick your era","distance + style fit"],
+                  ["2",WheelIcon,"text-yamabuki","Spin & draft 9","5 starters + 4 bench"],
+                  ["3",CoachIcon,"text-brandBlue","Hire a coach","O/D grades + rings"],
+                  ["4",TrophyIcon,"text-yamabuki","Simulate 82","playoffs · awards · glory"],
+                ].map(([n,Icon,color,title,sub])=>(
+                  <div key={n} className="relative rounded-xl border border-gray-800 bg-surfaceCard p-3 text-center">
+                    <div className="absolute top-1.5 left-2 font-logo text-[10px] font-bold text-gray-600">{n}</div>
+                    <div className={`flex justify-center mb-1.5 ${color}`}><Icon size={26} /></div>
+                    <div className="font-logo text-xs font-bold text-white leading-tight">{title}</div>
+                    <div className="text-[10px] text-gray-500 mt-0.5 leading-tight">{sub}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* ── ORTA: saha önizlemesi + mod seçimi + başlat ── */}
+          <div className="order-1 lg:order-2 space-y-3">
+            <div className="hidden lg:block pointer-events-none opacity-90">
+              <CourtBoard lineup={lineup} coach={null} moveSrc={null} canRearrange={false}
+                onSlotTap={()=>{}} getPrimaryPos={getPrimaryPos} placing={false}
+                placingEligible={[]} placingPenalties={{}} onPlace={()=>{}}/>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <button onClick={()=>setMode("classic")}
+                className={`text-left rounded-xl border p-3 transition-all
+                  ${mode==="classic"?"border-brandBlue bg-brandBlue/10 shadow-[0_0_15px_rgba(29,66,138,0.15)]":"border-gray-800 bg-surfaceCard hover:border-gray-700"}`}>
+                <div className="font-logo text-base font-bold text-white flex items-center gap-1.5"><span className="text-brandBlue"><WheelIcon size={15} /></span> Classic</div>
+                <div className="text-[11px] text-gray-400 mt-1 leading-snug">No cap, no limits — pure wheel luck. Overalls stay hidden; read the archetypes.</div>
+              </button>
+              <button onClick={()=>setMode("salarycap")}
+                className={`text-left rounded-xl border p-3 transition-all
+                  ${mode==="salarycap"?"border-yamabuki bg-yamabuki/10 shadow-[0_0_15px_rgba(255,177,27,0.15)]":"border-gray-800 bg-surfaceCard hover:border-gray-700"}`}>
+                <div className="font-logo text-base font-bold text-white flex items-center gap-1.5"><span className="text-asagi"><CapIcon size={15} /></span> Salary Cap</div>
+                <div className="text-[11px] text-gray-400 mt-1 leading-snug">
+                  Start with a <span className="text-emerald-300 font-semibold">100% cap</span>. Every player costs a slice by quality — a superstar eats <span style={{color:"#a78bfa"}}>~30%</span>, a role player <span style={{color:"#fb923c"}}>4%</span>. Each roster's best men carry a star premium (14/10/7% floors) — nobody's franchise player comes cheap. Fit 9 contracts.
+                </div>
+              </button>
+            </div>
+            <div className="text-center">
+              <button onClick={()=>setPhase("pick_era")} disabled={seasons.length===0}
+                className="px-16 py-3 rounded-xl font-logo font-bold text-xl inline-flex items-center justify-center gap-2 transition-colors duration-200 disabled:opacity-50 text-darkBg bg-yamabuki hover:bg-white disabled:bg-gray-700 disabled:hover:bg-gray-700 shadow-[0_0_20px_rgba(255,177,27,0.3)]">
+                {seasons.length===0?"Loading..."
+                  :mode==="salarycap"?<><CapIcon size={17} /> Start Salary Cap Draft</>
+                  :<><WheelIcon size={17} /> Start Game</>}
+              </button>
+            </div>
+          </div>
+
+          {/* ── SAĞ: skor formülü + mekanikler ── */}
+          <div className="order-3 space-y-3 lg:max-w-[340px] lg:justify-self-start">
+            <div className="bg-surfaceBg border border-gray-800 rounded-2xl p-4 space-y-3">
+              <div>
+                <div className="flex h-7 rounded-lg overflow-hidden text-[10.5px] font-bold">
+                  <div className="flex items-center justify-center" style={{width:"45%",background:"#1D428A"}}>QUALITY 45%</div>
+                  <div className="flex items-center justify-center" style={{width:"40%",background:"#274690"}}>COVERAGE 40%</div>
+                  <div className="flex items-center justify-center text-gray-300" style={{width:"15%",background:"#1a1a1a"}}>ROLE 15%</div>
+                </div>
+                <p className="text-[11px] text-gray-500 mt-1.5">
+                  Quality = overall × era fit (distance + style) × position · Coverage = your archetypes covering Creation / Spacing / Defense / Finishing
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  {key:"chemistry", Icon:StarIcon, color:"text-yamabuki", title:"Chemistry",   desc:"Natural positions earn a score bonus"},
+                  {key:"jokers",    Icon:CardsIcon, color:"text-yamabuki", title:"Jokers",      desc:"Five one-time abilities per game"},
+                  {key:"archetype", Icon:DnaIcon, color:"text-asagi", title:"Archetypes",  desc:"Visible while you draft — overalls stay hidden"},
+                  {key:"tags",      Icon:TagIcon, color:"text-brandRed", title:"Player Tags", desc:"MVP, rings, duos — real history feeds the sim"},
+                ].map(({key,Icon,color,title,desc})=>(
+                  <button key={key} onClick={()=>setModal(key)}
+                    className="bg-surfaceCard hover:bg-gray-800 rounded-lg p-3 text-left transition-colors border border-gray-800 hover:border-gray-700">
+                    <div className="font-logo text-sm font-bold text-white mb-0.5 flex items-center gap-1.5"><span className={color}><Icon size={15} /></span> {title}</div>
+                    <div className="text-[11px] text-gray-400 leading-relaxed">{desc}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+        </div>
+      )}
+
+      {phase!=="idle"&&phase!=="complete"&&(
       <div className="flex flex-col lg:flex-row gap-4 items-start">
 
       {/* ── SOL PANEL: kontroller ── */}
@@ -1451,80 +1543,6 @@ export default function LineupGame() {
       </InfoModal>
 
       {/* === IDLE === */}
-      {phase==="idle"&&(
-        <div className="space-y-3">
-          <div className="bg-surfaceBg border border-gray-800 rounded-2xl p-5 space-y-4">
-            {/* 4 adımlı görsel akış */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {[
-                ["1",TargetIcon,"text-asagi","Pick your era","distance + style fit"],
-                ["2",WheelIcon,"text-yamabuki","Spin & draft 9","5 starters + 4 bench"],
-                ["3",CoachIcon,"text-brandBlue","Hire a coach","O/D grades + rings"],
-                ["4",TrophyIcon,"text-yamabuki","Simulate 82","playoffs · awards · glory"],
-              ].map(([n,Icon,color,title,sub])=>(
-                <div key={n} className="relative rounded-xl border border-gray-800 bg-surfaceCard p-3 text-center">
-                  <div className="absolute top-1.5 left-2 font-logo text-[10px] font-bold text-gray-600">{n}</div>
-                  <div className={`flex justify-center mb-1.5 ${color}`}><Icon size={26} /></div>
-                  <div className="font-logo text-xs font-bold text-white leading-tight">{title}</div>
-                  <div className="text-[10px] text-gray-500 mt-0.5 leading-tight">{sub}</div>
-                </div>
-              ))}
-            </div>
-            {/* Skor formülü — görsel ağırlık şeridi */}
-            <div>
-              <div className="flex h-7 rounded-lg overflow-hidden text-[10.5px] font-bold">
-                <div className="flex items-center justify-center" style={{width:"45%",background:"#1D428A"}}>QUALITY 45%</div>
-                <div className="flex items-center justify-center" style={{width:"40%",background:"#274690"}}>COVERAGE 40%</div>
-                <div className="flex items-center justify-center text-gray-300" style={{width:"15%",background:"#1a1a1a"}}>ROLE 15%</div>
-              </div>
-              <p className="text-[11px] text-gray-500 mt-1.5">
-                Quality = overall × era fit (distance + style) × position · Coverage = your archetypes covering Creation / Spacing / Defense / Finishing
-              </p>
-            </div>
-            {/* Mekanik kartları */}
-            <div className="grid grid-cols-2 gap-2">
-              {[
-                {key:"chemistry", Icon:StarIcon, color:"text-yamabuki", title:"Chemistry",   desc:"Natural positions earn a score bonus"},
-                {key:"jokers",    Icon:CardsIcon, color:"text-yamabuki", title:"Jokers",      desc:"Five one-time abilities per game"},
-                {key:"archetype", Icon:DnaIcon, color:"text-asagi", title:"Archetypes",  desc:"Visible while you draft — overalls stay hidden"},
-                {key:"tags",      Icon:TagIcon, color:"text-brandRed", title:"Player Tags", desc:"MVP, rings, duos — real history feeds the sim"},
-              ].map(({key,Icon,color,title,desc})=>(
-                <button key={key} onClick={()=>setModal(key)}
-                  className="bg-surfaceCard hover:bg-gray-800 rounded-lg p-3 text-left transition-colors border border-gray-800 hover:border-gray-700">
-                  <div className="font-logo text-sm font-bold text-white mb-0.5 flex items-center gap-1.5"><span className={color}><Icon size={15} /></span> {title}</div>
-                  <div className="text-[11px] text-gray-400 leading-relaxed">{desc}</div>
-                </button>
-              ))}
-            </div>
-          </div>
-          {/* Mod seçimi */}
-          <div className="grid grid-cols-2 gap-2">
-            <button onClick={()=>setMode("classic")}
-              className={`text-left rounded-xl border p-3 transition-all
-                ${mode==="classic"?"border-brandBlue bg-brandBlue/10 shadow-[0_0_15px_rgba(29,66,138,0.15)]":"border-gray-800 bg-surfaceCard hover:border-gray-700"}`}>
-              <div className="font-logo text-base font-bold text-white flex items-center gap-1.5"><span className="text-brandBlue"><WheelIcon size={15} /></span> Classic</div>
-              <div className="text-[11px] text-gray-400 mt-1 leading-snug">No cap, no limits — pure wheel luck. Overalls stay hidden; read the archetypes.</div>
-            </button>
-            <button onClick={()=>setMode("salarycap")}
-              className={`text-left rounded-xl border p-3 transition-all
-                ${mode==="salarycap"?"border-yamabuki bg-yamabuki/10 shadow-[0_0_15px_rgba(255,177,27,0.15)]":"border-gray-800 bg-surfaceCard hover:border-gray-700"}`}>
-              <div className="font-logo text-base font-bold text-white flex items-center gap-1.5"><span className="text-asagi"><CapIcon size={15} /></span> Salary Cap</div>
-              <div className="text-[11px] text-gray-400 mt-1 leading-snug">
-                Start with a <span className="text-emerald-300 font-semibold">100% cap</span>. Every player costs a slice by quality — a superstar eats <span style={{color:"#a78bfa"}}>~30%</span>, a role player <span style={{color:"#fb923c"}}>4%</span>. Each roster's best men carry a star premium (14/10/7% floors) — nobody's franchise player comes cheap. Fit 9 contracts.
-              </div>
-            </button>
-          </div>
-          <div className="text-center">
-            <button onClick={()=>setPhase("pick_era")} disabled={seasons.length===0}
-              className="px-16 py-3 rounded-xl font-logo font-bold text-xl inline-flex items-center justify-center gap-2 transition-colors duration-200 disabled:opacity-50 text-darkBg bg-yamabuki hover:bg-white disabled:bg-gray-700 disabled:hover:bg-gray-700 shadow-[0_0_20px_rgba(255,177,27,0.3)]">
-              {seasons.length===0?"Loading..."
-                :mode==="salarycap"?<><CapIcon size={17} /> Start Salary Cap Draft</>
-                :<><WheelIcon size={17} /> Start Game</>}
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* === PICK SIM ERA === */}
       {phase==="pick_era"&&(
         <div className="bg-surfaceBg border border-gray-800 rounded-2xl p-5 space-y-3">

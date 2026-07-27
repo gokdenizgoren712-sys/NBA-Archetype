@@ -86,6 +86,33 @@ def init_db():
             status          TEXT NOT NULL DEFAULT 'pending',
             created_at      TEXT DEFAULT (datetime('now'))
         );
+
+        CREATE TABLE IF NOT EXISTS game_rooms (
+            id               INTEGER PRIMARY KEY AUTOINCREMENT,
+            room_code        TEXT UNIQUE NOT NULL,
+            mode             TEXT NOT NULL,                     -- 'friend' | 'online'
+            status           TEXT NOT NULL DEFAULT 'waiting',   -- waiting|drafting|complete|abandoned
+            season           TEXT NOT NULL,
+            team_a           TEXT NOT NULL,
+            team_b           TEXT NOT NULL,
+            pool_json        TEXT,
+            player1_user_id  INTEGER REFERENCES users(id),
+            player2_user_id  INTEGER REFERENCES users(id),
+            turn_user_id     INTEGER,
+            pick_number      INTEGER NOT NULL DEFAULT 0,
+            created_at       TEXT DEFAULT (datetime('now')),
+            updated_at       TEXT DEFAULT (datetime('now'))
+        );
+
+        CREATE TABLE IF NOT EXISTS game_room_picks (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            room_id      INTEGER REFERENCES game_rooms(id) ON DELETE CASCADE,
+            user_id      INTEGER REFERENCES users(id),
+            player_id    TEXT NOT NULL,
+            slot_index   INTEGER NOT NULL,
+            pick_number  INTEGER NOT NULL,
+            created_at   TEXT DEFAULT (datetime('now'))
+        );
         """)
         # Migration: add columns to existing DBs that predate these fields
         for col, dfn in [

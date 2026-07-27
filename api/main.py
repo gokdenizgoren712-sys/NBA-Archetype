@@ -80,6 +80,10 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type"],
 )
 
+# Çok-oyunculu draft odaları (oda REST + WebSocket) — api/game_ws.py
+from .game_ws import router as _game_ws_router
+app.include_router(_game_ws_router)
+
 # Güvenlik header'ları
 @app.middleware("http")
 async def security_headers(request: Request, call_next):
