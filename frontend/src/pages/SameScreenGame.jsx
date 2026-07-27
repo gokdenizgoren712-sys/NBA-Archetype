@@ -12,9 +12,11 @@ import SpinWheel from "../game/SpinWheel";
 import LineupSlot from "../game/LineupSlot";
 import PlayerRow, { posGroupOf } from "../game/PlayerRow";
 import JokerBtn from "../game/JokerBtn";
+import InfoModal from "../game/InfoModal";
 import {
   StarIcon, CoachIcon, TrophyIcon, WheelIcon, CapIcon, RefreshIcon,
   CalendarIcon, BoltIcon, UsersIcon, SearchIcon, WarnIcon, DiceIcon, PlayIcon,
+  TargetIcon, CardsIcon, LoopIcon,
 } from "../game/GameIcons";
 
 const EMPTY_LINEUP = { PG: null, SG: null, SF: null, PF: null, C: null, B1: null, B2: null, B3: null, B4: null };
@@ -39,6 +41,9 @@ export default function SameScreenGame() {
   const [simEra, setSimEra] = useState(null);
   // idle | era | spinning | drafting | placing | coach1 | coach2 | series | complete
   const [gamePhase, setGamePhase] = useState("idle");
+
+  const [wheelMode, setWheelMode] = useState("round"); // "round" | "pick"
+  const [modal, setModal] = useState(null); // "jokers" | "ban" | "cap" | "series"
 
   const [round, setRound] = useState(0);
   const [turnQueue, setTurnQueue] = useState([1, 2]);
@@ -133,7 +138,11 @@ export default function SameScreenGame() {
     }, 1600);
   }, [seasons]);
 
-  const loadRoster = useCallback((season, team, roundNum, participants, first) => {
+  // retryFn verilmezse round'un tamamını (beginRound) yeniden başlatır — normal
+  // akış. Mod B'nin tek-pick spinForPick'i kendi retry'ını geçer, round/turn
+  // state'ine dokunmadan sadece spin'i tekrarlar.
+  const loadRoster = useCallback((season, team, roundNum, participants, first, retryFn) => {
+    const retry = retryFn || (() => beginRound(roundNum, participants, first));
     setStatusMsg("Loading players...");
     fetch(`/api/game/players?season=${encodeURIComponent(season)}&team=${encodeURIComponent(team)}`)
       .then(r => r.json())
@@ -143,15 +152,55 @@ export default function SameScreenGame() {
           ...Object.values(lineupsRef.current[2]).filter(Boolean).map(p => p.PLAYER_NAME),
         ]);
         let list = (d.players || []).filter(p => !taken.has(p.PLAYER_NAME));
-        if (list.length < 2) { beginRound(roundNum, participants, first); return; }
+        if (list.length < 2) { retry(); return; }
         // Same Screen her zaman Salary Cap: takım-içi yıldız fiyatlaması uygula
         list = applyTeamPricing(list);
         setStatusMsg("");
         setPlayers(list);
         setGamePhase("drafting");
       })
-      .catch(() => beginRound(roundNum, participants, first));
+      .catch(() => retry());
   }, [beginRound]);
+
+  // ── Mod B (Pick-Based Wheel): round/turn state'i korunur, sadece SIRADAKİ
+  // tek pick için bağımsız yeni bir season+team spin'i yapılır ────────────────
+  const spinForPick = useCallback(() => {
+    clearTimeout(timerRef.current);
+    setPickedPlayer(null);
+    setDoubleActive(false);
+    setDiscoverActive(false);
+    setPosFilter("");
+    setPlayers([]);
+    setGamePhase("spinning");
+
+    const sIdx = Math.floor(Math.random() * seasons.length);
+    setTargetSIdx(sIdx);
+    setSpinS(true);
+    setSpinT(false);
+
+    timerRef.current = setTimeout(() => {
+      const season = seasons[sIdx];
+      setSpinS(false);
+      setChosenSeason(season);
+      fetch(`/api/game/teams?season=${encodeURIComponent(season)}`)
+        .then(r => r.json())
+        .then(d => {
+          const teams = d.teams || [];
+          if (teams.length === 0) { spinForPick(); return; }
+          setTeamPool(teams);
+          const tIdx = Math.floor(Math.random() * teams.length);
+          setTargetTIdx(tIdx);
+          setSpinT(true);
+          timerRef.current = setTimeout(() => {
+            const team = teams[tIdx];
+            setSpinT(false);
+            setChosenTeam(team);
+            loadRoster(season, team, round, turnQueue, turnQueue[0], spinForPick);
+          }, 1600);
+        })
+        .catch(() => spinForPick());
+    }, 1600);
+  }, [seasons, round, turnQueue, loadRoster]);
 
   // Aktif oyuncunun turu içinde havuzu yeniden çeker (reTeam/reYear/reBoth jokerleri)
   const respinWithin = useCallback((keepSeason, keepTeam) => {
@@ -251,7 +300,11 @@ export default function SameScreenGame() {
       setTurnPos(nextPos);
       setBannedName(null);
       setBanVoided(false);
-      setGamePhase("drafting");
+      if (wheelMode === "pick") {
+        spinForPick(); // Mod B: her pick kendi spin'ini alır
+      } else {
+        setGamePhase("drafting"); // Mod A: round'un paylaşılan havuzu geçerli kalır
+      }
       return;
     }
 
@@ -314,6 +367,7 @@ export default function SameScreenGame() {
 
   const resetGame = () => {
     clearTimeout(timerRef.current);
+    setModal(null);
     setSimEra(null); setGamePhase("idle"); setRound(0);
     setTurnQueue([1, 2]); setTurnPos(0);
     setChosenSeason(""); setChosenTeam(""); setTeamPool([]);
@@ -342,12 +396,92 @@ export default function SameScreenGame() {
         </div>
 
         {gamePhase === "idle" && (
-          <div className="max-w-md mx-auto text-center bg-surfaceBg border border-gray-800 rounded-2xl p-6 space-y-4">
-            <p className="text-sm text-gray-400">Two players, one screen. Every round the wheel spins once — you both draft from the same team under a shared-rules Salary Cap. Snake order keeps it fair. Watch out for BAN. Once both rosters are set, you'll play a best-of-7 series to decide the winner.</p>
-            <button onClick={() => setGamePhase("era")}
-              className="px-10 py-3 rounded-xl font-logo font-bold text-lg text-darkBg bg-yamabuki hover:bg-white transition-colors shadow-[0_0_20px_rgba(255,177,27,0.3)]">
-              Start
-            </button>
+          <div className="grid grid-cols-1 lg:grid-cols-[340px_640px_340px] gap-4 justify-center max-w-[1400px] mx-auto">
+
+            {/* ── SOL: nasıl oynanır ── */}
+            <div className="order-2 lg:order-1 space-y-3 min-w-0">
+              <div className="bg-surfaceBg border border-gray-800 rounded-2xl p-4 space-y-3">
+                <div className="font-logo text-[11px] uppercase tracking-widest text-gray-500">How it works</div>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    ["1", TargetIcon, "text-asagi", "Pick your era", "distance + style fit"],
+                    ["2", WheelIcon, "text-yamabuki", "Choose the wheel", "round- or pick-based"],
+                    ["3", UsersIcon, "text-brandBlue", "Snake draft 9v9", "shared pool · salary cap"],
+                    ["4", TrophyIcon, "text-yamabuki", "Best-of-7 series", "simulate to a champion"],
+                  ].map(([n, Icon, color, title, sub]) => (
+                    <div key={n} className="relative rounded-xl border border-gray-800 bg-surfaceCard p-3 text-center">
+                      <div className="absolute top-1.5 left-2 font-logo text-[10px] font-bold text-gray-600">{n}</div>
+                      <div className={`flex justify-center mb-1.5 ${color}`}><Icon size={26} /></div>
+                      <div className="font-logo text-xs font-bold text-white leading-tight">{title}</div>
+                      <div className="text-[10px] text-gray-500 mt-0.5 leading-tight">{sub}</div>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-[11px] text-gray-500 leading-relaxed border-t border-gray-800 pt-2">
+                  Every roster is built under a shared-rules <span className="text-emerald-300 font-semibold">Salary Cap</span> — 100% budget each, star players cost more. Snake order keeps the draft fair for both players.
+                </p>
+              </div>
+            </div>
+
+            {/* ── ORTA: vs paneli + çark alt-modu + başlat ── */}
+            <div className="order-1 lg:order-2 space-y-3">
+              <div className="bg-surfaceBg border border-gray-800 rounded-2xl p-5 flex items-center justify-center gap-5">
+                <div className="flex-1 text-center">
+                  <div className="w-14 h-14 mx-auto rounded-full border-2 border-brandBlue/60 bg-brandBlue/10 flex items-center justify-center text-brandBlue"><UsersIcon size={24} /></div>
+                  <div className="font-logo text-sm font-bold text-white mt-2">Player 1</div>
+                </div>
+                <div className="font-logo text-2xl font-black text-gray-600">VS</div>
+                <div className="flex-1 text-center">
+                  <div className="w-14 h-14 mx-auto rounded-full border-2 border-brandRed/60 bg-brandRed/10 flex items-center justify-center text-brandRed"><UsersIcon size={24} /></div>
+                  <div className="font-logo text-sm font-bold text-white mt-2">Player 2</div>
+                </div>
+              </div>
+
+              <div className="text-[10.5px] text-gray-500 uppercase tracking-widest font-logo px-0.5">Wheel Mode</div>
+              <div className="grid grid-cols-2 gap-2">
+                <button onClick={() => setWheelMode("round")}
+                  className={`text-left rounded-xl border p-3 transition-all
+                    ${wheelMode === "round" ? "border-brandBlue bg-brandBlue/10 shadow-[0_0_15px_rgba(29,66,138,0.15)]" : "border-gray-800 bg-surfaceCard hover:border-gray-700"}`}>
+                  <div className="font-logo text-base font-bold text-white flex items-center gap-1.5"><span className="text-brandBlue"><WheelIcon size={15} /></span> Round-Based</div>
+                  <div className="text-[11px] text-gray-400 mt-1 leading-snug">The wheel spins once per round. Both players draft from that same team, in snake order.</div>
+                </button>
+                <button onClick={() => setWheelMode("pick")}
+                  className={`text-left rounded-xl border p-3 transition-all
+                    ${wheelMode === "pick" ? "border-yamabuki bg-yamabuki/10 shadow-[0_0_15px_rgba(255,177,27,0.15)]" : "border-gray-800 bg-surfaceCard hover:border-gray-700"}`}>
+                  <div className="font-logo text-base font-bold text-white flex items-center gap-1.5"><span className="text-yamabuki"><LoopIcon size={15} /></span> Pick-Based</div>
+                  <div className="text-[11px] text-gray-400 mt-1 leading-snug">The wheel spins again before every single pick — each player gets their own fresh team.</div>
+                </button>
+              </div>
+
+              <div className="text-center">
+                <button onClick={() => setGamePhase("era")}
+                  className="px-16 py-3 rounded-xl font-logo font-bold text-xl inline-flex items-center justify-center gap-2 transition-colors duration-200 text-darkBg bg-yamabuki hover:bg-white shadow-[0_0_20px_rgba(255,177,27,0.3)]">
+                  <WheelIcon size={17} /> Start
+                </button>
+              </div>
+            </div>
+
+            {/* ── SAĞ: mekanik kartları ── */}
+            <div className="order-3 space-y-3 min-w-0">
+              <div className="bg-surfaceBg border border-gray-800 rounded-2xl p-4 space-y-3">
+                <div className="font-logo text-[11px] uppercase tracking-widest text-gray-500">Mechanics</div>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { key: "jokers", Icon: CardsIcon, color: "text-yamabuki", title: "Jokers", desc: "5 one-time abilities, each player" },
+                    { key: "ban", Icon: WarnIcon, color: "text-brandRed", title: "BAN", desc: "Block your opponent's pick" },
+                    { key: "cap", Icon: CapIcon, color: "text-emerald-300", title: "Salary Cap", desc: "100% budget, star premiums" },
+                    { key: "series", Icon: TrophyIcon, color: "text-yamabuki", title: "Best-of-7", desc: "Game-by-game box scores" },
+                  ].map(({ key, Icon, color, title, desc }) => (
+                    <button key={key} onClick={() => setModal(key)}
+                      className="bg-surfaceCard hover:bg-gray-800 rounded-lg p-3 text-left transition-colors border border-gray-800 hover:border-gray-700">
+                      <div className="font-logo text-sm font-bold text-white mb-0.5 flex items-center gap-1.5"><span className={color}><Icon size={15} /></span> {title}</div>
+                      <div className="text-[11px] text-gray-400 leading-relaxed">{desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
           </div>
         )}
 
@@ -455,6 +589,56 @@ export default function SameScreenGame() {
         {gamePhase === "complete" && (
           <SameScreenResult lineups={lineups} coaches={coaches} seriesW={seriesW} seriesGames={seriesGames} onReset={resetGame} />
         )}
+
+        {/* Info modals */}
+        <InfoModal open={modal === "jokers"} onClose={() => setModal(null)}
+          title={<span className="inline-flex items-center gap-2"><span className="text-yamabuki"><CardsIcon size={17} /></span> Jokers</span>}>
+          <div className="space-y-3">
+            {[
+              [RefreshIcon, "Team", "Re-spin the team wheel. Get a different roster from the same season."],
+              [CalendarIcon, "Year", "Re-spin the season wheel. Jump to a completely different era."],
+              [BoltIcon, "Both", "Re-spin both wheels at once. Full reset of the current pick."],
+              [UsersIcon, "Pick 2", "Choose two players from the current roster in a single turn."],
+              [SearchIcon, "Discover", "Reveal every player's hidden overall score this turn, then choose with full information."],
+            ].map(([Icon, name, desc]) => (
+              <div key={name} className="flex gap-3 items-start">
+                <span className="shrink-0 text-yamabuki mt-0.5"><Icon size={18} /></span>
+                <div>
+                  <div className="text-white font-medium text-sm">{name}</div>
+                  <div className="text-gray-400 text-xs leading-relaxed">{desc}</div>
+                </div>
+              </div>
+            ))}
+            <p className="text-[12.5px] text-gray-600 pt-1 border-t border-gray-800">Each player has their own 5 jokers, one use each per game.</p>
+          </div>
+        </InfoModal>
+
+        <InfoModal open={modal === "ban"} onClose={() => setModal(null)}
+          title={<span className="inline-flex items-center gap-2"><span className="text-brandRed"><WarnIcon size={17} /></span> BAN</span>}>
+          <div className="space-y-3 text-sm text-gray-300 leading-relaxed">
+            <p>BAN is a sixth, <span className="text-white font-medium">vs-mode-only</span> joker. While your opponent is on the clock, you can BAN one player from their current roster — they won't be able to pick that player.</p>
+            <p>Each player has one BAN, usable once per game, only on their opponent's turn.</p>
+            <p className="text-gray-400 text-xs">If the banned player's owner uses any other joker on that same pick, the BAN is voided — the player becomes pickable again. Countering a BAN costs your opponent a joker, so it's a real trade-off, not a free block.</p>
+          </div>
+        </InfoModal>
+
+        <InfoModal open={modal === "cap"} onClose={() => setModal(null)}
+          title={<span className="inline-flex items-center gap-2"><span className="text-emerald-300"><CapIcon size={17} /></span> Salary Cap</span>}>
+          <div className="space-y-3 text-sm text-gray-300 leading-relaxed">
+            <p>Same Screen is always played under Salary Cap rules. Each player starts with a <span className="text-emerald-300 font-semibold">100% budget</span>, independent of the other.</p>
+            <p>Every player costs a slice of that budget by quality — a superstar eats <span style={{ color: "#a78bfa" }}>~30%</span>, a role player <span style={{ color: "#fb923c" }}>4%</span>. Each roster's best men carry a star premium (14/10/7% floors), so nobody's franchise player comes cheap.</p>
+            <p className="text-gray-400 text-xs">Fit all 9 contracts — 5 starters, 4 bench — before your cap runs out. A player you can't afford shows locked in the list.</p>
+          </div>
+        </InfoModal>
+
+        <InfoModal open={modal === "series"} onClose={() => setModal(null)}
+          title={<span className="inline-flex items-center gap-2"><span className="text-yamabuki"><TrophyIcon size={17} /></span> Best-of-7 Series</span>}>
+          <div className="space-y-3 text-sm text-gray-300 leading-relaxed">
+            <p>Once both rosters are drafted and both coaches are hired, the two lineups face off in a <span className="text-white font-medium">best-of-7 series</span> — same engine as the single-player season sim, home court in a 2-2-1-1-1 pattern.</p>
+            <p>Simulate one game at a time and read the full box score — minutes, points, rebounds, assists, steals, blocks — for both rosters before moving to the next game.</p>
+            <p className="text-gray-400 text-xs">First to 4 wins takes the series.</p>
+          </div>
+        </InfoModal>
       </div>
     </div>
   );
