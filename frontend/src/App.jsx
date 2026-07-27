@@ -16,6 +16,7 @@ const Compare        = lazy(() => import("./pages/Compare"));
 const Affinity       = lazy(() => import("./pages/Affinity"));
 const LineupGame     = lazy(() => import("./pages/LineupGame"));
 const GameModeSelect = lazy(() => import("./pages/GameModeSelect"));
+const SameScreenGame = lazy(() => import("./pages/SameScreenGame"));
 const Blog           = lazy(() => import("./pages/Blog"));
 const BlogPost       = lazy(() => import("./pages/BlogPost"));
 const Login          = lazy(() => import("./pages/Login"));
@@ -206,6 +207,7 @@ function AppInner() {
               <Route path="/"                         element={<Navigate to="/game" replace />} />
               <Route path="/game"                     element={<GameModeSelect />} />
               <Route path="/game/single"              element={<LineupGame />} />
+              <Route path="/game/same-screen"          element={<SameScreenGame />} />
               <Route path="/players"                  element={<Players />} />
               <Route path="/players/:name"           element={<PlayerProfile />} />
               <Route path="/lineups"                  element={<Lineups />} />

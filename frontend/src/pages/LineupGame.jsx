@@ -6,7 +6,7 @@ import { ERAS, ERA_META_BLURB, ERA_PILLAR_WEIGHTS, getEra } from "../game/eras";
 import { computePlayerFit, computeLineupFit, computeAffinity } from "../game/lineupScore";
 import SeasonSimPanel from "../game/SeasonSimPanel";
 import { COACHES } from "../game/coaches";
-import { getPlayerTags, TAG_INFO, isVersatile } from "../game/awards";
+import { getPlayerTags, TAG_INFO } from "../game/awards";
 import CourtBoard from "../game/CourtBoard";
 import { START_BUDGET, MIN_COST, costColor, totalSpent, maxSpendNow, applyTeamPricing, priceOf } from "../game/salary";
 import {
@@ -15,105 +15,15 @@ import {
   SearchIcon, LoopIcon, GapIcon, WarnIcon, EyeIcon, LinkIcon, CheckIcon,
   DownloadIcon, XLogoIcon, DiceIcon, LightbulbIcon,
 } from "../game/GameIcons";
-
-const POSITIONS = ["PG", "SG", "SF", "PF", "C"];
-
-// Arketipe göre oynayabileceği mevkiler (ilk = birincil)
-const ARCH_POSITIONS = {
-  Ecosystem:    ["PG","SG"],
-  Engine:       ["PG","SG"],
-  Hub:          ["PG","SG","SF"],
-  Creator:      ["PG","SG"],
-  Initiator:    ["PG"],
-  Connector:    ["SG","SF"],
-  Spacer:       ["SG","SF","PF"],
-  Stopper:      ["SF","PF"],
-  Finisher:     ["SF","PF"],
-  Force:        ["PF","C"],
-  Anchor:       ["C","PF"],
-  "Rim Runner": ["C","PF"],
-};
-
-// POSITION string → eligible positions (game slot eligibility + chemistry bonus)
-const POS_STRING_MAP = {
-  // Tek pozisyon — sadece kendi slotları (badge karışıklığını önler)
-  "PG":["PG"],       "POINT GUARD":["PG"],
-  "SG":["SG","SF"],  "SHOOTING GUARD":["SG","SF"],
-  "SF":["SF","PF"],  "SMALL FORWARD":["SF","PF"],
-  "PF":["PF","C"],   "POWER FORWARD":["PF","C"],
-  "C": ["C","PF"],   "CENTER":["C","PF"],
-  // Generic / dual pozisyonlar
-  "G":["PG","SG"],   "GUARD":["PG","SG"],
-  "F":["SF","PF"],   "FORWARD":["SF","PF"],
-  "G-F":["SG","SF"], "GUARD-FORWARD":["SG","SF"], "FORWARD-GUARD":["SG","SF"],
-  "F-C":["PF","C"],  "FORWARD-CENTER":["PF","C"], "CENTER-FORWARD":["PF","C"],
-  // BBref dual kod formatı
-  "PG-SG":["PG","SG"], "SG-PG":["SG","PG"],
-  "SG-SF":["SG","SF"], "SF-SG":["SF","SG"],
-  "SF-PF":["SF","PF"], "PF-SF":["PF","SF"],
-  "PF-C": ["PF","C"],  "C-PF": ["C","PF"],
-};
-
-const _POS5 = ["PG","SG","SF","PF","C"];
-
-// Birincil mevki: backend POS5 → POSITION eşleme → arketip fallback
-function getPrimaryPos(player) {
-  const p = String(player.POS5 || "").toUpperCase().trim();
-  if (_POS5.includes(p)) return p;
-  const raw = String(player.POSITION || "").toUpperCase().trim();
-  if (raw && POS_STRING_MAP[raw]) return POS_STRING_MAP[raw][0];
-  return (ARCH_POSITIONS[player.primary_arch] || POSITIONS)[0];
-}
-// İkincil mevki: backend POS5_SECONDARY (BBref "SG-PG"/"PF-C" verisi + stat
-// heuristik). Yoksa POSITION eşlemesinin 2. mevkisi; o da yoksa null.
-function getSecondaryPos(player) {
-  const s = String(player.POS5_SECONDARY || "").toUpperCase().trim();
-  if (_POS5.includes(s) && s !== getPrimaryPos(player)) return s;
-  const raw = String(player.POSITION || "").toUpperCase().trim();
-  const mapped = POS_STRING_MAP[raw];
-  if (mapped && mapped[1] && mapped[1] !== getPrimaryPos(player)) return mapped[1];
-  return null;
-}
-// Uygun mevkiler = [birincil, (varsa) ikincil]
-function getEligiblePos(player) {
-  const prim = getPrimaryPos(player);
-  const sec  = getSecondaryPos(player);
-  return sec ? [prim, sec] : [prim];
-}
-
-// ── Faz 2: bench + pozisyon cezası ───────────────────────────────────────────
-const BENCH_SLOTS = ["B1","B2","B3","B4"];
-const ALL_SLOTS   = [...POSITIONS, ...BENCH_SLOTS];
-
-// VERSATILE artık "her mevki bedava" DEĞİL — sadece İKİNCİL mevkide ceza yemez.
-function isFlex(player) { return isVersatile(player); }
-
-// Birincil = ceza yok; ikincil = versatile ? yok : −10%.
-// Versatile ayrıca span'e bitişik 3. mevkide −25% yerine −10% yer (küçük upgrade);
-// daha uzak mevkiler herkes için −25% (her yeri oynayamaz).
-function posPenaltyFor(player, pos) {
-  if (!POSITIONS.includes(pos)) return 1.0;   // bench
-  const prim = getPrimaryPos(player);
-  if (pos === prim) return 1.0;
-  const sec = getSecondaryPos(player);
-  if (sec && pos === sec) return isVersatile(player) ? 1.0 : 0.90;
-  // Ne birincil ne ikincil — birincil/ikincil bloğuna uzaklık
-  const idx = POSITIONS.indexOf(pos);
-  const spanDist = Math.min(
-    Math.abs(idx - POSITIONS.indexOf(prim)),
-    sec ? Math.abs(idx - POSITIONS.indexOf(sec)) : 99,
-  );
-  if (isVersatile(player) && spanDist === 1) return 0.90;   // versatile 3. mevki −10%
-  return 0.75;   // mevki dışı −25%
-}
-
-const POS_COLORS = {
-  PG:"bg-blue-900/60 text-blue-300 border-blue-700/50",
-  SG:"bg-sky-900/60 text-sky-300 border-sky-700/50",
-  SF:"bg-emerald-900/60 text-emerald-300 border-emerald-700/50",
-  PF:"bg-yamabuki/60 text-yamabuki border-yamabuki/50",
-  C: "bg-red-900/60 text-red-300 border-red-700/50",
-};
+import {
+  POSITIONS, BENCH_SLOTS, ALL_SLOTS, ARCH_POSITIONS, POS_STRING_MAP,
+  POS_COLORS, getPrimaryPos, getSecondaryPos, getEligiblePos, isFlex, posPenaltyFor,
+} from "../game/positions";
+import SpinWheel from "../game/SpinWheel";
+import LineupSlot from "../game/LineupSlot";
+import PlayerRow, { posGroupOf } from "../game/PlayerRow";
+import InfoModal from "../game/InfoModal";
+import JokerBtn from "../game/JokerBtn";
 
 // ── Skorlama çekirdeği ────────────────────────────────────────────────────────
 // computePlayerFit / computeLineupFit / computeAffinity → game/lineupScore.js'e
@@ -123,193 +33,11 @@ const POS_COLORS = {
 // ── Era sistemi — src/game/eras.js'ten import edilir ─────────────────────────
 // (Era Fit paneli v3.6'da kaldırıldı; Faz B'de era etkisi dönem-uzaklığına taşınacak)
 
-// ── SpinWheel ─────────────────────────────────────────────────────────────────
-function SpinWheel({ items, spinning, targetIdx, label }) {
-  const [centerIdx,setCenterIdx]=useState(0);
-  const intRef=useRef(null);
-  useEffect(()=>{
-    clearInterval(intRef.current);
-    if(spinning&&items.length>0){ intRef.current=setInterval(()=>setCenterIdx(i=>(i+1)%items.length),70); }
-    else if(items.length>0){ setCenterIdx(targetIdx%items.length); }
-    return ()=>clearInterval(intRef.current);
-  },[spinning,targetIdx,items.length]);
-
-  const visible=[-2,-1,0,1,2].map(off=>({off,item:items[((centerIdx+off)%items.length+items.length)%items.length]}));
-  return (
-    <div className="flex flex-col items-center select-none">
-      <div className="text-[10.5px] text-gray-500 uppercase tracking-widest mb-2">{label}</div>
-      <div className="relative w-32 rounded-xl overflow-hidden border border-gray-800 bg-darkBg">
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-14 z-10" style={{background:"linear-gradient(to bottom,#020817,transparent)"}}/>
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-14 z-10" style={{background:"linear-gradient(to top,#020817,transparent)"}}/>
-        <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-10 border-y z-0"
-          style={{borderColor:"var(--accent-border)",background:"var(--accent-dim)"}}/>
-        <div className="py-1">
-          {visible.map(({off,item})=>(
-            <div key={off} className={`h-10 flex items-center justify-center font-mono px-1 text-center text-xs ${off===0?"font-bold":""}`}
-              style={{opacity:Math.max(0.07,1-Math.abs(off)*0.40), color: off===0 ? "var(--accent)" : "#64748b"}}>
-              {item}
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Lineup slot ───────────────────────────────────────────────────────────────
-function LineupSlot({ pos, player, bench=false, selected=false, canTap=false, onTap }) {
-  const isPrimary = !bench && player && getPrimaryPos(player) === pos;
-  const posLabel = bench ? "BENCH" : pos;
-  return (
-    <div onClick={()=>canTap&&onTap&&onTap(pos)}
-      className={`flex-1 rounded-lg p-1.5 border text-center min-w-0 transition-all
-      ${selected?"border-yamabuki shadow-[0_0_8px_rgba(255,177,27,.35)]":player?(bench?"border-gray-600/50 bg-surfaceCard/30":"border-yamabuki/40 bg-yamabuki/10"):"border-gray-800 bg-surfaceBg/60"}
-      ${canTap?"cursor-pointer":""}`}>
-      <div className={`text-[8.5px] uppercase tracking-wider mb-0.5 ${bench?"text-gray-600":POS_COLORS[pos]?.split(" ")[1]||"text-gray-600"}`}>{posLabel}</div>
-      {player ? (
-        <>
-          <div className="text-[10.5px] text-white font-semibold truncate leading-tight">
-            {player.PLAYER_NAME?.split(" ").slice(-1)[0]}
-          </div>
-          <div className="text-[8.5px] text-gray-500">{(player._season||"").slice(0,4)}</div>
-          {isPrimary && <div className="text-yamabuki flex justify-center mt-0.5"><StarIcon size={9} /></div>}
-        </>
-      ) : (
-        <div className="text-gray-700 text-sm">—</div>
-      )}
-    </div>
-  );
-}
-
-// ── Oyuncu satırı (eraball tarzı liste) ──────────────────────────────────────
-function headshotUrl(p) {
-  return p.PLAYER_ID ? `https://cdn.nba.com/headshots/nba/latest/260x190/${p.PLAYER_ID}.png` : null;
-}
-
-function posGroupOf(p) {
-  const raw = String(p?.POS5 || p?.POSITION || "").toUpperCase().trim();
-  if (raw === "C" || raw.startsWith("CENTER")) return "C";
-  if (raw === "PG" || raw === "SG" || raw.startsWith("G") || raw.includes("GUARD")) return "G";
-  return "F";
-}
-
-// Kompakt tag rozeti — baş harf + renk (uzun label yerine)
-function TagBadge({ t }) {
-  return (
-    <span title={t.detail}
-      className="inline-flex items-center justify-center text-[8.5px] font-bold rounded leading-none shrink-0 px-1 h-[15px] min-w-[15px]"
-      style={{ color: t.color, background: t.color + "22", border: `1px solid ${t.color}66` }}>
-      {t.abbr}
-    </span>
-  );
-}
-
-function PlayerRow({ player, discover, onClick, cost, unaffordable, highlightStat }) {
-  const [imgOk, setImgOk] = useState(true);
-  const stat = (k) => {
-    const v = player[k];
-    if (v == null || isNaN(+v)) return "—";
-    if (k === "FG3_PCT") return `${Math.round(+v * 100)}%`;
-    return (+v).toFixed(1);
-  };
-  const overall = player.overall_score != null ? Math.round(player.overall_score * 100) : null;
-  const tags = getPlayerTags(player);
-  const url = headshotUrl(player);
-  const cell = (k) => (
-    <span className={`w-9 text-right tabular-nums shrink-0 text-xs
-      ${highlightStat === k ? "font-bold" : "text-gray-500"}`}
-      style={highlightStat === k ? { color: "#e2b34c" } : {}}>
-      {stat(k)}
-    </span>
-  );
-  return (
-    <button onClick={onClick} disabled={unaffordable}
-      className={`w-full min-w-[560px] flex items-center gap-2 pr-3 py-2.5 border-b text-left transition-colors
-        ${unaffordable ? "opacity-30 cursor-not-allowed" : "hover:bg-surfaceCard/70 cursor-pointer group"}`}
-      style={{ borderColor: "rgba(30,41,59,.6)" }}>
-      {/* Sabit sol blok (yatay kaydırmada pinli): avatar + isim + arketip + rozetler */}
-      <div className="sticky left-0 z-10 flex items-center gap-2 pl-3 pr-2 py-0.5 shrink-0 w-[240px]"
-        style={{ background: "var(--bg-surface, #131313)" }}>
-        <div className="w-9 h-9 rounded-full overflow-hidden shrink-0 border border-gray-700 bg-surfaceCard flex items-center justify-center">
-          {url && imgOk ? (
-            <img src={url} alt="" loading="lazy" onError={() => setImgOk(false)}
-              className="w-full h-full object-cover object-top" />
-          ) : (
-            <span className="text-[11px] font-bold text-gray-500">
-              {player.PLAYER_NAME?.split(" ").map(w => w[0]).slice(0, 2).join("")}
-            </span>
-          )}
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="font-logo text-[13px] font-semibold text-white truncate leading-tight">{player.PLAYER_NAME}</div>
-          <div className="flex items-center gap-1 mt-0.5">
-            <span className="text-[10px] text-gray-500 shrink-0">{player.POSITION || player.POS5 || ""}</span>
-            <span className="text-[10px] text-blue-400 font-medium truncate">{player.primary_arch || "—"}</span>
-            {tags.slice(0, 3).map(t => <TagBadge key={t.key} t={t} />)}
-          </div>
-        </div>
-      </div>
-      {/* TAG sayısı sütunu */}
-      <span className="w-8 text-center shrink-0 text-xs tabular-nums"
-        title={tags.length ? tags.map(t => t.label).join(" · ") : "No tags"}>
-        {tags.length ? <span className="text-gray-300 font-bold">{tags.length}</span> : <span className="text-gray-700">–</span>}
-      </span>
-      {/* Sözleşme maliyeti (Salary Cap) */}
-      {cost != null && (
-        <span className="text-xs font-black shrink-0 tabular-nums px-1 py-0.5 rounded"
-          style={{ color: costColor(cost), background: costColor(cost) + "14", border: `1px solid ${costColor(cost)}44` }}
-          title={unaffordable ? `Costs ${cost}% — over your spendable cap` : `Contract: ${cost}% of the cap`}>
-          {cost}%
-        </span>
-      )}
-      {/* Discover: yalnızca overall'ı ifşa eder */}
-      {discover && overall != null && (
-        <span className="text-[10px] px-1.5 py-0.5 rounded border border-violet-700/50 bg-violet-900/30 text-violet-300 font-bold shrink-0">{overall}</span>
-      )}
-      {/* İstatistikler */}
-      {cell("PTS")}{cell("REB")}{cell("AST")}{cell("FG3_PCT")}{cell("STL")}{cell("BLK")}
-    </button>
-  );
-}
-
 // [alan, etiket] — 3P% alan adı FG3_PCT
 const SORT_KEYS = [
   ["TAGGED", "TAGGED"], ["PTS", "PTS"], ["REB", "REB"], ["AST", "AST"],
   ["FG3_PCT", "3P%"], ["STL", "STL"], ["BLK", "BLK"],
 ];
-
-// ── Info Modal ────────────────────────────────────────────────────────────────
-function InfoModal({ open, onClose, title, children }) {
-  if (!open) return null;
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-         onClick={onClose}>
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-      <div className="relative bg-surfaceBg border border-gray-700 rounded-2xl p-6 max-w-sm w-full shadow-2xl
-                      animate-[fadeScaleIn_0.18s_ease-out]"
-           onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-white font-bold text-base">{title}</h3>
-          <button onClick={onClose} className="text-gray-500 hover:text-white text-xl leading-none">×</button>
-        </div>
-        {children}
-      </div>
-    </div>
-  );
-}
-
-// ── Joker butonu ──────────────────────────────────────────────────────────────
-function JokerBtn({ Icon, label, available, onClick }) {
-  return (
-    <button onClick={onClick} disabled={!available}
-      className={`flex flex-col items-center gap-1 px-2 py-1.5 rounded-lg border text-center transition-all
-        ${available?"border-yamabuki/60 bg-yamabuki/20 hover:bg-yamabuki/40 cursor-pointer text-yamabuki"
-                  :"border-gray-800 bg-surfaceBg/40 cursor-not-allowed text-gray-600"}`}>
-      <Icon size={16} />
-      <span className="text-[9.5px] leading-tight whitespace-nowrap">{label}</span>
-    </button>
-  );
-}
 
 // ── Post-game analiz ──────────────────────────────────────────────────────────
 // Pillar → hangi score_ kolonları yüksek olmalı (bestAlt önerisi için)

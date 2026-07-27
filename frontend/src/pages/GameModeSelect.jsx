@@ -33,7 +33,7 @@ const MODES = [
     title: "Same Screen",
     desc: "Play with a friend on the same device",
     path: "/game/same-screen",
-    live: false,
+    live: true,
   },
 ];
 
