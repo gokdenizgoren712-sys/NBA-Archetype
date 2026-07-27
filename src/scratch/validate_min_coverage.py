@@ -9,7 +9,7 @@ from pathlib import Path
 import sys
 import pandas as pd
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parent.parent.parent
 DATA = ROOT / "data"
 
 # El ile bilinen benchmark değerler (sezon, oyuncu, beklenen MPG aralığı)

@@ -4,7 +4,7 @@ Lineup fit score <-> gerçek NET_RATING korelasyon validasyonu.
 """
 import sys
 from pathlib import Path
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "config"))
 

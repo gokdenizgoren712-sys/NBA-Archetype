@@ -40,6 +40,15 @@ Bu dosya GROUND TRUTH'tur. Yolu run_validation.py içinde TAGS_XLSX ile ayarla.
       NCAA+G-League oyuncularında ~0.30'a sıkışıyordu; düzeltildi).
 - Eşikler: ÖNCE ELLE (config'deki percentile_threshold), SONRA 40 oyuncudan
   F1-maksimize ederek optimize. Bkz. engine.optimize_thresholds().
+- primary_arch seçimi İKİ AYRI EŞİK KATMANI kullanır (score_compat.py _pick_arch,
+  bilinçli tasarım, 2026-07 denetiminde belgelendi): (a) signatures.py'deki
+  percentile_threshold = "bu noun AKTİF mi?" (noun'a göre değişir, Creator kadar
+  düşük 0.575 olabilir), (b) score_compat.py'deki MIN_PRIMARY=0.88 = "bu noun
+  PRIMARY (afiş) arketip olabilir mi?" — daha sert ortak taban, düşük öğrenilmiş
+  threshold'ların spurious primary_arch seçimini engeller. İkisi ÇAKIŞMAZ,
+  MIN_PRIMARY her zaman noun'un kendi threshold'unun üstüne bir taban koyar
+  (`max(noun_thresholds[noun], MIN_PRIMARY)`). Ayrıca ECO_FALLBACK_MIN=0.90 ve
+  INITIATOR_BIAS_GUARD=0.52 aynı fonksiyonda, aynı gerekçeyle isimlendirilmiştir.
 - Metrikler HAM DEĞİL PERSANTİL tabanlı -> dönemler arası VE ligler arası taşınabilir.
 - Sözlük genişletme ÖNCE mevcut 40 doğrulandıktan SONRA yapılacak.
 - Tarihsel + non-NBA ligler: eksik (tracking/hustle) metrikler için FALLBACK imzalar kullan
@@ -54,6 +63,15 @@ Bu dosya GROUND TRUTH'tur. Yolu run_validation.py içinde TAGS_XLSX ile ayarla.
   MIN_LINEUP_MINUTES=100 (duo=250). src/affinity.py NBA-only, hâlâ "iskelet" — canlı
   duo/lineup-compat endpoint'leri (score_compat.py _duo_role_score/_lineup_role_score) FARKLI,
   kendi 5-pillar formülleriyle çalışıyor (bkz. dosya başındaki docstring, güncel tutulmalı).
+  2026-07: bu iki yol artık kısmen bağlı — src/affinity.py + run_affinity.py'nin ürettiği
+  ampirik arketip-arketip uyum matrisi (data/2025-26__affinity_matrix.parquet, gerçek NBA
+  lineup NET_RATING/win% verisinden) artık api/main.py üzerinden top_lineup_combos,
+  top_lineup_combos_positional, lineup_score_from_names, duo_compatibility çağrılarına
+  affinity_matrix= olarak açıkça geçiriliyor (bkz. api/main.py _load_affinity() +
+  _affinity_or_none()). ÖNEMLİ: bu SADECE 2025-26 NBA için geçerli — config/roles.py'deki
+  elle-yazılmış AFFINITY_MATRIX öncülü SABİT kalır ve tarihsel/G-League/NCAA/EuroLeague
+  yollarının hepsi hâlâ ona düşer (sezona özel ampirik veriyi global varsayılana
+  sessizce bulaştırmamak bilinçli bir karar — bkz. config/roles.py modül docstring'i).
 - Prospect derecelendirme (src/prospect.py): floor = OBPM+PTS persantili × SOS persantili
   (overall_pct'ten DAHA yordayıcı bulundu, Spearman 0.14→0.20), ceiling = yaş-projeksiyonlu,
   grade = floor/ceiling harmanı × yaş cezası. EuroLeague'de max_age=20 (U21) kapısı var,
@@ -99,7 +117,9 @@ cd frontend && npm run dev        # frontend
 - config/signatures.py : modern imzalar (COMPONENT_SIGNATURES) + fallback (FALLBACK_SIGNATURES)
                          + NOUN_POSITION_MASK (canlı skorlama pozisyon kısıtı) + MODERN_ONLY_METRICS
                          + eski NBA_POSITION_MAP (yalnızca tarihsel boolean yol)
-- config/roles.py      : AFFINITY_MATRIX (arketip-arketip uyum önseli, lineup verisiyle güncellenir)
+- config/roles.py      : AFFINITY_MATRIX (elle-yazılmış arketip-arketip uyum önseli, SABİT —
+                         global olarak lineup verisiyle güncellenmez; ampirik veri yalnızca
+                         call-site'ta 2025-26 NBA'e özel olarak geçirilir, bkz. yukarıdaki not)
 - src/fetch_data.py    : NBA nba_api çekme (player stats + hustle + tracking)
 - src/fetch_gleague.py : G-League nba_api çekme (Base+Adv+Usage, pozisyon inferansı dahil)
 - src/fetch_ncaa.py    : NCAA Torvik çekme (SOS/CONF_ADJEM, pozisyon rol-eşleme dahil)
@@ -115,6 +135,9 @@ cd frontend && npm run dev        # frontend
 - src/run_validation.py: NBA ground-truth çalıştırıcı (gerçek veri, Top 41 xlsx)
 - src/affinity.py      : lineup/duo uyumu (NBA-only, gerçek lineup verisinden — iskelet)
 - src/mock_test.py     : internetsiz pipeline doğrulama (sentetik veri)
+- src/scratch/         : tek-seferlik debug/analiz scriptleri (canlı yoldan hiçbiri import
+                         edilmiyor) — 2026-07'de src/ kökünden buraya taşındı, prod koddan
+                         ayırt edilebilsin diye. Elle çalıştırılabilir, hâlâ ROOT'u doğru bulur.
 - api/main.py          : FastAPI — /api/players, /api/gleague|ncaa|euroleague/players(+/scores,
                          +/seasons), /api/historical/*, /api/lineup-compat, /api/affinity, vb.
 - frontend/            : React/Vite — Players/GLeague/NCAAPage/EuroLeaguePage/Compare/Explore/

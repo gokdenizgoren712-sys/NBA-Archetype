@@ -422,7 +422,11 @@ def _load_scores() -> pd.DataFrame:
     df["POS5"]           = _assign_pos5(df)
     df["POS5_SECONDARY"] = _assign_secondary_pos(df, df["POS5"])
     df["POS5_TERTIARY"]  = _assign_tertiary_pos(df["POS5"], df["POS5_SECONDARY"])
-    # Eksik stat'ları Base parquet'ten tamamla (FG3_PCT, FGA, vb.)
+    # Eksik stat'ları Base parquet'ten tamamla — bu dosya .gitignore allowlist'inde
+    # DEĞİL, yani deploy'da hiç yok (bkz. scripts/check_data_allowlist.py çıktısı).
+    # FGA artık build_score_table() çıktısına doğrudan kopyalanıyor (score_compat.py),
+    # bu yüzden bu blok prod'da artık no-op — sadece yerel/eski parquet'lerde
+    # eksik bir kolon varsa diye güvenlik ağı olarak bırakıldı.
     base_p = DATA / "2025-26__player_Base.parquet"
     if base_p.exists():
         try:
@@ -488,6 +492,7 @@ def _prospect_dict(row) -> Optional[dict]:
     except Exception as e:
         print(f"[UYARI] comparables: {e}", flush=True)
 
+    from prospect import FLOOR_VALIDATED, CEILING_VALIDATED, GRADE_VALIDATED
     return {
         "grade":      _num("prospect_grade"),
         "tier":       row.get("prospect_tier", ""),
@@ -496,6 +501,11 @@ def _prospect_dict(row) -> Optional[dict]:
         "strengths":  _lst("strengths"),
         "weaknesses": _lst("weaknesses"),
         "comparables": comps,
+        # floor gerçek NBA backtest'ine karşı doğrulandı (Spearman 0.14→0.20);
+        # ceiling/grade sabitleri hâlâ varsayılan — bkz. prospect.py modül docstring'i.
+        "floor_validated":   FLOOR_VALIDATED,
+        "ceiling_validated": CEILING_VALIDATED,
+        "grade_validated":   GRADE_VALIDATED,
     }
 
 
@@ -637,9 +647,7 @@ def _load_duo_compat() -> pd.DataFrame:
     # Yoksa hesapla ve kaydet (yalnızca ilk seferde, ~30sn)
     scores = _load_scores()
     from score_compat import duo_compatibility
-    aff_p = DATA / "2025-26__affinity_matrix.parquet"
-    aff = pd.read_parquet(aff_p) if aff_p.exists() else None
-    df = duo_compatibility(scores, affinity_matrix=aff, min_games=20)
+    df = duo_compatibility(scores, affinity_matrix=_affinity_or_none(), min_games=20)
     df.to_parquet(p)
     return df
 
@@ -648,7 +656,8 @@ def _load_duo_compat() -> pd.DataFrame:
 def _load_lineup_compat() -> pd.DataFrame:
     scores = _load_scores()
     from score_compat import top_lineup_combos
-    return top_lineup_combos(scores, top_n=3000, min_gp=35, min_mpg=22.0, pool_size=40)
+    return top_lineup_combos(scores, top_n=3000, min_gp=35, min_mpg=22.0, pool_size=40,
+                             affinity_matrix=_affinity_or_none())
 
 
 @lru_cache(maxsize=1)
@@ -656,13 +665,31 @@ def _load_lineup_compat_positional() -> pd.DataFrame:
     scores = _load_scores()
     from score_compat import top_lineup_combos_positional
     # top_n=50: greedy inline tüm 248K üzerinde çalışıyor, 50 unique lineup döner
-    return top_lineup_combos_positional(scores, top_n=50, min_gp=35, min_mpg=22.0, pool_per_pos=12)
+    return top_lineup_combos_positional(scores, top_n=50, min_gp=35, min_mpg=22.0, pool_per_pos=12,
+                                        affinity_matrix=_affinity_or_none())
 
 
 @lru_cache(maxsize=1)
 def _load_affinity() -> pd.DataFrame:
+    """Gerçek NBA lineup NET_RATING/win% verisinden hesaplanmış ampirik arketip-
+    arketip uyum matrisi (bkz. src/affinity.py + run_affinity.py).
+    ÖNEMLİ — SADECE 2025-26 NBA sezonu için geçerli: bu, o sezonun gerçek
+    lineup verisinden türetildi. _load_scores() (= 2025-26 NBA) üzerinde
+    çalışan lineup/duo fonksiyonlarına (duo_compatibility, top_lineup_combos,
+    top_lineup_combos_positional, lineup_score_from_names) affinity_matrix=
+    olarak geçirilebilir. Tarihsel sezonlar / G-League / NCAA / EuroLeague için
+    böyle bir dosya yok — o yollar her zaman roles.AFFINITY_MATRIX (elle
+    yazılmış öncül) varsayılanına düşer; bu fonksiyonun sonucu kör kopyalanıp
+    başka bir sezon/lig skorlamasına geçirilmemeli."""
     p = DATA / "2025-26__affinity_matrix.parquet"
     return pd.read_parquet(p) if p.exists() else pd.DataFrame()
+
+
+def _affinity_or_none() -> pd.DataFrame | None:
+    """_load_affinity() sonucunu, boşsa None'a çevirerek döner (affinity_matrix=
+    call-site'larında tek satırlık kullanım için)."""
+    aff = _load_affinity()
+    return aff if not aff.empty else None
 
 
 _HIST_STAT_COLS = ["STL", "BLK", "FGA", "FG_PCT", "FG3A", "FG3_PCT", "TEAM_ABBREVIATION"]
@@ -1063,12 +1090,13 @@ def _load_real_lineups() -> pd.DataFrame:
         return abbr
 
     from score_compat import lineup_score_from_names
+    aff = _affinity_or_none()
     fit_scores = []
     for _, row in lineups.iterrows():
         raw = [n.strip() for n in row["GROUP_NAME"].split(" - ")]
         names = [expand(n) for n in raw]
         try:
-            res = lineup_score_from_names(names, scores)
+            res = lineup_score_from_names(names, scores, affinity_matrix=aff)
             fit_scores.append(res.get("lineup_score") or res.get("total_fit"))
         except Exception:
             fit_scores.append(None)
@@ -1136,7 +1164,7 @@ def custom_lineup_compat(body: dict):
         raise HTTPException(400, "En az 2 oyuncu gerekli")
     from score_compat import lineup_score_from_names
     scores = _load_scores()
-    result = lineup_score_from_names(names, scores)
+    result = lineup_score_from_names(names, scores, affinity_matrix=_affinity_or_none())
     if not result:
         raise HTTPException(404, "Players not found — check the name list")
 
@@ -2450,6 +2478,52 @@ try:
           flush=True)
 except Exception as _e:
     print(f"[startup] DB_PATH diag failed: {_e}", flush=True)
+
+# Teşhis: canlı skorlama yollarının (_load_scores, _load_affinity, lineup/duo/
+# prospect/comparables endpoint'leri) okuduğu kritik data/*.parquet dosyaları
+# gerçekten var mı + kaç satır? Deploy'da eksik bir dosya artık sessizce None/
+# boş DataFrame dönmek yerine startup logunda görünür oluyor (bkz. FG3_PCT
+# bug'ı — data/2025-26__player_Base.parquet .gitignore allowlist'inde yoktu,
+# Railway'de hiç yoktu, hata da vermiyordu).
+_CRITICAL_DATA_FILES = [
+    "2025-26__player_scores.parquet",
+    "historical__labeled.parquet",
+    "2025-26__lineups_5man.parquet",
+    "2025-26__lineups_2man.parquet",
+    "2025-26__playoff_lineups_5man.parquet",
+    "2025-26__playoff_lineups_2man.parquet",
+    "2025-26__duo_compat.parquet",
+    "2025-26__affinity_matrix.parquet",
+    "2025-26__affinity_matrix_flex.parquet",
+    "2025-26__versatility.parquet",
+    "2025-26__team_standings.parquet",
+    "2025-26__merged_bref.parquet",
+    "2025-26__labeled.parquet",
+    "position_lookup.parquet",
+    "gleague__2025-26__player_scores.parquet",
+    "euroleague__2025-26__player_scores.parquet",
+    "ncaa__2025-26__player_scores.parquet",
+]
+_missing = []
+for _fname in _CRITICAL_DATA_FILES:
+    _fp = DATA / _fname
+    if not _fp.exists():
+        _missing.append(_fname)
+        print(f"[startup] EKSİK kritik data dosyası: {_fname}", flush=True)
+    else:
+        try:
+            # metadata.num_rows: satır grubu verisini hiç açmadan satır sayısını
+            # okur (pd.read_parquet(..., columns=[]) YANLIŞ sonuç veriyor — 0
+            # kolonla okunduğunda pandas satır sayısını da 0'a düşürüyor).
+            import pyarrow.parquet as _pq
+            _nrows = _pq.ParquetFile(_fp).metadata.num_rows
+        except Exception:
+            _nrows = "?"
+        print(f"[startup] data ok: {_fname}  rows={_nrows}", flush=True)
+if _missing:
+    print(f"[startup] UYARI: {len(_missing)} kritik data dosyası eksik — "
+          f".gitignore allowlist'ini ve deploy image'ını kontrol et: {_missing}",
+          flush=True)
 
 # ── Pydantic modelleri ────────────────────────────────────────────────────────
 

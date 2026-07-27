@@ -24,6 +24,14 @@ import pandas as pd
 CORE_NOUNS = ["Engine", "Ecosystem", "Hub", "Connector", "Creator", "Anchor",
               "Spacer", "Finisher", "Force", "Initiator", "Stopper", "Rim Runner"]
 
+# API/frontend'e "hangi kısım kanıtlanmış" bilgisini taşımak için — yukarıdaki
+# "Kalibrasyon durumu" notunun makine-okunabilir hali. floor tek başına gerçek
+# backtest'e karşı doğrulandı; ceiling ve grade (floor+ceiling harmanı) hâlâ
+# ceiling'e bağlı olduğu için doğrulanmamış sayılır.
+FLOOR_VALIDATED   = True
+CEILING_VALIDATED = False
+GRADE_VALIDATED   = False
+
 # ── Kalibre edilmiş sabitler (P5 backtest cetveli: 5 sınıf → gerçek NBA peak BPM) ──
 # Üretim sinyali = OBPM+PTS persantili (overall_pct breadth'inden İYİ: Spearman
 # 0.14→0.20). SOS persantili + üretim harmanı → 0.26 (mevcut 0.19'dan ~%37 güçlü).

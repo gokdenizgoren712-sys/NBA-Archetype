@@ -1,6 +1,6 @@
 import pandas as pd, sys, json
 from pathlib import Path
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "config"))
 from engine import predict_components, select_signatures

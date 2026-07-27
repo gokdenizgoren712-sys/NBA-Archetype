@@ -140,6 +140,12 @@ function EuroDetailPanel({ selected, detail, tab, setTab }) {
                   <div className="text-[9px] mt-1" style={{ color: "var(--text-faint)" }}>
                     Production vs. EuroLeague pro pool → age-projected ceiling
                   </div>
+                  {detail.prospect.ceiling_validated === false && (
+                    <div className="text-[9px] mt-1" style={{ color: "#FFB11B" }}
+                      title="Floor is backtest-validated against real NBA outcomes. Ceiling and grade use unvalidated model defaults.">
+                      ⚠ Floor is validated · ceiling/grade are model estimates, not yet backtested
+                    </div>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">

@@ -55,6 +55,28 @@ W5_DEPTH    = 0.25
 
 DEPTH_THRESHOLD = 0.75   # bu skoru geçen bileşen "güçlü kapsandı" sayılır
 
+# ─── primary_arch seçim eşikleri (_pick_arch) ────────────────────────────────
+# BİLİNÇLİ TASARIM — iki ayrı eşik katmanı var, birbirini geçersiz kılmaz:
+#   1) signatures.py'deki percentile_threshold: "bu noun oyuncuda AKTİF mi?"
+#      (component-positive eşiği; F1-optimize edilmiş veya elle, noun'a göre
+#      değişir — Creator kadar düşük 0.575 olabilir.)
+#   2) MIN_PRIMARY (aşağıda): "bu noun oyuncunun PRIMARY (afiş) arketipi
+#      olabilir mi?" — daha sert bir taban. Bazı noun'ların öğrenilmiş
+#      threshold'u çok düşük kalabiliyor (spurious/gürültülü eşleşmeleri
+#      primary_arch'a taşımasın diye tüm noun'lar için ortak bir zemin var.
+#      CLAUDE.md "ONAYLANMIŞ TASARIM KARARLARI" bölümünde de belgelenmiştir —
+#      bunu "tutarsızlık" sanıp kaldırmadan önce oraya bak.
+MIN_PRIMARY = 0.88
+# Ecosystem fallback yolu (Geçiş 2, threshold hiç geçilemediğinde): Ecosystem
+# çok kolay yüksek argmax alabildiği için (gravity+usage geniş bant) burada
+# ayrı, daha sert bir taban var — aksi halde spurious "Ecosystem" etiketi
+# yaygınlaşırdı.
+ECO_FALLBACK_MIN = 0.90
+# Initiator-bias koruması: hız/mesafe metrikleri (AVG_SPEED, DIST_MILES) çok
+# yaygın dağıldığı için Initiator sahte-yüksek argmax alabiliyor. Başka bir
+# noun bu eşiği geçtiyse Initiator primary_arch olamaz.
+INITIATOR_BIAS_GUARD = 0.52
+
 
 # ─── 1. Oyuncu skor vektörleri ────────────────────────────────────────────────
 
@@ -133,7 +155,7 @@ def build_score_table(season: str = "2025-26", league: str = "nba") -> pd.DataFr
         out["GP"]  = df["GP"].values
     if "MIN" in df.columns:
         out["MIN"] = df["MIN"].values
-    for col in ["PTS","REB","AST","STL","BLK","FGM","FG_PCT","TS_PCT","FG3M","FG3A","FG3_PCT","FTA","PLAYER_HEIGHT_INCHES"]:
+    for col in ["PTS","REB","AST","STL","BLK","FGM","FGA","FG_PCT","TS_PCT","FG3M","FG3A","FG3_PCT","FTA","PLAYER_HEIGHT_INCHES"]:
         if col in df.columns:
             out[col] = df[col].values
     # OBPM/DBPM: merged_bref'ten geliyorsa player_scores'a taşı
@@ -183,20 +205,19 @@ def build_score_table(season: str = "2025-26", league: str = "nba") -> pd.DataFr
                 (float(row.get(c, 0) or 0) for c in _non_initiator_cols), default=0.0
             )
             # Geçiş 1: threshold'u geçen ilk noun (skor zaten pozisyon penalty'si içeriyor).
-            # MIN_PRIMARY=0.70: öğrenilmiş düşük threshold'lar (Creator=0.575 gibi) spurious seçimi engeller.
-            MIN_PRIMARY = 0.88
+            # MIN_PRIMARY: öğrenilmiş düşük threshold'lar (Creator=0.575 gibi) spurious
+            # seçimi engeller (bkz. modül başındaki MIN_PRIMARY yorumu — bilinçli tasarım).
             for noun, score in ranked:
                 thr = max(noun_thresholds.get(noun, 0.0), MIN_PRIMARY)
                 if score >= thr:
-                    if noun == "Initiator" and other_max >= 0.52:
+                    if noun == "Initiator" and other_max >= INITIATOR_BIAS_GUARD:
                         continue
                     return noun
             # Geçiş 2 (fallback): threshold yok, en yüksek skorda noun
-            ECO_FALLBACK_MIN = 0.90
             for noun, score in ranked:
                 if noun == "Ecosystem" and score < ECO_FALLBACK_MIN:
                     continue
-                if noun == "Initiator" and other_max >= 0.52:
+                if noun == "Initiator" and other_max >= INITIATOR_BIAS_GUARD:
                     continue
                 return noun
             return ranked[0][0] if ranked else ""
@@ -599,8 +620,12 @@ def _fuzzy_match(name: str, all_names: list[str]) -> str | None:
 
 
 def lineup_score_from_names(names: list[str],
-                            score_table: pd.DataFrame) -> dict:
-    """5 oyuncu adından oluşan listeyi alır, uyum metriklerini döner."""
+                            score_table: pd.DataFrame,
+                            affinity_matrix=None) -> dict:
+    """5 oyuncu adından oluşan listeyi alır, uyum metriklerini döner.
+    affinity_matrix: verilirse elle-yazılmış roles.AFFINITY_MATRIX öncülü yerine
+    kullanılır — SADECE score_table'ın kapsadığı sezon/lig için hesaplanmış
+    ampirik matris geçirilmeli (bkz. api/main.py _load_affinity() docstring'i)."""
     name_idx  = {r["PLAYER_NAME"]: i for i, r in score_table.iterrows()}
     all_names = list(name_idx.keys())
     matched: dict[str, str] = {}   # girilen isim → eşleşen isim
@@ -615,7 +640,7 @@ def lineup_score_from_names(names: list[str],
     if len(found) < 2:
         return {}
 
-    result = _lineup_role_score(found)
+    result = _lineup_role_score(found, affinity_matrix)
     result["n_players_found"] = len(found)
     result["depth"] = result["balance"]
     result["comp_detail"] = result["role_breakdown"]
@@ -631,9 +656,13 @@ def top_lineup_combos(score_table: pd.DataFrame,
                       top_n: int = 200,
                       min_gp: int = 35,
                       min_mpg: float = 22.0,
-                      pool_size: int = 40) -> pd.DataFrame:
+                      pool_size: int = 40,
+                      affinity_matrix=None) -> pd.DataFrame:
     """
     Skor tablosundan en uyumlu teorik 5'li kombinasyonları hesaplar.
+    affinity_matrix: verilirse elle-yazılmış roles.AFFINITY_MATRIX öncülü yerine
+    kullanılır — SADECE score_table'ın kapsadığı sezon/lig için hesaplanmış
+    ampirik matris geçirilmeli.
     pool_size=40 -> 658K kombinasyon, saniyeler içinde biter.
     min_mpg: sadece gerçek starter/key-bench oyuncuları dahil et.
     """
@@ -703,10 +732,11 @@ def top_lineup_combos(score_table: pd.DataFrame,
     spacing_bonus = np.maximum(0.0, spacing - 0.60) * 0.25
     synergy_bonus = np.minimum(0.05, creation * spacing_bonus)
 
-    # Affinity — vektörize
-    from roles import AFFINITY_MATRIX
-    _NOUNS = list(AFFINITY_MATRIX.index)
-    _aff_mat = AFFINITY_MATRIX.values.astype(np.float32)
+    # Affinity — vektörize (affinity_matrix verilmezse elle-yazılmış öncüle düş)
+    from roles import AFFINITY_MATRIX as _DEFAULT_AFFINITY_MATRIX
+    _aff_src = affinity_matrix if affinity_matrix is not None else _DEFAULT_AFFINITY_MATRIX
+    _NOUNS = list(_aff_src.index)
+    _aff_mat = _aff_src.values.astype(np.float32)
     _noun_idx = {n: i for i, n in enumerate(_NOUNS)}
     _default_idx = len(_NOUNS)
     aff_ext = np.full((_default_idx + 1, _default_idx + 1), 0.65, dtype=np.float32)
@@ -732,7 +762,7 @@ def top_lineup_combos(score_table: pd.DataFrame,
     for i in top_idx:
         cidx = combo_indices[i]
         player_rows = [pool.iloc[k] for k in cidx]
-        pillar = _lineup_role_score(player_rows)
+        pillar = _lineup_role_score(player_rows, affinity_matrix)
         rows.append({
             "Oyuncu_1":    names[cidx[0]], "Oyuncu_2": names[cidx[1]],
             "Oyuncu_3":    names[cidx[2]], "Oyuncu_4": names[cidx[3]],
@@ -761,10 +791,14 @@ def top_lineup_combos_positional(score_table: pd.DataFrame,
                                   top_n: int = 200,
                                   min_gp: int = 35,
                                   min_mpg: float = 22.0,
-                                  pool_per_pos: int = 12) -> pd.DataFrame:
+                                  pool_per_pos: int = 12,
+                                  affinity_matrix=None) -> pd.DataFrame:
     """
     PG×SG×SF×PF×C kısıtıyla en uyumlu 5'lileri bulur.
     Her pozisyondan top-pool_per_pos oyuncu seçilir.
+    affinity_matrix: verilirse elle-yazılmış roles.AFFINITY_MATRIX öncülü yerine
+    kullanılır — SADECE score_table'ın kapsadığı sezon/lig için hesaplanmış
+    ampirik matris geçirilmeli.
     pool_per_pos=12 → en fazla 12^5 ≈ 248K kombinasyon.
     min_mpg: sadece gerçek starter/key-bench oyuncuları dahil et.
     """
@@ -873,9 +907,11 @@ def top_lineup_combos_positional(score_table: pd.DataFrame,
     synergy_bonus = np.minimum(0.05, creation * spacing_bonus)
 
     # Affinity — vektörize: her pozisyon havuzu için arketip index dizisi hazırla
-    from roles import AFFINITY_MATRIX
-    _NOUNS = list(AFFINITY_MATRIX.index)
-    _aff_mat = AFFINITY_MATRIX.values.astype(np.float32)
+    # (affinity_matrix verilmezse elle-yazılmış öncüle düş)
+    from roles import AFFINITY_MATRIX as _DEFAULT_AFFINITY_MATRIX
+    _aff_src = affinity_matrix if affinity_matrix is not None else _DEFAULT_AFFINITY_MATRIX
+    _NOUNS = list(_aff_src.index)
+    _aff_mat = _aff_src.values.astype(np.float32)
     _noun_idx = {n: i for i, n in enumerate(_NOUNS)}
     _default_idx = len(_NOUNS)  # bilinmeyen arketip için dummy
 
@@ -919,7 +955,7 @@ def top_lineup_combos_positional(score_table: pd.DataFrame,
             abp[pos_] = r_.get("primary_arch", "?")
             rows_for_pillar.append(r_)
         # Pillar detail: _lineup_role_score üzerinden tam hesapla (top-n satır için ok)
-        pillar = _lineup_role_score(rows_for_pillar)
+        pillar = _lineup_role_score(rows_for_pillar, affinity_matrix)
         scores_by_pos = {}
         for slot_, pos_ in enumerate(positions):
             r2_ = pools[pos_].iloc[slot_idx_[slot_]]

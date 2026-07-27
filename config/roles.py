@@ -6,7 +6,13 @@ Fonksiyonel rol tanımları ve arketip uyum prior matrisi.
   4 modifier — modifier etiketlerinden dedicated slot
 
 Affinity prior: basketbol bilgisine dayalı elle yazılmış 12×12 matris.
-Gerçek NBA lineup verisi çekildikçe update_affinity() ile güncellenir.
+Bu matris SABİTTİR — sezona/lige özel gerçek lineup verisiyle global olarak
+GÜNCELLENMEZ (önceki update_affinity_from_lineups() EMA-harman fonksiyonu
+kaldırıldı: tek bir sezona ait ampirik veriyi tüm sezon/liglere sessizce
+bulaştırma riski taşıyordu). Ampirik veri kullanılmak istendiğinde, o veriyi
+üreten sezon/ligle eşleşen call-site'ta AFFINITY_MATRIX parametresi olarak
+AÇIKÇA geçirilir — bkz. api/main.py _load_affinity() (2025-26 NBA lineup
+verisinden hesaplanmış matris, sadece o sezonun skorlama yollarına geçiriliyor).
 """
 
 from __future__ import annotations
@@ -225,26 +231,6 @@ def _build_affinity_matrix() -> pd.DataFrame:
 
 
 AFFINITY_MATRIX: pd.DataFrame = _build_affinity_matrix()
-
-
-def update_affinity_from_lineups(lineups: pd.DataFrame,
-                                  player_arch: dict[str, str],
-                                  alpha: float = 0.3) -> pd.DataFrame:
-    """
-    Gerçek NBA lineup verisiyle prior matrisini günceller (EMA).
-    alpha: gerçek verinin ağırlığı (0.3 = prior ağır, 1.0 = sadece veri).
-    lineups: GROUP_NAME, MIN, NET_RATING sütunları gerekli.
-    """
-    from affinity import lineup_archetype_affinity
-    empirical = lineup_archetype_affinity(lineups, player_arch)
-    M = AFFINITY_MATRIX.copy()
-    for a in _NOUNS:
-        for b in _NOUNS:
-            if a in empirical.index and b in empirical.columns:
-                v = empirical.loc[a, b]
-                if not pd.isna(v):
-                    M.loc[a, b] = round((1 - alpha) * M.loc[a, b] + alpha * v, 3)
-    return M
 
 
 def get_affinity(arch1: str, arch2: str,

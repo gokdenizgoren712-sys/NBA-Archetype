@@ -15,7 +15,7 @@ import sys
 import json
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(ROOT))
 try:
     sys.stdout.reconfigure(encoding="utf-8")   # Windows cp1254 konsolunda ✓/unicode için

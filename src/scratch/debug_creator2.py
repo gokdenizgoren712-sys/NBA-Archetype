@@ -1,6 +1,6 @@
 import pandas as pd, sys
 from pathlib import Path
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(ROOT))
 
 df = pd.read_parquet(ROOT / "data" / "2025-26__player_scores.parquet")

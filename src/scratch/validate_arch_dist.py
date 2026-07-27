@@ -14,7 +14,7 @@ from pathlib import Path
 import pandas as pd
 import sys
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parent.parent.parent
 DATA = ROOT / "data"
 
 

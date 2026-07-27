@@ -13,7 +13,7 @@ import json
 import shutil
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parent.parent.parent
 try:
     sys.stdout.reconfigure(encoding="utf-8")
 except Exception:
