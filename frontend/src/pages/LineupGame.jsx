@@ -1292,10 +1292,10 @@ export default function LineupGame() {
 
       {/* === IDLE: kort ortada, bilgi panelleri iki yanda === */}
       {phase==="idle"&&(
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_640px_1fr] gap-4 justify-center max-w-[1400px] mx-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-[340px_640px_340px] gap-4 justify-center max-w-[1400px] mx-auto">
 
           {/* ── SOL: nasıl oynanır ── */}
-          <div className="order-2 lg:order-1 space-y-3 lg:max-w-[340px] lg:justify-self-end">
+          <div className="order-2 lg:order-1 space-y-3 min-w-0">
             <div className="bg-surfaceBg border border-gray-800 rounded-2xl p-4 space-y-3">
               <div className="font-logo text-[11px] uppercase tracking-widest text-gray-500">How it works</div>
               <div className="grid grid-cols-2 gap-2">
@@ -1350,16 +1350,16 @@ export default function LineupGame() {
           </div>
 
           {/* ── SAĞ: skor formülü + mekanikler ── */}
-          <div className="order-3 space-y-3 lg:max-w-[340px] lg:justify-self-start">
+          <div className="order-3 space-y-3 min-w-0">
             <div className="bg-surfaceBg border border-gray-800 rounded-2xl p-4 space-y-3">
               <div>
                 <div className="flex h-7 rounded-lg overflow-hidden text-[10.5px] font-bold">
-                  <div className="flex items-center justify-center" style={{width:"45%",background:"#1D428A"}}>QUALITY 45%</div>
-                  <div className="flex items-center justify-center" style={{width:"40%",background:"#274690"}}>COVERAGE 40%</div>
-                  <div className="flex items-center justify-center text-gray-300" style={{width:"15%",background:"#1a1a1a"}}>ROLE 15%</div>
+                  <div className="flex items-center justify-center min-w-0 overflow-hidden whitespace-nowrap" style={{width:"45%",background:"#1D428A"}}>QUALITY 45%</div>
+                  <div className="flex items-center justify-center min-w-0 overflow-hidden whitespace-nowrap" style={{width:"40%",background:"#274690"}}>COVERAGE 40%</div>
+                  <div className="flex items-center justify-center min-w-0 overflow-hidden whitespace-nowrap text-gray-300" style={{width:"15%",background:"#1a1a1a"}}>15%</div>
                 </div>
                 <p className="text-[11px] text-gray-500 mt-1.5">
-                  Quality = overall × era fit (distance + style) × position · Coverage = your archetypes covering Creation / Spacing / Defense / Finishing
+                  Quality = overall × era fit (distance + style) × position · Coverage = your archetypes covering Creation / Spacing / Defense / Finishing · Role = redundancy penalty
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-2">
