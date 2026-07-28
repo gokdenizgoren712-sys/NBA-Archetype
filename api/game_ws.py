@@ -16,6 +16,7 @@ main.py'deki oyun/skor fonksiyonlarına (döngüsel import'tan kaçınmak için)
 FONKSİYON İÇİNDE import edilir — main.py'nin geri kalanının zaten kullandığı
 örüntü (bkz. main.py'deki `from score_compat import ...` çağrıları).
 """
+import asyncio
 import json
 import random
 import string
@@ -174,6 +175,376 @@ def _fetch_usernames(user_ids: list[int]) -> dict[int, str]:
     return {r["id"]: r["username"] for r in rows}
 
 
+# ── Faz3-M2+: With a Friend oyun state makinesi ──────────────────────────────
+# "İnce sunucu, istemci deterministik hesaplar" mimarisi (bkz. dosya başı
+# docstring). Sunucu burada sadece: (a) rastgele spin/koç kararlarını çözüp
+# yayınlar, (b) sıra/havuz/joker durumunu yapısal doğrulayıp relay eder.
+# Fiyat/uygunluk/skor/simülasyon YENİDEN HESAPLANMIYOR — Same Screen'in aynı
+# saf JS fonksiyonları istemcide (senkronize ham veriden) çalışıyor.
+POSITIONS = ["PG", "SG", "SF", "PF", "C"]
+BENCH_SLOTS = ["B1", "B2", "B3", "B4"]
+ALL_SLOTS = POSITIONS + BENCH_SLOTS
+EMPTY_JOKERS = {
+    "reTeam": True, "reYear": True, "reBoth": True, "double": True,
+    "discover": True, "ban": True, "forceTeam": True, "forceYear": True,
+}
+
+ROOM_STATES: dict[str, dict] = {}
+ROOM_LOCKS: dict[str, asyncio.Lock] = {}
+
+
+def _lock_for(room_code: str) -> asyncio.Lock:
+    lock = ROOM_LOCKS.get(room_code)
+    if lock is None:
+        lock = ROOM_LOCKS[room_code] = asyncio.Lock()
+    return lock
+
+
+def _other_uid(uid: int, state: dict) -> int:
+    p1, p2 = state["player1_user_id"], state["player2_user_id"]
+    return p2 if uid == p1 else p1
+
+
+def _init_room_state(row, usernames: dict) -> dict:
+    p1, p2 = row["player1_user_id"], row["player2_user_id"]
+    return {
+        "wheel_mode": row["wheel_mode"],
+        "phase": "era",   # era|drafting|placing|review|coach1|coach2|series|complete
+        "usernames": usernames,
+        "player1_user_id": p1, "player2_user_id": p2,
+        "sim_era_id": None,
+        "round": 0,
+        "turn_queue": [p1, p2],
+        "turn_pos": 0,
+        "spin_seq": 0,     # istemci "yeni bir spin oldu" tespiti için — kozmetik animasyon tetikler
+        "chosen_season": None, "chosen_team": None,
+        "pool": [],
+        "picked_player": None,
+        "double_active": False, "discover_active": False,
+        "banned_player_id": None, "ban_voided": False, "ban_picking": False,
+        "counter_dismissed": False,
+        "lineups": {p1: {s: None for s in ALL_SLOTS}, p2: {s: None for s in ALL_SLOTS}},
+        "jokers": {p1: dict(EMPTY_JOKERS), p2: dict(EMPTY_JOKERS)},
+        "ready_for_coaches": {p1: False, p2: False},
+        "coach_seed": None,
+        "coaches": {p1: None, p2: None},
+        "series_games": [],
+        "series_wins": {p1: 0, p2: 0},
+    }
+
+
+def _taken_names(state: dict) -> set:
+    names = set()
+    for uid in (state["player1_user_id"], state["player2_user_id"]):
+        for p in state["lineups"][uid].values():
+            if p:
+                names.add(p.get("PLAYER_NAME"))
+    return names
+
+
+def _do_spin(state: dict, keep_season: bool, keep_team: bool) -> bool:
+    """Same Screen'in beginRound/spinForPick/respinWithin'inin sunucu eşdeğeri
+    — gerçek game_teams/game_players fonksiyonlarını (main.py, zaten REST
+    endpoint'lerinin arkasındaki fonksiyonlar) tekrar tekrar çağırır."""
+    from .main import game_seasons, game_teams, game_players
+    seasons = game_seasons().get("seasons", [])
+    if not seasons:
+        return False
+    for _ in range(8):
+        season = state["chosen_season"] if (keep_season and state["chosen_season"]) else random.choice(seasons)
+        teams = game_teams(season).get("teams", [])
+        if not teams:
+            continue
+        if keep_team and state["chosen_team"] in teams:
+            team = state["chosen_team"]
+        else:
+            team = random.choice(teams)
+        players = game_players(season, team).get("players", [])
+        taken = _taken_names(state)
+        pool = [p for p in players if p.get("PLAYER_NAME") not in taken]
+        if len(pool) >= 2:
+            state["chosen_season"] = season
+            state["chosen_team"] = team
+            state["pool"] = pool
+            state["spin_seq"] += 1
+            return True
+    return False
+
+
+def _begin_round(state: dict, round_num: int, participants: list, first: int):
+    other = _other_uid(first, state)
+    queue = [u for u in (first, other) if u in participants]
+    state["round"] = round_num
+    state["turn_queue"] = queue
+    state["turn_pos"] = 0
+    state["picked_player"] = None
+    state["double_active"] = False
+    state["discover_active"] = False
+    state["banned_player_id"] = None
+    state["ban_voided"] = False
+    state["ban_picking"] = False
+    state["counter_dismissed"] = False
+    state["phase"] = "drafting"
+    _do_spin(state, keep_season=False, keep_team=False)
+
+
+def _spin_for_pick(state: dict):
+    state["picked_player"] = None
+    state["double_active"] = False
+    state["discover_active"] = False
+    state["phase"] = "drafting"
+    _do_spin(state, keep_season=False, keep_team=False)
+
+
+def _pick_era(state: dict, uid: int, era_id: str) -> str | None:
+    if uid != state["player1_user_id"]:
+        return "Only the room creator picks the era"
+    if state["phase"] != "era":
+        return "Era already chosen"
+    if not era_id:
+        return "Missing era_id"
+    state["sim_era_id"] = era_id
+    _begin_round(state, 1, [state["player1_user_id"], state["player2_user_id"]], state["player1_user_id"])
+    return None
+
+
+def _pick_player(state: dict, uid: int, player: dict) -> str | None:
+    if state["phase"] != "drafting":
+        return "Not in drafting phase"
+    if not player:
+        return "Missing player"
+    if state["turn_queue"][state["turn_pos"]] != uid:
+        return "Not your turn"
+    name = player.get("PLAYER_NAME")
+    if state["banned_player_id"] == name and not state["ban_voided"]:
+        return "Player is banned"
+    if not any(p.get("PLAYER_NAME") == name for p in state["pool"]):
+        return "Player not in pool"
+    state["picked_player"] = player
+    state["discover_active"] = False
+    state["phase"] = "placing"
+    return None
+
+
+def _cancel_pick(state: dict, uid: int) -> str | None:
+    if state["turn_queue"][state["turn_pos"]] != uid:
+        return "Not your turn"
+    state["picked_player"] = None
+    state["phase"] = "drafting"
+    return None
+
+
+def _place_pos(state: dict, uid: int, pos: str, player: dict) -> str | None:
+    """Same Screen'in placePos'unun sunucu eşdeğeri. Fiyat/pozisyon puanlaması
+    YENİDEN HESAPLANMIYOR — istemci zaten hesaplayıp player objesine gömdü,
+    sunucu sadece yapısal doğrulama yapıp yazıyor."""
+    if state["phase"] != "placing":
+        return "Not in placing phase"
+    if state["turn_queue"][state["turn_pos"]] != uid:
+        return "Not your turn"
+    if not state["picked_player"] or not player or state["picked_player"].get("PLAYER_NAME") != player.get("PLAYER_NAME"):
+        return "No matching pending pick"
+    if pos not in ALL_SLOTS:
+        return "Invalid slot"
+    if state["lineups"][uid][pos] is not None:
+        return "Slot already filled"
+
+    state["lineups"][uid][pos] = player
+    state["picked_player"] = None
+    state["pool"] = [p for p in state["pool"] if p.get("PLAYER_NAME") != player.get("PLAYER_NAME")]
+
+    still_open = any(state["lineups"][uid][s] is None for s in ALL_SLOTS)
+    if state["double_active"] and still_open:
+        state["double_active"] = False
+        state["phase"] = "drafting"
+        return None
+    state["double_active"] = False
+
+    next_pos = state["turn_pos"] + 1
+    if next_pos < len(state["turn_queue"]):
+        state["turn_pos"] = next_pos
+        state["banned_player_id"] = None
+        state["ban_voided"] = False
+        state["counter_dismissed"] = False
+        if state["wheel_mode"] == "pick":
+            _spin_for_pick(state)
+        else:
+            state["phase"] = "drafting"
+        return None
+
+    p1, p2 = state["player1_user_id"], state["player2_user_id"]
+    participants = [u for u in (p1, p2) if any(state["lineups"][u][s] is None for s in ALL_SLOTS)]
+    if not participants:
+        state["phase"] = "review"
+        state["ready_for_coaches"] = {p1: False, p2: False}
+        return None
+    first_next = _other_uid(state["turn_queue"][0], state)
+    _begin_round(state, state["round"] + 1, participants, first_next)
+    return None
+
+
+def _rearrange_slot(state: dict, uid: int, slot_a: str, slot_b: str) -> str | None:
+    if state["phase"] in ("era", "series", "complete"):
+        return "Cannot rearrange now"
+    if slot_a not in ALL_SLOTS or slot_b not in ALL_SLOTS:
+        return "Invalid slot"
+    lu = state["lineups"][uid]
+    lu[slot_a], lu[slot_b] = lu[slot_b], lu[slot_a]
+    return None
+
+
+def _use_joker(state: dict, uid: int, jtype: str) -> str | None:
+    if state["phase"] != "drafting":
+        return "Not in drafting phase"
+    if state["turn_queue"][state["turn_pos"]] != uid:
+        return "Not your turn"
+    if jtype not in ("reTeam", "reYear", "reBoth", "double", "discover"):
+        return "Invalid joker"
+    if not state["jokers"][uid].get(jtype):
+        return "Joker already used"
+    if state["banned_player_id"] and not state["ban_voided"]:
+        state["ban_voided"] = True
+    state["jokers"][uid][jtype] = False
+    if jtype == "reTeam":
+        _do_spin(state, keep_season=True, keep_team=False)
+    elif jtype == "reYear":
+        _do_spin(state, keep_season=False, keep_team=True)
+    elif jtype == "reBoth":
+        _do_spin(state, keep_season=False, keep_team=False)
+    elif jtype == "double":
+        state["double_active"] = True
+    elif jtype == "discover":
+        state["discover_active"] = True
+    return None
+
+
+def _use_counter_joker(state: dict, uid: int, ctype: str) -> str | None:
+    if state["phase"] not in ("drafting", "placing"):
+        return "Not a draftable phase"
+    active_uid = state["turn_queue"][state["turn_pos"]]
+    waiting_uid = _other_uid(active_uid, state)
+    if uid != waiting_uid:
+        return "Not your counter"
+    if state["counter_dismissed"]:
+        return "Already acted this turn"
+    if ctype not in ("ban", "forceTeam", "forceYear"):
+        return "Invalid counter joker"
+    if not state["jokers"][uid].get(ctype):
+        return "Counter joker already used"
+    state["jokers"][uid][ctype] = False
+    state["counter_dismissed"] = True
+    if ctype == "ban":
+        state["ban_picking"] = True
+        return None
+    state["banned_player_id"] = None
+    state["ban_voided"] = False
+    if ctype == "forceTeam":
+        _do_spin(state, keep_season=True, keep_team=False)
+    elif ctype == "forceYear":
+        _do_spin(state, keep_season=False, keep_team=True)
+    return None
+
+
+def _confirm_ban(state: dict, uid: int, player_name: str) -> str | None:
+    active_uid = state["turn_queue"][state["turn_pos"]]
+    waiting_uid = _other_uid(active_uid, state)
+    if uid != waiting_uid or not state["ban_picking"]:
+        return "Not your ban to confirm"
+    if not player_name:
+        return "Missing player_name"
+    state["banned_player_id"] = player_name
+    state["ban_picking"] = False
+    return None
+
+
+def _dismiss_counter(state: dict, uid: int) -> str | None:
+    active_uid = state["turn_queue"][state["turn_pos"]]
+    waiting_uid = _other_uid(active_uid, state)
+    if uid != waiting_uid:
+        return "Not your turn to dismiss"
+    state["counter_dismissed"] = True
+    return None
+
+
+def _ready_for_coaches(state: dict, uid: int) -> str | None:
+    if state["phase"] != "review":
+        return "Not in review phase"
+    state["ready_for_coaches"][uid] = True
+    if all(state["ready_for_coaches"].values()):
+        state["coach_seed"] = random.randint(0, 2**31 - 1)
+        state["phase"] = "coach1"
+    return None
+
+
+def _pick_coach(state: dict, uid: int, coach_name: str) -> str | None:
+    p1, p2 = state["player1_user_id"], state["player2_user_id"]
+    if not coach_name:
+        return "Missing coach_name"
+    if state["phase"] == "coach1" and uid == p1:
+        state["coaches"][p1] = coach_name
+        state["coach_seed"] = random.randint(0, 2**31 - 1)
+        state["phase"] = "coach2"
+        return None
+    if state["phase"] == "coach2" and uid == p2:
+        state["coaches"][p2] = coach_name
+        state["phase"] = "series"
+        state["series_games"] = []
+        state["series_wins"] = {p1: 0, p2: 0}
+        return None
+    return "Not your coach pick"
+
+
+def _advance_series(state: dict, uid: int, game: dict) -> str | None:
+    """Rakip cihazın bilgisayarına GÜVENMİYORUZ diye değil (aksine — mimari
+    kararı buydu, bkz. dosya başı docstring), ama en az bir yapısal kontrol:
+    seri zaten bitmişse yeni maç kabul etme."""
+    if state["phase"] != "series":
+        return "Not in series phase"
+    if not game or "winner_user_id" not in game:
+        return "Malformed game result"
+    if state["series_wins"] and max(state["series_wins"].values()) >= 4:
+        return "Series already over"
+    state["series_games"].insert(0, game)
+    winner = game.get("winner_user_id")
+    if winner in state["series_wins"]:
+        state["series_wins"][winner] += 1
+    if state["series_wins"] and max(state["series_wins"].values()) >= 4:
+        state["phase"] = "complete"
+    return None
+
+
+HANDLERS = {
+    "pick_era":          lambda s, uid, m: _pick_era(s, uid, m.get("era_id")),
+    "pick_player":       lambda s, uid, m: _pick_player(s, uid, m.get("player")),
+    "cancel_pick":       lambda s, uid, m: _cancel_pick(s, uid),
+    "place_pos":         lambda s, uid, m: _place_pos(s, uid, m.get("pos"), m.get("player")),
+    "use_joker":         lambda s, uid, m: _use_joker(s, uid, m.get("joker")),
+    "use_counter_joker": lambda s, uid, m: _use_counter_joker(s, uid, m.get("joker")),
+    "confirm_ban":       lambda s, uid, m: _confirm_ban(s, uid, m.get("player_name")),
+    "dismiss_counter":   lambda s, uid, m: _dismiss_counter(s, uid),
+    "rearrange_slot":    lambda s, uid, m: _rearrange_slot(s, uid, m.get("slot_a"), m.get("slot_b")),
+    "ready_for_coaches": lambda s, uid, m: _ready_for_coaches(s, uid),
+    "pick_coach":        lambda s, uid, m: _pick_coach(s, uid, m.get("coach_name")),
+    "advance_series":    lambda s, uid, m: _advance_series(s, uid, m.get("game")),
+}
+
+
+def _envelope(room_code: str, state: dict) -> dict:
+    return {
+        "type": "state",
+        "room": {
+            "room_code": room_code,
+            "wheel_mode": state["wheel_mode"],
+            "status": "drafting",
+            "player1_user_id": state["player1_user_id"],
+            "player2_user_id": state["player2_user_id"],
+        },
+        "usernames": state["usernames"],
+        "connected_user_ids": manager.connected_user_ids(room_code),
+        "game": state,
+    }
+
+
 class CreateRoomBody(BaseModel):
     mode: str = "friend"          # 'friend' | 'online' — Faz 4'te matchmaking 'online' ile oda açacak
     wheel_mode: str = "round"     # 'round' | 'pick' — Same Screen'deki çark alt-modunun aynısı
@@ -277,23 +648,30 @@ async def room_socket(ws: WebSocket, room_code: str, token: str = Query(...)):
             row = conn.execute(
                 "SELECT * FROM game_rooms WHERE room_code = ?", (room_code,)
             ).fetchone()
-            picks = conn.execute(
-                "SELECT * FROM game_room_picks WHERE room_id = ? ORDER BY pick_number",
-                (row["id"],),
-            ).fetchall()
 
-        pool = json.loads(row["pool_json"]) if row["pool_json"] else []
-        await ws.send_json({
-            "type": "state",
-            "room": _room_to_dict(row),
-            "usernames": _fetch_usernames([row["player1_user_id"], row["player2_user_id"]]),
-            "pool": pool,
-            "picks": [dict(p) for p in picks],
-            "connected_user_ids": manager.connected_user_ids(room_code),
-        })
-        if row["player2_user_id"]:
-            await manager.broadcast(room_code, {"type": "opponent_joined", "user_id": user_id},
-                                     exclude=user_id)
+        if room_code not in ROOM_STATES and row["player2_user_id"]:
+            usernames = _fetch_usernames([row["player1_user_id"], row["player2_user_id"]])
+            ROOM_STATES[room_code] = _init_room_state(row, usernames)
+
+        state = ROOM_STATES.get(room_code)
+        if state:
+            # Kendine gönder + KARŞI tarafa da tam state broadcast et — oda
+            # state'i az önce ilk kez kurulmuş olabilir, karşı taraf henüz
+            # hiç görmemiş olabilir (sadece "opponent_joined" yetmez).
+            await ws.send_json(_envelope(room_code, state))
+            if row["player2_user_id"]:
+                await manager.broadcast(room_code, _envelope(room_code, state), exclude=user_id)
+        else:
+            await ws.send_json({
+                "type": "state",
+                "room": _room_to_dict(row),
+                "usernames": _fetch_usernames([row["player1_user_id"], row["player2_user_id"]]),
+                "connected_user_ids": manager.connected_user_ids(room_code),
+                "game": None,
+            })
+            if row["player2_user_id"]:
+                await manager.broadcast(room_code, {"type": "opponent_joined", "user_id": user_id},
+                                         exclude=user_id)
 
         while True:
             raw = await ws.receive_text()
@@ -301,9 +679,23 @@ async def room_socket(ws: WebSocket, room_code: str, token: str = Query(...)):
                 msg = json.loads(raw)
             except ValueError:
                 continue
-            # Faz 3: pick mesaj tipi burada işlenecek (sıra/havuz/slot doğrulaması).
-            if msg.get("type") == "ping":
+            mtype = msg.get("type")
+            if mtype == "ping":
                 await ws.send_json({"type": "pong"})
+                continue
+            handler = HANDLERS.get(mtype)
+            if not handler:
+                continue
+            async with _lock_for(room_code):
+                state = ROOM_STATES.get(room_code)
+                if not state:
+                    await ws.send_json({"type": "error", "message": "Room not ready — waiting for both players"})
+                    continue
+                err = handler(state, user_id, msg)
+                if err:
+                    await ws.send_json({"type": "error", "message": err})
+                    continue
+                await manager.broadcast(room_code, _envelope(room_code, state))
     except WebSocketDisconnect:
         pass
     finally:
