@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { SEO } from "../hooks/useSEO";
 import { PlayIcon, UsersIcon, GlobeIcon, ScreenIcon } from "../game/GameIcons";
+import HowToPlayModal from "../game/HowToPlayModal";
 
 const MODES = [
   {
@@ -39,6 +41,7 @@ const MODES = [
 
 export default function GameModeSelect() {
   const navigate = useNavigate();
+  const [howToPlayOpen, setHowToPlayOpen] = useState(false);
 
   return (
     <div className="h-full overflow-y-auto">
@@ -81,7 +84,16 @@ export default function GameModeSelect() {
             </button>
           ))}
         </div>
+
+        <div className="mt-6">
+          <button onClick={() => setHowToPlayOpen(true)}
+            className="text-xs text-gray-500 hover:text-yamabuki underline underline-offset-2 transition-colors">
+            How to Play
+          </button>
+        </div>
       </div>
+
+      <HowToPlayModal open={howToPlayOpen} onClose={() => setHowToPlayOpen(false)} />
     </div>
   );
 }
