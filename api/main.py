@@ -3,13 +3,14 @@ NBA Arketip API — FastAPI backend
 Parquet dosyalarını okuyup JSON olarak sunar.
 """
 
-import sys, json, os, time, logging, secrets, smtplib, unicodedata
+import sys, json, os, time, logging, secrets, unicodedata
 from pathlib import Path
 from functools import lru_cache
 from typing import Optional
-from email.mime.text import MIMEText
+from email.utils import parseaddr
 from datetime import datetime, timedelta
 
+import httpx
 import pandas as pd
 import numpy as np
 from fastapi import FastAPI, Query, HTTPException, Request, Depends
@@ -47,27 +48,33 @@ async def _json_500(request: Request, exc: Exception):
 IS_PROD   = (os.environ.get("RENDER") == "true"
              or os.environ.get("RAILWAY_ENVIRONMENT") is not None
              or os.environ.get("IS_PROD") == "true")
-SMTP_HOST        = os.environ.get("SMTP_HOST", "")
-SMTP_PORT        = int(os.environ.get("SMTP_PORT", "587"))
-SMTP_USER        = os.environ.get("SMTP_USER", "")
-SMTP_PASS        = os.environ.get("SMTP_PASS", "")
-SMTP_FROM        = os.environ.get("SMTP_FROM", SMTP_USER)
+SMTP_FROM        = os.environ.get("SMTP_FROM", "")
+BREVO_API_KEY    = os.environ.get("BREVO_API_KEY", "")
 SITE_URL         = os.environ.get("SITE_URL", "https://nba-archetype.onrender.com")
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
 
+# Railway'in outbound SMTP portlarını (587/2525 dahil) engellediği gözlemlendi
+# (bağlantı timeout ile ölüyordu) — bu yüzden SMTP yerine Brevo'nun HTTPS
+# transactional email API'si kullanılıyor; normal bir HTTPS isteği olduğu için
+# port engeline takılmıyor (Google tokeninfo çağrısı da aynı şekilde çalışıyor).
 def _send_email(to: str, subject: str, html: str):
-    if not SMTP_HOST or not SMTP_USER:
-        logging.warning("SMTP not configured — skipping email to %s", to)
+    if not BREVO_API_KEY:
+        logging.warning("BREVO_API_KEY not configured — skipping email to %s", to)
         return
+    from_name, from_email = parseaddr(SMTP_FROM)
     try:
-        msg = MIMEText(html, "html")
-        msg["Subject"] = subject
-        msg["From"]    = SMTP_FROM
-        msg["To"]      = to
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10) as s:
-            s.starttls()
-            s.login(SMTP_USER, SMTP_PASS)
-            s.send_message(msg)
+        resp = httpx.post(
+            "https://api.brevo.com/v3/smtp/email",
+            headers={"api-key": BREVO_API_KEY, "Content-Type": "application/json"},
+            json={
+                "sender": {"name": from_name or "Primary Arch", "email": from_email or SMTP_FROM},
+                "to": [{"email": to}],
+                "subject": subject,
+                "htmlContent": html,
+            },
+            timeout=10,
+        )
+        resp.raise_for_status()
     except Exception as e:
         logging.error("Email send failed: %s", e)
 
@@ -2629,7 +2636,6 @@ def login(body: LoginBody):
 
 @app.post("/api/auth/google")
 def google_auth(body: GoogleAuthBody):
-    import httpx
     resp = httpx.get(
         f"https://oauth2.googleapis.com/tokeninfo?id_token={body.credential}",
         timeout=10,
@@ -2679,7 +2685,7 @@ def forgot_password(body: ForgotBody):
         reset_url = f"{SITE_URL}/reset-password?token={token}"
         _send_email(
             row["email"],
-            "NBA Archetype — Password Reset",
+            "Primary Arch — Password Reset",
             f"""<p>Click the link below to reset your password. It expires in 1 hour.</p>
             <p><a href="{reset_url}">{reset_url}</a></p>
             <p>If you didn't request this, you can ignore this email.</p>""",
