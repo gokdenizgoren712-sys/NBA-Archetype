@@ -135,3 +135,8 @@ def init_db():
                 conn.execute(f"ALTER TABLE lineup_games ADD COLUMN {col} {dfn}")
             except Exception:
                 pass
+        # Faz 3: With a Friend — round-bazlı/pick-bazlı çark alt-modu odaya kayıtlı
+        try:
+            conn.execute("ALTER TABLE game_rooms ADD COLUMN wheel_mode TEXT NOT NULL DEFAULT 'round'")
+        except Exception:
+            pass

@@ -1,10 +1,16 @@
 """
 Çok-oyunculu draft odaları — REST (oluştur/katıl) + WebSocket (canlı senkron).
 
-Faz 1 (bu dosya): oda oluşturma/katılma, bağlantı yönetimi, "iki taraf da
-bağlandı" senkronu. Pick protokolü (server-taraflı sıra/havuz/slot doğrulaması)
-Faz 3'te bu dosyaya eklenecek — şimdilik yalnızca "state" ve "opponent_joined"
-mesajları var.
+Faz 3 (With a Friend): "ince sunucu, istemci deterministik hesaplar" mimarisi
+— bkz. .claude/plans/fancy-cooking-gizmo.md. Sunucu rastgele/otoriter kararları
+(spin sonucu, koç örneklemi) çözüp yayınlıyor, yapısal doğrulama + relay
+yapıyor (sıra/havuz/joker durumu), ama Same Screen'in zaten SAF olan skor/
+fiyat/uygunluk/simülasyon mantığını (game/positions.js, game/salary.js,
+game/lineupScore.js, game/seasonSim.js, game/headToHead.js) Python'a PORT
+ETMİYOR — bu mantık istemcide (her iki tarafta da, aynı senkronize veriden)
+deterministik olarak yeniden hesaplanıyor. Seri maçları da aynı ilkeyle:
+"Simulate Game N"e tıklayan istemci sonucu KENDİSİ hesaplayıp relay için
+sunucuya gönderiyor, sunucu simülasyonu çalıştırmıyor.
 
 main.py'deki oyun/skor fonksiyonlarına (döngüsel import'tan kaçınmak için)
 FONKSİYON İÇİNDE import edilir — main.py'nin geri kalanının zaten kullandığı
@@ -149,9 +155,7 @@ def _room_to_dict(row) -> dict:
         "room_code":       row["room_code"],
         "mode":            row["mode"],
         "status":          row["status"],
-        "season":          row["season"],
-        "team_a":          row["team_a"],
-        "team_b":          row["team_b"],
+        "wheel_mode":      row["wheel_mode"],
         "player1_user_id": row["player1_user_id"],
         "player2_user_id": row["player2_user_id"],
         "turn_user_id":    row["turn_user_id"],
@@ -159,31 +163,31 @@ def _room_to_dict(row) -> dict:
     }
 
 
+def _fetch_usernames(user_ids: list[int]) -> dict[int, str]:
+    ids = [uid for uid in user_ids if uid]
+    if not ids:
+        return {}
+    with get_conn() as conn:
+        rows = conn.execute(
+            f"SELECT id, username FROM users WHERE id IN ({','.join('?' * len(ids))})", ids
+        ).fetchall()
+    return {r["id"]: r["username"] for r in rows}
+
+
 class CreateRoomBody(BaseModel):
-    season: str = "2025-26"
-    mode: str = "friend"   # 'friend' | 'online' — Faz 4'te matchmaking 'online' ile oda açacak
+    mode: str = "friend"          # 'friend' | 'online' — Faz 4'te matchmaking 'online' ile oda açacak
+    wheel_mode: str = "round"     # 'round' | 'pick' — Same Screen'deki çark alt-modunun aynısı
 
 
 @router.post("/api/game/room")
 def create_room(body: CreateRoomBody, user=Depends(get_current_user)):
-    """İki takımı sunucu spin eder (client'a güvenmiyoruz — paylaşılan havuzun
-    tek kaynağı sunucu olmalı), havuzu hesaplar, 'waiting' odayı açar."""
-    from .main import game_teams
-    teams = game_teams(body.season).get("teams", [])
-    if len(teams) < 2:
-        raise HTTPException(400, "Bu sezon için yeterli takım verisi yok")
-    team_a, team_b = random.sample(teams, 2)
-
-    pool = _build_multiplayer_pool(body.season, team_a, team_b)
-    if len(pool) < 18:
-        # Havuz çok küçükse (nadir — iki küçük roster çakışması) yeniden dene
-        for _ in range(5):
-            team_a, team_b = random.sample(teams, 2)
-            pool = _build_multiplayer_pool(body.season, team_a, team_b)
-            if len(pool) >= 18:
-                break
-        else:
-            raise HTTPException(503, "Uygun takım eşleşmesi bulunamadı, tekrar dene")
+    """Oda açar — oda kurucusunun kararı: mod + çark alt-modu. Sezon/takım
+    ARTIK burada seçilmiyor; Same Screen'deki gibi her round/pick canlı spin
+    ediliyor (bkz. _spin_round, Faz3-M2). season/team_a/team_b kolonları eski
+    (tek-seferlik-havuz) modelden kalma, boş placeholder ile dolduruluyor —
+    şemayı bozmadan (NOT NULL) ölü alan olarak bırakıldı."""
+    if body.wheel_mode not in ("round", "pick"):
+        raise HTTPException(400, "Geçersiz wheel_mode")
 
     room_code = _gen_room_code()
     user_id = int(user["sub"])
@@ -192,11 +196,10 @@ def create_room(body: CreateRoomBody, user=Depends(get_current_user)):
             try:
                 conn.execute(
                     """INSERT INTO game_rooms
-                       (room_code, mode, status, season, team_a, team_b, pool_json,
+                       (room_code, mode, status, season, team_a, team_b, wheel_mode,
                         player1_user_id, turn_user_id, pick_number)
-                       VALUES (?, ?, 'waiting', ?, ?, ?, ?, ?, ?, 0)""",
-                    (room_code, body.mode, body.season, team_a, team_b,
-                     json.dumps(pool), user_id, user_id),
+                       VALUES (?, ?, 'waiting', '', '', '', ?, ?, ?, 0)""",
+                    (room_code, body.mode, body.wheel_mode, user_id, user_id),
                 )
                 break
             except Exception:
@@ -204,7 +207,7 @@ def create_room(body: CreateRoomBody, user=Depends(get_current_user)):
         else:
             raise HTTPException(500, "Oda kodu üretilemedi")
 
-    return {"room_code": room_code, "team_a": team_a, "team_b": team_b, "pool_size": len(pool)}
+    return {"room_code": room_code}
 
 
 @router.post("/api/game/room/{room_code}/join")
@@ -217,7 +220,9 @@ def join_room(room_code: str, user=Depends(get_current_user)):
         if not row:
             raise HTTPException(404, "Oda bulunamadı")
         if row["player1_user_id"] == user_id:
-            return _room_to_dict(row)  # oda sahibi tekrar açtı — no-op
+            d = _room_to_dict(row)  # oda sahibi tekrar açtı — no-op
+            d["usernames"] = _fetch_usernames([row["player1_user_id"], row["player2_user_id"]])
+            return d
         if row["player2_user_id"] and row["player2_user_id"] != user_id:
             raise HTTPException(409, "Oda dolu")
         if row["status"] != "waiting":
@@ -231,7 +236,9 @@ def join_room(room_code: str, user=Depends(get_current_user)):
         row = conn.execute(
             "SELECT * FROM game_rooms WHERE room_code = ?", (room_code,)
         ).fetchone()
-    return _room_to_dict(row)
+    d = _room_to_dict(row)
+    d["usernames"] = _fetch_usernames([row["player1_user_id"], row["player2_user_id"]])
+    return d
 
 
 @router.get("/api/game/room/{room_code}")
@@ -243,7 +250,7 @@ def get_room(room_code: str, user=Depends(get_current_user)):
     if not row:
         raise HTTPException(404, "Oda bulunamadı")
     d = _room_to_dict(row)
-    d["pool"] = json.loads(row["pool_json"]) if row["pool_json"] else []
+    d["usernames"] = _fetch_usernames([row["player1_user_id"], row["player2_user_id"]])
     return d
 
 
@@ -279,6 +286,7 @@ async def room_socket(ws: WebSocket, room_code: str, token: str = Query(...)):
         await ws.send_json({
             "type": "state",
             "room": _room_to_dict(row),
+            "usernames": _fetch_usernames([row["player1_user_id"], row["player2_user_id"]]),
             "pool": pool,
             "picks": [dict(p) for p in picks],
             "connected_user_ids": manager.connected_user_ids(room_code),

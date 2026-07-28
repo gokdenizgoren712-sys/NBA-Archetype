@@ -17,7 +17,7 @@ const MODES = [
     title: "With a Friend",
     desc: "Challenge a friend to a head-to-head draft",
     path: "/game/friend",
-    live: false,
+    live: true,
   },
   {
     key: "online",
