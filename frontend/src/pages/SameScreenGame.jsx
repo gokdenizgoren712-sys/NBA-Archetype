@@ -7,6 +7,7 @@ import {
   POSITIONS, BENCH_SLOTS, ALL_SLOTS, getPrimaryPos, getEligiblePos, posPenaltyFor, POS_COLORS,
 } from "../game/positions";
 import { START_BUDGET, totalSpent, maxSpendNow, applyTeamPricing, priceOf } from "../game/salary";
+import { computeLineupFit } from "../game/lineupScore";
 import { buildMatchup, simulateOneGame } from "../game/headToHead";
 import SpinWheel from "../game/SpinWheel";
 import LineupSlot from "../game/LineupSlot";
@@ -39,7 +40,7 @@ function capFor(lineup) {
 export default function SameScreenGame() {
   const [seasons, setSeasons] = useState([]);
   const [simEra, setSimEra] = useState(null);
-  // idle | era | spinning | drafting | placing | coach1 | coach2 | series | complete
+  // idle | era | spinning | drafting | placing | review | coach1 | coach2 | series | complete
   const [gamePhase, setGamePhase] = useState("idle");
 
   const [wheelMode, setWheelMode] = useState("round"); // "round" | "pick"
@@ -314,11 +315,16 @@ export default function SameScreenGame() {
       return ALL_SLOTS.some(k => !lu[k]);
     });
     if (participants.length === 0) {
-      setCoachOptions([...COACHES].sort(() => Math.random() - 0.5).slice(0, 4));
-      setGamePhase("coach1");
+      setGamePhase("review"); // her iki takım da tamam — koça geçmeden önce roster preview
       return;
     }
     beginRound(round + 1, participants, other(turnQueue[0]));
+  };
+
+  // ── Draft bitti, roster preview görüldü — koç seçimine geç ──────────────────
+  const continueToCoaches = () => {
+    setCoachOptions([...COACHES].sort(() => Math.random() - 0.5).slice(0, 4));
+    setGamePhase("coach1");
   };
 
   // ── Saha üzerinde taşı / takas et (seat bazlı, LineupGame.jsx ile aynı mantık) ──
@@ -562,6 +568,12 @@ export default function SameScreenGame() {
           </div>
         )}
 
+        {gamePhase === "review" && (
+          <RosterReview lineups={lineups} simEra={simEra} moveSrc={moveSrc}
+            canRearrange={canRearrange} onSlotTap={handleSlotTap}
+            onContinue={continueToCoaches} />
+        )}
+
         {(gamePhase === "coach1" || gamePhase === "coach2") && (() => {
           const seat = gamePhase === "coach1" ? 1 : 2;
           return (
@@ -790,6 +802,88 @@ function PlayerSeatPanel({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Draft tamamlandı: koça geçmeden önce iki takımın roster preview'ı
+// (single-player'daki "Roster Breakdown" tablosunun iki-sütunlu hâli) ───────
+function RosterReview({ lineups, simEra, moveSrc, canRearrange, onSlotTap, onContinue }) {
+  return (
+    <div className="max-w-4xl mx-auto space-y-4">
+      <div className="text-center">
+        <div className="font-logo text-lg font-bold text-white">Rosters Complete</div>
+        <p className="text-xs text-gray-500 mt-0.5">Review both teams before hiring your coaches. Tap a slot to rearrange one last time.</p>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {[1, 2].map(seat => (
+          <TeamPreviewCard key={seat} seat={seat} lineup={lineups[seat]} simEra={simEra}
+            moveSrc={moveSrc[seat]} canRearrange={canRearrange} onSlotTap={(pos) => onSlotTap(seat, pos)} />
+        ))}
+      </div>
+      <div className="text-center">
+        <button onClick={onContinue}
+          className="px-8 py-2.5 rounded-xl font-logo font-bold text-darkBg bg-yamabuki hover:bg-white transition-colors inline-flex items-center gap-2">
+          <CoachIcon size={15} /> Continue to Coaches
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function TeamPreviewCard({ seat, lineup, simEra, moveSrc, canRearrange, onSlotTap }) {
+  const starters = POSITIONS.map(p => lineup[p]).filter(Boolean);
+  const fit = computeLineupFit(starters, simEra);
+  const pct = fit ? Math.round(fit.lineupScore * 100) : 0;
+  const perPlayerMap = {};
+  POSITIONS.forEach((pos, i) => { if (lineup[pos] && fit?.perPlayer?.[i]) perPlayerMap[pos] = fit.perPlayer[i]; });
+
+  const Row = ({ pos, bench }) => {
+    const p = lineup[pos]; if (!p) return null;
+    const pp = perPlayerMap[pos];
+    const base = Math.round((parseFloat(p.overall_score) || 0) * 100);
+    const qPct = pp ? Math.round(pp.quality * 100) : base;
+    const isPrimary = !bench && getPrimaryPos(p) === pos;
+    return (
+      <button onClick={() => onSlotTap(pos)} disabled={!canRearrange}
+        className={`w-full flex items-center gap-2 py-1.5 border-b last:border-b-0 text-left transition-colors
+          ${bench ? "opacity-70" : ""} ${moveSrc === pos ? "bg-yamabuki/10" : "hover:bg-white/[0.02]"}`}
+        style={{ borderColor: "rgba(30,41,59,.5)" }}>
+        <span className={`text-[9.5px] font-bold px-1.5 py-1 rounded border shrink-0 w-8 text-center ${bench ? "border-gray-700 text-gray-500" : POS_COLORS[pos] || ""}`}>
+          {bench ? "BN" : pos}
+        </span>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1">
+            <span className="text-[12px] text-white font-semibold truncate">{p.PLAYER_NAME}</span>
+            {isPrimary && <span className="text-yamabuki shrink-0"><StarIcon size={9} /></span>}
+          </div>
+          <span className="text-[10px] text-blue-400">{p.primary_arch || "—"}</span>
+        </div>
+        <span className="text-[9.5px] text-gray-500 tabular-nums shrink-0 w-9 text-right">ovr {base}</span>
+        <div className="w-12 h-1.5 bg-surfaceCard rounded-full overflow-hidden shrink-0">
+          <div className="h-full rounded-full" style={{ width: `${qPct}%`, background: qPct >= 75 ? "#1D428A" : qPct >= 55 ? "#2a3d6b" : "#7f1d1d" }} />
+        </div>
+        <span className={`text-[11px] font-bold w-6 text-right shrink-0 ${qPct >= 75 ? "text-blue-300" : qPct >= 55 ? "text-gray-200" : "text-red-400"}`}>{qPct}</span>
+      </button>
+    );
+  };
+
+  return (
+    <div className="rounded-2xl border border-gray-800 bg-surfaceBg p-4 space-y-2">
+      <div className="flex items-center justify-between">
+        <span className="font-logo text-sm font-bold text-white">Player {seat}</span>
+        <div className="flex items-center gap-1.5">
+          <span className="text-[9.5px] text-gray-500 uppercase tracking-widest">Team Score</span>
+          <span className={`font-logo text-xl font-black tabular-nums ${pct >= 78 ? "text-blue-300" : pct >= 62 ? "text-sky-300" : "text-gray-300"}`}>{pct}</span>
+        </div>
+      </div>
+      {canRearrange && moveSrc && (
+        <p className="text-[9.5px] text-yamabuki/90">Moving {lineup[moveSrc]?.PLAYER_NAME?.split(" ").slice(-1)[0]} — tap a destination slot</p>
+      )}
+      <div>
+        {POSITIONS.map(pos => <Row key={pos} pos={pos} />)}
+        {BENCH_SLOTS.map(pos => <Row key={pos} pos={pos} bench />)}
+      </div>
     </div>
   );
 }
