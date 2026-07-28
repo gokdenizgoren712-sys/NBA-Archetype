@@ -17,6 +17,8 @@ import HowItWorksPanel from "../game/HowItWorksPanel";
 import MechanicsPanel from "../game/MechanicsPanel";
 import WheelModePicker from "../game/WheelModePicker";
 import GameBox from "../game/GameBox";
+import CounterJokerPrompt from "../game/CounterJokerPrompt";
+import HowToPlayModal from "../game/HowToPlayModal";
 import {
   StarIcon, CoachIcon, TrophyIcon, WheelIcon, CapIcon, RefreshIcon,
   CalendarIcon, BoltIcon, UsersIcon, SearchIcon, WarnIcon, DiceIcon, PlayIcon,
@@ -24,7 +26,10 @@ import {
 } from "../game/GameIcons";
 
 const EMPTY_LINEUP = { PG: null, SG: null, SF: null, PF: null, C: null, B1: null, B2: null, B3: null, B4: null };
-const EMPTY_JOKERS = { reTeam: true, reYear: true, reBoth: true, double: true, discover: true, ban: true };
+const EMPTY_JOKERS = {
+  reTeam: true, reYear: true, reBoth: true, double: true, discover: true,
+  ban: true, forceTeam: true, forceYear: true,
+};
 const other = (seat) => (seat === 1 ? 2 : 1);
 
 const SORT_KEYS = [
@@ -41,6 +46,7 @@ function capFor(lineup) {
 }
 
 export default function SameScreenGame() {
+  const [howToPlayOpen, setHowToPlayOpen] = useState(false);
   const [seasons, setSeasons] = useState([]);
   const [simEra, setSimEra] = useState(null);
   // idle | era | spinning | drafting | placing | review | coach1 | coach2 | series | complete
@@ -72,6 +78,7 @@ export default function SameScreenGame() {
   const [bannedName, setBannedName] = useState(null);
   const [banVoided, setBanVoided] = useState(false);
   const [banPicking, setBanPicking] = useState(false); // waiting seat is choosing a ban target
+  const [counterDismissed, setCounterDismissed] = useState(false); // counter-joker pop-up handled for this pick
 
   const [lineups, setLineups] = useState({ 1: { ...EMPTY_LINEUP }, 2: { ...EMPTY_LINEUP } });
   const [moveSrc, setMoveSrc] = useState({ 1: null, 2: null });
@@ -107,6 +114,7 @@ export default function SameScreenGame() {
     setBannedName(null);
     setBanVoided(false);
     setBanPicking(false);
+    setCounterDismissed(false);
     setPosFilter("");
     setPlayers([]);
     setGamePhase("spinning");
@@ -236,15 +244,24 @@ export default function SameScreenGame() {
   // ── Era seç → round 1 başlat ────────────────────────────────────────────
   const pickEra = (era) => { setSimEra(era); beginRound(1, [1, 2], 1); };
 
-  // ── BAN: bekleyen taraf aktif tarafın turu üzerinde kullanır ─────────────
-  const activateBan = (seat) => {
-    if (seat !== waitingSeat || !jokers[seat].ban || bannedName) return;
-    setBanPicking(true);
+  // ── Karşı-joker pop-up'ı: bekleyen taraf aktif tarafın turu üzerinde
+  // BAN / Force Team / Force Year'dan birini kullanır (turda tek seçim,
+  // seçim/red sonrası pop-up o pick için kapanır — bkz. counterDismissed) ──
+  const useCounterJoker = (type) => {
+    if (!jokers[waitingSeat][type] || counterDismissed) return;
+    setJokers(j => ({ ...j, [waitingSeat]: { ...j[waitingSeat], [type]: false } }));
+    setCounterDismissed(true);
+    if (type === "ban") { setBanPicking(true); return; }
+    // forceTeam/forceYear: anlık havuz değişimi — eski ban hedefi (varsa)
+    // yeni havuzda anlamsız kalır, temizlenir.
+    setBannedName(null);
+    setBanVoided(false);
+    if (type === "forceTeam") respinWithin(true, false);
+    else if (type === "forceYear") respinWithin(false, true);
   };
   const confirmBan = (player) => {
     setBannedName(player.PLAYER_NAME);
     setBanPicking(false);
-    setJokers(j => ({ ...j, [waitingSeat]: { ...j[waitingSeat], ban: false } }));
   };
 
   // ── Aktif tarafın joker kullanımı ────────────────────────────────────────
@@ -302,6 +319,7 @@ export default function SameScreenGame() {
       setTurnPos(nextPos);
       setBannedName(null);
       setBanVoided(false);
+      setCounterDismissed(false);
       if (wheelMode === "pick") {
         spinForPick(); // Mod B: her pick kendi spin'ini alır
       } else {
@@ -379,7 +397,7 @@ export default function SameScreenGame() {
     setChosenSeason(""); setChosenTeam(""); setTeamPool([]);
     setSpinS(false); setSpinT(false); setStatusMsg("");
     setPlayers([]); setPickedPlayer(null); setDoubleActive(false); setDiscoverActive(false); setPosFilter(""); setSortKey("PTS");
-    setBannedName(null); setBanVoided(false); setBanPicking(false);
+    setBannedName(null); setBanVoided(false); setBanPicking(false); setCounterDismissed(false);
     setLineups({ 1: { ...EMPTY_LINEUP }, 2: { ...EMPTY_LINEUP } });
     setMoveSrc({ 1: null, 2: null });
     setJokers({ 1: { ...EMPTY_JOKERS }, 2: { ...EMPTY_JOKERS } });
@@ -432,11 +450,17 @@ export default function SameScreenGame() {
 
               <WheelModePicker value={wheelMode} onChange={setWheelMode} />
 
-              <div className="text-center">
+              <div className="text-center space-y-2">
                 <button onClick={() => setGamePhase("era")}
                   className="px-16 py-3 rounded-xl font-logo font-bold text-xl inline-flex items-center justify-center gap-2 transition-colors duration-200 text-darkBg bg-yamabuki hover:bg-white shadow-[0_0_20px_rgba(255,177,27,0.3)]">
                   <WheelIcon size={17} /> Start
                 </button>
+                <div>
+                  <button onClick={() => setHowToPlayOpen(true)}
+                    className="text-xs text-gray-500 hover:text-yamabuki underline underline-offset-2 transition-colors">
+                    How to Play
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -515,8 +539,10 @@ export default function SameScreenGame() {
                     onPlacePos={placePos}
                     onCancelPick={cancelPick}
                     onUseJoker={useJoker}
-                    onActivateBan={() => activateBan(seat)}
+                    onUseCounterJoker={useCounterJoker}
+                    onDismissCounter={() => setCounterDismissed(true)}
                     onConfirmBan={confirmBan}
+                    counterDismissed={counterDismissed}
                   />
                 ))}
               </div>
@@ -557,6 +583,8 @@ export default function SameScreenGame() {
         {gamePhase === "complete" && (
           <SameScreenResult lineups={lineups} coaches={coaches} seriesW={seriesW} seriesGames={seriesGames} onReset={resetGame} />
         )}
+
+        <HowToPlayModal open={howToPlayOpen} onClose={() => setHowToPlayOpen(false)} />
       </div>
     </div>
   );
@@ -566,7 +594,8 @@ export default function SameScreenGame() {
 function PlayerSeatPanel({
   seat, isActive, isWaiting, lineup, moveSrc, canRearrange, onSlotTap, jokers, chosenTeam, chosenSeason, players,
   posFilter, setPosFilter, sortKey, setSortKey, pickedPlayer, gamePhase, doubleActive, discoverActive,
-  bannedName, banVoided, banPicking, onPickPlayer, onPlacePos, onCancelPick, onUseJoker, onActivateBan, onConfirmBan,
+  bannedName, banVoided, banPicking, onPickPlayer, onPlacePos, onCancelPick, onUseJoker,
+  onUseCounterJoker, onDismissCounter, counterDismissed, onConfirmBan,
 }) {
   const filtered = posFilter ? players.filter(p => posGroupOf(p) === posFilter) : players;
   const list = [...filtered].sort((a, b) => {
@@ -612,17 +641,23 @@ function PlayerSeatPanel({
           selected={moveSrc === pos} canTap={canRearrange} onTap={onSlotTap} />)}
       </div>
 
-      {/* Joker çubuğu */}
-      <div className="grid grid-cols-6 gap-1">
+      {/* Joker çubuğu — self-joker'lar (aktif taraf) */}
+      <div className="grid grid-cols-5 gap-1">
         <JokerBtn Icon={RefreshIcon} label="Team" available={isActive && jokers.reTeam && gamePhase === "drafting"} onClick={() => onUseJoker("reTeam")} />
         <JokerBtn Icon={CalendarIcon} label="Year" available={isActive && jokers.reYear && gamePhase === "drafting"} onClick={() => onUseJoker("reYear")} />
         <JokerBtn Icon={BoltIcon} label="Both" available={isActive && jokers.reBoth && gamePhase === "drafting"} onClick={() => onUseJoker("reBoth")} />
         <JokerBtn Icon={UsersIcon} label="Pick 2" available={isActive && jokers.double && !doubleActive && gamePhase === "drafting"} onClick={() => onUseJoker("double")} />
         <JokerBtn Icon={SearchIcon} label="Discover" available={isActive && jokers.discover && !discoverActive && gamePhase === "drafting"} onClick={() => onUseJoker("discover")} />
-        <JokerBtn Icon={WarnIcon} label="BAN" available={isWaiting && jokers.ban && !bannedName && !banPicking} onClick={onActivateBan} />
       </div>
       {isActive && showBanEffective && (
         <div className="text-[10.5px] text-red-400 flex items-center gap-1"><WarnIcon size={11} /> {bannedName} is BANNED this pick — use any joker to counter it.</div>
+      )}
+
+      {/* Karşı-joker pop-up'ı — bekleyen tarafın kendi paneli, aktif tarafın
+          turu başlarken otomatik belirir (bkz. counterDismissed) */}
+      {isWaiting && gamePhase === "drafting" && !counterDismissed && !banPicking && (
+        <CounterJokerPrompt jokers={jokers} activeSeat={other(seat)}
+          onUse={onUseCounterJoker} onDismiss={onDismissCounter} />
       )}
       {isWaiting && banPicking && (
         <div className="text-[10.5px] text-yamabuki">Pick a player below to BAN from Player {seat === 1 ? 2 : 1}'s options.</div>

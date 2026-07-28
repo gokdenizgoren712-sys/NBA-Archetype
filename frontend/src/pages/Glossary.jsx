@@ -1,53 +1,8 @@
 import { useState } from "react";
-import { COMPONENTS, METRIC_LABELS, CORE_COMPONENTS, MODIFIER_COMPONENTS } from "../data/glossary";
+import { COMPONENTS, METRIC_LABELS, CORE_COMPONENTS, MODIFIER_COMPONENTS, ERA_GUIDE as ERAS } from "../data/glossary";
 import { useLang } from "../contexts/LanguageContext";
 import SplitPane from "../components/SplitPane";
 import { SEO } from "../hooks/useSEO";
-
-const ERAS = [
-  {
-    short: "80s", label: "Magic vs Bird Era", years: "1979–1991",
-    color: "#fbbf24", meta: "Post play, team ball, mid-range dominance",
-    desc: "The league ran through dominant big men (Kareem, Barkley, Malone) and all-court playmakers (Magic, Bird). The 3-pointer existed but was rarely attempted — Spacers were virtually irrelevant. Ecosystems and Force/Anchor archetypes commanded maximum value.",
-    top: ["Ecosystem ×1.30","Force ×1.20","Anchor ×1.15","Hub ×1.15"],
-    low: ["Spacer ×0.45","Initiator ×0.70","Rim Runner ×0.70"],
-  },
-  {
-    short: "Jordan", label: "Jordan Era", years: "1991–1999",
-    color: "#f87171", meta: "Isolation scoring, lockdown defense, pure athleticism",
-    desc: "Michael Jordan redefined individual excellence. Teams were built around one dominant scorer with supporting stoppers. Engines and Creators peaked in value; lockdown Stoppers were premium.",
-    top: ["Engine ×1.25","Creator ×1.20","Stopper ×1.15"],
-    low: ["Spacer ×0.60","Ecosystem ×0.85","Hub ×0.90"],
-  },
-  {
-    short: "Dead Ball", label: "Dead Ball Era", years: "1999–2008",
-    color: "#9ca3af", meta: "Physical defense, post play, deliberately slow pace",
-    desc: "The league's lowest-scoring era since the shot clock. Physical hand-checking rules rewarded defensive specialists. Interior bigs (Shaq, Duncan, KG) defined championship rosters.",
-    top: ["Anchor ×1.25","Stopper ×1.20","Force ×1.15"],
-    low: ["Spacer ×0.55","Ecosystem ×0.85","Connector ×0.85"],
-  },
-  {
-    short: "Super Team", label: "Super Team Era", years: "2008–2014",
-    color: "#60a5fa", meta: "Pick-and-roll revolution, emerging stretch bigs",
-    desc: "The post-handcheck era opened up driving lanes. Pick-and-roll became the primary offensive system. Stretch bigs started emerging — Dirk proved a shooting big could win a title.",
-    top: ["Engine ×1.10","Creator ×1.05","Rim Runner ×1.10"],
-    low: ["Spacer ×0.80","Ecosystem ×0.95"],
-  },
-  {
-    short: "Small Ball", label: "Small Ball Era", years: "2014–2020",
-    color: "#34d399", meta: "Spacing is king, 3-point explosion, pace and space",
-    desc: "The Warriors dynasty redefined basketball. Three-point volume exploded, traditional big men were phased out, and floor spacing became non-negotiable.",
-    top: ["Spacer ×1.35","Engine ×1.20","Creator ×1.10"],
-    low: ["Force ×0.65","Anchor ×0.70","Initiator ×0.90"],
-  },
-  {
-    short: "Parity", label: "Parity Era", years: "2020–present",
-    color: "#a78bfa", meta: "Two-way versatility, load management, balanced rosters",
-    desc: "No single dominant style defines this era. Teams value switchable, two-way players. The Ecosystem archetype has re-emerged as load management and roster depth became strategic priorities.",
-    top: ["Spacer ×1.20","Ecosystem ×1.15","Connector ×1.10"],
-    low: ["Force ×0.80","Anchor ×0.85"],
-  },
-];
 
 function Tag({ children, color = "var(--accent)" }) {
   return (
