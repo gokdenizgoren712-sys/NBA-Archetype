@@ -19,10 +19,12 @@ import WheelModePicker from "../game/WheelModePicker";
 import GameBox from "../game/GameBox";
 import CounterJokerPrompt from "../game/CounterJokerPrompt";
 import HowToPlayModal from "../game/HowToPlayModal";
+import BenchCoverage from "../game/BenchCoverage";
+import PlayerDetailModal from "../game/PlayerDetailModal";
 import {
   StarIcon, CoachIcon, TrophyIcon, WheelIcon, CapIcon, RefreshIcon,
   CalendarIcon, BoltIcon, UsersIcon, SearchIcon, WarnIcon, DiceIcon, PlayIcon,
-  TargetIcon,
+  TargetIcon, EyeIcon,
 } from "../game/GameIcons";
 
 const EMPTY_LINEUP = { PG: null, SG: null, SF: null, PF: null, C: null, B1: null, B2: null, B3: null, B4: null };
@@ -47,6 +49,7 @@ function capFor(lineup) {
 
 export default function SameScreenGame() {
   const [howToPlayOpen, setHowToPlayOpen] = useState(false);
+  const [detailPlayer, setDetailPlayer] = useState(null);
   const [seasons, setSeasons] = useState([]);
   const [simEra, setSimEra] = useState(null);
   // idle | era | spinning | drafting | placing | review | coach1 | coach2 | series | complete
@@ -543,6 +546,7 @@ export default function SameScreenGame() {
                     onDismissCounter={() => setCounterDismissed(true)}
                     onConfirmBan={confirmBan}
                     counterDismissed={counterDismissed}
+                    onPlayerInfo={setDetailPlayer}
                   />
                 ))}
               </div>
@@ -553,7 +557,7 @@ export default function SameScreenGame() {
         {gamePhase === "review" && (
           <RosterReview lineups={lineups} simEra={simEra} moveSrc={moveSrc}
             canRearrange={canRearrange} onSlotTap={handleSlotTap}
-            onContinue={continueToCoaches} />
+            onContinue={continueToCoaches} onPlayerInfo={setDetailPlayer} />
         )}
 
         {(gamePhase === "coach1" || gamePhase === "coach2") && (() => {
@@ -585,6 +589,7 @@ export default function SameScreenGame() {
         )}
 
         <HowToPlayModal open={howToPlayOpen} onClose={() => setHowToPlayOpen(false)} />
+        <PlayerDetailModal player={detailPlayer} onClose={() => setDetailPlayer(null)} />
       </div>
     </div>
   );
@@ -595,7 +600,7 @@ function PlayerSeatPanel({
   seat, isActive, isWaiting, lineup, moveSrc, canRearrange, onSlotTap, jokers, chosenTeam, chosenSeason, players,
   posFilter, setPosFilter, sortKey, setSortKey, pickedPlayer, gamePhase, doubleActive, discoverActive,
   bannedName, banVoided, banPicking, onPickPlayer, onPlacePos, onCancelPick, onUseJoker,
-  onUseCounterJoker, onDismissCounter, counterDismissed, onConfirmBan,
+  onUseCounterJoker, onDismissCounter, counterDismissed, onConfirmBan, onPlayerInfo,
 }) {
   const filtered = posFilter ? players.filter(p => posGroupOf(p) === posFilter) : players;
   const list = [...filtered].sort((a, b) => {
@@ -634,12 +639,13 @@ function PlayerSeatPanel({
       )}
       <div className="flex gap-1">
         {POSITIONS.map(pos => <LineupSlot key={pos} pos={pos} player={lineup[pos]}
-          selected={moveSrc === pos} canTap={canRearrange} onTap={onSlotTap} />)}
+          selected={moveSrc === pos} canTap={canRearrange} onTap={onSlotTap} onInfo={onPlayerInfo} />)}
       </div>
       <div className="flex gap-1 opacity-80">
         {BENCH_SLOTS.map(pos => <LineupSlot key={pos} pos={pos} player={lineup[pos]} bench
-          selected={moveSrc === pos} canTap={canRearrange} onTap={onSlotTap} />)}
+          selected={moveSrc === pos} canTap={canRearrange} onTap={onSlotTap} onInfo={onPlayerInfo} />)}
       </div>
+      <BenchCoverage bench={BENCH_SLOTS.map(pos => lineup[pos])} />
 
       {/* Joker çubuğu — self-joker'lar (aktif taraf) */}
       <div className="grid grid-cols-5 gap-1">
@@ -749,7 +755,7 @@ function PlayerSeatPanel({
 
 // ── Draft tamamlandı: koça geçmeden önce iki takımın roster preview'ı
 // (single-player'daki "Roster Breakdown" tablosunun iki-sütunlu hâli) ───────
-function RosterReview({ lineups, simEra, moveSrc, canRearrange, onSlotTap, onContinue }) {
+function RosterReview({ lineups, simEra, moveSrc, canRearrange, onSlotTap, onContinue, onPlayerInfo }) {
   return (
     <div className="max-w-4xl mx-auto space-y-4">
       <div className="text-center">
@@ -759,7 +765,8 @@ function RosterReview({ lineups, simEra, moveSrc, canRearrange, onSlotTap, onCon
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {[1, 2].map(seat => (
           <TeamPreviewCard key={seat} seat={seat} lineup={lineups[seat]} simEra={simEra}
-            moveSrc={moveSrc[seat]} canRearrange={canRearrange} onSlotTap={(pos) => onSlotTap(seat, pos)} />
+            moveSrc={moveSrc[seat]} canRearrange={canRearrange} onSlotTap={(pos) => onSlotTap(seat, pos)}
+            onPlayerInfo={onPlayerInfo} />
         ))}
       </div>
       <div className="text-center">
@@ -772,7 +779,7 @@ function RosterReview({ lineups, simEra, moveSrc, canRearrange, onSlotTap, onCon
   );
 }
 
-function TeamPreviewCard({ seat, lineup, simEra, moveSrc, canRearrange, onSlotTap }) {
+function TeamPreviewCard({ seat, lineup, simEra, moveSrc, canRearrange, onSlotTap, onPlayerInfo }) {
   const starters = POSITIONS.map(p => lineup[p]).filter(Boolean);
   const fit = computeLineupFit(starters, simEra);
   const pct = fit ? Math.round(fit.lineupScore * 100) : 0;
@@ -787,7 +794,7 @@ function TeamPreviewCard({ seat, lineup, simEra, moveSrc, canRearrange, onSlotTa
     const isPrimary = !bench && getPrimaryPos(p) === pos;
     return (
       <button onClick={() => onSlotTap(pos)} disabled={!canRearrange}
-        className={`w-full flex items-center gap-2 py-1.5 border-b last:border-b-0 text-left transition-colors
+        className={`relative w-full flex items-center gap-2 py-1.5 border-b last:border-b-0 text-left transition-colors
           ${bench ? "opacity-70" : ""} ${moveSrc === pos ? "bg-yamabuki/10" : "hover:bg-white/[0.02]"}`}
         style={{ borderColor: "rgba(30,41,59,.5)" }}>
         <span className={`text-[9.5px] font-bold px-1.5 py-1 rounded border shrink-0 w-8 text-center ${bench ? "border-gray-700 text-gray-500" : POS_COLORS[pos] || ""}`}>
@@ -805,6 +812,12 @@ function TeamPreviewCard({ seat, lineup, simEra, moveSrc, canRearrange, onSlotTa
           <div className="h-full rounded-full" style={{ width: `${qPct}%`, background: qPct >= 75 ? "#1D428A" : qPct >= 55 ? "#2a3d6b" : "#7f1d1d" }} />
         </div>
         <span className={`text-[11px] font-bold w-6 text-right shrink-0 ${qPct >= 75 ? "text-blue-300" : qPct >= 55 ? "text-gray-200" : "text-red-400"}`}>{qPct}</span>
+        {onPlayerInfo && (
+          <span onClick={e => { e.stopPropagation(); onPlayerInfo(p); }}
+            className="text-gray-600 hover:text-yamabuki transition-colors shrink-0" title="Player details">
+            <EyeIcon size={12} />
+          </span>
+        )}
       </button>
     );
   };
@@ -825,6 +838,7 @@ function TeamPreviewCard({ seat, lineup, simEra, moveSrc, canRearrange, onSlotTa
         {POSITIONS.map(pos => <Row key={pos} pos={pos} />)}
         {BENCH_SLOTS.map(pos => <Row key={pos} pos={pos} bench />)}
       </div>
+      <BenchCoverage bench={BENCH_SLOTS.map(pos => lineup[pos])} />
     </div>
   );
 }

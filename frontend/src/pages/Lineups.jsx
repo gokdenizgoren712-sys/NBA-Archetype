@@ -385,7 +385,7 @@ export default function Lineups() {
     const fit = customResult.players_data ? computeLineupFit(customResult.players_data) : null;
     const names = slots.map(s => s.trim()).filter(Boolean);
     try {
-      await fetch("/api/profile/save-lineup", {
+      await fetch("/api/profile/saved-lineups", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({

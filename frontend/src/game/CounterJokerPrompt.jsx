@@ -17,14 +17,14 @@ function CounterBtn({ Icon, label, available, onClick }) {
   );
 }
 
-export default function CounterJokerPrompt({ jokers, activeSeat, onUse, onDismiss }) {
+export default function CounterJokerPrompt({ jokers, activeSeat, activeName, onUse, onDismiss }) {
   const hasAny = jokers.ban || jokers.forceTeam || jokers.forceYear;
   if (!hasAny) return null;
 
   return (
     <div className="rounded-xl border border-brandRed/50 bg-brandRed/5 p-2.5 space-y-2">
       <div className="text-[10.5px] font-logo font-bold text-brandRed uppercase tracking-wide">
-        Counter Player {activeSeat}'s pick?
+        Counter {activeName || `Player ${activeSeat}`}'s pick?
       </div>
       <div className="grid grid-cols-3 gap-1.5">
         <CounterBtn Icon={WarnIcon} label="BAN" available={jokers.ban} onClick={() => onUse("ban")} />

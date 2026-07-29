@@ -1,15 +1,22 @@
-import { StarIcon } from "./GameIcons";
+import { StarIcon, EyeIcon } from "./GameIcons";
 import { getPrimaryPos, POS_COLORS } from "./positions";
 
 // ── Lineup slot ───────────────────────────────────────────────────────────────
-export default function LineupSlot({ pos, player, bench = false, selected = false, canTap = false, onTap }) {
+export default function LineupSlot({ pos, player, bench = false, selected = false, canTap = false, onTap, onInfo }) {
   const isPrimary = !bench && player && getPrimaryPos(player) === pos;
   const posLabel = bench ? "BENCH" : pos;
   return (
     <div onClick={() => canTap && onTap && onTap(pos)}
-      className={`flex-1 rounded-lg p-1.5 border text-center min-w-0 transition-all
+      className={`relative flex-1 rounded-lg p-1.5 border text-center min-w-0 transition-all
       ${selected ? "border-yamabuki shadow-[0_0_8px_rgba(255,177,27,.35)]" : player ? (bench ? "border-gray-600/50 bg-surfaceCard/30" : "border-yamabuki/40 bg-yamabuki/10") : "border-gray-800 bg-surfaceBg/60"}
       ${canTap ? "cursor-pointer" : ""}`}>
+      {player && onInfo && (
+        <button onClick={e => { e.stopPropagation(); onInfo(player); }}
+          className="absolute top-0.5 right-0.5 text-gray-600 hover:text-yamabuki transition-colors p-0.5"
+          title="Player details">
+          <EyeIcon size={9} />
+        </button>
+      )}
       <div className={`text-[8.5px] uppercase tracking-wider mb-0.5 ${bench ? "text-gray-600" : POS_COLORS[pos]?.split(" ")[1] || "text-gray-600"}`}>{posLabel}</div>
       {player ? (
         <>

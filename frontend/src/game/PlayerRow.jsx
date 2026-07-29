@@ -20,7 +20,7 @@ function TagBadge({ t }) {
 }
 
 // ── Oyuncu satırı (eraball tarzı liste) ──────────────────────────────────────
-export default function PlayerRow({ player, discover, onClick, cost, unaffordable, highlightStat }) {
+export default function PlayerRow({ player, discover, onClick, cost, unaffordable, dimmed, highlightStat }) {
   const [imgOk, setImgOk] = useState(true);
   const stat = (k) => {
     const v = player[k];
@@ -41,7 +41,9 @@ export default function PlayerRow({ player, discover, onClick, cost, unaffordabl
   return (
     <button onClick={onClick} disabled={unaffordable}
       className={`w-full min-w-[560px] flex items-center gap-2 pr-3 py-2.5 border-b text-left transition-colors
-        ${unaffordable ? "opacity-30 cursor-not-allowed" : "hover:bg-surfaceCard/70 cursor-pointer group"}`}
+        ${unaffordable ? "opacity-30 cursor-not-allowed"
+          : dimmed ? "opacity-70 cursor-default"
+          : "hover:bg-surfaceCard/70 cursor-pointer group"}`}
       style={{ borderColor: "rgba(30,41,59,.6)" }}>
       {/* Sabit sol blok (yatay kaydırmada pinli): avatar + isim + arketip + rozetler */}
       <div className="sticky left-0 z-10 flex items-center gap-2 pl-3 pr-2 py-0.5 shrink-0 w-[240px]"

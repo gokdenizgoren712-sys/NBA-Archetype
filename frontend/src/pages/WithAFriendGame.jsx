@@ -17,15 +17,17 @@ import LineupSlot from "../game/LineupSlot";
 import PlayerRow, { posGroupOf } from "../game/PlayerRow";
 import JokerBtn from "../game/JokerBtn";
 import CounterJokerPrompt from "../game/CounterJokerPrompt";
+import BenchCoverage from "../game/BenchCoverage";
 import HowItWorksPanel from "../game/HowItWorksPanel";
 import MechanicsPanel from "../game/MechanicsPanel";
 import WheelModePicker from "../game/WheelModePicker";
 import GameBox from "../game/GameBox";
 import HowToPlayModal from "../game/HowToPlayModal";
+import PlayerDetailModal from "../game/PlayerDetailModal";
 import {
   TargetIcon, WheelIcon, UsersIcon, TrophyIcon, CheckIcon, LinkIcon,
   StarIcon, CoachIcon, CapIcon, RefreshIcon, CalendarIcon, BoltIcon,
-  SearchIcon, WarnIcon, DiceIcon, PlayIcon,
+  SearchIcon, WarnIcon, DiceIcon, PlayIcon, EyeIcon,
 } from "../game/GameIcons";
 
 const EMPTY_LINEUP = { PG: null, SG: null, SF: null, PF: null, C: null, B1: null, B2: null, B3: null, B4: null };
@@ -53,6 +55,7 @@ export default function WithAFriendGame() {
   const [errorMsg, setErrorMsg] = useState("");
   const [copied, setCopied] = useState(false);
   const [howToPlayOpen, setHowToPlayOpen] = useState(false);
+  const [detailPlayer, setDetailPlayer] = useState(null);
 
   const [serverState, setServerState] = useState(null);
   const [actionError, setActionError] = useState("");
@@ -423,13 +426,13 @@ export default function WithAFriendGame() {
 
                 {!spinAnimating && (
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    <SeatPanel seat={1} uid={myUserId} username={seatName[1]}
+                    <SeatPanel seat={1} uid={myUserId} username={seatName[1]} opponentName={opponentUsername}
                       isActive={isMyTurn} isWaiting={!isMyTurn}
                       lineup={game.lineups[myUserId]} moveSrc={moveSrc} canRearrange={canRearrange}
                       onSlotTap={handleSlotTap}
                       jokers={game.jokers[myUserId]}
                       chosenTeam={game.chosen_team} chosenSeason={game.chosen_season}
-                      players={(isMyTurn || game.ban_picking) ? applyTeamPricing(game.pool) : []}
+                      players={applyTeamPricing(game.pool)}
                       posFilter={posFilter} setPosFilter={setPosFilter}
                       sortKey={sortKey} setSortKey={setSortKey}
                       pickedPlayer={isMyTurn ? game.picked_player : null}
@@ -441,6 +444,7 @@ export default function WithAFriendGame() {
                       onPickPlayer={pickPlayerAction} onPlacePos={placePosAction} onCancelPick={cancelPickAction}
                       onUseJoker={useJokerAction} onUseCounterJoker={useCounterJokerAction}
                       onDismissCounter={dismissCounterAction} onConfirmBan={confirmBanAction}
+                      onPlayerInfo={setDetailPlayer}
                       interactive
                     />
                     <SeatPanel seat={2} uid={opponentUserId} username={seatName[2]}
@@ -458,6 +462,7 @@ export default function WithAFriendGame() {
                       bannedName={game.banned_player_id} banVoided={game.ban_voided}
                       banPicking={false}
                       counterDismissed={game.counter_dismissed}
+                      onPlayerInfo={setDetailPlayer}
                       interactive={false}
                     />
                   </div>
@@ -468,7 +473,7 @@ export default function WithAFriendGame() {
             {game.phase === "review" && (
               <ReviewPanel game={game} myUserId={myUserId} opponentUserId={opponentUserId}
                 seatName={seatName} simEra={simEra} moveSrc={moveSrc} canRearrange={canRearrange}
-                onSlotTap={handleSlotTap} onReady={readyForCoachesAction} />
+                onSlotTap={handleSlotTap} onReady={readyForCoachesAction} onPlayerInfo={setDetailPlayer} />
             )}
 
             {(game.phase === "coach1" || game.phase === "coach2") && (() => {
@@ -503,12 +508,14 @@ export default function WithAFriendGame() {
             )}
 
             {game.phase === "complete" && (
-              <ResultPanel game={game} seatName={seatName} myUserId={myUserId} opponentUserId={opponentUserId} />
+              <ResultPanel game={game} seatName={seatName} myUserId={myUserId} opponentUserId={opponentUserId}
+                simEra={simEra} token={token} onPlayerInfo={setDetailPlayer} />
             )}
           </div>
         )}
 
         <HowToPlayModal open={howToPlayOpen} onClose={() => setHowToPlayOpen(false)} />
+        <PlayerDetailModal player={detailPlayer} onClose={() => setDetailPlayer(null)} />
       </div>
     </div>
   );
@@ -517,11 +524,11 @@ export default function WithAFriendGame() {
 // ── Bir tarafın paneli — Same Screen'in PlayerSeatPanel'iyle aynı görsel
 // düzen, ama seat 2 (rakip) HER ZAMAN salt-okunur (interactive=false) ───────
 function SeatPanel({
-  seat, uid, username, isActive, isWaiting, lineup, moveSrc, canRearrange, onSlotTap, jokers,
+  seat, uid, username, opponentName, isActive, isWaiting, lineup, moveSrc, canRearrange, onSlotTap, jokers,
   chosenTeam, chosenSeason, players, posFilter, setPosFilter, sortKey, setSortKey, pickedPlayer,
   gamePhase, doubleActive, discoverActive, bannedName, banVoided, banPicking, counterDismissed,
   onPickPlayer, onPlacePos, onCancelPick, onUseJoker, onUseCounterJoker, onDismissCounter, onConfirmBan,
-  interactive,
+  onPlayerInfo, interactive,
 }) {
   const filtered = posFilter ? players.filter(p => posGroupOf(p) === posFilter) : players;
   const list = [...filtered].sort((a, b) => {
@@ -560,12 +567,13 @@ function SeatPanel({
       )}
       <div className="flex gap-1">
         {POSITIONS.map(pos => <LineupSlot key={pos} pos={pos} player={lu[pos]}
-          selected={moveSrc === pos} canTap={canRearrange} onTap={onSlotTap} />)}
+          selected={moveSrc === pos} canTap={canRearrange} onTap={onSlotTap} onInfo={onPlayerInfo} />)}
       </div>
       <div className="flex gap-1 opacity-80">
         {BENCH_SLOTS.map(pos => <LineupSlot key={pos} pos={pos} player={lu[pos]} bench
-          selected={moveSrc === pos} canTap={canRearrange} onTap={onSlotTap} />)}
+          selected={moveSrc === pos} canTap={canRearrange} onTap={onSlotTap} onInfo={onPlayerInfo} />)}
       </div>
+      <BenchCoverage bench={BENCH_SLOTS.map(pos => lu[pos])} />
 
       {interactive && (
         <>
@@ -581,7 +589,7 @@ function SeatPanel({
           )}
 
           {isWaiting && gamePhase === "drafting" && !counterDismissed && !banPicking && (
-            <CounterJokerPrompt jokers={jokers} activeSeat={seat === 1 ? 2 : 1} onUse={onUseCounterJoker} onDismiss={onDismissCounter} />
+            <CounterJokerPrompt jokers={jokers} activeSeat={seat === 1 ? 2 : 1} activeName={opponentName} onUse={onUseCounterJoker} onDismiss={onDismissCounter} />
           )}
           {isWaiting && banPicking && (
             <div className="text-[10.5px] text-yamabuki">Pick a player below to BAN from their options.</div>
@@ -624,9 +632,12 @@ function SeatPanel({
             </div>
           )}
 
-          {gamePhase === "drafting" && (isActive || (isWaiting && banPicking)) && (
+          {gamePhase === "drafting" && (isActive || isWaiting) && (
             <div>
               <div className="flex items-center gap-2 mb-1">
+                {isWaiting && !banPicking && (
+                  <span className="text-[9px] text-gray-600 uppercase tracking-wider">watching —</span>
+                )}
                 <span className="text-[10px] font-mono tracking-widest text-gray-500 uppercase">{chosenTeam} · {chosenSeason}</span>
                 <span className="ml-auto flex items-center border rounded overflow-hidden" style={{ borderColor: "#262626" }}>
                   {["G", "F", "C"].map(g => (
@@ -636,7 +647,7 @@ function SeatPanel({
                   ))}
                 </span>
               </div>
-              {isActive && (
+              {(isActive || isWaiting) && (
                 <div className="flex items-center gap-1 mb-1 flex-wrap">
                   <span className="font-logo text-[9px] tracking-widest text-gray-500 uppercase mr-1">Sort</span>
                   {SORT_KEYS.map(([field, label]) => (
@@ -653,11 +664,16 @@ function SeatPanel({
                   const banned = isActive && bannedName === p.PLAYER_NAME && !banVoided;
                   const cost = priceOf(p);
                   const overCap = isActive && cost > cap;
+                  const readOnly = isWaiting && !banPicking;
                   return (
                     <PlayerRow key={i} player={p} discover={isActive && discoverActive}
-                      onClick={() => (isWaiting && banPicking ? onConfirmBan(p) : onPickPlayer(p))}
+                      onClick={() => {
+                        if (isWaiting && banPicking) return onConfirmBan(p);
+                        if (isActive) onPickPlayer(p);
+                      }}
                       cost={cost}
                       unaffordable={banned || overCap}
+                      dimmed={readOnly}
                       highlightStat={sortKey === "TAGGED" ? "PTS" : sortKey} />
                   );
                 })}
@@ -672,7 +688,7 @@ function SeatPanel({
 }
 
 // ── Draft tamamlandı: roster preview, iki taraf da onaylamalı ───────────────
-function ReviewPanel({ game, myUserId, opponentUserId, seatName, simEra, moveSrc, canRearrange, onSlotTap, onReady }) {
+function ReviewPanel({ game, myUserId, opponentUserId, seatName, simEra, moveSrc, canRearrange, onSlotTap, onReady, onPlayerInfo }) {
   const myReady = game.ready_for_coaches[myUserId];
   const oppReady = game.ready_for_coaches[opponentUserId];
   return (
@@ -683,9 +699,9 @@ function ReviewPanel({ game, myUserId, opponentUserId, seatName, simEra, moveSrc
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <TeamPreviewCard username={seatName[1]} lineup={game.lineups[myUserId]} simEra={simEra}
-          moveSrc={moveSrc} canRearrange={canRearrange} onSlotTap={onSlotTap} ready={myReady} />
+          moveSrc={moveSrc} canRearrange={canRearrange} onSlotTap={onSlotTap} ready={myReady} onPlayerInfo={onPlayerInfo} />
         <TeamPreviewCard username={seatName[2]} lineup={game.lineups[opponentUserId]} simEra={simEra}
-          moveSrc={null} canRearrange={false} onSlotTap={() => {}} ready={oppReady} />
+          moveSrc={null} canRearrange={false} onSlotTap={() => {}} ready={oppReady} onPlayerInfo={onPlayerInfo} />
       </div>
       <div className="text-center">
         <button onClick={onReady} disabled={myReady}
@@ -697,7 +713,7 @@ function ReviewPanel({ game, myUserId, opponentUserId, seatName, simEra, moveSrc
   );
 }
 
-function TeamPreviewCard({ username, lineup, simEra, moveSrc, canRearrange, onSlotTap, ready }) {
+function TeamPreviewCard({ username, lineup, simEra, moveSrc, canRearrange, onSlotTap, ready, onPlayerInfo }) {
   const lu = lineup || EMPTY_LINEUP;
   const starters = POSITIONS.map(p => lu[p]).filter(Boolean);
   const fit = computeLineupFit(starters, simEra);
@@ -731,6 +747,12 @@ function TeamPreviewCard({ username, lineup, simEra, moveSrc, canRearrange, onSl
           <div className="h-full rounded-full" style={{ width: `${qPct}%`, background: qPct >= 75 ? "#1D428A" : qPct >= 55 ? "#2a3d6b" : "#7f1d1d" }} />
         </div>
         <span className={`text-[11px] font-bold w-6 text-right shrink-0 ${qPct >= 75 ? "text-blue-300" : qPct >= 55 ? "text-gray-200" : "text-red-400"}`}>{qPct}</span>
+        {onPlayerInfo && (
+          <span onClick={e => { e.stopPropagation(); onPlayerInfo(p); }}
+            className="text-gray-600 hover:text-yamabuki transition-colors shrink-0" title="Player details">
+            <EyeIcon size={12} />
+          </span>
+        )}
       </button>
     );
   };
@@ -754,6 +776,7 @@ function TeamPreviewCard({ username, lineup, simEra, moveSrc, canRearrange, onSl
         {POSITIONS.map(pos => <Row key={pos} pos={pos} />)}
         {BENCH_SLOTS.map(pos => <Row key={pos} pos={pos} bench />)}
       </div>
+      <BenchCoverage bench={BENCH_SLOTS.map(pos => lu[pos])} />
     </div>
   );
 }
@@ -795,7 +818,86 @@ function SeriesPanel({ game, matchup, seatName, myUserId, opponentUserId, toSeat
   );
 }
 
-function ResultPanel({ game, seatName, myUserId, opponentUserId }) {
+function gradeFor(pct) {
+  return pct >= 85 ? "S" : pct >= 78 ? "A" : pct >= 70 ? "B" : pct >= 62 ? "C" : "D";
+}
+
+function TeamEvalCard({ name, wins, won, coach, lineup, simEra, mine, token, onPlayerInfo }) {
+  const starters = POSITIONS.map(p => lineup[p]).filter(Boolean);
+  const fit = computeLineupFit(starters, simEra);
+  const pct = fit ? Math.round(fit.lineupScore * 100) : 0;
+  const grade = gradeFor(pct);
+  const coveragePct = Math.round((fit?.coverage || 0) * 100);
+  const qualityPct = Math.round((fit?.avgQuality || 0) * 100);
+  const roleFitPct = Math.round((fit?.roleFit ?? 1) * 100);
+
+  const [saveState, setSaveState] = useState("idle"); // idle | saving | saved | error
+  const saveLineup = async () => {
+    if (!token || saveState === "saving" || saveState === "saved") return;
+    setSaveState("saving");
+    const names = starters.map(p => p.PLAYER_NAME);
+    try {
+      const r = await fetch("/api/profile/saved-lineups", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ players: names, score: pct / 100, grade, pct, label: names.join(" · ") }),
+      });
+      setSaveState(r.ok ? "saved" : "error");
+    } catch { setSaveState("error"); }
+  };
+
+  return (
+    <div className={`rounded-2xl border p-4 space-y-3 ${won ? "border-yamabuki bg-yamabuki/10" : "border-gray-800 bg-surfaceBg"}`}>
+      <div className="flex items-center justify-between">
+        <span className="font-logo text-base font-bold text-white truncate">{name}</span>
+        <span className="text-3xl font-black tabular-nums shrink-0" style={{ color: won ? "var(--accent)" : "#e5e7eb" }}>{wins}</span>
+      </div>
+      {coach && (
+        <div className="text-[11px] text-gray-400 flex items-center gap-1"><CoachIcon size={12} /> {coach}</div>
+      )}
+
+      <div className="rounded-xl border border-gray-800 bg-darkBg/40 p-3 flex items-center gap-3">
+        <div className="text-center shrink-0">
+          <div className={`font-logo text-3xl font-black tabular-nums ${pct >= 78 ? "text-blue-400" : pct >= 62 ? "text-sky-400" : "text-gray-300"}`}>{pct}</div>
+          <div className={`font-logo text-sm font-bold ${pct >= 85 ? "text-blue-300" : pct >= 78 ? "text-sky-300" : pct >= 70 ? "text-emerald-300" : pct >= 62 ? "text-yamabuki" : "text-red-400"}`}>{grade}</div>
+        </div>
+        <div className="flex-1 grid grid-cols-3 gap-1.5 min-w-0">
+          {[["Quality", qualityPct], ["Coverage", coveragePct], ["Role Fit", roleFitPct]].map(([label, val]) => (
+            <div key={label} className="rounded-lg border border-gray-800 bg-surfaceCard/60 py-1.5 text-center">
+              <div className={`text-sm font-black ${val >= 75 ? "text-blue-300" : val >= 55 ? "text-gray-200" : "text-red-400"}`}>{val}</div>
+              <div className="text-[8px] text-gray-500 mt-0.5">{label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <BenchCoverage bench={BENCH_SLOTS.map(pos => lineup[pos])} />
+
+      <div className="flex flex-wrap gap-1">
+        {POSITIONS.concat(BENCH_SLOTS).map(pos => lineup[pos] && (
+          <button key={pos} onClick={() => onPlayerInfo && onPlayerInfo(lineup[pos])}
+            className={`text-[10px] px-1.5 py-0.5 rounded border transition-colors ${POS_COLORS[pos] || "border-gray-700 text-gray-400"} hover:brightness-125`}
+            title={`${lineup[pos]._cost ?? priceOf(lineup[pos])}% cap — tap for details`}>
+            {lineup[pos].PLAYER_NAME?.split(" ").slice(-1)[0]}
+          </button>
+        ))}
+      </div>
+
+      {mine && token && (
+        <button onClick={saveLineup} disabled={saveState === "saving" || saveState === "saved"}
+          className={`w-full py-2 rounded-lg text-xs font-logo font-bold transition-colors inline-flex items-center justify-center gap-1.5
+            ${saveState === "saved" ? "border border-emerald-600/50 text-emerald-300 bg-emerald-950/30 cursor-default"
+              : "border border-gray-700 text-gray-300 hover:border-yamabuki/60 hover:text-yamabuki"}`}>
+          {saveState === "saved" ? <><CheckIcon size={13} /> Saved to your lineups</>
+            : saveState === "saving" ? "Saving…"
+            : saveState === "error" ? "Couldn't save — try again"
+            : "Save my starting 5"}
+        </button>
+      )}
+    </div>
+  );
+}
+
+function ResultPanel({ game, seatName, myUserId, opponentUserId, simEra, token, onPlayerInfo }) {
   const myWins = game.series_wins[myUserId] || 0;
   const oppWins = game.series_wins[opponentUserId] || 0;
   const iWon = myWins > oppWins;
@@ -813,25 +915,12 @@ function ResultPanel({ game, seatName, myUserId, opponentUserId }) {
         <div className="text-[11px] text-gray-500 mt-1">{(game.series_games || []).length} game{(game.series_games || []).length !== 1 ? "s" : ""} played</div>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {[[myUserId, seatName[1], myWins, iWon], [opponentUserId, seatName[2], oppWins, !iWon && myWins !== oppWins]].map(([uid, name, wins, won]) => (
-          <div key={uid} className={`rounded-2xl border p-4 space-y-3 ${won ? "border-yamabuki bg-yamabuki/10" : "border-gray-800 bg-surfaceBg"}`}>
-            <div className="flex items-center justify-between">
-              <span className="font-logo text-base font-bold text-white truncate">{name}</span>
-              <span className="text-3xl font-black tabular-nums shrink-0" style={{ color: won ? "var(--accent)" : "#e5e7eb" }}>{wins}</span>
-            </div>
-            {game.coaches[uid] && (
-              <div className="text-[11px] text-gray-400 flex items-center gap-1"><CoachIcon size={12} /> {game.coaches[uid]}</div>
-            )}
-            <div className="flex flex-wrap gap-1">
-              {POSITIONS.concat(BENCH_SLOTS).map(pos => game.lineups[uid][pos] && (
-                <span key={pos} className={`text-[10px] px-1.5 py-0.5 rounded border ${POS_COLORS[pos] || "border-gray-700 text-gray-400"}`}
-                  title={`${game.lineups[uid][pos]._cost ?? priceOf(game.lineups[uid][pos])}% cap`}>
-                  {game.lineups[uid][pos].PLAYER_NAME?.split(" ").slice(-1)[0]}
-                </span>
-              ))}
-            </div>
-          </div>
-        ))}
+        <TeamEvalCard uid={myUserId} name={seatName[1]} wins={myWins} won={iWon}
+          coach={game.coaches[myUserId]} lineup={game.lineups[myUserId]} simEra={simEra}
+          mine token={token} onPlayerInfo={onPlayerInfo} />
+        <TeamEvalCard uid={opponentUserId} name={seatName[2]} wins={oppWins} won={!iWon && myWins !== oppWins}
+          coach={game.coaches[opponentUserId]} lineup={game.lineups[opponentUserId]} simEra={simEra}
+          mine={false} token={token} onPlayerInfo={onPlayerInfo} />
       </div>
       <p className="text-center text-xs text-gray-500">Head back to the mode select screen to start a new room.</p>
     </div>
