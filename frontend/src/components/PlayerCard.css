@@ -1,0 +1,249 @@
+/* Primary Arch — Panini-style vertical player card (tilt + foil + expand tabs) */
+
+.pcard-stage { perspective: 1000px; width: 280px; }
+
+.pcard {
+  width: 280px;
+  position: relative;
+  border-radius: 17px;
+  background: linear-gradient(160deg, #17151b 0%, #0c0b0e 55%, #14100a 100%);
+  border: 1px solid var(--border);
+  box-shadow: 0 24px 48px -18px rgba(0, 0, 0, 0.8);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 28px), calc(100% - 28px) 100%, 0 100%);
+  overflow: hidden;
+  transition: transform 0.35s cubic-bezier(0.2, 0.7, 0.3, 1);
+  transform-style: preserve-3d;
+  cursor: pointer;
+}
+.pcard.pcard-discover { border-color: rgba(255, 177, 27, 0.5); }
+.pcard.pcard-discover:hover { border-color: rgba(255, 177, 27, 0.8); }
+
+/* Edge bevel — thin metallic-accent line tracing the cut-corner outline */
+.pcard::before {
+  content: ""; position: absolute; inset: 0; z-index: 4; pointer-events: none; border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(150deg, var(--accent-line) 0%, transparent 30%, transparent 70%, var(--accent-line) 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0.85;
+}
+
+/* Holographic diagonal stripes — static Prizm-style texture, always faintly present */
+.pcard-holo {
+  position: absolute; inset: 0; pointer-events: none; z-index: 0; mix-blend-mode: color-dodge; opacity: 0.16;
+  background: repeating-linear-gradient(
+    72deg,
+    transparent 0 6px,
+    var(--accent) 6px 8px,
+    transparent 8px 16px,
+    #fff 16px 17px,
+    transparent 17px 26px
+  );
+}
+
+/* Sparkle glints — fixed twinkle points, Panini foil accent */
+.pcard-sparkle { position: absolute; z-index: 1; pointer-events: none; width: 6px; height: 6px; opacity: 0; }
+.pcard-sparkle::before, .pcard-sparkle::after {
+  content: ""; position: absolute; background: #fff; border-radius: 1px;
+}
+.pcard-sparkle::before { top: 50%; left: 0; width: 100%; height: 1px; transform: translateY(-50%); }
+.pcard-sparkle::after { left: 50%; top: 0; height: 100%; width: 1px; transform: translateX(-50%); }
+.pcard-sparkle.s1 { top: 14%; left: 12%; animation: sparkleTwinkle 5.2s ease-in-out infinite; }
+.pcard-sparkle.s2 { top: 30%; right: 10%; width: 8px; height: 8px; animation: sparkleTwinkle 4.3s ease-in-out infinite 1.4s; }
+.pcard-sparkle.s3 { top: 55%; left: 8%; animation: sparkleTwinkle 6s ease-in-out infinite 2.6s; }
+@keyframes sparkleTwinkle {
+  0%, 100% { opacity: 0; transform: scale(0.4) rotate(0deg); }
+  50% { opacity: 0.9; transform: scale(1.1) rotate(45deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pcard-sparkle { animation: none !important; opacity: 0 !important; }
+}
+
+.pcard-foil {
+  position: absolute; inset: 0; pointer-events: none; mix-blend-mode: screen; opacity: 0.5; z-index: 0;
+  background:
+    radial-gradient(circle at var(--mx, 50%) var(--my, 30%), rgba(255, 255, 255, 0.32), transparent 42%),
+    linear-gradient(115deg, transparent 15%, var(--accent-a) 32%, var(--accent-b) 50%, transparent 72%);
+  background-position: var(--mx, 50%) var(--my, 30%), 0 0;
+  animation: foilIdleSweep 7s ease-in-out infinite;
+}
+.pcard:hover .pcard-foil, .pcard.pcard-expanded .pcard-foil { animation-play-state: paused; }
+@keyframes foilIdleSweep {
+  0%, 100% { background-position: 30% 20%, 0 0; }
+  50% { background-position: 70% 55%, 0 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pcard-foil { animation: none; }
+}
+
+.pcard-grain {
+  position: absolute; inset: 0; pointer-events: none; opacity: 0.05; z-index: 0;
+  background-image: repeating-linear-gradient(0deg, #fff 0 1px, transparent 1px 3px);
+}
+
+.pcard-top {
+  position: relative; z-index: 3; display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 14px 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.pcard-rank { font-family: var(--font-logo); font-size: 13px; font-weight: 700; color: var(--text-faint); }
+.pcard-rank.top { color: var(--accent); }
+.pcard-rating {
+  position: relative; overflow: hidden;
+  font-family: var(--font-logo); font-weight: 700; font-size: 16px; color: #14110a;
+  background: linear-gradient(100deg, #ffe9b0, var(--accent) 55%, #ffe9b0 100%);
+  padding: 2px 9px; border-radius: 3px; transform: skewX(-8deg);
+  box-shadow: 0 0 10px var(--accent-a), 0 1px 0 rgba(255,255,255,.5) inset;
+}
+.pcard-rating::after {
+  content: ""; position: absolute; top: -60%; left: -20%; width: 40%; height: 220%;
+  background: rgba(255,255,255,.55); transform: rotate(20deg);
+  animation: ratingShine 4.5s ease-in-out infinite;
+}
+@keyframes ratingShine {
+  0%, 30% { left: -30%; }
+  70%, 100% { left: 130%; }
+}
+@media (prefers-reduced-motion: reduce) { .pcard-rating::after { animation: none; display: none; } }
+.pcard-gp { font-size: 10px; color: var(--text-faint); font-weight: 600; }
+
+.pcard-photo { position: relative; z-index: 1; height: 236px; overflow: hidden; }
+.pcard-photo-img {
+  position: absolute; inset: 0; z-index: 1;
+  width: 100%; height: 100%;
+  object-fit: contain; object-position: 50% 100%;
+  filter: drop-shadow(0 10px 18px rgba(0,0,0,.55));
+}
+.pcard-photo-fallback { position: absolute; inset: 0; background: linear-gradient(160deg, #201c14, #0c0b0e); }
+.pcard-toppct { position: absolute; z-index: 2; top: 8px; left: 10px; font-size: 9px; color: var(--text-muted); }
+.pcard-photo-fade {
+  position: absolute; z-index: 2; left: 0; right: 0; bottom: 0; height: 46px;
+  background: linear-gradient(to top, #14100a 0%, transparent 100%); pointer-events: none; opacity: .8;
+}
+.pcard-photo-glow {
+  position: absolute; z-index: 0; left: 50%; bottom: 4%; width: 70%; height: 40%; transform: translateX(-50%);
+  background: radial-gradient(ellipse at center, var(--accent-a) 0%, transparent 72%);
+  pointer-events: none; filter: blur(2px);
+}
+
+.pcard-nameband {
+  position: relative; z-index: 3; margin: 0 14px; padding: 8px 10px; text-align: center;
+  background: rgba(0, 0, 0, 0.62); backdrop-filter: blur(3px);
+  border-top: 1px solid var(--accent-line); border-bottom: 1px solid var(--accent-line);
+  transform: rotate(-0.6deg);
+}
+.pcard-name {
+  font-family: var(--font-logo); font-weight: 700; font-size: 17px; letter-spacing: 0.02em; margin: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-primary);
+}
+.pcard-meta { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 2px; font-size: 10px; letter-spacing: 0.07em; }
+.pcard-team { color: #8f8f8f; font-weight: 700; }
+.pcard-dot { color: #4a4a4a; }
+.pcard-arch { color: var(--accent); font-weight: 700; }
+
+.pcard-stats {
+  position: relative; z-index: 3; margin: 9px 12px 0; padding: 9px 10px;
+  background: rgba(0, 0, 0, 0.42); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 11px;
+}
+.pcard-stats.flat { border-radius: 11px; margin-bottom: 12px; }
+.pcard-stat-row { display: grid; grid-template-columns: 1fr 1fr 1fr; text-align: center; }
+.pcard-stat-row > div + div { border-left: 1px solid rgba(255, 255, 255, 0.08); }
+.pcard-stat-val { font-family: var(--font-logo); font-weight: 700; font-size: 14px; color: var(--text-primary); }
+.pcard-stat-val.hi { color: var(--accent); }
+.pcard-stat-lbl { font-size: 7.5px; color: #7a7a7a; letter-spacing: 0.09em; margin-top: 1px; }
+
+.pcard-tags { position: relative; z-index: 3; display: flex; gap: 4px; flex-wrap: wrap; margin: 8px 12px 0; }
+.pcard-league-tag, .pcard-sample-tag {
+  font-size: 8.5px; padding: 2px 7px; border-radius: 4px; font-weight: 600;
+}
+.pcard-league-tag { background: rgba(168, 38, 63, 0.15); color: #e05070; border: 1px solid rgba(168, 38, 63, 0.3); }
+.pcard-sample-tag { background: rgba(255, 177, 27, 0.15); color: #ffb11b; }
+
+/* Expand: peek row + tabbed panel */
+.pcard-peek {
+  position: relative; z-index: 3; margin: 10px 12px 0; padding: 7px 10px;
+  background: rgba(0, 0, 0, 0.42); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 11px;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  font-size: 9px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--accent);
+  font-family: var(--font-logo); font-weight: 700;
+}
+.pcard.pcard-expanded .pcard-peek { border-radius: 11px 11px 0 0; border-bottom: none; margin-bottom: 0; }
+.pcard-chev { transition: transform 0.35s cubic-bezier(0.2, 0.7, 0.3, 1); font-size: 8px; display: inline-block; }
+.pcard.pcard-expanded .pcard-chev { transform: rotate(180deg); }
+
+.pcard-expand-wrap { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 0.45s cubic-bezier(0.2, 0.8, 0.3, 1); }
+.pcard.pcard-expanded .pcard-expand-wrap { grid-template-rows: 1fr; }
+.pcard-expand-inner { overflow: hidden; min-height: 0; }
+
+.pcard-detail {
+  position: relative; z-index: 3; margin: 0 12px 12px;
+  background: rgba(0, 0, 0, 0.42); border: 1px solid rgba(255, 255, 255, 0.06); border-top: none; border-radius: 0 0 11px 11px;
+}
+.pcard-tabbar { display: flex; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
+.pcard-tabbar button {
+  flex: 1; background: none; border: none; padding: 7px 1px; font-family: var(--font-logo);
+  font-size: 9px; font-weight: 700; letter-spacing: 0.02em; color: #767676; cursor: pointer;
+  border-bottom: 2px solid transparent;
+}
+.pcard-tabbar button.active { color: var(--accent); border-bottom-color: var(--accent); }
+.pcard-tabcontent { padding: 11px; min-height: 170px; }
+.pcard-loading { text-align: center; padding: 24px 0; font-size: 11px; color: var(--text-muted); }
+
+.pcard-radar { width: 100%; max-width: 210px; display: block; margin: 0 auto; }
+.pcard-quickstats { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 5px; margin-top: 9px; }
+.pcard-quickstats > div { text-align: center; background: rgba(255, 255, 255, 0.03); border-radius: 6px; padding: 5px 1px; }
+.pcard-quickstats .v { font-family: var(--font-logo); font-weight: 700; font-size: 11px; color: var(--text-primary); }
+.pcard-quickstats .l { font-size: 6.5px; color: #7a7a7a; letter-spacing: 0.07em; margin-top: 1px; }
+.pcard-radar-summary { text-align: center; font-size: 9.5px; color: #9a9a9a; margin-top: 8px; }
+
+.pcard-arch-item { display: grid; grid-template-columns: 58px 1fr 22px; align-items: center; gap: 6px; margin-bottom: 5px; }
+.pcard-arch-item .lbl { font-size: 9.5px; color: #cfcfcf; }
+.pcard-arch-item.primary .lbl { color: var(--accent); font-weight: 700; }
+.pcard-arch-track { height: 5px; border-radius: 3px; background: rgba(255, 255, 255, 0.08); overflow: hidden; }
+.pcard-arch-track > div { height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--accent), #ffe19c); }
+.pcard-arch-item .val { font-family: var(--font-logo); font-weight: 700; font-size: 10px; text-align: right; color: #d8d8d8; }
+.pcard-arch-item.primary .val { color: var(--accent); }
+.pcard-section-lbl { font-family: var(--font-logo); font-size: 8.5px; letter-spacing: 0.1em; text-transform: uppercase; color: #6f6f6f; margin: 0 0 6px; }
+.pcard-arch-note { font-size: 9px; line-height: 1.5; color: #7a7a7a; margin: -2px 0 9px; }
+
+.pcard-chip-row { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 9px; }
+.pcard-chip {
+  font-size: 8.5px; padding: 2px 7px; border-radius: 20px; color: var(--accent);
+  border: 1px solid var(--accent-line); background: rgba(255, 255, 255, 0.06); font-weight: 600;
+}
+
+.pcard-sim-row { display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
+.pcard-sim-row:last-child { border-bottom: none; }
+.pcard-sim-name { font-size: 10.5px; color: #eaeaea; font-weight: 600; }
+.pcard-sim-meta { font-size: 8.5px; color: #8a8a8a; margin-top: 1px; }
+.pcard-sim-meta .a { color: var(--accent); font-weight: 700; }
+.pcard-sim-pct { text-align: right; }
+.pcard-sim-pct .v { font-family: var(--font-logo); font-weight: 700; font-size: 11px; color: var(--accent); }
+.pcard-sim-pct .l { font-size: 7px; color: #6f6f6f; text-transform: uppercase; letter-spacing: 0.06em; }
+
+.pcard-season-row {
+  display: flex; align-items: center; gap: 7px; padding: 5px 7px; border-radius: 6px;
+  background: rgba(255, 255, 255, 0.02); margin-bottom: 3px; font-size: 8.5px;
+}
+.pcard-season-row.cur { background: rgba(255, 255, 255, 0.06); border: 1px solid var(--accent-line); }
+.pcard-season-row .yr { width: 44px; color: #8a8a8a; font-family: var(--font-logo); flex-shrink: 0; }
+.pcard-season-row .tm { width: 26px; color: #8a8a8a; flex-shrink: 0; }
+.pcard-season-row .arc { flex: 1; color: var(--accent); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pcard-season-row .stat { color: #9a9a9a; flex-shrink: 0; }
+.pcard-season-row .sc { font-family: var(--font-logo); font-weight: 700; color: var(--accent); width: 20px; text-align: right; flex-shrink: 0; }
+
+.pcard-empty { text-align: center; padding: 20px 0; font-size: 10.5px; color: var(--text-muted); }
+
+/* Prospect tab (G-League / NCAA / EuroLeague) */
+.pcard-prospect-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.pcard-prospect-grade { font-family: var(--font-logo); font-weight: 800; font-size: 30px; line-height: 1; }
+.pcard-tier-badge { font-size: 10px; font-weight: 700; padding: 3px 10px; border-radius: 20px; border: 1px solid; }
+.pcard-ceiling { margin-bottom: 12px; }
+.pcard-ceiling-labels { display: flex; justify-content: space-between; font-size: 9.5px; color: var(--text-muted); margin-bottom: 4px; }
+.pcard-ceiling-labels b { color: var(--text-primary); font-weight: 700; }
+.pcard-ceiling-note { font-size: 8.5px; color: var(--text-faint); margin-top: 4px; }
+.pcard-ceiling-warn { font-size: 8.5px; color: var(--yamabuki, #FFB11B); margin-top: 4px; }
+.pcard-sw-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 4px; }
+.pcard-sw-chip { display: block; font-size: 10px; padding: 3px 7px; border-radius: 5px; margin-bottom: 4px; }
+.pcard-sw-chip.good { background: rgba(16,185,129,.10); color: #10b981; border: 1px solid rgba(16,185,129,.25); }
+.pcard-sw-chip.bad { background: rgba(239,68,68,.10); color: #ef4444; border: 1px solid rgba(239,68,68,.25); }

@@ -42,9 +42,9 @@ import { api } from "./api";
 const NAV = [
   { to: "/game",       Icon: GameIcon,       label: "Game"    },
   { to: "/players",    Icon: NBAIcon,        label: "NBA"     },
-  { to: "/gleague",    Icon: GLeagueIcon,    label: "G-Lg"    },
-  { to: "/ncaa",       Icon: NCAAIcon,       label: "NCAA"    },
-  { to: "/euroleague", Icon: EuroLeagueIcon, label: "EUR"     },
+  { to: "/gleague",    Icon: GLeagueIcon,    label: "G-Lg",    color: "#A8263F" },
+  { to: "/ncaa",       Icon: NCAAIcon,       label: "NCAA",    color: "#3D7EC9" },
+  { to: "/euroleague", Icon: EuroLeagueIcon, label: "EUR",     color: "#FF6900" },
   { to: "/lineups",    Icon: LineupsIcon,    label: "Lineups" },
   { to: "/explore",    Icon: ExploreIcon,    label: "Explore" },
   { to: "/compare",    Icon: CompareIcon,    label: "Compare" },
@@ -60,13 +60,13 @@ function UserButton() {
   const navigate = useNavigate();
   if (!isLoggedIn) return (
     <button onClick={() => navigate("/login")}
-      className="px-3 py-1 rounded-lg text-xs font-medium bg-yamabuki text-darkBg hover:bg-white transition-colors">
+      className="aura-shine-hover px-3 py-1 rounded-lg text-xs font-medium bg-yamabuki text-darkBg hover:bg-white transition-colors">
       Log In
     </button>
   );
   return (
     <button onClick={() => navigate("/profile")}
-      className="w-7 h-7 flex items-center justify-center rounded-full text-xs font-bold font-logo bg-yamabuki text-darkBg"
+      className="aura-shine-hover w-7 h-7 flex items-center justify-center rounded-full text-xs font-bold font-logo bg-yamabuki text-darkBg"
       title={user.username}>
       {user.username?.[0]?.toUpperCase()}
     </button>
@@ -81,11 +81,12 @@ function TopBar() {
   useEffect(() => { api.meta().then(setMeta).catch(() => {}); }, []);
 
   return (
-    <header className="h-12 shrink-0 flex items-center px-4 gap-3 border-b border-gray-800 bg-darkBg">
+    <header className="relative h-12 shrink-0 flex items-center px-4 gap-3 aura-glass overflow-hidden">
+      <div className="aura-glow" style={{ "--aura-color": "#FFB11B", width: 180, height: 180, left: -40, top: -70 }} />
 
       {/* Logo — 12-gen Dodecagon + PRIMARY ARCH */}
       <button onClick={() => navigate("/game")}
-        className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+        className="relative flex items-center gap-2 hover:opacity-80 transition-opacity">
         <Logo size={30} />
         <span className="font-logo text-lg tracking-widest hidden sm:flex leading-none pt-0.5">
           <span className="font-semibold text-white">PRIMARY</span>
@@ -93,7 +94,7 @@ function TopBar() {
         </span>
       </button>
 
-      <div className="ml-auto flex items-center gap-1.5">
+      <div className="relative ml-auto flex items-center gap-1.5">
         {meta?.last_updated && (
           <span className="text-[10px] hidden md:block" style={{ color: "var(--text-muted)" }}>
             {meta.last_updated}
@@ -103,9 +104,9 @@ function TopBar() {
         <button
           onClick={async () => { await fetch("/api/admin/clear-cache", { method: "POST" }); window.location.reload(); }}
           title="Refresh data"
-          className="w-7 h-7 flex items-center justify-center rounded text-sm transition-colors"
-          style={{ color: "var(--text-muted)", border: "1px solid var(--border)" }}
-          onMouseEnter={e => e.currentTarget.style.color = "var(--text-primary)"}
+          className="w-7 h-7 flex items-center justify-center text-sm transition-colors"
+          style={{ color: "var(--text-muted)" }}
+          onMouseEnter={e => e.currentTarget.style.color = "var(--yamabuki)"}
           onMouseLeave={e => e.currentTarget.style.color = "var(--text-muted)"}
         ><RefreshIcon size={15} /></button>
 
@@ -126,20 +127,23 @@ function SideNav() {
   ];
 
   return (
-    <aside className="hidden md:flex flex-col w-16 shrink-0 border-r border-gray-800 bg-darkBg pt-2 pb-4">
+    <aside className="hidden md:flex flex-col w-16 shrink-0 aura-glass border-t-0 border-b-0 border-l-0 pt-2 pb-4">
       {items.map(n => {
         const active = location.pathname === n.to || location.pathname.startsWith(n.to + "/");
+        const color = n.color || "#FFB11B";
         return (
           <NavLink key={n.to} to={n.to} title={n.label}
             className={`group relative flex flex-col items-center justify-center h-14 gap-1 transition-colors
               ${active ? "text-white" : "text-gray-400 hover:text-white"}`}
           >
-            {/* active indicator */}
             {active && (
-              <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 rounded-r bg-yamabuki" />
+              <>
+                <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 rounded-r" style={{ background: color }} />
+                <span className="aura-glow" style={{ "--aura-color": color, width: 46, height: 46, left: "calc(50% - 23px)", top: "calc(50% - 23px)" }} />
+              </>
             )}
-            <n.Icon size={22} />
-            <span className="font-logo text-[9px] font-semibold tracking-wider uppercase">{n.label}</span>
+            <n.Icon size={22} className="relative transition-transform group-hover:scale-110" />
+            <span className="relative font-logo text-[9px] font-semibold tracking-wider uppercase">{n.label}</span>
           </NavLink>
         );
       })}
@@ -173,9 +177,9 @@ function BottomNav() {
 
   const mid = Math.ceil(BOTTOM_NAV.length / 2);
   return (
-    <nav className="md:hidden shrink-0 border-t border-gray-800 bg-darkBg">
+    <nav className="md:hidden shrink-0 aura-glass border-l-0 border-r-0 border-b-0">
       <Row items={BOTTOM_NAV.slice(0, mid)} />
-      <div className="border-t border-gray-800">
+      <div className="border-t" style={{ borderColor: "rgba(255,255,255,.07)" }}>
         <Row items={BOTTOM_NAV.slice(mid)} />
       </div>
     </nav>

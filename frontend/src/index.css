@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./aura.css";
 
 /* ── Tailwind v4: palette overrides ──────────────────────────────── */
 @theme {

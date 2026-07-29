@@ -1,0 +1,184 @@
+/* Primary Arch — shared "aura" system, generalized from PlayerCard.css.
+   These are the site-wide utilities; PlayerCard.css keeps its own pcard-* names
+   for the card itself, but the underlying mechanics (foil sweep, holo stripes,
+   shine sweep, tilt) are the same math, just tuned down for non-card surfaces. */
+
+.aura-glass {
+  background: rgba(19, 19, 19, 0.62);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+/* Large soft ambient glow blob — position a container `relative`, drop this
+   absolutely inside it. Color via --aura-color (defaults to yamabuki). */
+.aura-glow {
+  position: absolute;
+  pointer-events: none;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--aura-color, #FFB11B) 0%, transparent 70%);
+  opacity: 0.28;
+  filter: blur(24px);
+  animation: auraDrift 9s ease-in-out infinite;
+}
+@keyframes auraDrift {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(4%, -3%) scale(1.08); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .aura-glow { animation: none; }
+}
+
+/* Diagonal shine sweep — add to any button/badge/active-state element.
+   Element needs position:relative + overflow:hidden. */
+.aura-shine { position: relative; overflow: hidden; }
+.aura-shine::after {
+  content: "";
+  position: absolute; top: -60%; left: -30%; width: 40%; height: 220%;
+  background: rgba(255, 255, 255, 0.35);
+  transform: rotate(20deg);
+  animation: auraShineSweep 4.5s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes auraShineSweep {
+  0%, 30% { left: -30%; }
+  70%, 100% { left: 130%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .aura-shine::after { animation: none; display: none; }
+}
+
+/* One-shot sweep on hover — for persistent chrome (nav/toolbar buttons) where
+   a continuous ambient shimmer would be too noisy. */
+.aura-shine-hover { position: relative; overflow: hidden; }
+.aura-shine-hover::after {
+  content: "";
+  position: absolute; top: -60%; left: -30%; width: 40%; height: 220%;
+  background: rgba(255, 255, 255, 0.35);
+  transform: rotate(20deg);
+  pointer-events: none;
+}
+.aura-shine-hover:hover::after {
+  animation: auraShineSweep 0.8s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .aura-shine-hover:hover::after { animation: none; display: none; }
+}
+
+/* Faint Prizm-style diagonal stripe texture — much lower opacity than the
+   card's own .pcard-holo since it covers far larger surfaces. */
+.aura-holo {
+  position: absolute; inset: 0; pointer-events: none; z-index: 0;
+  mix-blend-mode: color-dodge;
+  opacity: 0.05;
+  background: repeating-linear-gradient(
+    72deg,
+    transparent 0 6px,
+    var(--aura-color, #FFB11B) 6px 8px,
+    transparent 8px 16px,
+    #fff 16px 17px,
+    transparent 17px 26px
+  );
+}
+
+/* Finder-style search — invisible at rest, icon-first, expands + lifts forward
+   on focus/value. No visible box at rest — just a glow beneath the icon. */
+.aura-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  width: 32px;
+  padding: 0 9px;
+  border-radius: 999px;
+  cursor: text;
+  background: transparent;
+  transition: width 0.35s cubic-bezier(0.2, 0.8, 0.3, 1), transform 0.25s ease,
+              box-shadow 0.25s ease, background 0.25s ease;
+}
+.aura-search.expanded {
+  width: 200px;
+  justify-content: flex-start;
+  background: rgba(255, 255, 255, 0.05);
+  transform: scale(1.04) translateY(-1px);
+  box-shadow: 0 10px 26px -10px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 177, 27, 0.28);
+}
+.aura-search-glow {
+  position: absolute; left: 50%; bottom: -1px; width: 55%; height: 8px;
+  transform: translateX(-50%);
+  background: radial-gradient(ellipse at center, rgba(255, 177, 27, 0.4), transparent 72%);
+  filter: blur(4px);
+  pointer-events: none;
+  opacity: 0.55;
+  transition: opacity 0.3s;
+}
+.aura-search.expanded .aura-search-glow { opacity: 0.85; }
+.aura-search-icon {
+  flex-shrink: 0;
+  color: var(--text-muted, #8a8a8a);
+  transition: color 0.25s;
+  position: relative; z-index: 1;
+}
+.aura-search.expanded .aura-search-icon { color: var(--yamabuki, #FFB11B); }
+.aura-search-input {
+  border: none; outline: none; background: transparent;
+  color: var(--text-primary, #e5e5e5); font-size: 13px;
+  margin-left: 0; width: 0; opacity: 0; min-width: 0;
+  transition: width 0.35s cubic-bezier(0.2, 0.8, 0.3, 1), opacity 0.2s, margin-left 0.35s;
+}
+.aura-search.expanded .aura-search-input { width: 145px; opacity: 1; margin-left: 8px; }
+
+/* Ghost select — no visible box until hover/focus. Wrap a native <select> in
+   .aura-select-wrap, give the select itself .aura-select. Custom chevron via
+   the wrapper's ::after (native arrow is suppressed with appearance:none). */
+.aura-select-wrap { position: relative; display: inline-flex; align-items: center; }
+.aura-select-wrap::after {
+  content: ""; position: absolute; right: 7px; top: 50%; width: 6px; height: 6px;
+  border-right: 1.5px solid var(--text-faint); border-bottom: 1.5px solid var(--text-faint);
+  transform: translateY(-65%) rotate(45deg); pointer-events: none;
+}
+.aura-select {
+  appearance: none; -webkit-appearance: none; -moz-appearance: none;
+  background: transparent; border: none; outline: none;
+  color: var(--text-primary); font-size: 13px;
+  padding: 6px 22px 6px 8px; border-radius: 8px; cursor: pointer;
+  transition: background 0.2s;
+}
+.aura-select:hover, .aura-select:focus { background: rgba(255, 255, 255, 0.06); }
+.aura-select.accent { color: var(--yamabuki, #FFB11B); font-weight: 600; }
+
+/* Ghost number/text input — underline only, no box, until focus. */
+.aura-ghost-input {
+  background: transparent; border: none; outline: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-primary); font-size: 13px;
+  padding: 5px 2px; transition: border-color 0.2s;
+}
+.aura-ghost-input:focus { border-bottom-color: var(--yamabuki, #FFB11B); }
+.aura-ghost-input::placeholder { color: var(--text-faint); }
+
+/* Bare pill button — icon/text only, background appears on hover, never a
+   resting border box. Add .active for the "has a value" accent state. */
+.aura-pill-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: transparent; border: none; border-radius: 999px;
+  padding: 6px 12px; font-size: 13px; color: var(--text-muted);
+  cursor: pointer; transition: background 0.2s, color 0.2s;
+}
+.aura-pill-btn:hover { background: rgba(255, 255, 255, 0.06); color: var(--text-primary); }
+.aura-pill-btn.active { color: var(--yamabuki, #FFB11B); }
+.aura-pill-btn.active:hover { background: rgba(255, 177, 27, 0.1); }
+.aura-pill-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 16px; height: 16px; border-radius: 50%; font-size: 10px; font-weight: 700;
+  background: var(--yamabuki, #FFB11B); color: #14110a;
+}
+
+/* Gentle hover tilt for "hero" interactive elements only — not every button.
+   Pair with a mousemove handler that sets --tx/--ty (see GameModeSelect.jsx). */
+.aura-tilt {
+  transition: transform 0.3s cubic-bezier(0.2, 0.7, 0.3, 1);
+  transform: rotateX(var(--tx, 0deg)) rotateY(var(--ty, 0deg));
+  transform-style: preserve-3d;
+}

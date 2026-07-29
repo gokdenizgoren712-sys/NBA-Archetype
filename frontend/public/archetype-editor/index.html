@@ -1,0 +1,351 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Archetype Photo Editor</title>
+<style>
+  :root {
+    --bg-base:#0b0b0b; --bg-surface:#131313; --bg-elevated:#1a1a1a; --border:#262626;
+    --yamabuki:#FFB11B; --text-primary:#e5e5e5; --text-muted:#8a8a8a; --text-faint:#5c5850;
+    --font-logo: "Segoe UI Semibold", "Arial Narrow", system-ui, sans-serif;
+    --font-sans: "Segoe UI", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { background: var(--bg-base); color: var(--text-primary); font-family: var(--font-sans); margin: 0; }
+  .app { display: flex; height: 100vh; }
+
+  /* ── Sidebar ─────────────────────────────────────────────────── */
+  .sidebar { width: 200px; flex-shrink: 0; border-right: 1px solid var(--border); overflow-y: auto; padding: 12px 0; }
+  .sb-title { font-family: var(--font-logo); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--text-faint); padding: 4px 16px 10px; }
+  .arch-btn {
+    display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 16px; background: none; border: none;
+    color: var(--text-muted); font-size: 13px; text-align: left; cursor: pointer; border-left: 2px solid transparent;
+  }
+  .arch-btn:hover { background: var(--bg-surface); }
+  .arch-btn.active { background: var(--bg-elevated); color: #fff; border-left-color: var(--dot); font-weight: 600; }
+  .arch-btn .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--dot); flex-shrink: 0; }
+  .arch-btn .done { margin-left: auto; font-size: 10px; color: #4ade80; }
+
+  /* ── Editor ──────────────────────────────────────────────────── */
+  .editor { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  .topbar { padding: 14px 22px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 16px; }
+  .topbar h1 { font-family: var(--font-logo); font-size: 18px; margin: 0; }
+  .topbar .hint { font-size: 12px; color: var(--text-muted); margin-left: auto; }
+
+  .work-area { flex: 1; display: flex; gap: 28px; padding: 26px; overflow: auto; align-items: flex-start; }
+
+  .canvas-panel { flex-shrink: 0; }
+  .canvas-wrap {
+    position: relative; width: 520px; height: 440px; border-radius: 10px; overflow: hidden;
+    background: repeating-conic-gradient(#1c1c1c 0% 25%, #141414 0% 50%) 50% / 20px 20px;
+    cursor: grab; border: 1px solid var(--border); touch-action: none;
+  }
+  .canvas-wrap.dragging { cursor: grabbing; }
+  .canvas-wrap canvas { position: absolute; top: 0; left: 0; }
+  .crop-frame { position: absolute; border: 2px solid var(--yamabuki); box-shadow: 0 0 0 2000px rgba(0,0,0,.6); pointer-events: none; }
+  .crop-frame::before, .crop-frame::after {
+    content: ""; position: absolute; background: rgba(255,177,27,.5);
+  }
+  .grid-lines { position: absolute; inset: 0; pointer-events: none; }
+  .grid-lines div { position: absolute; background: rgba(255,255,255,.18); }
+
+  .controls { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
+  .controls label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .06em; }
+  .controls input[type="range"] { flex: 1; accent-color: var(--yamabuki); }
+  .btn-row { display: flex; gap: 8px; margin-top: 14px; }
+  button.action {
+    font-family: var(--font-logo); font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+    padding: 9px 16px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-elevated);
+    color: var(--text-primary); cursor: pointer;
+  }
+  button.action:hover { border-color: var(--text-muted); }
+  button.action.primary { background: var(--yamabuki); color: #14110a; border-color: var(--yamabuki); }
+  button.action.primary:hover { filter: brightness(1.08); }
+  .coords { margin-top: 12px; font-size: 11px; color: var(--text-faint); font-family: monospace; line-height: 1.6; }
+
+  /* ── Live card preview ──────────────────────────────────────── */
+  .preview-panel { flex-shrink: 0; }
+  .preview-label { font-family: var(--font-logo); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--text-faint); margin-bottom: 10px; }
+  .stage { perspective: 1000px; }
+  .pcard {
+    width: 260px; position: relative; border-radius: 16px;
+    background: linear-gradient(160deg, #17151b 0%, #0c0b0e 55%, #14100a 100%);
+    border: 1px solid var(--border); box-shadow: 0 22px 44px -16px rgba(0,0,0,.8);
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 26px), calc(100% - 26px) 100%, 0 100%);
+    overflow: hidden;
+  }
+  .pcard-top { display: flex; justify-content: space-between; align-items: center; padding: 11px 13px 7px; border-bottom: 1px solid rgba(255,255,255,.08); }
+  .pcard-rank { font-family: var(--font-logo); font-size: 12px; font-weight: 700; color: var(--yamabuki); }
+  .pcard-rating { font-family: var(--font-logo); font-weight: 700; font-size: 15px; color: #14110a; background: linear-gradient(100deg,#ffd166,var(--dot)); padding: 2px 9px; border-radius: 3px; transform: skewX(-8deg); }
+  .pcard-photo { position: relative; height: 218px; overflow: hidden; }
+  .pcard-photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; object-position: 50% 100%; }
+  .pcard-fade { position: absolute; z-index: 2; left: 0; right: 0; bottom: 0; height: 44px; background: linear-gradient(to top, #14100a 0%, transparent 100%); opacity: .8; }
+  .pcard-nameband { margin: 0 13px; padding: 8px 10px; text-align: center; background: rgba(0,0,0,.62); border-top: 1px solid var(--dot); border-bottom: 1px solid var(--dot); }
+  .pcard-name { font-family: var(--font-logo); font-weight: 700; font-size: 16px; margin: 0; }
+  .pcard-meta { font-size: 10px; color: #8f8f8f; margin-top: 2px; }
+  .pcard-meta b { color: var(--dot); }
+  .pcard-stats { margin: 9px 11px 12px; padding: 9px; background: rgba(0,0,0,.42); border: 1px solid rgba(255,255,255,.06); border-radius: 10px; display: grid; grid-template-columns: 1fr 1fr 1fr; text-align: center; }
+  .pcard-stats div+div { border-left: 1px solid rgba(255,255,255,.08); }
+  .pcard-stats .v { font-family: var(--font-logo); font-weight: 700; font-size: 13px; }
+  .pcard-stats .l { font-size: 7px; color: #7a7a7a; letter-spacing: .08em; }
+
+  .exported-note { margin-top: 16px; font-size: 12px; color: #4ade80; display: none; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="sidebar">
+    <div class="sb-title">12 Arketip</div>
+    <div id="archList"></div>
+  </div>
+
+  <div class="editor">
+    <div class="topbar">
+      <h1 id="archTitle">Ecosystem</h1>
+      <span class="hint">Sürükle: kaydır · Tekerlek/slider: yakınlaştır · Kare = kartın photo-zone alanı</span>
+    </div>
+
+    <div class="work-area">
+      <div class="canvas-panel">
+        <div class="canvas-wrap" id="canvasWrap">
+          <canvas id="cv" width="520" height="440"></canvas>
+          <div class="grid-lines" id="gridLines"></div>
+          <div class="crop-frame" id="cropFrame"></div>
+        </div>
+        <div class="controls">
+          <label>Zoom</label>
+          <input type="range" id="zoomSlider" min="20" max="400" value="100">
+          <span id="zoomVal" style="font-size:11px;color:var(--text-faint);width:38px">100%</span>
+        </div>
+        <div class="btn-row">
+          <button class="action" id="resetBtn">Reset</button>
+          <button class="action" id="centerBtn">Ortala</button>
+          <button class="action primary" id="exportBtn">PNG İndir</button>
+        </div>
+        <div class="coords" id="coords"></div>
+        <div class="exported-note" id="exportedNote">✓ İndirildi — Downloads klasörüne bak</div>
+      </div>
+
+      <div class="preview-panel">
+        <div class="preview-label">Kart Önizleme (gerçek oranlarda)</div>
+        <div class="stage">
+          <div class="pcard" id="previewCard" style="--dot:#4ade80">
+            <div class="pcard-top"><span class="pcard-rank">#1</span><span class="pcard-rating">88</span></div>
+            <div class="pcard-photo">
+              <img id="previewImg" src="" alt="">
+              <div class="pcard-fade"></div>
+            </div>
+            <div class="pcard-nameband">
+              <h3 class="pcard-name">Player Name</h3>
+              <div class="pcard-meta">TEA · POS · <b id="previewArchName">Ecosystem</b></div>
+            </div>
+            <div class="pcard-stats">
+              <div><div class="v" style="color:var(--dot)">27.7</div><div class="l">PTS</div></div>
+              <div><div class="v">12.9</div><div class="l">REB</div></div>
+              <div><div class="v">10.7</div><div class="l">AST</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const ARCH = [
+    ["Engine","engine","#fb923c"], ["Ecosystem","ecosystem","#4ade80"], ["Hub","hub","#2dd4bf"],
+    ["Connector","connector","#c084fc"], ["Creator","creator","#fb7185"], ["Anchor","anchor","#60a5fa"],
+    ["Spacer","spacer","#22d3ee"], ["Finisher","finisher","#a3e635"], ["Force","force","#f87171"],
+    ["Initiator","initiator","#FFB11B"], ["Stopper","stopper","#d1d5db"], ["Rim Runner","rim-runner","#34d399"],
+  ];
+
+  const CROP_W = 300, CROP_H = 254; // matches .pcard-photo box ratio (280x236-ish scaled up a bit for editing precision
+  const CANVAS_W = 520, CANVAS_H = 440;
+  const frameLeft = (CANVAS_W - CROP_W) / 2, frameTop = (CANVAS_H - CROP_H) / 2;
+
+  const canvas = document.getElementById('cv');
+  const ctx = canvas.getContext('2d');
+  const cropFrameEl = document.getElementById('cropFrame');
+  cropFrameEl.style.left = frameLeft + 'px'; cropFrameEl.style.top = frameTop + 'px';
+  cropFrameEl.style.width = CROP_W + 'px'; cropFrameEl.style.height = CROP_H + 'px';
+
+  const gridLines = document.getElementById('gridLines');
+  [1,2].forEach(i => {
+    const v = document.createElement('div');
+    v.style.left = (frameLeft + CROP_W*i/3) + 'px'; v.style.top = frameTop + 'px';
+    v.style.width = '1px'; v.style.height = CROP_H + 'px';
+    gridLines.appendChild(v);
+    const h = document.createElement('div');
+    h.style.top = (frameTop + CROP_H*i/3) + 'px'; h.style.left = frameLeft + 'px';
+    h.style.height = '1px'; h.style.width = CROP_W + 'px';
+    gridLines.appendChild(h);
+  });
+
+  let state = {}; // per-slug: {img, scale, offX, offY}
+  let current = ARCH[1][1]; // start on ecosystem, the trickiest one
+
+  function defaultStateFor(img) {
+    const s = Math.max(CROP_W / img.width, CROP_H / img.height);
+    return { img, scale: s, offX: (CANVAS_W - img.width*s)/2, offY: (CANVAS_H - img.height*s)/2 };
+  }
+
+  function loadArch(slug) {
+    current = slug;
+    document.querySelectorAll('.arch-btn').forEach(b => b.classList.toggle('active', b.dataset.slug === slug));
+    const [name] = ARCH.find(a => a[1] === slug);
+    document.getElementById('archTitle').textContent = name;
+    document.getElementById('previewArchName').textContent = name;
+    const color = ARCH.find(a => a[1] === slug)[2];
+    document.getElementById('previewCard').style.setProperty('--dot', color);
+
+    if (state[slug]) { draw(); updatePreview(); updateCoords(); return; }
+
+    const img = new Image();
+    img.onload = () => {
+      const saved = localStorage.getItem('crop_' + slug);
+      if (saved) {
+        const d = JSON.parse(saved);
+        state[slug] = { img, scale: d.scale, offX: d.offX, offY: d.offY };
+      } else {
+        state[slug] = defaultStateFor(img);
+      }
+      draw(); updatePreview(); updateCoords();
+    };
+    img.onerror = () => { document.getElementById('coords').textContent = 'Görsel yüklenemedi: sources/' + slug + '.png bulunamadı.'; };
+    img.src = 'sources/' + slug + '.png';
+  }
+
+  function draw() {
+    const s = state[current];
+    if (!s) return;
+    ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
+    ctx.drawImage(s.img, s.offX, s.offY, s.img.width * s.scale, s.img.height * s.scale);
+  }
+
+  function updateCoords() {
+    const s = state[current];
+    if (!s) return;
+    const cropX = (frameLeft - s.offX) / s.scale;
+    const cropY = (frameTop - s.offY) / s.scale;
+    const cropW = CROP_W / s.scale, cropH = CROP_H / s.scale;
+    const pctL = (cropX / s.img.width * 100).toFixed(1);
+    const pctT = (cropY / s.img.height * 100).toFixed(1);
+    const pctR = ((cropX + cropW) / s.img.width * 100).toFixed(1);
+    const pctB = ((cropY + cropH) / s.img.height * 100).toFixed(1);
+    document.getElementById('coords').innerHTML =
+      `kaynak: ${s.img.width}×${s.img.height}px<br>crop px: (${cropX.toFixed(0)}, ${cropY.toFixed(0)}) ${cropW.toFixed(0)}×${cropH.toFixed(0)}<br>crop %: L${pctL} T${pctT} R${pctR} B${pctB}`;
+  }
+
+  function updatePreview() {
+    const s = state[current];
+    if (!s) return;
+    const out = document.createElement('canvas');
+    out.width = CROP_W; out.height = CROP_H;
+    const octx = out.getContext('2d');
+    octx.drawImage(s.img, s.offX - frameLeft, s.offY - frameTop, s.img.width * s.scale, s.img.height * s.scale);
+    document.getElementById('previewImg').src = out.toDataURL('image/png');
+  }
+
+  function persist() {
+    const s = state[current];
+    localStorage.setItem('crop_' + current, JSON.stringify({ scale: s.scale, offX: s.offX, offY: s.offY }));
+  }
+
+  // sidebar
+  const archList = document.getElementById('archList');
+  ARCH.forEach(([name, slug, color]) => {
+    const b = document.createElement('button');
+    b.className = 'arch-btn'; b.dataset.slug = slug; b.style.setProperty('--dot', color);
+    b.innerHTML = `<span class="dot"></span><span>${name}</span><span class="done" style="display:none">✓</span>`;
+    b.addEventListener('click', () => loadArch(slug));
+    archList.appendChild(b);
+  });
+  function refreshDoneMarks() {
+    document.querySelectorAll('.arch-btn').forEach(b => {
+      const has = !!localStorage.getItem('crop_' + b.dataset.slug);
+      b.querySelector('.done').style.display = has ? 'inline' : 'none';
+    });
+  }
+
+  // drag to pan
+  const wrap = document.getElementById('canvasWrap');
+  let dragging = false, lastX = 0, lastY = 0;
+  wrap.addEventListener('pointerdown', (e) => {
+    dragging = true; lastX = e.clientX; lastY = e.clientY; wrap.classList.add('dragging'); wrap.setPointerCapture(e.pointerId);
+  });
+  wrap.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    const s = state[current]; if (!s) return;
+    s.offX += (e.clientX - lastX); s.offY += (e.clientY - lastY);
+    lastX = e.clientX; lastY = e.clientY;
+    draw(); updateCoords();
+  });
+  wrap.addEventListener('pointerup', (e) => { dragging = false; wrap.classList.remove('dragging'); updatePreview(); persist(); refreshDoneMarks(); });
+  wrap.addEventListener('pointerleave', () => { if (dragging) { dragging = false; wrap.classList.remove('dragging'); updatePreview(); persist(); } });
+
+  wrap.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const s = state[current]; if (!s) return;
+    const delta = e.deltaY < 0 ? 1.06 : 0.94;
+    zoomAt(delta, e.offsetX, e.offsetY);
+  });
+
+  function zoomAt(factor, cx, cy) {
+    const s = state[current]; if (!s) return;
+    const newScale = Math.min(6, Math.max(0.05, s.scale * factor));
+    const actualFactor = newScale / s.scale;
+    s.offX = cx - (cx - s.offX) * actualFactor;
+    s.offY = cy - (cy - s.offY) * actualFactor;
+    s.scale = newScale;
+    document.getElementById('zoomSlider').value = Math.round(s.scale / defaultStateFor(s.img).scale * 100);
+    document.getElementById('zoomVal').textContent = document.getElementById('zoomSlider').value + '%';
+    draw(); updateCoords(); updatePreview(); persist();
+  }
+
+  document.getElementById('zoomSlider').addEventListener('input', (e) => {
+    const s = state[current]; if (!s) return;
+    const base = defaultStateFor(s.img).scale;
+    const target = base * (e.target.value / 100);
+    zoomAt(target / s.scale, CANVAS_W/2, CANVAS_H/2);
+  });
+
+  document.getElementById('resetBtn').addEventListener('click', () => {
+    const s = state[current]; if (!s) return;
+    state[current] = defaultStateFor(s.img);
+    document.getElementById('zoomSlider').value = 100; document.getElementById('zoomVal').textContent = '100%';
+    draw(); updateCoords(); updatePreview(); persist(); refreshDoneMarks();
+  });
+  document.getElementById('centerBtn').addEventListener('click', () => {
+    const s = state[current]; if (!s) return;
+    s.offX = (CANVAS_W - s.img.width*s.scale)/2; s.offY = (CANVAS_H - s.img.height*s.scale)/2;
+    draw(); updateCoords(); updatePreview(); persist();
+  });
+
+  document.getElementById('exportBtn').addEventListener('click', () => {
+    const s = state[current]; if (!s) return;
+    const EXPORT_SCALE = 3; // export at ~3x the crop-frame size for retina sharpness
+    const out = document.createElement('canvas');
+    out.width = CROP_W * EXPORT_SCALE; out.height = CROP_H * EXPORT_SCALE;
+    const octx = out.getContext('2d');
+    octx.drawImage(s.img,
+      (s.offX - frameLeft) * EXPORT_SCALE, (s.offY - frameTop) * EXPORT_SCALE,
+      s.img.width * s.scale * EXPORT_SCALE, s.img.height * s.scale * EXPORT_SCALE);
+    out.toBlob((blob) => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = current + '.png';
+      a.click();
+      const note = document.getElementById('exportedNote');
+      note.style.display = 'block';
+      setTimeout(() => note.style.display = 'none', 2500);
+      persist(); refreshDoneMarks();
+    }, 'image/png');
+  });
+
+  refreshDoneMarks();
+  loadArch(current);
+</script>
+
+</body>
+</html>

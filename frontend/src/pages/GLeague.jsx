@@ -1,244 +1,14 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { Search } from "lucide-react";
+import { SlidersHorizontal, X } from "lucide-react";
 import { api } from "../api";
 import { SEO } from "../hooks/useSEO";
 import { GLeagueIcon } from "../components/LeagueIcons";
 import PlayerCard from "../components/PlayerCard";
-import ScoreBar from "../components/ScoreBar";
-import RadarProfile from "../components/RadarProfile";
-import SplitPane from "../components/SplitPane";
+import AuraSearch from "../components/AuraSearch";
 
 const CORE = ["Engine","Ecosystem","Hub","Connector","Creator","Anchor","Spacer","Finisher","Force","Initiator","Stopper","Rim Runner"];
 const POSITIONS = ["","PG","SG","SF","PF","C"];
-
-const POS_COLOR = {
-  PG: "text-violet-400", SG: "text-blue-400",
-  SF: "text-emerald-400", PF: "text-orange-400", C: "text-red-400",
-};
-
-const GLG = "#A8263F";
-const TIER_COLOR = {
-  "Elite Prospect": "#a855f7", "First-Round": "#3b82f6", "Rotation Upside": "#10b981",
-  "Developmental": "#d97706", "Longshot": "#9ca3af",
-};
-const OUTCOME_COLOR = {
-  "Superstar": "#a855f7", "All-Star": "#3b82f6", "Quality Starter": "#10b981",
-  "Starter": "#22c55e", "Rotation": "#d97706", "Fringe": "#9ca3af",
-};
-
-function topPct(pct) {
-  if (pct == null) return null;
-  const p = Math.round(pct * 100);
-  return p >= 99 ? "<1%" : `${100 - p}%`;
-}
-
-/* ── G-League detail panel ───────────────────────────────────────── */
-function GLeagueDetailPanel({ selected, detail, tab, setTab }) {
-  if (!selected) return null;
-
-  return (
-    <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="p-4 border-b shrink-0" style={{ borderColor: "var(--border)" }}>
-        <div className="flex items-start justify-between">
-          <div>
-            <div className="font-logo font-bold text-sm" style={{ color: "var(--text-primary)" }}>
-              {selected.PLAYER_NAME}
-            </div>
-            <div className="flex items-center gap-2 mt-1 flex-wrap">
-              {detail?.position && (
-                <span className={`text-[10px] font-mono font-medium ${POS_COLOR[detail.position] || ""}`}>
-                  {detail.position}
-                </span>
-              )}
-              <span className="text-xs" style={{ color: "var(--text-muted)" }}>
-                {selected.TEAM_ABBREVIATION}
-              </span>
-              <span className="text-[9px] px-1.5 py-0.5 rounded font-medium"
-                style={{ background: "rgba(168,38,63,.15)", color: "#A8263F", border: "1px solid rgba(168,38,63,.3)" }}>
-                G-Lg
-              </span>
-            </div>
-            {detail?.age != null && (
-              <div className="text-[10px] mt-1" style={{ color: "var(--text-faint)" }}>
-                Age {detail.age}
-              </div>
-            )}
-          </div>
-          {detail?.overall_score != null && (
-            <div className="text-right shrink-0">
-              <div className="font-logo text-2xl font-bold tabular-nums" style={{ color: "var(--accent)" }}>
-                {Math.round(detail.overall_score * 100)}
-              </div>
-              {detail.overall_pct != null && (
-                <div className="text-[10px]" style={{ color: "var(--text-muted)" }}>
-                  top {topPct(detail.overall_pct)}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Tabs */}
-      <div className="flex shrink-0 border-b" style={{ borderColor: "var(--border)" }}>
-        {[["prospect", "Prospect"], ["radar", "Radar"], ["scores", "Scores"]].map(([k, l]) => (
-          <button key={k} onClick={() => setTab(k)}
-            className="flex-1 py-2 text-xs font-medium transition-colors"
-            style={{
-              color: tab === k ? "var(--accent)" : "var(--text-muted)",
-              borderBottom: tab === k ? "2px solid var(--accent)" : "2px solid transparent",
-            }}>{l}</button>
-        ))}
-      </div>
-
-      {/* Body */}
-      <div className="flex-1 overflow-y-auto">
-        {!detail ? (
-          <div className="p-8 text-center text-sm" style={{ color: "var(--text-muted)" }}>Loading...</div>
-        ) : (
-          <>
-            {selected?.GP != null && Number(selected.GP) < 15 && (
-              <div className="mx-4 mt-3 px-3 py-1.5 rounded text-[11px]"
-                style={{ background: "rgba(255,177,27,.10)", color: "#FFB11B", border: "1px solid rgba(255,177,27,.25)" }}>
-                ⚠ Small sample ({selected.GP} games)
-              </div>
-            )}
-
-            {tab === "prospect" && (
-              detail.prospect ? (
-              <div className="p-4 space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-4xl font-bold leading-none"
-                      style={{ color: TIER_COLOR[detail.prospect.tier] || "var(--accent)" }}>
-                      {detail.prospect.grade}
-                    </div>
-                    <div className="text-[10px] uppercase tracking-wide mt-1" style={{ color: "var(--text-faint)" }}>
-                      Prospect Grade
-                    </div>
-                  </div>
-                  <span className="px-3 py-1 rounded-full text-xs font-semibold"
-                    style={{
-                      background: (TIER_COLOR[detail.prospect.tier] || "#888") + "22",
-                      color: TIER_COLOR[detail.prospect.tier] || "var(--text-primary)",
-                      border: `1px solid ${(TIER_COLOR[detail.prospect.tier] || "#888")}55`,
-                    }}>
-                    {detail.prospect.tier}
-                  </span>
-                </div>
-
-                <div>
-                  <div className="flex justify-between text-[10px] mb-1" style={{ color: "var(--text-muted)" }}>
-                    <span>Floor (now) <b style={{ color: "var(--text-primary)" }}>{detail.prospect.floor}</b></span>
-                    <span>Ceiling <b style={{ color: "var(--text-primary)" }}>{detail.prospect.ceiling}</b></span>
-                  </div>
-                  <div className="h-2 rounded-full overflow-hidden" style={{ background: "var(--bg-elevated)" }}>
-                    <div className="h-full rounded-full" style={{
-                      width: `${detail.prospect.ceiling}%`,
-                      background: `linear-gradient(90deg, ${GLG}, ${TIER_COLOR[detail.prospect.tier] || "#a855f7"})`,
-                    }} />
-                  </div>
-                  <div className="text-[9px] mt-1" style={{ color: "var(--text-faint)" }}>
-                    NBA readiness → age-projected ceiling
-                  </div>
-                  {detail.prospect.ceiling_validated === false && (
-                    <div className="text-[9px] mt-1" style={{ color: "#FFB11B" }}
-                      title="Floor is backtest-validated against real NBA outcomes. Ceiling and grade use unvalidated model defaults.">
-                      ⚠ Floor is validated · ceiling/grade are model estimates, not yet backtested
-                    </div>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <div className="text-[10px] uppercase tracking-wider mb-1.5" style={{ color: "#10b981" }}>Strengths</div>
-                    <div className="flex flex-col gap-1">
-                      {(detail.prospect.strengths || []).map(s => (
-                        <span key={s} className="text-xs px-2 py-1 rounded"
-                          style={{ background: "rgba(16,185,129,.10)", color: "#10b981", border: "1px solid rgba(16,185,129,.25)" }}>{s}</span>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-[10px] uppercase tracking-wider mb-1.5" style={{ color: "#ef4444" }}>Weaknesses</div>
-                    <div className="flex flex-col gap-1">
-                      {(detail.prospect.weaknesses || []).map(w => (
-                        <span key={w} className="text-xs px-2 py-1 rounded"
-                          style={{ background: "rgba(239,68,68,.10)", color: "#ef4444", border: "1px solid rgba(239,68,68,.25)" }}>{w}</span>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {(detail.prospect.comparables || []).length > 0 && (
-                  <div>
-                    <div className="text-[10px] uppercase tracking-wider mb-1.5" style={{ color: GLG }}>Similar to</div>
-                    <div className="flex flex-col gap-1">
-                      {detail.prospect.comparables.map((c, i) => (
-                        <div key={i} className="flex items-center justify-between text-xs px-2 py-1.5 rounded"
-                          style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
-                          <span style={{ color: "var(--text-primary)" }}>{c.name}</span>
-                          <span className="text-[10px]" style={{ color: OUTCOME_COLOR[c.outcome] || "var(--text-muted)" }}>
-                            {c.outcome}{c.peak_bpm != null ? ` · BPM ${c.peak_bpm}` : ""}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="text-[9px] mt-1" style={{ color: "var(--text-faint)" }}>
-                      Entry (rookie) archetype profile similarity · peak = career outcome
-                    </div>
-                  </div>
-                )}
-              </div>
-              ) : (
-                <div className="p-8 text-center text-sm" style={{ color: "var(--text-muted)" }}>No prospect data</div>
-              )
-            )}
-
-            {tab === "radar" && (
-              <div className="p-4">
-                <RadarProfile scores={detail.scores} name={detail.name} primaryArch={detail.primary_arch}
-                  margin={detail.confidence_margin || 0} />
-                <div className="mt-3 grid grid-cols-4 gap-2">
-                  {["PTS","REB","AST","GP"].map(k => {
-                    const val = selected[k];
-                    return (
-                      <div key={k} className="text-center p-2 rounded"
-                        style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
-                        <div className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>
-                          {k === "GP" ? (val ?? "—") : val != null ? Number(val).toFixed(1) : "—"}
-                        </div>
-                        <div className="text-[9px] uppercase tracking-wide mt-0.5" style={{ color: "var(--text-faint)" }}>{k}</div>
-                      </div>
-                    );
-                  })}
-                </div>
-                <div className="mt-3 text-center">
-                  <span className="text-xs" style={{ color: "var(--text-muted)" }}>Archetype: </span>
-                  <span className="text-xs font-semibold" style={{ color: "var(--accent)" }}>{detail.primary_arch}</span>
-                </div>
-              </div>
-            )}
-
-            {tab === "scores" && (
-              <div className="p-4 space-y-1">
-                <div className="text-[10px] uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)" }}>
-                  Core Archetypes
-                </div>
-                {CORE.map(c => (
-                  <ScoreBar key={c} label={c} value={detail.scores?.[c] || 0}
-                    highlight={c === detail.primary_arch}
-                    margin={detail.confidence_margin || 0} />
-                ))}
-              </div>
-            )}
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
+const TIER_OPTIONS = ["Elite Prospect","First-Round","Rotation Upside","Developmental","Longshot"];
 
 /* ── Main component ──────────────────────────────────────────────── */
 export default function GLeague() {
@@ -258,11 +28,8 @@ export default function GLeague() {
   const [total, setTotal]     = useState(0);
   const [loading, setLoading] = useState(false);
   const [noData, setNoData]   = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
   const debounceRef = useRef(null);
-
-  const [selected, setSelected] = useState(null);
-  const [detail, setDetail]     = useState(null);
-  const [tab, setTab]           = useState("prospect");
 
   useEffect(() => {
     api.gleagueSeasons().then(d => setSeasons(d.seasons?.length ? d.seasons : ["2025-26"])).catch(() => {});
@@ -299,16 +66,27 @@ export default function GLeague() {
 
   useEffect(() => { load(); }, [load]);
 
-  const openPlayer = async (p) => {
-    setSelected(p); setDetail(null); setTab("prospect");
-    try {
-      const sc = await api.gleaguePlayerScores(p.PLAYER_NAME, season);
-      setDetail(sc);
-    } catch (e) { console.error(e); }
-  };
-
   const clearFilters = () => { setSearch(""); setSearchInput(""); setTeam(""); setPos(""); setArch(""); setTier(""); setMinGp(""); setMaxAge(""); };
   const hasFilters = search || team || pos || arch || tier || minGp || maxAge;
+  const secondaryCount = [team, pos, arch, tier, minGp, maxAge].filter(Boolean).length;
+
+  const selectEl = (value, onChange, opts, placeholder) => (
+    <select value={value} onChange={e => onChange(e.target.value)}
+      className="w-full rounded px-3 py-1.5 text-sm focus:outline-none"
+      style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)", color: "var(--text-primary)" }}>
+      <option value="">{placeholder}</option>
+      {opts.map(o => <option key={o} value={o}>{o}</option>)}
+    </select>
+  );
+
+  const filterField = (label, node) => (
+    <div>
+      <div className="font-logo text-[10px] font-bold uppercase tracking-wider mb-1.5" style={{ color: "var(--text-faint)" }}>
+        {label}
+      </div>
+      {node}
+    </div>
+  );
 
   return (
     <>
@@ -317,91 +95,48 @@ export default function GLeague() {
       description="NBA G-League player archetype profiles — engine, anchor, spacer and more, scored within league context."
       path="/gleague"
     />
-    <SplitPane
-      detail={selected ? (
-        <GLeagueDetailPanel selected={selected} detail={detail} tab={tab} setTab={setTab} />
-      ) : null}
-      onClose={() => { setSelected(null); setDetail(null); }}
-    >
-      {/* Filter bar */}
-      <div className="p-3 border-b flex flex-wrap gap-2 items-center shrink-0"
+    <div className="relative flex flex-col h-full min-h-0 overflow-hidden">
+      {/* Slim filter bar */}
+      <div className="px-3 py-2.5 border-b flex flex-wrap gap-2 items-center shrink-0"
         style={{ background: "var(--bg-surface)", borderColor: "var(--border)" }}>
 
-        {/* League badge */}
         <div className="flex items-center gap-1.5 mr-1">
           <GLeagueIcon size={16} />
           <span className="text-xs font-semibold" style={{ color: "#A8263F" }}>G-League</span>
         </div>
 
-        {/* Season */}
         <select value={season} onChange={e => setSeason(e.target.value)}
           className="rounded px-3 py-1.5 text-sm font-medium focus:outline-none"
           style={{ background: "var(--accent-dim)", border: "1px solid var(--accent-border)", color: "var(--accent)" }}>
           {seasons.map(s => <option key={s} value={s}>{s}</option>)}
         </select>
 
-        {/* Search */}
-        <div className="relative flex-1 min-w-[140px]">
-          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "var(--text-muted)" }} />
-          <input value={searchInput}
-            onChange={e => {
-              setSearchInput(e.target.value);
-              clearTimeout(debounceRef.current);
-              debounceRef.current = setTimeout(() => setSearch(e.target.value), 300);
-            }}
-            placeholder="Search player..."
-            className="w-full rounded pl-8 pr-3 py-1.5 text-sm focus:outline-none"
-            style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
-          />
-        </div>
-
-        {/* Team */}
-        <select value={team} onChange={e => setTeam(e.target.value)}
-          className="rounded px-3 py-1.5 text-sm focus:outline-none"
-          style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)", color: "var(--text-primary)" }}>
-          <option value="">Team</option>
-          {teamList.map(o => <option key={o} value={o}>{o}</option>)}
-        </select>
-
-        {/* Position */}
-        <select value={pos} onChange={e => setPos(e.target.value)}
-          className="rounded px-3 py-1.5 text-sm focus:outline-none"
-          style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)", color: "var(--text-primary)" }}>
-          <option value="">Position</option>
-          {POSITIONS.filter(Boolean).map(o => <option key={o} value={o}>{o}</option>)}
-        </select>
-
-        {/* Archetype */}
-        <select value={arch} onChange={e => setArch(e.target.value)}
-          className="rounded px-3 py-1.5 text-sm focus:outline-none"
-          style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)", color: "var(--text-primary)" }}>
-          <option value="">Archetype</option>
-          {CORE.map(o => <option key={o} value={o}>{o}</option>)}
-        </select>
-
-        {/* Prospect tier */}
-        <select value={tier} onChange={e => setTier(e.target.value)}
-          className="rounded px-3 py-1.5 text-sm focus:outline-none"
-          style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)", color: "var(--text-primary)" }}>
-          <option value="">Tier</option>
-          {Object.keys(TIER_COLOR).map(o => <option key={o} value={o}>{o}</option>)}
-        </select>
-
-        {/* Min GP */}
-        <input type="number" min="0" value={minGp} onChange={e => setMinGp(e.target.value)}
-          placeholder="Min GP" title="Minimum games played"
-          className="w-[84px] rounded px-3 py-1.5 text-sm focus:outline-none"
-          style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
+        <AuraSearch value={searchInput} placeholder="Search player..."
+          onChange={v => {
+            setSearchInput(v);
+            clearTimeout(debounceRef.current);
+            debounceRef.current = setTimeout(() => setSearch(v), 300);
+          }}
         />
+        <div className="flex-1" />
 
-        {/* Max Age */}
-        <input type="number" min="0" value={maxAge} onChange={e => setMaxAge(e.target.value)}
-          placeholder="Max Age" title="Maximum age"
-          className="w-[84px] rounded px-3 py-1.5 text-sm focus:outline-none"
-          style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
-        />
+        <button onClick={() => setFilterOpen(true)}
+          className="relative flex items-center gap-1.5 rounded px-3 py-1.5 text-sm font-medium transition-colors"
+          style={{
+            background: secondaryCount > 0 ? "var(--accent-dim)" : "var(--bg-elevated)",
+            border: `1px solid ${secondaryCount > 0 ? "var(--accent-border)" : "var(--border)"}`,
+            color: secondaryCount > 0 ? "var(--accent)" : "var(--text-primary)",
+          }}>
+          <SlidersHorizontal size={13} />
+          Filters
+          {secondaryCount > 0 && (
+            <span className="flex items-center justify-center rounded-full font-logo font-bold"
+              style={{ width: 16, height: 16, fontSize: 10, background: "var(--accent)", color: "#14110a" }}>
+              {secondaryCount}
+            </span>
+          )}
+        </button>
 
-        {/* Sort */}
         <select value={sortBy} onChange={e => setSortBy(e.target.value)}
           className="rounded px-3 py-1.5 text-sm focus:outline-none"
           style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)", color: "var(--text-primary)" }}>
@@ -423,8 +158,54 @@ export default function GLeague() {
         <span className="text-xs" style={{ color: "var(--text-faint)" }}>{total}</span>
       </div>
 
+      {/* Filter drawer */}
+      {filterOpen && (
+        <div className="absolute inset-0 z-40" style={{ background: "rgba(0,0,0,.55)" }}
+          onClick={() => setFilterOpen(false)} />
+      )}
+      <div className={`absolute top-0 bottom-0 left-0 z-50 w-72 max-w-[85vw] flex flex-col transition-transform duration-300 ease-out
+        ${filterOpen ? "translate-x-0" : "-translate-x-full"}`}
+        style={{ background: "var(--bg-surface)", borderRight: "1px solid var(--accent-border)", boxShadow: "12px 0 32px -12px rgba(0,0,0,.7)" }}>
+
+        <div className="flex items-center justify-between px-4 py-3 border-b shrink-0" style={{ borderColor: "var(--border)" }}>
+          <span className="font-logo text-sm font-bold uppercase tracking-wider" style={{ color: "var(--accent)" }}>Filters</span>
+          <button onClick={() => setFilterOpen(false)}
+            className="w-7 h-7 flex items-center justify-center rounded transition-colors"
+            style={{ color: "var(--text-muted)", border: "1px solid var(--border)" }}>
+            <X size={14} />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {filterField("Team", selectEl(team, setTeam, teamList, "Any team"))}
+          {filterField("Position", selectEl(pos, setPos, POSITIONS.filter(Boolean), "Any position"))}
+          {filterField("Archetype", selectEl(arch, setArch, CORE, "Any archetype"))}
+          {filterField("Prospect Tier", selectEl(tier, setTier, TIER_OPTIONS, "Any tier"))}
+          {filterField("Min GP", (
+            <input type="number" min="0" value={minGp} onChange={e => setMinGp(e.target.value)}
+              placeholder="e.g. 15" className="w-full rounded px-3 py-1.5 text-sm focus:outline-none"
+              style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)", color: "var(--text-primary)" }} />
+          ))}
+          {filterField("Max Age", (
+            <input type="number" min="0" value={maxAge} onChange={e => setMaxAge(e.target.value)}
+              placeholder="e.g. 23" className="w-full rounded px-3 py-1.5 text-sm focus:outline-none"
+              style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)", color: "var(--text-primary)" }} />
+          ))}
+        </div>
+
+        {secondaryCount > 0 && (
+          <div className="p-4 border-t shrink-0" style={{ borderColor: "var(--border)" }}>
+            <button onClick={() => { setTeam(""); setPos(""); setArch(""); setTier(""); setMinGp(""); setMaxAge(""); }}
+              className="w-full rounded px-3 py-2 text-xs font-medium transition-colors"
+              style={{ color: "var(--accent)", border: "1px solid var(--accent-border)", background: "var(--accent-dim)" }}>
+              Clear {secondaryCount} filter{secondaryCount > 1 ? "s" : ""}
+            </button>
+          </div>
+        )}
+      </div>
+
       {/* Grid */}
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 overflow-y-auto p-5">
         {loading ? (
           <div className="text-center py-12 text-sm" style={{ color: "var(--text-muted)" }}>Loading...</div>
         ) : noData ? (
@@ -438,19 +219,22 @@ export default function GLeague() {
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="grid gap-5 justify-items-center items-start"
+            style={{ gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))" }}>
             {players.map((p, i) => (
               <PlayerCard
                 key={i}
                 player={{ ...p, overall_tier: p.overall_tier || "", league: "G-Lg" }}
                 rank={p.overall_score != null ? i + 1 : null}
-                onClick={openPlayer}
+                season={season}
+                league="gleague"
+                expandable
               />
             ))}
           </div>
         )}
       </div>
-    </SplitPane>
+    </div>
     </>
   );
 }
