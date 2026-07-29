@@ -41,7 +41,10 @@ import traceback as _tb
 @app.exception_handler(Exception)
 async def _json_500(request: Request, exc: Exception):
     logging.error(f"Unhandled exception: {type(exc).__name__}: {exc}\n{_tb.format_exc()}")
-    return JSONResponse(status_code=500, content={"detail": f"{type(exc).__name__}: {exc}"})
+    # Prod'da exception tipi/mesajını (dosya yolu, kolon adı vb. sızdırabilir)
+    # istemciye döndürme — sadece dev'de debug kolaylığı için detaylı kalsın.
+    detail = f"{type(exc).__name__}: {exc}" if not IS_PROD else "Sunucu hatası — daha sonra tekrar deneyin."
+    return JSONResponse(status_code=500, content={"detail": detail})
 
 # ─── Middleware ────────────────────────────────────────────────────────────────
 
@@ -816,8 +819,10 @@ def get_player_names():
     return {"names": sorted(df["PLAYER_NAME"].dropna().tolist())}
 
 
+from .auth import require_admin as _require_admin_early
+
 @app.post("/api/admin/clear-cache")
-def clear_cache():
+def clear_cache(_user=Depends(_require_admin_early)):
     """lru_cache'i temizle — yeni formülle lineup'lar yeniden hesaplanır."""
     _load_scores.cache_clear()
     _load_gleague_scores.cache_clear()

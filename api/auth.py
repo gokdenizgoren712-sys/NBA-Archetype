@@ -6,6 +6,8 @@ from jose import JWTError, jwt
 from fastapi import HTTPException, Depends
 from fastapi.security import OAuth2PasswordBearer
 
+from .db import get_conn
+
 SECRET_KEY          = os.environ.get("JWT_SECRET", "change-me-in-production-please")
 ALGORITHM           = "HS256"
 TOKEN_EXPIRE_DAYS   = 7
@@ -31,16 +33,30 @@ def _decode(token: str) -> dict:
     except JWTError:
         raise HTTPException(status_code=401, detail="Geçersiz veya süresi dolmuş token")
 
+def _is_banned(user_id: int) -> bool:
+    """Token imzası geçerli olsa bile hesap sonradan banlanmış olabilir (token
+    TOKEN_EXPIRE_DAYS boyunca kendi başına geçerli kalır) — her istekte DB'den
+    tekrar kontrol ediyoruz."""
+    with get_conn() as conn:
+        row = conn.execute("SELECT is_banned FROM users WHERE id = ?", (user_id,)).fetchone()
+    return bool(row and row["is_banned"])
+
 def get_current_user(token: str = Depends(oauth2_scheme)):
     if not token:
         raise HTTPException(status_code=401, detail="Giriş gerekli")
-    return _decode(token)
+    payload = _decode(token)
+    if _is_banned(int(payload["sub"])):
+        raise HTTPException(status_code=403, detail="Hesabınız askıya alındı")
+    return payload
 
 def get_optional_user(token: str = Depends(oauth2_scheme)):
     if not token:
         return None
     try:
-        return _decode(token)
+        payload = _decode(token)
+        if _is_banned(int(payload["sub"])):
+            return None
+        return payload
     except Exception:
         return None
 

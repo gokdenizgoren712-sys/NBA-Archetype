@@ -26,7 +26,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPExce
 from pydantic import BaseModel
 
 from .db import get_conn
-from .auth import get_current_user, _decode
+from .auth import get_current_user, _decode, _is_banned
 
 router = APIRouter()
 
@@ -632,6 +632,9 @@ async def room_socket(ws: WebSocket, room_code: str, token: str = Query(...)):
         user_id = int(payload["sub"])
     except Exception:
         await ws.close(code=4401)
+        return
+    if _is_banned(user_id):
+        await ws.close(code=4403)
         return
 
     with get_conn() as conn:
