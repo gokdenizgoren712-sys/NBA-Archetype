@@ -45,14 +45,34 @@ def compute_percentiles(df: pd.DataFrame, metric_cols: list) -> pd.DataFrame:
 
 
 def score_component(pct_df: pd.DataFrame, comp_name: str, sigset: dict = None) -> pd.Series:
-    """Bileşenin ağırlıklı kompozit persantil skorunu döndürür [0..1].
-    Mevcut olmayan metrikler düşürülür, ağırlıklar yeniden normalize edilir.
-    sigset: kullanılacak imza sözlüğü (modern ya da fallback). None -> modern."""
+    """Bileşenin kompozit persantil skorunu döndürür [0..1].
+    Mevcut olmayan metrikler düşürülür (weighted_sum'da ağırlıklar yeniden
+    normalize edilir). sigset: kullanılacak imza sözlüğü (modern ya da
+    fallback). None -> modern.
+
+    sig["mode"] (opsiyonel, varsayılan "weighted_sum"):
+      - "weighted_sum": klasik ağırlıklı ortalama — bir metrikte zayıf olmak
+        diğerlerinde güçlü olmakla telafi edilebilir.
+      - "min": TÜM metriklerin en düşüğü — telafi YOK, "hepsinde belli bir
+        bar'ı geç" (AND-gate) gerektiren konseptler için (örn. Three-Level:
+        rim/mid/three'ün ÜÇÜNDE de skor üret, ikisinde elit + birinde sıfır
+        yetmiyor). "w" alanı bu modda göz ardı edilir, sadece "higher" kullanılır.
+    """
     sigset = sigset or COMPONENT_SIGNATURES
     sig = sigset[comp_name]
     available = {m: spec for m, spec in sig["metrics"].items() if m in pct_df.columns}
     if not available:
         return pd.Series(np.nan, index=pct_df.index)
+
+    if sig.get("mode") == "min":
+        cols = []
+        for m, spec in available.items():
+            v = pct_df[m].fillna(0.5)
+            if not spec["higher"]:
+                v = 1.0 - v
+            cols.append(v)
+        return pd.concat(cols, axis=1).min(axis=1)
+
     total_w = sum(spec["w"] for spec in available.values())
     score = pd.Series(0.0, index=pct_df.index)
     for m, spec in available.items():

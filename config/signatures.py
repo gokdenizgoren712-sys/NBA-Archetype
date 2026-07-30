@@ -315,18 +315,25 @@ COMPONENT_SIGNATURES = {
         },
     },
 
+    # 2026-07 modifier denetimi: eski weighted-sum formülü mimari olarak
+    # yanlıştı — PCT_PTS_X'ler pay olduğundan sıfır-toplama yakın (biri
+    # yükselince diğeri düşer), yani "iki bölgede elit + üçüncüde sıfır"
+    # bile geçebiliyordu (F1=0.286, ligin en zayıf modifier'larından).
+    # Artık mode="min": score_compat.py'de türetilen mutlak bölge-puanı
+    # (PTS_ZONE_PAINT/MIDRANGE/3PT) persantillerinin EN DÜŞÜĞÜ — üçünde de
+    # gerçekten belli bir bar'ı geçmek gerekiyor, telafi yok.
+    # (Kalibrasyon: 0.60 canlıda ligin ~%19'unu aktif işaretliyordu, çoğu
+    # modifier %2-13 bandında — 0.72'ye çekildi -> ~%10, Pressure/Shotmaker
+    # ile aynı seçicilik bandında.)
     "Three-Level": {
         "type": "modifier",
         "desc": "Scores at the rim, mid-range, and three-point line",
         "percentile_threshold": 0.72,
+        "mode": "min",
         "metrics": {
-            "PCT_PTS_2PT_MR": {"w": 0.24, "higher": True},  # mid-range is the rare differentiator
-            "PCT_PTS_PAINT":  {"w": 0.18, "higher": True},
-            "PCT_PTS_3PT":    {"w": 0.18, "higher": True},
-            "FG3A":           {"w": 0.10, "higher": True},   # PCT_PTS_3PT sayı çifti
-            "TS_PCT":         {"w": 0.12, "higher": True},
-            "PTS":            {"w": 0.10, "higher": True},   # TS_PCT sayı çifti
-            "FGA":            {"w": 0.08, "higher": True},   # genel hacim
+            "PTS_ZONE_PAINT":     {"higher": True},
+            "PTS_ZONE_MIDRANGE":  {"higher": True},
+            "PTS_ZONE_3PT":       {"higher": True},
         },
     },
 
@@ -354,6 +361,30 @@ COMPONENT_SIGNATURES = {
         "metrics": {
             "AVG_SPEED":  {"w": 0.55, "higher": True},
             "DIST_MILES": {"w": 0.45, "higher": True},
+        },
+    },
+
+    # Orijinal Jargon Sözlüğü'nde ("her kategoride etki; çok amaçlı") tanımlı
+    # ama şimdiye kadar HİÇ uygulanmamıştı (2026-07 modifier denetimi).
+    # mode="min": REB/AST/STL/BLK persantillerinin en düşüğü — "stat sheet'i
+    # dolduran" gerçek her-şeyi-yapan profilini yakalar (birinde elit,
+    # diğerlerinde sıfır olan tek-boyutlu oyuncu bunu geçemez). Versatile'dan
+    # farkı: Versatile "rol esnekliği/düşük kullanım" ölçüyor (dokunulmadı,
+    # kendi F1'i zaten makul), All-Around "istatistik çeşitliliği" ölçüyor.
+    # (2026-07 kalibrasyon: min-mode skor dağılımı ham persantillerden daha
+    # sıkışık geliyor — 0.55 canlıda ligin ~%17'sini "aktif" işaretliyordu,
+    # diğer modifier'ların çoğu %2-13 bandında. 0.65'e çekildi -> ~%7,
+    # Pick-and-Roll/3-and-D ile aynı seçicilik bandında.)
+    "All-Around": {
+        "type": "modifier",
+        "desc": "Impact in every category; multi-purpose stat-sheet filler",
+        "percentile_threshold": 0.65,
+        "mode": "min",
+        "metrics": {
+            "REB": {"higher": True},
+            "AST": {"higher": True},
+            "STL": {"higher": True},
+            "BLK": {"higher": True},
         },
     },
 

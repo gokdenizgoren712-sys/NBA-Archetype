@@ -113,6 +113,21 @@ def build_score_table(season: str = "2025-26", league: str = "nba") -> pd.DataFr
     if "FTA" in df.columns and "FGA" in df.columns:
         df["FT_RATE"] = (df["FTA"] / df["FGA"].replace(0, pd.NA)).fillna(0)
 
+    # Bölge-başına MUTLAK sayı üretimi (PCT_PTS_X payını PTS'le çarpıp) —
+    # Three-Level'ın "min" modu için (2026-07 modifier denetimi). Ham
+    # PCT_PTS_X'ler paylar olduğundan toplamda ~1'e sabitlenir (biri
+    # yükselince diğeri zorunlu düşer) — üçünü de AYNI ANDA yüksek tutmak
+    # imkansızdır, bu da eski weighted-sum formülünü yanıltıyordu (iki
+    # bölgede elit + üçüncüde sıfır bile geçebiliyordu). Mutlak puan
+    # (PTS × pay) bu sıfır-toplam kısıtını kaldırır — gerçekten üç
+    # bölgede de skor üreten oyuncu üçünde de yüksek olabilir.
+    if "PTS" in df.columns:
+        for pct_col, out_col in [("PCT_PTS_PAINT", "PTS_ZONE_PAINT"),
+                                  ("PCT_PTS_2PT_MR", "PTS_ZONE_MIDRANGE"),
+                                  ("PCT_PTS_3PT", "PTS_ZONE_3PT")]:
+            if pct_col in df.columns:
+                df[out_col] = df["PTS"] * df[pct_col].fillna(0)
+
     # Takım bağlamı: Bayesian pooling ile USG_TEAM_REL.
     # Küçük takım örnekleminde (12-15 oyuncu) takım std gürültülüdür;
     # havuzlanmış std = α·team_std + (1-α)·league_std ile dengelenir.

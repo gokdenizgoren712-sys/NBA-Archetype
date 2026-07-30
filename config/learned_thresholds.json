@@ -31,10 +31,6 @@
     "percentile": 0.775,
     "F1": 0.5
   },
-  "Three-Level": {
-    "percentile": 0.875,
-    "F1": 0.286
-  },
   "Scoring": {
     "percentile": 0.85,
     "F1": 0.545
