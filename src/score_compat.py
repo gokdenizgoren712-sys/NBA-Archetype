@@ -30,7 +30,8 @@ sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "config"))
 
 from engine import predict_components, select_signatures
-from signatures import COMPONENT_SIGNATURES, CORE_NOUNS, MODIFIER_TAGS, POSITION_COMPONENTS, NOUN_POSITION_MASK, NOUN_WEIGHTS
+from signatures import (COMPONENT_SIGNATURES, CORE_NOUNS, MODIFIER_TAGS, POSITION_COMPONENTS,
+                        NOUN_POSITION_MASK, MODIFIER_POSITION_MASK, NOUN_WEIGHTS)
 from roles import ROLE_SLOTS, compute_role_vec, get_affinity
 
 # Creator slot indices (Primary Creation=0, Secondary Playmaking=1, Shot Creation=8)
@@ -172,7 +173,6 @@ def build_score_table(season: str = "2025-26", league: str = "nba") -> pd.DataFr
             out[f"score_{c}"] = scores[c].round(3).values
 
     # Pozisyon maskesi: hard exclusion yerine 0.3x soft penalty (versatile oyuncular kısıtlanmasın)
-    # Yalnızca core noun skorlarına uygulanır
     POS_PENALTY = 0.30
     if "POSITION" in out.columns:
         for noun in CORE_NOUNS:
@@ -182,6 +182,19 @@ def build_score_table(season: str = "2025-26", league: str = "nba") -> pd.DataFr
             allowed = NOUN_POSITION_MASK.get(noun)
             if allowed is None:
                 continue  # pozisyon kısıtı yok
+            mask_bad = ~out["POSITION"].str.upper().isin(allowed)
+            out.loc[mask_bad, col] = (out.loc[mask_bad, col] * POS_PENALTY).round(3)
+
+        # Aynı yumuşak ceza modifier'lar için de — MODIFIER_POSITION_MASK sparse
+        # (çoğu modifier pozisyondan bağımsız, sadece tanımı gereği pozisyona bağlı
+        # olanlar — örn. Stretch — burada listelenir, bkz. config/signatures.py).
+        for mod in MODIFIER_TAGS:
+            col = f"score_{mod}"
+            if col not in out.columns:
+                continue
+            allowed = MODIFIER_POSITION_MASK.get(mod)
+            if allowed is None:
+                continue
             mask_bad = ~out["POSITION"].str.upper().isin(allowed)
             out.loc[mask_bad, col] = (out.loc[mask_bad, col] * POS_PENALTY).round(3)
 

@@ -284,7 +284,12 @@ COMPONENT_SIGNATURES = {
             "FT_RATE":         {"w": 0.22, "higher": True},
             "DRIVES":          {"w": 0.20, "higher": True},
             "PCT_PTS_OFF_TOV": {"w": 0.12, "higher": True},
-            "CONTESTED_SHOTS": {"w": 0.10, "higher": True},
+            # CONTESTED_SHOTS buradaydı — kod tabanının her yerinde (Anchor,
+            # Stopper, Point-of-Attack) SAVUNMADA kontre edilen şut anlamına
+            # geliyor, Pressure ise HÜCUM kavramı — copy-paste hatasıydı
+            # (2026-07 modifier denetimi). Gerçek rim-pressure ölçümü boyalı
+            # alan skorlama payı — PCT_PTS_PAINT ile değiştirildi.
+            "PCT_PTS_PAINT":   {"w": 0.10, "higher": True},
         },
     },
 
@@ -483,6 +488,25 @@ COMPONENT_SIGNATURES = {
         },
     },
 
+    # Playmaking'den farkı: USG_PCT'e negatif ağırlık (düşük-kullanım kapısı) —
+    # "ikinci opsiyon" kavramı zaten yüksek-kullanımlı bir yaratıcıdan ayrışmak
+    # zorunda, yoksa Playmaking'in yarı-kopyası olur. Daha önce sadece
+    # frontend/src/data/glossary.js'de görüntü-amaçlı tanımlıydı (hiç
+    # skorlanmıyordu) — 2026-07 modifier denetiminde canlı imzaya taşındı.
+    "Secondary": {
+        "type": "modifier",
+        "desc": "Second option creator; sets up plays that lead to other assists",
+        "percentile_threshold": 0.80,
+        "metrics": {
+            "SECONDARY_AST": {"w": 0.28, "higher": True},
+            "POTENTIAL_AST": {"w": 0.24, "higher": True},
+            "AST_PCT":       {"w": 0.18, "higher": True},
+            "AST":           {"w": 0.08, "higher": True},   # AST_PCT sayı çifti
+            "PASSES_MADE":   {"w": 0.04, "higher": True},
+            "USG_PCT":       {"w": 0.18, "higher": False},  # düşük-kullanım kapısı
+        },
+    },
+
 
 }
 
@@ -523,6 +547,18 @@ NOUN_POSITION_MASK = {
     "Initiator": None,
     "Stopper":   None,
     "Rim Runner":{"SF", "PF", "C"},
+}
+
+# Modifier'lar için AYNI yumuşak pozisyon cezası (bkz. NOUN_POSITION_MASK) —
+# ama varsayılan None (kısıtsız) yerine sparse: yalnızca burada AÇIKÇA
+# listelenen modifier'lar cezalandırılır (score_compat._pick_arch'ın aksine,
+# modifier'ların çoğu pozisyondan bağımsız gerçek bir kavram — sadece
+# tanımı gereği pozisyona bağlı olanlar buraya eklenir).
+# Stretch: gerçek "stretch big" tanımı PF/C'ye özgü (F1=0.222 ile en zayıf
+# canlı modifier'dı — pozisyon kısıtı olmadan üç sayı atan her guard'ı da
+# yakalıyordu, konsepti sulandırıyordu).
+MODIFIER_POSITION_MASK = {
+    "Stretch": {"PF", "C"},
 }
 
 CORE_NOUNS = [k for k, v in COMPONENT_SIGNATURES.items() if v["type"] == "core"]
