@@ -17,3 +17,9 @@ slowapi>=0.1.9
 # NOT: euroleague-api RUNTIME'da gerekmez — sunucu yalnız commit'li parquet'i
 # okur. Yalnızca veri çekerken lazım: `pip install euroleague-api` (fetch_euroleague.py).
 # requirements'a konulunca build'i uzatıp deploy'u düşürüyordu, o yüzden çıkarıldı.
+# Aynı gerekçeyle beautifulsoup4 de burada değildi ama fetch_bref_positions.py
+# (Basketball-Reference pozisyon/BPM scrape'i, yalnızca fetch-time) hep import
+# ediyordu — hiç requirements'ta olmadığı için sıfırdan kurulumda kırıktı
+# (2026-07 modifier denetiminde fark edildi). RUNTIME'da gerekmiyor (api/'de
+# hiç import edilmiyor), o yüzden yorum satırıyla ayrı not edildi, ana listeye
+# değil: `pip install beautifulsoup4` (fetch_bref_positions.py çalıştırmadan önce).
