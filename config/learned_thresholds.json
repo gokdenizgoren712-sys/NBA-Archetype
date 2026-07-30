@@ -35,10 +35,6 @@
     "percentile": 0.85,
     "F1": 0.545
   },
-  "Versatile": {
-    "percentile": 0.95,
-    "F1": 0.5
-  },
   "Stretch": {
     "percentile": 0.625,
     "F1": 0.222

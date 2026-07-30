@@ -364,43 +364,32 @@ COMPONENT_SIGNATURES = {
         },
     },
 
-    # Orijinal Jargon Sözlüğü'nde ("her kategoride etki; çok amaçlı") tanımlı
-    # ama şimdiye kadar HİÇ uygulanmamıştı (2026-07 modifier denetimi).
-    # mode="min": REB/AST/STL/BLK persantillerinin en düşüğü — "stat sheet'i
-    # dolduran" gerçek her-şeyi-yapan profilini yakalar (birinde elit,
-    # diğerlerinde sıfır olan tek-boyutlu oyuncu bunu geçemez). Versatile'dan
-    # farkı: Versatile "rol esnekliği/düşük kullanım" ölçüyor (dokunulmadı,
-    # kendi F1'i zaten makul), All-Around "istatistik çeşitliliği" ölçüyor.
-    # (2026-07 kalibrasyon: min-mode skor dağılımı ham persantillerden daha
-    # sıkışık geliyor — 0.55 canlıda ligin ~%17'sini "aktif" işaretliyordu,
-    # diğer modifier'ların çoğu %2-13 bandında. 0.65'e çekildi -> ~%7,
-    # Pick-and-Roll/3-and-D ile aynı seçicilik bandında.)
+    # Secondary VE Versatile (ayrı tag olarak) 2026-07 kapsamlı modifier-
+    # çakışma denetiminde KALDIRILDI — ikisi de aynı "pas/çoklu-kategori
+    # üretim" metrik ailesini (AST/AST_PCT/PASSES_MADE/SECONDARY_AST/
+    # POTENTIAL_AST/REB) paylaşıyordu ve bu metrikler kendi aralarında zaten
+    # neredeyse kolineer (çok pas atan oyuncu hepsinde birden yüksek çıkar) —
+    # Playmaking'le r=0.88-0.97, birbirleriyle r=0.68-0.91. Tek ayrıştırıcıları
+    # (USG_PCT ters ağırlığı, %12-18) bu kadar güçlü ortak çekirdeği
+    # dengelemeye yetmiyordu (bkz. Three-Level'ın eski zero-sum hatasıyla aynı
+    # ders: aynı metrikleri yeniden ağırlıklandırmak gerçek ayrışma sağlamıyor).
+    # Versatile'ın "çok yönlü" ve hiç uygulanmamış Scalable'ın ("rolünü
+    # büyütüp küçültebilen") konsepti All-Around'da birleştirildi (kullanıcı
+    # kararı) — All-Around artık TEK "jack-of-many-trades" tag'i, düşük eşik
+    # + geniş kategori seti ile: yıldız olmasa da HER kategoride en azından
+    # biraz üretim yapabilen oyuncuyu yakalıyor (mode="min" hâlâ AND-gate,
+    # ama bar düşük — "azar azar da olsa her şeyi yapabiliyor olması" hedefi).
     "All-Around": {
         "type": "modifier",
-        "desc": "Impact in every category; multi-purpose stat-sheet filler",
-        "percentile_threshold": 0.65,
+        "desc": "Well-rounded stat-sheet filler; contributes a little in every category",
+        "percentile_threshold": 0.45,
         "mode": "min",
         "metrics": {
+            "PTS": {"higher": True},
             "REB": {"higher": True},
             "AST": {"higher": True},
             "STL": {"higher": True},
             "BLK": {"higher": True},
-        },
-    },
-
-    "Versatile": {
-        "type": "modifier",
-        "desc": "Handles multiple roles; not a star, but impactful in several areas",
-        "percentile_threshold": 0.72,
-        "metrics": {
-            "PASSES_MADE": {"w": 0.20, "higher": True},
-            "REB":         {"w": 0.16, "higher": True},
-            "DRIVES":      {"w": 0.14, "higher": True},
-            "AST_PCT":     {"w": 0.12, "higher": True},
-            "AST":         {"w": 0.06, "higher": True},    # sayı çifti
-            "PTS":         {"w": 0.14, "higher": False},   # not primary scorer
-            "USG_PCT":     {"w": 0.12, "higher": False},   # not star-level
-            "FGA":         {"w": 0.06, "higher": False},   # USG_PCT sayı çifti
         },
     },
 
@@ -524,25 +513,10 @@ COMPONENT_SIGNATURES = {
         },
     },
 
-    # Playmaking'den farkı: USG_PCT'e negatif ağırlık (düşük-kullanım kapısı) —
-    # "ikinci opsiyon" kavramı zaten yüksek-kullanımlı bir yaratıcıdan ayrışmak
-    # zorunda, yoksa Playmaking'in yarı-kopyası olur. Daha önce sadece
-    # frontend/src/data/glossary.js'de görüntü-amaçlı tanımlıydı (hiç
-    # skorlanmıyordu) — 2026-07 modifier denetiminde canlı imzaya taşındı.
-    "Secondary": {
-        "type": "modifier",
-        "desc": "Second option creator; sets up plays that lead to other assists",
-        "percentile_threshold": 0.80,
-        "metrics": {
-            "SECONDARY_AST": {"w": 0.28, "higher": True},
-            "POTENTIAL_AST": {"w": 0.24, "higher": True},
-            "AST_PCT":       {"w": 0.18, "higher": True},
-            "AST":           {"w": 0.08, "higher": True},   # AST_PCT sayı çifti
-            "PASSES_MADE":   {"w": 0.04, "higher": True},
-            "USG_PCT":       {"w": 0.18, "higher": False},  # düşük-kullanım kapısı
-        },
-    },
-
+    # Secondary buradan (Playmaking'in hemen altından) 2026-07 kapsamlı
+    # modifier-çakışma denetiminde KALDIRILDI — bkz. All-Around/Versatile'ın
+    # kaldırıldığı yerdeki not (aynı gerekçe: Playmaking'le r=0.97, USG_PCT
+    # kapısı ortak pas-metrik çekirdeğini dengeleyemiyordu).
 
 }
 
