@@ -289,6 +289,23 @@ if __name__ == "__main__":
         df = df.merge(pnr_agg, on="PLAYER_ID", how="left")
         print(f"Synergy PnR ball-handler eklendi ({len(pnr_agg)} oyuncu, {len(pnr)} takım-satırından)")
 
+    # Synergy Cut — gerçek Slashing modifier'ı için (2026-07 modifier
+    # denetimi). Eski proxy (DRIVES/FTA/PCT_PTS_PAINT) Pressure'la r=0.85
+    # örtüşüyordu çünkü ikisi de aynı "sürücü" sinyalini ölçüyordu; oysa
+    # orijinal Jargon Sözlüğü tanımı ("sürekli ribaund/dalış ile pas alan
+    # dinamik hücum") aslında topsuz kesme/dalış temelli bir bitiricilik —
+    # Synergy Cut possession-share + PPP bunu doğrudan ölçüyor.
+    cut = fetch_synergy_playtype("2025-26", "Cut")
+    if not cut.empty:
+        cut_agg = (cut.groupby("PLAYER_ID")
+                   .apply(lambda g: pd.Series({
+                       "CUT_POSS_PCT": np.average(g["POSS_PCT"], weights=g["POSS"].clip(lower=0.01)),
+                       "CUT_PPP":      np.average(g["PPP"], weights=g["POSS"].clip(lower=0.01)),
+                   }), include_groups=False)
+                   .reset_index())
+        df = df.merge(cut_agg, on="PLAYER_ID", how="left")
+        print(f"Synergy Cut eklendi ({len(cut_agg)} oyuncu, {len(cut)} takım-satırından)")
+
     df.to_parquet(DATA_DIR / "2025-26__merged.parquet")
     print(f"\nBirleşik tablo: {df.shape[0]} oyuncu, {df.shape[1]} kolon")
     print("Kaydedildi: data/2025-26__merged.parquet")

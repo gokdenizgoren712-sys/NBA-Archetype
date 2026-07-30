@@ -449,17 +449,20 @@ COMPONENT_SIGNATURES = {
         },
     },
 
+    # Eski proxy (DRIVES/FTA/PCT_PTS_PAINT) Pressure'ın neredeyse birebir
+    # kopyasıydı (r=0.854, 2026-07 modifier denetimi) — ikisi de aynı
+    # "topla sürüp potaya giden oyuncu" sinyalini ölçüyordu. Gerçek Synergy
+    # Cut verisiyle (fetch_data.py) değiştirildi: topsuz kesme/dalış
+    # possession-share + verimlilik — kavramsal olarak da orijinal Jargon
+    # Sözlüğü tanımına ("sürekli ribaund/dalış ile pas alan dinamik hücum")
+    # eski proxy'den çok daha yakın.
     "Slashing": {
         "type": "modifier",
-        "desc": "Attacks the basket off movement and cuts",
+        "desc": "Scores off cuts and dives to the rim, finishing plays others create",
         "percentile_threshold": 0.76,
         "metrics": {
-            "DRIVES":        {"w": 0.26, "higher": True},
-            "DRIVE_FGA":     {"w": 0.22, "higher": True},
-            "PCT_PTS_PAINT": {"w": 0.20, "higher": True},
-            "FTA":           {"w": 0.14, "higher": True},
-            "FG_PCT":        {"w": 0.10, "higher": True},
-            "FGM":           {"w": 0.08, "higher": True},   # sayı çifti
+            "CUT_POSS_PCT": {"w": 0.55, "higher": True},
+            "CUT_PPP":      {"w": 0.45, "higher": True},
         },
     },
 
