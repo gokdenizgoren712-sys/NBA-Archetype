@@ -246,6 +246,13 @@ COMPONENT_SIGNATURES = {
         "type": "modifier",
         "desc": "Kawhi/Butler type: elite defender who also scores and creates offensively",
         "percentile_threshold": 0.74,
+        # 2026-07 modifier denetimi: dış kaynaklara göre daha dengeli bir
+        # ağırlık (daha az savunma, hücuma AST_PCT eklenmiş) DENENDİ, ama
+        # 40 ground-truth oyuncuya karşı F1 0.522 -> 0.348'e DÜŞTÜ — bu
+        # projenin "Two-Way" etiketlediği oyuncular dış literatürden daha
+        # savunma-ağırlıklı görünüyor. Ground truth burada daha otoriter
+        # (bkz. CLAUDE.md), o yüzden eski (savunma-ağırlıklı) ağırlık
+        # BİLEREK geri alındı — konsept-tutarlılık F1'i feda etmeye değmedi.
         "metrics": {
             "DEF_RATING":  {"w": 0.16, "higher": False},
             "NET_RATING":  {"w": 0.14, "higher": True},
@@ -341,11 +348,12 @@ COMPONENT_SIGNATURES = {
         "type": "modifier",
         "desc": "Pure athleticism/quickness advantage; fastest player on the floor",
         "percentile_threshold": 0.76,
+        # STL/BLK çıkarıldı (2026-07 modifier denetimi) — hıza dair kanıtlanmış
+        # bir bağlantısı yok, sadece gürültü ekliyordu; ağırlık saf hareket
+        # metriklerine (AVG_SPEED/DIST_MILES) yeniden dağıtıldı.
         "metrics": {
-            "AVG_SPEED":  {"w": 0.44, "higher": True},
-            "DIST_MILES": {"w": 0.38, "higher": True},
-            "STL":        {"w": 0.10, "higher": True},
-            "BLK":        {"w": 0.08, "higher": True},
+            "AVG_SPEED":  {"w": 0.55, "higher": True},
+            "DIST_MILES": {"w": 0.45, "higher": True},
         },
     },
 
