@@ -1,9 +1,18 @@
 """
 Fonksiyonel rol tanımları ve arketip uyum prior matrisi.
 
-11 slot:
+10 slot (2026-07 modifier denetimi: Two-Way kaldırıldığı için "Two-Way
+Defense" slotu düşürüldü — kalan tek metriği yoktu, Perimeter/Interior
+Defense'i tekrarlamak yeni bir gürültü ekleyecekti. "Versatility" slotu
+korundu ama artık gerçek score_Versatile yerine score_All-Around'a bakıyor
+— All-Around, Versatile'ın kaldırıldığı denetimde onun "çok yönlülük"
+konseptini devraldı. Öncesinde bu iki slot HER oyuncu için sessizce 0
+dönüyordu (score_Two-Way / score_Versatile artık yok), bu da
+_duo_role_score/_lineup_role_score'daki coverage=mean(max_rv) hesabını
+~%18 oranında yapay olarak aşağı çekiyordu — Lineup Builder / Duo
+Compatibility / Affinity sayfalarının hepsini etkileyen sessiz bir bug'dı):
   7 core  — mevcut 12 noun'dan türetilir
-  4 modifier — modifier etiketlerinden dedicated slot
+  3 modifier — modifier etiketlerinden dedicated slot
 
 Affinity prior: basketbol bilgisine dayalı elle yazılmış 12×12 matris.
 Bu matris SABİTTİR — sezona/lige özel gerçek lineup verisiyle global olarak
@@ -30,10 +39,9 @@ ROLE_SLOTS = [
     "Physical Force",       # Force / Anchor (ribaund/fizik)
     "Finishing",            # Finisher / Rim Runner
     # Modifier dedicated slots
-    "Two-Way Defense",      # Two-Way modifier
     "Shot Creation",        # Pressure / Shotmaker / Gravity / Three-Level
     "Transition",           # Speed modifier
-    "Versatility",          # Versatile modifier
+    "Versatility",          # All-Around modifier (eski Versatile'ın yerini aldı)
 ]
 
 ROLE_SHORT = {
@@ -44,7 +52,6 @@ ROLE_SHORT = {
     "Perimeter Defense":    "PER",
     "Physical Force":       "PHY",
     "Finishing":            "FIN",
-    "Two-Way Defense":      "2WY",
     "Shot Creation":        "SCR",
     "Transition":           "TRN",
     "Versatility":          "VRS",
@@ -53,7 +60,7 @@ ROLE_SHORT = {
 
 def compute_role_vec(row: dict | pd.Series) -> np.ndarray:
     """
-    Bir oyuncunun 11 boyutlu rol vektörünü hesaplar [0..1].
+    Bir oyuncunun 10 boyutlu rol vektörünü hesaplar [0..1].
     row: score_ prefix'li sütunları olan bir satır.
     """
     def s(key: str) -> float:
@@ -94,7 +101,6 @@ def compute_role_vec(row: dict | pd.Series) -> np.ndarray:
             s("Rim Runner") * 0.90,
         )),
         # Modifier slots
-        s("Two-Way"),
         min(1.0, max(
             s("Pressure"),
             s("Shotmaker"),
@@ -102,7 +108,7 @@ def compute_role_vec(row: dict | pd.Series) -> np.ndarray:
             s("Three-Level"),
         )),
         s("Speed"),
-        s("Versatile"),
+        s("All-Around"),   # eski Versatile'ın yerini aldı (2026-07)
     ], dtype=np.float32)
 
     return np.clip(vec, 0.0, 1.0)
