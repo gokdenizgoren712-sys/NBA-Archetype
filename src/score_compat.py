@@ -557,15 +557,12 @@ def _lineup_role_score(rows: list, affinity_matrix=None) -> dict:
         max(_s(r,"Anchor")*1.10, _s(r,"Force")*0.75, _s(r,"Rim Runner")*0.65)
         for r in rows
     ))
-    perimeter_def = min(1.0, max(
-        max(_s(r,"Stopper"), _s(r,"Two-Way")*0.90,
-            _s(r,"Point-of-Attack")*0.88, _s(r,"Defensive")*0.92)
-        for r in rows
-    ))
-    n_defenders = sum(1 for r in rows if max(
-        _s(r,"Two-Way"), _s(r,"Stopper"), _s(r,"Point-of-Attack"),
-        _s(r,"Defensive"), _s(r,"Anchor")
-    ) >= 0.65)
+    # Not: Point-of-Attack/Defensive 2026-07'de kaldırıldı (Stopper'ın
+    # kopyasıydı), Two-Way de aynı denetimde kaldırıldı (metriklere
+    # indirgemesi zor, kullanıcı kararı) — perimeter defense artık doğrudan
+    # Stopper'a dayanıyor.
+    perimeter_def = min(1.0, max(_s(r,"Stopper") for r in rows))
+    n_defenders = sum(1 for r in rows if max(_s(r,"Stopper"), _s(r,"Anchor")) >= 0.65)
     def_depth = min(1.0, n_defenders / 2.5)
 
     defense = 0.35 * interior_def + 0.35 * perimeter_def + 0.30 * def_depth
@@ -722,11 +719,9 @@ def top_lineup_combos(score_table: pd.DataFrame,
         _gp("Gravity",0.95), _gp("Three-Level",0.80),
     ]))
     intd_p = np.minimum(1.0, np.maximum(_gp("Anchor",1.10), _gp("Force",0.65)))
-    perd_p = np.minimum(1.0, np.maximum.reduce([
-        _gp("Stopper"), _gp("Two-Way",0.90), _gp("Point-of-Attack",0.88), _gp("Defensive",0.92),
-    ]))
-    dflg_p = (np.maximum.reduce([_gp("Two-Way"), _gp("Stopper"), _gp("Point-of-Attack"),
-                                  _gp("Defensive"), _gp("Anchor")]) >= 0.65).astype(np.float32)
+    # Point-of-Attack/Defensive/Two-Way kaldırıldı (2026-07) — bkz. _lineup_role_score notu.
+    perd_p = _gp("Stopper")
+    dflg_p = (np.maximum(_gp("Stopper"), _gp("Anchor")) >= 0.65).astype(np.float32)
     fini_p = np.minimum(1.0, np.maximum.reduce([
         _gp("Finisher"), _gp("Rim Runner",0.95), _gp("Force",0.75), _gp("Slashing",0.82),
     ]))
@@ -880,14 +875,9 @@ def top_lineup_combos_positional(score_table: pd.DataFrame,
             _gsc(pool, "Three-Level", 0.80),
         ]))
         int_def_v[pos]   = np.minimum(1.0, np.maximum(_gsc(pool, "Anchor", 1.10), _gsc(pool, "Force", 0.65)))
-        per_def_v[pos]   = np.minimum(1.0, np.maximum.reduce([
-            _gsc(pool, "Stopper"),            _gsc(pool, "Two-Way", 0.90),
-            _gsc(pool, "Point-of-Attack", 0.88), _gsc(pool, "Defensive", 0.92),
-        ]))
-        def_flag_v[pos]  = (np.maximum.reduce([
-            _gsc(pool, "Two-Way"), _gsc(pool, "Stopper"),
-            _gsc(pool, "Point-of-Attack"), _gsc(pool, "Defensive"), _gsc(pool, "Anchor"),
-        ]) >= 0.65).astype(np.float32)
+        # Point-of-Attack/Defensive/Two-Way kaldırıldı (2026-07) — bkz. _lineup_role_score notu.
+        per_def_v[pos]   = _gsc(pool, "Stopper")
+        def_flag_v[pos]  = (np.maximum(_gsc(pool, "Stopper"), _gsc(pool, "Anchor")) >= 0.65).astype(np.float32)
         finishing_v[pos] = np.minimum(1.0, np.maximum.reduce([
             _gsc(pool, "Finisher"),       _gsc(pool, "Rim Runner", 0.95),
             _gsc(pool, "Force", 0.75),    _gsc(pool, "Slashing", 0.82),

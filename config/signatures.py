@@ -242,30 +242,13 @@ COMPONENT_SIGNATURES = {
     # ─── MODIFIER TAGS (27) ───────────────────────────────────────────────────
     # Bunlar boolean etikettir; uyum hesaplamalarına girmez.
 
-    "Two-Way": {
-        "type": "modifier",
-        "desc": "Kawhi/Butler type: elite defender who also scores and creates offensively",
-        "percentile_threshold": 0.74,
-        # 2026-07 modifier denetimi: dış kaynaklara göre daha dengeli bir
-        # ağırlık (daha az savunma, hücuma AST_PCT eklenmiş) DENENDİ, ama
-        # 40 ground-truth oyuncuya karşı F1 0.522 -> 0.348'e DÜŞTÜ — bu
-        # projenin "Two-Way" etiketlediği oyuncular dış literatürden daha
-        # savunma-ağırlıklı görünüyor. Ground truth burada daha otoriter
-        # (bkz. CLAUDE.md), o yüzden eski (savunma-ağırlıklı) ağırlık
-        # BİLEREK geri alındı — konsept-tutarlılık F1'i feda etmeye değmedi.
-        "metrics": {
-            "DEF_RATING":  {"w": 0.16, "higher": False},
-            "NET_RATING":  {"w": 0.14, "higher": True},
-            "STL":         {"w": 0.11, "higher": True},
-            "BLK":         {"w": 0.09, "higher": True},
-            "DEFLECTIONS": {"w": 0.12, "higher": True},
-            "DEF_WS":      {"w": 0.10, "higher": True},
-            "OBPM":        {"w": 0.08, "higher": True},
-            "DBPM":        {"w": 0.08, "higher": True},
-            "PTS":         {"w": 0.08, "higher": True},    # ofansif üretim
-            "FG_PCT":      {"w": 0.04, "higher": True},    # verimli skor
-        },
-    },
+    # Two-Way 2026-07 kapsamlı modifier-çakışma denetiminde KALDIRILDI
+    # (kullanıcı kararı) — daha önce bir kez ağırlık deneyi yapılmış (bkz.
+    # git geçmişi), ground truth'a göre eski ağırlık geri alınmıştı, ama
+    # kavramsal olarak "iki uçta da etki" tek bir weighted-sum'a HİÇ temiz
+    # indirgenmiyor: ya savunma-ağırlıklı kalıp 3-and-D/Stopper'ın gölgesi
+    # oluyor, ya da dengeleyince ground-truth F1 çöküyor (0.522->0.348).
+    # Metriklere indirgemesi zor bir modifier olarak değerlendirildi.
 
     "Heliocentric": {
         "type": "modifier",
@@ -412,20 +395,22 @@ COMPONENT_SIGNATURES = {
     # değerlendirildi — kapsamlı modifier-çakışma denetimi tamamlanana kadar
     # eklenmiyor.
 
+    # 2026-07 modifier denetimi: eski proxy (FG3_PCT/FG3A/PCT_PTS_3PT ağırlıklı)
+    # sadece "çok ve iyi 3 atıyor" ölçüyordu, 3-and-D ile r=0.865 (aynı
+    # FG3-ailesi metrikleri paylaşıyordu). Artık NBA.com'un GERÇEK Gravity
+    # istatistiği (optik takip + ML, fetch_data.py fetch_gravity) — oyuncunun
+    # şut profilinden bağımsız, savunmanın beklenenden ne kadar fazla tepki
+    # verdiğini doğrudan ölçüyor. AVGGRAVITYSCORE (genel) + off-ball perimeter
+    # bileşeni (klasik "sadece köşede durarak savunmayı büken" imzası,
+    # yüksek-usage on-ball yaratıcılardan ayrışmayı güçlendiriyor). Kapsam
+    # sınırlı (~234/582 oyuncu) — Gravity zaten nadir/elit bir tag.
     "Gravity": {
         "type": "modifier",
-        # Spacer'dan fark: daha yüksek rol ve USG_PCT; any position; double-team cazibet çeker
         "desc": "Elite shooter who bends defenses — any position; Curry/Dame/KD type",
         "percentile_threshold": 0.86,
         "metrics": {
-            "FG3_PCT":      {"w": 0.24, "higher": True},
-            "FG3A":         {"w": 0.16, "higher": True},
-            "FG3M":         {"w": 0.08, "higher": True},   # sayı çifti
-            "PCT_PTS_3PT":  {"w": 0.14, "higher": True},
-            "USG_PCT":      {"w": 0.12, "higher": True},   # yüksek rol (Spacer'dan fark)
-            "PTS":          {"w": 0.14, "higher": True},   # skor üretimi
-            "FGM":          {"w": 0.08, "higher": True},   # genel skor hacmi
-            "POTENTIAL_AST":{"w": 0.04, "higher": True},   # gravity = savunma çekimi
+            "AVGGRAVITYSCORE":                {"w": 0.60, "higher": True},
+            "AVGOFFBALLPERIMETERGRAVITYSCORE":{"w": 0.40, "higher": True},
         },
     },
 

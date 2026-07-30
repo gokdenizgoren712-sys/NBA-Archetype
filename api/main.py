@@ -1187,7 +1187,7 @@ def custom_lineup_compat(body: dict):
     # Per-player skor verileri (era-adjusted frontend scoring için)
     SCORE_KEYS = ["Engine","Ecosystem","Hub","Creator","Connector","Initiator",
                   "Anchor","Force","Spacer","Finisher","Stopper","Rim Runner",
-                  "3-and-D","Two-Way","Stretch","Gravity","Slashing","Three-Level"]
+                  "3-and-D","Stretch","Gravity","Slashing","Three-Level"]
     players_data = []
     for name in names:
         nm = name.strip()
@@ -1358,7 +1358,14 @@ def get_affinity_lineups(
 
     keep = ["GROUP_NAME", "NET_RATING", "MIN", "PLUS_MINUS", "fit_score"]
     keep = [c for c in keep if c in filtered.columns]
-    out = filtered[keep].iloc[:limit]
+    out = filtered[keep].copy()
+    # Tam isim + kişi başı arketip (zaten _load_lineups_with_archs'ta hesaplı) —
+    # drill panel'de "Player · Archetype" satırları için.
+    if "_names" in filtered.columns:
+        out["Players"] = filtered["_names"]
+    if "_archs" in filtered.columns:
+        out["Archetypes"] = filtered["_archs"]
+    out = out.iloc[:limit]
     return {
         "total":   int(len(filtered)),
         "avg_net": avg_net,
@@ -2103,7 +2110,7 @@ def post_historical_custom_lineup(season: str, body: dict):
     pillar_keys = {
         "Creation":  ["Engine","Ecosystem","Hub","Creator","Initiator"],
         "Spacing":   ["Spacer","3-and-D","Stretch","Gravity","Three-Level"],
-        "Defense":   ["Anchor","Stopper","Two-Way","Force"],
+        "Defense":   ["Anchor","Stopper","Force"],
         "Finishing": ["Finisher","Rim Runner","Force","Slashing"],
     }
     pillar_breakdown = {}

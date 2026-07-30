@@ -139,6 +139,33 @@ def fetch_synergy_playtype(season: str = "2025-26", play_type: str = "PRBallHand
         return pd.DataFrame()
 
 
+def fetch_gravity(season: str = "2025-26", season_type: str = "Regular Season") -> pd.DataFrame:
+    """NBA.com'un gerçek "Gravity" istatistiği (nba_api GravityLeaders) —
+    optik takip + ML tabanlı, bir oyuncunun savunmayı ne kadar "büktüğünü"
+    (beklenenden fazla savunmacı dikkati çektiğini) doğrudan ölçüyor —
+    2026-07 modifier denetimi, Gravity modifier'ı için eklendi. Önceki proxy
+    (FG3_PCT/FG3A/PCT_PTS_3PT) sadece "çok ve iyi 3 atıyor" ölçüyordu, bu da
+    3-and-D ile neredeyse birebir örtüşmesine sebep oluyordu (r=0.865) —
+    gerçek Gravity, oyuncunun şut profilinden bağımsız olarak savunmanın
+    TEPKİSİNİ ölçtüğü için kavramsal olarak ayrışıyor. Kapsam sınırlı
+    (~234/582 oyuncu — düşük dakikalı oyuncular için veri yok), bu Gravity'nin
+    zaten nadir/elit bir tag olması amacıyla uyumlu."""
+    from nba_api.stats.endpoints import gravityleaders
+    cp = _cache_path(season, "gravity")
+    if cp.exists():
+        print(f"[cache] {season} Gravity")
+        return pd.read_parquet(cp)
+    try:
+        resp = gravityleaders.GravityLeaders(season=season, season_type_all_star=season_type)
+        df = resp.get_data_frames()[0]
+        df.to_parquet(cp)
+        print(f"[fetch] {season} Gravity ({len(df)} oyuncu)")
+        return df
+    except Exception as e:
+        print(f"[HATA/yok] {season} Gravity: {e}")
+        return pd.DataFrame()
+
+
 def merge_player_tables(tables: dict) -> pd.DataFrame:
     """Tüm tabloları PLAYER_ID üzerinde tek satır/oyuncu olacak şekilde birleştirir."""
     base = tables.get("Base")
@@ -305,6 +332,16 @@ if __name__ == "__main__":
                    .reset_index())
         df = df.merge(cut_agg, on="PLAYER_ID", how="left")
         print(f"Synergy Cut eklendi ({len(cut_agg)} oyuncu, {len(cut)} takım-satırından)")
+
+    # Gerçek NBA Gravity verisi — Gravity modifier'ı için (2026-07 modifier
+    # denetimi, bkz. fetch_gravity docstring). Traded oyuncular için fanout
+    # riski yok (GravityLeaders tek satır/oyuncu döndürüyor, PLAYER_ID başına).
+    grav = fetch_gravity("2025-26")
+    if not grav.empty:
+        grav = grav.rename(columns={"PLAYERID": "PLAYER_ID"})
+        grav_cols = ["PLAYER_ID", "AVGGRAVITYSCORE", "AVGOFFBALLPERIMETERGRAVITYSCORE"]
+        df = df.merge(grav[grav_cols], on="PLAYER_ID", how="left")
+        print(f"Gravity eklendi ({len(grav)} oyuncu)")
 
     df.to_parquet(DATA_DIR / "2025-26__merged.parquet")
     print(f"\nBirleşik tablo: {df.shape[0]} oyuncu, {df.shape[1]} kolon")
