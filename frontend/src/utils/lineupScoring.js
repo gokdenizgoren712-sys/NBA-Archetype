@@ -41,7 +41,13 @@ const RANK_W  = [0.40, 0.25, 0.15, 0.12, 0.08];
 export function computePlayerFit(p) {
   const creation  = Math.min(1, Math.max(_s(p,"Ecosystem")*1.10, _s(p,"Engine"), _s(p,"Hub")*0.90, _s(p,"Creator")*0.88, _s(p,"Initiator")*0.80));
   const spacing   = Math.min(1, Math.max(_s(p,"Spacer"), _s(p,"3-and-D")*0.90, _s(p,"Stretch")*0.85, _s(p,"Gravity")*0.95, _s(p,"Three-Level")*0.80));
-  const defense   = Math.min(1, Math.max(_s(p,"Anchor")*1.10, _s(p,"Stopper"), _s(p,"Two-Way")*0.90, _s(p,"Force")*0.65));
+  // Defense split into Rim Protection / Perimeter D (matches the game's own
+  // 5-pillar system, eras.js PILLARS) — display only, same underlying
+  // components as before so `defense = max(rim, perimeter)` reproduces the
+  // exact prior combined value and doesn't move anyone's fit score/grade.
+  const rimProtection = Math.min(1, Math.max(_s(p,"Anchor")*1.10, _s(p,"Force")*0.65));
+  const perimeterDef  = Math.min(1, Math.max(_s(p,"Stopper"), _s(p,"Two-Way")*0.90));
+  const defense   = Math.max(rimProtection, perimeterDef);
   const finishing = Math.min(1, Math.max(_s(p,"Finisher"), _s(p,"Rim Runner")*0.95, _s(p,"Force")*0.75, _s(p,"Slashing")*0.82));
   const overall   = Math.min(1, Math.max(0, parseFloat(p.overall_score || 0)));
   const era       = getEra(p._season);
@@ -52,7 +58,7 @@ export function computePlayerFit(p) {
   const blendedEraW = top5.reduce((acc, x, i) => acc + RANK_W[i] * x.w, 0);
   const eraFactor = Math.min(1.15, Math.max(0.75, blendedEraW));
   const quality   = Math.min(1, overall * eraFactor);
-  return { creation, spacing, defense, finishing, overall, quality, eraFactor, era };
+  return { creation, spacing, rimProtection, perimeterDef, defense, finishing, overall, quality, eraFactor, era };
 }
 
 export function computeLineupFit(players) {
@@ -64,7 +70,9 @@ export function computeLineupFit(players) {
   const creationCov  = Math.min(1, Math.max(...perPlayer.map(p => p.creation)));
   const nShooters    = perPlayer.filter(p => p.spacing >= 0.65).length;
   const spacingCov   = [0.10, 0.45, 0.82, 1.00, 0.88, 0.72][Math.min(nShooters, 5)];
-  const defenseCov   = Math.min(1, Math.max(...perPlayer.map(p => p.defense)));
+  const rimCov       = Math.min(1, Math.max(...perPlayer.map(p => p.rimProtection)));
+  const perimCov     = Math.min(1, Math.max(...perPlayer.map(p => p.perimeterDef)));
+  const defenseCov   = Math.max(rimCov, perimCov);
   const finishingCov = Math.min(1, Math.max(...perPlayer.map(p => p.finishing)));
   const coverage     = (creationCov + spacingCov + defenseCov + finishingCov) / 4;
 
@@ -86,6 +94,7 @@ export function computeLineupFit(players) {
 
   return {
     creation: creationCov, spacing: spacingCov,
+    rimProtection: rimCov, perimeterDef: perimCov,
     defense: defenseCov,   finishing: finishingCov,
     roleFit, nShooters, coverage, avgQuality,
     lineupScore, pct, grade, perPlayer,
@@ -93,11 +102,13 @@ export function computeLineupFit(players) {
   };
 }
 
+// Sıra önemli — UI bu sırayla render ediyor (oyundaki 5-pillar sırasıyla aynı).
 export const PILLAR_LABELS = {
-  creation:  "Creation",
-  spacing:   "Spacing",
-  defense:   "Defense",
-  finishing: "Finishing",
+  creation:      "Creation",
+  spacing:       "Spacing",
+  rimProtection: "Rim Protection",
+  perimeterDef:  "Perimeter D",
+  finishing:     "Finishing",
 };
 
 export const GRADE_COLOR = {

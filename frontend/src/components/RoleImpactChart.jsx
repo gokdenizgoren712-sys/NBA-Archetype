@@ -40,12 +40,12 @@ export default function RoleImpactChart() {
 
   useEffect(() => {
     fetch("/api/role-stats")
-      .then(r => r.json())
+      .then(r => r.ok ? r.json() : Promise.reject(new Error(`${r.status}`)))
       .then(setData)
       .catch(console.error);
   }, []);
 
-  if (!data) return null;
+  if (!data?.roles) return null;
 
   const roles = [...data.roles].sort((a, b) => {
     if (sort === "impact")   return b.net_corr - a.net_corr;

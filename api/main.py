@@ -1153,7 +1153,7 @@ def get_real_lineups(
     if not p5.exists():
         return {"total": 0, "lineups": []}
 
-    df = _load_real_lineups() if not playoff else pd.read_parquet(p5)
+    df = _load_lineups_with_archs() if not playoff else pd.read_parquet(p5)
     if df.empty:
         return {"total": 0, "lineups": []}
 
@@ -1165,7 +1165,14 @@ def get_real_lineups(
     if "fit_score" in df.columns:
         keep.append("fit_score")
     keep = [c for c in keep if c in df.columns]
-    out = df[keep].iloc[offset: offset + limit]
+    out = df[keep].copy()
+    # Tam isim + kişi başı arketip (Affinity drill panel'deki aynı zenginleştirme) —
+    # Real Lineups kartlarında arketip-renkli chip'ler için.
+    if "_names" in df.columns:
+        out["Players"] = df["_names"]
+    if "_archs" in df.columns:
+        out["Archetypes"] = df["_archs"]
+    out = out.iloc[offset: offset + limit]
     return {"total": len(df), "lineups": _safe(out)}
 
 

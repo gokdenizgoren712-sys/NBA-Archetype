@@ -234,6 +234,210 @@
 
 .pcard-empty { text-align: center; padding: 20px 0; font-size: 10.5px; color: var(--text-muted); }
 
+/* Compact variant — Glossary's Core-only grid, ~5 cards per row */
+.pcard-stage.compact { width: 208px; }
+.pcard-stage.compact .pcard { width: 208px; }
+.pcard-stage.compact .pcard-photo { height: 168px; }
+.pcard-stage.compact .pcard-top { padding: 9px 10px 6px; }
+.pcard-stage.compact .pcard-rank { font-size: 10px; }
+.pcard-stage.compact .pcard-rating { font-size: 12px; padding: 1px 7px; }
+.pcard-stage.compact .pcard-nameband { margin: 0 10px; padding: 6px 8px; }
+.pcard-stage.compact .pcard-name { font-size: 13.5px; }
+.pcard-stage.compact .pcard-meta { font-size: 8.5px; }
+.pcard-stage.compact .pcard-stats.flat { margin: 7px 9px 0; padding: 7px 8px; }
+.pcard-stage.compact .pcard-peek { margin: 8px 9px 0; padding: 6px 8px; font-size: 8px; }
+.pcard-stage.compact .pcard-detail { margin: 0 9px 9px; }
+.pcard-stage.compact .pcard-tabcontent { padding: 8px; min-height: 130px; }
+.pcard-stage.compact .pcard-sim-name { font-size: 9.5px; }
+.pcard-stage.compact .pcard-sim-meta { font-size: 7.5px; }
+.pcard-stage.compact .pcard-sim-pct .v { font-size: 10px; }
+.pcard-stage.compact .pcard-stats:not(.flat) { margin: 7px 9px 0; padding: 7px 8px; }
+.pcard-stage.compact .pcard-stat-val { font-size: 12px; }
+.pcard-stage.compact .pcard-stat-lbl { font-size: 6.5px; }
+.pcard-stage.compact .pcard-tabbar button { font-size: 7.5px; padding: 6px 1px; }
+.pcard-stage.compact .pcard-quickstats { gap: 4px; }
+.pcard-stage.compact .pcard-quickstats .v { font-size: 9.5px; }
+.pcard-stage.compact .pcard-quickstats .l { font-size: 5.5px; }
+.pcard-stage.compact .pcard-radar { max-width: 150px; }
+.pcard-stage.compact .pcard-arch-item { grid-template-columns: 46px 1fr 20px !important; }
+
+/* ── Era card — horizontal Panini-style card for Glossary's Eras tab.
+   Shares holo/foil/grain overlays with .pcard but its own (wide, not
+   cut-corner) shell — a portrait card doesn't read well laid flat. */
+.era-card {
+  position: relative; border-radius: 16px; cursor: pointer; overflow: hidden;
+  background: linear-gradient(160deg, #17151b 0%, #0c0b0e 55%, #14100a 100%);
+  border: 1px solid var(--border);
+  box-shadow: 0 16px 32px -16px rgba(0, 0, 0, 0.75);
+  transition: border-color 0.3s ease;
+}
+.era-card:hover { border-color: var(--accent-line); }
+/* Meta-archetype glows — replaces the pcard holo stripe texture, which hurt
+   readability here. One organic aura blob per era.top archetype, own color. */
+.era-card-meta-glow { top: 8%; width: 170px; height: 150px; transform: translateX(-50%); opacity: 0.24; }
+.era-card::before {
+  content: ""; position: absolute; inset: 0; z-index: 4; pointer-events: none; border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(150deg, var(--accent-line) 0%, transparent 30%, transparent 70%, var(--accent-line) 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude; opacity: 0.85;
+}
+.era-card-head { position: relative; z-index: 3; display: flex; align-items: flex-start; gap: 16px; padding: 16px 18px; }
+.era-card-badge {
+  width: 54px; height: 54px; border-radius: 13px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-logo); font-weight: 800; font-size: 13px; letter-spacing: -0.02em;
+}
+.era-card-title-row { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.era-card-label { font-family: var(--font-logo); font-weight: 700; font-size: 15.5px; color: var(--text-primary); }
+.era-card-years { font-size: 10.5px; color: var(--text-faint); font-family: var(--font-logo); }
+.era-card-tagline { font-size: 10.5px; font-style: italic; margin-top: 2px; }
+.era-card-desc { font-size: 11.5px; line-height: 1.5; color: var(--text-muted); margin-top: 6px; }
+.era-card-chev-wrap { margin-left: auto; display: flex; flex-direction: column; align-items: center; gap: 3px; flex-shrink: 0; padding-top: 2px; }
+.era-chev { transition: transform 0.35s cubic-bezier(0.2, 0.7, 0.3, 1); font-size: 9px; display: inline-block; }
+.era-card.expanded .era-chev { transform: rotate(180deg); }
+
+.era-card-expand-wrap { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 0.45s cubic-bezier(0.2, 0.8, 0.3, 1); }
+.era-card.expanded .era-card-expand-wrap { grid-template-rows: 1fr; }
+.era-card-expand-inner { overflow: hidden; min-height: 0; }
+.era-card-body { position: relative; z-index: 3; padding: 12px 18px 18px; border-top: 1px solid rgba(255, 255, 255, 0.08); }
+
+/* ── Lineup card — theoretical-lineup rows in Lineups.jsx. Deliberately NOT
+   using the pcard holo/foil diagonal-stripe texture here — at list density
+   it hurt readability. Instead: plain per-position archetype-colored glows
+   ("sade renk glowu"), same accent edge-bevel + collapse-expand as .pcard. */
+.lineup-card {
+  position: relative; border-radius: 14px; cursor: pointer; overflow: hidden;
+  background: linear-gradient(160deg, #17151b 0%, #0c0b0e 55%, #14100a 100%);
+  border: 1px solid var(--border);
+  transition: border-color 0.3s ease;
+}
+.lineup-card:hover { border-color: var(--accent-line); }
+.lineup-card::before {
+  content: ""; position: absolute; inset: 0; z-index: 4; pointer-events: none; border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(150deg, var(--accent-line) 0%, transparent 30%, transparent 70%, var(--accent-line) 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude; opacity: 0.7;
+}
+/* Organic aura blob — irregular border-radius + blur instead of a perfect
+   radial circle, so glows read as ambient light, not sphere-stamps. Shared
+   recipe for lineup slots, the historical solo-glow, and era-card metas.
+   Wide/short + a heavily lopsided radius keeps the asymmetry legible even
+   after blur (a near-square base just blurs back into looking round). */
+.aura-blob {
+  position: absolute; z-index: 0; pointer-events: none;
+  background: var(--slot-color);
+  border-radius: 72% 28% 55% 45% / 35% 65% 40% 60%;
+  filter: blur(20px);
+}
+
+.lineup-card-head { position: relative; z-index: 3; display: flex; align-items: center; gap: 12px; padding: 15px 92px 15px 34px; min-height: 20px; }
+.lineup-card-names { font-size: 12.5px; font-weight: 600; color: var(--text-primary); line-height: 1.4; }
+.lineup-card-sub { font-size: 9.5px; color: var(--text-muted); margin-top: 2px; }
+
+/* HistLineupCard — no per-position archetype data available, so one soft
+   fit-colored blob instead of 5 slots. */
+.lineup-card-solo-glow { left: -4%; top: -35%; width: 240px; height: 190px; opacity: 0.18; }
+
+/* LineupCard (current-season) — rank + fit score float as a small badge
+   cluster in the corner instead of a separate strip, so the row doesn't
+   split into disconnected bands. The 5-slot glow field carries the card. */
+.lineup-card-badges {
+  position: absolute; z-index: 5; top: 50%; right: 10px; transform: translateY(-50%);
+  display: flex; align-items: center; gap: 6px;
+  background: rgba(10, 9, 7, 0.6); backdrop-filter: blur(4px);
+  padding: 4px 6px; border-radius: 9px;
+}
+.lineup-card-rank { position: absolute; z-index: 5; top: 12px; left: 14px; font-family: var(--font-logo); font-size: 11px; font-weight: 700; color: var(--text-faint); }
+.lineup-card-score {
+  position: relative; overflow: hidden;
+  font-family: var(--font-logo); font-weight: 700; font-size: 13px; color: #14110a;
+  background: linear-gradient(100deg, #ffe9b0, var(--accent) 55%, #ffe9b0 100%);
+  padding: 3px 9px; border-radius: 4px; transform: skewX(-8deg);
+  box-shadow: 0 0 10px var(--accent-a), 0 1px 0 rgba(255,255,255,.5) inset;
+}
+.lineup-chev { transition: transform 0.35s cubic-bezier(0.2, 0.7, 0.3, 1); font-size: 9px; color: var(--text-faint); }
+.lineup-card.expanded .lineup-chev { transform: rotate(180deg); color: var(--accent); }
+
+/* 5-slot field — collapsed state. Blobs are NOT boxed per-slot; they float
+   directly on the card and bleed into their neighbors so the background
+   reads as one continuous wash, with a plain 5-column text grid on top.
+   Alignment is still exact (blob i sits behind column i). */
+.lineup-slot-glow { top: 4px; width: 130px; height: 100px; transform: translateX(-50%); opacity: 0.30; }
+.lineup-slots { position: relative; z-index: 3; display: grid; grid-template-columns: repeat(5, 1fr); padding: 32px 14px 18px; }
+.lineup-slot { position: relative; text-align: center; overflow: hidden; padding: 0 4px; min-width: 0; }
+.lineup-slot-pos { position: relative; font-family: var(--font-logo); font-size: 8px; font-weight: 700; letter-spacing: 0.08em; color: var(--slot-color); opacity: 0.9; }
+.lineup-slot-name { position: relative; font-size: 15px; font-weight: 700; color: var(--text-primary); margin-top: 4px; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lineup-slot-overall { position: relative; font-family: var(--font-logo); font-size: 9.5px; font-weight: 600; color: var(--slot-color); margin-top: 3px; opacity: 0.85; }
+
+.lineup-card-expand-wrap { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 0.4s cubic-bezier(0.2, 0.8, 0.3, 1); }
+.lineup-card.expanded .lineup-card-expand-wrap { grid-template-rows: 1fr; }
+.lineup-card-expand-inner { overflow: hidden; min-height: 0; }
+.lineup-card-body { position: relative; z-index: 3; padding: 2px 14px 14px; border-top: 1px solid rgba(255, 255, 255, 0.08); margin-top: 1px; }
+
+/* Expanded — the actual PlayerCard component, compact-sized, one per slot.
+   Same 5-column grid (and the same horizontal inset) as .lineup-slots above
+   it, so each card lands directly under its name instead of drifting. */
+.lineup-playercards-row { display: grid; grid-template-columns: repeat(5, 1fr); justify-items: center; margin: 10px 0; overflow-x: auto; padding-bottom: 2px; }
+.lineup-slot-fallback {
+  width: 100%; display: flex; align-items: center; justify-content: center; text-align: center;
+  border-radius: 10px; padding: 20px 6px; font-size: 10px; color: var(--text-faint);
+  background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* ── Info card — About page's "What We Do" tiles. Same edge-bevel + organic
+   blob glow as the other cards, but static (no collapse — already short). */
+.info-card {
+  position: relative; border-radius: 16px; overflow: hidden;
+  background: linear-gradient(160deg, #17151b 0%, #0c0b0e 55%, #14100a 100%);
+  border: 1px solid var(--border);
+  padding: 16px; transition: border-color 0.3s ease;
+}
+.info-card:hover { border-color: var(--accent-line); }
+.info-card::before {
+  content: ""; position: absolute; inset: 0; z-index: 4; pointer-events: none; border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(150deg, var(--accent-line) 0%, transparent 30%, transparent 70%, var(--accent-line) 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude; opacity: 0.8;
+}
+.info-card > * { position: relative; z-index: 3; }
+
+/* ── Changelog card — About page's Release Notes. Same shell DNA as
+   .era-card/.lineup-card (accent edge-bevel, organic blob glow, collapse-
+   expand) but narrow/vertical for a sidebar column. */
+.changelog-card {
+  position: relative; border-radius: 14px; cursor: pointer; overflow: hidden;
+  background: linear-gradient(160deg, #17151b 0%, #0c0b0e 55%, #14100a 100%);
+  border: 1px solid var(--border);
+  transition: border-color 0.3s ease;
+}
+.changelog-card:hover { border-color: var(--accent-line); }
+.changelog-card::before {
+  content: ""; position: absolute; inset: 0; z-index: 4; pointer-events: none; border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(150deg, var(--accent-line) 0%, transparent 30%, transparent 70%, var(--accent-line) 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude; opacity: 0.8;
+}
+.changelog-card-glow { top: -20%; right: -10%; width: 160px; height: 120px; opacity: 0.22; }
+.changelog-card-head { position: relative; z-index: 3; padding: 12px 14px; }
+.changelog-card-top { display: flex; align-items: center; gap: 8px; }
+.changelog-version {
+  font-family: var(--font-logo); font-weight: 700; font-size: 11px; padding: 2px 8px; border-radius: 20px;
+}
+.changelog-date { font-size: 9.5px; color: var(--text-faint); margin-left: auto; }
+.changelog-chev { transition: transform 0.35s cubic-bezier(0.2, 0.7, 0.3, 1); font-size: 9px; color: var(--text-faint); flex-shrink: 0; }
+.changelog-card.expanded .changelog-chev { transform: rotate(180deg); color: var(--accent); }
+.changelog-label { position: relative; z-index: 3; font-size: 11.5px; font-weight: 600; color: var(--text-primary); margin-top: 8px; line-height: 1.35; }
+.changelog-peek { position: relative; z-index: 3; font-size: 10px; color: var(--text-faint); margin-top: 4px; }
+
+.changelog-expand-wrap { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 0.4s cubic-bezier(0.2, 0.8, 0.3, 1); }
+.changelog-card.expanded .changelog-expand-wrap { grid-template-rows: 1fr; }
+.changelog-expand-inner { overflow: hidden; min-height: 0; }
+.changelog-body { position: relative; z-index: 3; padding: 2px 14px 14px; }
+
 /* Prospect tab (G-League / NCAA / EuroLeague) */
 .pcard-prospect-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
 .pcard-prospect-grade { font-family: var(--font-logo); font-weight: 800; font-size: 30px; line-height: 1; }
@@ -247,3 +451,24 @@
 .pcard-sw-chip { display: block; font-size: 10px; padding: 3px 7px; border-radius: 5px; margin-bottom: 4px; }
 .pcard-sw-chip.good { background: rgba(16,185,129,.10); color: #10b981; border: 1px solid rgba(16,185,129,.25); }
 .pcard-sw-chip.bad { background: rgba(239,68,68,.10); color: #ef4444; border: 1px solid rgba(239,68,68,.25); }
+
+/* Chunky striped pillar bar — replaces the flat gradient progress bar.
+   Diagonal chunk texture borrowed from the card's own holo stripe recipe
+   (.pcard-holo), just re-scaled for a thin bar, colored by --fill-color. */
+.pillar-bar-track {
+  position: relative; height: 10px; border-radius: 5px; overflow: hidden;
+  background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.pillar-bar-fill {
+  position: relative; height: 100%; border-radius: 5px 0 0 5px;
+  background-color: var(--fill-color);
+  background-image: repeating-linear-gradient(
+    115deg,
+    rgba(255, 255, 255, 0.28) 0px 5px,
+    transparent 5px 7px,
+    transparent 7px 13px,
+    rgba(0, 0, 0, 0.22) 13px 15px
+  );
+  box-shadow: 0 0 8px var(--fill-color-a), 0 1px 0 rgba(255, 255, 255, 0.3) inset;
+  transition: width 0.35s ease;
+}

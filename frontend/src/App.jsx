@@ -1,19 +1,16 @@
 import { BrowserRouter, Routes, Route, NavLink, Navigate, useNavigate, useLocation } from "react-router-dom";
 import { useState, useEffect, lazy, Suspense } from "react";
 import { Logo, GameIcon, NBAIcon, GLeagueIcon, NCAAIcon, EuroLeagueIcon,
-         LineupsIcon, ExploreIcon, CompareIcon, AffinityIcon, BlogIcon,
-         GlossaryIcon, AboutIcon, AdminIcon, RefreshIcon } from "./components/BrandIcons";
+         LineupsIcon, ExploreIcon, BlogIcon,
+         GlossaryIcon, AdminIcon, RefreshIcon } from "./components/BrandIcons";
 
 // Route sayfaları LAZY — her biri kendi chunk'ına bölünür. Ağır lib'ler böylece
 // initial bundle'dan çıkar: tiptap→ArticleEditor chunk'ı, recharts→paylaşılan radar
 // chunk'ı, oyun sim→LineupGame chunk'ı. İlk yükte sadece kabuk + router iner.
 const Players        = lazy(() => import("./pages/Players"));
 const Lineups        = lazy(() => import("./pages/Lineups"));
-const Glossary       = lazy(() => import("./pages/Glossary"));
-const About          = lazy(() => import("./pages/About"));
-const Explore        = lazy(() => import("./pages/Explore"));
-const Compare        = lazy(() => import("./pages/Compare"));
-const Affinity       = lazy(() => import("./pages/Affinity"));
+const ExploreHub      = lazy(() => import("./pages/ExploreHub"));
+const FundamentalsHub = lazy(() => import("./pages/FundamentalsHub"));
 const LineupGame     = lazy(() => import("./pages/LineupGame"));
 const GameModeSelect = lazy(() => import("./pages/GameModeSelect"));
 const SameScreenGame = lazy(() => import("./pages/SameScreenGame"));
@@ -46,12 +43,9 @@ const NAV = [
   { to: "/ncaa",       Icon: NCAAIcon,       label: "NCAA",    color: "#3D7EC9" },
   { to: "/euroleague", Icon: EuroLeagueIcon, label: "EUR",     color: "#FF6900" },
   { to: "/lineups",    Icon: LineupsIcon,    label: "Lineups" },
-  { to: "/explore",    Icon: ExploreIcon,    label: "Explore" },
-  { to: "/compare",    Icon: CompareIcon,    label: "Compare" },
-  { to: "/affinity",   Icon: AffinityIcon,   label: "Affinity"},
+  { to: "/explore",    Icon: ExploreIcon,    label: "Explore", extraActive: ["/compare", "/affinity"] },
   { to: "/blog",       Icon: BlogIcon,       label: "Blog"    },
-  { to: "/glossary",   Icon: GlossaryIcon,   label: "Glossary"},
-  { to: "/about",      Icon: AboutIcon,      label: "About"   },
+  { to: "/glossary",   Icon: GlossaryIcon,   label: "About", extraActive: ["/about"] },
 ];
 
 /* ── User button (top-right) ─────────────────────────────────────── */
@@ -129,7 +123,8 @@ function SideNav() {
   return (
     <aside className="hidden md:flex flex-col w-16 shrink-0 aura-glass border-t-0 border-b-0 border-l-0 pt-2 pb-4">
       {items.map(n => {
-        const active = location.pathname === n.to || location.pathname.startsWith(n.to + "/");
+        const active = location.pathname === n.to || location.pathname.startsWith(n.to + "/")
+          || (n.extraActive || []).includes(location.pathname);
         const color = n.color || "#FFB11B";
         return (
           <NavLink key={n.to} to={n.to} title={n.label}
@@ -161,7 +156,7 @@ function BottomNav() {
   const Row = ({ items }) => (
     <div className="flex">
       {items.map(n => {
-        const active = location.pathname === n.to;
+        const active = location.pathname === n.to || (n.extraActive || []).includes(location.pathname);
         return (
           <NavLink key={n.to} to={n.to}
             className={`group flex-1 flex flex-col items-center justify-center py-1.5 gap-0.5 transition-colors
@@ -217,11 +212,11 @@ function AppInner() {
               <Route path="/players"                  element={<Players />} />
               <Route path="/players/:name"           element={<PlayerProfile />} />
               <Route path="/lineups"                  element={<Lineups />} />
-              <Route path="/explore"                  element={<Explore />} />
-              <Route path="/compare"                  element={<Compare />} />
-              <Route path="/affinity"                 element={<Affinity />} />
-              <Route path="/glossary"                 element={<Glossary />} />
-              <Route path="/about"                    element={<About />} />
+              <Route path="/explore"                  element={<ExploreHub />} />
+              <Route path="/compare"                  element={<ExploreHub />} />
+              <Route path="/affinity"                 element={<ExploreHub />} />
+              <Route path="/glossary"                 element={<FundamentalsHub />} />
+              <Route path="/about"                    element={<FundamentalsHub />} />
               <Route path="/historical"               element={<Navigate to="/players" replace />} />
               {/* Auth */}
               <Route path="/login"                    element={<Login />} />

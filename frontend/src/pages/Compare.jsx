@@ -3,8 +3,8 @@ import { useSearchParams } from "react-router-dom";
 import { Search } from "lucide-react";
 import { api } from "../api";
 import RadarProfile from "../components/RadarProfile";
+import PlayerCard from "../components/PlayerCard";
 import { useLang } from "../contexts/LanguageContext";
-import { SEO } from "../hooks/useSEO";
 
 const CORE = ["Engine","Ecosystem","Hub","Connector","Creator","Anchor","Spacer","Finisher","Force","Initiator","Stopper","Rim Runner"];
 
@@ -20,12 +20,26 @@ const B_COLOR = "#60a5fa";
 
 function SeasonSelect({ value, onChange, seasons }) {
   return (
-    <select value={value} onChange={e => onChange(e.target.value)}
-      className="w-full rounded px-3 py-2 text-xs focus:outline-none"
-      style={{ background: "var(--bg-elevated)", color: "var(--text-muted)", border: "1px solid var(--border)" }}>
-      {seasons.map(s => <option key={s} value={s}>{s}</option>)}
-    </select>
+    <div className="aura-select-wrap" style={{ width: "100%" }}>
+      <select value={value} onChange={e => onChange(e.target.value)}
+        className="aura-select" style={{ width: "100%" }}>
+        {seasons.map(s => <option key={s} value={s}>{s}</option>)}
+      </select>
+    </div>
   );
+}
+
+function toCardShape(detail, season) {
+  if (!detail) return null;
+  return {
+    PLAYER_NAME: detail.name,
+    TEAM_ABBREVIATION: detail.team,
+    POSITION: detail.position,
+    primary_arch: detail.primary_arch,
+    overall_score: detail.overall_score,
+    overall_pct: detail.overall_pct,
+    PTS: detail.pts, REB: detail.reb, AST: detail.ast, GP: detail.gp,
+  };
 }
 
 function PlayerSearch({ side, season, onSelect, lang }) {
@@ -65,23 +79,22 @@ function PlayerSearch({ side, season, onSelect, lang }) {
 
   return (
     <div ref={ref} className="relative">
-      <div className="relative">
-        <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "var(--text-muted)" }} />
+      <div className="relative flex items-center gap-2 pb-1.5" style={{ borderBottom: `1px solid ${sideColor}40` }}>
+        <Search size={13} style={{ color: sideColor, flexShrink: 0 }} />
         <input value={query} onChange={e => handleChange(e.target.value)}
           onFocus={() => results.length && setOpen(true)}
           placeholder={label}
-          className="w-full rounded pl-8 pr-3 py-2.5 text-sm focus:outline-none"
-          style={{ background: "var(--bg-elevated)", color: "var(--text-primary)", border: `1px solid ${sideColor}50` }}
+          className="w-full bg-transparent text-sm focus:outline-none"
+          style={{ color: "var(--text-primary)" }}
         />
       </div>
       {open && results.length > 0 && (
-        <div className="absolute top-full left-0 right-0 z-20 rounded mt-1 overflow-hidden"
-          style={{ background: "var(--bg-surface)", border: "1px solid var(--border)" }}>
+        <div className="aura-glass absolute top-full left-0 right-0 z-20 rounded-xl mt-1.5 overflow-hidden"
+          style={{ boxShadow: "0 14px 30px -10px rgba(0,0,0,.6)" }}>
           {results.map((p, i) => (
             <button key={i} onClick={() => pick(p)}
               className="w-full flex items-center justify-between px-4 py-2.5 text-left transition-colors"
-              style={{ borderBottom: "1px solid var(--border)" }}
-              onMouseEnter={e => e.currentTarget.style.background = "var(--bg-elevated)"}
+              onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,.06)"}
               onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
               <div>
                 <div className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{p.PLAYER_NAME}</div>
@@ -89,7 +102,7 @@ function PlayerSearch({ side, season, onSelect, lang }) {
                   {p.TEAM_ABBREVIATION} · {p.POSITION}
                 </div>
               </div>
-              <span className="text-[10px] px-1.5 py-0.5 rounded font-medium"
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium"
                 style={{ color: ARCH_COLOR[p.primary_arch] || "var(--accent)", border: `1px solid ${ARCH_COLOR[p.primary_arch] || "var(--accent)"}50` }}>
                 {p.primary_arch}
               </span>
@@ -152,61 +165,18 @@ function VSBar({ label, scoreA, scoreB }) {
 function PlayerHeader({ detail, loading, side, season }) {
   const sideColor = side === "a" ? A_COLOR : B_COLOR;
   if (loading) return (
-    <div className="p-4 rounded animate-pulse" style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
-      <div className="h-4 rounded w-32 mb-2" style={{ background: "var(--border)" }} />
-      <div className="h-3 rounded w-20" style={{ background: "var(--border)" }} />
-    </div>
+    <div className="aura-glass rounded-2xl p-6 w-[280px] h-[120px] animate-pulse" />
   );
   if (!detail) return (
-    <div className="p-6 rounded text-center border-dashed"
+    <div className="rounded-2xl p-6 text-center w-[280px] h-[120px] flex items-center justify-center"
       style={{ border: `1px dashed ${sideColor}40`, color: "var(--text-faint)" }}>
       {side === "a" ? "Player A" : "Player B"}
     </div>
   );
-  const archColor = ARCH_COLOR[detail.primary_arch] || "var(--accent)";
-  const overall = detail.overall_score != null ? Math.round(detail.overall_score * 100) : null;
-  return (
-    <div className="p-4 rounded" style={{ background: "var(--bg-elevated)", border: `1px solid ${sideColor}40` }}>
-      <div className="flex items-start justify-between">
-        <div>
-          <div className="font-logo font-bold text-base" style={{ color: sideColor }}>{detail.name}</div>
-          <div className="text-xs mt-0.5 flex items-center gap-1.5" style={{ color: "var(--text-muted)" }}>
-            {detail.team} · {detail.position}
-            {detail.season && detail.season !== "2025-26" && (
-              <span className="px-1.5 py-0.5 rounded text-[9px]"
-                style={{ background: "var(--bg-surface)", border: "1px solid var(--border)" }}>
-                {detail.season}
-              </span>
-            )}
-          </div>
-        </div>
-        {overall != null && (
-          <div className="text-right">
-            <div className="text-2xl font-black" style={{ color: sideColor }}>{overall}</div>
-            <div className="text-[9px]" style={{ color: "var(--text-faint)" }}>overall</div>
-          </div>
-        )}
-      </div>
-      <div className="flex gap-1.5 mt-2 flex-wrap">
-        <span className="text-xs px-2 py-0.5 rounded font-medium"
-          style={{ color: archColor, border: `1px solid ${archColor}50`, background: `${archColor}15` }}>
-          {detail.primary_arch}
-        </span>
-        {detail.overall_tier && (
-          <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ color: "var(--text-muted)", border: "1px solid var(--border)" }}>
-            {detail.overall_tier}
-          </span>
-        )}
-        {detail.active_modifiers?.slice(0, 3).map(m => (
-          <span key={m} className="text-[10px] px-1.5 py-0.5 rounded"
-            style={{ color: "var(--text-muted)", border: "1px solid var(--border)" }}>{m}</span>
-        ))}
-      </div>
-    </div>
-  );
+  return <PlayerCard player={toCardShape(detail, season)} season={season !== "2025-26" ? season : undefined} />;
 }
 
-export default function Compare() {
+export default function CompareContent() {
   const { lang } = useLang();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -253,12 +223,6 @@ export default function Compare() {
   const bpmFmt = (v) => v != null ? (v > 0 ? `+${v.toFixed(1)}` : v.toFixed(1)) : null;
 
   return (
-    <>
-    <SEO
-      title="Compare NBA Players"
-      description="Compare any two NBA players side by side across any season from 1983 to today. Radar profiles, archetype tags, BPM, and 12 role scores for every player-season."
-      path="/compare"
-    />
     <div className="h-full overflow-y-auto">
       <div className="p-4 md:p-6 max-w-4xl mx-auto">
         <div className="mb-5">
@@ -279,13 +243,13 @@ export default function Compare() {
         </div>
 
         {/* Player search */}
-        <div className="grid grid-cols-2 gap-3 mb-4">
+        <div className="grid grid-cols-2 gap-3 mb-5">
           <PlayerSearch side="a" season={seasonA} onSelect={n => loadPlayer("a", n, seasonA)} lang={lang} />
           <PlayerSearch side="b" season={seasonB} onSelect={n => loadPlayer("b", n, seasonB)} lang={lang} />
         </div>
 
-        {/* Player headers */}
-        <div className="grid grid-cols-2 gap-3 mb-4">
+        {/* Player headers — real cards, front face only */}
+        <div className="flex flex-wrap justify-center gap-4 mb-5">
           <PlayerHeader detail={detailA} loading={loadingA} side="a" season={seasonA} />
           <PlayerHeader detail={detailB} loading={loadingB} side="b" season={seasonB} />
         </div>
@@ -293,7 +257,7 @@ export default function Compare() {
         {bothLoaded && (
           <>
             {/* Dual Radar */}
-            <div className="p-4 rounded mb-4" style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
+            <div className="aura-glass rounded-2xl p-4 mb-4">
               <div className="text-[10px] uppercase tracking-wider mb-2 text-center" style={{ color: "var(--text-faint)" }}>
                 Archetype Radar
               </div>
@@ -305,7 +269,7 @@ export default function Compare() {
             </div>
 
             {/* Stats */}
-            <div className="p-4 rounded mb-4" style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
+            <div className="aura-glass rounded-2xl p-4 mb-4">
               <div className="text-[10px] uppercase tracking-wider mb-3 text-center" style={{ color: "var(--text-faint)" }}>
                 Stats
               </div>
@@ -331,7 +295,7 @@ export default function Compare() {
             </div>
 
             {/* VS bars */}
-            <div className="p-4 rounded" style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
+            <div className="aura-glass rounded-2xl p-4">
               <div className="text-[10px] uppercase tracking-wider mb-3 text-center" style={{ color: "var(--text-faint)" }}>
                 Component Scores
               </div>
@@ -372,6 +336,5 @@ export default function Compare() {
         )}
       </div>
     </div>
-    </>
   );
 }

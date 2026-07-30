@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { api } from "../api";
 import { useLang } from "../contexts/LanguageContext";
 import SplitPane from "../components/SplitPane";
-import { SEO } from "../hooks/useSEO";
+import PlayerCard from "../components/PlayerCard";
 
 function cellStyle(value) {
   if (value === "" || value === null || value === undefined)
@@ -44,15 +44,125 @@ function Dot({ arch, size = 8 }) {
 
 function TabBtn({ active, onClick, children }) {
   return (
-    <button onClick={onClick}
-      className="px-3 py-1.5 rounded text-xs font-medium transition-colors"
-      style={{
-        background: active ? "var(--accent)" : "var(--bg-elevated)",
-        color:      active ? "var(--bg-base)" : "var(--text-muted)",
-        border:     "1px solid " + (active ? "var(--accent)" : "var(--border)"),
-      }}>
+    <button onClick={onClick} className={`aura-pill-btn${active ? " active" : ""}`}>
       {children}
     </button>
+  );
+}
+
+/* ── Network graph: 12 arketip, dairesel düzen, kimya çizgileri ─────
+   Uç değerler (güçlü sinerji / güçlü anti-sinerji) belirgin, nötr (~0.50)
+   çiftler görünmez olacak kadar soluk — grafiği kalabalıklaştırmadan
+   sadece "anlamlı" ilişkileri öne çıkarır. Renk artık arketip kimliği
+   (her çizgi kendi iki ucunun renginde gradyan), güç sadece kalınlıkla. */
+function edgeStyle(v) {
+  if (v == null || isNaN(v)) return null;
+  const dev = Math.abs(v - 0.5);
+  if (dev < 0.045) return null;
+  const strength = Math.min(1, dev / 0.24);
+  return { width: 0.8 + strength * 5, opacity: 0.16 + strength * 0.74, strength };
+}
+
+function NetworkGraph({ archs, matrix, sampleCounts, hoveredArch, setHoveredArch, selectedNode, setSelectedNode, onEdgeClick, lang }) {
+  const W = 620, H = 560, R = 210, CX = W / 2, CY = H / 2 - 6;
+  const nodes = archs.map((a, i) => {
+    const angle = (i / archs.length) * Math.PI * 2 - Math.PI / 2;
+    return { arch: a, x: CX + R * Math.cos(angle), y: CY + R * Math.sin(angle), angle };
+  });
+  const nodeAt = a => nodes.find(n => n.arch === a);
+
+  const edges = [];
+  for (let i = 0; i < archs.length; i++)
+    for (let j = i + 1; j < archs.length; j++) {
+      const a = archs[i], b = archs[j];
+      const raw = matrix[a]?.[b] ?? matrix[b]?.[a];
+      const v = raw != null ? Number(raw) : null;
+      const style = edgeStyle(v);
+      if (!style) continue;
+      const mins = sampleCounts[a]?.[b] ?? sampleCounts[b]?.[a];
+      edges.push({ a, b, v, mins, ...style });
+    }
+
+  const activeArch = hoveredArch || selectedNode;
+  const activeNode = activeArch ? nodeAt(activeArch) : null;
+  const activeColor = activeNode ? (ARCH_COLOR[activeNode.arch] || "#9ca3af") : null;
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" height="100%" style={{ maxWidth: 620, display: "block", margin: "0 auto" }}>
+      <defs>
+        <filter id="node-glow-blur" x="-150%" y="-150%" width="400%" height="400%">
+          <feGaussianBlur stdDeviation="26" />
+        </filter>
+        {edges.map(({ a, b }, i) => (
+          <linearGradient key={i} id={`edge-grad-${i}`} gradientUnits="userSpaceOnUse"
+            x1={nodeAt(a).x} y1={nodeAt(a).y} x2={nodeAt(b).x} y2={nodeAt(b).y}>
+            <stop offset="0%" stopColor={ARCH_COLOR[a] || "#9ca3af"} />
+            <stop offset="100%" stopColor={ARCH_COLOR[b] || "#9ca3af"} />
+          </linearGradient>
+        ))}
+      </defs>
+
+      {/* Cursor'ın üzerinde durduğu arketipin rengi, o pozisyonda doğal bir glow — sabit üst glow yerine */}
+      {activeNode && (
+        <circle cx={activeNode.x} cy={activeNode.y} r={95} fill={activeColor} opacity={0.38}
+          filter="url(#node-glow-blur)"
+          style={{ transition: "cx 0.3s ease, cy 0.3s ease, opacity 0.3s ease", pointerEvents: "none" }} />
+      )}
+
+      {/* Uzak, statik zemin halkası */}
+      <circle cx={CX} cy={CY} r={R} fill="none" stroke="var(--border)" strokeWidth={1} strokeDasharray="3 5" opacity={0.4} />
+
+      {/* Kenarlar — kendi iki ucunun renginde gradyan, kalınlık = güç (yön fark etmeksizin) */}
+      {edges.map(({ a, b, v, mins, width, opacity }, i) => {
+        const na = nodeAt(a), nb = nodeAt(b);
+        const touchesActive = activeArch && (a === activeArch || b === activeArch);
+        const dim = activeArch && !touchesActive;
+        const good = v >= 0.5;
+        return (
+          <line key={i}
+            x1={na.x} y1={na.y} x2={nb.x} y2={nb.y}
+            stroke={`url(#edge-grad-${i})`}
+            strokeWidth={touchesActive ? width * 1.6 : width}
+            opacity={dim ? opacity * 0.15 : touchesActive ? Math.min(1, opacity * 1.5) : opacity}
+            style={{ cursor: "pointer", transition: "opacity 0.25s ease, stroke-width 0.25s ease" }}
+            onClick={() => onEdgeClick(a, b)}
+          >
+            <title>{a} + {b} · {Math.round(v * 100)}{good ? "" : " (anti-synergy)"}{mins ? ` · ${Math.round(mins)} lineup-min` : ""}</title>
+          </line>
+        );
+      })}
+
+      {/* Node'lar */}
+      {nodes.map(n => {
+        const col = ARCH_COLOR[n.arch] || "#9ca3af";
+        const isActive = activeArch === n.arch;
+        const dim = activeArch && !isActive;
+        const labelX = CX + (R + 38) * Math.cos(n.angle);
+        const labelY = CY + (R + 38) * Math.sin(n.angle);
+        return (
+          <g key={n.arch} style={{ cursor: "pointer" }}
+            onMouseEnter={() => setHoveredArch(n.arch)}
+            onMouseLeave={() => setHoveredArch(null)}
+            onClick={() => setSelectedNode(selectedNode === n.arch ? null : n.arch)}
+          >
+            {/* glow halosu */}
+            <circle cx={n.x} cy={n.y} r={isActive ? 24 : 16} fill={col}
+              opacity={isActive ? 0.28 : 0.14}
+              style={{ transition: "r 0.25s ease, opacity 0.25s ease" }} />
+            <circle cx={n.x} cy={n.y} r={isActive ? 10 : 7} fill={col}
+              opacity={dim ? 0.35 : 1}
+              stroke={selectedNode === n.arch ? "#fff" : "none"} strokeWidth={2}
+              style={{ transition: "r 0.25s ease, opacity 0.25s ease" }} />
+            <text x={labelX} y={labelY} fill={dim ? "var(--text-faint)" : col}
+              fontSize={isActive ? 12.5 : 11} fontWeight={isActive ? 700 : 600}
+              textAnchor="middle" dominantBaseline="middle"
+              style={{ pointerEvents: "none", transition: "fill 0.25s ease" }}>
+              {n.arch}
+            </text>
+          </g>
+        );
+      })}
+    </svg>
   );
 }
 
@@ -62,8 +172,7 @@ function DrillPanel({ cell, data, loading, onClose, lang }) {
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="p-4 border-b shrink-0 flex items-start justify-between"
-        style={{ borderColor: "var(--border)" }}>
+      <div className="p-4 shrink-0 flex items-start justify-between">
         <div>
           <div className="flex items-center gap-2 flex-wrap">
             <Dot arch={cell.archA} size={10} />
@@ -105,24 +214,31 @@ function DrillPanel({ cell, data, loading, onClose, lang }) {
         {!loading && data?.lineups?.map((lu, i) => {
           const net = lu.NET_RATING;
           const netColor = net >= 10 ? "#34d399" : net >= 0 ? "#60a5fa" : "#f87171";
-          const players = (lu.GROUP_NAME || "").split(" - ");
+          const players = lu.Players?.length ? lu.Players : (lu.GROUP_NAME || "").split(" - ");
+          const archetypes = lu.Archetypes || [];
           return (
-            <div key={i} className="rounded-lg px-3 py-2.5"
-              style={{ background: "var(--bg-surface)", border: "1px solid var(--border)" }}>
-              <div className="flex items-start gap-2">
+            <div key={i} className="relative rounded-xl overflow-hidden p-3"
+              style={{ background: "rgba(255,255,255,.035)", border: "1px solid rgba(255,255,255,.07)" }}>
+              <div className="flex items-start gap-2 mb-2">
                 <span className="text-[10px] w-4 shrink-0 mt-0.5" style={{ color: "var(--text-faint)" }}>{i + 1}</span>
-                <div className="flex-1 min-w-0">
-                  <div className="flex flex-wrap gap-x-1 mb-0.5">
-                    {players.map((p, j) => (
-                      <span key={j} className="text-xs" style={{ color: "var(--text-primary)" }}>
-                        {p}{j < players.length - 1 ? " ·" : ""}
+                <div className="flex-1 flex flex-wrap gap-1.5 min-w-0">
+                  {players.map((p, j) => {
+                    const arch = archetypes[j];
+                    const col = ARCH_COLOR[arch] || "var(--text-muted)";
+                    return (
+                      <span key={j} className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full font-medium"
+                        style={{ color: col, border: `1px solid ${col}40`, background: `${col}14` }}>
+                        {arch && <Dot arch={arch} size={5} />}
+                        {p}
                       </span>
-                    ))}
-                  </div>
-                  <span className="text-[9px]" style={{ color: "var(--text-faint)" }}>
-                    {Math.round(lu.MIN || 0)} min
-                  </span>
+                    );
+                  })}
                 </div>
+              </div>
+              <div className="flex items-center justify-between pl-6">
+                <span className="text-[9px]" style={{ color: "var(--text-faint)" }}>
+                  {Math.round(lu.MIN || 0)} {lang === "tr" ? "dk birlikte" : "min together"}
+                </span>
                 <div className="flex gap-3 shrink-0">
                   {lu.fit_score != null && (
                     <div className="text-center">
@@ -150,7 +266,7 @@ function DrillPanel({ cell, data, loading, onClose, lang }) {
   );
 }
 
-export default function Affinity() {
+export default function AffinityContent() {
   const { lang } = useLang();
   const [matrix, setMatrix]             = useState({});
   const [archs, setArchs]               = useState([]);
@@ -159,7 +275,8 @@ export default function Affinity() {
   const [duos, setDuos]                 = useState([]);
   const [duoLoading, setDuoLoading]     = useState(false);
   const [duoA, setDuoA]                 = useState("");
-  const [hovered, setHovered]           = useState(null);
+  const [hoveredArch, setHoveredArch]   = useState(null);
+  const [selectedNode, setSelectedNode] = useState(null);
   const [sampleCounts, setSampleCounts] = useState({});
   const [drillCell, setDrillCell]       = useState(null); // {archA, archB}
   const [drillData, setDrillData]       = useState(null);
@@ -224,18 +341,18 @@ export default function Affinity() {
   const leftPanel = (
     <div className="h-full flex flex-col min-h-0">
       {/* Başlık + tab bar */}
-      <div className="px-4 pt-4 pb-3 shrink-0 border-b" style={{ borderColor: "var(--border)" }}>
+      <div className="px-4 pt-4 pb-3 shrink-0">
         <h2 className="font-semibold text-sm mb-1" style={{ color: "var(--text-primary)" }}>
-          {lang === "tr" ? "Arketip Uyum Matrisi" : "Archetype Affinity Matrix"}
+          {lang === "tr" ? "Arketip Uyum Ağı" : "Archetype Affinity Network"}
         </h2>
         <p className="text-xs mb-3" style={{ color: "var(--text-muted)" }}>
           {lang === "tr"
-            ? "Gerçek 5'li lineup verisinden ikili başarı skorları. Hücreye tıkla → gerçek lineup'ları gör."
-            : "Pairwise success scores from real 5-man lineups. Click a cell to see real lineups."}
+            ? "Gerçek 5'li lineup verisinden ikili başarı skorları. Bir node'a veya bağlantıya tıkla → gerçek lineup'ları gör."
+            : "Pairwise success scores from real 5-man lineups. Click a node or a connection to see real lineups."}
         </p>
         <div className="flex gap-1 flex-wrap">
           {[
-            ["matrix",    lang === "tr" ? "Matris"    : "Matrix"],
+            ["matrix",    lang === "tr" ? "Ağ"        : "Network"],
             ["bestpairs", lang === "tr" ? "En İyi"    : "Best Pairs"],
             ["duos",      lang === "tr" ? "Oyuncular" : "Players"],
           ].map(([k, l]) => (
@@ -248,92 +365,69 @@ export default function Affinity() {
       <div className="flex-1 overflow-y-auto overflow-x-auto p-4">
 
         {tab === "matrix" && (
-          <>
-            <div className="overflow-x-auto rounded border" style={{ borderColor: "var(--border)" }}>
-              <table className="border-collapse text-xs min-w-max">
-                <thead>
-                  <tr className="border-b" style={{ borderColor: "var(--border)" }}>
-                    <th className="w-24 p-2" style={{ background: "var(--bg-surface)" }} />
-                    {archs.map(a => (
-                      <th key={a} className="p-2 font-normal whitespace-nowrap text-center"
-                        style={{ background: "var(--bg-surface)" }}>
-                        <div className="flex flex-col items-center gap-1">
-                          <Dot arch={a} />
-                          <span style={{ color: "var(--text-muted)", fontSize: 10 }}>{a}</span>
-                        </div>
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {archs.map(row => (
-                    <tr key={row} className="border-b" style={{ borderColor: "var(--border)" + "40" }}>
-                      <td className="p-2 font-medium whitespace-nowrap text-right pr-3"
-                        style={{ background: "var(--bg-surface)" }}>
-                        <div className="flex items-center justify-end gap-1.5">
-                          <Dot arch={row} />
-                          <span style={{ color: "var(--text-primary)", fontSize: 10 }}>{row}</span>
-                        </div>
-                      </td>
-                      {archs.map(col => {
-                        const raw = matrix[col]?.[row] ?? matrix[row]?.[col] ?? "";
-                        const { bg, label } = cellStyle(raw);
-                        const isDiag = row === col;
-                        const isHov = hovered && (
-                          hovered.row === row || hovered.col === col ||
-                          hovered.row === col || hovered.col === row
-                        );
-                        const isSelected = drillCell && (
-                          (drillCell.archA === row && drillCell.archB === col) ||
-                          (drillCell.archA === col && drillCell.archB === row)
-                        );
-                        const mins = sampleCounts[row]?.[col] ?? sampleCounts[col]?.[row];
-                        return (
-                          <td key={col}
-                            onMouseEnter={() => setHovered({ row, col })}
-                            onMouseLeave={() => setHovered(null)}
-                            onClick={() => !isDiag && openDrill(row, col)}
-                            title={!isDiag && mins ? `${Math.round(mins)} lineup-min` : undefined}
-                            className="p-1 text-center transition-all"
-                            style={{ cursor: isDiag ? "default" : "pointer" }}>
-                            <div className="rounded px-1.5 py-1"
-                              style={{
-                                background: isDiag ? "var(--bg-elevated)" : bg,
-                                opacity: isDiag ? 0.25 : 1,
-                                outline: isSelected
-                                  ? "2px solid var(--accent)"
-                                  : isHov && !isDiag ? "1px solid var(--border)" : "none",
-                                outlineOffset: 1,
-                              }}>
-                              <span style={{ color: "var(--text-primary)", fontWeight: 600, fontSize: 10 }}>
-                                {label}
-                              </span>
-                            </div>
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          <div className="flex flex-col items-center">
+            <div className="relative w-full aura-glass rounded-2xl overflow-hidden" style={{ maxWidth: 620 }}>
+              <NetworkGraph
+                archs={archs} matrix={matrix} sampleCounts={sampleCounts}
+                hoveredArch={hoveredArch} setHoveredArch={setHoveredArch}
+                selectedNode={selectedNode} setSelectedNode={setSelectedNode}
+                onEdgeClick={openDrill} lang={lang}
+              />
             </div>
 
             {/* Legend */}
-            <div className="mt-3 flex flex-wrap gap-2" style={{ fontSize: 10, color: "var(--text-muted)" }}>
-              {[
-                ["rgba(124,58,237,0.55)", "72+"],
-                ["rgba(37,99,235,0.45)",  "65–72"],
-                ["rgba(5,150,105,0.35)",  "55–65"],
-                ["rgba(100,116,139,0.30)","45–55"],
-                ["rgba(185,28,28,0.25)",  "<45"],
-              ].map(([bg, label]) => (
-                <div key={label} className="flex items-center gap-1">
-                  <div style={{ width: 10, height: 10, borderRadius: 2, background: bg, flexShrink: 0 }} />
-                  {label}
-                </div>
-              ))}
+            <div className="mt-3 flex flex-wrap gap-3 justify-center items-center" style={{ fontSize: 10, color: "var(--text-muted)" }}>
+              <div className="flex items-center gap-1.5">
+                <svg width="26" height="10"><line x1="2" y1="5" x2="24" y2="5" stroke="#9ca3af" strokeWidth="4.5" /></svg>
+                {lang === "tr" ? "Güçlü ilişki" : "Strong pairing"}
+              </div>
+              <div className="flex items-center gap-1.5">
+                <svg width="26" height="10"><line x1="2" y1="5" x2="24" y2="5" stroke="#9ca3af" strokeWidth="1" opacity="0.4" /></svg>
+                {lang === "tr" ? "Zayıf/nötr" : "Weak / neutral"}
+              </div>
+              <span style={{ color: "var(--text-faint)" }}>
+                {lang === "tr"
+                  ? "· Çizgi rengi = iki ucun arketip kimliği · node'a veya bağlantıya tıkla"
+                  : "· Line color = each end's archetype · click a node or a connection"}
+              </span>
             </div>
-          </>
+
+            {/* Seçili node'un sıralı partner listesi */}
+            {selectedNode && (
+              <div className="mt-4 w-full space-y-1.5" style={{ maxWidth: 480 }}>
+                <div className="flex items-center gap-2 mb-2">
+                  <Dot arch={selectedNode} size={10} />
+                  <span className="font-semibold text-sm" style={{ color: ARCH_COLOR[selectedNode] }}>{selectedNode}</span>
+                  <span className="text-xs" style={{ color: "var(--text-faint)" }}>
+                    {lang === "tr" ? "en iyi eşleşmeler" : "best pairings"}
+                  </span>
+                </div>
+                {archs.filter(a => a !== selectedNode)
+                  .map(a => ({
+                    a, v: Number(matrix[selectedNode]?.[a] ?? matrix[a]?.[selectedNode] ?? 0),
+                    mins: sampleCounts[selectedNode]?.[a] ?? sampleCounts[a]?.[selectedNode],
+                  }))
+                  .sort((x, y) => y.v - x.v)
+                  .map(({ a, v, mins }) => {
+                    const { bg } = cellStyle(v);
+                    return (
+                      <button key={a} onClick={() => openDrill(selectedNode, a)}
+                        className="w-full flex items-center gap-2 px-3 py-1.5 rounded-xl text-left transition-colors"
+                        style={{ background: "rgba(255,255,255,.03)" }}>
+                        <Dot arch={a} />
+                        <span className="flex-1 text-xs" style={{ color: "var(--text-primary)" }}>{a}</span>
+                        {mins != null && (
+                          <span className="text-[9px]" style={{ color: "var(--text-faint)" }}>{Math.round(mins)} min</span>
+                        )}
+                        <div className="rounded px-2 py-0.5" style={{ background: bg }}>
+                          <span style={{ color: "var(--text-primary)", fontWeight: 700, fontSize: 11 }}>{Math.round(v * 100)}</span>
+                        </div>
+                      </button>
+                    );
+                  })}
+              </div>
+            )}
+          </div>
         )}
 
         {tab === "bestpairs" && (
@@ -342,12 +436,10 @@ export default function Affinity() {
               const { bg } = cellStyle(v);
               return (
                 <button key={i} onClick={() => openDrill(a, b)}
-                  className="w-full flex items-center gap-3 p-3 rounded text-left transition-colors"
+                  className="w-full flex items-center gap-3 p-3 rounded-xl text-left transition-colors"
                   style={{
                     background: drillCell?.archA === a && drillCell?.archB === b
-                      ? "var(--accent-dim)" : "var(--bg-elevated)",
-                    border: "1px solid " + (drillCell?.archA === a && drillCell?.archB === b
-                      ? "var(--accent-border)" : "var(--border)"),
+                      ? "var(--accent-dim)" : "rgba(255,255,255,.03)",
                   }}>
                   <span style={{ fontSize: 10, color: "var(--text-faint)", width: 18, flexShrink: 0 }}>
                     #{i + 1}
@@ -380,17 +472,17 @@ export default function Affinity() {
               <span className="text-xs" style={{ color: "var(--text-muted)" }}>
                 {lang === "tr" ? "Arketip:" : "Filter:"}
               </span>
-              <select value={duoA} onChange={e => setDuoA(e.target.value)}
-                className="rounded px-2 py-1 text-xs focus:outline-none flex-1"
-                style={{ background: "var(--bg-elevated)", color: "var(--text-primary)", border: "1px solid var(--border)" }}>
-                <option value="">{lang === "tr" ? "Tümü" : "All archetypes"}</option>
-                {archs.map(a => <option key={a} value={a}>{a}</option>)}
-              </select>
+              <div className="aura-select-wrap">
+                <select value={duoA} onChange={e => setDuoA(e.target.value)} className="aura-select">
+                  <option value="">{lang === "tr" ? "Tümü" : "All archetypes"}</option>
+                  {archs.map(a => <option key={a} value={a}>{a}</option>)}
+                </select>
+              </div>
             </div>
             {duoLoading ? (
               <div className="text-xs py-4 text-center" style={{ color: "var(--text-muted)" }}>Loading...</div>
             ) : (
-              <div className="space-y-2">
+              <div className="flex flex-wrap gap-5 justify-center">
                 {duos
                   .filter(p => !duoA || p.primary_arch === duoA)
                   .slice(0, 24)
@@ -400,29 +492,15 @@ export default function Affinity() {
                       .map(a => ({ a, v: matrix[p.primary_arch]?.[a] ?? matrix[a]?.[p.primary_arch] ?? 0 }))
                       .sort((x, y) => y.v - x.v)
                       .slice(0, 3);
-                    const archColor = ARCH_COLOR[p.primary_arch] || "var(--accent)";
                     return (
-                      <div key={i} className="p-3 rounded"
-                        style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
-                        <div className="flex items-center gap-2 mb-1.5">
-                          <Dot arch={p.primary_arch} />
-                          <span className="font-medium text-xs" style={{ color: "var(--text-primary)" }}>
-                            {p.PLAYER_NAME}
-                          </span>
-                          <span className="text-[10px]" style={{ color: "var(--text-faint)" }}>
-                            {p.TEAM_ABBREVIATION}
-                          </span>
-                          <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded"
-                            style={{ color: archColor, border: `1px solid ${archColor}40`, background: `${archColor}15` }}>
-                            {p.primary_arch}
-                          </span>
-                        </div>
-                        <div className="flex gap-1.5 flex-wrap">
+                      <div key={i} className="flex flex-col items-center gap-2">
+                        <PlayerCard player={p} rank={i + 1} />
+                        <div className="flex gap-1.5 flex-wrap justify-center" style={{ width: 280 }}>
                           {partnerArchs.map(({ a, v }) => {
                             const { bg } = cellStyle(v);
                             return (
                               <button key={a} onClick={() => openDrill(p.primary_arch, a)}
-                                className="flex items-center gap-1 px-1.5 py-0.5 rounded transition-opacity hover:opacity-75"
+                                className="flex items-center gap-1 px-1.5 py-0.5 rounded-full transition-opacity hover:opacity-75"
                                 style={{ background: bg, fontSize: 9 }}>
                                 <span style={{ display:"inline-block", width:5, height:5, borderRadius:"50%", background: ARCH_COLOR[a] || "var(--text-muted)" }}/>
                                 <span style={{ color: "var(--text-primary)" }}>{a} · {Math.round(v * 100)}</span>
@@ -450,15 +528,8 @@ export default function Affinity() {
     : null;
 
   return (
-    <>
-    <SEO
-      title="Archetype Affinity Matrix"
-      description="Discover which NBA archetypes work best together. Explore affinity scores between all 12 player roles, with real lineup drill-downs showing net rating data."
-      path="/affinity"
-    />
     <SplitPane detail={detail} onClose={() => { setDrillCell(null); setDrillData(null); }}>
       {leftPanel}
     </SplitPane>
-    </>
   );
 }

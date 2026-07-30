@@ -1,11 +1,61 @@
 # UI Redesign Playbook — "Panini Kart" Tarzı
 
-**Durum (güncellendi):** Faz 1 (kart + filtre drawer) NBA/G-League/NCAA/EuroLeague'de
-lokalde tamamlandı ve doğrulandı — bkz. §1-§6. Kullanıcı şimdi kapsamı genişletti:
-**"komple yenileme"** — logo, 12 arketip rengi ve tipografi (Rajdhani/Outfit) dışında
-eski tasarımdan hiçbir şey kalmayacak. "Kutu kutu terminal görünümü"nden çıkılacak,
-kartlardaki "aura" (foil/holo/tilt/glow) TopBar, SideNav, filtre/arama çubukları, Game
-sayfaları ve kalan tüm sayfalara yayılacak. Bu genişletilmiş plan §0'da.
+**Durum (güncellendi 2026-07-30):** Faz 1 (kart + filtre drawer) NBA/G-League/NCAA/
+EuroLeague'de tamamlandı. Faz 2 ("Aura Everywhere", §0) de artık tamamlandı — TopBar,
+SideNav, BottomNav, `AuraSearch` (Finder-tarzı arama), ghost-select/ghost-input/
+pill-button sistemi (`frontend/src/aura.css`), ve şu sayfaların HEPSİ de-box edildi:
+Players, G-League, NCAA, EuroLeague, PlayerProfile (artık tek bir expanded hero
+karta indirgendi), Compare (PlayerCard ön-yüzü + aura-glass paneller), Affinity
+(Duos tab gerçek PlayerCard'lara geçti, matrix/best-pairs/drill-down de-box edildi),
+Explore (kontrol çubuğu + legend + tooltip de-box edildi, scatter plot'un kendisi
+bilinçli olarak dokunulmadı — veri görselleştirmesi). Explore/Compare/Affinity
+`ExploreHub`'da, Glossary/About `FundamentalsHub`'da tek route grubu altında
+birleştirildi (çoklu path → tek lazy component, `useLocation`/`useNavigate` tab
+mantığı, `NAV`'da `extraActive`). Glossary'nin `SplitPane` tabanlı liste+detay
+yapısı TAMAMEN kaldırıldı (2026-07-30): Components tab artık her Core/Modifier
+bileşeni `PlayerCard.css`'in `pcard-*` sınıflarıyla kendi kartında gösteriyor
+(açıklama+eşik karta gömülü, tıklamaya gerek yok); Core kartları tıklanınca
+`api.players({arch, sort_by:"overall_score", limit:10})` ile o arketipte GERÇEK
+en yüksek overall'lı 10 oyuncuyu çekip `pcard-sim-row` ile listeliyor, Modifier
+kartları kendi metrik ağırlık barlarını (`pcard-arch-item`) gösteriyor. NBA Eras
+tab da aynı şekilde sidebar'sız, her era kendi `aura-glass` panelinde. SideNav/
+BottomNav'daki nav etiketi "Glossary"den "About"a çevrildi (route hâlâ `/glossary`
++ `extraActive:["/about"]`, ilk açılan sekme hâlâ Glossary — `FundamentalsHub`
+`TABS[0]`). Hepsi lokalde tek tek doğrulandı (konsol hatası yok, gerçek veri
+akışı test edildi).
+
+**2026-07-30 devamı (aynı gün, ikinci yarı):** Lineups sayfasının üç kart tipi
+(teorik, gerçek lineup'lar, custom builder) de aynı dile taşındı — `.lineup-card`
+kabuğu: pozisyon başına arketip renginde organik `.aura-blob` glow (küre değil,
+asimetrik border-radius + blur), köşede yüzen rank/fit rozeti, genişleyince
+GERÇEK `PlayerCard` (yeni `compact` prop, `.pcard-stage.compact`), pillar
+barları düz gradyandan `.pillar-bar-track/.pillar-bar-fill` (kart holo
+dokusundan alınan çizgili doku) tasarımına geçti. Custom Builder'da Defense,
+Rim Protection/Perimeter D olarak ikiye ayrıldı (frontend-only, `defense =
+max(rim, perimeter)` ile eski skor/grade değişmiyor — backend `score_compat.py`
+tarafı kullanıcı kendi yapacak, dokunulmadı). Explore'un scatter plot'una da
+artık dokunuldu: arketip filtrelendiğinde kamera önce kümeye uçuyor sonra
+sadece o arketip aynı eksen anlamıyla yeniden ölçekleniyor; küme üstü isim
+etiketleri kaldırıldı; alt legend artık grafiği değiştirmeyen pasif bir
+glossary. Affinity'nin matrix tablosu network graph'a dönüştürülmüştü, bugün
+inceltildi: kenar rengi artık iki ucun arketip renginde SVG gradyanı (güç
+sadece kalınlıkla), sabit üst glow kaldırılıp hover'da node'un kendi renginde
+dinamik glow geldi, ağ büyütüldü (480×440→620×560), drill-down paneli gerçek
+oyuncu+arketip çipleriyle zenginleşti (`_load_lineups_with_archs()` artık
+`/api/affinity/lineups` VE `/api/real-lineups`'ta kullanılıyor). About sayfası
+gerçek pcard kabuğuyla yeniden yapıldı: hero artık logo'yu "photo" olarak
+kullanan gerçek bir trading card, Mission/Vision `.info-card` (edge-bevel),
+"What We Do" `.era-card` kabuğuyla tek-sütun (5 öğede grid hizalama sorunu
+yapısal olarak ortadan kalktı) + her kart kendi gerçek sayfasına giden CTA.
+Ayrıca: native `<select>` dropdown'ların açık renk popup sorunu global
+`color-scheme:dark` ile düzeltildi; `RoleImpactChart` artık `/api/role-stats`
+500 dönerse sessizce boş render ediyor (önceden tüm sayfayı çökertiyordu —
+backend'deki BPM_x/BPM_y kolon çakışması kök nedeni hâlâ duruyor, bu oturumun
+kapsamı dışında).
+
+**Kapsam dışı (bilinçli, kullanıcı ayrı konuşacak):** Game sayfaları (`GameModeSelect`,
+`LineupGame`, `SameScreenGame`, `WithAFriendGame`) — bunlar için ayrı bir tasarım
+oturumu yapılacak, bu playbook'un parçası değil.
 
 Referans: `frontend/src/components/PlayerCard.jsx`, `PlayerCard.css`, `frontend/src/pages/Players.jsx`.
 Canlı (eski) tasarım: primaryarch.net/players — düz yatay kart + yan panel (`SplitPane`+`DetailPanel`).

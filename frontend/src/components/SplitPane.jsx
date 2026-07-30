@@ -11,8 +11,7 @@ export default function SplitPane({ children, detail, onClose }) {
 
       {/* Sağ: detay paneli */}
       {detail && (
-        <div className="detail-panel flex flex-col w-full md:w-96 md:max-w-[38%] shrink-0 border-l overflow-hidden"
-          style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
+        <div className="aura-glass detail-panel flex flex-col w-full md:w-96 md:max-w-[38%] shrink-0 overflow-hidden">
 
           {/* Kapat butonu (mobil: tam ekran olduğu için önemli) */}
           <button

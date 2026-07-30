@@ -48,6 +48,18 @@ export const ERA_GUIDE = [
   },
 ];
 
+// Gerçek NBA şampiyonları, era sınırlarına göre gruplanmış (eras.js'teki
+// getEra() sınırlarıyla birebir — sezon başlangıç yılı [start,end) aralığına
+// düşüyor). Sayılar gerçek şampiyonluk sayısıdır, simüle edilmemiştir.
+export const ERA_CHAMPIONS = {
+  "80s":        [{ team: "LAL", count: 5 }, { team: "BOS", count: 3 }, { team: "DET", count: 2 }, { team: "PHI", count: 1 }, { team: "CHI", count: 1 }],
+  "Jordan":     [{ team: "CHI", count: 5 }, { team: "HOU", count: 2 }, { team: "SAS", count: 1 }],
+  "Dead Ball":  [{ team: "LAL", count: 3 }, { team: "SAS", count: 3 }, { team: "DET", count: 1 }, { team: "MIA", count: 1 }, { team: "BOS", count: 1 }],
+  "Super Team": [{ team: "LAL", count: 2 }, { team: "MIA", count: 2 }, { team: "DAL", count: 1 }, { team: "SAS", count: 1 }],
+  "Small Ball": [{ team: "GSW", count: 3 }, { team: "CLE", count: 1 }, { team: "TOR", count: 1 }, { team: "LAL", count: 1 }],
+  "Parity":     [{ team: "MIL", count: 1 }, { team: "GSW", count: 1 }, { team: "DEN", count: 1 }, { team: "BOS", count: 1 }, { team: "OKC", count: 1 }],
+};
+
 export const METRIC_LABELS = {
   USG_PCT:          { label:"Usage Rate",          label_tr:"Kullanım Oranı",    desc:"% of team possessions used while on court",                    desc_tr:"Sahadadayken takım hücumlarının kullanılan yüzdesi" },
   TIME_OF_POSS:     { label:"Time of Possession",  label_tr:"Top Tutma Süresi",  desc:"Avg seconds holding the ball per touch",                       desc_tr:"Her dokunuşta ortalama top tutma süresi (saniye)" },

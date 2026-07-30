@@ -1,6 +1,8 @@
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useLang } from "../contexts/LanguageContext";
-import { SEO } from "../hooks/useSEO";
 import { Logo } from "../components/BrandIcons";
+import "../components/PlayerCard.css";
 
 const CHANGELOG = [
   {
@@ -31,31 +33,40 @@ const CHANGELOG = [
   },
 ];
 
+// 12 çekirdek arketip paleti — Glossary/Explore/Affinity ile aynı, "What We Do"
+// kartlarına dönüşümlü renk verir (site genelinde tutarlı kimlik).
+const CYCLE_HEX = ["#fb923c", "#4ade80", "#2dd4bf", "#c084fc", "#60a5fa", "#f87171"];
+
 const WHAT = [
   {
     icon: "🏷",
     title: "Archetype Tagging",
     text: `Using 12 core archetypes (Ecosystem, Engine, Anchor, Spacer…) and 22 modifier tags (Pressure, Gravity, Switchable…), we assign a multi-layered identity to each player. Tags are grounded in a hand-crafted jargon dictionary; metrics validate and extend these definitions.`,
+    link: "/glossary", linkLabel: "Browse the glossary",
   },
   {
     icon: "📐",
     title: "Percentile-Based Scoring",
     text: `Raw statistics are not comparable across eras. All metrics are converted to within-season percentile ranks — the only reliable way to evaluate a 1990 player on the same scale as a 2025-26 player.`,
+    link: "/players", linkLabel: "See it applied to players",
   },
   {
     icon: "🔗",
     title: "Lineup Compatibility",
     text: `A compatibility engine built on 11 functional role slots (Primary Creation, Floor Spacing, Interior Defense…) computes the theoretically best 5-man lineups with real NBA dynamics baked in.`,
+    link: "/lineups", linkLabel: "Build a lineup",
   },
   {
     icon: "📚",
     title: "Historical Depth",
     text: `All seasons from 1989-90 onward. Fallback signatures handle missing tracking and hustle metrics in older seasons, allowing Michael Jordan and Shai Gilgeous-Alexander to be evaluated within the same framework.`,
+    link: "/players", linkLabel: "Explore a historical season",
   },
   {
     icon: "🗺",
     title: "Archetype Map",
     text: `The 12-dimensional score vector is projected to 2D and visualized as an interactive scatter plot. See which players are similar, how archetypes cluster, and the demographic spread of the league.`,
+    link: "/explore", linkLabel: "Open the map",
   },
 ];
 
@@ -68,16 +79,91 @@ function SectionLabel({ children }) {
   );
 }
 
-export default function About() {
+// "What We Do" kartı — era-card kabuğunun aynısı (badge + başlık + edge-bevel
+// + organik blob), yatay tek-sütun oldukları için 5 öğede tek/çift grid
+// hizalama sorunu hiç oluşmuyor. Tıklanınca ilgili gerçek sayfaya giden bir
+// CTA açılıyor — burada sadece anlatmıyoruz, doğrudan o özelliğe gönderiyoruz.
+function WhatCard({ icon, title, text, link, linkLabel, accent }) {
+  const [expanded, setExpanded] = useState(false);
+  const navigate = useNavigate();
+  return (
+    <div className={`era-card${expanded ? " expanded" : ""}`}
+      style={{ "--accent": accent, "--accent-a": accent + "48", "--accent-b": accent + "30", "--accent-line": accent + "66" }}
+      onClick={() => setExpanded(e => !e)}>
+      <span className="aura-blob era-card-meta-glow" style={{ "--slot-color": accent, left: "80%" }} />
+      <div className="era-card-head">
+        <div className="era-card-badge" style={{ background: accent + "1a", border: `1px solid ${accent}55`, color: accent, fontSize: 20 }}>
+          {icon}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="era-card-title-row">
+            <span className="era-card-label">{title}</span>
+          </div>
+          <p className="era-card-desc" style={{ marginTop: 4 }}>{text}</p>
+        </div>
+        <div className="era-card-chev-wrap" onClick={(e) => { e.stopPropagation(); setExpanded(x => !x); }}>
+          <span className="era-chev" style={{ color: accent }}>▾</span>
+        </div>
+      </div>
+      <div className="era-card-expand-wrap">
+        <div className="era-card-expand-inner">
+          <div className="era-card-body" onClick={(e) => e.stopPropagation()}>
+            <button onClick={() => navigate(link)}
+              className="text-xs font-semibold px-3 py-1.5 rounded-full transition-transform hover:-translate-y-px"
+              style={{ color: accent, border: `1px solid ${accent}55`, background: `${accent}14` }}>
+              {linkLabel} →
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Release-notes kartı — kapalıyken sürüm rozeti + tarih + tek satır başlık,
+// tıklanınca madde listesi aşağı doğru açılır (Era/Lineup kartlarıyla aynı dil).
+function ChangelogCard({ entry, accent, defaultOpen }) {
+  const [expanded, setExpanded] = useState(!!defaultOpen);
+  return (
+    <div className={`changelog-card${expanded ? " expanded" : ""}`}
+      style={{ "--accent": accent, "--accent-a": accent + "48", "--accent-line": accent + "66" }}
+      onClick={() => setExpanded(e => !e)}>
+      <span className="aura-blob changelog-card-glow" style={{ "--slot-color": accent }} />
+      <div className="changelog-card-head">
+        <div className="changelog-card-top">
+          <span className="changelog-version" style={{ color: accent, background: accent + "1a", border: `1px solid ${accent}55` }}>
+            {entry.version}
+          </span>
+          <span className="changelog-date">{entry.date_en}</span>
+          <span className="changelog-chev">▾</span>
+        </div>
+        <div className="changelog-label">{entry.label_en}</div>
+        {!expanded && (
+          <div className="changelog-peek">{entry.items_en.length} updates — tap to expand</div>
+        )}
+      </div>
+      <div className="changelog-expand-wrap">
+        <div className="changelog-expand-inner">
+          <div className="changelog-body" onClick={e => e.stopPropagation()}>
+            <ul className="space-y-1.5 pt-1">
+              {entry.items_en.map((item, i) => (
+                <li key={i} className="flex gap-2 text-[11px] leading-relaxed">
+                  <span style={{ color: accent }} className="shrink-0 mt-0.5">+</span>
+                  <span style={{ color: "var(--text-muted)" }}>{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function AboutContent() {
   const { lang } = useLang();
 
   return (
-    <>
-    <SEO
-      title="About"
-      description="Learn how the Primary Arch system works: 12 core roles, 22 modifier tags, percentile-based scoring across every season since 1983. Full changelog and methodology."
-      path="/about"
-    />
     <div className="h-full overflow-y-auto">
       <div className="p-6 max-w-6xl mx-auto pb-16">
         <div className="flex flex-col-reverse md:flex-row gap-6 md:gap-8 items-start">
@@ -85,63 +171,74 @@ export default function About() {
           {/* Left column */}
           <div className="flex-1 space-y-10 min-w-0">
 
-            {/* Hero */}
-            <div className="text-center pt-4 pb-2">
-              <div className="flex justify-center mb-3"><Logo size={44} /></div>
-              <h1 className="font-logo text-xl font-bold mb-1 tracking-wide" style={{ color: "var(--accent)" }}>PRIMARY ARCH</h1>
-              <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-                Understanding basketball through identities, not just numbers.
-              </p>
+            {/* Hero — the site's own identity, presented as an actual trading card */}
+            <div className="pcard-stage mx-auto" style={{ marginBottom: 4 }}>
+              <div className="pcard"
+                style={{ "--accent": "#FFB11B", "--accent-a": "#FFB11B48", "--accent-b": "#FFB11B30", "--accent-line": "#FFB11B66", cursor: "default" }}>
+                <div className="pcard-holo" /><div className="pcard-foil" /><div className="pcard-grain" />
+                <span className="pcard-sparkle s1" /><span className="pcard-sparkle s2" /><span className="pcard-sparkle s3" />
+                <div className="pcard-top">
+                  <span className="pcard-rank top">EST. 2026</span>
+                  <span className="pcard-rating">01</span>
+                </div>
+                <div className="pcard-photo" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at center, #FFB11B22, transparent 65%)" }} />
+                  <Logo size={92} />
+                  <div className="pcard-photo-fade" />
+                </div>
+                <div className="pcard-nameband">
+                  <h1 className="pcard-name">PRIMARY ARCH</h1>
+                  <div className="pcard-meta"><span className="pcard-arch">Identities, not just numbers</span></div>
+                </div>
+              </div>
             </div>
 
             {/* Mission & Vision */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {[
                 {
-                  label: "Mission",
+                  label: "Mission", accent: "#FFB11B",
                   text: `To understand the NBA through identities, not just numbers. Every player is more than a stat line — their role on the floor, their contribution to the team system, and the pressure they apply on opponents together form an "archetype."`,
                 },
                 {
-                  label: "Vision",
+                  label: "Vision", accent: "#60a5fa",
                   text: `A reference platform bridging scouting jargon with statistical depth. A system where you can see at a glance whether a player is an "Ecosystem Engine" or a "Pressure Three-Level Creator," test lineup compatibility, and compare across historical eras.`,
                 },
-              ].map(({ label, text }) => (
-                <div key={label} className="p-5 rounded"
-                  style={{ border: "1px solid var(--accent-border)", background: "var(--accent-dim)" }}>
-                  <div className="text-xs font-semibold mb-2" style={{ color: "var(--accent)" }}>{label}</div>
+              ].map(({ label, text, accent }) => (
+                <div key={label} className="info-card" style={{ "--accent": accent, "--accent-line": accent + "66" }}>
+                  <span className="aura-blob" style={{ "--slot-color": accent, right: -30, top: -30, width: 160, height: 130, opacity: 0.26, zIndex: 0 }} />
+                  <div className="text-xs font-semibold mb-2" style={{ color: accent }}>{label}</div>
                   <p className="text-sm leading-relaxed" style={{ color: "var(--text-muted)" }}>{text}</p>
                 </div>
               ))}
             </div>
 
-            {/* What we do */}
+            {/* What we do — era-card shell, single column so 5 items never leave an orphan.
+                Each one opens onto the real page it describes. */}
             <div>
               <SectionLabel>What We Do</SectionLabel>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {WHAT.map(({ icon, title, text }) => (
-                  <div key={title} className="p-4 rounded"
-                    style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-base">{icon}</span>
-                      <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{title}</span>
-                    </div>
-                    <p className="text-xs leading-relaxed" style={{ color: "var(--text-muted)" }}>{text}</p>
-                  </div>
+              <div className="space-y-3">
+                {WHAT.map(({ icon, title, text, link, linkLabel }, i) => (
+                  <WhatCard key={title} icon={icon} title={title} text={text} link={link} linkLabel={linkLabel}
+                    accent={CYCLE_HEX[i % CYCLE_HEX.length]} />
                 ))}
               </div>
             </div>
 
             {/* Philosophy */}
-            <div className="p-6 rounded" style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
-              <SectionLabel>Philosophy</SectionLabel>
-              <div className="space-y-3">
-                {[
-                  `Basketball analysis too often lives in two separate worlds: abstract statistics detached from the game, and scouting jargon that ignores the numbers. We're building a language that bridges both.`,
-                  `A player is not simply "good" or "bad" — they are "fit" or "misfit" in the right system, the right roster context. Nikola Jokić can be the centerpiece of a five-man unit or create redundancy next to another dominant Force player. The archetype system makes this compatibility visible.`,
-                  `We trust the data, but we also know data doesn't tell the whole story. That's why alongside the calculations we provide auto-generated lineup explanations, role breakdowns, and season-level win correlations.`,
-                ].map((para, i) => (
-                  <p key={i} className="text-sm leading-relaxed" style={{ color: "var(--text-muted)" }}>{para}</p>
-                ))}
+            <div className="relative aura-glass p-6 rounded-2xl overflow-hidden">
+              <span className="aura-blob" style={{ "--slot-color": "var(--accent)", left: "50%", top: -40, width: 220, height: 150, transform: "translateX(-50%)", opacity: 0.16 }} />
+              <div className="relative">
+                <SectionLabel>Philosophy</SectionLabel>
+                <div className="space-y-3">
+                  {[
+                    `Basketball analysis too often lives in two separate worlds: abstract statistics detached from the game, and scouting jargon that ignores the numbers. We're building a language that bridges both.`,
+                    `A player is not simply "good" or "bad" — they are "fit" or "misfit" in the right system, the right roster context. Nikola Jokić can be the centerpiece of a five-man unit or create redundancy next to another dominant Force player. The archetype system makes this compatibility visible.`,
+                    `We trust the data, but we also know data doesn't tell the whole story. That's why alongside the calculations we provide auto-generated lineup explanations, role breakdowns, and season-level win correlations.`,
+                  ].map((para, i) => (
+                    <p key={i} className="text-sm leading-relaxed" style={{ color: "var(--text-muted)" }}>{para}</p>
+                  ))}
+                </div>
               </div>
             </div>
 
@@ -158,7 +255,7 @@ export default function About() {
             </div>
 
             {/* Disclaimer */}
-            <div className="pt-6 border-t text-center" style={{ borderColor: "var(--border)" }}>
+            <div className="pt-6 text-center" style={{ borderTop: "1px solid rgba(255,255,255,.08)" }}>
               <p className="text-xs leading-relaxed" style={{ color: "var(--text-faint)" }}>
                 This site is not an official NBA product. All data is sourced from stats.nba.com via the nba_api library.
                 Archetype definitions and tags are entirely the product of original interpretive work.
@@ -167,29 +264,12 @@ export default function About() {
             </div>
           </div>
 
-          {/* Right column — changelog */}
+          {/* Right column — changelog (card-style, collapse/expand) */}
           <div className="w-full md:w-72 md:shrink-0 md:sticky md:top-6 space-y-3">
             <SectionLabel>Release Notes</SectionLabel>
-            {CHANGELOG.map((entry) => (
-              <div key={entry.version} className="p-4 rounded space-y-2"
-                style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold px-2 py-0.5 rounded"
-                    style={{ color: "var(--accent)", background: "var(--accent-dim)", border: "1px solid var(--accent-border)" }}>
-                    {entry.version}
-                  </span>
-                  <span className="text-[10px]" style={{ color: "var(--text-faint)" }}>{entry.date_en}</span>
-                </div>
-                <div className="text-[11px] font-semibold" style={{ color: "var(--text-primary)" }}>{entry.label_en}</div>
-                <ul className="space-y-1.5">
-                  {entry.items_en.map((item, i) => (
-                    <li key={i} className="flex gap-2 text-[11px] leading-relaxed">
-                      <span style={{ color: "var(--accent)" }} className="shrink-0 mt-0.5">+</span>
-                      <span style={{ color: "var(--text-muted)" }}>{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+            {CHANGELOG.map((entry, i) => (
+              <ChangelogCard key={entry.version} entry={entry}
+                accent={i === 0 ? "#FFB11B" : "#9ca3af"} defaultOpen={i === 0} />
             ))}
             <p className="text-[10px] text-center pt-1" style={{ color: "var(--text-faint)" }}>
               More updates coming soon
@@ -199,6 +279,5 @@ export default function About() {
         </div>
       </div>
     </div>
-    </>
   );
 }

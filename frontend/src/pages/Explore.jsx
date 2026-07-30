@@ -3,7 +3,6 @@ import { api } from "../api";
 import { useLang } from "../contexts/LanguageContext";
 import ScoreBar from "../components/ScoreBar";
 import SplitPane from "../components/SplitPane";
-import { SEO } from "../hooks/useSEO";
 import { Logo } from "../components/BrandIcons";
 
 const ARCH_COLORS = {
@@ -94,7 +93,7 @@ function PlayerDetail({ player }) {
   return (
     <div className="p-4">
       {/* Header */}
-      <div className="mb-4 pb-4 border-b" style={{ borderColor: "var(--border)" }}>
+      <div className="mb-4 pb-4">
         <div className="font-logo font-bold text-base" style={{ color: "var(--text-primary)" }}>
           {player.PLAYER_NAME}
         </div>
@@ -148,7 +147,7 @@ function PlayerDetail({ player }) {
 }
 
 /* ── Main ────────────────────────────────────────────────────────── */
-export default function Explore() {
+export default function ExploreContent() {
   const { lang } = useLang();
   const info = INFO[lang] || INFO.en;
 
@@ -162,7 +161,23 @@ export default function Explore() {
   const [zoom, setZoom] = useState(1);
   const [pan, setPan]   = useState({ x: 0, y: 0 });
   const touchRef        = useRef({});
-  const resetView       = useCallback(() => { setZoom(1); setPan({ x: 0, y: 0 }); }, []);
+  const mapWrapRef      = useRef(null);
+  const [camAnimating, setCamAnimating] = useState(false);
+  const camTimerRef     = useRef(null);
+  // focusMode: sadece filtrelenen arketipin oyuncuları, kendi bağımsız
+  // (yeniden ölçeklenmiş) düzeninde gösteriliyor — aralarındaki gerçek
+  // boşluğu görmek için tüm alanı kullanır. Aynı x/y ekseni ANLAMI korunur,
+  // sadece o alt-kümenin min-max aralığına yeniden ölçeklenir.
+  const [focusMode, setFocusMode] = useState(false);
+  const focusTimerRef = useRef(null);
+  const flyTo = useCallback((nextZoom, nextPan) => {
+    clearTimeout(camTimerRef.current);
+    setCamAnimating(true);
+    setZoom(nextZoom);
+    setPan(nextPan);
+    camTimerRef.current = setTimeout(() => setCamAnimating(false), 700);
+  }, []);
+  const resetView = useCallback(() => flyTo(1, { x: 0, y: 0 }), [flyTo]);
 
   const onWheel = useCallback(e => {
     e.preventDefault();
@@ -213,39 +228,95 @@ export default function Explore() {
     })
   , [projected, filter, searchQ]);
 
+  // Filtre değişince: (1) kamerayı hedef kümenin üstüne uçur (eski global
+  // koordinatlarla — "o kümeye doğru" swoop hissi), (2) varış anında bağımsız
+  // yeniden-ölçeklenmiş düzene geç ve kamerayı 1x'e sıfırla (artık zaten
+  // tüm alanı dolduruyor) — iki aşamalı "yakınlaş, sonra genişle" hareketi.
+  useEffect(() => {
+    const wrap = mapWrapRef.current;
+    clearTimeout(focusTimerRef.current);
+    if (!wrap || !projected.length) return;
+
+    if (!filter) {
+      setFocusMode(false);
+      if (zoom !== 1 || pan.x !== 0 || pan.y !== 0) flyTo(1, { x: 0, y: 0 });
+      return;
+    }
+
+    setFocusMode(false);
+    const rect = wrap.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const pxPerUnit = Math.min(rect.width / W, rect.height / H);
+
+    const matches = projected.filter(p => p.primary_arch === filter);
+    const anchor = ARCH_ANCHORS[filter];
+    const pts = matches.length ? matches.map(p => ({ x: toSvgX(p.x), y: toSvgY(p.y) }))
+      : anchor ? [{ x: toSvgX(anchor.x), y: toSvgY(anchor.y) }] : [];
+    if (!pts.length) return;
+
+    const minX = Math.min(...pts.map(p => p.x)), maxX = Math.max(...pts.map(p => p.x));
+    const minY = Math.min(...pts.map(p => p.y)), maxY = Math.max(...pts.map(p => p.y));
+    const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+    const spanX = Math.max(maxX - minX, 70);
+    const spanY = Math.max(maxY - minY, 70);
+    const spanPxX = spanX * pxPerUnit, spanPxY = spanY * pxPerUnit;
+
+    const fitZoom = Math.max(1.4, Math.min(6, Math.min((rect.width * 0.55) / spanPxX, (rect.height * 0.55) / spanPxY)));
+    flyTo(fitZoom, { x: -(cx - W / 2) * pxPerUnit, y: -(cy - H / 2) * pxPerUnit });
+
+    focusTimerRef.current = setTimeout(() => {
+      setFocusMode(true);
+      flyTo(1, { x: 0, y: 0 });
+    }, 680);
+
+    return () => clearTimeout(focusTimerRef.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filter, projected.length]);
+
+  // Focus modundaki bağımsız grafik: sadece filtrelenen arketipin oyuncuları,
+  // kendi min-max aralığına yeniden ölçeklenmiş (aynı eksen anlamı, dolu alan).
+  const focusPositions = useMemo(() => {
+    if (!filter) return null;
+    const matches = projected.filter(p => p.primary_arch === filter);
+    if (matches.length < 2) return null;
+    const xs = matches.map(p => p.x), ys = matches.map(p => p.y);
+    const minX = Math.min(...xs), maxX = Math.max(...xs);
+    const minY = Math.min(...ys), maxY = Math.max(...ys);
+    const spanX = Math.max(maxX - minX, 0.02), spanY = Math.max(maxY - minY, 0.02);
+    const pad = 0.12;
+    const map = new Map();
+    for (const p of matches) {
+      map.set(p.PLAYER_NAME, {
+        x: pad + (1 - 2 * pad) * (p.x - minX) / spanX,
+        y: pad + (1 - 2 * pad) * (p.y - minY) / spanY,
+      });
+    }
+    return map;
+  }, [filter, projected]);
+
   return (
-    <>
-    <SEO
-      title="Explore Archetypes"
-      description="Explore all NBA player archetypes with projections, percentile scores, and role breakdowns. Filter by position, archetype, and modifier tags across 40+ seasons."
-      path="/explore"
-    />
     <SplitPane
       detail={selected ? <PlayerDetail player={selected} /> : null}
       onClose={() => setSelected(null)}
     >
       <div className="flex flex-col h-full min-h-0 overflow-hidden">
         {/* Controls */}
-        <div className="flex flex-wrap items-center gap-2 px-4 py-2 shrink-0 border-b"
-          style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
+        <div className="flex flex-wrap items-center gap-1 px-4 py-2.5 shrink-0">
 
           <input value={searchQ} onChange={e => setSearchQ(e.target.value)}
             placeholder={lang === "tr" ? "Oyuncu ara..." : "Search player..."}
-            className="rounded px-3 py-1.5 text-sm focus:outline-none w-40"
-            style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
+            className="aura-ghost-input w-36"
           />
 
-          <select value={filter} onChange={e => setFilter(e.target.value)}
-            className="rounded px-3 py-1.5 text-sm focus:outline-none"
-            style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)", color: "var(--text-primary)" }}>
-            <option value="">{lang === "tr" ? "Tüm arketipler" : "All archetypes"}</option>
-            {CORE.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
+          <div className="aura-select-wrap">
+            <select value={filter} onChange={e => setFilter(e.target.value)} className="aura-select">
+              <option value="">{lang === "tr" ? "Tüm arketipler" : "All archetypes"}</option>
+              {CORE.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
 
           {(zoom !== 1 || pan.x !== 0 || pan.y !== 0) && (
-            <button onClick={resetView}
-              className="px-2 py-1.5 rounded text-xs transition-colors"
-              style={{ color: "var(--text-muted)", border: "1px solid var(--border)" }}>
+            <button onClick={resetView} className="aura-pill-btn">
               {lang === "tr" ? "Sıfırla" : "Reset view"}
             </button>
           )}
@@ -262,18 +333,25 @@ export default function Explore() {
               Loading...
             </div>
           ) : (
-            <div className="w-full h-full touch-none overflow-hidden"
+            <div ref={mapWrapRef} className="w-full h-full touch-none overflow-hidden relative"
               onWheel={onWheel}
               onTouchStart={onTouchStart}
               onTouchMove={onTouchMove}
               onTouchEnd={onTouchEnd}
             >
+              {/* Spotlight vignette — dims the periphery while the camera is focused on a cluster */}
+              <div className="absolute inset-0 pointer-events-none z-10" style={{
+                background: "radial-gradient(circle at 50% 50%, transparent 30%, rgba(0,0,0,.55) 100%)",
+                opacity: filter ? 1 : 0,
+                transition: "opacity 0.7s cubic-bezier(0.2,0.7,0.3,1)",
+              }} />
+
               <svg viewBox={`0 0 ${W} ${H}`} width="100%" height="100%"
                 style={{
                   display: "block",
                   transform: `scale(${zoom}) translate(${pan.x/zoom}px,${pan.y/zoom}px)`,
                   transformOrigin: "center center",
-                  transition: "transform 0.05s ease",
+                  transition: camAnimating ? "transform 0.7s cubic-bezier(0.2,0.7,0.3,1)" : "transform 0.05s ease",
                 }}>
 
                 {/* Grid */}
@@ -296,30 +374,28 @@ export default function Explore() {
                 <text x={W/2+6} y={PAD+12} fill="var(--text-faint)" fontSize={9}>{info.yTop}</text>
                 <text x={W/2+6} y={H-PAD-6} fill="var(--text-faint)" fontSize={9}>{info.yBottom}</text>
 
-                {/* Archetype anchor labels */}
-                {Object.entries(ARCH_ANCHORS)
-                  .filter(([a]) => !filter || a === filter)
-                  .map(([arch, pos]) => (
-                    <text key={arch} x={toSvgX(pos.x)} y={toSvgY(pos.y) - 28}
-                      fill={ARCH_COLORS[arch]} fontSize={10} fontWeight={600} textAnchor="middle"
-                      style={{ pointerEvents: "none", letterSpacing: "0.02em" }}>
-                      {arch}
-                    </text>
-                  ))}
-
-                {/* Player dots */}
-                {filtered.map((p, i) => {
-                  const cx = toSvgX(p.x), cy = toSvgY(p.y);
+                {/* Player dots — non-matching players fade rather than vanish during the
+                    swoop, then fully hide once focusMode lands on the independent graph.
+                    Matching players glide (CSS cx/cy transition) to their rescaled spot. */}
+                {projected.map((p, i) => {
+                  const local = focusMode ? focusPositions?.get(p.PLAYER_NAME) : null;
+                  const cx = toSvgX(local ? local.x : p.x), cy = toSvgY(local ? local.y : p.y);
                   const col = ARCH_COLORS[p.primary_arch] || "#9ca3af";
                   const isHover    = hover?.PLAYER_NAME === p.PLAYER_NAME;
                   const isSelected = selected?.PLAYER_NAME === p.PLAYER_NAME;
                   const isSearch   = searchQ && p.PLAYER_NAME?.toLowerCase().includes(searchQ.toLowerCase());
-                  const highlight  = isHover || isSelected || isSearch;
+                  const matchesArch = !filter || p.primary_arch === filter;
+                  const matchesSearch = !searchQ || isSearch;
+                  const dimmed = !matchesArch || !matchesSearch;
+                  const hiddenInFocus = focusMode && !matchesArch;
+                  const highlight  = isHover || isSelected || (searchQ && isSearch);
                   return (
-                    <g key={i} style={{ cursor: "pointer" }}
-                      onMouseEnter={() => setHover(p)}
+                    <g key={i}
+                      style={{ cursor: dimmed ? "default" : "pointer", transition: "opacity 0.5s ease" }}
+                      opacity={hiddenInFocus ? 0 : dimmed ? 0.07 : 1}
+                      onMouseEnter={() => !dimmed && setHover(p)}
                       onMouseLeave={() => setHover(null)}
-                      onClick={() => setSelected(p === selected ? null : p)}
+                      onClick={() => !dimmed && setSelected(p === selected ? null : p)}
                     >
                       <circle cx={cx} cy={cy}
                         r={isSelected ? 7 : isHover ? 5.5 : 3.5}
@@ -328,6 +404,7 @@ export default function Explore() {
                         stroke={isSelected ? "#fff" : isHover ? col : "none"}
                         strokeWidth={isSelected ? 2 : 1.5}
                         strokeOpacity={0.8}
+                        style={{ transition: "cx 0.6s cubic-bezier(0.2,0.8,0.3,1), cy 0.6s cubic-bezier(0.2,0.8,0.3,1)" }}
                       />
                       {highlight && (
                         <text x={cx+9} y={cy+4} fill="var(--text-primary)" fontSize={10}
@@ -343,8 +420,7 @@ export default function Explore() {
 
               {/* Hover tooltip (bottom-left of map) */}
               {hover && hover.PLAYER_NAME !== selected?.PLAYER_NAME && (
-                <div className="absolute left-4 bottom-4 px-3 py-2 rounded text-xs pointer-events-none"
-                  style={{ background: "var(--bg-surface)", border: "1px solid var(--border)" }}>
+                <div className="aura-glass absolute left-4 bottom-4 px-3 py-2 rounded-xl text-xs pointer-events-none">
                   <div className="font-semibold" style={{ color: "var(--text-primary)" }}>{hover.PLAYER_NAME}</div>
                   <div style={{ color: "var(--text-muted)" }}>{hover.TEAM_ABBREVIATION} · {hover.POSITION}</div>
                   <div className="font-medium mt-0.5" style={{ color: ARCH_COLORS[hover.primary_arch] || "var(--accent)" }}>
@@ -359,24 +435,20 @@ export default function Explore() {
           )}
         </div>
 
-        {/* Legend */}
-        <div className="flex flex-wrap gap-1.5 px-4 py-2 border-t shrink-0"
-          style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
+        {/* Legend — glossary only, doesn't drive the graph (use the dropdown above for that) */}
+        <div className="flex flex-wrap justify-center gap-1 px-4 py-2 shrink-0">
           {Object.entries(ARCH_COLORS).map(([arch, col]) => (
-            <button key={arch} onClick={() => setFilter(filter === arch ? "" : arch)}
-              className="flex items-center gap-1 text-xs px-2 py-0.5 rounded transition-colors"
+            <span key={arch} className="flex items-center gap-1 text-xs px-2 py-1 rounded-full"
               style={{
                 background: filter === arch ? `${col}20` : "transparent",
                 color: filter === arch ? col : "var(--text-muted)",
-                border: `1px solid ${filter === arch ? `${col}60` : "transparent"}`,
               }}>
               <span style={{ background: col, width: 6, height: 6, borderRadius: "50%", display: "inline-block" }}/>
               {arch}
-            </button>
+            </span>
           ))}
         </div>
       </div>
     </SplitPane>
-    </>
   );
 }

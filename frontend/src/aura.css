@@ -3,6 +3,12 @@
    for the card itself, but the underlying mechanics (foil sweep, holo stripes,
    shine sweep, tilt) are the same math, just tuned down for non-card surfaces. */
 
+/* Site is dark-committed (no light theme, see ThemeContext) — tell the browser
+   so every native form popup (select option lists, date pickers, etc.) renders
+   with a dark UI instead of defaulting to the OS's light palette. This is the
+   fix for native <select> dropdown popups showing up glaring white. */
+:root { color-scheme: dark; }
+
 .aura-glass {
   background: rgba(19, 19, 19, 0.62);
   backdrop-filter: blur(14px);
@@ -147,6 +153,13 @@
 }
 .aura-select:hover, .aura-select:focus { background: rgba(255, 255, 255, 0.06); }
 .aura-select.accent { color: var(--yamabuki, #FFB11B); font-weight: 600; }
+/* Popup option list — color-scheme:dark (above) handles the base dark UI in
+   every modern browser; this adds the site's own surface color where the
+   engine also honors option background/color (Chromium, Firefox). */
+.aura-select option {
+  background: #17151b;
+  color: var(--text-primary, #e5e5e5);
+}
 
 /* Ghost number/text input — underline only, no box, until focus. */
 .aura-ghost-input {
@@ -174,6 +187,25 @@
   width: 16px; height: 16px; border-radius: 50%; font-size: 10px; font-weight: 700;
   background: var(--yamabuki, #FFB11B); color: #14110a;
 }
+
+/* "Rating badge" button — the card's skewed shine-sweep treatment, promoted
+   to a real clickable CTA for hero actions (Calculate Fit, etc). */
+.aura-rating-btn {
+  position: relative; overflow: hidden; display: inline-flex; align-items: center; justify-content: center;
+  font-family: var(--font-logo); font-weight: 700; font-size: 13px; color: #14110a;
+  background: linear-gradient(100deg, #ffe9b0, var(--yamabuki, #FFB11B) 55%, #ffe9b0 100%);
+  padding: 9px 18px; border-radius: 10px; border: none; cursor: pointer;
+  box-shadow: 0 0 16px rgba(255, 177, 27, 0.35), 0 1px 0 rgba(255, 255, 255, 0.5) inset;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.aura-rating-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(255, 177, 27, 0.5), 0 1px 0 rgba(255, 255, 255, 0.5) inset; }
+.aura-rating-btn:active { transform: translateY(0); }
+.aura-rating-btn::after {
+  content: ""; position: absolute; top: -60%; left: -30%; width: 40%; height: 220%;
+  background: rgba(255, 255, 255, 0.5); transform: rotate(20deg);
+  animation: auraShineSweep 3.2s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) { .aura-rating-btn::after { animation: none; } }
 
 /* Gentle hover tilt for "hero" interactive elements only — not every button.
    Pair with a mousemove handler that sets --tx/--ty (see GameModeSelect.jsx). */

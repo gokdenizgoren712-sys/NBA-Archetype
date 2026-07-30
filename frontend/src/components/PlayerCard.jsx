@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "../api";
 import "./PlayerCard.css";
 
@@ -181,7 +181,7 @@ function ProspectPanel({ prospect, ceilingNote }) {
   );
 }
 
-export default function PlayerCard({ player, rank, onClick, discover, season, expandable = false, league = "nba" }) {
+export default function PlayerCard({ player, rank, onClick, discover, season, expandable = false, league = "nba", defaultExpanded = false, compact = false }) {
   const isNBA = !league || league === "nba";
   const leagueCfg = LEAGUE_CONFIG[league];
   const smallSampleThreshold = leagueCfg?.smallSample ?? 20;
@@ -200,7 +200,7 @@ export default function PlayerCard({ player, rank, onClick, discover, season, ex
   const ast = player.AST != null ? Number(player.AST).toFixed(1) : null;
 
   const cardRef = useRef(null);
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(!!defaultExpanded);
   const [tab, setTab] = useState(() => (isNBA ? "radar" : league === "euroleague" ? "radar" : "prospect"));
   const [detail, setDetail] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -208,6 +208,11 @@ export default function PlayerCard({ player, rank, onClick, discover, season, ex
   const [similarLoading, setSimilarLoading] = useState(false);
   const [career, setCareer] = useState(null);
   const [careerLoading, setCareerLoading] = useState(false);
+
+  useEffect(() => {
+    if (defaultExpanded) ensureDetail();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const ensureDetail = async () => {
     if (detail || detailLoading) return;
@@ -286,7 +291,7 @@ export default function PlayerCard({ player, rank, onClick, discover, season, ex
     : [];
 
   return (
-    <div className="pcard-stage">
+    <div className={`pcard-stage${compact ? " compact" : ""}`}>
       <div
         ref={cardRef}
         className={`pcard${expanded ? " pcard-expanded" : ""}${discover ? " pcard-discover" : ""}`}
