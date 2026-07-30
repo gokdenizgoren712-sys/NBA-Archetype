@@ -413,56 +413,15 @@ COMPONENT_SIGNATURES = {
     # ayrışamıyordu. Gerçek eşleşme-zorluğu verisi (Synergy/BBall-Index tipi)
     # eklenirse Point-of-Attack anlamlı şekilde geri getirilebilir.
 
-    # Switchable ("birden çok pozisyonu savunabilen") BİLİNÇLİ OLARAK
-    # UYGULANMADI (2026-07 modifier denetimi, Downhill/Tempo ile aynı geçişte
-    # değerlendirildi). nba_api'de gerçek savunma-eşleşmesi verisi yok:
-    # LeagueDashPtDefend "Overall" kategorisi sadece close-defender şut
-    # kalitesi veriyor (hangi pozisyonu savunduğu bilgisi yok);
-    # LeagueSeasonMatchups teknik olarak var ama oyuncu-çifti bazlı — 500x500
-    # satırlık ham eşleşme verisini pozisyon çeşitliliğine indirgemek ayrı,
-    # kırılgan bir pipeline gerektirir (rate-limit riski yüksek, tek modifier
-    # için orantısız). Gerçek veri olmadan STL/BLK/pozisyon gibi proxy'lerle
-    # doldurmak, tam olarak Defensive/Point-of-Attack'ın düştüğü hataya
-    # (Stopper'ın kopyası olma) düşerdi — o yüzden atlandı.
-
-    # Orijinal Jargon Sözlüğü'nde ("oyunun hızını/ritmini yöneten") tanımlı ama
-    # hiç uygulanmamıştı (2026-07 modifier denetimi). Synergy Transition
-    # possession-share (gerçek veri, fetch_data.py) + bireysel PACE (Advanced
-    # tablosundan, sahadayken oynanan tempo) + TIME_OF_POSS (topu elinde
-    # tutup tempoyu GERÇEKTEN etkiliyor mu, yoksa sadece hızlı oynayan bir
-    # takımda mı koşuyor). Engine'le ortak TIME_OF_POSS var ama düşük ağırlıkta
-    # (0.15) — Tempo'nun asıl ekseni hız, Engine'inki yaratıcılık/hacim.
-    "Tempo": {
-        "type": "modifier",
-        "desc": "Pushes the pace; plays fast and gets into transition often",
-        "percentile_threshold": 0.78,
-        "metrics": {
-            "TRANSITION_POSS_PCT": {"w": 0.40, "higher": True},
-            "PACE":                {"w": 0.30, "higher": True},
-            "TRANSITION_PPP":      {"w": 0.15, "higher": True},
-            "TIME_OF_POSS":        {"w": 0.15, "higher": True},
-        },
-    },
-
-    # Orijinal Jargon Sözlüğü'nde ("potaya doğru kuzey-güney hücum eden")
-    # tanımlı ama hiç uygulanmamıştı. Pressure'dan (foul-drawing ağırlıklı)
-    # ve yeni Slashing'ten (topsuz kesme/dalış, Synergy Cut) kasıtlı olarak
-    # ayrıştırıldı: Downhill saf "topla sürüp bitirme hacmi", DRIVE_PASS_PCT
-    # düşük ağırlığıyla (pas değil şut arıyor — Playmaking/Initiator'dan
-    # ayrım) ve FT_RATE OLMADAN (Pressure'ın birincil ekseni faul, bunun
-    # değil) tanımlanıyor.
-    "Downhill": {
-        "type": "modifier",
-        "desc": "Drives north-south to score, not to pass or draw fouls",
-        "percentile_threshold": 0.78,
-        "metrics": {
-            "DRIVES":        {"w": 0.28, "higher": True},
-            "DRIVE_FGA":     {"w": 0.24, "higher": True},
-            "DRIVE_FG_PCT":  {"w": 0.20, "higher": True},
-            "DRIVE_PTS_PCT": {"w": 0.16, "higher": True},
-            "DRIVE_PASSES_PCT":{"w": 0.12, "higher": False},  # pas değil, bitirme arıyor
-        },
-    },
+    # Switchable, Tempo, Downhill BİLİNÇLİ OLARAK EKLENMEDİ (2026-07 modifier
+    # denetimi). Switchable: nba_api'de gerçek pozisyon-çeşitliliği savunma
+    # verisi yok (LeagueDashPtDefend pozisyon kırılımı vermiyor,
+    # LeagueSeasonMatchups oyuncu-çifti bazlı — pozisyon çeşitliliğine
+    # indirgemek kırılgan/orantısız bir pipeline gerektirirdi). Tempo/Downhill:
+    # gerçek veriyle (Synergy Transition, DRIVE_*) denendi ama mevcut
+    # modifier'larla (Engine/Pressure/Slashing) yeterince ayrışmadığı
+    # değerlendirildi — kapsamlı modifier-çakışma denetimi tamamlanana kadar
+    # eklenmiyor.
 
     "Gravity": {
         "type": "modifier",
