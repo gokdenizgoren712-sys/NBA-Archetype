@@ -413,6 +413,45 @@ COMPONENT_SIGNATURES = {
     # ayrışamıyordu. Gerçek eşleşme-zorluğu verisi (Synergy/BBall-Index tipi)
     # eklenirse Point-of-Attack anlamlı şekilde geri getirilebilir.
 
+    # Orijinal Jargon Sözlüğü'nde ("oyunun hızını/ritmini yöneten") tanımlı ama
+    # hiç uygulanmamıştı (2026-07 modifier denetimi). Synergy Transition
+    # possession-share (gerçek veri, fetch_data.py) + bireysel PACE (Advanced
+    # tablosundan, sahadayken oynanan tempo) + TIME_OF_POSS (topu elinde
+    # tutup tempoyu GERÇEKTEN etkiliyor mu, yoksa sadece hızlı oynayan bir
+    # takımda mı koşuyor). Engine'le ortak TIME_OF_POSS var ama düşük ağırlıkta
+    # (0.15) — Tempo'nun asıl ekseni hız, Engine'inki yaratıcılık/hacim.
+    "Tempo": {
+        "type": "modifier",
+        "desc": "Pushes the pace; plays fast and gets into transition often",
+        "percentile_threshold": 0.78,
+        "metrics": {
+            "TRANSITION_POSS_PCT": {"w": 0.40, "higher": True},
+            "PACE":                {"w": 0.30, "higher": True},
+            "TRANSITION_PPP":      {"w": 0.15, "higher": True},
+            "TIME_OF_POSS":        {"w": 0.15, "higher": True},
+        },
+    },
+
+    # Orijinal Jargon Sözlüğü'nde ("potaya doğru kuzey-güney hücum eden")
+    # tanımlı ama hiç uygulanmamıştı. Pressure'dan (foul-drawing ağırlıklı)
+    # ve yeni Slashing'ten (topsuz kesme/dalış, Synergy Cut) kasıtlı olarak
+    # ayrıştırıldı: Downhill saf "topla sürüp bitirme hacmi", DRIVE_PASS_PCT
+    # düşük ağırlığıyla (pas değil şut arıyor — Playmaking/Initiator'dan
+    # ayrım) ve FT_RATE OLMADAN (Pressure'ın birincil ekseni faul, bunun
+    # değil) tanımlanıyor.
+    "Downhill": {
+        "type": "modifier",
+        "desc": "Drives north-south to score, not to pass or draw fouls",
+        "percentile_threshold": 0.78,
+        "metrics": {
+            "DRIVES":        {"w": 0.28, "higher": True},
+            "DRIVE_FGA":     {"w": 0.24, "higher": True},
+            "DRIVE_FG_PCT":  {"w": 0.20, "higher": True},
+            "DRIVE_PTS_PCT": {"w": 0.16, "higher": True},
+            "DRIVE_PASSES_PCT":{"w": 0.12, "higher": False},  # pas değil, bitirme arıyor
+        },
+    },
+
     "Gravity": {
         "type": "modifier",
         # Spacer'dan fark: daha yüksek rol ve USG_PCT; any position; double-team cazibet çeker

@@ -306,6 +306,22 @@ if __name__ == "__main__":
         df = df.merge(cut_agg, on="PLAYER_ID", how="left")
         print(f"Synergy Cut eklendi ({len(cut_agg)} oyuncu, {len(cut)} takım-satırından)")
 
+    # Synergy Transition — Tempo modifier'ı için (2026-07 modifier denetimi,
+    # orijinal Jargon Sözlüğü'nde tanımlı ama hiç uygulanmamıştı). Bireysel
+    # PACE (Advanced tablosundan, sahadayken oynanan tempo) ile birlikte
+    # kullanılıyor — TRANSITION_POSS_PCT "hızlı oynuyor mu", PACE "sahadayken
+    # takım gerçekten hızlanıyor mu" sorularını ayrı ayrı yanıtlıyor.
+    trans = fetch_synergy_playtype("2025-26", "Transition")
+    if not trans.empty:
+        trans_agg = (trans.groupby("PLAYER_ID")
+                     .apply(lambda g: pd.Series({
+                         "TRANSITION_POSS_PCT": np.average(g["POSS_PCT"], weights=g["POSS"].clip(lower=0.01)),
+                         "TRANSITION_PPP":      np.average(g["PPP"], weights=g["POSS"].clip(lower=0.01)),
+                     }), include_groups=False)
+                     .reset_index())
+        df = df.merge(trans_agg, on="PLAYER_ID", how="left")
+        print(f"Synergy Transition eklendi ({len(trans_agg)} oyuncu, {len(trans)} takım-satırından)")
+
     df.to_parquet(DATA_DIR / "2025-26__merged.parquet")
     print(f"\nBirleşik tablo: {df.shape[0]} oyuncu, {df.shape[1]} kolon")
     print("Kaydedildi: data/2025-26__merged.parquet")
