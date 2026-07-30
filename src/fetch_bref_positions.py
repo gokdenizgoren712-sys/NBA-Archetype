@@ -202,8 +202,26 @@ def merge_bref_positions(season: str = "2025-26") -> pd.DataFrame:
 
     # Pozisyon merge
     df = df.merge(bref[["_norm", "bref_pos_raw", "bref_pos"]], on="_norm", how="left")
-    # OBPM/DBPM merge
-    df = df.merge(adv[["_norm", "OBPM", "DBPM", "BPM"]], on="_norm", how="left")
+
+    # OBPM/DBPM/BPM merge — df, fetch_data.py'nin compute_bpm() proxy'sinden
+    # (NBA'de gerçek-vs-proxy kalibrasyon karşılaştırması için eklendi) zaten
+    # OBPM/DBPM/BPM içerebiliyor. İsim çakışması yüzünden pandas.merge bunları
+    # sessizce _x/_y suffix'ine düşürüp bare "OBPM"/"BPM" kolonunu YOK ediyordu
+    # — sonra build_score_table()'daki "OBPM yoksa proxy hesapla" fallback'i
+    # tetikleniyor, gerçek B-Ref BPM'i (Jokić 14.2) sessizce proxy'ye (9.08)
+    # düşürüyordu (2026-07 modifier denetiminde bulundu). Gerçek B-Ref DEĞERİ
+    # HER ZAMAN önceliklidir; proxy yalnızca eşleşmeyen oyuncular için fallback.
+    proxy_cols = [c for c in ("OBPM", "DBPM", "BPM") if c in df.columns]
+    if proxy_cols:
+        proxy = df[["_norm"] + proxy_cols].rename(columns={c: f"{c}_proxy" for c in proxy_cols})
+        df = df.drop(columns=proxy_cols)
+        df = df.merge(adv[["_norm", "OBPM", "DBPM", "BPM"]], on="_norm", how="left")
+        df = df.merge(proxy, on="_norm", how="left")
+        for c in proxy_cols:
+            df[c] = df[c].fillna(df[f"{c}_proxy"])
+        df = df.drop(columns=[f"{c}_proxy" for c in proxy_cols])
+    else:
+        df = df.merge(adv[["_norm", "OBPM", "DBPM", "BPM"]], on="_norm", how="left")
     df = df.drop(columns=["_norm"])
 
     # Eşleşemeyen → bref_pos boş, nba_api string'i korunur
