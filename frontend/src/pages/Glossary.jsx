@@ -1,131 +1,163 @@
 import { useState } from "react";
 import { COMPONENTS, METRIC_LABELS, CORE_COMPONENTS, MODIFIER_COMPONENTS, ERA_GUIDE as ERAS } from "../data/glossary";
 import { useLang } from "../contexts/LanguageContext";
-import SplitPane from "../components/SplitPane";
-import { SEO } from "../hooks/useSEO";
+import { api } from "../api";
+import "../components/PlayerCard.css";
 
-function Tag({ children, color = "var(--accent)" }) {
-  return (
-    <span className="text-[10px] px-2 py-0.5 rounded font-medium"
-      style={{ color, border: `1px solid ${color}40`, background: `${color}15` }}>
-      {children}
-    </span>
-  );
-}
+const CORE_HEX = {
+  Engine: "#fb923c", Ecosystem: "#4ade80", Hub: "#2dd4bf", Connector: "#c084fc",
+  Creator: "#fb7185", Anchor: "#60a5fa", Spacer: "#22d3ee", Finisher: "#a3e635",
+  Force: "#f87171", Initiator: "#FFB11B", Stopper: "#d1d5db", "Rim Runner": "#34d399",
+};
+const ARCH_SLUG = {
+  Engine: "engine", Ecosystem: "ecosystem", Hub: "hub", Connector: "connector",
+  Creator: "creator", Anchor: "anchor", Spacer: "spacer", Finisher: "finisher",
+  Force: "force", Initiator: "initiator", Stopper: "stopper", "Rim Runner": "rim-runner",
+};
+const MODIFIER_HEX = {
+  "Two-Way": "#a78bfa", Heliocentric: "#fdba74", Pressure: "#fca5a5",
+  Shotmaker: "#fde047", "Three-Level": "#f472b6", Scoring: "#fda4af", Speed: "#67e8f9",
+  Versatile: "#818cf8", Defensive: "#94a3b8", "Half-Court": "#fcd34d", "Point-of-Attack": "#f87171",
+  Gravity: "#c4b5fd", Scalable: "#86efac", Stretch: "#7dd3fc", "Point-": "#93c5fd",
+  "Off-Ball": "#d8b4fe", Slashing: "#fca5a5", "Pick-and-Roll": "#facc15", "3-and-D": "#60a5fa",
+  Playmaking: "#4ade80", Secondary: "#cbd5e1",
+};
 
-function MetricRow({ metricKey, w, higher, lang }) {
-  const meta = METRIC_LABELS[metricKey] || { label: metricKey, desc: "" };
-  const pct  = Math.round(w * 100);
-  const label = lang === "tr" && meta.label_tr ? meta.label_tr : meta.label;
-  const desc  = lang === "tr" && meta.desc_tr  ? meta.desc_tr  : meta.desc;
-
-  return (
-    <div className="flex items-start gap-3 py-2 border-b last:border-0" style={{ borderColor: "var(--border)" }}>
-      <div className="w-28 shrink-0">
-        <div className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>{label}</div>
-        <div className="text-[9px] font-mono" style={{ color: "var(--text-faint)" }}>{metricKey}</div>
-      </div>
-      <div className="w-20 shrink-0 flex items-center gap-1.5 pt-0.5">
-        <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: "var(--bg-elevated)" }}>
-          <div className="h-full rounded-full" style={{ width: `${pct}%`, background: "var(--accent)" }} />
-        </div>
-        <span className="text-[10px] w-6" style={{ color: "var(--accent)" }}>{pct}%</span>
-      </div>
-      <span className="text-[10px] shrink-0 px-1.5 py-0.5 rounded"
-        style={{ color: higher ? "#34d399" : "#f87171", background: higher ? "#34d39915" : "#f8717115" }}>
-        {higher ? "↑" : "↓"}
-      </span>
-      <div className="text-[10px] flex-1" style={{ color: "var(--text-muted)" }}>{desc}</div>
-    </div>
-  );
-}
-
-/* ── Detail panel content ────────────────────────────────────────── */
-function CompDetail({ item, lang }) {
-  if (!item) return (
-    <div className="flex items-center justify-center h-full">
-      <div className="text-center">
-        <div className="text-3xl mb-3 opacity-20">≡</div>
-        <div className="text-sm" style={{ color: "var(--text-muted)" }}>
-          {lang === "tr" ? "Detay için bir bileşen seç" : "Select a component to see details"}
-        </div>
-      </div>
-    </div>
-  );
-
-  if (item._era) {
-    const era = item._era;
-    return (
-      <div className="p-5 space-y-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-[10px] px-2 py-0.5 rounded font-bold"
-              style={{ color: era.color, border: `1px solid ${era.color}50`, background: `${era.color}15` }}>
-              {era.short}
-            </span>
-            <span className="font-bold text-base" style={{ color: era.color }}>{era.label}</span>
-          </div>
-          <div className="text-xs" style={{ color: "var(--text-muted)" }}>{era.years}</div>
-        </div>
-        <p className="text-xs italic" style={{ color: "var(--text-muted)" }}>{era.meta}</p>
-        <p className="text-sm leading-relaxed" style={{ color: "var(--text-primary)" }}>{era.desc}</p>
-        <div className="space-y-3">
-          <div>
-            <div className="text-[10px] uppercase tracking-wider mb-1.5" style={{ color: "#34d399" }}>Meta Archetypes</div>
-            <div className="flex flex-wrap gap-1.5">
-              {era.top.map(t => <Tag key={t} color="#34d399">{t}</Tag>)}
-            </div>
-          </div>
-          {era.low?.length > 0 && (
-            <div>
-              <div className="text-[10px] uppercase tracking-wider mb-1.5" style={{ color: "#f87171" }}>Off-Meta</div>
-              <div className="flex flex-wrap gap-1.5">
-                {era.low.map(t => <Tag key={t} color="#f87171">{t}</Tag>)}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  const comp = item;
+/* ── One archetype/modifier, in the site's card language ─────────── */
+function ComponentCard({ comp, lang }) {
+  const isCore = comp.type === "Core";
+  const color = isCore ? (CORE_HEX[comp.name] || "#9ca3af") : (MODIFIER_HEX[comp.name] || "#9ca3af");
+  const slug = isCore ? ARCH_SLUG[comp.name] : null;
+  const imgSrc = slug ? `/archetypes/${slug}.png` : null;
   const desc = lang === "tr" && comp.desc_tr ? comp.desc_tr : comp.desc;
 
-  return (
-    <div className="p-5">
-      <div className="mb-4">
-        <div className="flex items-center gap-2 mb-1">
-          <span className="font-bold text-lg" style={{ color: comp.colorHex || "var(--accent)" }}>{comp.name}</span>
-          <span className="text-[10px] px-1.5 py-0.5 rounded"
-            style={{
-              color: comp.type === "Core" ? "var(--accent)" : "var(--text-muted)",
-              border: `1px solid ${comp.type === "Core" ? "var(--accent-border)" : "var(--border)"}`,
-            }}>
-            {lang === "tr" ? (comp.type === "Core" ? "Temel" : "Modifier") : comp.type}
-          </span>
-        </div>
-        <p className="text-sm leading-relaxed" style={{ color: "var(--text-primary)" }}>{desc}</p>
-        <div className="mt-2 text-xs" style={{ color: "var(--text-muted)" }}>
-          {lang === "tr" ? "Eşik" : "Threshold"}: <span style={{ color: "var(--accent)" }}>{comp.threshold}</span>
-        </div>
-      </div>
+  const [expanded, setExpanded] = useState(false);
+  const [topPlayers, setTopPlayers] = useState(null);
+  const [loading, setLoading] = useState(false);
 
-      <div className="text-[10px] uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)" }}>
-        {lang === "tr" ? "Metrikler & Ağırlıklar" : "Metrics & Weights"}
+  const toggle = async () => {
+    const next = !expanded;
+    setExpanded(next);
+    if (next && isCore && !topPlayers && !loading) {
+      setLoading(true);
+      try {
+        const d = await api.players({ arch: comp.name, sort_by: "overall_score", limit: 10 });
+        setTopPlayers(d.players || []);
+      } catch (e) { console.error(e); }
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="pcard-stage">
+      <div className={`pcard${expanded ? " pcard-expanded" : ""}`}
+        style={{ "--accent": color, "--accent-a": color + "48", "--accent-b": color + "30", "--accent-line": color + "66" }}
+        onClick={() => !expanded && toggle()}>
+        <div className="pcard-holo" /><div className="pcard-foil" /><div className="pcard-grain" />
+        <span className="pcard-sparkle s1" /><span className="pcard-sparkle s2" /><span className="pcard-sparkle s3" />
+
+        <div className="pcard-top">
+          <span className="pcard-rank top">{comp.type}</span>
+          <span className="pcard-rating">{comp.threshold?.replace("Top ", "")}</span>
+        </div>
+
+        {imgSrc && (
+          <div className="pcard-photo">
+            <img src={imgSrc} alt={comp.name} className="pcard-photo-img" loading="lazy" />
+            <div className="pcard-photo-fade" />
+          </div>
+        )}
+
+        <div className="pcard-nameband" style={!imgSrc ? { marginTop: 14 } : undefined}>
+          <h3 className="pcard-name">{comp.name}</h3>
+          <div className="pcard-meta"><span className="pcard-arch">{comp.threshold} of players</span></div>
+        </div>
+
+        <div className="pcard-stats flat">
+          <p style={{ fontSize: 11.5, lineHeight: 1.45, color: "var(--text-muted)", margin: 0 }}>{desc}</p>
+        </div>
+
+        <div className="pcard-peek" onClick={(e) => { e.stopPropagation(); toggle(); }}>
+          <span>{isCore ? "Top Players" : "Metrics"}</span><span className="pcard-chev">▾</span>
+        </div>
+        <div className="pcard-expand-wrap">
+          <div className="pcard-expand-inner">
+            <div className="pcard-detail">
+              <div className="pcard-tabcontent" onClick={(e) => e.stopPropagation()}>
+                {isCore ? (
+                  loading ? <div className="pcard-loading">Loading…</div> :
+                  topPlayers?.length ? topPlayers.map((p, i) => (
+                    <div key={i} className="pcard-sim-row">
+                      <div>
+                        <div className="pcard-sim-name">{p.PLAYER_NAME}</div>
+                        <div className="pcard-sim-meta">{p.TEAM_ABBREVIATION} · {p.POSITION}</div>
+                      </div>
+                      <div className="pcard-sim-pct">
+                        <div className="v">{p.overall_score != null ? Math.round(p.overall_score * 100) : "—"}</div>
+                        <div className="l">overall</div>
+                      </div>
+                    </div>
+                  )) : <div className="pcard-empty">No data</div>
+                ) : (
+                  (comp.metrics || []).map(m => {
+                    const meta = METRIC_LABELS[m.key] || { label: m.key };
+                    const label = lang === "tr" && meta.label_tr ? meta.label_tr : meta.label;
+                    const pct = Math.round(m.w * 100);
+                    return (
+                      <div key={m.key} className="pcard-arch-item" style={{ gridTemplateColumns: "84px 1fr 26px" }}>
+                        <span className="lbl">{label}</span>
+                        <div className="pcard-arch-track"><div style={{ width: `${pct}%` }} /></div>
+                        <span className="val">{pct}%</span>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-      {comp.metrics.map(m => (
-        <MetricRow key={m.key} metricKey={m.key} w={m.w} higher={m.higher} lang={lang} />
-      ))}
+    </div>
+  );
+}
+
+function EraCard({ era }) {
+  return (
+    <div className="aura-glass rounded-2xl p-5">
+      <div className="flex items-center gap-2 mb-1">
+        <span className="text-[10px] px-2 py-0.5 rounded-full font-bold"
+          style={{ color: era.color, border: `1px solid ${era.color}50`, background: `${era.color}15` }}>
+          {era.short}
+        </span>
+        <span className="font-bold text-base" style={{ color: era.color }}>{era.label}</span>
+        <span className="text-xs ml-auto" style={{ color: "var(--text-faint)" }}>{era.years}</span>
+      </div>
+      <p className="text-xs italic mb-2" style={{ color: "var(--text-muted)" }}>{era.meta}</p>
+      <p className="text-sm leading-relaxed mb-3" style={{ color: "var(--text-primary)" }}>{era.desc}</p>
+      <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap gap-1.5">
+          {era.top.map(t => (
+            <span key={t} className="text-[10px] px-2 py-0.5 rounded-full font-medium"
+              style={{ color: "#34d399", border: "1px solid #34d39940", background: "#34d39915" }}>{t}</span>
+          ))}
+        </div>
+        {era.low?.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {era.low.map(t => (
+              <span key={t} className="text-[10px] px-2 py-0.5 rounded-full font-medium"
+                style={{ color: "#f87171", border: "1px solid #f8717140", background: "#f8717115" }}>{t}</span>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
 /* ── Main ────────────────────────────────────────────────────────── */
-export default function Glossary() {
+export default function GlossaryContent() {
   const { lang } = useLang();
   const [filter, setFilter] = useState("all");
-  const [selected, setSelected] = useState(null);
   const [section, setSection] = useState("components"); // "components" | "eras"
 
   const shownComps = filter === "core" ? CORE_COMPONENTS
@@ -137,116 +169,39 @@ export default function Glossary() {
     : [["all","All"],["core","Core"],["modifier","Modifiers"]];
 
   return (
-    <>
-    <SEO
-      title="Archetype Glossary"
-      description="Full glossary of NBA archetype components: 12 core roles and 22 modifier tags explained with the metrics and thresholds used to classify every player."
-      path="/glossary"
-    />
-    <SplitPane
-      detail={selected ? <CompDetail item={selected} lang={lang} /> : null}
-      onClose={() => setSelected(null)}
-    >
-      <div className="flex flex-col h-full">
-        {/* Section tabs */}
-        <div className="flex shrink-0 border-b px-4 pt-3" style={{ borderColor: "var(--border)" }}>
-          {[["components", lang === "tr" ? "Bileşenler" : "Components"], ["eras", "NBA Eras"]].map(([k, l]) => (
-            <button key={k} onClick={() => { setSection(k); setSelected(null); }}
-              className="mr-4 pb-2 text-sm font-medium transition-colors"
-              style={{
-                color: section === k ? "var(--accent)" : "var(--text-muted)",
-                borderBottom: section === k ? "2px solid var(--accent)" : "2px solid transparent",
-              }}>{l}</button>
-          ))}
-        </div>
+    <div className="flex flex-col h-full min-h-0">
+      {/* Section tabs */}
+      <div className="flex shrink-0 gap-1 px-4 pt-3">
+        {[["components", lang === "tr" ? "Bileşenler" : "Components"], ["eras", "NBA Eras"]].map(([k, l]) => (
+          <button key={k} onClick={() => setSection(k)} className={`aura-pill-btn${section === k ? " active" : ""}`}>{l}</button>
+        ))}
+      </div>
 
-        {section === "components" && (
-          <>
-            {/* Filter bar */}
-            <div className="flex items-center gap-2 px-4 py-2 shrink-0 border-b" style={{ borderColor: "var(--border)" }}>
-              {filterLabels.map(([k, l]) => (
-                <button key={k} onClick={() => setFilter(k)}
-                  className="px-3 py-1 rounded text-xs font-medium transition-colors"
-                  style={{
-                    background: filter === k ? "var(--accent-dim)" : "transparent",
-                    color: filter === k ? "var(--accent)" : "var(--text-muted)",
-                    border: `1px solid ${filter === k ? "var(--accent-border)" : "var(--border)"}`,
-                  }}>{l}</button>
-              ))}
-              <span className="ml-auto text-xs" style={{ color: "var(--text-faint)" }}>{shownComps.length}</span>
+      {section === "components" && (
+        <>
+          {/* Filter bar */}
+          <div className="flex items-center gap-1 px-4 py-2 shrink-0">
+            {filterLabels.map(([k, l]) => (
+              <button key={k} onClick={() => setFilter(k)} className={`aura-pill-btn${filter === k ? " active" : ""}`}>{l}</button>
+            ))}
+            <span className="ml-auto text-xs" style={{ color: "var(--text-faint)" }}>{shownComps.length}</span>
+          </div>
+
+          {/* Card grid */}
+          <div className="flex-1 overflow-y-auto p-5">
+            <div className="grid gap-6 justify-items-center items-start"
+              style={{ gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))" }}>
+              {shownComps.map(comp => <ComponentCard key={comp.name} comp={comp} lang={lang} />)}
             </div>
+          </div>
+        </>
+      )}
 
-            {/* List */}
-            <div className="flex-1 overflow-y-auto">
-              {shownComps.map(comp => {
-                const isActive = selected?.name === comp.name;
-                const desc = lang === "tr" && comp.desc_tr ? comp.desc_tr : comp.desc;
-                return (
-                  <button key={comp.name} onClick={() => setSelected(comp)}
-                    className="w-full flex items-start gap-3 px-4 py-3 text-left transition-colors border-b"
-                    style={{
-                      borderColor: "var(--border)",
-                      background: isActive ? "var(--accent-dim)" : "transparent",
-                    }}
-                    onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = "var(--bg-elevated)"; }}
-                    onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = "transparent"; }}
-                  >
-                    {/* Active indicator */}
-                    {isActive && (
-                      <span className="absolute left-0 w-0.5 h-8 rounded-r" style={{ background: "var(--accent)" }} />
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold" style={{ color: comp.colorHex || "var(--accent)" }}>
-                          {comp.name}
-                        </span>
-                        <span className="text-[9px]" style={{ color: "var(--text-faint)" }}>
-                          {lang === "tr" ? (comp.type === "Core" ? "Temel" : "Modifier") : comp.type}
-                        </span>
-                      </div>
-                      <p className="text-xs mt-0.5 line-clamp-2" style={{ color: "var(--text-muted)" }}>{desc}</p>
-                    </div>
-                    <span className="text-xs shrink-0 mt-0.5" style={{ color: "var(--text-faint)" }}>
-                      {comp.metrics?.length || 0}m
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </>
-        )}
-
-        {section === "eras" && (
-          <div className="flex-1 overflow-y-auto">
-            {ERAS.map(era => {
-              const isActive = selected?._era?.short === era.short;
-              return (
-                <button key={era.short} onClick={() => setSelected({ _era: era })}
-                  className="w-full flex items-start gap-3 px-4 py-3 text-left transition-colors border-b"
-                  style={{
-                    borderColor: "var(--border)",
-                    background: isActive ? `${era.color}12` : "transparent",
-                  }}
-                  onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = "var(--bg-elevated)"; }}
-                  onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = isActive ? `${era.color}12` : "transparent"; }}
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] px-1.5 py-0.5 rounded font-bold"
-                        style={{ color: era.color, border: `1px solid ${era.color}40` }}>
-                        {era.short}
-                      </span>
-                      <span className="text-sm font-semibold" style={{ color: era.color }}>{era.label}</span>
-                      <span className="text-xs" style={{ color: "var(--text-faint)" }}>{era.years}</span>
-                    </div>
-                    <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>{era.meta}</p>
-                  </div>
-                </button>
-              );
-            })}
-
-            {/* Methodology note */}
-            <div className="p-4 m-4 rounded" style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
+      {section === "eras" && (
+        <div className="flex-1 overflow-y-auto p-5">
+          <div className="max-w-2xl mx-auto space-y-4">
+            {ERAS.map(era => <EraCard key={era.short} era={era} />)}
+            <div className="aura-glass p-4 rounded-2xl">
               <div className="text-xs font-semibold mb-2" style={{ color: "var(--text-primary)" }}>
                 How era weights were determined
               </div>
@@ -257,9 +212,8 @@ export default function Glossary() {
               </p>
             </div>
           </div>
-        )}
-      </div>
-    </SplitPane>
-    </>
+        </div>
+      )}
+    </div>
   );
 }

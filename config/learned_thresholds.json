@@ -27,10 +27,6 @@
     "percentile": 0.55,
     "F1": 0.581
   },
-  "Jumbo": {
-    "percentile": 0.55,
-    "F1": 0.2
-  },
   "Shotmaker": {
     "percentile": 0.775,
     "F1": 0.5
