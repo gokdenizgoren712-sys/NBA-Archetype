@@ -413,6 +413,18 @@ COMPONENT_SIGNATURES = {
     # ayrışamıyordu. Gerçek eşleşme-zorluğu verisi (Synergy/BBall-Index tipi)
     # eklenirse Point-of-Attack anlamlı şekilde geri getirilebilir.
 
+    # Switchable ("birden çok pozisyonu savunabilen") BİLİNÇLİ OLARAK
+    # UYGULANMADI (2026-07 modifier denetimi, Downhill/Tempo ile aynı geçişte
+    # değerlendirildi). nba_api'de gerçek savunma-eşleşmesi verisi yok:
+    # LeagueDashPtDefend "Overall" kategorisi sadece close-defender şut
+    # kalitesi veriyor (hangi pozisyonu savunduğu bilgisi yok);
+    # LeagueSeasonMatchups teknik olarak var ama oyuncu-çifti bazlı — 500x500
+    # satırlık ham eşleşme verisini pozisyon çeşitliliğine indirgemek ayrı,
+    # kırılgan bir pipeline gerektirir (rate-limit riski yüksek, tek modifier
+    # için orantısız). Gerçek veri olmadan STL/BLK/pozisyon gibi proxy'lerle
+    # doldurmak, tam olarak Defensive/Point-of-Attack'ın düştüğü hataya
+    # (Stopper'ın kopyası olma) düşerdi — o yüzden atlandı.
+
     # Orijinal Jargon Sözlüğü'nde ("oyunun hızını/ritmini yöneten") tanımlı ama
     # hiç uygulanmamıştı (2026-07 modifier denetimi). Synergy Transition
     # possession-share (gerçek veri, fetch_data.py) + bireysel PACE (Advanced
