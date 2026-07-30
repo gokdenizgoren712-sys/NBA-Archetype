@@ -17,6 +17,7 @@ import time
 import os
 from pathlib import Path
 import pandas as pd
+import numpy as np
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 DATA_DIR.mkdir(exist_ok=True)
@@ -104,6 +105,38 @@ def fetch_player_stats(season: str = "2025-26",
         time.sleep(SLEEP)
 
     return out
+
+
+def fetch_synergy_playtype(season: str = "2025-26", play_type: str = "PRBallHandler",
+                           season_type: str = "Regular Season") -> pd.DataFrame:
+    """Synergy play-type verisi (leaguedashplayerstats'ın DIŞINDA ayrı bir
+    endpoint — gerçek playtype frekans/verimlilik verisi, nba_api'nin
+    SynergyPlayTypes'ı). Pick-and-Roll modifier'ı için eklendi (2026-07
+    modifier denetimi) — önceden DRIVES/FTA/PCT_PTS_PAINT proxy'siyle
+    Slashing/Pressure'ın neredeyse birebir kopyasıydı (r=0.87-0.93),
+    artık gerçek "PnR ball-handler" possession-share + PPP kullanıyor.
+    play_type seçenekleri: PRBallHandler, PRRollman, Isolation, Postup,
+    Spotup, Handoff, Cut, OffScreen, Transition, Misc, OffRebound.
+    POSS_PCT: ofansif possession'ların % kaçı bu play type; PPP: possession
+    başına puan (verimlilik)."""
+    from nba_api.stats.endpoints import synergyplaytypes
+    cp = _cache_path(season, f"synergy_{play_type}")
+    if cp.exists():
+        print(f"[cache] {season} Synergy {play_type}")
+        return pd.read_parquet(cp)
+    try:
+        resp = synergyplaytypes.SynergyPlayTypes(
+            season=season, season_type_all_star=season_type,
+            player_or_team_abbreviation="P", play_type_nullable=play_type,
+            type_grouping_nullable="offensive", per_mode_simple="PerGame",
+        )
+        df = resp.get_data_frames()[0]
+        df.to_parquet(cp)
+        print(f"[fetch] {season} Synergy {play_type} ({len(df)} oyuncu)")
+        return df
+    except Exception as e:
+        print(f"[HATA/yok] {season} Synergy {play_type}: {e}")
+        return pd.DataFrame()
 
 
 def merge_player_tables(tables: dict) -> pd.DataFrame:
@@ -239,6 +272,22 @@ if __name__ == "__main__":
         print("BPM proxy eklendi (OBPM/DBPM/BPM)")
     except Exception as e:
         print(f"[UYARI] compute_bpm başarısız: {e}")
+
+    # Synergy PnR ball-handler — gerçek Pick-and-Roll modifier'ı için
+    # (2026-07 modifier denetimi, bkz. fetch_synergy_playtype docstring).
+    # Synergy sezon-içi takas edilen oyuncular için TAKIM BAŞINA ayrı satır
+    # döndürüyor (aynı PLAYER_ID birden fazla kez) — POSS-ağırlıklı ortalamayla
+    # tek satıra indirilir, yoksa merge sırasında satır çoğalması olur.
+    pnr = fetch_synergy_playtype("2025-26", "PRBallHandler")
+    if not pnr.empty:
+        pnr_agg = (pnr.groupby("PLAYER_ID")
+                   .apply(lambda g: pd.Series({
+                       "PNR_BH_POSS_PCT": np.average(g["POSS_PCT"], weights=g["POSS"].clip(lower=0.01)),
+                       "PNR_BH_PPP":      np.average(g["PPP"], weights=g["POSS"].clip(lower=0.01)),
+                   }), include_groups=False)
+                   .reset_index())
+        df = df.merge(pnr_agg, on="PLAYER_ID", how="left")
+        print(f"Synergy PnR ball-handler eklendi ({len(pnr_agg)} oyuncu, {len(pnr)} takım-satırından)")
 
     df.to_parquet(DATA_DIR / "2025-26__merged.parquet")
     print(f"\nBirleşik tablo: {df.shape[0]} oyuncu, {df.shape[1]} kolon")

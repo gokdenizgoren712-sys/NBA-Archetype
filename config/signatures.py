@@ -373,33 +373,14 @@ COMPONENT_SIGNATURES = {
         },
     },
 
-    "Defensive": {
-        "type": "modifier",
-        "desc": "Defense-first contributor; most impact comes on that end",
-        "percentile_threshold": 0.76,
-        "metrics": {
-            "DEF_RATING":      {"w": 0.26, "higher": False},
-            "STL":             {"w": 0.22, "higher": True},
-            "BLK":             {"w": 0.18, "higher": True},
-            "DEFLECTIONS":     {"w": 0.20, "higher": True},
-            "CONTESTED_SHOTS": {"w": 0.14, "higher": True},
-        },
-    },
-
-    "Point-of-Attack": {
-        "type": "modifier",
-        # Switchable modifier merge edildi — REB ve AST çok pozisyon geçişini yansıtıyor.
-        "desc": "Locks down multiple positions; elite on-ball perimeter defender who can switch",
-        "percentile_threshold": 0.76,
-        "metrics": {
-            "STL":             {"w": 0.28, "higher": True},
-            "DEFLECTIONS":     {"w": 0.24, "higher": True},
-            "DEF_RATING":      {"w": 0.18, "higher": False},
-            "CONTESTED_SHOTS": {"w": 0.10, "higher": True},
-            "REB":             {"w": 0.12, "higher": True},   # switch = ribaund alabilmek
-            "AST":             {"w": 0.08, "higher": True},   # versatility proxy
-        },
-    },
+    # Defensive VE Point-of-Attack 2026-07 modifier denetiminde KALDIRILDI —
+    # ikisi de veride Stopper'ın neredeyse birebir kopyasıydı (Defensive vs
+    # Stopper r=0.936, vs Two-Way r=0.904; Point-of-Attack vs Stopper r=0.949).
+    # Defensive kendi açıklamasında bile "genel savunma şemsiye tag'i" diyordu;
+    # Point-of-Attack'ın gerçek konsepti (kimi savunduğu / eşleşme zorluğu)
+    # bizde hiç veri yok, REB/AST'a proxy olarak sarılmıştı — o yüzden Stopper'dan
+    # ayrışamıyordu. Gerçek eşleşme-zorluğu verisi (Synergy/BBall-Index tipi)
+    # eklenirse Point-of-Attack anlamlı şekilde geri getirilebilir.
 
     "Gravity": {
         "type": "modifier",
@@ -451,17 +432,20 @@ COMPONENT_SIGNATURES = {
         },
     },
 
+    # 2026-07 modifier denetimi: eski proxy (DRIVES/FTA/PCT_PTS_PAINT/AST_PCT)
+    # Slashing ve Pressure'la neredeyse birebir aynı sinyaldi (r=0.87-0.93) —
+    # "sürüşe dayalı hücum" ölçüyordu, PnR'a özgü hiçbir şey yakalamıyordu.
+    # Artık gerçek Synergy play-type verisi (nba_api SynergyPlayTypes,
+    # PRBallHandler) kullanıyor — src/fetch_data.py'nin fetch_synergy_playtype()
+    # fonksiyonu. POSS_PCT: ofansif possession'ların % kaçı PnR ball-handler
+    # olarak; PPP: o possession'larda possession başına puan (verimlilik).
     "Pick-and-Roll": {
         "type": "modifier",
-        "desc": "Produces through pick-and-roll actions — as handler or roll-man",
+        "desc": "Produces through pick-and-roll actions as the ball-handler",
         "percentile_threshold": 0.74,
         "metrics": {
-            "DRIVES":          {"w": 0.24, "higher": True},
-            "FTA":             {"w": 0.20, "higher": True},
-            "PCT_PTS_PAINT":   {"w": 0.20, "higher": True},
-            "AST_PCT":         {"w": 0.14, "higher": True},
-            "AST":             {"w": 0.08, "higher": True},   # sayı çifti
-            "PCT_PTS_OFF_TOV": {"w": 0.14, "higher": True},
+            "PNR_BH_POSS_PCT": {"w": 0.55, "higher": True},   # hacim — ne kadar PnR koşuyor
+            "PNR_BH_PPP":      {"w": 0.45, "higher": True},   # verimlilik — ne kadar iyi kullanıyor
         },
     },
 
