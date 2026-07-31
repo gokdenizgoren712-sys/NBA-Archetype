@@ -6,6 +6,23 @@ import "../components/PlayerCard.css";
 
 const CHANGELOG = [
   {
+    version: "v1.5.0",
+    date_en: "Late July 2026",
+    label_en: "With a Friend (Online) Live + Counter-Jokers + Real Award Badges",
+    items_en: [
+      "With a Friend is live — the fourth and final promised mode. Draft head-to-head against another player over a real-time connection, complete with room codes, a live \"opponent's connection dropped\" banner if they disconnect, and game state that survives a server restart",
+      "New Counter-Joker system, shared by Same Screen and With a Friend: while your opponent is on the clock, an automatic pop-up offers three one-time answers — BAN (block a player from their pick), Force Team, or Force Year (make them re-spin) — instead of a single all-purpose BAN button",
+      "A full How to Play guide, reachable from the mode-select screen: three tiles covering every archetype and modifier, every joker and counter-joker, and a plain-language breakdown of the rating engine's actual weights plus each simulation era's meta",
+      "Player cards now show real career hardware — MVP, DPOY, Finals MVP, championship rings, and Sixth Man of the Year — as visible badges, both on the main site and inside every game mode; also fixed a name-matching bug that had silently hidden these awards for any player with an accented name (Nikola Jokić's three MVPs, for one)",
+      "Position-fit penalties (−10% for a secondary spot, −25% elsewhere) are now shown wherever you place a player in Same Screen and With a Friend, matching what Single Player already showed — placing someone out of position was silently costing rating with no on-screen warning",
+      "The Lineups page and every game mode now share one scoring formula end to end, closing a real ~30-point gap where an identical 5-man lineup could grade wildly differently depending on where it was built; the Lineups page also now splits Defense into separate Rim Protection and Perimeter Defense, matching the game's own pillars",
+      "NBA scoring now pulls in more real tracking data (fixing an under-weighted Engine archetype and a completely unscored Speed archetype) and extends full percentile-based scoring — the same rigor the current season gets — back through every tracking-era season, 2013-14 to today",
+      "G-League and NCAA no longer score the Initiator archetype, since neither league's data includes the optical tracking it depends on — a warning banner explains why on both league pages instead of silently showing a diluted score",
+      "Versatility, lineup affinity, and duo compatibility are now computed from live data end to end — the previous versions had drifted weeks stale and, in one case, disagreed with each other depending on which page you checked",
+      "Bench coverage indicators and click-for-details player popups reconnected across all three playable modes",
+    ],
+  },
+  {
     version: "v1.4.0",
     date_en: "July 2026",
     label_en: "4 Game Modes + Same Screen (Head-to-Head) + BAN Joker",
