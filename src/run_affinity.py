@@ -211,40 +211,23 @@ def main():
         combined5 = lineups5
 
     # 4c. Oyuncu -> arketip eşlemesi
+    # 2026-07: önceden kendi AYRI skorlama yolunu (engine.predict_components +
+    # learned_thresholds.json, sadece 6/12 core noun) çalıştırıyordu — canlı
+    # score_compat.py'den TAMAMEN kopuk, üçüncü bağımsız bir sistemdi. Artık
+    # DOĞRUDAN canlı player_scores.parquet'in primary_arch'ını kullanıyor
+    # (pozisyon maskesi + MIN_PRIMARY + Initiator-bias-guard dahil, tek
+    # gerçek kaynak — bkz. score_compat.py _pick_arch).
     print("\n=== OYUNCU ARKETİP EŞLEMESİ ===")
-    labeled_path = DATA_DIR / "2025-26__labeled.parquet"
-    if not labeled_path.exists():
-        print("[HATA] data/2025-26__labeled.parquet yok. Önce: python src/label_league.py")
+    scores_path = DATA_DIR / "2025-26__player_scores.parquet"
+    if not scores_path.exists():
+        print("[HATA] data/2025-26__player_scores.parquet yok.")
         return
-    labeled = pd.read_parquet(labeled_path)
-
-    # Skor tabanlı arketip eşlemesi (boolean değil, ham skor)
-    merged_path = DATA_DIR / "2025-26__merged.parquet"
-    df_full = pd.read_parquet(merged_path)
-    if "FTA" in df_full.columns and "FGA" in df_full.columns:
-        df_full["FT_RATE"] = (df_full["FTA"] / df_full["FGA"].replace(0, pd.NA)).fillna(0)
-    # Sadece labeled oyuncuları al
-    df_sub = df_full[df_full["PLAYER_NAME"].isin(labeled["PLAYER_NAME"])].reset_index(drop=True)
-    from engine import predict_components, select_signatures
-    import json as _json
-    from signatures import COMPONENT_SIGNATURES
-    sigset = select_signatures(df_sub, force_fallback=False)
-    learned_path = ROOT / "config" / "learned_thresholds.json"
-    if learned_path.exists():
-        learned = _json.loads(learned_path.read_text())
-        for comp in list(sigset.keys()):
-            if comp in learned:
-                sigset[comp] = {**sigset[comp], "percentile_threshold": learned[comp]["percentile"]}
-    scores, _ = predict_components(df_sub, sigset=sigset)
-    scores["PLAYER_NAME"] = df_sub["PLAYER_NAME"].values
-
-    CORE = ["Engine", "Anchor", "Rim Runner", "Spacer", "Connector", "Creator"]
-    core_in_scores = [c for c in CORE if c in scores.columns]
-    player_arch = {}
-    for _, row in scores.iterrows():
-        core_scores = {c: row[c] for c in core_in_scores if not pd.isna(row[c])}
-        if core_scores:
-            player_arch[row["PLAYER_NAME"]] = max(core_scores, key=core_scores.get)
+    scores_df = pd.read_parquet(scores_path)
+    player_arch = {
+        row["PLAYER_NAME"]: row["primary_arch"]
+        for _, row in scores_df.iterrows()
+        if pd.notna(row.get("primary_arch")) and row["primary_arch"]
+    }
 
     # Kısaltmalı isim -> tam isim eşleme (lineup'lar için)
     # Örnek: "S. Gilgeous-Alexander" -> "Shai Gilgeous-Alexander"
