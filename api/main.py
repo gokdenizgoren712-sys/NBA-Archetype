@@ -452,6 +452,21 @@ def _load_scores() -> pd.DataFrame:
         except Exception:
             pass
 
+    # is_versatile/versatility_score — src/versatility.py'nin çıktısı (2026-07
+    # canlı score_X'ten türetilir, önceden bayat/kopuk bir Aşama-3 boolean
+    # pipeline'ına bağlıydı). game/awards.js isVersatile() bu bayrağı score_
+    # All-Around fallback'inden ÖNCE tercih ediyor.
+    versatility_p = DATA / "2025-26__versatility.parquet"
+    if versatility_p.exists():
+        try:
+            vers = pd.read_parquet(versatility_p)
+            want = ["PLAYER_ID", "is_versatile", "versatility_score", "versatility_tier"]
+            merge_cols = [c for c in want if c in vers.columns]
+            if "PLAYER_ID" in merge_cols and len(merge_cols) > 1:
+                df = df.merge(vers[merge_cols], on="PLAYER_ID", how="left")
+        except Exception:
+            pass
+
     # Lig içi overall percentile + tier (runtime'da hesaplanır, parquet'e yazılmaz)
     if "overall_score" in df.columns:
         ranked = df["overall_score"].dropna()
