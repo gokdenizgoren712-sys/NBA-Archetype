@@ -78,6 +78,22 @@ ECO_FALLBACK_MIN = 0.90
 # noun bu eşiği geçtiyse Initiator primary_arch olamaz.
 INITIATOR_BIAS_GUARD = 0.52
 
+# Lig-bazlı çekirdek arketip hariç tutma (2026-07 modifier/arketip denetimi).
+# Initiator'ın ağırlığının %85'i (AVG_SPEED/DIST_MILES/PCT_PTS_FB/TIME_OF_POSS)
+# NCAA/G-League'de hiçbir zaman gerçek veriden gelmeyecek (optik takip
+# altyapısı yok) — motor eksik metrikleri sessizce düşürüp kalan ağırlığı
+# (PASSES_MADE+OBPM) yeniden normalize ediyordu, yani "çalışıyordu" ama hiç
+# gözden geçirilmemiş, tek-boyutlu bir formülle. Kullanıcı kararı: gerçek
+# veri olmadan sulandırılmış bir formülle tutmak yerine, o ligde arketipi
+# tamamen kaldırıp kullanıcıya açıkça bildirmek (frontend uyarısı). EuroLeague
+# şimdilik dışarıda bırakıldı — orada daha fazla arketip aynı sorunu yaşıyor
+# (Initiator/Creator/Rim Runner/Hub/Engine, bkz. git log), veri kaynağını
+# zenginleştirmeden tek tek kesmek yerine ayrı bir denetim gerekiyor.
+LEAGUE_EXCLUDED_NOUNS: dict[str, set[str]] = {
+    "ncaa":    {"Initiator"},
+    "gleague": {"Initiator"},
+}
+
 
 # ─── 1. Oyuncu skor vektörleri ────────────────────────────────────────────────
 
@@ -183,8 +199,9 @@ def build_score_table(season: str = "2025-26", league: str = "nba") -> pd.DataFr
         if col in df.columns:
             out[col] = df[col].values
 
+    excluded_nouns = LEAGUE_EXCLUDED_NOUNS.get(league, set())
     for c in ALL_COMP_COLS:
-        if c in scores.columns:
+        if c in scores.columns and c not in excluded_nouns:
             out[f"score_{c}"] = scores[c].round(3).values
 
     # Pozisyon maskesi: hard exclusion yerine 0.3x soft penalty (versatile oyuncular kısıtlanmasın)

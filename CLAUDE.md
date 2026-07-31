@@ -100,6 +100,18 @@ Bu dosya GROUND TRUTH'tur. Yolu run_validation.py içinde TAGS_XLSX ile ayarla.
   parametreleri var (2026-07 eklendi) ama yalnızca cache'lenmiş sezonlar için çalışır —
   yeni sezon eklemek için ilgili fetch_*.py --season X önce koşulmalı, sonra
   api/admin/clear-cache ile lru_cache temizlenmeli.
+- Çekirdek arketiplerin bazıları ağırlığının büyük kısmını NBA'e özgü optik takip
+  metriklerinden (AVG_SPEED/DIST_MILES/TIME_OF_POSS/PCT_PTS_FB) alıyor — bu veri
+  G-League/NCAA/EuroLeague'de asla gerçek olarak gelmeyecek (bu liglerin altyapısı
+  optik takip içermiyor). 2026-07 denetiminde ölçüldü: NCAA/G-League'de sadece
+  Initiator eşiği aşıyor (%85 eksik ağırlık) — src/score_compat.py'deki
+  LEAGUE_EXCLUDED_NOUNS ile bu iki ligde tamamen kaldırıldı (sulandırılmış/hiç
+  gözden geçirilmemiş bir formülle tutmaktansa açıkça kaldırıp uyarı göstermek
+  tercih edildi). EuroLeague'de durum daha ağır — Initiator/Creator/Rim Runner/
+  Hub/Engine beşi birden %60'ın üzerinde eksik — ama KASITLI OLARAK HENÜZ
+  KESİLMEDİ: önce EuroLeague veri kaynağını (euroleague-api) zenginleştirmenin
+  mümkün olup olmadığına bakılacak, sonra karar verilecek. Bu arada EuroLeague'de
+  bu 5 arketip de aynı sessiz-renormalize sorununu yaşıyor, bilinsin.
 
 ## İLK ÇALIŞTIRMA
 ```

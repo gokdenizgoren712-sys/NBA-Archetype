@@ -6,7 +6,11 @@ import { GLeagueIcon } from "../components/LeagueIcons";
 import PlayerCard from "../components/PlayerCard";
 import AuraSearch from "../components/AuraSearch";
 
-const CORE = ["Engine","Ecosystem","Hub","Connector","Creator","Anchor","Spacer","Finisher","Force","Initiator","Stopper","Rim Runner"];
+// Initiator burada YOK — G-League'de optik takip verisi (hız/mesafe/tempo)
+// hiç gelmiyor, formülünün %85'i sessizce eksik kalıyordu (2026-07 denetimi).
+// Gerçek veri olmadan tek-boyutlu bir formülle tutmak yerine kaldırıldı —
+// bkz. src/score_compat.py LEAGUE_EXCLUDED_NOUNS.
+const CORE = ["Engine","Ecosystem","Hub","Connector","Creator","Anchor","Spacer","Finisher","Force","Stopper","Rim Runner"];
 const POSITIONS = ["","PG","SG","SF","PF","C"];
 const TIER_OPTIONS = ["Elite Prospect","First-Round","Rotation Upside","Developmental","Longshot"];
 
@@ -142,6 +146,12 @@ export default function GLeague() {
         )}
 
         <span className="text-xs px-2" style={{ color: "var(--text-faint)" }}>{total}</span>
+      </div>
+
+      <div className="mx-4 mb-2 px-3 py-2 rounded-lg text-[11px] leading-relaxed shrink-0"
+        style={{ background: "rgba(253,224,71,.08)", border: "1px solid rgba(253,224,71,.25)", color: "var(--text-muted)" }}>
+        G-League has no optical tracking data (speed, distance, pace), so the <strong>Initiator</strong> archetype
+        is not scored in this league — every other archetype is unaffected.
       </div>
 
       {/* Filter drawer */}
