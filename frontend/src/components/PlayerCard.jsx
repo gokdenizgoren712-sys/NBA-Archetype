@@ -1,21 +1,27 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "../api";
-import { MVP_COUNT, DPOY_COUNT, RING_COUNT, FMVP_COUNT, SIXTH_MAN } from "../game/awards";
+import { getAwardBadges } from "../game/awards";
 import "./PlayerCard.css";
 
+const AWARD_STYLE = {
+  MVP:   { color: "#facc15", label: (c) => `MVP×${c}` },
+  DPOY:  { color: "#38bdf8", label: (c) => `DPOY×${c}` },
+  RING:  { color: "#fbbf24", label: (c) => `🏆×${c}` },
+  FMVP:  { color: "#fb923c", label: (c) => `FMVP×${c}` },
+  SIXTH: { color: "#f97316", label: () => "6th Man" },
+};
+
 // Gerçek NBA ödül geçmişi (kariyer toplamları) — game/awards.js'in sahip
-// olduğu aynı veri, kartın KAPALI (varsayılan) halinde de görünsün diye
-// buraya taşındı. Sadece gerçek/doğrulanabilir ödülleri kapsar (MVP/DPOY/
-// FMVP/şampiyonluk yüzüğü/6. Adam) — Versatile/Timeless/Duo gibi oyuna
-// özgü kavramlar KASITLI OLARAK dışarıda bırakıldı (kullanıcı kararı).
+// olduğu aynı veri (getAwardBadges, aksan-duyarsız isim eşleştirmesiyle),
+// kartın KAPALI (varsayılan) halinde de görünsün diye buraya taşındı.
+// Sadece gerçek/doğrulanabilir ödülleri kapsar (MVP/DPOY/FMVP/şampiyonluk
+// yüzüğü/6. Adam) — Versatile/Timeless/Duo gibi oyuna özgü kavramlar
+// KASITLI OLARAK dışarıda bırakıldı (kullanıcı kararı).
 function awardBadges(name) {
-  const badges = [];
-  if (MVP_COUNT[name])      badges.push({ label: `MVP×${MVP_COUNT[name]}`,  color: "#facc15" });
-  if (DPOY_COUNT[name])     badges.push({ label: `DPOY×${DPOY_COUNT[name]}`, color: "#38bdf8" });
-  if (RING_COUNT[name])     badges.push({ label: `🏆×${RING_COUNT[name]}`,   color: "#fbbf24" });
-  if (FMVP_COUNT[name])     badges.push({ label: `FMVP×${FMVP_COUNT[name]}`, color: "#fb923c" });
-  if (SIXTH_MAN.has(name))  badges.push({ label: "6th Man",                  color: "#f97316" });
-  return badges;
+  return getAwardBadges(name).map(({ key, count }) => {
+    const s = AWARD_STYLE[key];
+    return { label: s.label(count), color: s.color };
+  });
 }
 
 const CORE = ["Engine","Ecosystem","Hub","Connector","Creator","Anchor","Spacer","Finisher","Force","Initiator","Stopper","Rim Runner"];

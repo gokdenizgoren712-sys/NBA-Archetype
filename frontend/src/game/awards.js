@@ -74,6 +74,22 @@ export const RING_COUNT = {
   "Chet Holmgren": 1, "Luguentz Dort": 1, "Andrew Wiggins": 1, "Mike Miller": 2,
 };
 
+// İsim eşleştirme aksan-duyarsız (nba_api PLAYER_NAME aksanlı gelir — "Nikola Jokić" —
+// ama yukarıdaki tablolar ASCII yazılmış — "Nikola Jokic" — eşleşmesin diye).
+const DIACRITICS_RE = new RegExp("[\\u0300-\\u036f]", "g");
+function normalizeName(s) {
+  return (s || "").normalize("NFD").replace(DIACRITICS_RE, "").toLowerCase();
+}
+function normalizedLookup(obj) {
+  const out = {};
+  for (const [k, v] of Object.entries(obj)) out[normalizeName(k)] = v;
+  return out;
+}
+const MVP_COUNT_NORM = normalizedLookup(MVP_COUNT);
+const DPOY_COUNT_NORM = normalizedLookup(DPOY_COUNT);
+const FMVP_COUNT_NORM = normalizedLookup(FMVP_COUNT);
+const RING_COUNT_NORM = normalizedLookup(RING_COUNT);
+
 // Sixth Man of the Year kazananları
 export const SIXTH_MAN = new Set([
   "Bobby Jones", "Kevin McHale", "Bill Walton", "Ricky Pierce", "Roy Tarpley",
@@ -86,6 +102,7 @@ export const SIXTH_MAN = new Set([
   "Montrezl Harrell", "Jordan Clarkson", "Tyler Herro", "Malcolm Brogdon",
   "Naz Reid", "Payton Pritchard",
 ]);
+const SIXTH_MAN_NORM = new Set([...SIXTH_MAN].map(normalizeName));
 
 // Dynamic Duo çiftleri — ikisi de kadrodaysa aktifleşir
 export const DUOS = [
@@ -152,21 +169,38 @@ export const TAG_INFO = [
 export function getPlayerTags(player, { onBench = false } = {}) {
   if (!player) return [];
   const name = player.PLAYER_NAME || "";
+  const n = normalizeName(name);
   const tags = [];
 
   // abbr = kompakt rozet (baş harf); label = tam ad
-  if (MVP_COUNT[name])  tags.push({ key: "MVP",      abbr: "M",  label: `MVP×${MVP_COUNT[name]}`,   color: "#facc15", detail: `${MVP_COUNT[name]}× MVP — regular-season rating boost` });
-  if (DPOY_COUNT[name]) tags.push({ key: "DPOY",     abbr: "DP", label: `DPOY×${DPOY_COUNT[name]}`, color: "#38bdf8", detail: `${DPOY_COUNT[name]}× DPOY — defensive rating boost` });
-  if (RING_COUNT[name]) tags.push({ key: "CHAMPION", abbr: "R",  label: `Rings×${RING_COUNT[name]}`, color: "#fbbf24", detail: `${RING_COUNT[name]} rings — playoff rating boost` });
-  if (FMVP_COUNT[name]) tags.push({ key: "FMVP",     abbr: "FM", label: `FMVP×${FMVP_COUNT[name]}`, color: "#fb923c", detail: `${FMVP_COUNT[name]}× Finals MVP — boost in Finals games` });
-  if (SIXTH_MAN.has(name)) tags.push({ key: "SIXTH", abbr: "6M", label: "6th Man",                  color: "#f97316", detail: onBench ? "6th Man — active: +10% off the bench" : "6th Man — boost only when benched" });
+  const mvp = MVP_COUNT_NORM[n], dpoy = DPOY_COUNT_NORM[n], rings = RING_COUNT_NORM[n], fmvp = FMVP_COUNT_NORM[n];
+  if (mvp)   tags.push({ key: "MVP",      abbr: "M",  label: `MVP×${mvp}`,    color: "#facc15", detail: `${mvp}× MVP — regular-season rating boost` });
+  if (dpoy)  tags.push({ key: "DPOY",     abbr: "DP", label: `DPOY×${dpoy}`,  color: "#38bdf8", detail: `${dpoy}× DPOY — defensive rating boost` });
+  if (rings) tags.push({ key: "CHAMPION", abbr: "R",  label: `Rings×${rings}`, color: "#fbbf24", detail: `${rings} rings — playoff rating boost` });
+  if (fmvp)  tags.push({ key: "FMVP",     abbr: "FM", label: `FMVP×${fmvp}`,  color: "#fb923c", detail: `${fmvp}× Finals MVP — boost in Finals games` });
+  if (SIXTH_MAN_NORM.has(n)) tags.push({ key: "SIXTH", abbr: "6M", label: "6th Man",              color: "#f97316", detail: onBench ? "6th Man — active: +10% off the bench" : "6th Man — boost only when benched" });
   if (isVersatile(player)) tags.push({ key: "VERSATILE", abbr: "V", label: "Versatile",             color: "#a78bfa", detail: "Versatile — free at secondary spot, only −10% at the next-nearest" });
   if (isTimeless(player)) tags.push({ key: "TIMELESS", abbr: "TL", label: "Timeless",               color: "#c084fc", detail: "Timeless — no era-distance penalty at all" });
 
-  const partners = DUOS.filter(d => d.includes(name)).map(d => d.find(n => n !== name));
+  const partners = DUOS.filter(d => d.some(p => normalizeName(p) === n)).map(d => d.find(p => normalizeName(p) !== n));
   if (partners.length) tags.push({ key: "DUO", abbr: "DD", label: "Dynamic Duo", color: "#34d399", detail: `Dynamic Duo — draft ${partners.join(" / ")} too for a boost` });
 
   return tags;
+}
+
+// PlayerCard.jsx gibi site tarafındaki tüketiciler için — DUO/Versatile/Timeless
+// hariç, yalnızca gerçek kariyer ödülleri (site kapsamı bilinçli olarak dar
+// tutuluyor, bkz. PlayerCard.jsx awardBadges()).
+export function getAwardBadges(name) {
+  const n = normalizeName(name);
+  const badges = [];
+  const mvp = MVP_COUNT_NORM[n], dpoy = DPOY_COUNT_NORM[n], rings = RING_COUNT_NORM[n], fmvp = FMVP_COUNT_NORM[n];
+  if (mvp)   badges.push({ key: "MVP", count: mvp });
+  if (dpoy)  badges.push({ key: "DPOY", count: dpoy });
+  if (rings) badges.push({ key: "RING", count: rings });
+  if (fmvp)  badges.push({ key: "FMVP", count: fmvp });
+  if (SIXTH_MAN_NORM.has(n)) badges.push({ key: "SIXTH" });
+  return badges;
 }
 
 export function isTimeless(player) {
@@ -188,25 +222,25 @@ export function isVersatile(player) {
   return (parseFloat(player?.["score_All-Around"] ?? 0) || 0) >= 0.62;
 }
 
-export function isSixthMan(name) { return SIXTH_MAN.has(name); }
+export function isSixthMan(name) { return SIXTH_MAN_NORM.has(normalizeName(name)); }
 
 // ── Sim etkileri ─────────────────────────────────────────────────────────────
 // Tüm kadro (starters + bench) üzerinden ödül bonusları.
 // Dönen değerler rating ölçeğinde (0.01 ≈ ~1 galibiyet).
 export function awardEffects(starters, bench = []) {
   const roster = [...starters, ...bench];
-  const names = new Set(roster.map(p => p.PLAYER_NAME));
+  const names = new Set(roster.map(p => normalizeName(p.PLAYER_NAME)));
   const notes = [];
 
   let regular = 0, playoff = 0, finals = 0;
 
   let mvpSum = 0, dpoySum = 0, ringSum = 0, fmvpSum = 0;
   for (const p of roster) {
-    const n = p.PLAYER_NAME || "";
-    if (MVP_COUNT[n])  mvpSum  += MVP_COUNT[n];
-    if (DPOY_COUNT[n]) dpoySum += DPOY_COUNT[n];
-    if (RING_COUNT[n]) ringSum += RING_COUNT[n];
-    if (FMVP_COUNT[n]) fmvpSum += FMVP_COUNT[n];
+    const n = normalizeName(p.PLAYER_NAME || "");
+    if (MVP_COUNT_NORM[n])  mvpSum  += MVP_COUNT_NORM[n];
+    if (DPOY_COUNT_NORM[n]) dpoySum += DPOY_COUNT_NORM[n];
+    if (RING_COUNT_NORM[n]) ringSum += RING_COUNT_NORM[n];
+    if (FMVP_COUNT_NORM[n]) fmvpSum += FMVP_COUNT_NORM[n];
   }
   if (mvpSum)  { const v = Math.min(0.012, mvpSum  * 0.003); regular += v; notes.push(`MVP pedigree +${(v*100).toFixed(1)}`); }
   if (dpoySum) { const v = Math.min(0.010, dpoySum * 0.003); regular += v; notes.push(`DPOY defense +${(v*100).toFixed(1)}`); }
@@ -214,7 +248,7 @@ export function awardEffects(starters, bench = []) {
   if (fmvpSum) { const v = Math.min(0.030, fmvpSum * 0.008); finals  += v; notes.push(`Finals MVP gene +${(v*100).toFixed(1)} (Finals only)`); }
 
   // Dynamic Duo: her aktif çift +0.012, en fazla 2 çift
-  const activeDuos = DUOS.filter(([a, b]) => names.has(a) && names.has(b));
+  const activeDuos = DUOS.filter(([a, b]) => names.has(normalizeName(a)) && names.has(normalizeName(b)));
   if (activeDuos.length) {
     const v = Math.min(0.024, activeDuos.length * 0.012);
     regular += v;
