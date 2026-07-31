@@ -4,6 +4,8 @@ import { getPrimaryPos, POS_COLORS } from "./positions";
 // ── Lineup slot ───────────────────────────────────────────────────────────────
 export default function LineupSlot({ pos, player, bench = false, selected = false, canTap = false, onTap, onInfo }) {
   const isPrimary = !bench && player && getPrimaryPos(player) === pos;
+  const pen = !bench && player ? (player._posPenalty ?? 1) : 1;
+  const penLabel = pen >= 1 ? null : pen >= 0.90 ? "−10%" : "−25%";
   const posLabel = bench ? "BENCH" : pos;
   return (
     <div onClick={() => canTap && onTap && onTap(pos)}
@@ -25,6 +27,7 @@ export default function LineupSlot({ pos, player, bench = false, selected = fals
           </div>
           <div className="text-[8.5px] text-gray-500">{(player._season || "").slice(0, 4)}</div>
           {isPrimary && <div className="text-yamabuki flex justify-center mt-0.5"><StarIcon size={9} /></div>}
+          {penLabel && <div className="text-[8px] font-medium text-red-400/90 leading-tight">{penLabel}</div>}
         </>
       ) : (
         <div className="text-gray-700 text-sm">—</div>

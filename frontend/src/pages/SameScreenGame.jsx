@@ -4,7 +4,7 @@ import { ERAS, ERA_META_BLURB } from "../game/eras";
 import { COACHES } from "../game/coaches";
 import { getPlayerTags } from "../game/awards";
 import {
-  POSITIONS, BENCH_SLOTS, ALL_SLOTS, getPrimaryPos, getEligiblePos, posPenaltyFor, POS_COLORS,
+  POSITIONS, BENCH_SLOTS, ALL_SLOTS, getPrimaryPos, getEligiblePos, posPenaltyFor, isFlex, POS_COLORS,
 } from "../game/positions";
 import { START_BUDGET, totalSpent, maxSpendNow, applyTeamPricing, priceOf } from "../game/salary";
 import { computeLineupFit } from "../game/lineupScore";
@@ -687,11 +687,15 @@ function PlayerSeatPanel({
             {POSITIONS.filter(p => !lineup[p]).map(pos => {
               const isElig = eligible.includes(pos);
               const isPrim = eligible[0] === pos;
+              const pen = posPenaltyFor(pickedPlayer, pos);
+              const penLabel = pen >= 1 ? null : pen >= 0.90 ? "−10%" : "−25%";
               return (
                 <button key={pos} onClick={() => onPlacePos(pos)}
                   className={`flex-1 min-w-[3rem] py-1.5 border rounded-lg font-bold text-xs transition-all
                     ${isPrim ? "bg-yamabuki/30 border-yamabuki/60 text-yamabuki" : isElig ? "bg-surfaceCard border-gray-600 text-white" : "bg-surfaceBg/50 border-gray-800 text-gray-500"}`}>
-                  {pos}{isPrim && <StarIcon size={9} />}
+                  <div className="inline-flex items-center gap-0.5 justify-center">{pos}{isPrim && <StarIcon size={9} />}</div>
+                  {penLabel && <div className="text-[8px] font-medium text-red-400/90 leading-tight">{penLabel}</div>}
+                  {!penLabel && !isPrim && isFlex(pickedPlayer) && <div className="text-[8px] font-medium text-violet-400 leading-tight">vers.</div>}
                 </button>
               );
             })}
