@@ -48,6 +48,18 @@ data/*
 
 # Tracking-era tarihsel sezonlar (2013-14+) — zengin percentile skorlama ile
 # geri-doldurulmuş sezonlar, get_historical() bunları öncelikli okur (bkz.
-# api/main.py _load_scores_for_season). 2026-07 prototip: 2023-24 + 2024-25.
+# api/main.py _load_scores_for_season). 2026-07: prototip (2023-24, 2024-25)
+# onaylandı, kalan 10 sezona (2013-14–2022-23) genişletildi — tracking
+# verisinin NBA'de var olduğu TÜM sezonlar artık zengin yoldan geçiyor.
 !data/2024-25__player_scores.parquet
 !data/2023-24__player_scores.parquet
+!data/2022-23__player_scores.parquet
+!data/2021-22__player_scores.parquet
+!data/2020-21__player_scores.parquet
+!data/2019-20__player_scores.parquet
+!data/2018-19__player_scores.parquet
+!data/2017-18__player_scores.parquet
+!data/2016-17__player_scores.parquet
+!data/2015-16__player_scores.parquet
+!data/2014-15__player_scores.parquet
+!data/2013-14__player_scores.parquet
