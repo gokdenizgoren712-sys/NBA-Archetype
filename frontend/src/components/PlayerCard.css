@@ -456,6 +456,43 @@
 .pcard-sw-chip.good { background: rgba(16,185,129,.10); color: #10b981; border: 1px solid rgba(16,185,129,.25); }
 .pcard-sw-chip.bad { background: rgba(239,68,68,.10); color: #ef4444; border: 1px solid rgba(239,68,68,.25); }
 
+/* ── Mode card — Game section's entry screen. Same shell DNA (edge-bevel,
+   holo, organic blob) as everywhere else, adapted for a "pick one" grid
+   instead of a data card: no photo, just an icon + a live/soon badge. */
+.mode-card {
+  position: relative; border-radius: 18px; overflow: hidden; cursor: pointer;
+  background: linear-gradient(160deg, #17151b 0%, #0c0b0e 55%, #14100a 100%);
+  border: 1px solid var(--border);
+  padding: 30px 20px 26px; text-align: center;
+  transition: transform 0.25s cubic-bezier(0.2, 0.7, 0.3, 1), border-color 0.3s ease;
+}
+.mode-card:hover { transform: translateY(-3px); border-color: var(--accent-line); }
+.mode-card.disabled { cursor: not-allowed; }
+.mode-card.disabled:hover { transform: none; }
+.mode-card::before {
+  content: ""; position: absolute; inset: 0; z-index: 4; pointer-events: none; border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(150deg, var(--accent-line) 0%, transparent 30%, transparent 70%, var(--accent-line) 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude; opacity: 0.85;
+}
+.mode-card-badge {
+  position: absolute; z-index: 3; top: 12px; right: 12px;
+  font-family: var(--font-logo); font-size: 8.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+  padding: 3px 9px; border-radius: 20px; border: 1px solid; color: var(--accent); border-color: var(--accent-line);
+  background: var(--accent-a);
+}
+.mode-card-icon {
+  position: relative; z-index: 3; width: 58px; height: 58px; margin: 0 auto 16px; border-radius: 16px;
+  display: flex; align-items: center; justify-content: center; color: var(--accent);
+  background: var(--accent-a); border: 1px solid var(--accent-line);
+}
+.mode-card-title {
+  position: relative; z-index: 3; font-family: var(--font-logo); font-weight: 700; font-size: 15px;
+  letter-spacing: 0.03em; text-transform: uppercase; color: var(--text-primary);
+}
+.mode-card-desc { position: relative; z-index: 3; font-size: 11.5px; color: var(--text-muted); margin-top: 7px; line-height: 1.55; }
+
 /* Chunky striped pillar bar — replaces the flat gradient progress bar.
    Diagonal chunk texture borrowed from the card's own holo stripe recipe
    (.pcard-holo), just re-scaled for a thin bar, colored by --fill-color. */

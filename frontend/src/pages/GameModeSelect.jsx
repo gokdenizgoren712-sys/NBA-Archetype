@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { SEO } from "../hooks/useSEO";
 import { PlayIcon, UsersIcon, GlobeIcon, ScreenIcon } from "../game/GameIcons";
 import HowToPlayModal from "../game/HowToPlayModal";
+import "../components/PlayerCard.css";
 
 const MODES = [
   {
@@ -12,6 +13,7 @@ const MODES = [
     desc: "Daily challenge to fill the lineup grid",
     path: "/game/single",
     live: true,
+    accent: "#FFB11B",
   },
   {
     key: "friend",
@@ -20,6 +22,7 @@ const MODES = [
     desc: "Challenge a friend to a head-to-head draft",
     path: "/game/friend",
     live: true,
+    accent: "#60a5fa",
   },
   {
     key: "online",
@@ -28,6 +31,7 @@ const MODES = [
     desc: "Compete with another online fan",
     path: "/game/online",
     live: false,
+    accent: "#9ca3af",
   },
   {
     key: "same-screen",
@@ -36,6 +40,7 @@ const MODES = [
     desc: "Play with a friend on the same device",
     path: "/game/same-screen",
     live: true,
+    accent: "#4ade80",
   },
 ];
 
@@ -51,43 +56,32 @@ export default function GameModeSelect() {
         path="/game"
       />
       <div className="min-h-full flex flex-col items-center justify-center p-6">
-        <div className="text-center mb-8">
-          <h1 className="font-logo text-3xl font-bold text-white tracking-wide">Lineup Builder</h1>
-          <p className="text-sm text-gray-500 mt-2">Pick a mode to start drafting</p>
+        <div className="relative text-center mb-9 overflow-visible">
+          <span className="aura-blob" style={{ "--slot-color": "#FFB11B", left: "50%", top: -20, width: 260, height: 160, transform: "translateX(-50%)", opacity: 0.2 }} />
+          <h1 className="relative font-logo text-3xl font-bold text-white tracking-wide">Lineup Builder</h1>
+          <p className="relative text-sm mt-2" style={{ color: "var(--text-muted)" }}>Pick a mode to start drafting</p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-xl">
-          {MODES.map(({ key, Icon, title, desc, path, live }) => (
-            <button
+          {MODES.map(({ key, Icon, title, desc, path, live, accent }) => (
+            <div
               key={key}
-              disabled={!live}
               onClick={() => live && navigate(path)}
-              className={`relative text-center rounded-2xl border p-6 transition-all
-                ${live
-                  ? "border-gray-800 bg-surfaceBg hover:border-yamabuki/60 hover:bg-surfaceCard cursor-pointer"
-                  : "border-gray-800/60 bg-surfaceBg/50 cursor-not-allowed"}`}
+              className={`mode-card${live ? "" : " disabled"}`}
+              style={{ "--accent": accent, "--accent-a": accent + "1a", "--accent-line": accent + "55" }}
             >
-              {!live && (
-                <span className="absolute top-3 right-3 text-[9px] font-logo font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border border-gray-700 text-gray-500">
-                  Coming Soon
-                </span>
-              )}
-              <div className={`flex justify-center mb-3 ${live ? "text-yamabuki" : "text-gray-600"}`}>
-                <Icon size={34} />
-              </div>
-              <div className={`font-logo text-base font-bold uppercase tracking-wide ${live ? "text-yamabuki" : "text-gray-500"}`}>
-                {title}
-              </div>
-              <div className={`text-xs mt-1.5 leading-snug ${live ? "text-gray-400" : "text-gray-600"}`}>
-                {desc}
-              </div>
-            </button>
+              <div className="pcard-holo" /><div className="pcard-grain" />
+              <span className="aura-blob" style={{ "--slot-color": accent, right: -20, top: -20, width: 130, height: 100, opacity: live ? 0.22 : 0.1, zIndex: 0 }} />
+              <span className="mode-card-badge">{live ? "Live" : "Coming Soon"}</span>
+              <div className="mode-card-icon"><Icon size={28} /></div>
+              <div className="mode-card-title" style={{ opacity: live ? 1 : 0.55 }}>{title}</div>
+              <div className="mode-card-desc" style={{ opacity: live ? 1 : 0.6 }}>{desc}</div>
+            </div>
           ))}
         </div>
 
-        <div className="mt-6">
-          <button onClick={() => setHowToPlayOpen(true)}
-            className="text-xs text-gray-500 hover:text-yamabuki underline underline-offset-2 transition-colors">
+        <div className="mt-7">
+          <button onClick={() => setHowToPlayOpen(true)} className="aura-pill-btn">
             How to Play
           </button>
         </div>
