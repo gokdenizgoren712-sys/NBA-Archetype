@@ -934,6 +934,7 @@ def clear_cache(_user=Depends(_require_admin_early)):
     _load_real_lineups.cache_clear()
     _load_lineups_with_archs.cache_clear()
     _load_position_lookup.cache_clear()
+    _load_role_stats.cache_clear()
     global _SCORES_MTIME, _HIST_MTIME
     _SCORES_MTIME = 0.0
     _HIST_MTIME   = 0.0
@@ -1449,13 +1450,20 @@ def get_affinity_lineups(
     }
 
 
-@app.get("/api/role-stats")
-def get_role_stats():
+@lru_cache(maxsize=1)
+def _load_role_stats() -> dict:
     """
     Lig genelinde 11 fonksiyonel rol istatistikleri:
     - coverage_rate: kaç % oyuncu o rolde ≥0.70 skora sahip
     - avg_score: lig ortalaması
     - net_rating_corr: role skoru ile NET_RATING korelasyonu (kazanma etkisi)
+
+    2026-07: girdisi (_load_scores(), sabit merged parquet) sezon içinde
+    değişmediği halde bu endpoint önbelleksizdi — compute_role_vec'in
+    oyuncu başına .iloc döngüsü her istekte ~600-1100ms'ye mal oluyordu
+    (Lineups sayfasındaki en yavaş çağrı, top_lineup_compat/duo_compat gibi
+    zaten lru_cache'li komşularının çok üzerinde). Aynı önbellekleme deseni
+    (bkz. _load_duo_compat/_load_lineup_compat) buraya da uygulandı.
     """
     from roles import ROLE_SLOTS, compute_role_vec
     df = _load_scores()
@@ -1506,6 +1514,11 @@ def get_role_stats():
         "roles": stats,
         "by_impact": [s["slot"] for s in stats_sorted],
     }
+
+
+@app.get("/api/role-stats")
+def get_role_stats():
+    return _load_role_stats()
 
 
 @app.get("/api/seasons")
