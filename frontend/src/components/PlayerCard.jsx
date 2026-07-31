@@ -26,8 +26,7 @@ const ARCH_SLUG = {
 };
 
 const TAG_LABEL = {
-  "Point-": "Pt.Fwd", "3-and-D": "3&D",
-  "Pick-and-Roll": "P&R", "Point-of-Attack": "PoA",
+  "3-and-D": "3&D", "Pick-and-Roll": "P&R",
 };
 const tl = n => TAG_LABEL[n] || n;
 

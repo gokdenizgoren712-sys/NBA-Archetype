@@ -178,9 +178,14 @@ export function isTimeless(player) {
 
 export function isVersatile(player) {
   // Backend havuz-göreli bayrağı (üst ~%15) varsa onu kullan; yoksa
-  // modern score_Versatile eşiğine düş (0.68 ~ üst %10, eski 0.75 max'ın üstündeydi).
+  // score_All-Around eşiğine düş. Versatile modifier'ı 2026-07 modifier
+  // denetiminde kaldırılıp konsepti All-Around'a taşındığı için (Playmaking'le
+  // r=0.89 örtüşme) score_Versatile artık hiç yok — bu fonksiyon her zaman
+  // false dönüyordu. 0.62 ~ All-Around dağılımının üst %10'u (eski score_Versatile
+  // eşiğiyle aynı "nadir" hedefi korunuyor, All-Around'un kendi — çok daha geniş —
+  // dağılımına göre yeniden kalibre edildi).
   if (player?.is_versatile != null) return !!player.is_versatile;
-  return (parseFloat(player?.["score_Versatile"] ?? 0) || 0) >= 0.68;
+  return (parseFloat(player?.["score_All-Around"] ?? 0) || 0) >= 0.62;
 }
 
 export function isSixthMan(name) { return SIXTH_MAN.has(name); }

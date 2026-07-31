@@ -16,7 +16,7 @@ export function computePlayerFit(p, simEra) {
   const creation   = Math.min(1, Math.max(_s("Ecosystem")*1.10, _s("Engine"), _s("Hub")*0.90, _s("Creator")*0.88, _s("Initiator")*0.80));
   const spacing    = Math.min(1, Math.max(_s("Spacer"), _s("3-and-D")*0.90, _s("Stretch")*0.85, _s("Gravity")*0.95, _s("Three-Level")*0.80));
   const rimProt    = Math.min(1, Math.max(_s("Anchor")*1.10, _s("Force")*0.80, _s("Rim Runner")*0.45));
-  const perimD     = Math.min(1, Math.max(_s("Stopper"), _s("Two-Way")*0.92, _s("Point-of-Attack")*0.90, _s("Defensive")*0.90));
+  const perimD     = _s("Stopper");
   const finishing  = Math.min(1, Math.max(_s("Finisher"), _s("Rim Runner")*0.95, _s("Force")*0.75, _s("Slashing")*0.82));
   const overall    = Math.min(1, Math.max(0, parseFloat(p.overall_score || 0)));
   const { homeEra, dist, fitShift, distP, timeless } = eraDistFactor(p, simEra || ERAS[5]);

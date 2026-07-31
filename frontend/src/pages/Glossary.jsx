@@ -16,12 +16,12 @@ const ARCH_SLUG = {
   Force: "force", Initiator: "initiator", Stopper: "stopper", "Rim Runner": "rim-runner",
 };
 const MODIFIER_HEX = {
-  "Two-Way": "#a78bfa", Heliocentric: "#fdba74", Pressure: "#fca5a5",
+  Heliocentric: "#fdba74", Pressure: "#fca5a5",
   Shotmaker: "#fde047", "Three-Level": "#f472b6", Scoring: "#fda4af", Speed: "#67e8f9",
-  Versatile: "#818cf8", Defensive: "#94a3b8", "Half-Court": "#fcd34d", "Point-of-Attack": "#f87171",
-  Gravity: "#c4b5fd", Scalable: "#86efac", Stretch: "#7dd3fc", "Point-": "#93c5fd",
-  "Off-Ball": "#d8b4fe", Slashing: "#fca5a5", "Pick-and-Roll": "#facc15", "3-and-D": "#60a5fa",
-  Playmaking: "#4ade80", Secondary: "#cbd5e1",
+  "All-Around": "#fbbf24",
+  Gravity: "#c4b5fd", Stretch: "#7dd3fc",
+  Slashing: "#f87171", "Pick-and-Roll": "#facc15", "3-and-D": "#60a5fa",
+  Playmaking: "#4ade80",
 };
 
 /* ── One archetype/modifier, in the site's card language ─────────── */

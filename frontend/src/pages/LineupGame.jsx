@@ -45,7 +45,7 @@ const PILLAR_SCORE_KEYS = {
   creation:       ["Engine","Ecosystem","Creator","Hub","Initiator"],
   spacing:        ["Spacer","Three-Level","Gravity","Shotmaker"],
   rim_protection: ["Anchor","Force"],
-  perimeter_d:    ["Stopper","Two-Way","Point-of-Attack","Defensive"],
+  perimeter_d:    ["Stopper"],
   finishing:      ["Finisher","Rim Runner","Force"],
 };
 

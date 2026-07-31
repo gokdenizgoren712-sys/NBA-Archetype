@@ -46,7 +46,7 @@ export function computePlayerFit(p) {
   // components as before so `defense = max(rim, perimeter)` reproduces the
   // exact prior combined value and doesn't move anyone's fit score/grade.
   const rimProtection = Math.min(1, Math.max(_s(p,"Anchor")*1.10, _s(p,"Force")*0.65));
-  const perimeterDef  = Math.min(1, Math.max(_s(p,"Stopper"), _s(p,"Two-Way")*0.90));
+  const perimeterDef  = _s(p,"Stopper");
   const defense   = Math.max(rimProtection, perimeterDef);
   const finishing = Math.min(1, Math.max(_s(p,"Finisher"), _s(p,"Rim Runner")*0.95, _s(p,"Force")*0.75, _s(p,"Slashing")*0.82));
   const overall   = Math.min(1, Math.max(0, parseFloat(p.overall_score || 0)));
