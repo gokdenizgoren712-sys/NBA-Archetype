@@ -476,6 +476,38 @@ def _load_scores() -> pd.DataFrame:
     return df
 
 
+@lru_cache(maxsize=16)
+def _load_scores_for_season(season: str) -> pd.DataFrame | None:
+    """_load_scores()'un (sabit '2025-26') genellenmiş hali — 2026-07'de
+    tracking-era tarihsel sezonları (2013-14+) da canlı sezonla AYNI zengin
+    percentile/score_compat.py yolundan geçirme genişlemesi için eklendi
+    (bkz. src/fetch_data.py fetch_full_season, src/fetch_bref_positions.py
+    sezon-parametreli hale getirilmesi). Yalnızca get_historical() kullanır.
+    Dosya yoksa None döner — o sezon eski boolean historical__labeled.parquet
+    yoluna düşmeye devam eder (bkz. çağıran kod)."""
+    p = DATA / f"{season}__player_scores.parquet"
+    if not p.exists():
+        return None
+    df = pd.read_parquet(p)
+    score_cols = [c for c in df.columns if c.startswith("score_")]
+    df[score_cols] = df[score_cols].fillna(0)
+    df["POS5"]           = _assign_pos5(df)
+    df["POS5_SECONDARY"] = _assign_secondary_pos(df, df["POS5"])
+    df["POS5_TERTIARY"]  = _assign_tertiary_pos(df["POS5"], df["POS5_SECONDARY"])
+    if "overall_score" in df.columns:
+        ranked = df["overall_score"].dropna()
+        if len(ranked) > 0:
+            df["overall_pct"] = df["overall_score"].rank(pct=True, na_option="keep").round(3)
+            def _tier(pct):
+                if pd.isna(pct): return ""
+                if pct >= 0.90: return "Elite"
+                if pct >= 0.75: return "Star"
+                if pct >= 0.50: return "Starter"
+                return "Role Player"
+            df["overall_tier"] = df["overall_pct"].apply(_tier)
+    return df
+
+
 def _apply_prospect(df: pd.DataFrame, max_age=None) -> pd.DataFrame:
     """P3 prospect alanlarını ekle (floor/ceiling/grade/tier + strengths/weaknesses).
     max_age: bu yaşın üstü prospect NaN (EuroLeague=21). Hata olursa df'i döner."""
@@ -1471,22 +1503,32 @@ def get_historical(
         df = _load_scores().copy()
         df["SEASON"] = "2025-26"
     else:
-        hist = _load_historical()
-        df = hist[hist["SEASON"] == season].copy()
-        if df.empty:
-            raise HTTPException(404, f"Season {season} not found")
-        # hist_Base'den ek stat sütunlarını merge et (STL, BLK, FG_PCT, FG3_PCT)
-        base_stats = _load_hist_base_stats(season)
-        if not base_stats.empty and "PLAYER_ID" in df.columns:
-            missing_cols = [c for c in base_stats.columns if c != "PLAYER_ID" and c not in df.columns]
-            if missing_cols:
-                df = df.merge(base_stats[["PLAYER_ID"] + missing_cols], on="PLAYER_ID", how="left")
+        # 2013-14+ tracking-era sezonlar için zengin percentile veri varsa
+        # (fetch_full_season + build_score_table ile üretilmiş) onu kullan —
+        # yoksa eski boolean historical__labeled.parquet yoluna düş.
+        rich = _load_scores_for_season(season)
+        if rich is not None:
+            df = rich.copy()
+            df["SEASON"] = season
+        else:
+            hist = _load_historical()
+            df = hist[hist["SEASON"] == season].copy()
+            if df.empty:
+                raise HTTPException(404, f"Season {season} not found")
+            # hist_Base'den ek stat sütunlarını merge et (STL, BLK, FG_PCT, FG3_PCT)
+            base_stats = _load_hist_base_stats(season)
+            if not base_stats.empty and "PLAYER_ID" in df.columns:
+                missing_cols = [c for c in base_stats.columns if c != "PLAYER_ID" and c not in df.columns]
+                if missing_cols:
+                    df = df.merge(base_stats[["PLAYER_ID"] + missing_cols], on="PLAYER_ID", how="left")
 
     if search:
         df = _search_player(df, search)
 
-    if season == "2025-26":
-        # score_ sütunlarından bileşen listesi (threshold 0.50)
+    # Zengin percentile veri (2025-26 VEYA tracking-era backfill) score_
+    # sütunlarından bileşen listesi kurar; eski boolean tarihsel sezonlar
+    # kendi True/False sütunlarından kurar.
+    if any(c.startswith("score_") for c in df.columns):
         score_cols = {c.replace("score_",""): c for c in df.columns if c.startswith("score_") and c.replace("score_","") in COMP_COLS}
         df["Bileşenler"] = df.apply(
             lambda r: " | ".join(cn for cn, sc in score_cols.items() if float(r.get(sc, 0) or 0) >= 0.50), axis=1)

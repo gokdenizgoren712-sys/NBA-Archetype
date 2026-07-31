@@ -22,11 +22,25 @@ ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / "data"
 
 # BBR sezon yılı: 2025-26 sezonu → URL'de NBA_2026
-BBR_YEAR     = 2026
-BBR_URL      = f"https://www.basketball-reference.com/leagues/NBA_{BBR_YEAR}_per_game.html"
-BBR_ADV_URL  = f"https://www.basketball-reference.com/leagues/NBA_{BBR_YEAR}_advanced.html"
-CACHE        = DATA / f"bref_positions_{BBR_YEAR}.parquet"
-CACHE_ADV    = DATA / f"bref_advanced_{BBR_YEAR}.parquet"
+BBR_YEAR     = 2026   # varsayılan: canlı/güncel sezon (geriye dönük uyumluluk)
+
+
+def _bbr_urls(bbr_year: int) -> tuple[str, str]:
+    return (
+        f"https://www.basketball-reference.com/leagues/NBA_{bbr_year}_per_game.html",
+        f"https://www.basketball-reference.com/leagues/NBA_{bbr_year}_advanced.html",
+    )
+
+
+def _bbr_cache_paths(bbr_year: int) -> tuple[Path, Path]:
+    return (
+        DATA / f"bref_positions_{bbr_year}.parquet",
+        DATA / f"bref_advanced_{bbr_year}.parquet",
+    )
+
+
+BBR_URL, BBR_ADV_URL = _bbr_urls(BBR_YEAR)
+CACHE, CACHE_ADV = _bbr_cache_paths(BBR_YEAR)
 
 HEADERS = {
     "User-Agent": (
@@ -80,21 +94,25 @@ _MANUAL_MAP: dict[str, str] = {
 }
 
 
-def fetch_bref_positions(use_cache: bool = True) -> pd.DataFrame:
+def fetch_bref_positions(use_cache: bool = True, bbr_year: int = BBR_YEAR) -> pd.DataFrame:
     """
     BBR per-game sayfasından oyuncu adı + BBR pozisyonu çeker.
+    bbr_year: BBR'nin sezon-bitiş-yılı formatı (2025-26 sezonu -> 2026,
+    2013-14 sezonu -> 2014) — tarihsel sezonları geriye dönük çekebilmek için.
 
     Dönen DataFrame sütunları:
         bref_name       : BBR ismi (ASCII normalize)
         bref_pos_raw    : BBR ham pozisyon (ör. "C", "PF-C", "SG-SF")
         bref_pos        : 5 pozisyona indirilmiş (PG/SG/SF/PF/C)
     """
-    if use_cache and CACHE.exists():
-        print(f"[bref] Cache yüklendi: {CACHE.name}")
-        return pd.read_parquet(CACHE)
+    url, _ = _bbr_urls(bbr_year)
+    cache, _ = _bbr_cache_paths(bbr_year)
+    if use_cache and cache.exists():
+        print(f"[bref] Cache yüklendi: {cache.name}")
+        return pd.read_parquet(cache)
 
-    print(f"[bref] Cekiliyor: {BBR_URL}")
-    resp = requests.get(BBR_URL, headers=HEADERS, timeout=30)
+    print(f"[bref] Cekiliyor: {url}")
+    resp = requests.get(url, headers=HEADERS, timeout=30)
     resp.raise_for_status()
     # requests bazen Latin-1 varsayar; BBR UTF-8 gonderir
     resp.encoding = "utf-8"
@@ -121,22 +139,25 @@ def fetch_bref_positions(use_cache: bool = True) -> pd.DataFrame:
     df = pd.DataFrame(rows).drop_duplicates("bref_name")
     df["bref_pos"] = df["bref_pos_raw"].map(_BBR_POS_MAP).fillna("SF")
 
-    df.to_parquet(CACHE)
-    print(f"[bref] {len(df)} oyuncu kaydedildi -> {CACHE.name}")
+    df.to_parquet(cache)
+    print(f"[bref] {len(df)} oyuncu kaydedildi -> {cache.name}")
     return df
 
 
-def fetch_bref_advanced(use_cache: bool = True) -> pd.DataFrame:
+def fetch_bref_advanced(use_cache: bool = True, bbr_year: int = BBR_YEAR) -> pd.DataFrame:
     """
     BBR advanced stats sayfasından OBPM ve DBPM çeker.
+    bbr_year: bkz. fetch_bref_positions().
     Dönen DataFrame: bref_name, OBPM, DBPM, BPM
     """
-    if use_cache and CACHE_ADV.exists():
-        print(f"[bref-adv] Cache yuklendi: {CACHE_ADV.name}")
-        return pd.read_parquet(CACHE_ADV)
+    _, url = _bbr_urls(bbr_year)
+    _, cache = _bbr_cache_paths(bbr_year)
+    if use_cache and cache.exists():
+        print(f"[bref-adv] Cache yuklendi: {cache.name}")
+        return pd.read_parquet(cache)
 
-    print(f"[bref-adv] Cekiliyor: {BBR_ADV_URL}")
-    resp = requests.get(BBR_ADV_URL, headers=HEADERS, timeout=30)
+    print(f"[bref-adv] Cekiliyor: {url}")
+    resp = requests.get(url, headers=HEADERS, timeout=30)
     resp.raise_for_status()
     resp.encoding = "utf-8"
     soup = BeautifulSoup(resp.text, "html.parser")
@@ -170,8 +191,8 @@ def fetch_bref_advanced(use_cache: bool = True) -> pd.DataFrame:
     # Birden fazla takımda oynayan oyuncular için son satırı (total) tut
     df = pd.DataFrame(rows)
     df = df.groupby("bref_name", as_index=False).last()
-    df.to_parquet(CACHE_ADV)
-    print(f"[bref-adv] {len(df)} oyuncu kaydedildi -> {CACHE_ADV.name}")
+    df.to_parquet(cache)
+    print(f"[bref-adv] {len(df)} oyuncu kaydedildi -> {cache.name}")
     return df
 
 
@@ -187,9 +208,10 @@ def merge_bref_positions(season: str = "2025-26") -> pd.DataFrame:
     if not merged.exists():
         raise FileNotFoundError(f"{merged} bulunamadı — önce fetch_data.py çalıştır.")
 
+    bbr_year = int(season.split("-")[0]) + 1   # "2023-24" -> 2024 (BBR sezon-bitiş formatı)
     df   = pd.read_parquet(merged)
-    bref = fetch_bref_positions()
-    adv  = fetch_bref_advanced()
+    bref = fetch_bref_positions(bbr_year=bbr_year)
+    adv  = fetch_bref_advanced(bbr_year=bbr_year)
 
     # İsim normalizasyonu
     df["_norm"]   = df["PLAYER_NAME"].apply(_normalize_name)

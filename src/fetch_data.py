@@ -284,13 +284,18 @@ def fetch_playoff_stats(season: str = "2025-26") -> pd.DataFrame:
     return merged
 
 
-if __name__ == "__main__":
-    # internet açıkken çalıştır:
-    tables = fetch_player_stats("2025-26", "Regular Season")
+def fetch_full_season(season: str, save: bool = True) -> pd.DataFrame:
+    """
+    Bir sezon için TÜM canlı-skorlama zincirini çeker (Base/Advanced/Usage/Misc/
+    Scoring/Hustle/tracking/Synergy/Gravity) ve merged.parquet'e yazar. Önceden
+    __main__ bloğunda "2025-26" için sabitti — 2026-07'de tarihsel sezonları
+    (2013-14+) da aynı zengin yoldan geçirebilmek için parametreli hale getirildi
+    (bkz. src/fetch_historical.py'nin tracking-era genişletmesi).
+    """
+    tables = fetch_player_stats(season, "Regular Season")
     df = merge_player_tables(tables)
 
-    # Pozisyon + boy ekle
-    bios = fetch_player_bios("2025-26")
+    bios = fetch_player_bios(season)
     if not bios.empty:
         bio_cols = ["PLAYER_ID"] + [c for c in bios.columns
                                     if c in ("POSITION", "PLAYER_HEIGHT_INCHES",
@@ -304,12 +309,7 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"[UYARI] compute_bpm başarısız: {e}")
 
-    # Synergy PnR ball-handler — gerçek Pick-and-Roll modifier'ı için
-    # (2026-07 modifier denetimi, bkz. fetch_synergy_playtype docstring).
-    # Synergy sezon-içi takas edilen oyuncular için TAKIM BAŞINA ayrı satır
-    # döndürüyor (aynı PLAYER_ID birden fazla kez) — POSS-ağırlıklı ortalamayla
-    # tek satıra indirilir, yoksa merge sırasında satır çoğalması olur.
-    pnr = fetch_synergy_playtype("2025-26", "PRBallHandler")
+    pnr = fetch_synergy_playtype(season, "PRBallHandler")
     if not pnr.empty:
         pnr_agg = (pnr.groupby("PLAYER_ID")
                    .apply(lambda g: pd.Series({
@@ -320,13 +320,7 @@ if __name__ == "__main__":
         df = df.merge(pnr_agg, on="PLAYER_ID", how="left")
         print(f"Synergy PnR ball-handler eklendi ({len(pnr_agg)} oyuncu, {len(pnr)} takım-satırından)")
 
-    # Synergy Cut — gerçek Slashing modifier'ı için (2026-07 modifier
-    # denetimi). Eski proxy (DRIVES/FTA/PCT_PTS_PAINT) Pressure'la r=0.85
-    # örtüşüyordu çünkü ikisi de aynı "sürücü" sinyalini ölçüyordu; oysa
-    # orijinal Jargon Sözlüğü tanımı ("sürekli ribaund/dalış ile pas alan
-    # dinamik hücum") aslında topsuz kesme/dalış temelli bir bitiricilik —
-    # Synergy Cut possession-share + PPP bunu doğrudan ölçüyor.
-    cut = fetch_synergy_playtype("2025-26", "Cut")
+    cut = fetch_synergy_playtype(season, "Cut")
     if not cut.empty:
         cut_agg = (cut.groupby("PLAYER_ID")
                    .apply(lambda g: pd.Series({
@@ -337,24 +331,27 @@ if __name__ == "__main__":
         df = df.merge(cut_agg, on="PLAYER_ID", how="left")
         print(f"Synergy Cut eklendi ({len(cut_agg)} oyuncu, {len(cut)} takım-satırından)")
 
-    # Gerçek NBA Gravity verisi — Gravity modifier'ı için (2026-07 modifier
-    # denetimi, bkz. fetch_gravity docstring). Traded oyuncular için fanout
-    # riski yok (GravityLeaders tek satır/oyuncu döndürüyor, PLAYER_ID başına).
-    grav = fetch_gravity("2025-26")
+    grav = fetch_gravity(season)
     if not grav.empty:
         grav = grav.rename(columns={"PLAYERID": "PLAYER_ID"})
         grav_cols = ["PLAYER_ID", "AVGGRAVITYSCORE", "AVGOFFBALLPERIMETERGRAVITYSCORE"]
         df = df.merge(grav[grav_cols], on="PLAYER_ID", how="left")
         print(f"Gravity eklendi ({len(grav)} oyuncu)")
 
-    df.to_parquet(DATA_DIR / "2025-26__merged.parquet")
-    print(f"\nBirleşik tablo: {df.shape[0]} oyuncu, {df.shape[1]} kolon")
-    print("Kaydedildi: data/2025-26__merged.parquet")
+    if save:
+        df.to_parquet(DATA_DIR / f"{season}__merged.parquet")
+        print(f"\nBirleşik tablo: {df.shape[0]} oyuncu, {df.shape[1]} kolon")
+        print(f"Kaydedildi: data/{season}__merged.parquet")
 
-    # Playoff verisi (sezon bittiyse otomatik çekilir, önce regular season cache'i kontrol eder)
-    print("\nPlayoff verisi çekiliyor...")
-    po = fetch_playoff_stats("2025-26")
-    if not po.empty:
-        print(f"Playoff: {len(po)} oyuncu, {po.shape[1]} kolon")
-    else:
-        print("Playoff verisi yok (sezon henüz bitmemiş olabilir).")
+        print("\nPlayoff verisi çekiliyor...")
+        po = fetch_playoff_stats(season)
+        if not po.empty:
+            print(f"Playoff: {len(po)} oyuncu, {po.shape[1]} kolon")
+        else:
+            print("Playoff verisi yok (sezon henüz bitmemiş olabilir).")
+    return df
+
+
+if __name__ == "__main__":
+    # internet açıkken çalıştır:
+    fetch_full_season("2025-26")

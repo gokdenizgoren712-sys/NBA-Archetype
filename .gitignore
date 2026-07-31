@@ -45,3 +45,9 @@ data/*
 !data/gleague__2025-26__player_scores.parquet
 !data/euroleague__2025-26__player_scores.parquet
 !data/ncaa__2025-26__player_scores.parquet
+
+# Tracking-era tarihsel sezonlar (2013-14+) — zengin percentile skorlama ile
+# geri-doldurulmuş sezonlar, get_historical() bunları öncelikli okur (bkz.
+# api/main.py _load_scores_for_season). 2026-07 prototip: 2023-24 + 2024-25.
+!data/2024-25__player_scores.parquet
+!data/2023-24__player_scores.parquet
