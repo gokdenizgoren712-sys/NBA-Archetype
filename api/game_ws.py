@@ -192,12 +192,71 @@ EMPTY_JOKERS = {
 ROOM_STATES: dict[str, dict] = {}
 ROOM_LOCKS: dict[str, asyncio.Lock] = {}
 
+ROOM_ABANDON_HOURS = 2   # bu kadar saat aktivitesiz odalar temizlik sırasında silinir
+
 
 def _lock_for(room_code: str) -> asyncio.Lock:
     lock = ROOM_LOCKS.get(room_code)
     if lock is None:
         lock = ROOM_LOCKS[room_code] = asyncio.Lock()
     return lock
+
+
+def _save_state(room_code: str, state: dict) -> None:
+    """Canlı state'i game_rooms.state_json'a yazar — 2026-07 dayanıklılık
+    (bkz. modül başındaki not). Her başarılı state mutasyonundan sonra
+    çağrılır; sunucu restart olursa _restore_state() bunu geri okur.
+    Yazma başarısız olursa (DB kilitli vb.) sessizce vazgeçilir — bellekteki
+    ROOM_STATES zaten güncel, bu sadece bir yedekleme katmanı."""
+    state["_last_activity"] = datetime.now(timezone.utc).isoformat()
+    try:
+        with get_conn() as conn:
+            conn.execute(
+                "UPDATE game_rooms SET state_json = ?, updated_at = datetime('now') WHERE room_code = ?",
+                (json.dumps(state, default=str), room_code),
+            )
+    except Exception as e:
+        print(f"[game_ws] _save_state başarısız ({room_code}): {e}")
+
+
+def _restore_state(row) -> dict | None:
+    """DB'deki state_json'dan canlı state'i geri yükler (sunucu restart
+    sonrası ROOM_STATES'te yoksa). Bozuk/eksik JSON ise None döner —
+    çağıran taraf _init_room_state() ile taze başlatır."""
+    raw = row["state_json"] if "state_json" in row.keys() else None
+    if not raw:
+        return None
+    try:
+        return json.loads(raw)
+    except Exception as e:
+        print(f"[game_ws] _restore_state başarısız ({row['room_code']}): {e}")
+        return None
+
+
+def _cleanup_stale_rooms() -> None:
+    """Tamamlanmış veya uzun süre aktivitesiz odaları ROOM_STATES'ten
+    düşürür — 2026-07 dayanıklılık: önceden hiç temizlik yoktu, terk
+    edilen her oda süresiz bellekte kalıyordu. Gerçek bir periyodik
+    arka plan task'ı yerine (ekstra lifecycle karmaşıklığı) her yeni
+    WS bağlantısında fırsatçı şekilde çağrılır — aktif kullanımda
+    yeterince sık tetiklenir."""
+    from datetime import timedelta
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=ROOM_ABANDON_HOURS)
+    stale = []
+    for code, state in ROOM_STATES.items():
+        if state.get("phase") == "complete":
+            stale.append(code)
+            continue
+        last = state.get("_last_activity")
+        if last:
+            try:
+                if datetime.fromisoformat(last) < cutoff:
+                    stale.append(code)
+            except Exception:
+                pass
+    for code in stale:
+        ROOM_STATES.pop(code, None)
+        ROOM_LOCKS.pop(code, None)
 
 
 def _other_uid(uid: int, state: dict) -> int:
@@ -646,6 +705,7 @@ async def room_socket(ws: WebSocket, room_code: str, token: str = Query(...)):
         return
 
     await manager.connect(room_code, user_id, ws)
+    _cleanup_stale_rooms()
     try:
         with get_conn() as conn:
             row = conn.execute(
@@ -653,8 +713,15 @@ async def room_socket(ws: WebSocket, room_code: str, token: str = Query(...)):
             ).fetchone()
 
         if room_code not in ROOM_STATES and row["player2_user_id"]:
-            usernames = _fetch_usernames([row["player1_user_id"], row["player2_user_id"]])
-            ROOM_STATES[room_code] = _init_room_state(row, usernames)
+            # Önce DB'den geri yüklemeyi dene (sunucu restart olduysa maç
+            # devam etsin) — bozuk/eksik olursa taze başlat.
+            restored = _restore_state(row)
+            if restored is not None:
+                ROOM_STATES[room_code] = restored
+            else:
+                usernames = _fetch_usernames([row["player1_user_id"], row["player2_user_id"]])
+                ROOM_STATES[room_code] = _init_room_state(row, usernames)
+                _save_state(room_code, ROOM_STATES[room_code])
 
         state = ROOM_STATES.get(room_code)
         if state:
@@ -698,9 +765,18 @@ async def room_socket(ws: WebSocket, room_code: str, token: str = Query(...)):
                 if err:
                     await ws.send_json({"type": "error", "message": err})
                     continue
+                _save_state(room_code, state)
                 await manager.broadcast(room_code, _envelope(room_code, state))
     except WebSocketDisconnect:
-        pass
+        # Karşı tarafa bildir — önceden sessizce düşüyordu, diğer oyuncunun
+        # ekranında UI sonsuza kadar "rakip bekleniyor" gösteriyordu, hiçbir
+        # toast/uyarı yoktu (2026-07 dayanıklılık denetimi, Faz3-M6).
+        # "opponent_left" ismi kasıtlı — frontend (WithAFriendGame.jsx)
+        # bunu zaten bekliyordu, hiç tetikleyen bir backend event'i yoktu.
+        # State ROOM_STATES'te (ve artık DB'de) hayatta kalır — reconnect
+        # olursa aynı maça geri döner, bu sadece bir bildirim.
+        await manager.broadcast(room_code, {"type": "opponent_left", "user_id": user_id},
+                                 exclude=user_id)
     finally:
         manager.disconnect(room_code, user_id)
         await manager.broadcast(room_code, {"type": "opponent_left", "user_id": user_id})

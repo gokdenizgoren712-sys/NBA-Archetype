@@ -59,6 +59,7 @@ export default function WithAFriendGame() {
 
   const [serverState, setServerState] = useState(null);
   const [actionError, setActionError] = useState("");
+  const [opponentDisconnected, setOpponentDisconnected] = useState(false);
 
   // ── Yerel-only UI state (Same Screen'deki gibi, ama tek taraflı — sadece
   // KENDİ panelim için) ────────────────────────────────────────────────────
@@ -93,7 +94,11 @@ export default function WithAFriendGame() {
   const onSocketMessage = useCallback((data) => {
     if (data.type === "state") {
       setServerState(data);
-    } else if (data.type === "opponent_joined" || data.type === "opponent_left") {
+      setOpponentDisconnected(false);   // reconnect olduysa (tam state geldi) banner'ı kaldır
+    } else if (data.type === "opponent_joined") {
+      if (roomCode) refreshRoom(roomCode);
+    } else if (data.type === "opponent_left") {
+      setOpponentDisconnected(true);
       if (roomCode) refreshRoom(roomCode);
     } else if (data.type === "error") {
       setActionError(data.message || "Something went wrong");
@@ -374,6 +379,11 @@ export default function WithAFriendGame() {
           <div className="space-y-3">
             {actionError && (
               <div className="max-w-md mx-auto text-center text-[11px] text-red-400 bg-red-950/30 border border-red-800/40 rounded-lg py-1.5 px-3">{actionError}</div>
+            )}
+            {opponentDisconnected && (
+              <div className="max-w-md mx-auto text-center text-[11px] text-yellow-400 bg-yellow-950/30 border border-yellow-800/40 rounded-lg py-1.5 px-3 animate-pulse">
+                Opponent's connection dropped — waiting for them to reconnect. The game will resume automatically.
+              </div>
             )}
 
             {game.phase === "era" && (

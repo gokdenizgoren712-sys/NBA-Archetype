@@ -140,3 +140,11 @@ def init_db():
             conn.execute("ALTER TABLE game_rooms ADD COLUMN wheel_mode TEXT NOT NULL DEFAULT 'round'")
         except Exception:
             pass
+        # 2026-07 dayanıklılık: canlı oyun state'i (ROOM_STATES, önceden sadece
+        # bellekte) her değişiklikte buraya JSON olarak yazılır — sunucu restart
+        # olursa (deploy/crash) aktif maçlar artık kaybolmuyor, DB'den geri
+        # yükleniyor (bkz. api/game_ws.py _save_state/_restore_state).
+        try:
+            conn.execute("ALTER TABLE game_rooms ADD COLUMN state_json TEXT")
+        except Exception:
+            pass
