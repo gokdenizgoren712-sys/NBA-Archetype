@@ -12,8 +12,9 @@ const AWARD_STYLE = {
 };
 
 // Gerçek NBA ödül geçmişi (kariyer toplamları) — game/awards.js'in sahip
-// olduğu aynı veri (getAwardBadges, aksan-duyarsız isim eşleştirmesiyle),
-// kartın KAPALI (varsayılan) halinde de görünsün diye buraya taşındı.
+// olduğu aynı veri (getAwardBadges, aksan-duyarsız isim eşleştirmesiyle).
+// Kartın AÇIK (expanded) halinde, "Full Profile" başlığının altında ve
+// tab bar'ın üstünde gösterilir — kapalı halde YOK (kullanıcı kararı).
 // Sadece gerçek/doğrulanabilir ödülleri kapsar (MVP/DPOY/FMVP/şampiyonluk
 // yüzüğü/6. Adam) — Versatile/Timeless/Duo gibi oyuna özgü kavramlar
 // KASITLI OLARAK dışarıda bırakıldı (kullanıcı kararı).
@@ -360,14 +361,8 @@ export default function PlayerCard({ player, rank, onClick, discover, season, ex
           </div>
         </div>
 
-        {(player.league || (player.GP != null && Number(player.GP) < smallSampleThreshold) || awards.length > 0) && (
+        {(player.league || (player.GP != null && Number(player.GP) < smallSampleThreshold)) && (
           <div className="pcard-tags">
-            {awards.map(a => (
-              <span key={a.label} className="pcard-award-tag"
-                style={{ color: a.color, borderColor: a.color + "55", background: a.color + "1f" }}>
-                {a.label}
-              </span>
-            ))}
             {player.league && player.league !== "nba" && <span className="pcard-league-tag">{player.league}</span>}
             {player.GP != null && Number(player.GP) < smallSampleThreshold && <span className="pcard-sample-tag">small sample</span>}
           </div>
@@ -381,6 +376,16 @@ export default function PlayerCard({ player, rank, onClick, discover, season, ex
             <div className="pcard-expand-wrap">
               <div className="pcard-expand-inner">
                 <div className="pcard-detail">
+                  {awards.length > 0 && (
+                    <div className="pcard-award-row" onClick={(e) => e.stopPropagation()}>
+                      {awards.map(a => (
+                        <span key={a.label} className="pcard-award-tag"
+                          style={{ color: a.color, borderColor: a.color + "55", background: a.color + "1f" }}>
+                          {a.label}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                   <div className="pcard-tabbar" onClick={(e) => e.stopPropagation()}>
                     {tabs.map(([k, l]) => (
                       <button key={k} className={tab === k ? "active" : ""} onClick={() => selectTab(k)}>{l}</button>

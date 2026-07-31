@@ -162,6 +162,10 @@
   font-size: 8.5px; padding: 2px 7px; border-radius: 4px; font-weight: 700;
   border: 1px solid; letter-spacing: 0.02em;
 }
+.pcard-award-row {
+  display: flex; gap: 4px; flex-wrap: wrap; padding: 9px 11px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
 
 /* Expand: peek row + tabbed panel */
 .pcard-peek {
