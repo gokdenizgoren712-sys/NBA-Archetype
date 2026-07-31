@@ -1,6 +1,22 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "../api";
+import { MVP_COUNT, DPOY_COUNT, RING_COUNT, FMVP_COUNT, SIXTH_MAN } from "../game/awards";
 import "./PlayerCard.css";
+
+// Gerçek NBA ödül geçmişi (kariyer toplamları) — game/awards.js'in sahip
+// olduğu aynı veri, kartın KAPALI (varsayılan) halinde de görünsün diye
+// buraya taşındı. Sadece gerçek/doğrulanabilir ödülleri kapsar (MVP/DPOY/
+// FMVP/şampiyonluk yüzüğü/6. Adam) — Versatile/Timeless/Duo gibi oyuna
+// özgü kavramlar KASITLI OLARAK dışarıda bırakıldı (kullanıcı kararı).
+function awardBadges(name) {
+  const badges = [];
+  if (MVP_COUNT[name])      badges.push({ label: `MVP×${MVP_COUNT[name]}`,  color: "#facc15" });
+  if (DPOY_COUNT[name])     badges.push({ label: `DPOY×${DPOY_COUNT[name]}`, color: "#38bdf8" });
+  if (RING_COUNT[name])     badges.push({ label: `🏆×${RING_COUNT[name]}`,   color: "#fbbf24" });
+  if (FMVP_COUNT[name])     badges.push({ label: `FMVP×${FMVP_COUNT[name]}`, color: "#fb923c" });
+  if (SIXTH_MAN.has(name))  badges.push({ label: "6th Man",                  color: "#f97316" });
+  return badges;
+}
 
 const CORE = ["Engine","Ecosystem","Hub","Connector","Creator","Anchor","Spacer","Finisher","Force","Initiator","Stopper","Rim Runner"];
 
@@ -197,6 +213,7 @@ export default function PlayerCard({ player, rank, onClick, discover, season, ex
   const pts = player.PTS != null ? Number(player.PTS).toFixed(1) : null;
   const reb = player.REB != null ? Number(player.REB).toFixed(1) : null;
   const ast = player.AST != null ? Number(player.AST).toFixed(1) : null;
+  const awards = awardBadges(player.PLAYER_NAME);
 
   const cardRef = useRef(null);
   const [expanded, setExpanded] = useState(!!defaultExpanded);
@@ -337,8 +354,14 @@ export default function PlayerCard({ player, rank, onClick, discover, season, ex
           </div>
         </div>
 
-        {(player.league || (player.GP != null && Number(player.GP) < smallSampleThreshold)) && (
+        {(player.league || (player.GP != null && Number(player.GP) < smallSampleThreshold) || awards.length > 0) && (
           <div className="pcard-tags">
+            {awards.map(a => (
+              <span key={a.label} className="pcard-award-tag"
+                style={{ color: a.color, borderColor: a.color + "55", background: a.color + "1f" }}>
+                {a.label}
+              </span>
+            ))}
             {player.league && player.league !== "nba" && <span className="pcard-league-tag">{player.league}</span>}
             {player.GP != null && Number(player.GP) < smallSampleThreshold && <span className="pcard-sample-tag">small sample</span>}
           </div>

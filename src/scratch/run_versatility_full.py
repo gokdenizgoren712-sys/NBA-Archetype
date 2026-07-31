@@ -3,6 +3,29 @@ Aşama 6 — Tam çalıştırıcı:
   1. Mevcut 2025-26 skoru zaten yapıldı (versatility.py __main__).
   2. Tarihsel (historical__labeled.parquet) için de aynı hesabı yap.
   3. Affinity matrisine versatility ağırlıklı başarı (flex_bonus) ekle.
+
+2026-07 NOT (canlı etki YOK, sadece teknik borç): Bu script'in ürettiği
+data/2025-26__affinity_matrix_flex.parquet hiçbir canlı API endpoint'i
+tarafından okunmuyor — yalnızca export_excel.py'nin (offline Excel raporu)
+girdisi. _CRITICAL_DATA_FILES listesinde (api/main.py) "kritik" olarak
+işaretli ama gerçekte değil, yanlış etiketlenmiş; eksik olsa sadece bir
+startup log uyarısı basar, hiçbir işlevi bozmaz.
+
+Şu an İKİ AYRI ŞEKİLDE bozuk/bayat, kullanıcı isteğiyle bilinçli olarak
+DÜZELTİLMEDİ (sadece belgeleniyor):
+  1. flex_adjusted_affinity() kendi ayrı, 6/12-core-noun'luk skorlama
+     yolunu (engine.predict_components) taşıyor — run_affinity.py'nin
+     aynı sorunu bugün score_compat.py'nin canlı primary_arch'ına
+     bağlanarak düzeltildi, bu script GÜNCELLENMEDİ.
+  2. run_historical() artık ÇALIŞMIYOR — versatility.py bugün score_X
+     (percentile) sütunu bekleyecek şekilde yeniden yazıldı (eskiden
+     boolean sütun bekliyordu), ama historical__labeled.parquet hâlâ
+     eski boolean formatta. Bu script'i tekrar çalıştırmak sessizce
+     boş/sıfır versatility_score üretir.
+
+Yeniden kullanılacaksa: önce run_affinity.py'deki gibi primary_arch'ı
+player_scores.parquet'ten al, sonra run_historical()'ı ya atla ya da
+historical pipeline'ı da percentile'a geçirdikten sonra çalıştır.
 """
 import sys, json
 from pathlib import Path
