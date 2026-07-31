@@ -87,7 +87,11 @@ def fetch_player_stats(season: str = "2025-26",
         time.sleep(SLEEP)
 
     # 3) Tracking - sürüş/şut tipi (yalnızca 2013-14+). Downhill/Pull-Up/Off-Ball için.
-    for pt_measure in ["Drives", "CatchShoot", "PullUpShot", "Passing"]:
+    # Possessions + SpeedDistance 2026-07 modifier denetiminde eklendi — bu
+    # ikisi hiç çekilmiyordu, TIME_OF_POSS (Engine + Initiator) ve AVG_SPEED/
+    # DIST_MILES (Initiator + Speed) sessizce eksik kalıp motor tarafından
+    # otomatik düşürülüyordu (Initiator ağırlığının ~%40'ı, Speed'in %100'ü).
+    for pt_measure in ["Drives", "CatchShoot", "PullUpShot", "Passing", "Possessions", "SpeedDistance"]:
         cp = _cache_path(season, f"pt_{pt_measure}")
         if cp.exists():
             out[f"PT_{pt_measure}"] = pd.read_parquet(cp); print(f"[cache] {season} PT_{pt_measure}")
