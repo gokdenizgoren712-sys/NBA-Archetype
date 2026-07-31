@@ -746,11 +746,61 @@ def _load_affinity() -> pd.DataFrame:
     return pd.read_parquet(p) if p.exists() else pd.DataFrame()
 
 
+def _blended_affinity_matrix() -> tuple[pd.DataFrame, dict]:
+    """PRIOR (roles.AFFINITY_MATRIX, elle yazılmış) + ham empirik'in (_load_affinity())
+    adaptif-alpha harmanı — /api/affinity endpoint'iyle TEK KAYNAK.
+
+    2026-07 denetiminde bulundu: /api/affinity (Affinity sayfası + oyun modları,
+    fetch("/api/affinity")) bu harman mantığını kendi içinde taşıyordu, ama
+    duo_compatibility/top_lineup_combos/lineup_score_from_names'e (Lineups
+    sayfası) geçirilen _affinity_or_none() SADECE ham empirik veriyi
+    döndürüyordu — az örnekli (Hub/Ecosystem gibi <10 oyunculu) arketip
+    çiftlerinde ham empirik çok gürültülü/ekstrem çıkabiliyordu (örn. 0.139),
+    PRIOR'a yakın kalan harmanlı sürümden TAMAMEN FARKLI bir sayı — aynı çift
+    için Affinity sayfası "orta uyum" derken Lineups sayfası "çok düşük uyum"
+    gösterebiliyordu. Artık ikisi de bu fonksiyonu kullanıyor.
+
+    Döner: (blend edilmiş DataFrame, pair->dakika sample_counts dict)."""
+    from roles import AFFINITY_MATRIX as PRIOR
+    empirical = _load_affinity()
+    pair_min: dict = {}
+    sample_counts: dict = {}
+    try:
+        lu = _load_lineups_with_archs()
+        if not lu.empty and "_archs" in lu.columns:
+            from itertools import combinations as _comb
+            for _, row in lu.iterrows():
+                archs = [a for a in row["_archs"] if a]
+                mins  = float(row.get("MIN", 0) or 0)
+                for a, b in _comb(sorted(set(archs)), 2):
+                    pair_min[(a, b)] = pair_min.get((a, b), 0) + mins
+            for (a, b), total_min in pair_min.items():
+                sample_counts.setdefault(a, {})[b] = round(total_min)
+                sample_counts.setdefault(b, {})[a] = round(total_min)
+    except Exception:
+        pass
+
+    if empirical.empty:
+        return PRIOR, sample_counts
+
+    df = PRIOR.copy()
+    for a in df.index:
+        for b in df.columns:
+            if a in empirical.index and b in empirical.columns:
+                v = empirical.loc[a, b]
+                if pd.notna(v):
+                    # Adaptif alpha: 2000+ dakika → max 0.6 empirik ağırlık
+                    pair_mins = pair_min.get(tuple(sorted([a, b])), 0)
+                    alpha = min(0.6, pair_mins / 2000)
+                    df.loc[a, b] = round((1 - alpha) * df.loc[a, b] + alpha * float(v), 3)
+    return df, sample_counts
+
+
 def _affinity_or_none() -> pd.DataFrame | None:
-    """_load_affinity() sonucunu, boşsa None'a çevirerek döner (affinity_matrix=
-    call-site'larında tek satırlık kullanım için)."""
-    aff = _load_affinity()
-    return aff if not aff.empty else None
+    """Harmanlı (PRIOR+empirik) matris — /api/affinity ile AYNI kaynak.
+    Boşsa None (affinity_matrix= call-site'larında tek satırlık kullanım için)."""
+    df, _ = _blended_affinity_matrix()
+    return df if not df.empty else None
 
 
 _HIST_STAT_COLS = ["STL", "BLK", "FGA", "FG_PCT", "FG3A", "FG3_PCT", "TEAM_ABBREVIATION"]
@@ -1341,45 +1391,17 @@ def _load_lineups_with_archs() -> pd.DataFrame:
 
 @app.get("/api/affinity")
 def get_affinity_endpoint():
-    """Arketip x arketip uyum matrisi. Prior (12 noun); empirikal varsa EMA ile güncellenir."""
+    """Arketip x arketip uyum matrisi. Prior (12 noun); empirikal varsa adaptif-alpha
+    ile harmanlanır. _blended_affinity_matrix() ile TEK KAYNAK — Lineups/Duo
+    sayfalarının kullandığı affinity_matrix= parametresi de artık aynı fonksiyondan
+    geliyor (2026-07: önceden bu mantık burada tekrarlanıyordu, call-site'lar ham
+    empirik kullanıyordu, aynı arketip çifti için sayfalar arası farklı sayı riski
+    vardı — bkz. _blended_affinity_matrix() docstring'i)."""
     ck = "affinity_matrix"
     cached = cache_get(ck)
     if cached: return cached
-    from roles import AFFINITY_MATRIX as PRIOR
-    empirical = _load_affinity()
-    # Pair dakikalarını blending öncesinde hesapla (adaptif alpha + sample_counts için)
-    pair_min: dict = {}
-    sample_counts: dict = {}
-    try:
-        lu = _load_lineups_with_archs()
-        if not lu.empty and "_archs" in lu.columns:
-            from itertools import combinations as _comb
-            for _, row in lu.iterrows():
-                archs = [a for a in row["_archs"] if a]
-                mins  = float(row.get("MIN", 0) or 0)
-                for a, b in _comb(sorted(set(archs)), 2):
-                    pair_min[(a, b)] = pair_min.get((a, b), 0) + mins
-            for (a, b), total_min in pair_min.items():
-                sample_counts.setdefault(a, {})[b] = round(total_min)
-                sample_counts.setdefault(b, {})[a] = round(total_min)
-    except Exception:
-        pass
-
-    if empirical.empty:
-        df = PRIOR
-        source = "prior"
-    else:
-        df = PRIOR.copy()
-        for a in df.index:
-            for b in df.columns:
-                if a in empirical.index and b in empirical.columns:
-                    v = empirical.loc[a, b]
-                    if pd.notna(v):
-                        # Adaptif alpha: 2000+ dakika → max 0.6 empirik ağırlık
-                        pair_mins = pair_min.get(tuple(sorted([a, b])), 0)
-                        alpha = min(0.6, pair_mins / 2000)
-                        df.loc[a, b] = round((1 - alpha) * df.loc[a, b] + alpha * float(v), 3)
-        source = "blended"
+    df, sample_counts = _blended_affinity_matrix()
+    source = "blended" if not _load_affinity().empty else "prior"
 
     result = {
         "archetypes": list(df.index),
