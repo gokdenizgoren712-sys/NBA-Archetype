@@ -108,9 +108,6 @@ def _build_multiplayer_pool(season: str, team_a: str, team_b: str) -> list[dict]
         return []
 
     tl_cutoff = _timeless_cutoff(full["overall_score"]) if "overall_score" in full.columns else 1.0
-    _vcol = "score_Versatile" if "score_Versatile" in full.columns else (
-        "versatility_score" if "versatility_score" in full.columns else None)
-    v_cut = float(full[_vcol].quantile(0.85)) if _vcol and full[_vcol].notna().any() else None
 
     df = full[full["TEAM_ABBREVIATION"].str.upper().isin([team_a.upper(), team_b.upper()])].copy()
     if df.empty:
@@ -129,8 +126,11 @@ def _build_multiplayer_pool(season: str, team_a: str, team_b: str) -> list[dict]
 
     if "overall_score" in df.columns:
         df["is_timeless"] = (df["overall_score"] >= tl_cutoff).astype(bool)
-    if _vcol and v_cut is not None and _vcol in df.columns:
-        df["is_versatile"] = (df[_vcol].fillna(-1) >= v_cut).astype(bool)
+    # is_versatile: artık burada yeniden hesaplanmıyor — _load_scores()
+    # (2025-26 için) zaten doğru is_versatile'ı sağlıyor, df bunu `full`'dan
+    # kopyalıyor (2026-07: eski score_Versatile fallback'i buradaydı, o kolon
+    # kaldırıldığı için sessizce çalışmıyordu, ayrıca game_players()'la
+    # gereksiz mantık tekrarıydı — bkz. versatility.py'nin yeniden yazımı).
 
     score_cols = [c for c in df.columns if c.startswith("score_")]
     keep = ["PLAYER_ID", "PLAYER_NAME", "primary_arch", "overall_score", "POSITION", "POS5",
