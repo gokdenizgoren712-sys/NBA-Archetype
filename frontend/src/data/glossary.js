@@ -127,8 +127,7 @@ export const METRIC_LABELS = {
 export const CORE_COMPONENTS = [
   {
     name:"Engine", type:"Core", color:"text-orange-400", bg:"bg-orange-500/10 border-orange-500/30",
-    desc:"Primary ball-dominant scorer-creator; offense runs through him (SGA/Luka type)",
-    desc_tr:"Birincil top dominantı skorlayıcı-yaratıcı; hücum onun üzerinden akar (SGA/Luka tipi)",
+    desc:"Every elite offense needs a spark plug, and the Engine is the motor: a ball-dominant scorer and creator who takes over when the clock winds down or a possession stalls.",
     threshold:"Top 18%",
     metrics:[
       {key:"USG_PCT",w:.18,higher:true},{key:"TIME_OF_POSS",w:.14,higher:true},
@@ -140,8 +139,7 @@ export const CORE_COMPONENTS = [
   },
   {
     name:"Ecosystem", type:"Core", color:"text-green-400", bg:"bg-green-500/10 border-green-500/30",
-    desc:"High-gravity creator who scores, creates, and elevates everyone (Jokic/LeBron type)",
-    desc_tr:"Yüksek çekim kuvvetli yaratıcı; skorer, organizatör ve takımı yukarı taşıyan (Jokic/LeBron tipi)",
+    desc:"Some players run the system; Ecosystems are the system. Defined by extreme offensive gravity, they don't just put up numbers: they warp defenses, dictate tempo, and elevate every teammate on the floor.",
     threshold:"Top 18%",
     metrics:[
       {key:"USG_PCT",w:.14,higher:true},{key:"PTS",w:.14,higher:true},
@@ -153,8 +151,7 @@ export const CORE_COMPONENTS = [
   },
   {
     name:"Hub", type:"Core", color:"text-teal-400", bg:"bg-teal-500/10 border-teal-500/30",
-    desc:"Structural pivot of the halfcourt offense; sets run through him (Şengün type)",
-    desc_tr:"Yarım saha hücumunun yapısal merkezi; oyunlar onun üzerinden geçer (Şengün tipi)",
+    desc:"Half-court execution needs a central pivot: the Hub is where sets are run. Positioned at the elbow or high post, they dictate ball movement, orchestrate hand-offs, and break down defenses with high-IQ passing rather than raw speed.",
     threshold:"Top 26%",
     metrics:[
       {key:"PASSES_MADE",w:.25,higher:true},{key:"POTENTIAL_AST",w:.20,higher:true},
@@ -165,8 +162,7 @@ export const CORE_COMPONENTS = [
   },
   {
     name:"Connector", type:"Core", color:"text-purple-400", bg:"bg-purple-500/10 border-purple-500/30",
-    desc:"Glue linking actions on both ends; Draymond/Caruso/Josh Hart type",
-    desc_tr:"Her iki uçta oyunları birbirine bağlayan tutkal oyuncu; Draymond/Caruso/Josh Hart tipi",
+    desc:"Championship rosters aren't just built on stars. They're held together by glue, and the Connector links both ends of the floor: the extra pass, the crisp screen, the crashed glass, the stitched-together defensive rotation. They rarely demand usage, but without them high-gravity lineups collapse into chaos.",
     threshold:"Top 28%",
     metrics:[
       {key:"SCREEN_ASSISTS",w:.20,higher:true},{key:"DEFLECTIONS",w:.14,higher:true},
@@ -178,8 +174,7 @@ export const CORE_COMPONENTS = [
   },
   {
     name:"Creator", type:"Core", color:"text-rose-400", bg:"bg-rose-500/10 border-rose-500/30",
-    desc:"Movement-based advantage creator off drives and reads — CP3/Rondo type",
-    desc_tr:"Sürüşler ve okumalar üzerinden avantaj yaratan organizatör — CP3/Rondo tipi",
+    desc:"Pure playmaking isn't just about passing, it's about creating an advantage out of thin air. The Creator is the floor general, using drive-and-kick actions and surgical reads to collapse defenses. Think Chris Paul or Rajon Rondo: players who probe the paint and deliver the ball on a platter to open teammates.",
     threshold:"Top 20%",
     metrics:[
       {key:"DRIVES",w:.20,higher:true},{key:"AST_PCT",w:.16,higher:true},
@@ -190,8 +185,7 @@ export const CORE_COMPONENTS = [
   },
   {
     name:"Anchor", type:"Core", color:"text-blue-400", bg:"bg-blue-500/10 border-blue-500/30",
-    desc:"Defensive cornerstone; rim protection and defensive rebounding",
-    desc_tr:"Savunmanın köşe taşı; pota koruma ve savunma ribaundu",
+    desc:"Great defenses aren't built on the perimeter. They're anchored at the rim, and the Anchor is that cornerstone: a last line of defense who erases paint touches, alters drives, and secures the defensive rebound to end the possession.",
     threshold:"Top 18%",
     metrics:[
       {key:"BLK",w:.20,higher:true},{key:"DEF_RATING",w:.16,higher:false},
@@ -202,8 +196,7 @@ export const CORE_COMPONENTS = [
   },
   {
     name:"Spacer", type:"Core", color:"text-sky-400", bg:"bg-sky-500/10 border-sky-500/30",
-    desc:"Guard/wing catch-and-shoot specialist; opens floor via 3PT threat",
-    desc_tr:"Guard/kanat yakalayıp at uzmanı; üç sayılık tehdidiyle sahayı açar",
+    desc:"Modern offenses run on geometry, and geometry requires breathing room. The Spacer opens up the floor: a lethal catch-and-shoot threat whose pure 3-point gravity pulls help defenders away from the paint, opening driving lanes for Engines and cutting corridors for Finishers.",
     threshold:"Top 18%",
     metrics:[
       {key:"FG3_PCT",w:.22,higher:true},{key:"FG3A",w:.14,higher:true},
@@ -215,8 +208,7 @@ export const CORE_COMPONENTS = [
   },
   {
     name:"Finisher", type:"Core", color:"text-lime-400", bg:"bg-lime-500/10 border-lime-500/30",
-    desc:"Converts what others create; catch-and-finish or cut-to-basket specialist",
-    desc_tr:"Başkalarının yarattığını değerlendiren; yakalayıp bitiren veya kesme hareketleri uzmanı",
+    desc:"Advantage creation means nothing if you can't cash in the chips. The Finisher converts what others create: an off-ball catch-and-finish and cut-to-basket specialist who turns backdoor cuts and dump-off passes into high-efficiency points.",
     threshold:"Top 26%",
     metrics:[
       {key:"PCT_AST_FGM",w:.22,higher:true},{key:"FGM",w:.12,higher:true},
@@ -227,8 +219,7 @@ export const CORE_COMPONENTS = [
   },
   {
     name:"Force", type:"Core", color:"text-red-400", bg:"bg-red-500/10 border-red-500/30",
-    desc:"Powers through contact; self-created finisher, rebounder, foul drawer",
-    desc_tr:"Temasla güç kazanan; kendi yarattığı fırsatları bitiren, ribaundçu, faul çeken",
+    desc:"Finesse is great, but raw physical power bends the game to its will. The Force overpowers the competition: a self-created finisher, glass cleaner, and foul-drawing powerhouse who thrives through contact, demanding double teams and putting opposing frontcourts in foul trouble.",
     threshold:"Top 24%",
     metrics:[
       {key:"REB",w:.22,higher:true},{key:"FTA",w:.20,higher:true},
@@ -239,8 +230,7 @@ export const CORE_COMPONENTS = [
   },
   {
     name:"Initiator", type:"Core", color:"text-yellow-400", bg:"bg-yellow-500/10 border-yellow-500/30",
-    desc:"Transition starter and tempo setter; pushes pace, triggers early offense",
-    desc_tr:"Geçiş oyununun başlatıcısı ve tempo belirleyicisi; hızı artırır, erken hücumu tetikler",
+    desc:"Before the half-court defense can set, the battle is already won in transition. The Initiator dictates tempo: a primary transition starter who grabs-and-goes off rebounds or steals, pushing early offense to catch the defense before its scheme is locked in.",
     threshold:"Top 26%",
     metrics:[
       {key:"AVG_SPEED",w:.22,higher:true},{key:"PCT_PTS_FB",w:.20,higher:true},
@@ -250,8 +240,7 @@ export const CORE_COMPONENTS = [
   },
   {
     name:"Stopper", type:"Core", color:"text-slate-300", bg:"bg-slate-500/10 border-slate-500/30",
-    desc:"Elite on-ball defender; shuts down perimeter assignments",
-    desc_tr:"Elit toplu savunmacı; dış hat görevlerini kapatan",
+    desc:"High-octane offenses win games, but elite point-of-attack defense wins championships. The Stopper locks down the perimeter: an elite on-ball defender who uses lateral quickness, relentless screen navigation, and physical pressure to make every possession a nightmare for opposing Engines and Creators.",
     threshold:"Top 20%",
     metrics:[
       {key:"STL",w:.29,higher:true},{key:"DEF_RATING",w:.23,higher:false},
@@ -261,8 +250,7 @@ export const CORE_COMPONENTS = [
   },
   {
     name:"Rim Runner", type:"Core", color:"text-emerald-400", bg:"bg-emerald-500/10 border-emerald-500/30",
-    desc:"Off-ball cutter and alley-oop finisher; runs to the rim without the ball",
-    desc_tr:"Topsuz kesme hareketi yapan ve alley-oop bitiren; topa sahip olmadan potaya koşan",
+    desc:"Vertical gravity bends defenses just as effectively as perimeter shooting. The Rim Runner is the ultimate vertical threat: an off-ball cutter, pick-and-roll diver, and explosive alley-oop finisher who sprints to the rim to collapse the defense and turn lobs into guaranteed points.",
     threshold:"Top 22%",
     metrics:[
       {key:"PCT_AST_FGM",w:.22,higher:true},{key:"FGM",w:.12,higher:true},
