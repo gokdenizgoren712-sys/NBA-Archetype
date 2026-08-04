@@ -2779,6 +2779,18 @@ class SaveLineupBody(BaseModel):
     pct: float = None
     label: str = ""
 
+class SaveRosterBody(BaseModel):
+    name: str
+    source_mode: str = "single"    # 'single' | 'same_screen' | 'with_a_friend'
+    mode: str = "classic"          # 'classic' | 'salarycap'
+    sim_era: str = None
+    roster: list                   # 9 tam oyuncu satırı — bkz. saved_rosters CREATE TABLE notu (db.py)
+    overall_pct: float = None
+    grade: str = None
+
+_VALID_SOURCE_MODES = {"single", "same_screen", "with_a_friend"}
+_VALID_ROSTER_MODES = {"classic", "salarycap"}
+
 # ── Yardımcı ─────────────────────────────────────────────────────────────────
 
 def _slugify(text: str) -> str:
@@ -3102,6 +3114,7 @@ def get_profile(user=Depends(get_current_user)):
         u = conn.execute("SELECT id,email,username,role,created_at FROM users WHERE id=?", (uid,)).fetchone()
         players = conn.execute("SELECT * FROM saved_players WHERE user_id=? ORDER BY created_at DESC", (uid,)).fetchall()
         lineups = conn.execute("SELECT * FROM saved_lineups WHERE user_id=? ORDER BY created_at DESC", (uid,)).fetchall()
+        rosters = conn.execute("SELECT * FROM saved_rosters WHERE user_id=? ORDER BY created_at DESC", (uid,)).fetchall()
         comments = conn.execute(
             """SELECT c.id, c.content, c.created_at, a.title as article_title, a.slug as article_slug
                FROM comments c JOIN articles a ON c.article_id=a.id
@@ -3111,6 +3124,7 @@ def get_profile(user=Depends(get_current_user)):
         "user": _row(u),
         "saved_players": [_row(r) for r in players],
         "saved_lineups": [dict(r) | {"players": __import__("json").loads(r["players"])} for r in lineups],
+        "saved_rosters": [dict(r) | {"roster": __import__("json").loads(r["roster_json"])} for r in rosters],
         "comments": [_row(r) for r in comments],
     }
 
@@ -3148,6 +3162,41 @@ def save_lineup(body: SaveLineupBody, user=Depends(get_current_user)):
 def delete_lineup(item_id: int, user=Depends(get_current_user)):
     with get_conn() as conn:
         conn.execute("DELETE FROM saved_lineups WHERE id=? AND user_id=?", (item_id, int(user["sub"])))
+    return {"ok": True}
+
+# ── Kadro Kaydetme — bkz. docs/online-architecture-review-and-roadmap.md Faz 1.
+# roster_json şekli lineup_games.roster_json / _backfill_roster_json_once ile
+# AYNI (tam oyuncu satırı) — Board Challenge'daki "sadece isim yeterli değil"
+# hatasına burada tekrar düşülmesin diye kasıtlı.
+@app.post("/api/rosters")
+def save_roster(body: SaveRosterBody, user=Depends(get_current_user)):
+    if body.source_mode not in _VALID_SOURCE_MODES:
+        raise HTTPException(400, f"Invalid source_mode: {body.source_mode}")
+    if body.mode not in _VALID_ROSTER_MODES:
+        raise HTTPException(400, f"Invalid mode: {body.mode}")
+    if not body.name.strip():
+        raise HTTPException(400, "Give the roster a name")
+    if not isinstance(body.roster, list) or len(body.roster) != 9:
+        raise HTTPException(400, "Roster must have exactly 9 players")
+    try:
+        with get_conn() as conn:
+            cur = conn.execute(
+                """INSERT INTO saved_rosters
+                   (user_id, name, source_mode, mode, sim_era, roster_json, overall_pct, grade)
+                   VALUES (?,?,?,?,?,?,?,?)""",
+                (int(user["sub"]), body.name.strip()[:60], body.source_mode, body.mode,
+                 body.sim_era, json.dumps(body.roster), body.overall_pct, body.grade),
+            )
+        return {"id": cur.lastrowid, "ok": True}
+    except Exception as e:
+        if "UNIQUE" in str(e):
+            raise HTTPException(409, "You already have a saved roster with this name")
+        raise HTTPException(500, str(e))
+
+@app.delete("/api/rosters/{item_id}")
+def delete_roster(item_id: int, user=Depends(get_current_user)):
+    with get_conn() as conn:
+        conn.execute("DELETE FROM saved_rosters WHERE id=? AND user_id=?", (item_id, int(user["sub"])))
     return {"ok": True}
 
 class GameScoreBody(BaseModel):

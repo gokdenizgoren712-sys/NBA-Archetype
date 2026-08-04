@@ -50,8 +50,14 @@ export default function Profile() {
     setData(d => ({ ...d, saved_lineups: d.saved_lineups.filter(l => l.id !== id) }));
   };
 
+  const removeRoster = async (id) => {
+    await authFetch(`/rosters/${id}`, token, { method: "DELETE" });
+    setData(d => ({ ...d, saved_rosters: d.saved_rosters.filter(r => r.id !== id) }));
+  };
+
   const TABS = [
     { key: "players",  label: "Players"  },
+    { key: "rosters",  label: "Rosters"  },
     { key: "lineups",  label: "Lineups"  },
     { key: "comments", label: "Comments" },
   ];
@@ -149,6 +155,44 @@ export default function Profile() {
                   <span className="text-xs ml-2" style={{ color: "var(--text-muted)" }}>{p.season}</span>
                 </div>
                 <button onClick={() => removePlayer(p.id)} className="text-xs text-red-400 hover:text-red-300">✕</button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Saved Rosters — drafted 9-man rosters (Single Player), kept full arch/score
+            data so they can be challenged (Board) or battled (Quick Battle, later). */}
+        {tab === "rosters" && (
+          <div className="space-y-3">
+            {data.saved_rosters.length === 0 ? (
+              <p className="text-sm py-4" style={{ color: "var(--text-muted)" }}>
+                No saved rosters yet. Draft a lineup in the game and hit "Save this roster" on the result screen.
+              </p>
+            ) : data.saved_rosters.map(r => (
+              <div key={r.id} className="p-3 rounded-lg"
+                style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-logo font-medium text-sm" style={{ color: "var(--text-primary)" }}>{r.name}</span>
+                  <div className="flex items-center gap-2">
+                    {r.grade && <span className="font-logo font-bold text-base" style={{ color: "var(--accent)" }}>{r.grade}</span>}
+                    <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+                      {new Date(r.created_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
+                    </span>
+                    <button onClick={() => removeRoster(r.id)} className="text-xs text-red-400 hover:text-red-300">✕</button>
+                  </div>
+                </div>
+                <p className="text-xs mb-2" style={{ color: "var(--text-muted)" }}>
+                  {r.mode === "salarycap" ? "Salary Cap" : "Classic"}
+                  {r.overall_pct != null ? ` · ${Math.round(r.overall_pct)}%` : ""}
+                </p>
+                <div className="flex flex-wrap gap-1">
+                  {r.roster.map((p, i) => (
+                    <span key={i} className="px-2 py-0.5 rounded text-xs"
+                      style={{ background: "var(--bg-surface)", color: "var(--text-primary)", border: "1px solid var(--border)" }}>
+                      {p.PLAYER_NAME}
+                    </span>
+                  ))}
+                </div>
               </div>
             ))}
           </div>

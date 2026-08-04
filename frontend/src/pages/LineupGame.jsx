@@ -75,11 +75,17 @@ function ScoreReveal({ fit, lineup, primaryCount, onReset, lang, affinityMatrix,
   // Auto-save score (once on mount, if logged in)
   useEffect(() => {
     if (!isLoggedIn || !token) return;
-    const players = ALL_SLOTS.map(p => lineup[p]).filter(Boolean).map(p => p.PLAYER_NAME);
+    const filled = ALL_SLOTS.map(p => lineup[p]).filter(Boolean);
+    const players = filled.map(p => p.PLAYER_NAME);
+    // Faz 4 (Board Challenge): salarycap kadroları roster_json'a da yazılmalı,
+    // yoksa Board hiçbir zaman dolmaz — lineup[p] zaten /api/game/players'ın
+    // döndürdüğü tam satır (primary_arch/overall_score/score_*) + pick sırasında
+    // eklenen _season/_cost/_posPenalty'yi taşıyor, ek bir fetch gerekmiyor.
+    const roster = mode === "salarycap" && filled.length === ALL_SLOTS.length ? filled : [];
     fetch("/api/game/score", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ pct, grade, lineup: players, mode }),
+      body: JSON.stringify({ pct, grade, lineup: players, mode, roster }),
     }).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -91,6 +97,34 @@ function ScoreReveal({ fit, lineup, primaryCount, onReset, lang, affinityMatrix,
 
   const coveragePct = Math.round((fit.coverage || 0) * 100);
   const qualityPct  = Math.round((fit.avgQuality || 0) * 100);
+
+  // Kadro Kaydetme — bkz. docs/online-architecture-review-and-roadmap.md Faz 1.
+  // roster, lineup[p] objelerinin kendisi: /api/game/players'ın döndürdüğü tam
+  // satır (primary_arch/overall_score/score_*) + pick sırasında eklenen
+  // _season/_cost/_posPenalty — Board Challenge'daki roster_json ile AYNI şekil.
+  const [saveName, setSaveName] = useState("");
+  const [saveStatus, setSaveStatus] = useState("idle"); // idle | saving | saved | error
+  const [saveErr, setSaveErr] = useState("");
+  const saveRoster = () => {
+    if (!saveName.trim()) { setSaveErr("Give the roster a name."); return; }
+    const roster = ALL_SLOTS.map(p => lineup[p]).filter(Boolean);
+    if (roster.length !== ALL_SLOTS.length) return;
+    setSaveStatus("saving"); setSaveErr("");
+    fetch("/api/rosters", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        name: saveName.trim(), source_mode: "single", mode, sim_era: simEra?.id || null,
+        roster, overall_pct: pct, grade,
+      }),
+    })
+      .then(r => r.json().then(d => ({ ok: r.ok, d })))
+      .then(({ ok, d }) => {
+        if (!ok) { setSaveStatus("error"); setSaveErr(d.detail || "Could not save"); return; }
+        setSaveStatus("saved");
+      })
+      .catch(() => { setSaveStatus("error"); setSaveErr("Connection error"); });
+  };
 
   return (
     <div className="space-y-4">
@@ -139,6 +173,37 @@ function ScoreReveal({ fit, lineup, primaryCount, onReset, lang, affinityMatrix,
           </div>
         );
       })()}
+
+      {/* Kadro Kaydetme — bkz. docs/online-architecture-review-and-roadmap.md Faz 1 */}
+      {isLoggedIn && (
+        <div className="rounded-xl p-4" style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
+          {saveStatus === "saved" ? (
+            <div className="text-sm font-medium" style={{ color: "var(--yamabuki)" }}>
+              ✓ Roster saved — find it on your Profile page.
+            </div>
+          ) : (
+            <>
+              <div className="g-label mb-2">Save this roster</div>
+              <div className="flex gap-2">
+                <input
+                  type="text" value={saveName} maxLength={60}
+                  onChange={e => setSaveName(e.target.value)}
+                  placeholder="e.g. Fear the Deer 2011"
+                  className="flex-1 px-3 py-2 rounded-lg text-sm outline-none"
+                  style={{ background: "var(--bg-surface)", color: "var(--text-primary)", border: "1px solid var(--border)" }}
+                />
+                <button
+                  onClick={saveRoster}
+                  disabled={saveStatus === "saving" || !saveName.trim()}
+                  className="px-4 py-2 rounded-lg font-logo text-sm font-bold uppercase tracking-wide bg-yamabuki text-darkBg hover:bg-white transition-colors disabled:opacity-50">
+                  {saveStatus === "saving" ? "Saving…" : "Save"}
+                </button>
+              </div>
+              {saveErr && <p className="text-xs text-red-400 mt-2">{saveErr}</p>}
+            </>
+          )}
+        </div>
+      )}
 
       {/* Sezon simülasyonu (v3.5) */}
       <SeasonSimPanel

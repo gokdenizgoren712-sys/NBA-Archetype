@@ -75,6 +75,26 @@ def init_db():
             created_at  TEXT DEFAULT (datetime('now'))
         );
 
+        -- "Kadro Kaydetme" (bkz. docs/online-architecture-review-and-roadmap.md Faz 1).
+        -- roster_json BİLEREK lineup_json (sadece isim) ile AYNI ŞEKİL DEĞİL — Board
+        -- Challenge'da (lineup_games.roster_json) yaşanan "sadece isimle headToHead.js
+        -- çalışmaz" hatasına tekrar düşmemek için tam oyuncu satırı (PLAYER_NAME,
+        -- primary_arch, overall_score, score_*, _season, _cost, _posPenalty) taşır —
+        -- aynı şekli _backfill_roster_json_once() (api/main.py) zaten üretiyor.
+        CREATE TABLE IF NOT EXISTS saved_rosters (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id      INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            name         TEXT NOT NULL,
+            source_mode  TEXT NOT NULL DEFAULT 'single',   -- 'single' | 'same_screen' | 'with_a_friend'
+            mode         TEXT NOT NULL DEFAULT 'classic',  -- 'classic' | 'salarycap'
+            sim_era      TEXT,
+            roster_json  TEXT NOT NULL,
+            overall_pct  REAL,
+            grade        TEXT,
+            created_at   TEXT DEFAULT (datetime('now')),
+            UNIQUE(user_id, name)
+        );
+
         CREATE TABLE IF NOT EXISTS challenge_results (
             id             INTEGER PRIMARY KEY AUTOINCREMENT,
             challenger_id  INTEGER REFERENCES users(id) ON DELETE CASCADE,
