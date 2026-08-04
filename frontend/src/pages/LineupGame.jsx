@@ -71,10 +71,18 @@ function ScoreReveal({ fit, lineup, primaryCount, onReset, lang, affinityMatrix,
   })();
 
   const [leaderboard, setLeaderboard] = useState(null);
+  const [gameScoreId, setGameScoreId] = useState(null);
 
-  // Auto-save score (once on mount, if logged in)
+  // Auto-save score (once on mount, if logged in). savedOnceRef guards against
+  // React StrictMode's dev-only double-invoke of mount effects — without it,
+  // two rows got inserted per game and /api/game/season-result's old
+  // "update the user's last row" fallback only ever finished one of them,
+  // leaving a permanent orphaned (blank wins/result) duplicate on the board.
+  const savedOnceRef = useRef(false);
   useEffect(() => {
     if (!isLoggedIn || !token) return;
+    if (savedOnceRef.current) return;
+    savedOnceRef.current = true;
     const filled = ALL_SLOTS.map(p => lineup[p]).filter(Boolean);
     const players = filled.map(p => p.PLAYER_NAME);
     // Faz 4 (Board Challenge): salarycap kadroları roster_json'a da yazılmalı,
@@ -86,7 +94,10 @@ function ScoreReveal({ fit, lineup, primaryCount, onReset, lang, affinityMatrix,
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify({ pct, grade, lineup: players, mode, roster }),
-    }).catch(() => {});
+    })
+      .then(r => r.json())
+      .then(d => { if (d?.id != null) setGameScoreId(d.id); })
+      .catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -213,6 +224,7 @@ function ScoreReveal({ fit, lineup, primaryCount, onReset, lang, affinityMatrix,
         simEra={simEra || ERAS[5]}
         fit={fit}
         affinity01={affinityScore != null ? affinityScore / 100 : null}
+        gameScoreId={gameScoreId}
       />
 
       {/* Draft Analysis — eski "Roster Breakdown" + "Era Report" panellerinin

@@ -964,33 +964,78 @@ class ChallengeBody(BaseModel):
     entry_id: int
 
 
+# Board Challenge, Single Player'da o ana kadar oynanmış TÜM Salary Cap
+# oyunlarının (aynı lineup_games tablosu, iki ayrı bağımsız sistem DEĞİL —
+# bkz. 2026-08 kullanıcı kararı) puan-bazlı bir görünümüdür. Aynı puana (pct)
+# ulaşmış onlarca neredeyse-aynı kadro yerine, HER PUAN için tek bir temsilci
+# kadro gösterilir; o puandaki diğer kadrolar /api/game/board/at-score ile
+# görülebilir. Temsilci seçimi: en iyi sezon sonucuna sahip olan kazanır
+# (kullanıcı kararı) — sezon hiç simüle edilmemişse (season_result=NULL) en
+# düşük öncelikte kalır.
+_SEASON_RESULT_RANK = {
+    "THREEPEAT": 0, "REPEAT": 1, "CHAMPION": 2, "FINALS": 3,
+    "CF": 4, "SEMI": 5, "R1": 6, "MISSED": 7,
+}
+
+def _season_result_rank(season_result):
+    return _SEASON_RESULT_RANK.get(season_result, 8)
+
+def _board_row_to_entry(r):
+    try:
+        roster = json.loads(r["roster_json"])
+    except Exception:
+        return None
+    if not isinstance(roster, list) or len(roster) != 9:
+        return None
+    return {
+        "id": r["id"], "username": r["username"], "pct": r["pct"], "grade": r["grade"],
+        "wins": r["wins"], "season_result": r["season_result"], "sim_era": r["sim_era"],
+        "created_at": r["created_at"], "roster": roster,
+    }
+
 @router.get("/api/game/board")
 def get_board(limit: int = Query(25, ge=1, le=100)):
-    """Salary Cap leaderboard'unun tam-oyuncu-satırlı hâli — Board Challenge
-    için. roster_json'ı olmayan (eski) kayıtlar hiç görünmez (bkz. db.py
-    migration notu, isim eşleştirmeye asla düşülmesin diye kasıtlı)."""
+    """Puan başına tek temsilci kadro — bkz. yukarıdaki modül notu.
+    roster_json'ı olmayan (eski) kayıtlar hiç görünmez (bkz. db.py migration
+    notu, isim eşleştirmeye asla düşülmesin diye kasıtlı)."""
     with get_conn() as conn:
         rows = conn.execute(
             """SELECT lg.id, lg.pct, lg.grade, lg.roster_json, lg.created_at,
                       lg.wins, lg.season_result, lg.sim_era, u.username
                FROM lineup_games lg JOIN users u ON lg.user_id = u.id
                WHERE lg.mode = 'salarycap' AND lg.roster_json IS NOT NULL
-               ORDER BY lg.pct DESC LIMIT ?""",
-            (limit,),
+               ORDER BY lg.pct DESC"""
         ).fetchall()
-    entries = []
+    best_by_pct = {}
     for r in rows:
-        try:
-            roster = json.loads(r["roster_json"])
-        except Exception:
-            continue
-        if not isinstance(roster, list) or len(roster) != 9:
-            continue
-        entries.append({
-            "id": r["id"], "username": r["username"], "pct": r["pct"], "grade": r["grade"],
-            "wins": r["wins"], "season_result": r["season_result"], "sim_era": r["sim_era"],
-            "created_at": r["created_at"], "roster": roster,
-        })
+        cur = best_by_pct.get(r["pct"])
+        if cur is None or _season_result_rank(r["season_result"]) < _season_result_rank(cur["season_result"]):
+            best_by_pct[r["pct"]] = r
+    entries = []
+    for pct in sorted(best_by_pct, reverse=True):
+        entry = _board_row_to_entry(best_by_pct[pct])
+        if entry:
+            entries.append(entry)
+        if len(entries) >= limit:
+            break
+    return {"entries": entries}
+
+
+@router.get("/api/game/board/at-score")
+def get_board_at_score(pct: int = Query(..., ge=0, le=100), limit: int = Query(50, ge=1, le=200)):
+    """Belirli bir puana (pct) ulaşmış TÜM Salary Cap kadroları — Board'un
+    puan-başına-tek-temsilci görünümünde başka bir kadroyla oynamak
+    isteyenler için filtreleme/seçim listesi (bkz. 2026-08 kullanıcı kararı)."""
+    with get_conn() as conn:
+        rows = conn.execute(
+            """SELECT lg.id, lg.pct, lg.grade, lg.roster_json, lg.created_at,
+                      lg.wins, lg.season_result, lg.sim_era, u.username
+               FROM lineup_games lg JOIN users u ON lg.user_id = u.id
+               WHERE lg.mode = 'salarycap' AND lg.roster_json IS NOT NULL AND lg.pct = ?
+               ORDER BY lg.id DESC LIMIT ?""",
+            (pct, limit),
+        ).fetchall()
+    entries = [e for e in (_board_row_to_entry(r) for r in rows) if e]
     return {"entries": entries}
 
 

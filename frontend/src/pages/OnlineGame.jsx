@@ -129,7 +129,37 @@ function QueuePanel({ state, elapsed, queueSize, opponent, onFind, onCancel, onA
 }
 
 // ── Leaderboard'dan rakip seçimi ─────────────────────────────────────────
+// Board, puan (pct) başına TEK temsilci kadro gösterir (bkz. api/game_ws.py
+// get_board). Aynı puana ulaşmış BAŞKA kadrolarla oynamak isteyenler için
+// bir puan filtresi var: /api/game/board/at-score o puandaki tüm kadroları
+// döndürür (bkz. 2026-08 kullanıcı kararı — "iki ayrı bağımsız leaderboard
+// istemiyorum", Board zaten Single Player'ın aynı verisinin bir görünümü).
 function BoardPanel({ entries, selected, onSelect, onChallenge, loading, challenging }) {
+  const [scoreFilter, setScoreFilter] = useState("");
+  const [filteredEntries, setFilteredEntries] = useState(null);
+  const [filterLoading, setFilterLoading] = useState(false);
+
+  useEffect(() => {
+    const pct = scoreFilter.trim() === "" ? null : Number(scoreFilter);
+    if (pct == null || !Number.isInteger(pct) || pct < 0 || pct > 100) {
+      setFilteredEntries(null);
+      return;
+    }
+    let alive = true;
+    setFilterLoading(true);
+    const t = setTimeout(() => {
+      fetch(`/api/game/board/at-score?pct=${pct}`)
+        .then(r => r.json())
+        .then(d => { if (alive) setFilteredEntries(d.entries || []); })
+        .catch(() => { if (alive) setFilteredEntries([]); })
+        .finally(() => { if (alive) setFilterLoading(false); });
+    }, 300);
+    return () => { alive = false; clearTimeout(t); };
+  }, [scoreFilter]);
+
+  const shownEntries = filteredEntries ?? entries;
+  const isFiltering = filteredEntries != null;
+
   return (
     <div className="g-panel p-4 g-hud-fill">
       <span className="aura-blob" style={{ "--slot-color": "#FFB11B", right: "12%", top: -44, width: 220, height: 120, opacity: 0.16 }} />
@@ -141,7 +171,7 @@ function BoardPanel({ entries, selected, onSelect, onChallenge, loading, challen
         </span>
         <span className="g-status inline-flex items-center gap-1"
           style={{ "--accent": "#FFB11B", "--accent-a": "rgba(255,177,27,.12)", "--accent-line": "rgba(255,177,27,.4)" }}>
-          <CapIcon size={11} /> Top 25
+          <CapIcon size={11} /> {isFiltering ? `${shownEntries.length} at ${scoreFilter}` : "Top 25"}
         </span>
       </div>
 
@@ -150,25 +180,50 @@ function BoardPanel({ entries, selected, onSelect, onChallenge, loading, challen
         their lineup is frozen, their era is the era you play in.
       </p>
 
-      <div className="flex-1 min-h-0 overflow-y-auto pr-0.5 mt-3 space-y-0.5">
-        {loading && [...Array(8)].map((_, i) => <div key={i} className="g-lb-skel" />)}
+      <div className="flex items-center gap-2 mt-2.5 shrink-0">
+        <input type="number" min={0} max={100} placeholder="Look up an exact score…"
+          value={scoreFilter} onChange={e => { setScoreFilter(e.target.value); onSelect(null); }}
+          className="flex-1 px-2.5 py-1.5 rounded-lg text-xs outline-none"
+          style={{ background: "var(--bg-surface)", color: "var(--text-primary)", border: "1px solid var(--border)" }} />
+        {isFiltering && (
+          <button onClick={() => { setScoreFilter(""); onSelect(null); }}
+            className="text-[10.5px] px-2 py-1.5 rounded-lg shrink-0"
+            style={{ color: "var(--text-muted)", border: "1px solid var(--border)" }}>
+            Clear
+          </button>
+        )}
+      </div>
+      {isFiltering && (
+        <p className="text-[10.5px] mt-1 shrink-0" style={{ color: "var(--text-faint)" }}>
+          Every Single Player roster that scored exactly {scoreFilter} — not just the one shown by default.
+        </p>
+      )}
 
-        {!loading && entries.length === 0 && (
+      <div className="flex-1 min-h-0 overflow-y-auto pr-0.5 mt-3 space-y-0.5">
+        {(loading || filterLoading) && [...Array(8)].map((_, i) => <div key={i} className="g-lb-skel" />)}
+
+        {!loading && !filterLoading && shownEntries.length === 0 && !isFiltering && (
           <p className="text-[11.5px] leading-relaxed py-3" style={{ color: "var(--text-muted)" }}>
             No Salary Cap runs on the board yet. Play a Salary Cap game in Single Player and yours
             becomes the first roster anyone can challenge.
           </p>
         )}
 
-        {entries.map((e, i) => {
-          const hex = PODIUM[i] || "#9ca3af";
+        {!loading && !filterLoading && shownEntries.length === 0 && isFiltering && (
+          <p className="text-[11.5px] leading-relaxed py-3" style={{ color: "var(--text-muted)" }}>
+            No Salary Cap roster has scored exactly {scoreFilter} yet.
+          </p>
+        )}
+
+        {!filterLoading && shownEntries.map((e, i) => {
+          const hex = !isFiltering && PODIUM[i] || "#9ca3af";
           const on = selected?.i === i;
           const g = e.grade || gradeFor(e.pct);
           return (
-            <button key={`${e.username}-${i}`} onClick={() => onSelect({ ...e, i })}
-              className={`g-lb-row w-full text-left${i < 3 ? " podium" : ""}${on ? " me" : ""}`}
+            <button key={`${e.id}-${i}`} onClick={() => onSelect({ ...e, i })}
+              className={`g-lb-row w-full text-left${!isFiltering && i < 3 ? " podium" : ""}${on ? " me" : ""}`}
               style={{ "--accent": on ? "#FFB11B" : hex, "--accent-a": (on ? "#FFB11B" : hex) + "1f", "--accent-line": (on ? "#FFB11B" : hex) + "66" }}>
-              <span className="g-lb-rank">{i + 1}</span>
+              {!isFiltering && <span className="g-lb-rank">{i + 1}</span>}
               <span className="g-lb-name">{e.username}</span>
               {e.season_result === "THREEPEAT" && <span className="shrink-0" style={{ color: "var(--yamabuki)" }}><CrownIcon size={12} /></span>}
               {e.season_result === "CHAMPION" && <span className="shrink-0" style={{ color: "var(--yamabuki)" }}><TrophyIcon size={11} /></span>}

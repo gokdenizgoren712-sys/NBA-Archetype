@@ -3191,7 +3191,8 @@ def save_roster(body: SaveRosterBody, user=Depends(get_current_user)):
     except Exception as e:
         if "UNIQUE" in str(e):
             raise HTTPException(409, "You already have a saved roster with this name")
-        raise HTTPException(500, str(e))
+        print(f"[save_roster] unexpected error: {e}", flush=True)
+        raise HTTPException(500, "Could not save this roster — please try again")
 
 @app.delete("/api/rosters/{item_id}")
 def delete_roster(item_id: int, user=Depends(get_current_user)):
@@ -3230,32 +3231,44 @@ def save_game_score(body: GameScoreBody, user=Depends(get_current_user)):
         raise HTTPException(400, "Invalid mode")
     roster_json = json.dumps(body.roster) if body.roster else None
     with get_conn() as conn:
-        conn.execute(
+        cur = conn.execute(
             "INSERT INTO lineup_games (user_id, pct, grade, lineup_json, mode, roster_json) VALUES (?,?,?,?,?,?)",
             (int(user["sub"]), body.pct, body.grade, json.dumps(body.lineup), body.mode, roster_json),
         )
-    return {"ok": True}
+    return {"ok": True, "id": cur.lastrowid}
 
 
 class SeasonResultBody(BaseModel):
     wins: int
     season_result: str   # CHAMPION | FINALS | CF | SEMI | R1 | MISSED
     sim_era: str = ""
+    # /api/game/score'un döndürdüğü id — verilirse TAM O satır güncellenir.
+    # Eski istemciler (id yok) için "kullanıcının son satırı" varsayımına
+    # düşer, ama bu varsayım StrictMode'un dev'de efekt'i çift tetiklemesiyle
+    # YANLIŞ satırı güncelleyebiliyordu (bkz. 2026-08 online-architecture
+    # denetimi) — o yüzden frontend artık her zaman id gönderiyor.
+    game_id: int | None = None
 
 _VALID_SEASON_RESULTS = {"CHAMPION", "REPEAT", "THREEPEAT", "FINALS", "CF", "SEMI", "R1", "MISSED"}
 
 @app.post("/api/game/season-result")
 def save_season_result(body: SeasonResultBody, user=Depends(get_current_user)):
-    """Sezon simülasyonu sonucunu kullanıcının son lineup_games kaydına işler."""
+    """Sezon simülasyonu sonucunu ilgili lineup_games kaydına işler."""
     if body.season_result not in _VALID_SEASON_RESULTS:
         raise HTTPException(400, "Invalid season result")
     if not 0 <= body.wins <= 82:
         raise HTTPException(400, "Invalid wins")
     with get_conn() as conn:
-        row = conn.execute(
-            "SELECT id FROM lineup_games WHERE user_id=? ORDER BY id DESC LIMIT 1",
-            (int(user["sub"]),),
-        ).fetchone()
+        if body.game_id is not None:
+            row = conn.execute(
+                "SELECT id FROM lineup_games WHERE id=? AND user_id=?",
+                (body.game_id, int(user["sub"])),
+            ).fetchone()
+        else:
+            row = conn.execute(
+                "SELECT id FROM lineup_games WHERE user_id=? ORDER BY id DESC LIMIT 1",
+                (int(user["sub"]),),
+            ).fetchone()
         if not row:
             return {"ok": False, "detail": "No game score to attach to"}
         conn.execute(

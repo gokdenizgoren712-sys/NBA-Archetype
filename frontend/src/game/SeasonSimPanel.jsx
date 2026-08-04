@@ -10,7 +10,7 @@ import "./game.css";
 
 const MONTHS = ["OCT", "NOV", "DEC", "JAN", "FEB", "MAR", "APR"];
 
-export default function SeasonSimPanel({ players, simEra, fit, affinity01, bench = [], coach = null }) {
+export default function SeasonSimPanel({ players, simEra, fit, affinity01, bench = [], coach = null, gameScoreId = null }) {
   const { isLoggedIn, token } = useAuth();
   const [result, setResult]           = useState(null);
   const [revealGames, setRevealGames] = useState(0);
@@ -40,10 +40,13 @@ export default function SeasonSimPanel({ players, simEra, fit, affinity01, bench
   };
 
   const postResult = (res, resultKey) => {
+    // gameScoreId varsa TAM O satır güncellenir (bkz. api/main.py save_season_result) —
+    // "kullanıcının son satırı" tahminine düşmek StrictMode'un dev'de mount
+    // effect'i çift tetiklemesiyle yanlış satırı güncelleyebiliyordu.
     fetch("/api/game/season-result", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ wins: res.wins, season_result: resultKey, sim_era: simEra.id }),
+      body: JSON.stringify({ wins: res.wins, season_result: resultKey, sim_era: simEra.id, game_id: gameScoreId }),
     }).catch(() => {});
   };
 
