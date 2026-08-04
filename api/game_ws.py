@@ -267,6 +267,7 @@ def _other_uid(uid: int, state: dict) -> int:
 def _init_room_state(row, usernames: dict) -> dict:
     p1, p2 = row["player1_user_id"], row["player2_user_id"]
     return {
+        "mode": row["mode"],   # 'friend' | 'online' | 'challenge' — Faz 4: challenge tek taraflı akış
         "wheel_mode": row["wheel_mode"],
         "phase": "era",   # era|drafting|placing|review|coach1|coach2|series|complete
         "usernames": usernames,
@@ -289,6 +290,7 @@ def _init_room_state(row, usernames: dict) -> dict:
         "coaches": {p1: None, p2: None},
         "series_games": [],
         "series_wins": {p1: 0, p2: 0},
+        "counter_jokers_enabled": True,
     }
 
 
@@ -435,7 +437,11 @@ def _place_pos(state: dict, uid: int, pos: str, player: dict) -> str | None:
     participants = [u for u in (p1, p2) if any(state["lineups"][u][s] is None for s in ALL_SLOTS)]
     if not participants:
         state["phase"] = "review"
-        state["ready_for_coaches"] = {p1: False, p2: False}
+        # Challenge modunda p2 donmuş — hiç bağlanmayacağı için "ready" bekletmek
+        # oyunu sonsuza dek review'da kilitler. Init'teki ön-hazır bayrağını
+        # (bkz. _init_challenge_state) burada da koru (bu satır onu eziyordu).
+        p2_ready = state.get("mode") == "challenge"
+        state["ready_for_coaches"] = {p1: False, p2: p2_ready}
         return None
     first_next = _other_uid(state["turn_queue"][0], state)
     _begin_round(state, state["round"] + 1, participants, first_next)
@@ -478,6 +484,8 @@ def _use_joker(state: dict, uid: int, jtype: str) -> str | None:
 
 
 def _use_counter_joker(state: dict, uid: int, ctype: str) -> str | None:
+    if not state.get("counter_jokers_enabled", True):
+        return "Counter-jokers are disabled against a frozen board roster"
     if state["phase"] not in ("drafting", "placing"):
         return "Not a draftable phase"
     active_uid = state["turn_queue"][state["turn_pos"]]
@@ -541,8 +549,16 @@ def _pick_coach(state: dict, uid: int, coach_name: str) -> str | None:
         return "Missing coach_name"
     if state["phase"] == "coach1" and uid == p1:
         state["coaches"][p1] = coach_name
-        state["coach_seed"] = random.randint(0, 2**31 - 1)
-        state["phase"] = "coach2"
+        # Challenge modunda p2 donmuş kadro — hiç bağlanmıyor, koçu init'te
+        # zaten atandı (bkz. _init_challenge_state). coach2'yi hiç beklemeden
+        # doğrudan seriye geç.
+        if state.get("mode") == "challenge":
+            state["phase"] = "series"
+            state["series_games"] = []
+            state["series_wins"] = {p1: 0, p2: 0}
+        else:
+            state["coach_seed"] = random.randint(0, 2**31 - 1)
+            state["phase"] = "coach2"
         return None
     if state["phase"] == "coach2" and uid == p2:
         state["coaches"][p2] = coach_name
@@ -605,22 +621,17 @@ def _envelope(room_code: str, state: dict) -> dict:
 
 
 class CreateRoomBody(BaseModel):
-    mode: str = "friend"          # 'friend' | 'online' — Faz 4'te matchmaking 'online' ile oda açacak
+    mode: str = "friend"          # 'friend' | 'online' | 'challenge' — bkz. _create_room_row
     wheel_mode: str = "round"     # 'round' | 'pick' — Same Screen'deki çark alt-modunun aynısı
 
 
-@router.post("/api/game/room")
-def create_room(body: CreateRoomBody, user=Depends(get_current_user)):
-    """Oda açar — oda kurucusunun kararı: mod + çark alt-modu. Sezon/takım
-    ARTIK burada seçilmiyor; Same Screen'deki gibi her round/pick canlı spin
-    ediliyor (bkz. _spin_round, Faz3-M2). season/team_a/team_b kolonları eski
-    (tek-seferlik-havuz) modelden kalma, boş placeholder ile dolduruluyor —
-    şemayı bozmadan (NOT NULL) ölü alan olarak bırakıldı."""
-    if body.wheel_mode not in ("round", "pick"):
-        raise HTTPException(400, "Geçersiz wheel_mode")
-
+def _create_room_row(mode: str, wheel_mode: str, creator_user_id: int) -> str:
+    """Oda satırını açar, oluşturulan room_code'u döner. create_room() (REST)
+    VE matchmaking eşleşmesi (Faz 4) bunu paylaşır — kopyalama yerine ortak
+    fonksiyon (bkz. docs/online-mode-backend-prompt.md). season/team_a/team_b
+    kolonları eski (tek-seferlik-havuz) modelden kalma, boş placeholder ile
+    dolduruluyor — şemayı bozmadan (NOT NULL) ölü alan olarak bırakıldı."""
     room_code = _gen_room_code()
-    user_id = int(user["sub"])
     with get_conn() as conn:
         for _ in range(5):
             try:
@@ -629,14 +640,36 @@ def create_room(body: CreateRoomBody, user=Depends(get_current_user)):
                        (room_code, mode, status, season, team_a, team_b, wheel_mode,
                         player1_user_id, turn_user_id, pick_number)
                        VALUES (?, ?, 'waiting', '', '', '', ?, ?, ?, 0)""",
-                    (room_code, body.mode, body.wheel_mode, user_id, user_id),
+                    (room_code, mode, wheel_mode, creator_user_id, creator_user_id),
                 )
-                break
+                return room_code
             except Exception:
                 room_code = _gen_room_code()  # çakışma — yeni kod dene
-        else:
-            raise HTTPException(500, "Oda kodu üretilemedi")
+    raise RuntimeError("Oda kodu üretilemedi")
 
+
+def _finalize_join(room_code: str, user_id: int) -> None:
+    """İkinci oyuncuyu odaya ekler, drafting'e açar. join_room() (REST) VE
+    matchmaking eşleşmesi (Faz 4) bunu paylaşır."""
+    with get_conn() as conn:
+        conn.execute(
+            """UPDATE game_rooms SET player2_user_id = ?, status = 'drafting',
+               updated_at = datetime('now') WHERE room_code = ?""",
+            (user_id, room_code),
+        )
+
+
+@router.post("/api/game/room")
+def create_room(body: CreateRoomBody, user=Depends(get_current_user)):
+    """Oda açar — oda kurucusunun kararı: mod + çark alt-modu. Sezon/takım
+    ARTIK burada seçilmiyor; Same Screen'deki gibi her round/pick canlı spin
+    ediliyor (bkz. _spin_round, Faz3-M2)."""
+    if body.wheel_mode not in ("round", "pick"):
+        raise HTTPException(400, "Geçersiz wheel_mode")
+    try:
+        room_code = _create_room_row(body.mode, body.wheel_mode, int(user["sub"]))
+    except RuntimeError:
+        raise HTTPException(500, "Oda kodu üretilemedi")
     return {"room_code": room_code}
 
 
@@ -658,11 +691,8 @@ def join_room(room_code: str, user=Depends(get_current_user)):
         if row["status"] != "waiting":
             raise HTTPException(409, f"Oda katılıma kapalı (status={row['status']})")
 
-        conn.execute(
-            """UPDATE game_rooms SET player2_user_id = ?, status = 'drafting',
-               updated_at = datetime('now') WHERE room_code = ?""",
-            (user_id, room_code),
-        )
+    _finalize_join(room_code, user_id)
+    with get_conn() as conn:
         row = conn.execute(
             "SELECT * FROM game_rooms WHERE room_code = ?", (room_code,)
         ).fetchone()
@@ -682,6 +712,274 @@ def get_room(room_code: str, user=Depends(get_current_user)):
     d = _room_to_dict(row)
     d["usernames"] = _fetch_usernames([row["player1_user_id"], row["player2_user_id"]])
     return d
+
+
+# ── Faz 4 (Online Opponent): FIFO matchmaking kuyruğu ────────────────────────
+# ROOM_STATES gibi bellekte, tek process — bkz. docs/online-mode-backend-prompt.md.
+# Kalıcılık gerekmiyor: süreç yeniden başlarsa kuyruk boşalır, istemci Idle'a döner.
+MM_QUEUE: list[dict] = []          # [{user_id, wheel_mode, joined_at}], FIFO
+MM_WS: dict[int, WebSocket] = {}   # user_id -> matchmaking WS
+MM_PENDING: dict[int, dict] = {}   # user_id -> henüz WS bağlanmadan önce eşleşmişse bekleyen "matched" mesajı
+
+
+def _mm_opponent_info(user_id: int) -> dict:
+    with get_conn() as conn:
+        u = conn.execute("SELECT username FROM users WHERE id = ?", (user_id,)).fetchone()
+        stats = conn.execute(
+            "SELECT COUNT(*) AS n, MAX(pct) AS best FROM lineup_games WHERE user_id = ?",
+            (user_id,),
+        ).fetchone()
+    return {
+        "username": u["username"] if u else "Player",
+        "games": stats["n"] or 0,
+        "best": stats["best"],
+    }
+
+
+def _user_in_active_game(user_id: int) -> bool:
+    with get_conn() as conn:
+        row = conn.execute(
+            """SELECT 1 FROM game_rooms WHERE status = 'drafting'
+               AND (player1_user_id = ? OR player2_user_id = ?) LIMIT 1""",
+            (user_id, user_id),
+        ).fetchone()
+    return row is not None
+
+
+async def _mm_notify(user_id: int, message: dict) -> None:
+    """WS bağlıysa hemen gönder; değilse mailbox'a koy — bağlandığında okunur.
+    Sıralama garantisi yok (POST /join, sonra istemci WS'e bağlanıyor) ama bu
+    ikisi arasında eşleşme olursa mesaj kaybolmasın diye (bkz. prompt notu)."""
+    ws = MM_WS.get(user_id)
+    if ws:
+        try:
+            await ws.send_json(message)
+            return
+        except Exception:
+            pass
+    MM_PENDING[user_id] = message
+
+
+async def _mm_broadcast_queue_size() -> None:
+    size = len(MM_QUEUE)
+    for uid, ws in list(MM_WS.items()):
+        try:
+            await ws.send_json({"type": "queue", "size": size})
+        except Exception:
+            pass
+
+
+class MatchmakingJoinBody(BaseModel):
+    wheel_mode: str = "round"
+
+
+@router.post("/api/game/matchmaking/join")
+async def matchmaking_join(body: MatchmakingJoinBody, user=Depends(get_current_user)):
+    if body.wheel_mode not in ("round", "pick"):
+        raise HTTPException(400, "Geçersiz wheel_mode")
+    user_id = int(user["sub"])
+    if _user_in_active_game(user_id):
+        raise HTTPException(409, "already in a game")
+    if any(e["user_id"] == user_id for e in MM_QUEUE):
+        return {"queued": True, "queue_size": len(MM_QUEUE)}
+
+    MM_QUEUE.append({"user_id": user_id, "wheel_mode": body.wheel_mode,
+                      "joined_at": datetime.now(timezone.utc)})
+
+    if len(MM_QUEUE) >= 2:
+        a = MM_QUEUE.pop(0)
+        b = MM_QUEUE.pop(0)
+        wheel_mode = a["wheel_mode"]  # kuyruğa ilk giren oyuncununki
+        try:
+            room_code = _create_room_row("friend", wheel_mode, a["user_id"])
+        except RuntimeError:
+            # Oda açılamadı — ikisini de kuyruğun başına geri koy, istemciler yeniden dener.
+            MM_QUEUE.insert(0, b)
+            MM_QUEUE.insert(0, a)
+            raise HTTPException(500, "Oda kodu üretilemedi")
+        _finalize_join(room_code, b["user_id"])
+        await _mm_notify(a["user_id"], {"type": "matched", "room_code": room_code,
+                                         "opponent": _mm_opponent_info(b["user_id"])})
+        await _mm_notify(b["user_id"], {"type": "matched", "room_code": room_code,
+                                         "opponent": _mm_opponent_info(a["user_id"])})
+        return {"queued": True, "queue_size": 0}
+
+    await _mm_broadcast_queue_size()
+    return {"queued": True, "queue_size": len(MM_QUEUE)}
+
+
+@router.delete("/api/game/matchmaking")
+def matchmaking_leave(user=Depends(get_current_user)):
+    global MM_QUEUE
+    user_id = int(user["sub"])
+    MM_QUEUE = [e for e in MM_QUEUE if e["user_id"] != user_id]
+    return {"left": True}
+
+
+@router.websocket("/ws/game/matchmaking")
+async def matchmaking_socket(ws: WebSocket, token: str = Query(...)):
+    global MM_QUEUE
+    try:
+        payload = _decode(token)
+        user_id = int(payload["sub"])
+    except Exception:
+        await ws.close(code=4401)
+        return
+    if _is_banned(user_id):
+        await ws.close(code=4403)
+        return
+
+    await ws.accept()
+    MM_WS[user_id] = ws
+    try:
+        pending = MM_PENDING.pop(user_id, None)
+        if pending:
+            await ws.send_json(pending)
+        else:
+            await ws.send_json({"type": "queue", "size": len(MM_QUEUE)})
+        while True:
+            raw = await ws.receive_text()
+            try:
+                msg = json.loads(raw)
+            except ValueError:
+                continue
+            if msg.get("type") == "ping":
+                await ws.send_json({"type": "pong"})
+    except WebSocketDisconnect:
+        pass
+    finally:
+        if MM_WS.get(user_id) is ws:
+            del MM_WS[user_id]
+        before = len(MM_QUEUE)
+        MM_QUEUE = [e for e in MM_QUEUE if e["user_id"] != user_id]
+        if len(MM_QUEUE) != before:
+            await _mm_broadcast_queue_size()
+
+
+# ── Faz 4 (Online Opponent): Board Challenge ─────────────────────────────────
+# Donmuş kadroya karşı tek taraflı draft — bkz. docs/online-mode-backend-prompt.md
+# "Yapılacak 2". Rakip (board sahibi) hiç bağlanmaz; kadrosu roster_json'dan
+# baştan dolu gelir, koçu init'te otomatik atanır, counter-joker'lar kapalı.
+_CHALLENGE_COACH_POOL = [
+    "Gregg Popovich", "Phil Jackson", "Steve Kerr", "Erik Spoelstra",
+    "Pat Riley", "Rick Carlisle", "Nick Nurse", "Mike Budenholzer",
+    "Tyronn Lue", "Joe Mazzulla",
+]
+
+
+def _init_challenge_state(p1: int, p2: int, usernames: dict, roster: list, sim_era_id: str) -> dict:
+    lineup_p2 = {s: None for s in ALL_SLOTS}
+    for i, slot in enumerate(ALL_SLOTS):
+        if i < len(roster):
+            lineup_p2[slot] = roster[i]
+    state = {
+        "mode": "challenge",
+        "wheel_mode": "round",
+        "phase": "drafting",   # _begin_round aşağıda hemen üzerine yazıyor — "era" fazı hiç yok
+        "usernames": usernames,
+        "player1_user_id": p1, "player2_user_id": p2,
+        "sim_era_id": sim_era_id or None,
+        "round": 0,
+        "turn_queue": [p1], "turn_pos": 0,
+        "spin_seq": 0,
+        "chosen_season": None, "chosen_team": None,
+        "pool": [],
+        "picked_player": None,
+        "double_active": False, "discover_active": False,
+        "banned_player_id": None, "ban_voided": False, "ban_picking": False,
+        "counter_dismissed": False,
+        "lineups": {p1: {s: None for s in ALL_SLOTS}, p2: lineup_p2},
+        "jokers": {p1: dict(EMPTY_JOKERS), p2: dict(EMPTY_JOKERS)},
+        "ready_for_coaches": {p1: False, p2: True},
+        "coach_seed": None,
+        "coaches": {p1: None, p2: random.choice(_CHALLENGE_COACH_POOL)},
+        "series_games": [],
+        "series_wins": {p1: 0, p2: 0},
+        "counter_jokers_enabled": False,
+    }
+    # Era meydan okuyanı seçmiyor (donmuş kadronun era'sı) — "era" fazını atla,
+    # doğrudan round 1'i SADECE p1 için başlat (p2'nin lineup'ı zaten dolu,
+    # sonraki round'larda _place_pos'un participants filtresi p2'yi otomatik
+    # dışlar — bkz. _place_pos içindeki boş-slot kontrolü).
+    _begin_round(state, 1, [p1], p1)
+    return state
+
+
+class ChallengeBody(BaseModel):
+    entry_id: int
+
+
+@router.get("/api/game/board")
+def get_board(limit: int = Query(25, ge=1, le=100)):
+    """Salary Cap leaderboard'unun tam-oyuncu-satırlı hâli — Board Challenge
+    için. roster_json'ı olmayan (eski) kayıtlar hiç görünmez (bkz. db.py
+    migration notu, isim eşleştirmeye asla düşülmesin diye kasıtlı)."""
+    with get_conn() as conn:
+        rows = conn.execute(
+            """SELECT lg.id, lg.pct, lg.grade, lg.roster_json, lg.created_at,
+                      lg.wins, lg.season_result, lg.sim_era, u.username
+               FROM lineup_games lg JOIN users u ON lg.user_id = u.id
+               WHERE lg.mode = 'salarycap' AND lg.roster_json IS NOT NULL
+               ORDER BY lg.pct DESC LIMIT ?""",
+            (limit,),
+        ).fetchall()
+    entries = []
+    for r in rows:
+        try:
+            roster = json.loads(r["roster_json"])
+        except Exception:
+            continue
+        if not isinstance(roster, list) or len(roster) != 9:
+            continue
+        entries.append({
+            "id": r["id"], "username": r["username"], "pct": r["pct"], "grade": r["grade"],
+            "wins": r["wins"], "season_result": r["season_result"], "sim_era": r["sim_era"],
+            "created_at": r["created_at"], "roster": roster,
+        })
+    return {"entries": entries}
+
+
+@router.post("/api/game/challenge")
+def challenge_board(body: ChallengeBody, user=Depends(get_current_user)):
+    user_id = int(user["sub"])
+    with get_conn() as conn:
+        row = conn.execute(
+            """SELECT * FROM lineup_games
+               WHERE id = ? AND mode = 'salarycap' AND roster_json IS NOT NULL""",
+            (body.entry_id,),
+        ).fetchone()
+        if not row:
+            raise HTTPException(404, "Challenge entry not found")
+        opponent_user_id = row["user_id"]
+        if opponent_user_id == user_id:
+            raise HTTPException(400, "Cannot challenge your own roster")
+        try:
+            roster = json.loads(row["roster_json"])
+        except Exception:
+            raise HTTPException(500, "Corrupt roster data")
+        if not isinstance(roster, list) or len(roster) != 9:
+            raise HTTPException(500, "Invalid roster data")
+        usernames = _fetch_usernames([user_id, opponent_user_id])
+
+    try:
+        room_code = _create_room_row("challenge", "round", user_id)
+    except RuntimeError:
+        raise HTTPException(500, "Oda kodu üretilemedi")
+    _finalize_join(room_code, opponent_user_id)
+
+    sim_era = row["sim_era"] or ""
+    ROOM_STATES[room_code] = _init_challenge_state(user_id, opponent_user_id, usernames, roster, sim_era)
+    _save_state(room_code, ROOM_STATES[room_code])
+
+    return {
+        "room_code": room_code,
+        "sim_era": sim_era,
+        "wheel_mode": "round",
+        "opponent": {
+            "username": usernames.get(opponent_user_id, "Opponent"),
+            "pct": row["pct"], "grade": row["grade"], "roster": roster,
+        },
+    }
 
 
 @router.websocket("/ws/game/room/{room_code}")

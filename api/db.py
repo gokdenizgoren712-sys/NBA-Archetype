@@ -75,6 +75,15 @@ def init_db():
             created_at  TEXT DEFAULT (datetime('now'))
         );
 
+        CREATE TABLE IF NOT EXISTS challenge_results (
+            id             INTEGER PRIMARY KEY AUTOINCREMENT,
+            challenger_id  INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            entry_id       INTEGER REFERENCES lineup_games(id) ON DELETE CASCADE,
+            won            INTEGER NOT NULL,
+            series_score   TEXT,
+            created_at     TEXT DEFAULT (datetime('now'))
+        );
+
         CREATE TABLE IF NOT EXISTS tag_corrections (
             id              INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id         INTEGER REFERENCES users(id) ON DELETE CASCADE,
@@ -146,5 +155,14 @@ def init_db():
         # yükleniyor (bkz. api/game_ws.py _save_state/_restore_state).
         try:
             conn.execute("ALTER TABLE game_rooms ADD COLUMN state_json TEXT")
+        except Exception:
+            pass
+        # Faz 4 (Online Opponent — Board Challenge): tam oyuncu satırlarını
+        # (arketip skorları dahil) tutar, lineup_json (sadece isim) yetersiz
+        # kalıyordu — bkz. docs/online-mode-backend-prompt.md "Yapılacak 2".
+        # NULL = eski kayıt, board listesine hiç girmez (isim eşleştirmeye
+        # düşmeden sessizce dışlanır).
+        try:
+            conn.execute("ALTER TABLE lineup_games ADD COLUMN roster_json TEXT")
         except Exception:
             pass

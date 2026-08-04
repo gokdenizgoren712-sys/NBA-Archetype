@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { SEO } from "../hooks/useSEO";
 import { useAuth } from "../contexts/AuthContext";
 import { useGameSocket } from "../hooks/useGameSocket";
@@ -46,6 +46,7 @@ function capFor(lineup) {
 export default function WithAFriendGame() {
   const { token, user, isLoggedIn } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const [wheelModeChoice, setWheelModeChoice] = useState("round");
   const [roomCode, setRoomCode] = useState(null);
@@ -128,8 +129,12 @@ export default function WithAFriendGame() {
       .finally(() => setCreating(false));
   };
 
-  const joinRoom = () => {
-    const code = joinCodeInput.trim().toUpperCase();
+  // entry_id -> ayrık fonksiyon: hem manuel giriş (joinRoom, input state'inden)
+  // hem de Online Opponent'ten gelen ?room= otomatik girişi (aşağıdaki effect)
+  // aynı yolu kullansın diye — state timing sorununa düşmeden doğrudan code
+  // parametresi alır.
+  const joinRoomByCode = useCallback((rawCode) => {
+    const code = rawCode.trim().toUpperCase();
     if (code.length < 4) { setErrorMsg("Enter a valid room code"); return; }
     setErrorMsg(""); setJoining(true);
     fetch(`/api/game/room/${code}/join`, {
@@ -144,7 +149,18 @@ export default function WithAFriendGame() {
       })
       .catch(e => setErrorMsg(e.message))
       .finally(() => setJoining(false));
-  };
+  }, [token]);
+
+  const joinRoom = () => joinRoomByCode(joinCodeInput);
+
+  // INTEGRATION: matchmaking-accept — Online Opponent eşleşme/challenge
+  // sonrası navigate(`/game/friend?room=${code}`) yapıyor, burada otomatik
+  // katılıyoruz (elle kod girmeye gerek yok).
+  useEffect(() => {
+    const r = searchParams.get("room");
+    if (r && !roomCode && isLoggedIn) joinRoomByCode(r);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoggedIn]);
 
   const copyCode = () => {
     if (!roomCode) return;

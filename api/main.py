@@ -3069,6 +3069,11 @@ class GameScoreBody(BaseModel):
     grade: str
     lineup: list = []
     mode: str = "classic"
+    # Faz 4 (Online Opponent — Board Challenge): opsiyonel, eski istemciler
+    # kırılmasın diye boş varsayılan. Doluysa lineup_json'a EK olarak
+    # roster_json'a da yazılır — board challenge tam oyuncu satırı ister
+    # (bkz. docs/online-mode-backend-prompt.md).
+    roster: list = []
 
 class CorrectionBody(BaseModel):
     player_name: str
@@ -3088,10 +3093,11 @@ def save_game_score(body: GameScoreBody, user=Depends(get_current_user)):
         raise HTTPException(400, "Invalid grade")
     if body.mode not in ("classic", "salarycap"):
         raise HTTPException(400, "Invalid mode")
+    roster_json = json.dumps(body.roster) if body.roster else None
     with get_conn() as conn:
         conn.execute(
-            "INSERT INTO lineup_games (user_id, pct, grade, lineup_json, mode) VALUES (?,?,?,?,?)",
-            (int(user["sub"]), body.pct, body.grade, json.dumps(body.lineup), body.mode),
+            "INSERT INTO lineup_games (user_id, pct, grade, lineup_json, mode, roster_json) VALUES (?,?,?,?,?,?)",
+            (int(user["sub"]), body.pct, body.grade, json.dumps(body.lineup), body.mode, roster_json),
         )
     return {"ok": True}
 
