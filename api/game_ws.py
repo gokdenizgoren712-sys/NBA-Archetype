@@ -737,11 +737,18 @@ def _mm_opponent_info(user_id: int) -> dict:
 
 
 def _user_in_active_game(user_id: int) -> bool:
+    """2026-08 düzeltme: _cleanup_stale_rooms() sadece bellekteki ROOM_STATES'i
+    temizliyor, game_rooms.status DB'de hiç güncellenmiyordu — terk edilmiş
+    (ör. tek kişi With a Friend/Live'a girip hiç bitirmediği) bir oda süresiz
+    'drafting' kalıp kullanıcıyı matchmaking'e sonsuza dek sokmuyordu. updated_at
+    (_save_state her mutasyonda günceller) ROOM_ABANDON_HOURS'tan eskiyse artık
+    "aktif" sayılmıyor — aynı terk edilmişlik eşiği, tek noktadan."""
     with get_conn() as conn:
         row = conn.execute(
             """SELECT 1 FROM game_rooms WHERE status = 'drafting'
-               AND (player1_user_id = ? OR player2_user_id = ?) LIMIT 1""",
-            (user_id, user_id),
+               AND (player1_user_id = ? OR player2_user_id = ?)
+               AND updated_at > datetime('now', ?) LIMIT 1""",
+            (user_id, user_id, f"-{ROOM_ABANDON_HOURS} hours"),
         ).fetchone()
     return row is not None
 
@@ -814,6 +821,31 @@ def matchmaking_leave(user=Depends(get_current_user)):
     user_id = int(user["sub"])
     MM_QUEUE = [e for e in MM_QUEUE if e["user_id"] != user_id]
     return {"left": True}
+
+
+@router.post("/api/game/matchmaking/clear-stuck")
+def clear_my_stuck_rooms(user=Depends(get_current_user)):
+    """Acil çıkış: kullanıcının 'drafting' durumundaki TÜM odalarını terk eder.
+    _user_in_active_game()'in updated_at eşiği (bkz. yukarıdaki not) yeni
+    kilitlenmeleri zamanla kendiliğinden çözer, ama YENİ deploy edilmeden önce
+    zaten kilitlenmiş kullanıcılar için anlık bir çıkış kapısı bu."""
+    user_id = int(user["sub"])
+    cleared = []
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT room_code FROM game_rooms WHERE status = 'drafting' AND (player1_user_id = ? OR player2_user_id = ?)",
+            (user_id, user_id),
+        ).fetchall()
+        for r in rows:
+            conn.execute(
+                "UPDATE game_rooms SET status = 'abandoned', updated_at = datetime('now') WHERE room_code = ?",
+                (r["room_code"],),
+            )
+            cleared.append(r["room_code"])
+    for code in cleared:
+        ROOM_STATES.pop(code, None)
+        ROOM_LOCKS.pop(code, None)
+    return {"cleared": cleared}
 
 
 @router.websocket("/ws/game/matchmaking")

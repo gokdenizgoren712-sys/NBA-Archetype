@@ -943,6 +943,68 @@ def clear_cache(_user=Depends(_require_admin_early)):
     return {"status": "cleared", "message": "Tüm cache temizlendi. Sonraki istek verileri yeniden hesaplar."}
 
 
+@app.post("/api/admin/backfill-roster-json")
+def backfill_roster_json(_user=Depends(_require_admin_early)):
+    """Faz 4 (Board Challenge) öncesi kaydedilmiş salarycap skorları roster_json
+    taşımıyordu (o kolon sonradan eklendi) — bu yüzden Board her zaman boş
+    görünüyordu, mevcut kullanıcıların leaderboard'u olsa bile. lineup_json'daki
+    isimlerden (aksan/case-duyarsız TAM eşleşme, _match_player'ın kullandığı
+    _fold ile) _load_scores() üzerinden tam oyuncu satırı kurup roster_json'a
+    yazar. Eşleşmeyen/çoklu-eşleşen isim varsa o satır atlanır (roster_json NULL
+    kalır — board'da hiç görünmez, mevcut güvenli varsayılan, yanlış oyuncu
+    gösterme riski yok). _cost/_posPenalty eski kayıtlarda bilinmiyor, güvenli
+    varsayılana (0 / 1.0) düşer — sadece görsel, çekirdek arketip/skor eşleşmesi
+    doğru olduğu sürece draft/simülasyon mantığını etkilemez. İdempotent:
+    yalnızca roster_json IS NULL olan satırlara dokunur."""
+    df = _load_scores()
+    score_cols = [c for c in df.columns if c.startswith("score_")]
+    keep = [c for c in ["PLAYER_NAME", "primary_arch", "overall_score"] + score_cols if c in df.columns]
+    sub = df[keep].copy()
+    sub["_fold"] = sub["PLAYER_NAME"].map(_fold)
+    dupe_folds = set(sub["_fold"][sub["_fold"].duplicated()])
+
+    lookup = {}
+    for _, row in sub.iterrows():
+        f = row["_fold"]
+        if f in dupe_folds:
+            continue  # aynı ada katlanan birden fazla oyuncu — belirsiz, atla
+        d = {k: row[k] for k in keep}
+        for k, v in d.items():
+            if isinstance(v, float) and v != v:  # NaN
+                d[k] = None
+        lookup[f] = d
+
+    updated, skipped = 0, 0
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT id, lineup_json FROM lineup_games WHERE mode = 'salarycap' AND roster_json IS NULL"
+        ).fetchall()
+        for r in rows:
+            try:
+                names = json.loads(r["lineup_json"] or "[]")
+            except Exception:
+                skipped += 1
+                continue
+            if not isinstance(names, list) or len(names) != 9:
+                skipped += 1
+                continue
+            roster = []
+            ok = True
+            for n in names:
+                p = lookup.get(_fold(n))
+                if not p:
+                    ok = False
+                    break
+                roster.append({**p, "_season": "2025-26", "_cost": 0, "_posPenalty": 1.0})
+            if not ok:
+                skipped += 1
+                continue
+            conn.execute("UPDATE lineup_games SET roster_json = ? WHERE id = ?",
+                        (json.dumps(roster), r["id"]))
+            updated += 1
+    return {"updated": updated, "skipped": skipped, "total_candidates": len(rows)}
+
+
 def _auto_invalidate():
     """Parquet dosyaları değiştiyse lru_cache'i otomatik temizle."""
     global _SCORES_MTIME, _HIST_MTIME
