@@ -722,6 +722,29 @@ MM_WS: dict[int, WebSocket] = {}   # user_id -> matchmaking WS
 MM_PENDING: dict[int, dict] = {}   # user_id -> henüz WS bağlanmadan önce eşleşmişse bekleyen "matched" mesajı
 
 
+def sweep_stale_rooms_at_startup() -> int:
+    """Deploy'da HER başlangıçta otomatik çağrılır (bkz. api/main.py startup
+    bloğu) — 2026-08 düzeltmesinden ÖNCE 'drafting' durumunda terk edilmiş
+    odalar DB'de süresiz kalmıştı (bkz. _user_in_active_game'in yukarıdaki
+    notu). Bu, o birikmiş eski odaları TEK SEFERDE temizler; kullanıcının
+    kendi başına bir endpoint çağırmasına gerek kalmaz — yeni terk edilen
+    odalar zaten _user_in_active_game'in updated_at eşiğiyle otomatik
+    çözülüyor, bu sadece geçmiş birikimi temizliyor."""
+    n = 0
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT room_code FROM game_rooms WHERE status = 'drafting' AND updated_at <= datetime('now', ?)",
+            (f"-{ROOM_ABANDON_HOURS} hours",),
+        ).fetchall()
+        for r in rows:
+            conn.execute(
+                "UPDATE game_rooms SET status = 'abandoned' WHERE room_code = ?",
+                (r["room_code"],),
+            )
+            n += 1
+    return n
+
+
 def _mm_opponent_info(user_id: int) -> dict:
     with get_conn() as conn:
         u = conn.execute("SELECT username FROM users WHERE id = ?", (user_id,)).fetchone()

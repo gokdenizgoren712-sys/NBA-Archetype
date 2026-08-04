@@ -943,8 +943,7 @@ def clear_cache(_user=Depends(_require_admin_early)):
     return {"status": "cleared", "message": "Tüm cache temizlendi. Sonraki istek verileri yeniden hesaplar."}
 
 
-@app.post("/api/admin/backfill-roster-json")
-def backfill_roster_json(_user=Depends(_require_admin_early)):
+def _backfill_roster_json_once() -> dict:
     """Faz 4 (Board Challenge) öncesi kaydedilmiş salarycap skorları roster_json
     taşımıyordu (o kolon sonradan eklendi) — bu yüzden Board her zaman boş
     görünüyordu, mevcut kullanıcıların leaderboard'u olsa bile. lineup_json'daki
@@ -955,7 +954,9 @@ def backfill_roster_json(_user=Depends(_require_admin_early)):
     gösterme riski yok). _cost/_posPenalty eski kayıtlarda bilinmiyor, güvenli
     varsayılana (0 / 1.0) düşer — sadece görsel, çekirdek arketip/skor eşleşmesi
     doğru olduğu sürece draft/simülasyon mantığını etkilemez. İdempotent:
-    yalnızca roster_json IS NULL olan satırlara dokunur."""
+    yalnızca roster_json IS NULL olan satırlara dokunur — deploy'da HER
+    başlangıçta otomatik çağrılır (bkz. dosya sonundaki startup bloğu), elle
+    admin isteği atmaya gerek yok."""
     df = _load_scores()
     score_cols = [c for c in df.columns if c.startswith("score_")]
     keep = [c for c in ["PLAYER_NAME", "primary_arch", "overall_score"] + score_cols if c in df.columns]
@@ -1003,6 +1004,14 @@ def backfill_roster_json(_user=Depends(_require_admin_early)):
                         (json.dumps(roster), r["id"]))
             updated += 1
     return {"updated": updated, "skipped": skipped, "total_candidates": len(rows)}
+
+
+@app.post("/api/admin/backfill-roster-json")
+def backfill_roster_json(_user=Depends(_require_admin_early)):
+    """Elle tetikleme yolu — normalde gerekmez (her deploy'da otomatik çalışır,
+    bkz. _backfill_roster_json_once), sadece yeni bir isim-eşleştirme kuralı
+    denemek için elle tekrar tetiklemek gerekirse burada duruyor."""
+    return _backfill_roster_json_once()
 
 
 def _auto_invalidate():
@@ -2649,6 +2658,21 @@ from pydantic import BaseModel, EmailStr
 import re as _re
 
 init_db()
+
+# Faz 4 sonrası tek-seferlik otomatik migration'lar — deploy'da HER başlangıçta
+# çalışır, admin'in elle bir endpoint çağırmasına gerek YOK (ikisi de idempotent,
+# ikinci/üçüncü deploy'da no-op olur). Startup'ı asla bloklamasınlar diye try/except.
+try:
+    _bf = _backfill_roster_json_once()
+    print(f"[startup] roster_json backfill: {_bf}", flush=True)
+except Exception as _e:
+    print(f"[startup] roster_json backfill failed: {_e}", flush=True)
+try:
+    from .game_ws import sweep_stale_rooms_at_startup as _sweep_stale_rooms
+    _n_swept = _sweep_stale_rooms()
+    print(f"[startup] stale room sweep: {_n_swept} room(s) marked abandoned", flush=True)
+except Exception as _e:
+    print(f"[startup] stale room sweep failed: {_e}", flush=True)
 
 # Teşhis: app.db gerçekte nereye yazıyor + kaç satır var? Volume kalıcılığını
 # loglardan doğrulamak için. Restart sonrası sayılar 0'a düşüyorsa persistence bozuk.
