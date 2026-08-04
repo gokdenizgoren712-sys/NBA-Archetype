@@ -778,10 +778,16 @@
 
 /* ═══ DAR EKRAN YERLEŞİMİ ═════════════════════════════════════════════ */
 @media (max-width: 640px) {
-  /* Dock 3 bölgeli grid'di; telefonda üst üste ve ortalanmış */
-  .g-dock { flex-direction: column; align-items: stretch; gap: 12px; min-height: 0; padding: 14px; }
-  .g-dock-left, .g-dock-center, .g-dock-right { justify-content: center; text-align: center; }
-  .g-dock-left { align-items: center; }
+  /* Dock bir GRID (bkz. 900px bloğu) — orada justify-items:center var ve
+     çocukları içeriğine büzüyor. Telefonda bu, spin şeridini 30px'e
+     düşürüp metni maskenin altında bırakıyordu. Burada bölgeleri tam
+     genişliğe açıp içeriği kendi içinde ortalıyoruz. */
+  .g-dock { justify-items: stretch; gap: 12px; min-height: 0; padding: 14px; }
+  .g-dock-left, .g-dock-center, .g-dock-right {
+    width: 100%; justify-self: stretch;
+    display: flex; justify-content: center; align-items: center; text-align: center;
+  }
+  .g-dock-left { flex-direction: column; }
   .g-dock.thin { gap: 9px; padding: 11px 12px; }
   .g-dock-title { font-size: 17px; }
   .g-seg.stacked { width: 100%; }
@@ -849,7 +855,7 @@
   .g-score-part .v { font-size: 18px; }
 
   /* Dock'taki spin iki çarkı yan yana sığmıyor */
-  .g-spin-inline { min-width: 0; }
+
 }
 
 /* Tam sahanın bench şeridi: telefonda 2 taraf × 4 slot = 8 hücre yan yana
@@ -875,4 +881,34 @@
   .g-pillar-label > div { margin: 0; }
   .g-pillar-label > span { margin-top: 0 !important; }
   .g-pillar-row .g-bar-track { flex: 1 1 68%; transform: none !important; }
+}
+
+/* ═══ Spin şeridi — dar ekran ═════════════════════════════════════════
+   Mobilde çarkın okunur penceresi üç sebepten kapanıyordu:
+   (1) iki şerit 190px min-width + 28px boşlukla 375px'e sığmıyor,
+   (2) maske yalnızca %22-78 arasını tam opak bırakıyor, yani zaten dar
+       olan şeridin ortadaki yarısı görünüyor,
+   (3) gSpinRoll ±46px kaydırıyor — dar pencerede öğe her turda tamamen
+       dışarı çıkıp geri geliyor, "hiç gözükmüyor" hissi buradan.
+   Üçünü birden düzeltiyoruz: şeritler alanı paylaşıyor, maske açılıyor,
+   kayma mesafesi pencereye göre küçülüyor. */
+@media (max-width: 640px) {
+  .g-spin-row { gap: 10px; width: 100%; }
+  .g-spin-row > div { flex: 1 1 0; min-width: 0; }
+
+  .g-spin-inline {
+    min-width: 0; width: 100%; height: 28px;
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 9%, #000 91%, transparent);
+    mask-image: linear-gradient(90deg, transparent, #000 9%, #000 91%, transparent);
+  }
+  .g-spin-inline-item { font-size: 14px; letter-spacing: 0.04em; }
+  .g-spin-inline.spinning .g-spin-inline-item { animation-name: gSpinRollNarrow; }
+}
+
+/* Dar pencere için kısa kayma — öğe görünür alandan çıkmadan sönüyor. */
+@keyframes gSpinRollNarrow {
+  0%   { transform: translateX(0);     opacity: 1; }
+  45%  { transform: translateX(-18px); opacity: 0; }
+  55%  { transform: translateX(18px);  opacity: 0; }
+  100% { transform: translateX(0);     opacity: 1; }
 }

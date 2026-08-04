@@ -450,7 +450,7 @@ export default function WithAFriendGame() {
 
                   <div className="g-dock-center">
                     {spinAnimating ? (
-                      <div className="flex items-center gap-7">
+                      <div className="g-spin-row flex items-center gap-7">
                         <InlineSpin items={seasons} spinning={spinS} targetIdx={targetSIdx} label="Season" accent="#FFB11B" />
                         <InlineSpin items={teamPool.length > 0 ? teamPool : ["…"]} spinning={spinT} targetIdx={targetTIdx} label="Team" accent="#60a5fa" />
                       </div>

@@ -63,3 +63,6 @@ data/*
 !data/2015-16__player_scores.parquet
 !data/2014-15__player_scores.parquet
 !data/2013-14__player_scores.parquet
+
+# Vite dependency cache (makine-yerel)
+.vite/

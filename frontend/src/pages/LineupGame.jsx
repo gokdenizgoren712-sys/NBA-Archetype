@@ -1038,7 +1038,7 @@ export default function LineupGame() {
           {/* ORTA — spin dönerken çark, sonra jokerler */}
           <div className="g-dock-center">
             {isSpinPhase ? (
-              <div className="flex items-center gap-7">
+              <div className="g-spin-row flex items-center gap-7">
                 <InlineSpin items={seasons} spinning={spinSeasons} targetIdx={targetSIdx}
                   label={lang==="tr"?"Sezon":"Season"} accent="#FFB11B" />
                 <InlineSpin items={teamPool.length>0?teamPool:["…"]} spinning={spinTeams} targetIdx={targetTIdx}
