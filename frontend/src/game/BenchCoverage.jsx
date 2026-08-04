@@ -11,19 +11,21 @@ export default function BenchCoverage({ bench }) {
 
   return (
     <div className="flex items-center gap-1.5">
-      <span className="text-[8.5px] text-gray-600 uppercase tracking-wider">Bench</span>
-      <div className="flex gap-0.5">
+      <span className="text-[8.5px] uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>Bench</span>
+      <div className="flex gap-1">
         {pills.map(([label, has]) => (
           <span key={label}
-            className={`w-4 h-4 rounded text-[8.5px] font-bold flex items-center justify-center border
-              ${has ? "bg-emerald-500/15 border-emerald-500/50 text-emerald-300" : "bg-surfaceCard border-gray-800 text-gray-600"}`}
+            className="w-[17px] h-[17px] rounded-md text-[8.5px] font-bold flex items-center justify-center"
+            style={has
+              ? { color: "#4ade80", background: "rgba(74,222,128,.14)", border: "1px solid rgba(74,222,128,.45)" }
+              : { color: "rgba(255,255,255,.22)", border: "1px dashed rgba(255,255,255,.14)" }}
             title={has ? `${label} covered on the bench` : `No ${label} on the bench`}>
             {label}
           </span>
         ))}
       </div>
       {cover.balanced && (
-        <span className="text-[8.5px] font-bold text-emerald-300" title="G+F+C all covered on the bench">+0.8 balanced</span>
+        <span className="text-[8.5px] font-bold" style={{ color: "#4ade80" }} title="G+F+C all covered on the bench">+0.8 balanced</span>
       )}
     </div>
   );

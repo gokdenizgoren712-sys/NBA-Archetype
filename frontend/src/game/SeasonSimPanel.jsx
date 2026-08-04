@@ -6,6 +6,7 @@ import { useState, useRef, useEffect } from "react";
 import { simulateSeason, BASE_MINUTES, MINUTE_FLEX, agePenaltyFor } from "./seasonSim";
 import { useAuth } from "../contexts/AuthContext";
 import { CoachIcon, TrophyIcon, CrownIcon, PlayIcon, LoopIcon } from "./GameIcons";
+import "./game.css";
 
 const MONTHS = ["OCT", "NOV", "DEC", "JAN", "FEB", "MAR", "APR"];
 
@@ -110,7 +111,7 @@ export default function SeasonSimPanel({ players, simEra, fit, affinity01, bench
   const month = MONTHS[Math.min(6, Math.floor(revealGames / 12))];
 
   return (
-    <div className="bg-surfaceBg border border-gray-800 rounded-2xl p-4 space-y-3">
+    <div className="g-panel p-4 space-y-3">
       <div className="flex items-center justify-between">
         <div className="text-[11px] text-gray-400 uppercase tracking-widest flex items-center gap-1">
           <span>Season Simulation{stage!=="idle"&&dynasty.year>1?` · Year ${dynasty.year}`:""}</span>
@@ -122,7 +123,7 @@ export default function SeasonSimPanel({ players, simEra, fit, affinity01, bench
         </div>
         <div className="flex items-center gap-1.5">
           {coach && (
-            <span className="text-[9.5px] px-1.5 py-0.5 rounded border border-gray-700 text-gray-300 inline-flex items-center gap-1"
+            <span className="text-[9.5px] px-2 py-0.5 rounded-full inline-flex items-center gap-1" style={{color:"var(--text-muted)",border:"1px solid rgba(255,255,255,.12)"}}
               title={`O:${coach.off} D:${coach.def}${coach.champs ? ` · ${coach.champs}× champ` : ""}`}>
               <CoachIcon size={11} /> {coach.name.split(" ").slice(-1)[0]}
             </span>
@@ -141,7 +142,7 @@ export default function SeasonSimPanel({ players, simEra, fit, affinity01, bench
           </p>
 
           {/* Rotasyon / dakika editörü (Faz D) */}
-          <div className="rounded-xl border border-gray-800 bg-darkBg/50 p-2.5">
+          <div className="g-panel subtle p-2.5">
             <div className="flex items-center justify-between mb-1.5">
               <span className="text-[10.5px] text-gray-400 uppercase tracking-widest">Rotation</span>
               <span className={`text-[10.5px] font-semibold ${minuteBank>0?"text-emerald-400":"text-gray-500"}`}>
@@ -160,10 +161,10 @@ export default function SeasonSimPanel({ players, simEra, fit, affinity01, bench
                     {fat&&<span className={`text-[8.5px] shrink-0 ${fat==="high"?"text-red-400":"text-yamabuki"}`}>{fat==="high"?"fatigue −%":"tiring"}</span>}
                     {i<5&&m<=31&&<span className="text-[8.5px] text-emerald-400 shrink-0">fresh +PO</span>}
                     <button onClick={()=>bumpMinute(i,-1)} disabled={m<=Math.max(6,base-MINUTE_FLEX)}
-                      className="w-5 h-5 rounded border border-gray-700 text-gray-400 text-xs leading-none disabled:opacity-25 hover:border-gray-500">−</button>
+                      className="w-5 h-5 rounded-md text-xs leading-none disabled:opacity-25" style={{color:"var(--text-muted)",border:"1px solid rgba(255,255,255,.14)"}}>−</button>
                     <span className="text-[11px] font-bold tabular-nums w-6 text-center text-gray-200">{m}</span>
                     <button onClick={()=>bumpMinute(i,1)} disabled={m>=base+MINUTE_FLEX||minuteBank<=0}
-                      className="w-5 h-5 rounded border border-gray-700 text-gray-400 text-xs leading-none disabled:opacity-25 hover:border-gray-500">+</button>
+                      className="w-5 h-5 rounded-md text-xs leading-none disabled:opacity-25" style={{color:"var(--text-muted)",border:"1px solid rgba(255,255,255,.14)"}}>+</button>
                   </div>
                 );
               })}
@@ -200,7 +201,7 @@ export default function SeasonSimPanel({ players, simEra, fit, affinity01, bench
           </div>
 
           {/* Progress bar — 82 maç */}
-          <div className="h-1.5 bg-surfaceCard rounded-full overflow-hidden">
+          <div className="g-bar-track" style={{height:7}}>
             <div className="h-full bg-emerald-600 rounded-full transition-all duration-100"
                  style={{ width: `${(revealGames / 82) * 100}%` }} />
           </div>
@@ -237,7 +238,7 @@ export default function SeasonSimPanel({ players, simEra, fit, affinity01, bench
                 ? "border-yamabuki bg-gradient-to-b from-yamabuki/60 to-yamabuki/40 shadow-[0_0_24px_rgba(250,204,21,.25)]"
                 : result.champion
                 ? "border-yamabuki/60 bg-gradient-to-b from-yamabuki/40 to-yamabuki/30"
-                : "border-gray-700 bg-surfaceCard/40"}`}>
+                : "border-white/10 bg-white/[.03]"}`}>
               <div className={`font-black inline-flex items-center gap-1.5 ${dynasty.titles>=3?"text-2xl text-yamabuki":result.champion?"text-lg text-yamabuki":"text-lg text-gray-300"}`}>
                 {dynasty.titles >= 3 ? <><CrownIcon size={24} /> THREEPEAT — DYNASTY COMPLETE</>
                   : result.champion && dynasty.titles === 2 ? <><TrophyIcon size={18} /><TrophyIcon size={18} /> BACK-TO-BACK CHAMPIONS</>
@@ -270,13 +271,13 @@ export default function SeasonSimPanel({ players, simEra, fit, affinity01, bench
 
           {/* Oyuncu era performansı */}
           {stage === "done" && (
-            <div className="space-y-1.5 border-t border-gray-800 pt-2.5">
+            <div className="space-y-1.5 pt-2.5" style={{borderTop:"1px solid rgba(255,255,255,.07)"}}>
               <div className="text-xs text-gray-300 uppercase tracking-widest font-semibold">Era Performance</div>
               {[...result.profiles, ...(result.benchProfiles || [])].map((pr, i) => {
                 const qPct = Math.round(pr.simQuality * 100);
                 return (
                   <div key={i} className={`flex items-center gap-2 ${pr.bench ? "opacity-70" : ""}`}>
-                    {pr.bench && <span className="text-[9px] px-1 rounded bg-surfaceCard text-gray-500 shrink-0">B</span>}
+                    {pr.bench && <span className="text-[9px] px-1.5 rounded-md shrink-0" style={{color:"var(--text-faint)",background:"rgba(255,255,255,.05)"}}>B</span>}
                     <span className="text-[13px] text-white flex-1 truncate">{pr.name?.split(" ").slice(-1)[0]}</span>
                     <span className="text-[11px] text-gray-500 shrink-0 tabular-nums">{pr.minutes}m</span>
                     {pr.fatigue > 0 && <span className="text-[10px] text-red-400 shrink-0">−{Math.round(pr.fatigue*100)}% tired</span>}
@@ -285,7 +286,7 @@ export default function SeasonSimPanel({ players, simEra, fit, affinity01, bench
                     {!pr.timeless && pr.fitShift < 0 && <span className="text-[10px] text-emerald-400 shrink-0" title="Archetype fits this era — travels one era closer">fits era</span>}
                     {pr.dist > 0 && !pr.timeless && <span className="text-[10px] text-yamabuki shrink-0">−{pr.dist} era</span>}
                     {pr.posP != null && pr.posP < 1 && <span className="text-[10px] text-red-400 shrink-0">{pr.posP <= 0.75 ? "−25% pos" : "−10% pos"}</span>}
-                    <div className="w-20 h-2 bg-surfaceCard rounded-full overflow-hidden shrink-0">
+                    <div className="g-bar-track w-20 shrink-0" style={{height:8}}>
                       <div className="h-full rounded-full" style={{ width: `${qPct}%`, background: qPct >= 70 ? "#059669" : qPct >= 50 ? "#2a3d6b" : "#7f1d1d" }} />
                     </div>
                     <span className="text-[13px] font-semibold w-6 text-right text-gray-300 shrink-0">{qPct}</span>
@@ -297,7 +298,7 @@ export default function SeasonSimPanel({ players, simEra, fit, affinity01, bench
 
           {/* Sezon ödülleri + istatistikler */}
           {stage === "done" && (
-            <div className="space-y-2 border-t border-gray-800 pt-2.5">
+            <div className="space-y-2 pt-2.5" style={{borderTop:"1px solid rgba(255,255,255,.07)"}}>
               <div className="text-[10.5px] text-gray-400 uppercase tracking-widest">Season Awards</div>
               {result.awards?.length > 0 ? (
                 <div className="space-y-1">
@@ -330,7 +331,7 @@ export default function SeasonSimPanel({ players, simEra, fit, affinity01, bench
                       </div>
                     ))}
                     {/* Takım toplamları */}
-                    <div className={`grid ${COLS} gap-x-1 text-[10px] font-bold text-white border-t border-gray-800 mt-1 pt-1`}>
+                    <div className={`grid ${COLS} gap-x-1 text-[10px] font-bold text-white mt-1 pt-1 border-t border-white/10`}>
                       <span>TEAM</span>
                       <span className="text-right tabular-nums">{tot("pts")}</span>
                       <span className="text-right tabular-nums">{tot("reb")}</span>
@@ -347,7 +348,7 @@ export default function SeasonSimPanel({ players, simEra, fit, affinity01, bench
 
           {/* Aktif tag etkileri */}
           {stage === "done" && result.tagNotes?.length > 0 && (
-            <div className="space-y-1 border-t border-gray-800 pt-2.5">
+            <div className="space-y-1 pt-2.5" style={{borderTop:"1px solid rgba(255,255,255,.07)"}}>
               <div className="text-[10.5px] text-gray-400 uppercase tracking-widest">Active Tag Effects</div>
               {result.tagNotes.map((n, i) => (
                 <div key={i} className="text-[10.5px] text-gray-400">• {n}</div>
@@ -358,7 +359,7 @@ export default function SeasonSimPanel({ players, simEra, fit, affinity01, bench
           {/* Run it back */}
           {stage === "done" && (
             <button onClick={run}
-              className="w-full py-2 rounded-xl text-sm font-medium border border-gray-700 text-gray-300 hover:border-emerald-600 hover:text-emerald-300 transition-colors">
+              className="aura-pill-btn w-full justify-center" style={{padding:"9px"}}>
               <span className="inline-flex items-center gap-1.5"><LoopIcon size={14} /> Run It Back</span>
               <span className="text-[9.5px] text-gray-600 ml-1.5">(fresh dynasty — only your first counts for the board)</span>
             </button>

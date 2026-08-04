@@ -290,3 +290,21 @@ export function LightbulbIcon({ size = 16 }) {
     </svg>
   );
 }
+
+export function InfoIcon({ size = 16 }) {
+  return (
+    <svg {...base(size)}>
+      <circle cx="12" cy="12" r="9.25" {...S} />
+      <path d="M12 11v5.5" {...S} />
+      <circle cx="12" cy="7.6" r="1.15" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+export function ShieldIcon({ size = 16 }) {
+  return (
+    <svg {...base(size)}>
+      <path d="M12 2.8l7 2.6v5.9c0 4.3-2.9 8.1-7 9.9-4.1-1.8-7-5.6-7-9.9V5.4l7-2.6z" {...S} />
+    </svg>
+  );
+}

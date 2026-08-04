@@ -15,6 +15,7 @@ const LineupGame     = lazy(() => import("./pages/LineupGame"));
 const GameModeSelect = lazy(() => import("./pages/GameModeSelect"));
 const SameScreenGame = lazy(() => import("./pages/SameScreenGame"));
 const WithAFriendGame = lazy(() => import("./pages/WithAFriendGame"));
+const OnlineGame     = lazy(() => import("./pages/OnlineGame"));
 const Blog           = lazy(() => import("./pages/Blog"));
 const BlogPost       = lazy(() => import("./pages/BlogPost"));
 const Login          = lazy(() => import("./pages/Login"));
@@ -68,7 +69,7 @@ function UserButton() {
 }
 
 /* ── Top bar ─────────────────────────────────────────────────────── */
-function TopBar() {
+function TopBar({ onMenu }) {
   const navigate = useNavigate();
   const [meta, setMeta] = useState(null);
 
@@ -78,11 +79,24 @@ function TopBar() {
     <header className="relative h-12 shrink-0 flex items-center px-4 gap-3 aura-glass overflow-hidden">
       <div className="aura-glow" style={{ "--aura-color": "#FFB11B", width: 180, height: 180, left: -40, top: -70 }} />
 
-      {/* Logo — 12-gen Dodecagon + PRIMARY ARCH */}
-      <button onClick={() => navigate("/game")}
-        className="relative flex items-center gap-2 hover:opacity-80 transition-opacity">
+      {/* Logo — mobilde menüyü açar (alt nav'ın yerini aldı), desktop'ta
+          sol icon bar zaten hep açık olduğu için doğrudan /game'e gider. */}
+      {/* Mobil: menüyü açar. Desktop: sol icon bar zaten hep açık, doğrudan
+          /game'e gider. Viewport'u JS ile ölçmek yerine iki ayrı düğme —
+          hangisinin görüneceğine CSS karar veriyor. */}
+      <button onClick={onMenu} aria-label="Open menu"
+        className="md:hidden relative flex items-center gap-2 -ml-1 pl-1 pr-2 py-2">
         <Logo size={30} />
         <span className="font-logo text-lg tracking-widest hidden sm:flex leading-none pt-0.5">
+          <span className="font-semibold text-white">PRIMARY</span>
+          <span className="font-bold text-yamabuki ml-1">ARCH</span>
+        </span>
+        <span style={{ color: "var(--text-faint)", fontSize: 9, marginLeft: -2 }}>▾</span>
+      </button>
+      <button onClick={() => navigate("/game")}
+        className="hidden md:flex relative items-center gap-2 hover:opacity-80 transition-opacity">
+        <Logo size={30} />
+        <span className="font-logo text-lg tracking-widest flex leading-none pt-0.5">
           <span className="font-semibold text-white">PRIMARY</span>
           <span className="font-bold text-yamabuki ml-1">ARCH</span>
         </span>
@@ -146,38 +160,67 @@ function SideNav() {
   );
 }
 
-/* ── Alt nav (mobile) — 2 satır ─────────────────────────────────── */
-// NCAA artık canlı → mobil alt nav'da da göster
-const BOTTOM_NAV = NAV;
-
-function BottomNav() {
+/* ── Mobil menü (drawer) ─────────────────────────────────────────
+   Eski 2 satırlık alt nav kaldırıldı: ekranın altından ~64px yiyordu ve
+   mobilde en değerli şey dikey alan. Artık sol üstteki logoya dokununca
+   soldan açılan bir panel. Satırlar 52px — parmak hedefi olarak yeterli
+   (alt nav'daki 18px ikonlar değildi). */
+function MobileDrawer({ open, onClose }) {
   const location = useLocation();
+  const { isAdmin } = useAuth();
 
-  const Row = ({ items }) => (
-    <div className="flex">
-      {items.map(n => {
-        const active = location.pathname === n.to || (n.extraActive || []).includes(location.pathname);
-        return (
-          <NavLink key={n.to} to={n.to}
-            className={`group flex-1 flex flex-col items-center justify-center py-1.5 gap-0.5 transition-colors
-              ${active ? "text-white" : "text-gray-400"}`}
-          >
-            <n.Icon size={18} />
-            <span className="font-logo text-[8px] font-semibold tracking-wide uppercase">{n.label}</span>
-          </NavLink>
-        );
-      })}
-    </div>
-  );
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    // Drawer açıkken arka plan kaymasın — mobilde panelin altındaki sayfanın
+    // kaymaya devam etmesi ("scroll chaining") en can sıkıcı detaylardan biri.
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [open, onClose]);
 
-  const mid = Math.ceil(BOTTOM_NAV.length / 2);
+  // Rota değişince kendiliğinden kapansın
+  useEffect(() => { onClose(); }, [location.pathname]);   // eslint-disable-line react-hooks/exhaustive-deps
+
+  const items = [
+    ...NAV,
+    ...(isAdmin ? [{ to: "/admin/articles", Icon: AdminIcon, label: "Admin" }] : []),
+  ];
+
   return (
-    <nav className="md:hidden shrink-0 aura-glass border-l-0 border-r-0 border-b-0">
-      <Row items={BOTTOM_NAV.slice(0, mid)} />
-      <div className="border-t" style={{ borderColor: "rgba(255,255,255,.07)" }}>
-        <Row items={BOTTOM_NAV.slice(mid)} />
-      </div>
-    </nav>
+    <div className={`md:hidden nav-drawer-root${open ? " open" : ""}`} aria-hidden={!open}>
+      <div className="nav-drawer-backdrop" onClick={onClose} />
+      <nav className="nav-drawer" role="navigation">
+        <div className="nav-drawer-head">
+          <Logo size={26} />
+          <span className="font-logo text-base tracking-widest leading-none pt-0.5">
+            <span className="font-semibold text-white">PRIMARY</span>
+            <span className="font-bold text-yamabuki ml-1">ARCH</span>
+          </span>
+          <button onClick={onClose} aria-label="Close menu" className="nav-drawer-close">×</button>
+        </div>
+
+        <div className="nav-drawer-items">
+          {items.map(n => {
+            const active = location.pathname === n.to || location.pathname.startsWith(n.to + "/")
+              || (n.extraActive || []).includes(location.pathname);
+            const color = n.color || "#FFB11B";
+            return (
+              <NavLink key={n.to} to={n.to} onClick={onClose}
+                className={`nav-drawer-item${active ? " active" : ""}`}
+                style={{ "--accent": color }}>
+                <n.Icon size={20} />
+                <span className="lbl">{n.label}</span>
+              </NavLink>
+            );
+          })}
+        </div>
+      </nav>
+    </div>
   );
 }
 
@@ -193,10 +236,11 @@ function PageLoading() {
 }
 
 function AppInner() {
+  const [menuOpen, setMenuOpen] = useState(false);
   return (
     <BrowserRouter>
       <div className="flex flex-col h-screen" style={{ background: "var(--bg-base)", color: "var(--text-primary)" }}>
-        <TopBar />
+        <TopBar onMenu={() => setMenuOpen(true)} />
 
         <div className="flex flex-1 min-h-0 overflow-hidden">
           <SideNav />
@@ -209,6 +253,7 @@ function AppInner() {
               <Route path="/game/single"              element={<LineupGame />} />
               <Route path="/game/same-screen"          element={<SameScreenGame />} />
               <Route path="/game/friend"               element={<WithAFriendGame />} />
+              <Route path="/game/online"               element={<OnlineGame />} />
               <Route path="/players"                  element={<Players />} />
               <Route path="/players/:name"           element={<PlayerProfile />} />
               <Route path="/lineups"                  element={<Lineups />} />
@@ -244,7 +289,7 @@ function AppInner() {
           </main>
         </div>
 
-        <BottomNav />
+        <MobileDrawer open={menuOpen} onClose={() => setMenuOpen(false)} />
       </div>
     </BrowserRouter>
   );

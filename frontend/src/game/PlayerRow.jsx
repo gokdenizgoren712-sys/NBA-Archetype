@@ -1,8 +1,17 @@
 import { useState } from "react";
 import { getPlayerTags } from "./awards";
 import { costColor } from "./salary";
+import "./game.css";
 
 export { posGroupOf } from "./positions";
+
+// Arketip → renk (site geneliyle aynı palet). Satır hover'ında oyuncunun
+// kendi arketip rengiyle aydınlanır — kutu yerine ışık.
+const ARCH_HEX = {
+  Engine: "#fb923c", Ecosystem: "#4ade80", Hub: "#2dd4bf", Connector: "#c084fc",
+  Creator: "#fb7185", Anchor: "#60a5fa", Spacer: "#22d3ee", Finisher: "#a3e635",
+  Force: "#f87171", Initiator: "#FFB11B", Stopper: "#d1d5db", "Rim Runner": "#34d399",
+};
 
 function headshotUrl(p) {
   return p.PLAYER_ID ? `https://cdn.nba.com/headshots/nba/latest/260x190/${p.PLAYER_ID}.png` : null;
@@ -19,7 +28,7 @@ function TagBadge({ t }) {
   );
 }
 
-// ── Oyuncu satırı (eraball tarzı liste) ──────────────────────────────────────
+// ── Oyuncu satırı (draft listesi) ────────────────────────────────────────────
 export default function PlayerRow({ player, discover, onClick, cost, unaffordable, dimmed, highlightStat }) {
   const [imgOk, setImgOk] = useState(true);
   const stat = (k) => {
@@ -31,59 +40,67 @@ export default function PlayerRow({ player, discover, onClick, cost, unaffordabl
   const overall = player.overall_score != null ? Math.round(player.overall_score * 100) : null;
   const tags = getPlayerTags(player);
   const url = headshotUrl(player);
+  const accent = ARCH_HEX[player.primary_arch] || "#9ca3af";
+
   const cell = (k) => (
-    <span className={`w-9 text-right tabular-nums shrink-0 text-xs
-      ${highlightStat === k ? "font-bold" : "text-gray-500"}`}
-      style={highlightStat === k ? { color: "#e2b34c" } : {}}>
-      {stat(k)}
-    </span>
+    <span className={`g-row-stat${highlightStat === k ? " hi" : ""}`}>{stat(k)}</span>
   );
+
+  const cls = ["g-row", unaffordable ? "unaffordable" : "", dimmed ? "dimmed" : ""].filter(Boolean).join(" ");
+
   return (
-    <button onClick={onClick} disabled={unaffordable}
-      className={`w-full min-w-[560px] flex items-center gap-2 pr-3 py-2.5 border-b text-left transition-colors
-        ${unaffordable ? "opacity-30 cursor-not-allowed"
-          : dimmed ? "opacity-70 cursor-default"
-          : "hover:bg-surfaceCard/70 cursor-pointer group"}`}
-      style={{ borderColor: "rgba(30,41,59,.6)" }}>
+    <button onClick={onClick} disabled={unaffordable} className={cls}
+      style={{ "--accent": accent, "--accent-a": accent + "1f", "--accent-line": accent + "4d" }}>
       {/* Sabit sol blok (yatay kaydırmada pinli): avatar + isim + arketip + rozetler */}
-      <div className="sticky left-0 z-10 flex items-center gap-2 pl-3 pr-2 py-0.5 shrink-0 w-[240px]"
-        style={{ background: "var(--bg-surface, #131313)" }}>
-        <div className="w-9 h-9 rounded-full overflow-hidden shrink-0 border border-gray-700 bg-surfaceCard flex items-center justify-center">
+      <div className="g-row-pin">
+        <div className="g-row-face">
           {url && imgOk ? (
-            <img src={url} alt="" loading="lazy" onError={() => setImgOk(false)}
-              className="w-full h-full object-cover object-top" />
+            <img src={url} alt="" loading="lazy" onError={() => setImgOk(false)} />
           ) : (
-            <span className="text-[11px] font-bold text-gray-500">
+            <span className="text-[11px] font-bold" style={{ color: "var(--text-faint)" }}>
               {player.PLAYER_NAME?.split(" ").map(w => w[0]).slice(0, 2).join("")}
             </span>
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="font-logo text-[13px] font-semibold text-white truncate leading-tight">{player.PLAYER_NAME}</div>
+          <div className="g-row-name">{player.PLAYER_NAME}</div>
           <div className="flex items-center gap-1 mt-0.5">
-            <span className="text-[10px] text-gray-500 shrink-0">{player.POSITION || player.POS5 || ""}</span>
-            <span className="text-[10px] text-blue-400 font-medium truncate">{player.primary_arch || "—"}</span>
+            <span className="text-[10px] shrink-0" style={{ color: "var(--text-faint)" }}>{player.POSITION || player.POS5 || ""}</span>
+            <span className="g-row-arch truncate">{player.primary_arch || "—"}</span>
             {tags.slice(0, 3).map(t => <TagBadge key={t.key} t={t} />)}
           </div>
         </div>
       </div>
+
       {/* TAG sayısı sütunu */}
-      <span className="w-8 text-center shrink-0 text-xs tabular-nums"
+      <span className="g-row-tag"
         title={tags.length ? tags.map(t => t.label).join(" · ") : "No tags"}>
-        {tags.length ? <span className="text-gray-300 font-bold">{tags.length}</span> : <span className="text-gray-700">–</span>}
+        {tags.length
+          ? <span className="font-bold" style={{ color: "var(--text-primary)" }}>{tags.length}</span>
+          : <span style={{ color: "rgba(255,255,255,.22)" }}>–</span>}
       </span>
+
       {/* Sözleşme maliyeti (Salary Cap) */}
       {cost != null && (
-        <span className="text-xs font-black shrink-0 tabular-nums px-1 py-0.5 rounded"
-          style={{ color: costColor(cost), background: costColor(cost) + "14", border: `1px solid ${costColor(cost)}44` }}
-          title={unaffordable ? `Costs ${cost}% — over your spendable cap` : `Contract: ${cost}% of the cap`}>
-          {cost}%
+        <span className="g-row-cost">
+          <span className="text-[11px] font-black tabular-nums px-1.5 py-0.5 rounded-md leading-none"
+            style={{ color: costColor(cost), background: costColor(cost) + "14", border: `1px solid ${costColor(cost)}44` }}
+            title={unaffordable ? `Costs ${cost}% — over your spendable cap` : `Contract: ${cost}% of the cap`}>
+            {cost}%
+          </span>
         </span>
       )}
+
       {/* Discover: yalnızca overall'ı ifşa eder */}
       {discover && overall != null && (
-        <span className="text-[10px] px-1.5 py-0.5 rounded border border-violet-700/50 bg-violet-900/30 text-violet-300 font-bold shrink-0">{overall}</span>
+        <span className="g-row-cost">
+          <span className="text-[10px] px-1.5 py-0.5 rounded-md font-bold leading-none"
+            style={{ color: "#c4b5fd", background: "rgba(167,139,250,.16)", border: "1px solid rgba(167,139,250,.4)" }}>
+            {overall}
+          </span>
+        </span>
       )}
+
       {/* İstatistikler */}
       {cell("PTS")}{cell("REB")}{cell("AST")}{cell("FG3_PCT")}{cell("STL")}{cell("BLK")}
     </button>

@@ -2,24 +2,30 @@
 // Same Screen ve With a Friend arasında paylaşılır — içerik sabit, value/
 // onChange dışarıdan geliyor.
 import { WheelIcon, LoopIcon } from "./GameIcons";
+import "./game.css";
+
+const MODES = [
+  { key: "round", Icon: WheelIcon, hex: "#60a5fa", title: "Round-Based",
+    desc: "The wheel spins once per round. Both players draft from that same team, in snake order." },
+  { key: "pick",  Icon: LoopIcon,  hex: "#FFB11B", title: "Pick-Based",
+    desc: "The wheel spins again before every single pick — each player gets their own fresh team." },
+];
 
 export default function WheelModePicker({ value, onChange, disabled = false }) {
   return (
     <>
-      <div className="text-[10.5px] text-gray-500 uppercase tracking-widest font-logo px-0.5">Wheel Mode</div>
+      <div className="g-label px-0.5">Wheel Mode</div>
       <div className="grid grid-cols-2 gap-2">
-        <button disabled={disabled} onClick={() => onChange("round")}
-          className={`text-left rounded-xl border p-3 transition-all disabled:opacity-50 disabled:cursor-not-allowed
-            ${value === "round" ? "border-brandBlue bg-brandBlue/10 shadow-[0_0_15px_rgba(29,66,138,0.15)]" : "border-gray-800 bg-surfaceCard hover:border-gray-700"}`}>
-          <div className="font-logo text-base font-bold text-white flex items-center gap-1.5"><span className="text-brandBlue"><WheelIcon size={15} /></span> Round-Based</div>
-          <div className="text-[11px] text-gray-400 mt-1 leading-snug">The wheel spins once per round. Both players draft from that same team, in snake order.</div>
-        </button>
-        <button disabled={disabled} onClick={() => onChange("pick")}
-          className={`text-left rounded-xl border p-3 transition-all disabled:opacity-50 disabled:cursor-not-allowed
-            ${value === "pick" ? "border-yamabuki bg-yamabuki/10 shadow-[0_0_15px_rgba(255,177,27,0.15)]" : "border-gray-800 bg-surfaceCard hover:border-gray-700"}`}>
-          <div className="font-logo text-base font-bold text-white flex items-center gap-1.5"><span className="text-yamabuki"><LoopIcon size={15} /></span> Pick-Based</div>
-          <div className="text-[11px] text-gray-400 mt-1 leading-snug">The wheel spins again before every single pick — each player gets their own fresh team.</div>
-        </button>
+        {MODES.map(({ key, Icon, hex, title, desc }) => (
+          <div key={key}
+            onClick={() => !disabled && onChange(key)}
+            className={`g-tile${value === key ? " selected" : ""}${disabled ? " disabled" : ""}`}
+            style={{ "--accent": hex, "--accent-a": hex + "1f", "--accent-line": hex + "4d" }}>
+            <span className="aura-blob" style={{ "--slot-color": hex, right: -22, top: -22, width: 118, height: 84, opacity: value === key ? 0.3 : 0.13 }} />
+            <div className="g-tile-title"><span style={{ color: hex }}><Icon size={15} /></span> {title}</div>
+            <div className="g-tile-desc">{desc}</div>
+          </div>
+        ))}
       </div>
     </>
   );

@@ -1,12 +1,15 @@
+import "./game.css";
+
 // ── Joker butonu ──────────────────────────────────────────────────────────────
+// Harcanabilir bir jeton: kullanılabilirken parıltı süpürmesi + accent glow,
+// harcandığında disabled-kutu yerine soluk hayalet çerçeveye düşer.
 export default function JokerBtn({ Icon, label, available, onClick }) {
   return (
     <button onClick={onClick} disabled={!available}
-      className={`flex flex-col items-center gap-1 px-2 py-1.5 rounded-lg border text-center transition-all
-        ${available ? "border-yamabuki/60 bg-yamabuki/20 hover:bg-yamabuki/40 cursor-pointer text-yamabuki"
-                    : "border-gray-800 bg-surfaceBg/40 cursor-not-allowed text-gray-600"}`}>
-      <Icon size={16} />
-      <span className="text-[9.5px] leading-tight whitespace-nowrap">{label}</span>
+      className={`g-joker ${available ? "on" : "off"}`}
+      title={available ? `${label} joker — one use per game` : `${label} joker already spent`}>
+      <Icon size={21} />
+      <span className="lbl">{label}</span>
     </button>
   );
 }

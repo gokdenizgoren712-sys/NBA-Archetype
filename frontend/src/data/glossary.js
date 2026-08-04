@@ -1,8 +1,8 @@
 // Glossary data — derived from config/signatures.py
 
-// Era-bazlı meta/off-meta rehberi — Glossary.jsx'in Eras sekmesi VE
-// game/HowToPlayModal.jsx'in Eras tile'ı tarafından paylaşılıyor (tek
-// kaynak, içerik driftini önler).
+// Era-bazlı meta/off-meta rehberi — Glossary.jsx'in Eras sekmesi VE oyun
+// sayfalarındaki era ⓘ pop-up'ları tarafından paylaşılıyor (tek kaynak,
+// içerik driftini önler).
 export const ERA_GUIDE = [
   {
     short: "80s", label: "Magic vs Bird Era", years: "1979–1991",

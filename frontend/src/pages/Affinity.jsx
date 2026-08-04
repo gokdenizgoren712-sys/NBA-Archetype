@@ -118,16 +118,27 @@ function NetworkGraph({ archs, matrix, sampleCounts, hoveredArch, setHoveredArch
         const touchesActive = activeArch && (a === activeArch || b === activeArch);
         const dim = activeArch && !touchesActive;
         const good = v >= 0.5;
+        // Kenarın ne kadarı GÖZLEM, ne kadarı MODEL? Sunucu adaptif-alpha ile
+        // harmanlıyor: alpha = min(0.6, dakika/2000). Dakika yoksa alpha 0,
+        // yani çizgi tamamen elle-yazılmış öncül. Bunu gizlemek yerine
+        // çizginin kendisine yazıyoruz: veri yok = kesik çizgi.
+        const m = mins || 0;
+        const alpha = Math.min(0.6, m / 2000);
+        const dash = m === 0 ? "5 6" : m < 200 ? "11 5" : null;
         return (
           <line key={i}
             x1={na.x} y1={na.y} x2={nb.x} y2={nb.y}
             stroke={`url(#edge-grad-${i})`}
             strokeWidth={touchesActive ? width * 1.6 : width}
-            opacity={dim ? opacity * 0.15 : touchesActive ? Math.min(1, opacity * 1.5) : opacity}
+            strokeDasharray={dash || undefined}
+            opacity={(dim ? opacity * 0.15 : touchesActive ? Math.min(1, opacity * 1.5) : opacity) * (m === 0 ? 0.6 : 1)}
             style={{ cursor: "pointer", transition: "opacity 0.25s ease, stroke-width 0.25s ease" }}
             onClick={() => onEdgeClick(a, b)}
           >
-            <title>{a} + {b} · {Math.round(v * 100)}{good ? "" : " (anti-synergy)"}{mins ? ` · ${Math.round(mins)} lineup-min` : ""}</title>
+            <title>{a} + {b} · {Math.round(v * 100)}{good ? "" : " (anti-synergy)"}
+              {m === 0
+                ? " · no shared lineup this season — model prior only"
+                : ` · ${Math.round(m)} lineup-min · ${Math.round(alpha * 100)}% observed`}</title>
           </line>
         );
       })}
@@ -183,8 +194,10 @@ function DrillPanel({ cell, data, loading, onClose, lang }) {
           </div>
           {data && (
             <div className="flex items-center gap-3 mt-1.5">
-              <span className="text-xs" style={{ color: "var(--text-faint)" }}>
-                {data.total} {lang === "tr" ? "lineup" : "lineups"}
+              <span className="text-xs" style={{ color: data.total === 0 ? "var(--yamabuki)" : "var(--text-faint)" }}>
+                {data.total === 0
+                  ? (lang === "tr" ? "gerçek lineup yok" : "no real lineup")
+                  : `${data.total} ${lang === "tr" ? "lineup" : "lineups"}`}
               </span>
               {data.avg_net != null && (
                 <span className="text-xs font-semibold"
@@ -205,10 +218,16 @@ function DrillPanel({ cell, data, loading, onClose, lang }) {
           <div className="text-center text-sm py-8" style={{ color: "var(--text-muted)" }}>Loading...</div>
         )}
         {!loading && data?.total === 0 && (
-          <div className="text-center text-xs py-8" style={{ color: "var(--text-faint)" }}>
-            {lang === "tr"
-              ? "Bu çift için gerçek lineup verisi bulunamadı."
-              : "No real lineup data found for this pair."}
+          <div className="rounded-xl p-3.5 space-y-2"
+            style={{ border: "1px dashed rgba(255,255,255,.16)", background: "rgba(255,255,255,.02)" }}>
+            <div className="font-logo text-[10px] font-bold tracking-widest uppercase" style={{ color: "var(--yamabuki)" }}>
+              {lang === "tr" ? "Model öncülü" : "Model prior"}
+            </div>
+            <p className="text-[11.5px] leading-relaxed" style={{ color: "var(--text-muted)" }}>
+              {lang === "tr"
+                ? "Bu iki arketip bu sezon hiçbir 5'li dizilimde birlikte sahaya çıkmadı. Ağdaki sayı gözlemden değil, elle yazılmış arketip-uyum öncülünden geliyor — o yüzden çizgisi kesik."
+                : "These two archetypes never shared a 5-man lineup this season. The number on the network comes from the hand-written affinity prior, not from observation — which is why its edge is dashed."}
+            </p>
           </div>
         )}
         {!loading && data?.lineups?.map((lu, i) => {
@@ -385,10 +404,18 @@ export default function AffinityContent() {
                 <svg width="26" height="10"><line x1="2" y1="5" x2="24" y2="5" stroke="#9ca3af" strokeWidth="1" opacity="0.4" /></svg>
                 {lang === "tr" ? "Zayıf/nötr" : "Weak / neutral"}
               </div>
+              {/* Kesik çizgi = gözlem yok. Ağdaki her sayı PRIOR + gerçek lineup
+                  verisinin harmanı; harman oranı çifte göre %0-60 arasında
+                  değişiyor, bu yüzden "hangi çizgiye ne kadar güveneyim"
+                  sorusunun cevabı çizginin kendisinde olmalı. */}
+              <div className="flex items-center gap-1.5">
+                <svg width="26" height="10"><line x1="2" y1="5" x2="24" y2="5" stroke="#9ca3af" strokeWidth="3" strokeDasharray="5 6" opacity="0.65" /></svg>
+                {lang === "tr" ? "Gerçek dizilim yok — model öncülü" : "No shared lineup — model prior"}
+              </div>
               <span style={{ color: "var(--text-faint)" }}>
                 {lang === "tr"
-                  ? "· Çizgi rengi = iki ucun arketip kimliği · node'a veya bağlantıya tıkla"
-                  : "· Line color = each end's archetype · click a node or a connection"}
+                  ? "· Çizgi rengi = iki ucun arketip kimliği · kesik = gözlem yok · tıkla"
+                  : "· Line color = each end's archetype · dashed = unobserved · click to drill"}
               </span>
             </div>
 

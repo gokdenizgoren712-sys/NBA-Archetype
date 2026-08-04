@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { SEO } from "../hooks/useSEO";
 import { useAuth } from "../contexts/AuthContext";
 import { useGameSocket } from "../hooks/useGameSocket";
-import { ERAS, ERA_META_BLURB } from "../game/eras";
+import { ERAS, ERA_META_BLURB, ERA_HEX } from "../game/eras";
 import { COACHES, pickCoachOptions } from "../game/coaches";
 import { getPlayerTags } from "../game/awards";
 import {
@@ -12,23 +12,23 @@ import {
 import { START_BUDGET, totalSpent, maxSpendNow, applyTeamPricing, priceOf } from "../game/salary";
 import { computeLineupFit } from "../game/lineupScore";
 import { buildMatchup, simulateOneGame } from "../game/headToHead";
-import SpinWheel from "../game/SpinWheel";
+import InlineSpin from "../game/InlineSpin";
 import LineupSlot from "../game/LineupSlot";
 import PlayerRow, { posGroupOf } from "../game/PlayerRow";
 import JokerBtn from "../game/JokerBtn";
 import CounterJokerPrompt from "../game/CounterJokerPrompt";
 import BenchCoverage from "../game/BenchCoverage";
-import HowItWorksPanel from "../game/HowItWorksPanel";
-import MechanicsPanel from "../game/MechanicsPanel";
-import WheelModePicker from "../game/WheelModePicker";
+import FullCourtBoard from "../game/FullCourtBoard";
+import CoachPicker from "../game/CoachPicker";
+import DraftAnalysis from "../game/DraftAnalysis";
 import GameBox from "../game/GameBox";
-import HowToPlayModal from "../game/HowToPlayModal";
 import PlayerDetailModal from "../game/PlayerDetailModal";
 import {
-  TargetIcon, WheelIcon, UsersIcon, TrophyIcon, CheckIcon, LinkIcon,
+  WheelIcon, UsersIcon, TrophyIcon, CheckIcon, LinkIcon,
   StarIcon, CoachIcon, CapIcon, RefreshIcon, CalendarIcon, BoltIcon,
-  SearchIcon, WarnIcon, DiceIcon, PlayIcon, EyeIcon,
+  SearchIcon, WarnIcon, DiceIcon, PlayIcon, EyeIcon, LoopIcon,
 } from "../game/GameIcons";
+import "../game/game.css";
 
 const EMPTY_LINEUP = { PG: null, SG: null, SF: null, PF: null, C: null, B1: null, B2: null, B3: null, B4: null };
 const SORT_KEYS = [
@@ -55,7 +55,6 @@ export default function WithAFriendGame() {
   const [joining, setJoining] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [copied, setCopied] = useState(false);
-  const [howToPlayOpen, setHowToPlayOpen] = useState(false);
   const [detailPlayer, setDetailPlayer] = useState(null);
 
   const [serverState, setServerState] = useState(null);
@@ -289,88 +288,94 @@ export default function WithAFriendGame() {
     <div className="h-full overflow-y-auto">
       <SEO title="With a Friend — Lineup Builder" description="Challenge a friend to a head-to-head draft, from two different devices — same rules as Same Screen, synced live over the network." path="/game/friend" />
       <div className="p-4 sm:p-6 max-w-[1400px] mx-auto space-y-3 pb-6">
-        <div>
-          <h1 className="font-logo text-2xl font-bold text-white tracking-wide">With a Friend</h1>
-          <p className="text-xs text-gray-500 mt-1">
-            Same rules as Same Screen — Salary Cap, jokers, BAN, best-of-7 series — but you and your friend each play from your own device. Create a room and share the code, or join one.
-          </p>
-        </div>
-
-        {!roomCode && (
-          <div className="grid grid-cols-1 lg:grid-cols-[340px_640px_340px] gap-4 justify-center max-w-[1400px] mx-auto">
-            <div className="order-2 lg:order-1 space-y-3 min-w-0">
-              <HowItWorksPanel
-                steps={[
-                  ["1", WheelIcon, "text-yamabuki", "Pick your wheel", "round- or pick-based"],
-                  ["2", LinkIcon, "text-asagi", "Create or join", "share a room code"],
-                  ["3", UsersIcon, "text-brandBlue", "Snake draft 9v9", "shared pool · salary cap"],
-                  ["4", TrophyIcon, "text-yamabuki", "Best-of-7 series", "simulate to a champion"],
-                ]}
-                note={<>Each side plays from their own device — your pick shows up on your friend's screen the moment you make it. Same <span className="text-emerald-300 font-semibold">Salary Cap</span> rules as Same Screen.</>}
-              />
+        {/* ── HEADER DOCK: başlık + çark alt-modu anahtarı tek barda ── */}
+        {!roomCode ? (
+          <div className="g-dock">
+            <span className="aura-blob" style={{ "--slot-color": "#FFB11B", left: -30, top: -70, width: 240, height: 150, opacity: 0.16 }} />
+            <div className="g-dock-left">
+              <h1 className="g-dock-title">With a Friend</h1>
+              <p className="g-dock-sub">2 devices · room code · snake draft · best-of-7</p>
             </div>
 
-            <div className="order-1 lg:order-2 space-y-3">
-              <div className="bg-surfaceBg border border-gray-800 rounded-2xl p-5 flex items-center justify-center gap-5">
-                <div className="flex-1 text-center">
-                  <div className="w-14 h-14 mx-auto rounded-full border-2 border-brandBlue/60 bg-brandBlue/10 flex items-center justify-center text-brandBlue"><UsersIcon size={24} /></div>
-                  <div className="font-logo text-sm font-bold text-white mt-2">{user?.username || "You"}</div>
-                </div>
-                <div className="font-logo text-2xl font-black text-gray-600">VS</div>
-                <div className="flex-1 text-center">
-                  <div className="w-14 h-14 mx-auto rounded-full border-2 border-brandRed/60 bg-brandRed/10 flex items-center justify-center text-brandRed"><UsersIcon size={24} /></div>
-                  <div className="font-logo text-sm font-bold text-gray-500 mt-2">A friend</div>
-                </div>
-              </div>
-
-              {!isLoggedIn ? (
-                <div className="bg-surfaceBg border border-gray-800 rounded-2xl p-5 text-center space-y-3">
-                  <p className="text-sm text-gray-400">You need to be logged in to create or join a room.</p>
-                  <button onClick={() => navigate("/login")}
-                    className="px-8 py-2.5 rounded-xl font-logo font-bold text-darkBg bg-yamabuki hover:bg-white transition-colors">
-                    Log In
-                  </button>
-                </div>
+            <div className="g-dock-center">
+              {isLoggedIn ? (
+                <button onClick={createRoom} disabled={creating} className="aura-rating-btn"
+                  style={{ padding: "17px 42px", fontSize: 14, letterSpacing: ".14em", opacity: creating ? 0.6 : 1 }}>
+                  <WheelIcon size={16} /> <span className="ml-2">{creating ? "Creating…" : "Create Room"}</span>
+                </button>
               ) : (
-                <>
-                  <WheelModePicker value={wheelModeChoice} onChange={setWheelModeChoice} />
-                  <div className="bg-surfaceBg border border-gray-800 rounded-2xl p-4 space-y-3">
-                    <button onClick={createRoom} disabled={creating}
-                      className="w-full px-6 py-3 rounded-xl font-logo font-bold text-lg inline-flex items-center justify-center gap-2 transition-colors duration-200 text-darkBg bg-yamabuki hover:bg-white disabled:opacity-60 shadow-[0_0_20px_rgba(255,177,27,0.3)]">
-                      <WheelIcon size={17} /> {creating ? "Creating…" : "Create Room"}
-                    </button>
-                    <div className="flex items-center gap-2 text-[10px] text-gray-600 uppercase tracking-widest">
-                      <div className="flex-1 h-px bg-gray-800" /> or join <div className="flex-1 h-px bg-gray-800" />
-                    </div>
-                    <div className="flex gap-2">
-                      <input value={joinCodeInput} onChange={e => setJoinCodeInput(e.target.value.toUpperCase())}
-                        placeholder="ROOM CODE" maxLength={8}
-                        className="flex-1 min-w-0 bg-surfaceCard border border-gray-700 rounded-lg px-3 py-2.5 text-sm font-mono tracking-widest text-white placeholder:text-gray-600 focus:outline-none focus:border-yamabuki/60" />
-                      <button onClick={joinRoom} disabled={joining}
-                        className="px-5 py-2.5 rounded-lg font-logo font-bold text-sm border border-gray-700 text-white hover:border-yamabuki/60 disabled:opacity-60 transition-colors">
-                        {joining ? "Joining…" : "Join"}
-                      </button>
-                    </div>
-                    {errorMsg && <p className="text-[11px] text-red-400">{errorMsg}</p>}
-                  </div>
-                  <div className="text-center">
-                    <button onClick={() => setHowToPlayOpen(true)}
-                      className="text-xs text-gray-500 hover:text-yamabuki underline underline-offset-2 transition-colors">
-                      How to Play
-                    </button>
-                  </div>
-                </>
+                <button onClick={() => navigate("/login")} className="aura-rating-btn"
+                  style={{ padding: "17px 42px", fontSize: 14, letterSpacing: ".14em" }}>
+                  Log In to Play
+                </button>
               )}
             </div>
 
-            <div className="order-3 space-y-3 min-w-0">
-              <MechanicsPanel />
+            <div className="g-dock-right">
+              {isLoggedIn && (
+                <div className="g-seg stacked">
+                  {[
+                    { key: "round", Icon: WheelIcon, hex: "#60a5fa", label: "Round", hint: "1 spin / round" },
+                    { key: "pick", Icon: LoopIcon, hex: "#FFB11B", label: "Pick", hint: "1 spin / pick" },
+                  ].map(({ key, Icon, hex, label, hint }) => (
+                    <button key={key} onClick={() => setWheelModeChoice(key)}
+                      className={`g-seg-btn${wheelModeChoice === key ? " on" : ""}`}
+                      style={{ "--accent": hex, "--accent-a": hex + "22", "--accent-line": hex + "66" }}>
+                      <Icon size={14} /> {label}
+                      <span className="opacity-55 font-normal tracking-normal normal-case">({hint})</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
+          </div>
+        ) : !(game && ["drafting", "placing"].includes(game.phase)) ? (
+          // Draft fazının kendi ince dock'u var; başlığı tekrar yazma.
+          <div>
+            <h1 className="font-logo text-2xl font-bold text-white tracking-wide">With a Friend</h1>
+            <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
+              Same rules as Same Screen — Salary Cap, jokers, BAN, best-of-7 series — but you and your friend each play from your own device. Create a room and share the code, or join one.
+            </p>
+          </div>
+        ) : null}
+
+        {/* ── LOBBY: tam saha ──────────────────────────────────────────────
+            Yan paneller (Match Flow / Match Mechanics) kaldırıldı — kurallar
+            giriş ekranındaki mod kartının ⓘ'sinde tek kaynaktan anlatılıyor.
+            Kalan tek işlevsel parça oda kodu; o da kortun altında. */}
+        {!roomCode && (
+          <div className="space-y-3">
+            <FullCourtBoard
+              names={{ 1: user?.username || "You", 2: "A friend" }}
+              status={isLoggedIn ? "Lobby" : "Signed Out"}
+            />
+
+            {!isLoggedIn ? (
+              <div className="g-panel subtle p-5 text-center max-w-md mx-auto">
+                <p className="text-sm" style={{ color: "var(--text-muted)" }}>Log in above to create or join a room.</p>
+              </div>
+            ) : (
+              <div className="g-panel p-4 space-y-3 max-w-md mx-auto">
+                <div className="g-label">Join an existing room</div>
+                <div className="flex gap-2">
+                  <input value={joinCodeInput} onChange={e => setJoinCodeInput(e.target.value.toUpperCase())}
+                    placeholder="ROOM CODE" maxLength={8}
+                    className="flex-1 min-w-0 rounded-xl px-3 py-2.5 text-sm font-mono tracking-widest focus:outline-none"
+                    style={{ color: "var(--text-primary)", background: "rgba(255,255,255,.04)", border: "1px solid rgba(255,255,255,.12)" }} />
+                  <button onClick={joinRoom} disabled={joining}
+                    className="aura-rating-btn" style={{ padding: "10px 20px", fontSize: 14 }}>
+                    {joining ? "Joining…" : "Join"}
+                  </button>
+                </div>
+                {errorMsg && <p className="text-[11px] text-red-400">{errorMsg}</p>}
+              </div>
+            )}
           </div>
         )}
 
+
         {roomCode && !game && (
-          <div className="max-w-md mx-auto text-center bg-surfaceBg border border-gray-800 rounded-2xl p-6 space-y-4">
+          <div className="max-w-md mx-auto text-center g-panel p-6 space-y-4">
             {!connected && <p className="text-sm text-gray-500 animate-pulse">Connecting…</p>}
             {connected && !opponentConnected && (
               <>
@@ -378,7 +383,7 @@ export default function WithAFriendGame() {
                 <div className="flex items-center justify-center gap-2">
                   <div className="font-logo text-4xl font-black text-yamabuki tracking-[0.2em]">{roomCode}</div>
                   <button onClick={copyCode} title="Copy code"
-                    className="w-9 h-9 flex items-center justify-center rounded-lg border border-gray-700 text-gray-400 hover:text-white hover:border-yamabuki/60 transition-colors">
+                    className="w-9 h-9 flex items-center justify-center rounded-xl transition-colors" style={{color:"var(--text-muted)",border:"1px solid rgba(255,255,255,.12)"}}>
                     {copied ? <CheckIcon size={16} /> : <LinkIcon size={16} />}
                   </button>
                 </div>
@@ -403,7 +408,7 @@ export default function WithAFriendGame() {
             )}
 
             {game.phase === "era" && (
-              <div className="bg-surfaceBg border border-gray-800 rounded-2xl p-5 space-y-3 max-w-3xl mx-auto">
+              <div className="g-panel p-5 space-y-3 max-w-3xl mx-auto">
                 {myUserId === room.player1_user_id ? (
                   <>
                     <div className="text-[11px] text-gray-400 uppercase tracking-widest mb-1">Pick Your Simulation Era</div>
@@ -418,7 +423,7 @@ export default function WithAFriendGame() {
                       ))}
                     </div>
                     <button onClick={() => pickEraAction(ERAS[Math.floor(Math.random() * ERAS.length)])}
-                      className="w-full py-2.5 rounded-xl text-sm font-medium border border-gray-700 text-gray-300 hover:border-blue-500 hover:text-blue-300 transition-colors inline-flex items-center justify-center gap-2">
+                      className="aura-pill-btn w-full justify-center" style={{padding:"10px"}}>
                       <DiceIcon size={15} /> Random Era
                     </button>
                   </>
@@ -430,24 +435,44 @@ export default function WithAFriendGame() {
 
             {(game.phase === "drafting" || game.phase === "placing") && (
               <div className="space-y-3">
-                <div className="flex items-center justify-center gap-3">
-                  <span className="text-[11px] px-2 py-0.5 rounded border border-gray-700 text-gray-400 font-logo uppercase tracking-widest">Round {game.round}</span>
-                  {simEra && <span className={`text-[9px] px-1.5 py-0.5 rounded border ${simEra.bg} ${simEra.color}`}>SIM: {simEra.short}</span>}
-                  {!spinAnimating && (
-                    <span className="text-[11px] text-yamabuki font-logo font-bold uppercase tracking-widest">
-                      {isMyTurn ? "Your pick" : `${seatName[2]}'s pick`} — {isMyTurn ? seatName[2] : "you"} waiting
-                    </span>
-                  )}
+                {/* ── İNCE DOCK: tur durumu | spin | düşen takım ── */}
+                <div className="g-dock thin">
+                  <span className="aura-blob" style={{ "--slot-color": "#FFB11B", left: -30, top: -60, width: 220, height: 130, opacity: spinAnimating ? 0.24 : 0.12, transition: "opacity .4s ease" }} />
+
+                  <div className="g-dock-left flex items-center gap-3">
+                    <h1 className="g-dock-title">Round {game.round}</h1>
+                    {simEra && (
+                      <span className="g-status" style={{ "--accent": "#9ca3af", "--accent-a": "rgba(156,163,175,.14)", "--accent-line": "rgba(156,163,175,.4)" }}>
+                        {simEra.short}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="g-dock-center">
+                    {spinAnimating ? (
+                      <div className="flex items-center gap-7">
+                        <InlineSpin items={seasons} spinning={spinS} targetIdx={targetSIdx} label="Season" accent="#FFB11B" />
+                        <InlineSpin items={teamPool.length > 0 ? teamPool : ["…"]} spinning={spinT} targetIdx={targetTIdx} label="Team" accent="#60a5fa" />
+                      </div>
+                    ) : (
+                      <span className="font-logo text-[12px] font-bold uppercase tracking-widest" style={{ color: "var(--yamabuki)" }}>
+                        {isMyTurn ? "Your pick" : `${seatName[2]}'s pick`} — {isMyTurn ? seatName[2] : "you"} waiting
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="g-dock-right">
+                    {game.season && !spinAnimating && (
+                      <div className="g-dock-team">
+                        <div className="tm">{game.team}</div>
+                        <div className="yr">{game.season}</div>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {spinAnimating && (
-                  <div className="bg-surfaceBg border border-gray-800 rounded-2xl p-5">
-                    <div className="flex justify-center gap-8 mb-4">
-                      <SpinWheel items={seasons} spinning={spinS} targetIdx={targetSIdx} label="Season" />
-                      <SpinWheel items={teamPool.length > 0 ? teamPool : ["..."]} spinning={spinT} targetIdx={targetTIdx} label="Team" />
-                    </div>
-                    <p className="text-center text-xs text-gray-500 animate-pulse">Spinning...</p>
-                  </div>
+                  <p className="text-center text-xs animate-pulse py-8" style={{ color: "var(--text-muted)" }}>Spinning…</p>
                 )}
 
                 {!spinAnimating && (
@@ -507,28 +532,17 @@ export default function WithAFriendGame() {
               const pickerName = pickerUid === myUserId ? "You" : opponentUsername;
               const coachOptions = game.coach_seed != null ? pickCoachOptions(game.coach_seed) : [];
               return (
-                <div className="bg-surfaceBg border border-gray-800 rounded-2xl p-5 space-y-3 max-w-2xl mx-auto">
-                  <div className="text-[11px] text-gray-400 uppercase tracking-widest">{pickerName} — Hire a Coach</div>
-                  {pickerUid === myUserId ? (
-                    <div className="grid grid-cols-2 gap-2">
-                      {coachOptions.map(c => (
-                        <button key={c.name} onClick={() => pickCoachAction(c)}
-                          className="text-left rounded-xl border border-gray-800 bg-surfaceCard p-3 hover:border-yamabuki/60 transition-all">
-                          <div className="font-logo text-sm font-bold text-white flex items-center gap-1.5"><CoachIcon size={14} /> {c.name}</div>
-                          <div className="text-[10px] text-gray-500 mt-0.5">{c.years} · {c.champs} rings</div>
-                          <div className="text-[10px] text-gray-400 mt-1">OFF {c.off} · DEF {c.def} {c.tag && <span className="text-violet-300 ml-1">{c.tag}</span>}</div>
-                        </button>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-gray-500 text-center animate-pulse py-6">Waiting for {opponentUsername} to hire a coach…</p>
-                  )}
-                </div>
+                <CoachPicker
+                  title={`${pickerName} — Hire a Coach`}
+                  options={coachOptions}
+                  onPick={pickCoachAction}
+                  waitingFor={pickerUid === myUserId ? null : opponentUsername}
+                />
               );
             })()}
 
             {game.phase === "series" && matchup && (
-              <SeriesPanel game={game} matchup={matchup} seatName={seatName}
+              <SeriesPanel game={game} matchup={matchup} seatName={seatName} simEra={simEra}
                 myUserId={myUserId} opponentUserId={opponentUserId}
                 toSeatGame={toSeatGame} onNextGame={playNextGameAction} />
             )}
@@ -540,7 +554,6 @@ export default function WithAFriendGame() {
           </div>
         )}
 
-        <HowToPlayModal open={howToPlayOpen} onClose={() => setHowToPlayOpen(false)} />
         <PlayerDetailModal player={detailPlayer} onClose={() => setDetailPlayer(null)} />
       </div>
     </div>
@@ -571,20 +584,20 @@ function SeatPanel({
   const lu = lineup || EMPTY_LINEUP;
 
   return (
-    <div className={`rounded-2xl border p-3 space-y-2 ${isActive ? "border-yamabuki/50 bg-yamabuki/5" : "border-gray-800 bg-surfaceBg"}`}>
+    <div className={`rounded-2xl border p-3 space-y-2 ${isActive ? "border-yamabuki/60 bg-yamabuki/[.06] shadow-[0_0_24px_-8px_rgba(255,177,27,.7)]" : "border-white/8 bg-white/[.02]"}`}>
       <div className="flex items-center justify-between">
         <span className="font-logo text-sm font-bold text-white truncate">{username}</span>
         {isActive && <span className="text-[9.5px] px-2 py-0.5 rounded-full bg-yamabuki/20 border border-yamabuki/50 text-yamabuki font-bold uppercase tracking-wider shrink-0">{interactive ? "Your pick" : "Picking"}</span>}
-        {isWaiting && <span className="text-[9.5px] px-2 py-0.5 rounded-full bg-gray-800 border border-gray-700 text-gray-400 uppercase tracking-wider shrink-0">Waiting</span>}
+        {isWaiting && <span className="text-[9.5px] px-2 py-0.5 rounded-full border border-white/12 text-[var(--text-faint)] uppercase tracking-wider shrink-0">Waiting</span>}
       </div>
 
-      <div className="rounded-lg border border-gray-800 bg-surfaceBg/60 px-2 py-1.5">
+      <div className="g-panel subtle px-2 py-1.5">
         <div className="flex items-center justify-between text-[10px]">
           <span className="text-gray-500 uppercase tracking-wider flex items-center gap-1"><CapIcon size={11} /> Cap</span>
           <span className={`font-black tabular-nums ${budgetLeft <= 15 ? "text-red-400" : budgetLeft <= 35 ? "text-yamabuki" : "text-emerald-300"}`}>{budgetLeft}%</span>
         </div>
-        <div className="h-1.5 bg-surfaceCard rounded-full overflow-hidden mt-1">
-          <div className="h-full rounded-full" style={{ width: `${budgetLeft}%`, background: budgetLeft <= 15 ? "#7f1d1d" : budgetLeft <= 35 ? "#b45309" : "#047857" }} />
+        <div className="g-bar-track mt-1" style={{height:6}}>
+          <div className="g-bar-fill" style={{ width: `${budgetLeft}%`, "--fill": budgetLeft <= 15 ? "#f87171" : budgetLeft <= 35 ? "#FFB11B" : "#4ade80", "--fill-a": (budgetLeft <= 15 ? "#f87171" : budgetLeft <= 35 ? "#FFB11B" : "#4ade80") + "66" }} />
         </div>
       </div>
 
@@ -643,7 +656,7 @@ function SeatPanel({
                   return (
                     <button key={pos} onClick={() => onPlacePos(pos)}
                       className={`flex-1 min-w-[3rem] py-1.5 border rounded-lg font-bold text-xs transition-all
-                        ${isPrim ? "bg-yamabuki/30 border-yamabuki/60 text-yamabuki" : isElig ? "bg-surfaceCard border-gray-600 text-white" : "bg-surfaceBg/50 border-gray-800 text-gray-500"}`}>
+                        ${isPrim ? "bg-yamabuki/25 border-yamabuki text-yamabuki shadow-[0_0_16px_-5px_#FFB11B]" : isElig ? "bg-white/[.04] border-white/20 text-white" : "border-dashed border-white/12 text-[var(--text-faint)]"}`}>
                       <div className="inline-flex items-center gap-0.5 justify-center">{pos}{isPrim && <StarIcon size={9} />}</div>
                       {penLabel && <div className="text-[8px] font-medium text-red-400/90 leading-tight">{penLabel}</div>}
                       {!penLabel && !isPrim && isFlex(pickedPlayer) && <div className="text-[8px] font-medium text-violet-400 leading-tight">vers.</div>}
@@ -655,7 +668,7 @@ function SeatPanel({
                 <div className="flex gap-1.5">
                   {BENCH_SLOTS.filter(b => !lu[b]).map(b => (
                     <button key={b} onClick={() => onPlacePos(b)}
-                      className="flex-1 py-1.5 border border-gray-700 rounded-lg text-xs text-gray-300 hover:border-yamabuki/50">{b}</button>
+                      className="flex-1 py-1.5 rounded-xl text-xs transition-all hover:-translate-y-px" style={{color:"var(--text-muted)",border:"1px solid rgba(255,255,255,.12)",background:"rgba(255,255,255,.03)"}}>{b}</button>
                   ))}
                 </div>
               )}
@@ -689,7 +702,7 @@ function SeatPanel({
                   ))}
                 </div>
               )}
-              <div className="max-h-80 overflow-auto border border-gray-800 rounded-lg">
+              <div className="max-h-80 overflow-auto rounded-xl" style={{border:"1px solid rgba(255,255,255,.08)"}}>
                 {list.map((p, i) => {
                   const banned = isActive && bannedName === p.PLAYER_NAME && !banVoided;
                   const cost = priceOf(p);
@@ -721,13 +734,33 @@ function SeatPanel({
 function ReviewPanel({ game, myUserId, opponentUserId, seatName, simEra, moveSrc, canRearrange, onSlotTap, onReady, onPlayerInfo }) {
   const myReady = game.ready_for_coaches[myUserId];
   const oppReady = game.ready_for_coaches[opponentUserId];
+  const seatLineups = { 1: game.lineups[myUserId] || EMPTY_LINEUP, 2: game.lineups[opponentUserId] || EMPTY_LINEUP };
+  const teamScore = (seat) => {
+    const fit = computeLineupFit(POSITIONS.map(p => seatLineups[seat][p]).filter(Boolean), simEra);
+    return fit ? Math.round(fit.lineupScore * 100) : 0;
+  };
+
   return (
-    <div className="max-w-4xl mx-auto space-y-4">
+    <div className="space-y-4">
       <div className="text-center">
         <div className="font-logo text-lg font-bold text-white">Rosters Complete</div>
-        <p className="text-xs text-gray-500 mt-0.5">Review both teams. Tap a slot to rearrange your own lineup one last time.</p>
+        <p className="text-xs text-gray-500 mt-0.5">Review both teams. Tap a slot on your half of the court to rearrange one last time.</p>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+      {/* İki kadro TEK sahada. Sadece KENDİ yarını düzenleyebilirsin —
+          rakibin dizilimi sunucudan geliyor, dokunulamaz. */}
+      <FullCourtBoard
+        lineups={seatLineups}
+        names={{ 1: seatName[1], 2: seatName[2] }}
+        label="// Rosters Locked"
+        status="Review"
+        scores={{ 1: teamScore(1), 2: teamScore(2) }}
+        moveSrc={{ 1: moveSrc, 2: null }}
+        canTap={{ 1: canRearrange, 2: false }}
+        onSlotTap={(seat, slot) => seat === 1 && onSlotTap(slot)}
+      />
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-4xl mx-auto">
         <TeamPreviewCard username={seatName[1]} lineup={game.lineups[myUserId]} simEra={simEra}
           moveSrc={moveSrc} canRearrange={canRearrange} onSlotTap={onSlotTap} ready={myReady} onPlayerInfo={onPlayerInfo} />
         <TeamPreviewCard username={seatName[2]} lineup={game.lineups[opponentUserId]} simEra={simEra}
@@ -762,7 +795,7 @@ function TeamPreviewCard({ username, lineup, simEra, moveSrc, canRearrange, onSl
         className={`w-full flex items-center gap-2 py-1.5 border-b last:border-b-0 text-left transition-colors
           ${bench ? "opacity-70" : ""} ${moveSrc === pos ? "bg-yamabuki/10" : "hover:bg-white/[0.02]"}`}
         style={{ borderColor: "rgba(30,41,59,.5)" }}>
-        <span className={`text-[9.5px] font-bold px-1.5 py-1 rounded border shrink-0 w-8 text-center ${bench ? "border-gray-700 text-gray-500" : POS_COLORS[pos] || ""}`}>
+        <span className={`text-[9.5px] font-bold px-1.5 py-1 rounded border shrink-0 w-8 text-center ${bench ? "border-white/12 text-[var(--text-faint)]" : POS_COLORS[pos] || ""}`}>
           {bench ? "BN" : pos}
         </span>
         <div className="flex-1 min-w-0">
@@ -773,7 +806,7 @@ function TeamPreviewCard({ username, lineup, simEra, moveSrc, canRearrange, onSl
           <span className="text-[10px] text-blue-400">{p.primary_arch || "—"}</span>
         </div>
         <span className="text-[9.5px] text-gray-500 tabular-nums shrink-0 w-9 text-right">ovr {base}</span>
-        <div className="w-12 h-1.5 bg-surfaceCard rounded-full overflow-hidden shrink-0">
+        <div className="g-bar-track w-12 shrink-0" style={{height:6}}>
           <div className="h-full rounded-full" style={{ width: `${qPct}%`, background: qPct >= 75 ? "#1D428A" : qPct >= 55 ? "#2a3d6b" : "#7f1d1d" }} />
         </div>
         <span className={`text-[11px] font-bold w-6 text-right shrink-0 ${qPct >= 75 ? "text-blue-300" : qPct >= 55 ? "text-gray-200" : "text-red-400"}`}>{qPct}</span>
@@ -788,7 +821,7 @@ function TeamPreviewCard({ username, lineup, simEra, moveSrc, canRearrange, onSl
   };
 
   return (
-    <div className="rounded-2xl border border-gray-800 bg-surfaceBg p-4 space-y-2">
+    <div className="g-panel p-4 space-y-2">
       <div className="flex items-center justify-between">
         <span className="font-logo text-sm font-bold text-white flex items-center gap-1.5 truncate">
           {username}
@@ -812,14 +845,38 @@ function TeamPreviewCard({ username, lineup, simEra, moveSrc, canRearrange, onSl
 }
 
 // ── Best-of-7 seri — her iki taraf da "Simulate Game N"e basabilir ─────────
-function SeriesPanel({ game, matchup, seatName, myUserId, opponentUserId, toSeatGame, onNextGame }) {
+function SeriesPanel({ game, matchup, seatName, myUserId, opponentUserId, toSeatGame, onNextGame, simEra }) {
   const myWins = game.series_wins[myUserId] || 0;
   const oppWins = game.series_wins[opponentUserId] || 0;
   const seriesOver = myWins >= 4 || oppWins >= 4;
   const games = game.series_games || [];
+  const seatLineups = { 1: game.lineups[myUserId] || EMPTY_LINEUP, 2: game.lineups[opponentUserId] || EMPTY_LINEUP };
+  const seatCoaches = {
+    1: COACHES.find(c => c.name === game.coaches?.[myUserId]) || null,
+    2: COACHES.find(c => c.name === game.coaches?.[opponentUserId]) || null,
+  };
 
   return (
-    <div className="max-w-3xl mx-auto space-y-4">
+    <div className="space-y-4">
+      {/* Seri boyunca sabit: kim kime karşı oynuyor, tek sahada */}
+      <FullCourtBoard
+        lineups={seatLineups}
+        names={{ 1: seatName[1], 2: seatName[2] }}
+        coaches={seatCoaches}
+        label="// Series Matchup"
+        status={seriesOver ? "Final" : `Game ${games.length + 1}`}
+      />
+
+      {/* Simülasyon ÖNCESİ karne — ilk maç oynanana kadar açık durur */}
+      {games.length === 0 && (
+        <DraftAnalysis simEra={simEra}
+          teams={[
+            { name: seatName[1], lineup: seatLineups[1], coach: seatCoaches[1] },
+            { name: seatName[2], lineup: seatLineups[2], coach: seatCoaches[2] },
+          ]} />
+      )}
+
+      <div className="max-w-3xl mx-auto space-y-4">
       <div className="text-center">
         <div className="font-logo text-[11px] uppercase tracking-widest text-gray-500 mb-1">Best-of-7 Series</div>
         <div className="font-logo text-4xl font-black text-white tabular-nums">
@@ -843,6 +900,7 @@ function SeriesPanel({ game, matchup, seatName, myUserId, opponentUserId, toSeat
 
       <div className="space-y-3">
         {games.map((g) => <GameBox key={g.gameIndex} game={toSeatGame(g)} labels={{ 1: seatName[1], 2: seatName[2] }} />)}
+      </div>
       </div>
     </div>
   );
@@ -877,7 +935,7 @@ function TeamEvalCard({ name, wins, won, coach, lineup, simEra, mine, token, onP
   };
 
   return (
-    <div className={`rounded-2xl border p-4 space-y-3 ${won ? "border-yamabuki bg-yamabuki/10" : "border-gray-800 bg-surfaceBg"}`}>
+    <div className={`rounded-2xl border p-4 space-y-3 ${won ? "border-yamabuki bg-yamabuki/[.08] shadow-[0_0_30px_-10px_rgba(255,177,27,.8)]" : "border-white/8 bg-white/[.02]"}`}>
       <div className="flex items-center justify-between">
         <span className="font-logo text-base font-bold text-white truncate">{name}</span>
         <span className="text-3xl font-black tabular-nums shrink-0" style={{ color: won ? "var(--accent)" : "#e5e7eb" }}>{wins}</span>
@@ -886,14 +944,14 @@ function TeamEvalCard({ name, wins, won, coach, lineup, simEra, mine, token, onP
         <div className="text-[11px] text-gray-400 flex items-center gap-1"><CoachIcon size={12} /> {coach}</div>
       )}
 
-      <div className="rounded-xl border border-gray-800 bg-darkBg/40 p-3 flex items-center gap-3">
+      <div className="g-panel subtle p-3 flex items-center gap-3">
         <div className="text-center shrink-0">
           <div className={`font-logo text-3xl font-black tabular-nums ${pct >= 78 ? "text-blue-400" : pct >= 62 ? "text-sky-400" : "text-gray-300"}`}>{pct}</div>
           <div className={`font-logo text-sm font-bold ${pct >= 85 ? "text-blue-300" : pct >= 78 ? "text-sky-300" : pct >= 70 ? "text-emerald-300" : pct >= 62 ? "text-yamabuki" : "text-red-400"}`}>{grade}</div>
         </div>
         <div className="flex-1 grid grid-cols-3 gap-1.5 min-w-0">
           {[["Quality", qualityPct], ["Coverage", coveragePct], ["Role Fit", roleFitPct]].map(([label, val]) => (
-            <div key={label} className="rounded-lg border border-gray-800 bg-surfaceCard/60 py-1.5 text-center">
+            <div key={label} className="g-panel subtle py-1.5 text-center">
               <div className={`text-sm font-black ${val >= 75 ? "text-blue-300" : val >= 55 ? "text-gray-200" : "text-red-400"}`}>{val}</div>
               <div className="text-[8px] text-gray-500 mt-0.5">{label}</div>
             </div>
@@ -905,7 +963,7 @@ function TeamEvalCard({ name, wins, won, coach, lineup, simEra, mine, token, onP
       <div className="flex flex-wrap gap-1">
         {POSITIONS.concat(BENCH_SLOTS).map(pos => lineup[pos] && (
           <button key={pos} onClick={() => onPlayerInfo && onPlayerInfo(lineup[pos])}
-            className={`text-[10px] px-1.5 py-0.5 rounded border transition-colors ${POS_COLORS[pos] || "border-gray-700 text-gray-400"} hover:brightness-125`}
+            className={`text-[10px] px-1.5 py-0.5 rounded border transition-colors ${POS_COLORS[pos] || "border-white/12 text-[var(--text-muted)]"} hover:brightness-125`}
             title={`${lineup[pos]._cost ?? priceOf(lineup[pos])}% cap — tap for details`}>
             {lineup[pos].PLAYER_NAME?.split(" ").slice(-1)[0]}
           </button>
@@ -916,7 +974,7 @@ function TeamEvalCard({ name, wins, won, coach, lineup, simEra, mine, token, onP
         <button onClick={saveLineup} disabled={saveState === "saving" || saveState === "saved"}
           className={`w-full py-2 rounded-lg text-xs font-logo font-bold transition-colors inline-flex items-center justify-center gap-1.5
             ${saveState === "saved" ? "border border-emerald-600/50 text-emerald-300 bg-emerald-950/30 cursor-default"
-              : "border border-gray-700 text-gray-300 hover:border-yamabuki/60 hover:text-yamabuki"}`}>
+              : "border border-white/12 text-[var(--text-muted)] hover:border-yamabuki/60 hover:text-yamabuki"}`}>
           {saveState === "saved" ? <><CheckIcon size={13} /> Saved to your lineups</>
             : saveState === "saving" ? "Saving…"
             : saveState === "error" ? "Couldn't save — try again"

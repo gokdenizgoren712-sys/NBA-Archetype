@@ -1,36 +1,60 @@
 import { StarIcon, EyeIcon } from "./GameIcons";
 import { getPrimaryPos, POS_COLORS } from "./positions";
+import "./game.css";
+
+// Pozisyon → gerçek hex (POS_COLORS Tailwind sınıfı, glow için hex lazım).
+const POS_HEX = { PG: "#a78bfa", SG: "#60a5fa", SF: "#34d399", PF: "#fb923c", C: "#f87171" };
 
 // ── Lineup slot ───────────────────────────────────────────────────────────────
+// Boş slot: kesikli hayalet çerçeve. Dolu slot: oyuncunun pozisyon renginde
+// organik blob glow (tint'li kutu yerine) + ince accent kenar.
 export default function LineupSlot({ pos, player, bench = false, selected = false, canTap = false, onTap, onInfo }) {
   const isPrimary = !bench && player && getPrimaryPos(player) === pos;
   const pen = !bench && player ? (player._posPenalty ?? 1) : 1;
   const penLabel = pen >= 1 ? null : pen >= 0.90 ? "−10%" : "−25%";
   const posLabel = bench ? "BENCH" : pos;
+  const accent = bench ? "#9ca3af" : (POS_HEX[pos] || "#9ca3af");
+
+  const cls = [
+    "g-slot",
+    player ? "filled" : "empty",
+    canTap ? "tappable" : "",
+    selected ? "selected" : "",
+  ].filter(Boolean).join(" ");
+
   return (
-    <div onClick={() => canTap && onTap && onTap(pos)}
-      className={`relative flex-1 rounded-lg p-1.5 border text-center min-w-0 transition-all
-      ${selected ? "border-yamabuki shadow-[0_0_8px_rgba(255,177,27,.35)]" : player ? (bench ? "border-gray-600/50 bg-surfaceCard/30" : "border-yamabuki/40 bg-yamabuki/10") : "border-gray-800 bg-surfaceBg/60"}
-      ${canTap ? "cursor-pointer" : ""}`}>
+    <div onClick={() => canTap && onTap && onTap(pos)} className={cls}
+      style={{ "--accent": accent, "--accent-a": accent + "22", "--accent-line": accent + "55" }}>
+      {player && (
+        <span className="aura-blob" style={{
+          "--slot-color": accent, left: "50%", top: -14,
+          width: 88, height: 62, transform: "translateX(-50%)", opacity: bench ? 0.16 : 0.32,
+        }} />
+      )}
+
       {player && onInfo && (
         <button onClick={e => { e.stopPropagation(); onInfo(player); }}
-          className="absolute top-0.5 right-0.5 text-gray-600 hover:text-yamabuki transition-colors p-0.5"
+          className="absolute top-1 right-1 transition-colors"
+          style={{ color: "var(--text-faint)", zIndex: 4 }}
+          onMouseEnter={e => e.currentTarget.style.color = accent}
+          onMouseLeave={e => e.currentTarget.style.color = "var(--text-faint)"}
           title="Player details">
           <EyeIcon size={9} />
         </button>
       )}
-      <div className={`text-[8.5px] uppercase tracking-wider mb-0.5 ${bench ? "text-gray-600" : POS_COLORS[pos]?.split(" ")[1] || "text-gray-600"}`}>{posLabel}</div>
+
+      <div className="g-slot-pos">{posLabel}</div>
       {player ? (
         <>
-          <div className="text-[10.5px] text-white font-semibold truncate leading-tight">
-            {player.PLAYER_NAME?.split(" ").slice(-1)[0]}
+          <div className="g-slot-name">{player.PLAYER_NAME?.split(" ").slice(-1)[0]}</div>
+          <div className="g-slot-meta">
+            {(player._season || "").slice(0, 4)}
+            {isPrimary && <span style={{ color: accent, marginLeft: 4, display: "inline-flex", verticalAlign: "-1px" }}><StarIcon size={8} /></span>}
           </div>
-          <div className="text-[8.5px] text-gray-500">{(player._season || "").slice(0, 4)}</div>
-          {isPrimary && <div className="text-yamabuki flex justify-center mt-0.5"><StarIcon size={9} /></div>}
-          {penLabel && <div className="text-[8px] font-medium text-red-400/90 leading-tight">{penLabel}</div>}
+          {penLabel && <div className="g-slot-meta" style={{ color: "#f87171", fontWeight: 600 }}>{penLabel}</div>}
         </>
       ) : (
-        <div className="text-gray-700 text-sm">—</div>
+        <div className="g-slot-empty-mark">+</div>
       )}
     </div>
   );

@@ -6,6 +6,7 @@
 // Mevki düğümü = 12-gen SVG + içinde <text> (kusursuz ortalama, Rajdhani).
 
 import { benchCoverage } from "./seasonSim";
+import "./game.css";
 import { StarIcon, CoachIcon, TrophyIcon } from "./GameIcons";
 
 const POSITIONS   = ["PG", "SG", "SF", "PF", "C"];
@@ -21,13 +22,13 @@ const SPOT = {
 };
 
 // Referans mevki renkleri
-const POS_COLOR = {
+export const POS_COLOR = {
   PG: "#1d428a", SG: "#00A3AF", SF: "#6da7ec", PF: "#FFB11B", C: "#c8102e",
 };
 const DODECA = "24,4 34,6.7 41.3,14 44,24 41.3,34 34,41.3 24,44 14,41.3 6.7,34 4,24 6.7,14 14,6.7";
 
 // 12-gen düğüm — içine <text> ile mevki harfi (kusursuz ortalanır)
-function Node({ pos, color, dim, glow, size = 54 }) {
+export function Node({ pos, color, dim, glow, size = 54 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 48 48"
       className={glow ? "drop-shadow-[0_0_10px_rgba(255,177,27,0.5)]" : ""}>
@@ -82,26 +83,35 @@ function CourtSpot({ pos, player, isPrimary, selected, canTap, onTap, placing, o
   );
 }
 
+// `bare` = dış kabuk çağıran taraftan geliyor (idle ekranındaki HUD court
+// paneli kendi başlığını/dot-grid'ini çiziyor), o yüzden burada tekrar panel
+// çerçevesi + "Your Roster" başlığı çizilmesin.
 export default function CourtBoard({ lineup, coach, moveSrc, canRearrange, onSlotTap, getPrimaryPos,
-                                     placing = false, placingEligible = [], placingPenalties = {}, onPlace }) {
+                                     placing = false, placingEligible = [], placingPenalties = {}, onPlace,
+                                     bare = false }) {
   const bench = BENCH_SLOTS.map(b => lineup[b]).filter(Boolean);
   const cover = benchCoverage(bench);
   const tapHandler = placing ? onPlace : onSlotTap;
 
   return (
-    <div className="bg-surfaceBg border border-gray-800 rounded-2xl p-4 space-y-3 select-none">
-      <div className="flex items-center justify-between gap-2">
-        <div className="font-logo text-[11px] text-gray-500 uppercase tracking-widest font-semibold">Your Roster</div>
-        {placing ? (
-          <span className="text-[10px] text-yamabuki font-medium">Tap a spot on the court or bench to place</span>
-        ) : canRearrange ? (
-          <span className="text-[9.5px] text-gray-400">
-            {moveSrc ? "Now tap a destination slot (occupied = swap)" : "Tap a player, then a slot to move / swap"}
-          </span>
-        ) : (
-          <span className="text-[9px] text-gray-600 uppercase tracking-widest">Rearranging Locked</span>
-        )}
-      </div>
+    <div className={bare ? "select-none" : "g-panel p-4 space-y-3 select-none"}>
+      {!bare && (
+        <span className="aura-blob" style={{ "--slot-color": "#FFB11B", left: "50%", top: -50, width: 300, height: 150, transform: "translateX(-50%)", opacity: placing ? 0.24 : 0.11, transition: "opacity .35s ease" }} />
+      )}
+      {!bare && (
+        <div className="flex items-center justify-between gap-2">
+          <div className="g-label">Your Roster</div>
+          {placing ? (
+            <span className="text-[10px] font-medium" style={{ color: "var(--yamabuki)" }}>Tap a spot on the court or bench to place</span>
+          ) : canRearrange ? (
+            <span className="text-[9.5px]" style={{ color: "var(--text-muted)" }}>
+              {moveSrc ? "Now tap a destination slot (occupied = swap)" : "Tap a player, then a slot to move / swap"}
+            </span>
+          ) : (
+            <span className="text-[9px] uppercase tracking-widest" style={{ color: "var(--text-faint)" }}>Rearranging Locked</span>
+          )}
+        </div>
+      )}
 
       {/* Court solda (blueprint), bench SAĞDA dikey */}
       <div className="flex gap-3 items-stretch">
@@ -147,13 +157,15 @@ export default function CourtBoard({ lineup, coach, moveSrc, canRearrange, onSlo
         </div>
 
         {/* Bench — court'un sağında, dikey stack */}
-        <div className="w-[110px] shrink-0 flex flex-col border-l border-gray-800/60 pl-3">
+        <div className="w-[110px] shrink-0 flex flex-col pl-3" style={{ borderLeft: "1px solid rgba(255,255,255,.07)" }}>
           <div className="flex items-center justify-between mb-2">
-            <div className="font-logo text-[9px] text-gray-500 uppercase tracking-widest font-semibold">Bench</div>
-            <div className="flex items-center gap-0.5" title="Bench with a Guard, Forward AND Center earns a small buff">
+            <div className="g-label" style={{ fontSize: 8.5 }}>Bench</div>
+            <div className="flex items-center gap-1" title="Bench with a Guard, Forward AND Center earns a small buff">
               {["G", "F", "C"].map(g => (
-                <span key={g} className={`font-logo text-[8px] w-3.5 h-3.5 rounded flex items-center justify-center border font-bold
-                  ${cover[g] ? "border-asagi text-asagi bg-asagi/10" : "border-gray-700 text-gray-600"}`}>
+                <span key={g} className="font-logo text-[8px] w-[15px] h-[15px] rounded-md flex items-center justify-center font-bold"
+                  style={cover[g]
+                    ? { color: "#4ade80", background: "rgba(74,222,128,.14)", border: "1px solid rgba(74,222,128,.45)" }
+                    : { color: "rgba(255,255,255,.22)", border: "1px dashed rgba(255,255,255,.14)" }}>
                   {g}
                 </span>
               ))}
@@ -169,25 +181,40 @@ export default function CourtBoard({ lineup, coach, moveSrc, canRearrange, onSlo
               return (
                 <button key={b}
                   onClick={() => canTap && tapHandler(b)}
-                  className={`rounded-lg border h-16 px-2 flex flex-col justify-center text-left min-w-0 transition-all
-                    ${placeOpen ? "animate-pulse" : ""}
-                    ${selected ? "border-yamabuki shadow-[0_0_10px_rgba(255,177,27,.35)] bg-surfaceCard"
-                      : placeOpen ? "border-[#6da7ec]/70 bg-brandBlue/10 shadow-[0_0_8px_rgba(109,167,236,.25)]"
-                      : p ? "border-gray-700 bg-surfaceCard hover:border-gray-600"
-                      : "border-dashed border-gray-700 bg-black/20"}`}
-                  style={{ cursor: canTap ? "pointer" : "default", opacity: placing && !open ? 0.4 : 1 }}>
-                  <div className="font-logo text-[9px] uppercase tracking-widest text-gray-500 font-semibold leading-none mb-0.5">
+                  className={`relative overflow-hidden rounded-xl h-16 px-2.5 flex flex-col justify-center text-left min-w-0 transition-all
+                    ${placeOpen ? "animate-pulse" : ""}`}
+                  style={{
+                    cursor: canTap ? "pointer" : "default",
+                    opacity: placing && !open ? 0.4 : 1,
+                    border: selected ? "1px solid #FFB11B"
+                      : placeOpen ? "1px solid rgba(109,167,236,.7)"
+                      : p ? "1px solid rgba(255,255,255,.1)"
+                      : "1px dashed rgba(255,255,255,.12)",
+                    background: p || selected ? "rgba(255,255,255,.03)" : "transparent",
+                    boxShadow: selected ? "0 0 16px -3px #FFB11B"
+                      : placeOpen ? "0 0 14px -3px rgba(109,167,236,.6)" : "none",
+                  }}>
+                  {(p || placeOpen) && (
+                    <span className="aura-blob" style={{
+                      "--slot-color": placeOpen ? "#6da7ec" : "#9ca3af",
+                      left: "50%", top: -18, width: 100, height: 56,
+                      transform: "translateX(-50%)", opacity: placeOpen ? 0.34 : 0.16,
+                    }} />
+                  )}
+                  <div className="relative font-logo text-[9px] uppercase tracking-widest font-bold leading-none mb-1"
+                    style={{ color: placeOpen ? "#6da7ec" : "var(--text-faint)" }}>
                     {b}{placeOpen ? " · open" : ""}
                   </div>
                   {p ? (
                     <>
-                      <div className="font-logo text-[11px] text-gray-100 font-semibold truncate leading-tight">
+                      <div className="relative font-logo text-[11px] font-bold truncate leading-tight" style={{ color: "var(--text-primary)" }}>
                         {p.PLAYER_NAME?.split(" ").slice(-1)[0]}
                       </div>
-                      <div className="text-[8.5px] text-gray-500 leading-none mt-0.5">{(p._season || "").slice(0, 4)}</div>
+                      <div className="relative text-[8.5px] leading-none mt-0.5" style={{ color: "var(--text-faint)" }}>{(p._season || "").slice(0, 4)}</div>
                     </>
                   ) : (
-                    <div className={`text-xs leading-tight ${placeOpen ? "text-[#6da7ec] font-semibold" : "text-gray-700"}`}>
+                    <div className="relative text-xs leading-tight font-semibold"
+                      style={{ color: placeOpen ? "#6da7ec" : "rgba(255,255,255,.16)" }}>
                       {placeOpen ? "tap →" : "—"}
                     </div>
                   )}
@@ -200,12 +227,12 @@ export default function CourtBoard({ lineup, coach, moveSrc, canRearrange, onSlo
 
       {/* Koç */}
       {coach && (
-        <div className="flex items-center gap-2 border-t border-gray-800 pt-2">
-          <span className="text-asagi"><CoachIcon size={15} /></span>
-          <span className="font-logo text-xs text-white font-semibold flex-1 truncate">{coach.name}</span>
-          <span className="text-[9.5px] font-logo text-gray-400">O:{coach.off} D:{coach.def}</span>
+        <div className="flex items-center gap-2 pt-2.5" style={{ borderTop: "1px solid rgba(255,255,255,.07)" }}>
+          <span style={{ color: "#c084fc" }}><CoachIcon size={15} /></span>
+          <span className="font-logo text-xs font-bold flex-1 truncate" style={{ color: "var(--text-primary)" }}>{coach.name}</span>
+          <span className="text-[9.5px] font-logo" style={{ color: "var(--text-muted)" }}>O:{coach.off} D:{coach.def}</span>
           {coach.champs > 0 && (
-            <span className="text-[9.5px] text-yamabuki inline-flex items-center gap-0.5"><TrophyIcon size={10} />×{coach.champs}</span>
+            <span className="text-[9.5px] inline-flex items-center gap-0.5" style={{ color: "var(--yamabuki)" }}><TrophyIcon size={10} />×{coach.champs}</span>
           )}
         </div>
       )}

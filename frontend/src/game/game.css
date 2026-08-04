@@ -1,0 +1,878 @@
+/* ── Primary Arch — Game section design language ─────────────────────────
+   The site's aura/Panini vocabulary translated for the Lineup Builder.
+
+   The game used to be built almost entirely out of one repeated box:
+   `bg-surfaceBg border border-gray-800 rounded-2xl`. Everything below
+   replaces that with the same shell DNA the rest of the site uses —
+   accent-driven edge bevel, holo texture, organic blob glow — while adding
+   the pieces a game needs that a data page doesn't (draft rows, slots,
+   jokers, wheels, a score reveal).
+
+   Every shell reads `--accent` from its inline style, so one component can
+   be tinted per position / per era / per grade without new classes.
+
+   Depends on aura.css (.aura-blob, keyframes) which is imported globally. */
+
+/* ═══ Foundations ═══════════════════════════════════════════════════════ */
+
+/* Legibility — the global tokens are tuned for dense data tables, where
+   --text-faint (#3a3a3a) is a deliberate near-invisible hint. On the game's
+   large dark glass surfaces that same value reads as "broken", so every game
+   shell re-declares the scale brighter. Scoped here, so data pages keep
+   their quieter typography. */
+.g-dock, .g-panel, .g-tile, .g-court-panel, .g-step, .g-modal, .g-score-hero, .g-seg {
+  --text-primary: #f2efea;
+  --text-muted:   #b4afa8;
+  --text-faint:   #8b857e;
+}
+
+/* The one shared surface. Replaces every `bg-surfaceBg border rounded-2xl`.
+   Not a flat fill — a layered card face with a directional accent bevel. */
+.g-panel {
+  position: relative;
+  border-radius: 18px;
+  overflow: hidden;
+  background: linear-gradient(160deg, #17151b 0%, #0c0b0e 55%, #14100a 100%);
+  border: 1px solid var(--border);
+  transition: border-color 0.3s ease;
+}
+.g-panel::before {
+  content: ""; position: absolute; inset: 0; z-index: 4; pointer-events: none;
+  border-radius: inherit; padding: 1px;
+  background: linear-gradient(150deg, var(--accent-line, rgba(255,255,255,.14)) 0%, transparent 30%,
+                              transparent 70%, var(--accent-line, rgba(255,255,255,.14)) 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  opacity: 0.8;
+}
+/* Content sits above the blob/holo layers without each child needing z-index. */
+.g-panel > *:not(.aura-blob):not(.g-holo) { position: relative; z-index: 3; }
+
+/* Quieter variant — for secondary/nested surfaces that shouldn't compete. */
+.g-panel.subtle {
+  background: rgba(255, 255, 255, 0.022);
+  border-color: rgba(255, 255, 255, 0.07);
+}
+.g-panel.subtle::before { opacity: 0.4; }
+
+/* Prizm stripe texture, reused from the player card but at list-safe opacity. */
+.g-holo {
+  position: absolute; inset: 0; pointer-events: none; z-index: 0;
+  mix-blend-mode: color-dodge; opacity: 0.10;
+  background: repeating-linear-gradient(
+    72deg,
+    transparent 0 6px,
+    var(--accent, #FFB11B) 6px 8px,
+    transparent 8px 16px,
+    #fff 16px 17px,
+    transparent 17px 26px
+  );
+}
+
+/* Section label — replaces the repeated uppercase gray divs. */
+.g-label {
+  font-family: var(--font-logo); font-size: 9.5px; font-weight: 700;
+  letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-faint);
+  display: flex; align-items: center; gap: 7px;
+}
+.g-label::before {
+  content: ""; width: 14px; height: 1px; background: var(--accent, #FFB11B); opacity: 0.7;
+}
+.g-label.center { justify-content: center; }
+.g-label.center::before { display: none; }
+
+/* ═══ Mode / era / coach tiles ══════════════════════════════════════════ */
+
+/* One shared selectable tile: game modes, sim eras, coach options.
+   `.selected` lifts it; `.disabled` mutes without changing layout. */
+.g-tile {
+  position: relative; overflow: hidden; cursor: pointer; text-align: left;
+  border-radius: 15px; padding: 14px 15px;
+  background: linear-gradient(160deg, #17151b 0%, #0c0b0e 60%, #14100a 100%);
+  border: 1px solid var(--border);
+  transition: transform 0.25s cubic-bezier(0.2, 0.7, 0.3, 1), border-color 0.25s ease;
+}
+.g-tile:hover { transform: translateY(-2px); border-color: var(--accent-line); }
+.g-tile.selected { border-color: var(--accent); }
+.g-tile.selected::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
+  box-shadow: 0 0 0 1px var(--accent) inset, 0 0 22px -6px var(--accent);
+}
+.g-tile.disabled { cursor: not-allowed; opacity: 0.5; }
+.g-tile.disabled:hover { transform: none; border-color: var(--border); }
+/* :not(.g-tile-info) şart — bu kural 3 sınıflı olduğu için .g-tile-info'nun
+   position:absolute'unu eziyordu; relative + right:9px ise düğmeyi sağ üst
+   yerine SOLA kaydırıyordu. */
+.g-tile > *:not(.aura-blob):not(.g-holo):not(.g-tile-info) { position: relative; z-index: 3; }
+.g-tile-title {
+  font-family: var(--font-logo); font-weight: 700; font-size: 14px;
+  letter-spacing: 0.02em; color: var(--text-primary);
+  display: flex; align-items: center; gap: 7px;
+}
+.g-tile-sub { font-size: 10px; color: var(--text-faint); margin-top: 2px; font-family: var(--font-logo); }
+.g-tile-desc { font-size: 11px; color: var(--text-muted); margin-top: 7px; line-height: 1.5; }
+
+/* ═══ Draft list ════════════════════════════════════════════════════════ */
+
+/* Player row — was a bordered strip; now a floating row that lights up with
+   the player's own archetype color on hover. The sticky-left name block is
+   preserved (horizontal scroll on narrow panels). */
+/* Kolon bütçesi (Salary Cap dahil, en geniş hâl):
+   pin 220 + tag 30 + $ 38 + 6×34 stat + 8×6 gap + 8 sağ padding = 548.
+   Panelin en dar hâli (~554px iç genişlik) bunu kırpmadan alır — yani
+   BLK kolonu hiçbir masaüstü genişliğinde kesilmez ve yatay kaydırma çıkmaz. */
+.g-row {
+  position: relative; width: 100%; display: flex; align-items: center; gap: 6px;
+  padding: 0 8px 0 0; min-width: 548px; text-align: left; cursor: pointer;
+  border: none; background: transparent;
+  transition: background 0.18s ease;
+}
+.g-row::after {
+  content: ""; position: absolute; left: 12px; right: 12px; bottom: 0; height: 1px;
+  background: rgba(255, 255, 255, 0.05);
+}
+.g-row:last-child::after { display: none; }
+.g-row:hover { background: linear-gradient(90deg, var(--accent-a, rgba(255,255,255,.06)), transparent 65%); }
+.g-row.unaffordable { opacity: 0.28; cursor: not-allowed; }
+.g-row.unaffordable:hover { background: transparent; }
+.g-row.dimmed { opacity: 0.65; cursor: default; }
+.g-row-pin {
+  position: sticky; left: 0; z-index: 10; flex-shrink: 0;
+  display: flex; align-items: center; gap: 9px;
+  width: 232px; padding: 9px 6px 9px 12px;
+  background: linear-gradient(90deg, #121016 82%, transparent);
+}
+.g-row-face {
+  width: 36px; height: 36px; border-radius: 50%; overflow: hidden; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--accent-line, rgba(255,255,255,.12));
+}
+.g-row-face img { width: 100%; height: 100%; object-fit: cover; object-position: top; }
+.g-row-name {
+  font-family: var(--font-logo); font-size: 13px; font-weight: 700;
+  color: var(--text-primary); line-height: 1.15;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.g-row-arch { font-size: 10px; font-weight: 600; color: var(--accent, #9ca3af); }
+.g-row-stat { width: 34px; text-align: right; flex-shrink: 0; font-size: 11.5px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.g-row-stat.hi { color: var(--yamabuki, #FFB11B); font-weight: 700; }
+/* Tag sayısı ve sözleşme hücreleri — başlıklarıyla AYNI genişlikte olmalı,
+   yoksa sonraki tüm kolonlar kayıyor. */
+.g-row-tag  { width: 30px; flex-shrink: 0; text-align: center; font-size: 11.5px; font-variant-numeric: tabular-nums; }
+.g-row-cost { width: 38px; flex-shrink: 0; display: flex; justify-content: center; }
+
+/* Column header strip for the draft list. */
+.g-row-head {
+  display: flex; align-items: center; gap: 6px; min-width: 560px;
+  padding: 0 12px 0 0; position: sticky; top: 0; z-index: 20;
+  background: rgba(14, 12, 16, 0.92); backdrop-filter: blur(8px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+.g-row-head .lbl {
+  font-family: var(--font-logo); font-size: 8.5px; font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted);
+  background: none; border: none; cursor: pointer; padding: 7px 0;
+  transition: color 0.18s ease;
+}
+.g-row-head .lbl:hover { color: var(--text-primary); }
+.g-row-head .lbl.active { color: var(--yamabuki, #FFB11B); }
+/* Başlıklar gövde hücreleriyle birebir hizalı olsun */
+.g-row-head .lbl.c-pin  { width: 232px; flex-shrink: 0; padding-left: 57px; text-align: left; }
+.g-row-head .lbl.c-tag  { width: 30px; flex-shrink: 0; text-align: center; }
+.g-row-head .lbl.c-cost { width: 38px; flex-shrink: 0; text-align: center; }
+.g-row-head .lbl.c-stat { width: 34px; flex-shrink: 0; text-align: right; }
+
+/* ═══ Lineup slots ══════════════════════════════════════════════════════ */
+
+/* Slot chip — empty slots are a dashed ghost, filled ones carry the
+   position's own color as an organic glow instead of a tinted box. */
+.g-slot {
+  position: relative; flex: 1; min-width: 0; overflow: hidden;
+  border-radius: 12px; padding: 7px 5px; text-align: center;
+  border: 1px solid transparent;
+  transition: border-color 0.22s ease, transform 0.22s ease;
+}
+.g-slot.empty { border: 1px dashed rgba(255, 255, 255, 0.12); }
+.g-slot.filled { border-color: var(--accent-line); background: rgba(255, 255, 255, 0.025); }
+.g-slot.tappable { cursor: pointer; }
+.g-slot.tappable:hover { transform: translateY(-2px); border-color: var(--accent); }
+.g-slot.selected { border-color: var(--accent); box-shadow: 0 0 18px -4px var(--accent); }
+.g-slot > *:not(.aura-blob) { position: relative; z-index: 2; }
+.g-slot-pos {
+  font-family: var(--font-logo); font-size: 8px; font-weight: 700;
+  letter-spacing: 0.1em; color: var(--accent, #6f6a66);
+}
+.g-slot-name { font-size: 10.5px; font-weight: 700; color: var(--text-primary); margin-top: 2px; line-height: 1.2;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.g-slot-meta { font-size: 8.5px; color: var(--text-faint); margin-top: 1px; }
+.g-slot-empty-mark { font-size: 15px; color: rgba(255, 255, 255, 0.14); line-height: 1.4; }
+
+/* ═══ Jokers ════════════════════════════════════════════════════════════ */
+
+/* Joker — a spendable token. No resting box: just the icon and its name, with
+   a rounded frame appearing only on hover. Spent ones fade to a ghost.
+   (The dock already frames this cluster; a second box around each button was
+   noise.) */
+.g-joker {
+  position: relative; overflow: hidden;
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
+  padding: 7px 12px; border-radius: 12px; border: 1px solid transparent;
+  background: transparent; cursor: pointer;
+  transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+.g-joker.on { color: var(--yamabuki, #FFB11B); }
+.g-joker.on:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent-line, rgba(255, 177, 27, 0.5));
+  background: rgba(255, 177, 27, 0.09);
+}
+/* Parıltı süpürmesi sadece hover'da — sürekli oynayınca dock'ta gürültü yapıyordu. */
+.g-joker.on:hover::after {
+  content: ""; position: absolute; top: -60%; left: -40%; width: 36%; height: 220%;
+  background: rgba(255, 255, 255, 0.16); transform: rotate(20deg);
+  animation: auraShineSweep 1.6s ease-in-out;
+}
+.g-joker.off { color: var(--text-faint); cursor: not-allowed; opacity: 0.38; }
+.g-joker .lbl {
+  font-family: var(--font-logo); font-size: 11px; font-weight: 700;
+  letter-spacing: 0.05em; white-space: nowrap;
+}
+
+/* ═══ Spin wheel ════════════════════════════════════════════════════════ */
+
+.g-wheel { position: relative; width: 136px; border-radius: 15px; overflow: hidden;
+  background: rgba(0, 0, 0, 0.45); border: 1px solid rgba(255, 255, 255, 0.07); }
+.g-wheel-fade { position: absolute; left: 0; right: 0; height: 46px; z-index: 10; pointer-events: none; }
+.g-wheel-fade.top { top: 0; background: linear-gradient(to bottom, #0b0a0d, transparent); }
+.g-wheel-fade.bot { bottom: 0; background: linear-gradient(to top, #0b0a0d, transparent); }
+/* Selection window — accent rails instead of a filled band. */
+.g-wheel-window {
+  position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%);
+  height: 40px; z-index: 1; pointer-events: none;
+  border-top: 1px solid var(--accent, #FFB11B); border-bottom: 1px solid var(--accent, #FFB11B);
+  background: linear-gradient(90deg, transparent, var(--accent-a, rgba(255,177,27,.14)), transparent);
+}
+.g-wheel-item {
+  height: 40px; display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-logo); font-size: 12.5px; letter-spacing: 0.04em;
+  padding: 0 6px; text-align: center;
+}
+.g-wheel.spinning .g-wheel-window { animation: gWheelPulse 0.55s ease-in-out infinite; }
+@keyframes gWheelPulse { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .g-wheel.spinning .g-wheel-window { animation: none; } }
+
+/* ═══ Score reveal ══════════════════════════════════════════════════════ */
+
+/* The payoff moment — grade letter as a huge, glowing, foil-swept figure. */
+.g-score-hero { position: relative; overflow: hidden; border-radius: 22px; padding: 30px 20px 26px; text-align: center;
+  background: linear-gradient(160deg, #17151b 0%, #0c0b0e 55%, #14100a 100%);
+  border: 1px solid var(--accent-line); }
+.g-score-hero > *:not(.aura-blob):not(.g-holo) { position: relative; z-index: 3; }
+.g-score-grade {
+  font-family: var(--font-logo); font-weight: 800; font-size: 96px; line-height: 0.85;
+  color: var(--accent); text-shadow: 0 0 46px var(--accent-a), 0 0 90px var(--accent-a);
+  letter-spacing: -0.03em;
+}
+.g-score-pct {
+  font-family: var(--font-logo); font-weight: 700; font-size: 27px;
+  color: var(--text-primary); font-variant-numeric: tabular-nums; letter-spacing: 0.01em;
+}
+.g-score-parts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; margin-top: 22px;
+  background: rgba(255, 255, 255, 0.07); border-radius: 13px; overflow: hidden; }
+.g-score-part { background: #100e13; padding: 11px 6px; }
+.g-score-part .v { font-family: var(--font-logo); font-weight: 700; font-size: 21px; font-variant-numeric: tabular-nums; }
+.g-score-part .l { font-size: 9.5px; color: var(--text-muted); margin-top: 2px; }
+.g-score-part .w { font-size: 8.5px; color: var(--text-faint); }
+
+/* Roster breakdown row. */
+.g-roster-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; position: relative; }
+.g-roster-row::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px;
+  background: rgba(255, 255, 255, 0.05);
+}
+.g-roster-row:last-child::after { display: none; }
+.g-roster-pos {
+  font-family: var(--font-logo); font-size: 9.5px; font-weight: 700; letter-spacing: 0.06em;
+  width: 30px; flex-shrink: 0; text-align: center; padding: 4px 0; border-radius: 6px;
+  color: var(--accent); background: var(--accent-a); border: 1px solid var(--accent-line);
+}
+
+/* Tam saha 1v1 görünümü — dar ekranda kort 94:50 oranıyla küçüldüğü için
+   düğümler çakışıyor; oranı bozmak yerine düğümü küçültüyoruz. SVG'nin
+   width/height'ı presentation attribute olduğundan CSS onları yener. */
+@media (max-width: 760px) {
+  .g-fc-spot svg { width: 28px; height: 28px; }
+  .g-fc-spot .nm { font-size: 8px; max-width: 50px; margin-top: 2px; }
+}
+
+/* Draft Analysis kadro satırı — düz tablo satırı değil, kart dilinin küçük
+   hâli: mevki rozeti kendi rengiyle yanıyor, solda ince bir accent rayı var,
+   hover'da satır o rengin içine giriyor. Sürekli koşan hiçbir efekt yok
+   (kart ızgarasındaki repaint dersi) — her şey hover'da. */
+.g-rr {
+  position: relative; display: flex; align-items: center; gap: 10px;
+  padding: 7px 10px 7px 9px; border-radius: 12px;
+  border: 1px solid transparent;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+.g-rr::before {
+  content: ""; position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+  width: 2px; height: 52%; border-radius: 0 2px 2px 0;
+  background: var(--accent); opacity: 0.45;
+  transition: opacity 0.2s ease, height 0.2s ease;
+}
+.g-rr:hover {
+  background: linear-gradient(100deg, var(--accent-a), transparent 72%);
+  border-color: var(--accent-line);
+}
+.g-rr:hover::before { opacity: 1; height: 76%; }
+.g-rr.bench { opacity: 0.72; }
+.g-rr.bench:hover { opacity: 1; }
+
+.g-rr-pos {
+  flex-shrink: 0; width: 30px; height: 30px; border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-logo); font-size: 10px; font-weight: 800; letter-spacing: 0.04em;
+  color: var(--accent); background: var(--accent-a);
+  border: 1px solid var(--accent-line);
+  box-shadow: 0 0 14px -6px var(--accent);
+}
+.g-rr-name { font-size: 13px; font-weight: 600; color: var(--text-primary); line-height: 1.2; }
+.g-rr-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 3px; }
+.g-rr-arch { font-size: 10.5px; font-weight: 600; color: #60a5fa; }
+.g-rr-chip {
+  font-size: 9px; font-weight: 700; line-height: 1.5; padding: 1px 6px;
+  border-radius: 999px; white-space: nowrap;
+  color: var(--c); background: var(--c-a); border: 1px solid var(--c-line);
+}
+.g-rr-ovr {
+  flex-shrink: 0; font-family: var(--mono, ui-monospace, monospace);
+  font-size: 9.5px; letter-spacing: 0.06em; color: var(--text-faint);
+  font-variant-numeric: tabular-nums; text-align: right; width: 44px;
+}
+.g-rr-val {
+  flex-shrink: 0; width: 28px; text-align: right;
+  font-family: var(--font-logo); font-size: 15px; font-weight: 800;
+  font-variant-numeric: tabular-nums; line-height: 1;
+}
+
+/* Matchmaking arama nabzı — üç halka dışa doğru açılır. Sadece transform ve
+   opacity animasyonluyor (compositor'da koşar, repaint yok). */
+.g-ping {
+  position: absolute; inset: 0; border-radius: 50%;
+  border: 1px solid rgba(96, 165, 250, 0.55);
+  animation: gPing 1.8s cubic-bezier(0.2, 0.7, 0.3, 1) infinite;
+}
+@keyframes gPing {
+  0%   { transform: scale(0.4); opacity: 0.9; }
+  100% { transform: scale(1);   opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .g-ping { animation: none; opacity: 0.35; } }
+
+/* Leaderboard row — sıralama bir podyum, düz tablo değil: ilk üç sıranın
+   rozeti kendi rengiyle yanıyor, gerisi sessiz kalıyor. */
+.g-lb-row {
+  display: flex; align-items: center; gap: 9px;
+  padding: 6px 8px; border-radius: 10px;
+  border: 1px solid transparent;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+.g-lb-row:hover { background: rgba(255, 255, 255, 0.035); border-color: rgba(255, 255, 255, 0.07); }
+.g-lb-row.me { border-color: var(--accent-line); background: linear-gradient(100deg, var(--accent-a), transparent 72%); }
+.g-lb-rank {
+  flex-shrink: 0; width: 23px; text-align: center; padding: 3px 0; border-radius: 6px;
+  font-family: var(--font-logo); font-size: 10px; font-weight: 800;
+  font-variant-numeric: tabular-nums; color: var(--text-faint);
+  background: rgba(0, 0, 0, 0.35); border: 1px solid rgba(255, 255, 255, 0.07);
+}
+.g-lb-row.podium .g-lb-rank {
+  color: var(--accent); border-color: var(--accent-line);
+  box-shadow: 0 0 13px -5px var(--accent);
+}
+.g-lb-name {
+  flex: 1; min-width: 0; font-size: 12.5px; color: var(--text-primary);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.g-lb-row.podium .g-lb-name { font-weight: 600; }
+.g-lb-wins { flex-shrink: 0; font-size: 9.5px; color: var(--text-faint); font-variant-numeric: tabular-nums; }
+.g-lb-pct {
+  flex-shrink: 0; font-family: var(--font-logo); font-weight: 800; font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.g-lb-grade { flex-shrink: 0; width: 15px; text-align: center; font-size: 10.5px; color: var(--text-faint); }
+.g-lb-skel {
+  height: 27px; border-radius: 10px; background: rgba(255, 255, 255, 0.035);
+  animation: gLbPulse 1.4s ease-in-out infinite;
+}
+@keyframes gLbPulse { 0%, 100% { opacity: 0.45; } 50% { opacity: 0.9; } }
+
+/* Pillar bar — same chunky striped fill as the Lineups page, so the game's
+   Era Report and the site's lineup breakdown read as one system. */
+.g-bar-track { position: relative; height: 9px; border-radius: 5px; overflow: hidden;
+  background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.07); }
+.g-bar-fill {
+  height: 100%; border-radius: 5px 0 0 5px; background-color: var(--fill);
+  background-image: repeating-linear-gradient(115deg,
+    rgba(255,255,255,.26) 0 5px, transparent 5px 7px,
+    transparent 7px 13px, rgba(0,0,0,.2) 13px 15px);
+  box-shadow: 0 0 8px var(--fill-a), 0 1px 0 rgba(255,255,255,.28) inset;
+  transition: width 0.5s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+
+/* ═══ Modal ═════════════════════════════════════════════════════════════ */
+
+.g-modal-backdrop { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center;
+  justify-content: center; padding: 16px; background: rgba(0, 0, 0, 0.62); backdrop-filter: blur(6px); }
+.g-modal {
+  position: relative; overflow: hidden; width: 100%; max-width: 420px;
+  border-radius: 20px; padding: 22px;
+  background: linear-gradient(160deg, #17151b 0%, #0c0b0e 55%, #14100a 100%);
+  border: 1px solid var(--accent-line, rgba(255,255,255,.14));
+  box-shadow: 0 30px 70px -20px rgba(0, 0, 0, 0.85);
+  animation: gModalIn 0.2s cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+.g-modal > *:not(.aura-blob) { position: relative; z-index: 3; }
+@keyframes gModalIn { from { opacity: 0; transform: translateY(10px) scale(0.97); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .g-modal { animation: none; } }
+
+/* ═══ Mode select — dikey oyuncu kartları ═══════════════════════════════
+   Mod seçimi artık Players sayfasındaki DİKEY kartın aynısı: kesik köşe,
+   holo/foil/grain, isim bandı, peek satırı. PlayerCard.css'ten geliyor;
+   burada sadece "fotoğraf" alanını ikonla dolduran farklar var. */
+.pcard-stage.mode { width: 260px; }
+.pcard-stage.mode .pcard { width: 260px; transition: transform 0.3s cubic-bezier(0.2,0.7,0.3,1); }
+.pcard-stage.mode .pcard:hover { transform: translateY(-6px); }
+.pcard-stage.mode.soon .pcard { cursor: not-allowed; }
+.pcard-stage.mode.soon .pcard:hover { transform: none; }
+.pcard-stage.mode.soon { opacity: 0.6; }
+.pcard-stage.mode .pcard-photo { height: 168px; display: flex; align-items: center; justify-content: center; }
+
+/* İkon "vitrin" kaidesi — kartın fotoğraf alanının ortasında duran nesne. */
+.mode-emblem {
+  position: relative; z-index: 2;
+  width: 84px; height: 84px; border-radius: 24px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--accent);
+  background: var(--accent-a); border: 1px solid var(--accent-line);
+  box-shadow: 0 0 40px -8px var(--accent), 0 0 0 1px rgba(255,255,255,.04) inset;
+}
+.pcard-stage.mode .pcard:hover .mode-emblem { box-shadow: 0 0 55px -6px var(--accent), 0 0 0 1px rgba(255,255,255,.06) inset; }
+
+/* Kart üstündeki ⓘ — moda özel "about" pop-up'ını açar. */
+.mode-about {
+  width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--accent); background: rgba(0,0,0,.45);
+  border: 1px solid var(--accent-line); cursor: pointer;
+  opacity: 0.65; transition: opacity .2s ease, transform .2s ease;
+}
+.mode-about:hover { opacity: 1; transform: scale(1.12); }
+
+/* ═══ Sayfa dokusu: alttan yükselen duman ═══════════════════════════════
+   Başlığın arkasındaki nokta-glow yerine, sayfanın ALT üçte-ikisini kaplayan
+   yumuşak bir ısı/duman katmanı. Üst %33 bilinçli olarak boş kalır. */
+.g-smoke {
+  position: absolute; left: 0; right: 0; bottom: 0; top: 33%;
+  pointer-events: none; z-index: 0; overflow: hidden;
+}
+.g-smoke::before, .g-smoke::after {
+  content: ""; position: absolute; left: -10%; right: -10%; bottom: -30%; height: 150%;
+  background:
+    radial-gradient(60% 55% at 50% 100%, rgba(255, 177, 27, 0.22), transparent 70%),
+    radial-gradient(45% 45% at 18% 100%, rgba(255, 177, 27, 0.13), transparent 72%),
+    radial-gradient(45% 45% at 82% 100%, rgba(255, 140, 40, 0.12), transparent 72%);
+  filter: blur(34px);
+  -webkit-mask-image: linear-gradient(to top, #000 20%, rgba(0,0,0,.55) 55%, transparent 92%);
+  mask-image: linear-gradient(to top, #000 20%, rgba(0,0,0,.55) 55%, transparent 92%);
+}
+.g-smoke::after { animation: gSmokeDrift 17s ease-in-out infinite alternate; opacity: 0.75; }
+@keyframes gSmokeDrift {
+  0%   { transform: translate3d(-3%, 2%, 0) scale(1.04); }
+  100% { transform: translate3d(4%, -3%, 0) scale(1.12); }
+}
+@media (prefers-reduced-motion: reduce) { .g-smoke::after { animation: none; } }
+
+/* ═══ HUD layout ════════════════════════════════════════════════════════
+   The game screen is a control surface, not a document — so it's built as a
+   3-column HUD (context | court | analytics) with a header dock on top and
+   a committed action dock at the bottom. Structure carries the identity
+   here: strip every glow and the layout still reads as a console. */
+
+/* Header dock — the whole pre-game control surface in ONE bar: identity on
+   the left, the committed action dead-center, mode switching on the right.
+   Three zones, so nothing competes and the primary action is unmissable. */
+.g-dock {
+  position: relative; overflow: hidden;
+  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 16px;
+  min-height: 132px; padding: 18px 24px; border-radius: 18px;
+  background: rgba(19, 17, 22, 0.55); backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.g-dock-left { justify-self: start; text-align: left; min-width: 0; }
+.g-dock-center { justify-self: center; min-width: 0; }
+.g-dock-right { justify-self: end; min-width: 0; }
+
+/* In-game variant — the dock follows you through the draft, but slims down
+   to a single control row: run state on the left, the live spin (then the
+   jokers) in the middle, the landed team on the right. */
+.g-dock.thin { min-height: 0; padding: 10px 20px; border-radius: 15px; gap: 18px; }
+.g-dock.thin .g-dock-title { font-size: 15px; letter-spacing: 0.07em; }
+
+/* Landed season/team — plain type, no box. Team over year. */
+.g-dock-team { text-align: right; line-height: 1.05; }
+.g-dock-team .tm {
+  font-family: var(--font-logo); font-size: 21px; font-weight: 800;
+  letter-spacing: 0.05em; color: var(--yamabuki, #FFB11B);
+  text-shadow: 0 0 22px rgba(255, 177, 27, 0.35);
+}
+.g-dock-team .yr {
+  font-family: var(--mono, ui-monospace, monospace); font-size: 10.5px;
+  letter-spacing: 0.12em; color: var(--text-muted); margin-top: 3px;
+}
+
+/* Single-row inline spinner — the dock has no room for a 3-row wheel, and a
+   horizontal strip reads better as "scanning" than a slot machine. No box:
+   just a masked track so items fade in and out at the edges. */
+.g-spin-inline {
+  position: relative; overflow: hidden; height: 30px; min-width: 190px;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 22%, #000 78%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 22%, #000 78%, transparent);
+}
+.g-spin-inline-item {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-logo); font-size: 16px; font-weight: 700; letter-spacing: 0.09em;
+  white-space: nowrap;
+}
+/* Süre InlineSpin.jsx'teki setInterval ile eşleşmeli (150ms). */
+.g-spin-inline.spinning .g-spin-inline-item { animation: gSpinRoll 0.15s linear infinite; }
+@keyframes gSpinRoll {
+  0%   { transform: translateX(0);     opacity: 1; }
+  45%  { transform: translateX(-46px); opacity: 0; }
+  55%  { transform: translateX(46px);  opacity: 0; }
+  100% { transform: translateX(0);     opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .g-spin-inline.spinning .g-spin-inline-item { animation: none; opacity: 0.75; }
+}
+.g-spin-caption {
+  font-family: var(--mono, ui-monospace, monospace); font-size: 8.5px;
+  letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-faint);
+  text-align: center; margin-top: 1px;
+}
+@media (max-width: 900px) {
+  .g-dock { grid-template-columns: 1fr; justify-items: center; text-align: center; min-height: 0; }
+  .g-dock-left, .g-dock-center, .g-dock-right { justify-self: center; text-align: center; }
+}
+/* :not(.aura-blob) şart — aksi hâlde relative'e zorlanan blob flex-child olur
+   ve dock'u kendi yüksekliği kadar şişirir (boş bir bant bırakır). */
+.g-dock > *:not(.aura-blob) { position: relative; z-index: 3; }
+/* Sağ blok: mod anahtarı + birincil aksiyon yan yana. */
+.g-dock-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.g-dock-title {
+  font-family: var(--font-logo); font-size: 23px; font-weight: 800;
+  letter-spacing: 0.06em; text-transform: uppercase; line-height: 1;
+  background: linear-gradient(95deg, #ffe9b0, var(--yamabuki, #FFB11B) 45%, #7fd4e8 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.g-dock-sub { font-size: 11px; color: var(--text-faint); margin-top: 5px; letter-spacing: 0.02em; }
+
+/* Segmented switcher — one recessed track, the active segment lifts out.
+   Replaces two competing full-size cards. `.stacked` runs the segments
+   vertically (dock's right rail), so the two modes read as a list of states
+   rather than a left/right tug-of-war. */
+.g-seg { display: flex; padding: 4px; border-radius: 13px;
+  background: rgba(0, 0, 0, 0.45); border: 1px solid rgba(255, 255, 255, 0.06); }
+.g-seg.stacked { flex-direction: column; gap: 4px; }
+.g-seg.stacked .g-seg-btn { justify-content: flex-start; width: 100%; }
+.g-seg-btn {
+  position: relative; overflow: hidden; white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 9px 17px; border-radius: 10px; border: 1px solid transparent;
+  background: transparent; cursor: pointer;
+  font-family: var(--font-logo); font-size: 11.5px; font-weight: 700;
+  letter-spacing: 0.07em; text-transform: uppercase; color: var(--text-faint);
+  transition: color 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+}
+.g-seg-btn:hover { color: var(--text-muted); }
+.g-seg-btn.on {
+  color: var(--accent); border-color: var(--accent-line);
+  background: linear-gradient(180deg, var(--accent-a), transparent);
+  box-shadow: 0 0 14px -4px var(--accent);
+}
+
+/* 3-column grid: context / court / leaderboard. */
+.g-hud { display: grid; grid-template-columns: 1fr; gap: 16px; }
+@media (min-width: 1100px) {
+  /* stretch + akıştan-çıkarma: satır yüksekliğini KORT belirler, iki yan
+     panel de tam olarak kortun alt hattında biter. Havuz panelindeki
+     (.g-pool-fill) numarayla aynı; .g-panel'in position:relative'ini
+     yenmek için tek-sınıf kural ve dosyada daha sonra tanımlı olması şart. */
+  .g-hud { grid-template-columns: 3fr 6fr 3fr; align-items: stretch; }
+  .g-hud > .col-court { order: 0; }
+  .g-hud > .col-side { position: relative; min-height: 0; }
+  .g-hud-fill { position: absolute; inset: 0; display: flex; flex-direction: column; overflow: hidden; }
+}
+@media (max-width: 1099px) {
+  .g-hud > .col-court { order: -1; }
+}
+
+/* Numbered process step — a horizontal row with a real 01/02 index badge.
+   Numbering is meaningful here: the draft genuinely runs 1→4 in order. */
+.g-step {
+  position: relative; overflow: hidden;
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 13px; border-radius: 13px;
+  border: 1px solid var(--accent-line);
+  background: linear-gradient(100deg, var(--accent-a), transparent 70%);
+}
+.g-step-idx {
+  flex-shrink: 0; font-family: var(--font-logo); font-size: 11px; font-weight: 800;
+  padding: 4px 7px; border-radius: 7px; color: var(--accent);
+  background: rgba(0, 0, 0, 0.45); border: 1px solid rgba(255, 255, 255, 0.1);
+  font-variant-numeric: tabular-nums;
+}
+.g-step.clickable { cursor: pointer; transition: border-color 0.25s ease, transform 0.25s ease; }
+.g-step.clickable:hover { transform: translateY(-1px); border-color: var(--accent); }
+.g-step-title { font-family: var(--font-logo); font-size: 13px; font-weight: 700; color: var(--text-primary); line-height: 1.2; }
+.g-step-sub { font-size: 10.5px; color: var(--text-muted); margin-top: 2px; }
+.g-step-chev { margin-left: auto; flex-shrink: 0; font-size: 9px; color: var(--accent);
+  transition: transform 0.35s cubic-bezier(0.2, 0.7, 0.3, 1); }
+.g-step.open .g-step-chev { transform: rotate(180deg); }
+
+/* Card-style expand: 0fr → 1fr grid row, same mechanic as the player card. */
+.g-step-wrap { display: grid; grid-template-rows: 0fr;
+  transition: grid-template-rows 0.4s cubic-bezier(0.2, 0.8, 0.3, 1); }
+.g-step.open .g-step-wrap { grid-template-rows: 1fr; }
+.g-step-inner { overflow: hidden; min-height: 0; }
+.g-step-body { padding-top: 10px; margin-top: 10px; border-top: 1px solid rgba(255, 255, 255, 0.1); }
+.g-step-detail { font-size: 11.5px; line-height: 1.6; color: var(--text-muted); }
+.g-step-eg {
+  margin-top: 9px; padding: 8px 10px; border-radius: 9px;
+  background: rgba(0, 0, 0, 0.35); border: 1px solid rgba(255, 255, 255, 0.07);
+  font-size: 11px; line-height: 1.55; color: var(--text-muted);
+}
+.g-step-eg b { color: var(--accent); font-weight: 700; }
+.g-step-eg-label {
+  display: block; font-family: var(--font-logo); font-size: 8.5px; font-weight: 700;
+  letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); margin-bottom: 3px;
+}
+
+/* Court panel — the center of gravity. Dot-matrix ground + mono status
+   header make it read as an instrument, not a picture frame. */
+.g-court-panel {
+  position: relative; overflow: hidden; border-radius: 18px; padding: 16px;
+  background: rgba(17, 15, 20, 0.5); backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.75);
+}
+.g-court-panel > *:not(.g-dotgrid):not(.aura-blob) { position: relative; z-index: 3; }
+.g-dotgrid {
+  position: absolute; inset: 0; z-index: 0; pointer-events: none; opacity: 0.35;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.14) 1px, transparent 1px);
+  background-size: 17px 17px;
+}
+/* Mono technical readouts — the HUD's own voice. */
+.g-mono {
+  font-family: var(--mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+}
+.g-status {
+  font-family: var(--mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 9.5px; letter-spacing: 0.1em; text-transform: uppercase;
+  padding: 3px 9px; border-radius: 6px;
+  color: var(--accent); background: var(--accent-a); border: 1px solid var(--accent-line);
+}
+
+/* Draft havuzu, kortla aynı alt hatta bitsin diye akıştan çıkarılır: uzun
+   oyuncu listesi grid satırının yüksekliğini BELİRLEMEZ, yüksekliği kort
+   verir, liste panel içinde kayar. Tailwind'in lg:absolute'u burada işe
+   yaramıyor — .g-panel'in position:relative'i aynı specificity'de ve bu
+   dosya sonra yüklendiği için kazanıyor; o yüzden kuralı burada tanımlıyoruz. */
+@media (min-width: 1024px) {
+  .g-pool-fill { position: absolute; inset: 0; }
+}
+
+/* Era seçim tile'ındaki küçük "i" düğmesi — kartın kendi seçim tıklamasını
+   tetiklemeden bilgi pop-up'ını açar. */
+.g-tile-info {
+  position: absolute; z-index: 5; top: 9px; right: 9px;
+  width: 20px; height: 20px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--accent); background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--accent-line); cursor: pointer;
+  opacity: 0.55; transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.g-tile:hover .g-tile-info { opacity: 1; }
+.g-tile-info:hover { transform: scale(1.12); opacity: 1; }
+
+/* Bench as a horizontal strip under the court — 4 equal cells, reads as a
+   dock rather than a sidebar list. */
+.g-bench-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px;
+  padding-top: 12px; margin-top: 12px; border-top: 1px solid rgba(255, 255, 255, 0.08); }
+
+/* Full-width committed CTA at the bottom of the screen. */
+.g-cta-dock { display: flex; justify-content: center; }
+.g-cta-dock > button { width: 100%; max-width: 460px; }
+
+/* ═══ Progress ══════════════════════════════════════════════════════════ */
+
+.g-progress { position: relative; flex: 1; height: 3px; border-radius: 3px; overflow: hidden;
+  background: rgba(255, 255, 255, 0.07); }
+.g-progress > div {
+  height: 100%; border-radius: 3px;
+  background: linear-gradient(90deg, var(--yamabuki, #FFB11B), #ffe19c);
+  box-shadow: 0 0 10px rgba(255, 177, 27, 0.5);
+  transition: width 0.5s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+
+/* ═══ DOKUNMATİK / MOBİL ══════════════════════════════════════════════
+   Buradaki her şey `hover: none` cihazlar içindir. Tasarımın çoğu bilgiyi
+   hover'a saklıyordu (ⓘ düğmelerinin opaklığı, joker çerçevesi, kadro
+   satırının accent rayı) — parmakla hover diye bir şey olmadığı için bunlar
+   mobilde GÖRÜNMEZ kalıyordu. Kural: hover'da ortaya çıkan her ipucu,
+   dokunmatikte kalıcı olarak açık. Ayrıca tüm küçük hedefler 44px'e
+   çıkarılıyor (görsel boyut aynı kalıyor, ::after ile hedef büyüyor). */
+@media (hover: none) {
+  /* ⓘ düğmeleri: hover'da 0.55 → 1 oluyordu, mobilde hep soluk kalıyordu */
+  .g-tile-info, .mode-about { opacity: 1; }
+
+  /* Dokunma hedefi 44×44 — ikonun kendisi büyümüyor, hedef büyüyor */
+  .g-tile-info::after, .mode-about::after {
+    content: ""; position: absolute;
+    left: 50%; top: 50%; transform: translate(-50%, -50%);
+    width: 44px; height: 44px;
+  }
+  .mode-about { position: relative; }
+
+  /* Jokerler: çerçeve yalnızca hover'da beliriyordu → hep görünür.
+     Parıltı süpürmesi mobilde yok (dokunmayla tetiklenemez, boşuna GPU). */
+  .g-joker.on {
+    border-color: var(--accent-line, rgba(255, 177, 27, 0.35));
+    background: rgba(255, 177, 27, 0.06);
+  }
+  .g-joker.on::after { display: none; }
+  .g-joker { min-height: 44px; }
+
+  /* Kadro satırı: accent rayı ve okunur zemin hover'a bağlıydı */
+  .g-rr::before { opacity: 0.85; height: 68%; }
+  .g-rr.bench { opacity: 0.82; }
+
+  /* Basılı tutunca geri bildirim — hover'ın dokunmatik karşılığı */
+  .g-tile:active, .g-step.clickable:active, .g-row:active,
+  .g-lb-row:active, .g-joker.on:active {
+    background: linear-gradient(100deg, var(--accent-a, rgba(255, 255, 255, 0.06)), transparent 72%);
+  }
+  .g-tile:active { transform: scale(0.985); }
+
+  /* Sıralama/filtre başlıkları ve segment düğmeleri parmak hedefi olarak küçüktü */
+  .g-row-head .lbl { min-height: 34px; }
+  .g-seg-btn { min-height: 44px; }
+
+  /* iOS'ta gri flaş kutusu tasarımı bozuyor */
+  .g-tile, .g-step, .g-row, .g-lb-row, .g-joker, .g-slot,
+  .g-seg-btn, .g-tile-info, .mode-about, .g-rr {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* ═══ DAR EKRAN YERLEŞİMİ ═════════════════════════════════════════════ */
+@media (max-width: 640px) {
+  /* Dock 3 bölgeli grid'di; telefonda üst üste ve ortalanmış */
+  .g-dock { flex-direction: column; align-items: stretch; gap: 12px; min-height: 0; padding: 14px; }
+  .g-dock-left, .g-dock-center, .g-dock-right { justify-content: center; text-align: center; }
+  .g-dock-left { align-items: center; }
+  .g-dock.thin { gap: 9px; padding: 11px 12px; }
+  .g-dock-title { font-size: 17px; }
+  .g-seg.stacked { width: 100%; }
+  .g-seg-btn { justify-content: center; }
+
+  /* Panel iç boşlukları telefonda genişliğin çoğunu yiyordu */
+  .g-panel { border-radius: 15px; }
+  .g-score-parts { margin-top: 16px; }
+
+  /* Kadro satırı: 5 kolonluk düzen sığmıyor, ham overall'ı gizle
+     (aynı bilgi zaten era çipinde ve kalite değerinde var) */
+  .g-rr-ovr { display: none; }
+  .g-rr { gap: 8px; padding: 8px 8px 8px 9px; }
+  .g-rr-pos { width: 27px; height: 27px; }
+}
+
+/* ═══ DAR EKRAN — draft havuzu ════════════════════════════════════════
+   Satır 548px min-width ile kurulmuştu. 375px'te bunu ZORLA sığdırmak
+   yanlış: ya statları gizlemek (veri kaybı) ya da başlıkla satırın
+   genişliği ayrışıp kolonların kayması gerekiyor — ikisini de denedim,
+   ikisi de kötü. Doğrusu tasarımın kendi niyetini kullanmak: `.g-row-pin`
+   ZATEN sticky, yani isim bloğu sabit dururken statlar yatay kayabilir.
+   Burada sadece kolon bütçesini daraltıp kaydırma miktarını azaltıyoruz —
+   başlık ve satır AYNI bütçeyi kullandığı için hizalama korunuyor.
+   Yeni bütçe: pin 150 + tag 28 + 6×30 + boşluklar ≈ 400px. */
+@media (max-width: 640px) {
+  .g-row { min-width: 400px; gap: 4px; padding-right: 4px; }
+  .g-row-pin { width: 150px; padding: 8px 4px 8px 8px; gap: 6px; }
+  .g-row-face { width: 30px; height: 30px; }
+  .g-row-name { font-size: 12px; }
+  .g-row-arch { font-size: 9.5px; }
+  .g-row-stat { width: 30px; font-size: 11px; }
+  .g-row-tag  { width: 28px; }
+  .g-row-cost { width: 34px; }
+  .g-row-head { min-width: 400px; gap: 4px; padding-right: 4px; }
+  .g-row-head .lbl.c-pin  { width: 150px; padding-left: 42px; }
+  .g-row-head .lbl.c-stat { width: 30px; }
+  .g-row-head .lbl.c-tag  { width: 28px; }
+  .g-row-head .lbl.c-cost { width: 34px; }
+
+  /* Kaydırılabilir olduğu belli olsun — sağ kenarda yumuşak bir kesim */
+  .g-pool-fill .overflow-auto {
+    -webkit-overflow-scrolling: touch;
+    mask-image: linear-gradient(to right, #000 calc(100% - 22px), transparent);
+  }
+}
+
+/* ═══ DAR EKRAN — kort, analiz, modal ═════════════════════════════════ */
+@media (max-width: 640px) {
+  /* Tam saha: 94:50 oranı telefonda 375×200'e düşüyor, isimler okunmuyor.
+     Bench'i tek sütuna alıp korta nefes aldırıyoruz. */
+  .g-fc-spot .nm { font-size: 7.5px; max-width: 44px; }
+
+  /* Draft Analysis ayna barları: iki bar + ortada etiket 375px'e sığmıyor.
+     Etiket üste, barlar altına tam genişlik. */
+  .g-court-panel { padding: 12px; border-radius: 15px; }
+
+  /* Modal telefonda kenardan kenara, köşeler yalnızca üstte */
+  .g-modal { max-height: 88vh; border-radius: 16px; }
+  .g-modal-backdrop { padding: 10px; }
+
+  /* Skor kahramanı: 3 parça 375px'te sıkışıyordu */
+  .g-score-grade { font-size: 62px; }
+  .g-score-pct { font-size: 30px; }
+  .g-score-part .v { font-size: 18px; }
+
+  /* Dock'taki spin iki çarkı yan yana sığmıyor */
+  .g-spin-inline { min-width: 0; }
+}
+
+/* Tam sahanın bench şeridi: telefonda 2 taraf × 4 slot = 8 hücre yan yana
+   ~34px'e düşüyor, isim diye bir şey kalmıyor. Dar ekranda iki tarafı alt
+   alta alıyoruz — her taraf 4 hücreyi tam genişlikte kullanıyor. */
+@media (max-width: 640px) {
+  .g-fc-bench { grid-template-columns: 1fr; gap: 10px; }
+  .g-fc-bench .g-label { justify-content: flex-start !important; }
+}
+
+/* Draft Analysis — 1v1 ayna barları dar ekranda ═══════════════════════
+   Masaüstünde satır [değer][bar][etiket][bar][değer] olarak okunuyor; 375px'te
+   her bara ~40px kalıyor ve hiçbir şey okunmuyor. Etiketi tam satıra çıkarıp
+   iki barı alt alta alıyoruz. Sol bar aynalıktan çıkıyor (tek başına ters
+   dolan bir bar kafa karıştırıcı). JSX değişmiyor — sadece sıra ve genişlik. */
+@media (max-width: 640px) {
+  .g-pillar-row { flex-wrap: wrap; row-gap: 4px; margin-bottom: 10px; }
+  .g-pillar-label {
+    order: -1; width: 100% !important;
+    display: flex; align-items: center; gap: 7px;
+    text-align: left !important;
+  }
+  .g-pillar-label > div { margin: 0; }
+  .g-pillar-label > span { margin-top: 0 !important; }
+  .g-pillar-row .g-bar-track { flex: 1 1 68%; transform: none !important; }
+}

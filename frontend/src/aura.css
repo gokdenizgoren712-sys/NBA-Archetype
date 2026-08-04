@@ -214,3 +214,93 @@
   transform: rotateX(var(--tx, 0deg)) rotateY(var(--ty, 0deg));
   transform-style: preserve-3d;
 }
+
+/* Organic aura blob — irregular border-radius + blur instead of a perfect
+   radial circle, so glows read as ambient light rather than sphere-stamps.
+   Wide/short with a heavily lopsided radius keeps the asymmetry legible even
+   after blur (a near-square base just blurs back into looking round).
+   Lives here (not PlayerCard.css) because it is used site-wide: lineup slots,
+   era/changelog/mode cards, About, and the whole game section. */
+.aura-blob {
+  position: absolute; z-index: 0; pointer-events: none;
+  background: var(--slot-color, var(--yamabuki, #FFB11B));
+  border-radius: 72% 28% 55% 45% / 35% 65% 40% 60%;
+  filter: blur(20px);
+}
+
+/* ═══ Mobil menü (drawer) ═══════════════════════════════════════════════
+   Alt nav'ın yerini aldı. Kapalıyken tamamen etkileşim dışı (visibility +
+   pointer-events), açılırken panel soldan kayıyor. Satır yüksekliği 52px —
+   dokunma hedefi için minimum 44px kuralının üstünde. */
+.nav-drawer-root {
+  position: fixed; inset: 0; z-index: 60;
+  visibility: hidden; pointer-events: none;
+}
+.nav-drawer-root.open { visibility: visible; pointer-events: auto; }
+
+.nav-drawer-backdrop {
+  position: absolute; inset: 0;
+  background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(3px);
+  opacity: 0; transition: opacity 0.28s ease;
+}
+.nav-drawer-root.open .nav-drawer-backdrop { opacity: 1; }
+
+.nav-drawer {
+  position: absolute; top: 0; bottom: 0; left: 0;
+  width: min(78vw, 300px);
+  display: flex; flex-direction: column;
+  background: linear-gradient(160deg, #17151b 0%, #0c0b0e 60%, #14100a 100%);
+  border-right: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow: 24px 0 60px -20px rgba(0, 0, 0, 0.9);
+  transform: translateX(-100%);
+  transition: transform 0.3s cubic-bezier(0.2, 0.7, 0.3, 1);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+.nav-drawer-root.open .nav-drawer { transform: none; }
+@media (prefers-reduced-motion: reduce) {
+  .nav-drawer, .nav-drawer-backdrop { transition: none; }
+}
+
+.nav-drawer-head {
+  display: flex; align-items: center; gap: 9px;
+  padding: 14px 14px 13px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.nav-drawer-close {
+  margin-left: auto; width: 40px; height: 40px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 26px; line-height: 1; border-radius: 12px;
+  color: var(--text-muted); background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.nav-drawer-items { padding: 8px; display: flex; flex-direction: column; gap: 2px; }
+
+.nav-drawer-item {
+  position: relative; display: flex; align-items: center; gap: 13px;
+  min-height: 52px; padding: 0 14px; border-radius: 13px;
+  color: var(--text-muted); text-decoration: none;
+  border: 1px solid transparent;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+}
+.nav-drawer-item .lbl {
+  font-family: var(--font-logo); font-size: 13px; font-weight: 700;
+  letter-spacing: 0.09em; text-transform: uppercase;
+}
+.nav-drawer-item:active { background: rgba(255, 255, 255, 0.05); }
+.nav-drawer-item.active {
+  color: #fff;
+  background: linear-gradient(100deg, color-mix(in srgb, var(--accent) 14%, transparent), transparent 72%);
+  border-color: color-mix(in srgb, var(--accent) 34%, transparent);
+}
+/* color-mix desteklenmezse en azından okunur bir aktif durum kalsın */
+@supports not (color: color-mix(in srgb, red 50%, blue)) {
+  .nav-drawer-item.active { background: rgba(255, 255, 255, 0.06); border-color: rgba(255, 255, 255, 0.16); }
+}
+.nav-drawer-item.active::before {
+  content: ""; position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+  width: 3px; height: 24px; border-radius: 0 3px 3px 0;
+  background: var(--accent); box-shadow: 0 0 12px var(--accent);
+}

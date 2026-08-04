@@ -10,6 +10,14 @@ export const ERAS = [
   { id:"parity",     label:"Parity Era",           short:"Parity",    color:"text-violet-400",   bg:"bg-violet-900/30 border-violet-700/40",  years:[2020,2030] },
 ];
 
+// Era → gerçek hex. ERAS'taki `color`/`bg` Tailwind sınıfı olduğu için CSS
+// custom property'lere (accent / glow / gradient) beslenemiyor; bu tablo o
+// boşluğu dolduruyor ve Glossary'nin ERA_GUIDE paletiyle birebir aynı.
+export const ERA_HEX = {
+  magic_bird: "#fbbf24", jordan: "#f87171", dead_ball: "#9ca3af",
+  proto: "#60a5fa", small_ball: "#34d399", parity: "#a78bfa",
+};
+
 // Her arketipin o era'da ne kadar "meta" olduğu (1.0 = nötr, >1 meta, <1 meta-dışı)
 export const ERA_ARCH_WEIGHTS = {
   magic_bird: { Engine:0.90, Ecosystem:1.30, Hub:1.15, Creator:0.85, Connector:0.95, Anchor:1.15, Force:1.20, Spacer:0.45, Finisher:0.85, Initiator:0.70, Stopper:0.95, "Rim Runner":0.70 },

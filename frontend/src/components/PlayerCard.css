@@ -1,6 +1,27 @@
 /* Primary Arch — Panini-style vertical player card (tilt + foil + expand tabs) */
 
-.pcard-stage { perspective: 1000px; width: 280px; }
+/* Zemin gölgesi karttan SAHNEYE taşındı: aşağıdaki content-visibility paint
+   containment uyguluyor ve bu, .pcard'ın kendi gölgesini kırpardı. Sahnenin
+   KENDİ box-shadow'u containment'tan etkilenmez. Yan fayda: kart hover'da
+   3D eğilirken gölge yerinde kalıyor, daha fiziksel duruyor. */
+.pcard-stage {
+  perspective: 1000px; width: 280px; border-radius: 17px;
+  box-shadow: 0 24px 48px -18px rgba(0, 0, 0, 0.8);
+}
+
+/* Ekran dışındaki kartları hiç render etme. contain-intrinsic-size gerçek
+   ölçüyle (280×449) birebir, o yüzden kaydırma sırasında zıplama olmuyor.
+   Hover'da containment kalkıyor — yoksa kartın rotateX/rotateY + scale(1.02)
+   eğilmesi sahne kutusunun kenarından kırpılırdı.
+   .compact (Compare) ve .mode (oyun modu kartları) farklı boyda, onlar hariç. */
+.pcard-stage:not(.compact):not(.mode) {
+  content-visibility: auto;
+  contain-intrinsic-size: 280px 449px;
+}
+/* :not() argümanları da specificity'ye sayıldığı için hover kuralı yukarıdaki
+   seçiciyle AYNI zinciri taşımalı, yoksa 0,2,0 vs 0,3,0'a yenilip containment
+   hover'da kalkmıyor (kartın eğilmesi kırpılıyor). */
+.pcard-stage:not(.compact):not(.mode):hover { content-visibility: visible; }
 
 .pcard {
   width: 280px;
@@ -8,7 +29,6 @@
   border-radius: 17px;
   background: linear-gradient(160deg, #17151b 0%, #0c0b0e 55%, #14100a 100%);
   border: 1px solid var(--border);
-  box-shadow: 0 24px 48px -18px rgba(0, 0, 0, 0.8);
   clip-path: polygon(0 0, 100% 0, 100% calc(100% - 28px), calc(100% - 28px) 100%, 0 100%);
   overflow: hidden;
   transition: transform 0.35s cubic-bezier(0.2, 0.7, 0.3, 1);
@@ -66,9 +86,13 @@
     radial-gradient(circle at var(--mx, 50%) var(--my, 30%), rgba(255, 255, 255, 0.32), transparent 42%),
     linear-gradient(115deg, transparent 15%, var(--accent-a) 32%, var(--accent-b) 50%, transparent 72%);
   background-position: var(--mx, 50%) var(--my, 30%), 0 0;
-  animation: foilIdleSweep 7s ease-in-out infinite;
 }
-.pcard:hover .pcard-foil, .pcard.pcard-expanded .pcard-foil { animation-play-state: paused; }
+/* Sweep BOŞTA değil, yalnızca hover'da koşar. background-position animasyonu
+   GPU'ya devredilemez (her karede repaint) — eskiden 60 kartın hepsinde
+   sürekli dönüyordu ve ızgaradaki kasmanın en pahalı kalemiydi. Artık aynı
+   anda tek kart. Boştaki kart hareketsiz, foil dokusu duruyor. */
+.pcard:hover .pcard-foil { animation: foilIdleSweep 7s ease-in-out infinite; }
+.pcard.pcard-expanded .pcard-foil { animation: none; }
 @keyframes foilIdleSweep {
   0%, 100% { background-position: 30% 20%, 0 0; }
   50% { background-position: 70% 55%, 0 0; }
@@ -128,7 +152,11 @@
 
 .pcard-nameband {
   position: relative; z-index: 3; margin: 0 14px; padding: 8px 10px; text-align: center;
-  background: rgba(0, 0, 0, 0.62); backdrop-filter: blur(3px);
+  /* backdrop-filter kaldırıldı: kart başına bir tane = 60 tane sürekli blur
+     geçişi demekti ve üstündeki foil katmanı her karede onları geçersiz
+     kılıyordu. 3px blur zaten koyu bir zemin üstünde neredeyse görünmüyordu;
+     kaybı telafi etmek için opaklık 0.62 → 0.68. */
+  background: rgba(0, 0, 0, 0.68);
   border-top: 1px solid var(--accent-line); border-bottom: 1px solid var(--accent-line);
   transform: rotate(-0.6deg);
 }
@@ -328,17 +356,8 @@
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor; mask-composite: exclude; opacity: 0.7;
 }
-/* Organic aura blob — irregular border-radius + blur instead of a perfect
-   radial circle, so glows read as ambient light, not sphere-stamps. Shared
-   recipe for lineup slots, the historical solo-glow, and era-card metas.
-   Wide/short + a heavily lopsided radius keeps the asymmetry legible even
-   after blur (a near-square base just blurs back into looking round). */
-.aura-blob {
-  position: absolute; z-index: 0; pointer-events: none;
-  background: var(--slot-color);
-  border-radius: 72% 28% 55% 45% / 35% 65% 40% 60%;
-  filter: blur(20px);
-}
+/* .aura-blob moved to aura.css (global) — it is used site-wide now, including
+   the game section which does not import PlayerCard.css. */
 
 .lineup-card-head { position: relative; z-index: 3; display: flex; align-items: center; gap: 12px; padding: 15px 92px 15px 34px; min-height: 20px; }
 .lineup-card-names { font-size: 12.5px; font-weight: 600; color: var(--text-primary); line-height: 1.4; }
