@@ -25,6 +25,31 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
+  // Her sayfa kendi fetch'ini kendi Authorization header'ıyla atıyor (tek bir
+  // authFetch sarmalayıcı yok, ~15 dosyaya dağılmış) — bu yüzden süresi dolmuş
+  // token'ı TEK yerden yakalamak için window.fetch'i bir kez sarmalıyoruz.
+  // Yalnızca Authorization header'ı GÖNDERİLMİŞ isteklerde 401 görürsek
+  // oturumu kapatıp /login'e yönlendiriyoruz — /api/auth/login gibi
+  // credential-doğrulama 401'leri (yanlış şifre) Authorization header
+  // taşımadığı için buna karışmaz.
+  useEffect(() => {
+    const originalFetch = window.fetch;
+    window.fetch = async (...args) => {
+      const res = await originalFetch(...args);
+      if (res.status === 401 && args[1]?.headers?.Authorization) {
+        localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem(USER_KEY);
+        setToken(null);
+        setUser(null);
+        if (!window.location.pathname.startsWith("/login")) {
+          window.location.href = "/login?expired=1";
+        }
+      }
+      return res;
+    };
+    return () => { window.fetch = originalFetch; };
+  }, []);
+
   const isAdmin = user?.role === "admin";
   const isLoggedIn = !!token;
 

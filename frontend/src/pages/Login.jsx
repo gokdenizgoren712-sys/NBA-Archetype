@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { SEO } from "../hooks/useSEO";
 import GoogleSignIn from "../components/GoogleSignIn";
@@ -9,6 +9,8 @@ const BASE = "/api";
 export default function Login() {
   const { login } = useAuth();
   const navigate   = useNavigate();
+  const [searchParams] = useSearchParams();
+  const expired = searchParams.get("expired") === "1";
   const [form, setForm] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -41,6 +43,13 @@ export default function Login() {
         <h1 className="text-2xl font-bold mb-6 text-center" style={{ color: "var(--text-primary)" }}>
           Log In
         </h1>
+
+        {expired && (
+          <p className="text-sm text-center mb-4 px-3 py-2 rounded-lg"
+            style={{ color: "var(--yamabuki)", background: "rgba(255,177,27,.1)", border: "1px solid rgba(255,177,27,.3)" }}>
+            Your session expired — log back in to keep going.
+          </p>
+        )}
 
         <form onSubmit={submit} className="space-y-4">
           <div>
