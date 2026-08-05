@@ -1481,7 +1481,7 @@ export default function LineupGame() {
           onPick={(c)=>{
             setCoach(c);
             setMoveSrc(null);
-            const fit=computeLineupFit(POSITIONS.map(p=>lineupRef.current[p]), simEra);
+            const fit=computeLineupFit(POSITIONS.map(p=>lineupRef.current[p]), simEra, affinityMatrix);
             setFitResult(fit);
             setPhase("complete");
           }}

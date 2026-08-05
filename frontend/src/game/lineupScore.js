@@ -28,7 +28,11 @@ export function computePlayerFit(p, simEra) {
 
 // ── Lineup fit hesaplama ──────────────────────────────────────────────────────
 // Mantık: Player Quality (oyuncular ne kadar iyi?) × Lineup Coverage (4 rol örtülüyor mu?)
-export function computeLineupFit(players, simEra) {
+// affinityMatrix (opsiyonel, 4. argüman): verilirse Role Fit synergy'yle
+// harmanlanır (bkz. aşağıdaki 3. adım notu). Verilmezse (backtest.mjs gibi
+// affinity matrisine erişimi olmayan çağıranlar için) eski salt ball-dom
+// davranışı korunur — geriye dönük uyumlu.
+export function computeLineupFit(players, simEra, affinityMatrix) {
   if (!players || players.length < 2) return null;
   const _s = (p, k) => { const v = parseFloat(p[`score_${k}`] ?? 0); return isNaN(v) ? 0 : Math.max(0, v); };
 
@@ -68,7 +72,21 @@ export function computeLineupFit(players, simEra) {
   // nudge kaldı: 1 hafif (−4%), 2-4 nötr, 0/5 hafif (creator yok / aşırı top-hog).
   const ballDom = players.filter(p => Math.max(_s(p,"Engine")*1.05, _s(p,"Ecosystem")) >= 0.80).length;
   const BALLDOM_PEN = [0.06, 0.04, 0.00, 0.00, 0.00, 0.06];
-  const roleFit = Math.max(0, 1 - (BALLDOM_PEN[Math.min(ballDom, 5)] ?? 0.06));
+  const ballDomFit = Math.max(0, 1 - (BALLDOM_PEN[Math.min(ballDom, 5)] ?? 0.06));
+  // v3.10: Role Fit tek başına neredeyse hep ~1.0'a kilitleniyordu (2-4
+  // ball-dom bandı cezasız, uçlarda bile tavan %6) — %15 ağırlıklı bir sütun
+  // pratikte sabit bir bonusa dönüşmüştü. computeAffinity() (arketip-arketip
+  // synergy, aşağıda) zaten roster kurgusuna çok daha duyarlı bir sinyal
+  // üretiyor — onu buraya, ball-dom cezasını KAYBETMEDEN, ek bir ofset olarak
+  // katıyoruz. affinityMatrix'in "nötr" (eşleşme yoksa varsayılan) değeri 0.65
+  // (bkz. config/roles.py _build_affinity_matrix) — bu yüzden synergy'yi o
+  // temel çizgiye göre bir ofsete çeviriyoruz: ortalama bir kadro (synergy≈0.65)
+  // eskisiyle AYNI puanı alır, gerçekten uyumlu/uyumsuz kadrolar ise ballDom
+  // tabanından yukarı ya da aşağı gerçekten hareket eder.
+  const synergy = affinityMatrix ? computeAffinity(players, affinityMatrix) : null;
+  const roleFit = synergy == null
+    ? ballDomFit
+    : Math.max(0, Math.min(1, ballDomFit + (synergy - 0.65)));
 
   // 4. Final: ağırlıklı toplam (v3.5.1). Eski çarpım formülü skoru 40-55
   // bandına eziyordu — iki 0.6'lık faktörün çarpımı 0.36 eder. Toplamla
@@ -78,7 +96,7 @@ export function computeLineupFit(players, simEra) {
   return {
     creation: creationCov, spacing: spacingCov, rim_protection: rimCov,
     perimeter_d: perimCov, finishing: finishingCov,
-    roleFit, nShooters, coverage, avgQuality,
+    roleFit, synergy, nShooters, coverage, avgQuality,
     lineupScore, perPlayer,
   };
 }
