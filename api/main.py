@@ -1013,7 +1013,6 @@ def backfill_roster_json(_user=Depends(_require_admin_early)):
     denemek için elle tekrar tetiklemek gerekirse burada duruyor."""
     return _backfill_roster_json_once()
 
-
 def _auto_invalidate():
     """Parquet dosyaları değiştiyse lru_cache'i otomatik temizle."""
     global _SCORES_MTIME, _HIST_MTIME
@@ -3056,6 +3055,50 @@ def delete_all_users(_user=Depends(require_admin)):
 def admin_delete_user(user_id: int, _user=Depends(require_admin)):
     with get_conn() as conn:
         conn.execute("DELETE FROM users WHERE id=?", (user_id,))
+    return {"ok": True}
+
+# ── Leaderboard moderasyonu (2026-08) ───────────────────────────────────────
+# Eski (roster_json'sız) lineup_games kayıtları Board Challenge'a hiç
+# düşmüyordu — kullanıcı kararı: bu kayıtları tek tek görüp silebilecek ve
+# gerekirse Classic/Salary Cap/ikisini birden sıfırlayabilecek bir admin
+# arayüzü olsun (bkz. docs/online-architecture-review-and-roadmap.md).
+
+@app.get("/api/admin/lineup-games")
+def admin_list_lineup_games(_user=Depends(require_admin)):
+    with get_conn() as conn:
+        rows = conn.execute(
+            """SELECT lg.id, lg.mode, lg.pct, lg.grade, lg.wins, lg.season_result,
+                      lg.sim_era, lg.roster_json IS NOT NULL AS has_roster,
+                      lg.created_at, u.username
+               FROM lineup_games lg LEFT JOIN users u ON lg.user_id = u.id
+               ORDER BY lg.created_at DESC"""
+        ).fetchall()
+    return {"entries": [dict(r) for r in rows]}
+
+
+class LeaderboardResetBody(BaseModel):
+    scope: str  # 'classic' | 'salarycap' | 'both'
+
+# /reset must come BEFORE /{item_id} — otherwise FastAPI tries int("reset") → 422
+@app.delete("/api/admin/lineup-games/reset")
+def admin_reset_leaderboard(body: LeaderboardResetBody, _user=Depends(require_admin)):
+    if body.scope not in ("classic", "salarycap", "both"):
+        raise HTTPException(400, "Invalid scope")
+    with get_conn() as conn:
+        if body.scope == "both":
+            count = conn.execute("SELECT COUNT(*) FROM lineup_games").fetchone()[0]
+            conn.execute("DELETE FROM lineup_games")
+        else:
+            count = conn.execute(
+                "SELECT COUNT(*) FROM lineup_games WHERE mode=?", (body.scope,)
+            ).fetchone()[0]
+            conn.execute("DELETE FROM lineup_games WHERE mode=?", (body.scope,))
+    return {"deleted": count}
+
+@app.delete("/api/admin/lineup-games/{item_id}")
+def admin_delete_lineup_game(item_id: int, _user=Depends(require_admin)):
+    with get_conn() as conn:
+        conn.execute("DELETE FROM lineup_games WHERE id=?", (item_id,))
     return {"ok": True}
 
 @app.delete("/api/admin/articles/{article_id}")

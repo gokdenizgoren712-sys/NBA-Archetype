@@ -25,6 +25,7 @@ const ArticleList    = lazy(() => import("./pages/admin/ArticleList"));
 const ArticleEditor  = lazy(() => import("./pages/admin/ArticleEditor"));
 const UserList       = lazy(() => import("./pages/admin/UserList"));
 const CorrectionList = lazy(() => import("./pages/admin/CorrectionList"));
+const LineupModeration = lazy(() => import("./pages/admin/LineupModeration"));
 const GLeague        = lazy(() => import("./pages/GLeague"));
 const NCAAPage       = lazy(() => import("./pages/NCAAPage"));
 const EuroLeaguePage = lazy(() => import("./pages/EuroLeaguePage"));
@@ -280,6 +281,7 @@ function AppInner() {
               <Route path="/admin/articles/:id/edit"  element={<ArticleEditor />} />
               <Route path="/admin/users"              element={<UserList />} />
               <Route path="/admin/corrections"        element={<CorrectionList />} />
+              <Route path="/admin/lineups"            element={<LineupModeration />} />
               {/* League pages */}
               <Route path="/gleague"                  element={<GLeague />} />
               <Route path="/ncaa"                     element={<NCAAPage />} />

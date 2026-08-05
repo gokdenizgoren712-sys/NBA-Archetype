@@ -153,6 +153,11 @@ export default function CorrectionList() {
               style={{ border: "1px solid var(--border)", color: "var(--text-muted)" }}>
               Users
             </Link>
+            <Link to="/admin/lineups"
+              className="text-xs px-3 py-1.5 rounded-lg"
+              style={{ border: "1px solid var(--border)", color: "var(--text-muted)" }}>
+              Leaderboards
+            </Link>
           </div>
         </div>
 

@@ -67,6 +67,11 @@ export default function UserList() {
               style={{ background: "var(--bg-elevated)", color: "var(--text-muted)", border: "1px solid var(--border)" }}>
               Corrections
             </Link>
+            <Link to="/admin/lineups"
+              className="px-3 py-1.5 rounded-lg text-sm"
+              style={{ background: "var(--bg-elevated)", color: "var(--text-muted)", border: "1px solid var(--border)" }}>
+              Leaderboards
+            </Link>
             <button onClick={deleteAll}
               className="px-3 py-1.5 rounded-lg text-sm font-medium"
               style={{ color: "#f87171", border: "1px solid rgba(248,113,113,.3)" }}>
