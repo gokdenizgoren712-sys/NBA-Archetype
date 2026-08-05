@@ -1690,6 +1690,123 @@ def get_historical(
     }
 
 
+# ─── "Rewrite History" — gerçek takvim + takım gücü ───────────────────────────
+# bkz. src/fetch_schedules.py modül docstring'i: nba_api'nin LeagueGameFinder
+# (takvim) ve leaguedashplayerstats (hist_merged'in kaynağı) kısaltmaları
+# 1996-97 sınırında tutarsız olduğu için schedule.parquet ZATEN normalize
+# edilmiş halde yazıldı (bkz. fetch_schedules._normalize_abbrev) — burada ek
+# bir eşleme gerekmiyor.
+
+_MULTI_TEAM_ROWS = {"2TM", "3TM", "4TM", "TOT"}
+
+@lru_cache(maxsize=60)
+def _load_schedule(season: str) -> pd.DataFrame:
+    p = DATA / f"{season}__schedule.parquet"
+    return pd.read_parquet(p) if p.exists() else pd.DataFrame()
+
+
+@lru_cache(maxsize=60)
+def _team_win_pcts(season: str) -> dict:
+    """Sezonun {TEAM_ABBREVIATION: {wins, losses, win_pct}} sözlüğü.
+    1996-97+ hist_merged'den (max W per takım, çoklu-takım TOT satırları
+    hariç — bkz. src/scratch/export_modern_backtest.py'deki aynı desen),
+    pre-1996 için fetch_standings.py'nin ürettiği team_wins.parquet'ten."""
+    try:
+        year = int(season.split("-")[0])
+    except (ValueError, IndexError):
+        return {}
+    out = {}
+    if year >= 1996:
+        p = DATA / f"{season}__hist_merged.parquet"
+        if not p.exists():
+            return {}
+        df = pd.read_parquet(p, columns=["TEAM_ABBREVIATION", "W", "L"])
+        df = df[~df["TEAM_ABBREVIATION"].astype(str).str.upper().isin(_MULTI_TEAM_ROWS)]
+        # W/L satır-bazlı — mid-season trade edilen bir oyuncunun W/L'i o takımdaki
+        # KISMİ dönemini yansıtır. W ve L'yi BAĞIMSIZ max almak farklı oyuncuların
+        # farklı kısmi dönemlerini karıştırıp yanlış (ör. GSW 73-12 gibi) bir kayıt
+        # üretiyordu — bunun yerine en çok maç oynamış (W+L en büyük) TEK satırın
+        # W/L ÇİFTİNİ birlikte alıyoruz, en tam sezonu yansıtan gerçek kayıt bu.
+        df["_gp"] = df["W"] + df["L"]
+        idx = df.groupby("TEAM_ABBREVIATION")["_gp"].idxmax()
+        best = df.loc[idx]
+        for _, row in best.iterrows():
+            w, l = int(row["W"]), int(row["L"])
+            if w + l > 0:
+                out[row["TEAM_ABBREVIATION"]] = {"wins": w, "losses": l, "win_pct": w / (w + l)}
+    else:
+        p = DATA / f"{season}__team_wins.parquet"
+        if not p.exists():
+            return {}
+        df = pd.read_parquet(p)
+        for _, row in df.iterrows():
+            w, l = int(row["WINS"]), int(row["LOSSES"])
+            if w + l > 0:
+                out[row["TEAM_ABBREVIATION"]] = {"wins": w, "losses": l, "win_pct": w / (w + l)}
+    return out
+
+
+@app.get("/api/historical/{season}/teams")
+def get_historical_teams(season: str):
+    """'Rewrite History' — bir sezonun gerçek takım listesi + galibiyet yüzdesi.
+    Takım-seçim kartları için (bkz. docs/online-architecture-review-and-roadmap.md
+    ve 2026-08 plan dosyası)."""
+    wp = _team_win_pcts(season)
+    if not wp:
+        raise HTTPException(404, f"No team standings for season {season}")
+    teams = [
+        {"abbr": ab, "wins": v["wins"], "losses": v["losses"], "win_pct": round(v["win_pct"], 4)}
+        for ab, v in wp.items()
+    ]
+    teams.sort(key=lambda t: t["win_pct"], reverse=True)
+    return {"season": season, "teams": teams}
+
+
+@app.get("/api/historical/{season}/team/{abbr}/schedule")
+def get_historical_team_schedule(season: str, abbr: str):
+    """'Rewrite History' — bir takımın o sezonki GERÇEK 82 maçlık takvimi
+    (rakip, ev/deplasman, gerçek skor + rakibin o sezonki win_pct'i). Frontend
+    bunu extras.realSchedule'a çevirip seasonSim.js'in gerçek-takvim yoluna
+    besliyor (bkz. plan: OPP_MEAN/OPP_STD'ye z-score ile oturtma orada yapılıyor,
+    burada sadece ham win_pct + lig ortalama/std döndürülüyor)."""
+    sched = _load_schedule(season)
+    if sched.empty:
+        raise HTTPException(404, f"No schedule data for season {season}")
+    abbr = abbr.upper()
+    team_games = sched[sched["TEAM_ABBREVIATION"] == abbr].reset_index(drop=True)
+    if team_games.empty:
+        raise HTTPException(404, f"Team {abbr} not found in {season} schedule")
+
+    wp = _team_win_pcts(season)
+    pct_series = pd.Series([v["win_pct"] for v in wp.values()])
+    league_mean = float(pct_series.mean()) if not pct_series.empty else 0.5
+    league_std = float(pct_series.std()) if len(pct_series) > 1 else 0.15
+
+    games = []
+    for i, r in team_games.iterrows():
+        opp = r["OPP_ABBREVIATION"]
+        opp_wp = wp.get(opp, {}).get("win_pct", league_mean)
+        games.append({
+            "game_num": i + 1,
+            "date": r["GAME_DATE"],
+            "opponent": opp,
+            "is_home": bool(r["IS_HOME"]),
+            "won": r["WL"] == "W",
+            "team_pts": int(r["PTS"]),
+            "opp_pts": int(r["OPP_PTS"]),
+            "opp_win_pct": round(opp_wp, 4),
+        })
+
+    team_wp = wp.get(abbr, {})
+    return {
+        "season": season, "team": abbr,
+        "wins": team_wp.get("wins"), "losses": team_wp.get("losses"),
+        "league_mean_win_pct": round(league_mean, 4),
+        "league_std_win_pct": round(league_std, 4),
+        "games": games,
+    }
+
+
 # ─── Tarihsel sezon: boolean-tabanlı duo/lineup uyumu ─────────────────────────
 
 def _bool_duo_compat(df_season: pd.DataFrame, top_n: int = 100) -> list[dict]:

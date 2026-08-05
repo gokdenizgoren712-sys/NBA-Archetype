@@ -5,12 +5,23 @@
 import { useState, useRef, useEffect } from "react";
 import { simulateSeason, BASE_MINUTES, MINUTE_FLEX, agePenaltyFor } from "./seasonSim";
 import { useAuth } from "../contexts/AuthContext";
-import { CoachIcon, TrophyIcon, CrownIcon, PlayIcon, LoopIcon } from "./GameIcons";
+import { CoachIcon, TrophyIcon, CrownIcon, PlayIcon, LoopIcon, DnaIcon, WheelIcon } from "./GameIcons";
 import "./game.css";
 
 const MONTHS = ["OCT", "NOV", "DEC", "JAN", "FEB", "MAR", "APR"];
 
-export default function SeasonSimPanel({ players, simEra, fit, affinity01, bench = [], coach = null, gameScoreId = null }) {
+// "Rewrite History" — era.years [start, endExclusive) aralığındaki gerçek
+// sezon string'lerini üretir (bkz. game/eras.js ERAS).
+function seasonsInEra(era) {
+  if (!era?.years) return [];
+  const [start, endExcl] = era.years;
+  const end = Math.min(endExcl, new Date().getFullYear());  // içinde bulunduğumuz/açık sezonu hariç tut
+  const out = [];
+  for (let y = start; y < end; y++) out.push(`${y}-${String(y + 1).slice(-2)}`);
+  return out;
+}
+
+export default function SeasonSimPanel({ players, simEra, fit, affinity01, bench = [], coach = null, gameScoreId = null, enableRealHistory = false }) {
   const { isLoggedIn, token } = useAuth();
   const [result, setResult]           = useState(null);
   const [revealGames, setRevealGames] = useState(0);
@@ -23,6 +34,36 @@ export default function SeasonSimPanel({ players, simEra, fit, affinity01, bench
   // Faz E: dynasty durumu — {year, titles} (titles = art arda şampiyonluk)
   const [dynasty, setDynasty] = useState({ year: 1, titles: 0 });
   const timerRef = useRef(null);
+
+  // "Rewrite History" (bkz. plan: docs/plans/fancy-cooking-gizmo.md) — Single
+  // Player'a özel, opt-in. simMode="quick" bugünkü davranış, "history" gerçek
+  // sezon+takım seçimi açar.
+  const [simMode, setSimMode]   = useState("quick");   // "quick" | "history"
+  const [rhStep, setRhStep]     = useState("season");   // season | team | ready
+  const [rhSeasons]             = useState(() => seasonsInEra(simEra));
+  const [rhSeason, setRhSeason] = useState(null);
+  const [rhTeams, setRhTeams]   = useState([]);
+  const [rhTeam, setRhTeam]     = useState(null);
+  const [rhSchedule, setRhSchedule] = useState(null);
+  const [rhLoading, setRhLoading]   = useState(false);
+  const [rhError, setRhError]       = useState("");
+
+  const pickRhSeason = (s) => {
+    setRhSeason(s); setRhTeam(null); setRhSchedule(null); setRhError("");
+    setRhLoading(true);
+    fetch(`/api/historical/${s}/teams`).then(r => r.json())
+      .then(d => { setRhTeams(d.teams || []); setRhStep("team"); })
+      .catch(() => setRhError("Could not load teams for this season."))
+      .finally(() => setRhLoading(false));
+  };
+  const pickRhTeam = (abbr) => {
+    setRhTeam(abbr); setRhError("");
+    setRhLoading(true);
+    fetch(`/api/historical/${rhSeason}/team/${abbr}/schedule`).then(r => r.json())
+      .then(d => { setRhSchedule(d); setRhStep("ready"); })
+      .catch(() => setRhError("Could not load that team's schedule."))
+      .finally(() => setRhLoading(false));
+  };
 
   useEffect(() => () => clearInterval(timerRef.current), []);
 
@@ -50,18 +91,21 @@ export default function SeasonSimPanel({ players, simEra, fit, affinity01, bench
     }).catch(() => {});
   };
 
-  // Ortak animasyon: sezonu akıt, playoff'u aç
+  // Ortak animasyon: sezonu akıt, playoff'u aç. nGames sabit 82 DEĞİL — Rewrite
+  // History'de kısaltılmış gerçek sezonlar olabilir (1998-99 lockout 50 maç vb,
+  // bkz. seasonSim.js madePlayoffs notu).
   const animate = (res, after) => {
     clearInterval(timerRef.current);
+    const nGames = res.gameLog.length;
     setResult(res);
     setRevealGames(0);
     setRevealRounds(0);
     setStage("regular");
     let g = 0;
     timerRef.current = setInterval(() => {
-      g = Math.min(82, g + 2);
+      g = Math.min(nGames, g + 2);
       setRevealGames(g);
-      if (g >= 82) {
+      if (g >= nGames) {
         clearInterval(timerRef.current);
         if (res.madePlayoffs) {
           setStage("playoffs");
@@ -83,8 +127,12 @@ export default function SeasonSimPanel({ players, simEra, fit, affinity01, bench
   };
 
   // Yeni dynasty (sezon 1). Yalnızca İLK koşu leaderboard'a işlenir.
+  // Rewrite History'de extras.realSchedule dolu — seasonSim.js gerçek rakip/
+  // ev-deplasman/maç-maç box score yoluna geçer (bkz. plan).
   const run = () => {
-    const res = simulateSeason(players, simEra, fit, affinity01, { bench, coach, minutes });
+    const extras = { bench, coach, minutes };
+    if (simMode === "history" && rhSchedule) extras.realSchedule = rhSchedule;
+    const res = simulateSeason(players, simEra, fit, affinity01, extras);
     const isFirst = runCount === 0;
     setRunCount(c => c + 1);
     setDynasty({ year: 1, titles: res.champion ? 1 : 0 });
@@ -135,13 +183,83 @@ export default function SeasonSimPanel({ players, simEra, fit, affinity01, bench
         </div>
       </div>
 
-      {/* === IDLE: rotasyon + başlat === */}
+      {/* === IDLE: mod seçimi (Rewrite History) + rotasyon + başlat === */}
       {stage === "idle" && (
         <div className="space-y-3">
+          {enableRealHistory && (
+            <div className="flex gap-1.5 p-1 rounded-lg" style={{background:"var(--bg-surface)",border:"1px solid var(--border)"}}>
+              <button onClick={()=>setSimMode("quick")}
+                className="flex-1 py-1.5 rounded-md text-[10.5px] font-bold uppercase tracking-wide transition-colors"
+                style={{background:simMode==="quick"?"var(--bg-elevated)":"transparent",color:simMode==="quick"?"var(--text-primary)":"var(--text-faint)"}}>
+                <WheelIcon size={12} /> <span className="ml-1">Quick Sim</span>
+              </button>
+              <button onClick={()=>setSimMode("history")}
+                className="flex-1 py-1.5 rounded-md text-[10.5px] font-bold uppercase tracking-wide transition-colors"
+                style={{background:simMode==="history"?"rgba(255,177,27,.16)":"transparent",color:simMode==="history"?"var(--yamabuki)":"var(--text-faint)"}}>
+                <DnaIcon size={12} /> <span className="ml-1">Rewrite History</span>
+              </button>
+            </div>
+          )}
+
+          {simMode === "history" && rhStep !== "ready" ? (
+            <div className="space-y-2.5">
+              <p className="text-[11px] text-gray-400 leading-relaxed">
+                Step into a real {simEra.label} season. Pick the year, then the team your draft replaces —
+                you'll play their exact 82-game schedule, real opponents and all.
+              </p>
+              {rhError && <p className="text-[11px] text-red-400">{rhError}</p>}
+
+              {rhStep === "season" && (
+                <div className="grid grid-cols-3 gap-1.5">
+                  {rhSeasons.map(s => (
+                    <button key={s} onClick={()=>pickRhSeason(s)} disabled={rhLoading}
+                      className="g-tile" style={{padding:"10px 6px","--accent":"#FFB11B","--accent-a":"rgba(255,177,27,.10)","--accent-line":"rgba(255,177,27,.35)"}}>
+                      <div className="g-tile-title" style={{fontSize:12,color:"var(--yamabuki)"}}>{s}</div>
+                    </button>
+                  ))}
+                  {rhSeasons.length === 0 && (
+                    <p className="col-span-3 text-[10.5px] text-gray-600 italic">No completed real seasons in this era yet.</p>
+                  )}
+                </div>
+              )}
+
+              {rhStep === "team" && (
+                <div className="space-y-2">
+                  <button onClick={()=>{setRhStep("season"); setRhTeam(null);}}
+                    className="text-[10.5px]" style={{color:"var(--text-muted)"}}>← Back to seasons</button>
+                  <div className="grid grid-cols-2 gap-1.5 max-h-64 overflow-y-auto pr-0.5">
+                    {rhTeams.map(t => (
+                      <button key={t.abbr} onClick={()=>pickRhTeam(t.abbr)} disabled={rhLoading}
+                        className="g-tile" style={{padding:"9px 8px","--accent":"#FFB11B","--accent-a":"rgba(255,177,27,.10)","--accent-line":"rgba(255,177,27,.35)"}}>
+                        <div className="flex items-center justify-between">
+                          <span className="g-tile-title" style={{fontSize:12}}>{t.abbr}</span>
+                          <span className="text-[10px] tabular-nums" style={{color:"var(--text-muted)"}}>{t.wins}-{t.losses}</span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {rhLoading && <p className="text-[10.5px] text-gray-500 text-center py-2">Loading…</p>}
+            </div>
+          ) : (
+          <>
+          {simMode === "history" && rhStep === "ready" && rhSchedule && (
+            <div className="rounded-xl p-3 flex items-center justify-between" style={{background:"rgba(255,177,27,.08)",border:"1px solid rgba(255,177,27,.3)"}}>
+              <div>
+                <div className="text-[10px] uppercase tracking-widest" style={{color:"var(--text-muted)"}}>Standing in for</div>
+                <div className="font-logo font-bold text-sm" style={{color:"var(--yamabuki)"}}>
+                  {rhSchedule.season} {rhSchedule.team} <span className="font-normal text-gray-500">({rhSchedule.wins}-{rhSchedule.losses})</span>
+                </div>
+              </div>
+              <button onClick={()=>{setRhStep("team");}} className="text-[10.5px]" style={{color:"var(--text-muted)"}}>Change</button>
+            </div>
+          )}
           <p className="text-[11.5px] text-gray-400 leading-relaxed">
-            An 82-game season in the <span className={simEra.color}>{simEra.label}</span>. Win 50%+ for the playoffs,
-            survive four rounds — then <span className="text-yamabuki font-medium">defend the title</span>. Three straight rings = <span className="text-yamabuki font-semibold">THREEPEAT</span>, the ultimate goal.
-            Set your rotation below: minutes drive production, 37+ brings fatigue, resting starters banks playoff freshness.
+            {simMode==="history"
+              ? <>Their exact {rhSchedule?.games?.length ?? 82}-game schedule, real opponents and all. Win 50%+ for the playoffs, survive four rounds — then <span className="text-yamabuki font-medium">defend the title</span>.</>
+              : <>An 82-game season in the <span className={simEra.color}>{simEra.label}</span>. Win 50%+ for the playoffs, survive four rounds — then <span className="text-yamabuki font-medium">defend the title</span>. Three straight rings = <span className="text-yamabuki font-semibold">THREEPEAT</span>, the ultimate goal.</>}
+            {" "}Set your rotation below: minutes drive production, 37+ brings fatigue, resting starters banks playoff freshness.
           </p>
 
           {/* Rotasyon / dakika editörü (Faz D) */}
@@ -175,27 +293,36 @@ export default function SeasonSimPanel({ players, simEra, fit, affinity01, bench
           </div>
 
           <button onClick={run}
-            className="w-full py-3 bg-emerald-700 hover:bg-emerald-600 text-white rounded-xl font-semibold transition-colors inline-flex items-center justify-center gap-2">
-            <PlayIcon size={16} /> Simulate Season
+            disabled={simMode==="history" && !rhSchedule}
+            className={`w-full py-3 text-white rounded-xl font-semibold transition-colors inline-flex items-center justify-center gap-2 disabled:opacity-40 ${
+              simMode==="history" ? "" : "bg-emerald-700 hover:bg-emerald-600"}`}
+            style={simMode==="history" ? {background:"linear-gradient(90deg,#FFD470,#FFB11B)",color:"#000"} : undefined}>
+            {simMode==="history" ? <DnaIcon size={16} /> : <PlayIcon size={16} />}
+            {simMode==="history" && rhSchedule ? `Simulate the ${rhSchedule.team}'s Season` : "Simulate Season"}
           </button>
           {!isLoggedIn && (
             <p className="text-[10.5px] text-gray-600 text-center">Log in to record season results on the leaderboard.</p>
+          )}
+          </>
           )}
         </div>
       )}
 
       {/* === SEZON AKIŞI === */}
-      {stage !== "idle" && result && (
+      {stage !== "idle" && result && (() => {
+        const nGames = result.gameLog.length;   // 82 sabit değil — bkz. animate() notu
+        const halfway = Math.ceil(nGames / 2);
+        return (
         <div className="space-y-3">
           {/* Running record */}
           <div className="text-center">
             <div className="text-[10.5px] text-gray-400 uppercase tracking-widest mb-1">
-              {revealGames < 82 ? `Regular Season · ${month}` : `Final Record${result.seed ? ` · #${result.seed} seed` : ""}`}
+              {revealGames < nGames ? `Regular Season · ${month}` : `Final Record${result.seed ? ` · #${result.seed} seed` : ""}`}
             </div>
             <div className="text-4xl font-black text-white tabular-nums">
               {shownWins}<span className="text-gray-600 mx-1">–</span>{shownLosses}
             </div>
-            {revealGames >= 82 && (
+            {revealGames >= nGames && (
               <div className="text-[10.5px] text-gray-500 mt-1">
                 Best streak: <span className="text-emerald-400">W{result.bestStreak}</span>
                 {" · "}Worst skid: <span className="text-red-400">L{result.worstSkid}</span>
@@ -203,17 +330,17 @@ export default function SeasonSimPanel({ players, simEra, fit, affinity01, bench
             )}
           </div>
 
-          {/* Progress bar — 82 maç */}
+          {/* Progress bar */}
           <div className="g-bar-track" style={{height:7}}>
             <div className="h-full bg-emerald-600 rounded-full transition-all duration-100"
-                 style={{ width: `${(revealGames / 82) * 100}%` }} />
+                 style={{ width: `${(revealGames / nGames) * 100}%` }} />
           </div>
 
           {/* Playoff kalifikasyonu */}
-          {revealGames >= 82 && !result.madePlayoffs && (
+          {revealGames >= nGames && !result.madePlayoffs && (
             <div className="text-center py-2 rounded-xl border border-red-900/50 bg-red-950/30">
               <span className="text-sm text-red-400 font-semibold">Missed the Playoffs</span>
-              <p className="text-[10.5px] text-gray-500 mt-0.5">Needed 41 wins — finished with {result.wins}.</p>
+              <p className="text-[10.5px] text-gray-500 mt-0.5">Needed {halfway} wins — finished with {result.wins}.</p>
             </div>
           )}
 
@@ -349,6 +476,30 @@ export default function SeasonSimPanel({ players, simEra, fit, affinity01, bench
             </div>
           )}
 
+          {/* Game Log — Rewrite History'ye özel: gerçek takvimin 82 (ya da
+              kısaltılmış sezonda daha az) maçının rakip/skor/sonucu (bkz. plan). */}
+          {stage === "done" && result.gameSchedule?.length > 0 && (
+            <div className="space-y-1.5 pt-2.5" style={{borderTop:"1px solid rgba(255,255,255,.07)"}}>
+              <div className="text-[10.5px] text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
+                <DnaIcon size={11} /> Game Log — {result.realTeam} · {result.realSeason}
+              </div>
+              <div className="max-h-56 overflow-y-auto space-y-0.5 pr-0.5">
+                {result.gameSchedule.map((g, i) => (
+                  <div key={i} className="flex items-center gap-2 px-2 py-1 rounded-md text-[10.5px]"
+                    style={{background: i % 2 === 0 ? "rgba(255,255,255,.02)" : "transparent"}}>
+                    <span className="w-5 text-gray-600 tabular-nums shrink-0">{g.gameNum}</span>
+                    <span className="w-8 text-gray-500 shrink-0">{g.isHome ? "vs" : "@"}</span>
+                    <span className="flex-1 text-gray-300 truncate">{g.opponent}</span>
+                    <span className="text-gray-600 tabular-nums shrink-0">{g.realTeamPts}-{g.realOppPts}</span>
+                    <span className={`w-4 text-right font-bold shrink-0 ${g.won ? "text-emerald-400" : "text-red-400"}`}>
+                      {g.won ? "W" : "L"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Aktif tag etkileri */}
           {stage === "done" && result.tagNotes?.length > 0 && (
             <div className="space-y-1 pt-2.5" style={{borderTop:"1px solid rgba(255,255,255,.07)"}}>
@@ -368,7 +519,8 @@ export default function SeasonSimPanel({ players, simEra, fit, affinity01, bench
             </button>
           )}
         </div>
-      )}
+        );
+      })()}
     </div>
   );
 }

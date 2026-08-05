@@ -225,6 +225,7 @@ function ScoreReveal({ fit, lineup, primaryCount, onReset, lang, affinityMatrix,
         fit={fit}
         affinity01={affinityScore != null ? affinityScore / 100 : null}
         gameScoreId={gameScoreId}
+        enableRealHistory
       />
 
       {/* Draft Analysis — eski "Roster Breakdown" + "Era Report" panellerinin

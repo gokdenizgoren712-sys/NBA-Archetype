@@ -181,10 +181,15 @@ export function computeTeamRating(players, simEra, fit, affinity01 = null, extra
   // tahmini bozuyordu → within 0.756), SONRA lineupScore veri-dürüst hafif eğriye
   // [.06,.04,0,0,0,.06] çekilince SIM'e GERİ eklendi — yalnız 1-ball-dom'u (gerçekten
   // daha az kazanır: 38.6W) hafif cezalar, 2-4 nötr. Cetvel: within 0.782→0.783 (+).
+  // v3.10: fit.roleFit artık DISPLAY'de synergy'yle harmanlı (bkz. lineupScore.js
+  // computeLineupFit) — rating'e o hâliyle girerse affinity01'in aşağıdaki
+  // (backtest-kalibreli, 0.15 ağırlıklı) katkısıyla synergy iki kere sayılır.
+  // Simülasyon için HER ZAMAN saf ballDomFit'i kullan (yoksa — eski/backtest
+  // çağrıları için — roleFit zaten saf, aynı değer).
   let rating = 0.42 * rosterQ
              + 0.18 * starPower
              + 0.28 * (fit?.coverage ?? 0.5)
-             + 0.12 * (fit?.roleFit  ?? 1.0);
+             + 0.12 * (fit?.ballDomFit ?? fit?.roleFit ?? 1.0);
   if (affinity01 != null) rating += (affinity01 - 0.65) * 0.15;
   rating += coachRatingBonus(coach);
   rating += fx.regular;
@@ -224,6 +229,15 @@ export function playGame(rating, opp, home, rand, k = LOGISTIC_K) {
 // Rakip = lig dağılımından örnek (self-consistent). Ortalama takım (0.662) → .500.
 function sampleOpponent(rand) {
   return Math.max(0.30, Math.min(0.95, OPP_MEAN + OPP_STD * randNormal(rand)));
+}
+
+// "Rewrite History": gerçek rakibin win_pct'ini OPP_MEAN/OPP_STD ölçeğine
+// z-score ile oturt — yeni sabit icat etmiyoruz, var olan kalibre edilmiş
+// dağılıma göreceli konumlandırıyoruz (bkz. plan: 82 maçlık gerçek takvim).
+function realOpponentRating(oppWinPct, leagueMeanWinPct, leagueStdWinPct) {
+  const std = leagueStdWinPct > 0.01 ? leagueStdWinPct : 0.15;
+  const z = (oppWinPct - leagueMeanWinPct) / std;
+  return Math.max(0.30, Math.min(0.95, OPP_MEAN + OPP_STD * z));
 }
 
 // Playoff rakip modeli (S5): rakip gücü hem TUR'a (survivorlar güçlenir) hem
@@ -277,12 +291,29 @@ export function simulateSeason(players, simEra, fit, affinity01 = null, extras =
   const seasonForm = (rand() - 0.5) * 0.06;
   const effRating  = rating + seasonForm;
 
-  // Regular season: 82 maç
-  const gameLog = [];
+  // Regular season: 82 maç. extras.realSchedule varsa (bkz. api/main.py
+  // /api/historical/{season}/team/{abbr}/schedule) rastgele rakip/ev-deplasman
+  // yerine GERÇEK takvim kullanılır — "Rewrite History" (bkz. plan dosyası).
+  const real = extras.realSchedule;
+  const nGames = real ? real.games.length : 82;
+  const gameLog = [];        // AYNI KALIYOR (bool dizisi) — SeasonSimPanel'in
+                              // filter(Boolean) mantığı objede kırılırdı.
+  const gameSchedule = [];   // YENİ, paralel — sadece Rewrite History'de dolu.
   let wins = 0, streak = 0, bestStreak = 0, worstSkid = 0;
-  for (let g = 0; g < 82; g++) {
-    const won = playGame(effRating, sampleOpponent(rand), g % 2 === 0, rand);
+  for (let g = 0; g < nGames; g++) {
+    const rg = real ? real.games[g] : null;
+    const oppRating = rg
+      ? realOpponentRating(rg.opp_win_pct, real.league_mean_win_pct, real.league_std_win_pct)
+      : sampleOpponent(rand);
+    const isHome = rg ? rg.is_home : (g % 2 === 0);
+    const won = playGame(effRating, oppRating, isHome, rand);
     gameLog.push(won);
+    if (rg) {
+      gameSchedule.push({
+        gameNum: rg.game_num, date: rg.date, opponent: rg.opponent, isHome,
+        won, realTeamPts: rg.team_pts, realOppPts: rg.opp_pts,
+      });
+    }
     if (won) {
       wins++;
       streak = streak > 0 ? streak + 1 : 1;
@@ -292,10 +323,12 @@ export function simulateSeason(players, simEra, fit, affinity01 = null, extras =
       worstSkid = Math.min(worstSkid, streak);
     }
   }
-  const losses = 82 - wins;
+  const losses = nGames - wins;
 
-  // Playooff kalifikasyonu: %50+ (eraball kuralı)
-  const madePlayoffs = wins >= 41;
+  // Playooff kalifikasyonu: %50+ (eraball kuralı). nGames'e ORANTILI —
+  // Rewrite History'de kısaltılmış gerçek sezonlar da olabilir (1998-99 lockout
+  // 50 maç, 2019-20/2020-21 COVID ~72 maç) — sabit 41 o sezonlarda yanlış olurdu.
+  const madePlayoffs = wins >= Math.ceil(nGames / 2);
   const seed = madePlayoffs ? winsToSeed(wins) : null;
 
   // Playoff koşusu: yıldız gücü + koç DNA'sı + yüzükler + taze bacaklar (Faz D)
@@ -333,11 +366,38 @@ export function simulateSeason(players, simEra, fit, affinity01 = null, extras =
   // ── Sezon ödülleri (Faz 3) ───────────────────────────────────────────────────
 // Simüle box-stat: gerçek PTS/REB/AST × (sim etkinliği / gerçek overall) × dakika payı.
 // Ödüller bu istatistik + takım başarısı + şans üzerinden dağıtılır.
-function computeSeasonAwards({ profiles, benchProfiles, players, bench, wins, champion }, rand) {
+function computeSeasonAwards({ profiles, benchProfiles, players, bench, wins, champion, realGames }, rand) {
   const factor = prof => prof ? prof.simQuality / Math.max(0.35, prof.overall) : 1;
   const line = (pl, prof, isBench) => {
     // Dakika payı: 35dk taban — 25dk'lık 6th man üretimin ~%71'ini, 12dk'lık ~%34'ünü verir
     const mShare = Math.min(1.15, (prof.minutes ?? (isBench ? 13 : 35)) / 35);
+    if (realGames && realGames.length) {
+      // "Rewrite History": sabit tek-seferlik formül YERİNE gerçek takvimdeki
+      // HER maçı ayrı ayrı simüle edip ortalamasını alıyoruz — maç-maç varyans
+      // (±18%, galibiyet/mağlubiyete hafif duyarlı) katıyor. Kullanıcı şikayeti:
+      // box score'lar "gerçek istatistiğin sabit çarpanla yapıştırılmış hâli"
+      // gibi hissettiriyordu (rastgelelik yok) — bu onu kökten çözüyor.
+      const sums = { pts: 0, reb: 0, ast: 0, stl: 0, blk: 0 };
+      for (const g of realGames) {
+        const noise = 1 + (rand() - 0.5) * 0.36 + (g.won ? 0.025 : -0.025);
+        const f = factor(prof) * mShare * noise;
+        sums.pts += Math.max(0, parseFloat(pl.PTS || 0)) * f;
+        sums.reb += Math.max(0, parseFloat(pl.REB || 0)) * f;
+        sums.ast += Math.max(0, parseFloat(pl.AST || 0)) * f;
+        sums.stl += Math.max(0, parseFloat(pl.STL || 0)) * f;
+        sums.blk += Math.max(0, parseFloat(pl.BLK || 0)) * f;
+      }
+      const n = realGames.length;
+      return {
+        name:  prof.name,
+        min:   prof.minutes ?? (isBench ? 13 : 35),
+        pts: +(sums.pts / n).toFixed(1), reb: +(sums.reb / n).toFixed(1), ast: +(sums.ast / n).toFixed(1),
+        stl: +(sums.stl / n).toFixed(1), blk: +(sums.blk / n).toFixed(1),
+        fg3: pl.FG3_PCT != null && !isNaN(+pl.FG3_PCT) ? Math.round(+pl.FG3_PCT * 100) : null,
+        q:     prof.simQuality,
+        bench: isBench,
+      };
+    }
     const f = factor(prof) * mShare;
     const st = k => +(Math.max(0, parseFloat(pl[k] || 0)) * f).toFixed(1);
     return {
@@ -404,14 +464,16 @@ const RESULT_LABEL = {
   };
 
   const { statLines, awards } = computeSeasonAwards(
-    { profiles, benchProfiles, players, bench: extras.bench || [], wins, champion }, rand,
+    { profiles, benchProfiles, players, bench: extras.bench || [], wins, champion, realGames: gameSchedule },
+    rand,
   );
 
   return {
     simEra, rating, playoffRating, profiles, benchProfiles, coach, starPower,
     tagNotes: fx?.notes ?? [], benchBalanced,
     statLines, awards,
-    gameLog, wins, losses,
+    gameLog, gameSchedule, realTeam: real?.team ?? null, realSeason: real?.season ?? null,
+    wins, losses,
     bestStreak, worstSkid: Math.abs(worstSkid),
     madePlayoffs, seed,
     playoffRounds, champion,

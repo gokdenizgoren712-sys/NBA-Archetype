@@ -36,10 +36,15 @@ NAME_TO_ABBREV = {
     "Phoenix Suns": "PHO", "Portland Trail Blazers": "POR", "Sacramento Kings": "SAC",
     "San Antonio Spurs": "SAS", "San Diego Clippers": "SDC", "Seattle SuperSonics": "SEA",
     "Utah Jazz": "UTA", "Washington Bullets": "WSB",
+    "Toronto Raptors": "TOR", "Vancouver Grizzlies": "VAN",  # 1995-96 genişleme takımları
 }
 
-# hist_merged'de W olmayan sezonlar (backtest örneklemindeki pre-1996 seçimleri)
-DEFAULT_SEASONS = ["1983-84", "1986-87", "1990-91", "1991-92", "1994-95"]
+# hist_merged'de W olmayan TÜM pre-1996 sezonlar (2026-08: "Rewrite History"
+# özelliği — gerçek takvimdeki her rakibin o sezonki gücünü bilmek için tüm
+# 13 sezon gerekiyor, eskiden backtest örneklemindeki 5 sezonla sınırlıydı).
+DEFAULT_SEASONS = ["1983-84", "1984-85", "1985-86", "1986-87", "1987-88",
+                    "1988-89", "1989-90", "1990-91", "1991-92", "1992-93",
+                    "1993-94", "1994-95", "1995-96"]
 
 
 def fetch_season_wins(season: str) -> pd.DataFrame:

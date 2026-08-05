@@ -96,7 +96,13 @@ export function computeLineupFit(players, simEra, affinityMatrix) {
   return {
     creation: creationCov, spacing: spacingCov, rim_protection: rimCov,
     perimeter_d: perimCov, finishing: finishingCov,
-    roleFit, synergy, nShooters, coverage, avgQuality,
+    // roleFit: DISPLAY için (synergy'yle harmanlı, "Role Fit" barı + lineupScore
+    // notu). ballDomFit: SİMÜLASYON için (saf, synergy'siz) — computeTeamRating
+    // (seasonSim.js) bunu kullanır. İkisini AYNI değere indirgemeyin: rating
+    // formülü affinity01'i AYRICA ekliyor (0.15 ağırlık, 514-takım backtest'e
+    // göre kalibre), roleFit alanına synergy'yi de karıştırmak sim'de synergy'yi
+    // iki kere saymak (ve kalibrasyonu bozmak) anlamına gelir.
+    roleFit, ballDomFit, synergy, nShooters, coverage, avgQuality,
     lineupScore, perPlayer,
   };
 }
