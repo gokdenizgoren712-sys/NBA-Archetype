@@ -1697,8 +1697,6 @@ def get_historical(
 # edilmiş halde yazıldı (bkz. fetch_schedules._normalize_abbrev) — burada ek
 # bir eşleme gerekmiyor.
 
-_MULTI_TEAM_ROWS = {"2TM", "3TM", "4TM", "TOT"}
-
 @lru_cache(maxsize=60)
 def _load_schedule(season: str) -> pd.DataFrame:
     p = DATA / f"{season}__schedule.parquet"
@@ -1707,42 +1705,29 @@ def _load_schedule(season: str) -> pd.DataFrame:
 
 @lru_cache(maxsize=60)
 def _team_win_pcts(season: str) -> dict:
-    """Sezonun {TEAM_ABBREVIATION: {wins, losses, win_pct}} sözlüğü.
-    1996-97+ hist_merged'den (max W per takım, çoklu-takım TOT satırları
-    hariç — bkz. src/scratch/export_modern_backtest.py'deki aynı desen),
-    pre-1996 için fetch_standings.py'nin ürettiği team_wins.parquet'ten."""
-    try:
-        year = int(season.split("-")[0])
-    except (ValueError, IndexError):
+    """Sezonun {TEAM_ABBREVIATION: {wins, losses, win_pct}} sözlüğü —
+    doğrudan schedule.parquet'ten türetilir (her takımın WL satırlarını say).
+    2026-08 düzeltme: önceden 1996-97+ için {season}__hist_merged.parquet
+    kullanıyordu, ama o dosyalar data/*'ün "ham ara önbellek" kısmında kaldı
+    (git'e force-add edilmedi, bkz. CLAUDE.md data/ notu) — Railway'de HİÇ
+    yoktu, bu yüzden Board Challenge/Rewrite History'de 1995-96 dışındaki
+    (yalnızca team_wins.parquet'i force-add edilmiş pre-1996 sezonlar
+    çalışıyordu) tüm sezonlarda takım listesi boş geliyordu. schedule.parquet
+    HER sezon için zaten force-add edilmiş (Rewrite History'nin kendisi ona
+    bağımlı) — win/loss'u da oradan saymak hem üretim ortamında her zaman
+    veri garantiliyor hem de tek bir kod yolu, hem de daha doğru (takım
+    seviyesinde sayılıyor, mid-season trade edilen oyuncuların kısmi W/L'i
+    karışmıyor — bkz. eski yorum: GSW 2015-16 artık tam 73-9, önceden 73-8
+    çıkıyordu)."""
+    sched = _load_schedule(season)
+    if sched.empty:
         return {}
     out = {}
-    if year >= 1996:
-        p = DATA / f"{season}__hist_merged.parquet"
-        if not p.exists():
-            return {}
-        df = pd.read_parquet(p, columns=["TEAM_ABBREVIATION", "W", "L"])
-        df = df[~df["TEAM_ABBREVIATION"].astype(str).str.upper().isin(_MULTI_TEAM_ROWS)]
-        # W/L satır-bazlı — mid-season trade edilen bir oyuncunun W/L'i o takımdaki
-        # KISMİ dönemini yansıtır. W ve L'yi BAĞIMSIZ max almak farklı oyuncuların
-        # farklı kısmi dönemlerini karıştırıp yanlış (ör. GSW 73-12 gibi) bir kayıt
-        # üretiyordu — bunun yerine en çok maç oynamış (W+L en büyük) TEK satırın
-        # W/L ÇİFTİNİ birlikte alıyoruz, en tam sezonu yansıtan gerçek kayıt bu.
-        df["_gp"] = df["W"] + df["L"]
-        idx = df.groupby("TEAM_ABBREVIATION")["_gp"].idxmax()
-        best = df.loc[idx]
-        for _, row in best.iterrows():
-            w, l = int(row["W"]), int(row["L"])
-            if w + l > 0:
-                out[row["TEAM_ABBREVIATION"]] = {"wins": w, "losses": l, "win_pct": w / (w + l)}
-    else:
-        p = DATA / f"{season}__team_wins.parquet"
-        if not p.exists():
-            return {}
-        df = pd.read_parquet(p)
-        for _, row in df.iterrows():
-            w, l = int(row["WINS"]), int(row["LOSSES"])
-            if w + l > 0:
-                out[row["TEAM_ABBREVIATION"]] = {"wins": w, "losses": l, "win_pct": w / (w + l)}
+    for abbr, grp in sched.groupby("TEAM_ABBREVIATION"):
+        wins = int((grp["WL"] == "W").sum())
+        losses = int((grp["WL"] == "L").sum())
+        if wins + losses > 0:
+            out[abbr] = {"wins": wins, "losses": losses, "win_pct": wins / (wins + losses)}
     return out
 
 
