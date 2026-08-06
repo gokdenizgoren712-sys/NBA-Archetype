@@ -21,7 +21,15 @@ function seasonsInEra(era) {
   return out;
 }
 
-export default function SeasonSimPanel({ players, simEra, fit, affinity01, bench = [], coach = null, gameScoreId = null, enableRealHistory = false }) {
+export default function SeasonSimPanel({
+  players, simEra, fit, affinity01, bench = [], coach = null, gameScoreId = null, enableRealHistory = false,
+  // Board Challenge bonus koşusu (bkz. WithAFriendGame.jsx BonusHistoryPanel):
+  // fixedSeason doluysa sezon adımı hiç gösterilmez, mod her zaman "history"
+  // kilitlenir, excludeTeam takım listesinden çıkarılır (aynı sezonda iki
+  // kadro aynı gerçek takımın yerine geçemez), noSave true'ysa hiçbir sonuç
+  // leaderboard'a yazılmaz (bu koşu 7 maçlık seriden tamamen ayrı bir ekstra).
+  fixedSeason = null, excludeTeam = null, noSave = false,
+}) {
   const { isLoggedIn, token } = useAuth();
   const [result, setResult]           = useState(null);
   const [revealGames, setRevealGames] = useState(0);
@@ -38,15 +46,28 @@ export default function SeasonSimPanel({ players, simEra, fit, affinity01, bench
   // "Rewrite History" (bkz. plan: docs/plans/fancy-cooking-gizmo.md) — Single
   // Player'a özel, opt-in. simMode="quick" bugünkü davranış, "history" gerçek
   // sezon+takım seçimi açar.
-  const [simMode, setSimMode]   = useState("quick");   // "quick" | "history"
-  const [rhStep, setRhStep]     = useState("season");   // season | team | ready
+  const [simMode, setSimMode]   = useState(fixedSeason ? "history" : "quick");   // "quick" | "history"
+  const [rhStep, setRhStep]     = useState(fixedSeason ? "team" : "season");   // season | team | ready
   const [rhSeasons]             = useState(() => seasonsInEra(simEra));
-  const [rhSeason, setRhSeason] = useState(null);
+  const [rhSeason, setRhSeason] = useState(fixedSeason || null);
   const [rhTeams, setRhTeams]   = useState([]);
   const [rhTeam, setRhTeam]     = useState(null);
   const [rhSchedule, setRhSchedule] = useState(null);
   const [rhLoading, setRhLoading]   = useState(false);
   const [rhError, setRhError]       = useState("");
+  const visibleRhTeams = excludeTeam ? rhTeams.filter(t => t.abbr !== excludeTeam) : rhTeams;
+
+  // fixedSeason'da sezon adımı hiç gösterilmiyor — takım listesini doğrudan
+  // mount'ta çek (bkz. yukarıdaki pickRhSeason ile aynı istek, tek fark
+  // burada kullanıcı tıklaması beklenmiyor).
+  useEffect(() => {
+    if (!fixedSeason) return;
+    setRhLoading(true);
+    fetch(`/api/historical/${fixedSeason}/teams`).then(r => r.json())
+      .then(d => setRhTeams(d.teams || []))
+      .catch(() => setRhError("Could not load teams for this season."))
+      .finally(() => setRhLoading(false));
+  }, [fixedSeason]);
 
   const pickRhSeason = (s) => {
     setRhSeason(s); setRhTeam(null); setRhSchedule(null); setRhError("");
@@ -87,7 +108,10 @@ export default function SeasonSimPanel({ players, simEra, fit, affinity01, bench
     fetch("/api/game/season-result", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ wins: res.wins, season_result: resultKey, sim_era: simEra.id, game_id: gameScoreId }),
+      body: JSON.stringify({
+        wins: res.wins, season_result: resultKey, sim_era: simEra.id, game_id: gameScoreId,
+        real_season: res.realSeason || null, real_team: res.realTeam || null,
+      }),
     }).catch(() => {});
   };
 
@@ -137,7 +161,7 @@ export default function SeasonSimPanel({ players, simEra, fit, affinity01, bench
     setRunCount(c => c + 1);
     setDynasty({ year: 1, titles: res.champion ? 1 : 0 });
     animate(res);
-    if (isFirst && isLoggedIn && token) postResult(res, res.resultKey);
+    if (isFirst && isLoggedIn && token && !noSave) postResult(res, res.resultKey);
   };
 
   // Faz E: şampiyonluğu savun — kadro her sezon yaşlanır (S6: hızlanan eğri, agePenaltyFor)
@@ -149,7 +173,7 @@ export default function SeasonSimPanel({ players, simEra, fit, affinity01, bench
     setDynasty({ year: nextYear, titles: newTitles, ended: !res.champion });
     animate(res, () => {
       // İlk dynasty koşusunda repeat/threepeat leaderboard'a yükseltilir
-      if (runCount === 1 && isLoggedIn && token && res.champion) {
+      if (runCount === 1 && isLoggedIn && token && res.champion && !noSave) {
         if (newTitles >= 3)      postResult(res, "THREEPEAT");
         else if (newTitles === 2) postResult(res, "REPEAT");
       }
@@ -186,7 +210,7 @@ export default function SeasonSimPanel({ players, simEra, fit, affinity01, bench
       {/* === IDLE: mod seçimi (Rewrite History) + rotasyon + başlat === */}
       {stage === "idle" && (
         <div className="space-y-3">
-          {enableRealHistory && (
+          {enableRealHistory && !fixedSeason && (
             <div className="flex gap-1.5 p-1 rounded-lg" style={{background:"var(--bg-surface)",border:"1px solid var(--border)"}}>
               <button onClick={()=>setSimMode("quick")}
                 className="flex-1 py-1.5 rounded-md text-[10.5px] font-bold uppercase tracking-wide transition-colors"
@@ -204,8 +228,11 @@ export default function SeasonSimPanel({ players, simEra, fit, affinity01, bench
           {simMode === "history" && rhStep !== "ready" ? (
             <div className="space-y-2.5">
               <p className="text-[11px] text-gray-400 leading-relaxed">
-                Step into a real {simEra.label} season. Pick the year, then the team your draft replaces —
-                you'll play their exact 82-game schedule, real opponents and all.
+                {fixedSeason
+                  ? <>Pick the {fixedSeason} team your draft replaces{excludeTeam ? <> (any team but the <span className="text-yamabuki font-medium">{excludeTeam}</span> you're facing)</> : null} —
+                      you'll play their exact schedule, real opponents and all.</>
+                  : <>Step into a real {simEra.label} season. Pick the year, then the team your draft replaces —
+                      you'll play their exact 82-game schedule, real opponents and all.</>}
               </p>
               {rhError && <p className="text-[11px] text-red-400">{rhError}</p>}
 
@@ -225,10 +252,12 @@ export default function SeasonSimPanel({ players, simEra, fit, affinity01, bench
 
               {rhStep === "team" && (
                 <div className="space-y-2">
-                  <button onClick={()=>{setRhStep("season"); setRhTeam(null);}}
-                    className="text-[10.5px]" style={{color:"var(--text-muted)"}}>← Back to seasons</button>
+                  {!fixedSeason && (
+                    <button onClick={()=>{setRhStep("season"); setRhTeam(null);}}
+                      className="text-[10.5px]" style={{color:"var(--text-muted)"}}>← Back to seasons</button>
+                  )}
                   <div className="grid grid-cols-2 gap-1.5 max-h-64 overflow-y-auto pr-0.5">
-                    {rhTeams.map(t => (
+                    {visibleRhTeams.map(t => (
                       <button key={t.abbr} onClick={()=>pickRhTeam(t.abbr)} disabled={rhLoading}
                         className="g-tile" style={{padding:"9px 8px","--accent":"#FFB11B","--accent-a":"rgba(255,177,27,.10)","--accent-line":"rgba(255,177,27,.35)"}}>
                         <div className="flex items-center justify-between">
@@ -515,7 +544,9 @@ export default function SeasonSimPanel({ players, simEra, fit, affinity01, bench
             <button onClick={run}
               className="aura-pill-btn w-full justify-center" style={{padding:"9px"}}>
               <span className="inline-flex items-center gap-1.5"><LoopIcon size={14} /> Run It Back</span>
-              <span className="text-[9.5px] text-gray-600 ml-1.5">(fresh dynasty — only your first counts for the board)</span>
+              <span className="text-[9.5px] text-gray-600 ml-1.5">
+                {noSave ? "(fresh dynasty — just for fun, nothing is saved)" : "(fresh dynasty — only your first counts for the board)"}
+              </span>
             </button>
           )}
         </div>

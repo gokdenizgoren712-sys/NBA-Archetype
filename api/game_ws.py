@@ -922,7 +922,8 @@ _CHALLENGE_COACH_POOL = [
 ]
 
 
-def _init_challenge_state(p1: int, p2: int, usernames: dict, roster: list, sim_era_id: str) -> dict:
+def _init_challenge_state(p1: int, p2: int, usernames: dict, roster: list, sim_era_id: str,
+                           real_season: str | None = None, real_team: str | None = None) -> dict:
     lineup_p2 = {s: None for s in ALL_SLOTS}
     for i, slot in enumerate(ALL_SLOTS):
         if i < len(roster):
@@ -934,6 +935,11 @@ def _init_challenge_state(p1: int, p2: int, usernames: dict, roster: list, sim_e
         "usernames": usernames,
         "player1_user_id": p1, "player2_user_id": p2,
         "sim_era_id": sim_era_id or None,
+        # Rewrite History: board kadrosu gerçek bir sezon/takımın yerine
+        # geçtiyse burada taşınır — meydan okuyan (p1) kendi bonus koşusu için
+        # AYNI sezondan FARKLI bir takım seçer (bkz. real_team hariç tutma,
+        # frontend WithAFriendGame.jsx BonusHistoryPanel).
+        "real_season": real_season or None, "real_team": real_team or None,
         "round": 0,
         "turn_queue": [p1], "turn_pos": 0,
         "spin_seq": 0,
@@ -990,6 +996,7 @@ def _board_row_to_entry(r):
     return {
         "id": r["id"], "username": r["username"], "pct": r["pct"], "grade": r["grade"],
         "wins": r["wins"], "season_result": r["season_result"], "sim_era": r["sim_era"],
+        "real_season": r["real_season"], "real_team": r["real_team"],
         "created_at": r["created_at"], "roster": roster,
     }
 
@@ -1001,7 +1008,7 @@ def get_board(limit: int = Query(25, ge=1, le=100)):
     with get_conn() as conn:
         rows = conn.execute(
             """SELECT lg.id, lg.pct, lg.grade, lg.roster_json, lg.created_at,
-                      lg.wins, lg.season_result, lg.sim_era, u.username
+                      lg.wins, lg.season_result, lg.sim_era, lg.real_season, lg.real_team, u.username
                FROM lineup_games lg JOIN users u ON lg.user_id = u.id
                WHERE lg.mode = 'salarycap' AND lg.roster_json IS NOT NULL
                ORDER BY lg.pct DESC"""
@@ -1029,7 +1036,7 @@ def get_board_at_score(pct: int = Query(..., ge=0, le=100), limit: int = Query(5
     with get_conn() as conn:
         rows = conn.execute(
             """SELECT lg.id, lg.pct, lg.grade, lg.roster_json, lg.created_at,
-                      lg.wins, lg.season_result, lg.sim_era, u.username
+                      lg.wins, lg.season_result, lg.sim_era, lg.real_season, lg.real_team, u.username
                FROM lineup_games lg JOIN users u ON lg.user_id = u.id
                WHERE lg.mode = 'salarycap' AND lg.roster_json IS NOT NULL AND lg.pct = ?
                ORDER BY lg.id DESC LIMIT ?""",
@@ -1068,7 +1075,10 @@ def challenge_board(body: ChallengeBody, user=Depends(get_current_user)):
     _finalize_join(room_code, opponent_user_id)
 
     sim_era = row["sim_era"] or ""
-    ROOM_STATES[room_code] = _init_challenge_state(user_id, opponent_user_id, usernames, roster, sim_era)
+    real_season = row["real_season"] or None
+    real_team = row["real_team"] or None
+    ROOM_STATES[room_code] = _init_challenge_state(
+        user_id, opponent_user_id, usernames, roster, sim_era, real_season, real_team)
     _save_state(room_code, ROOM_STATES[room_code])
 
     return {

@@ -186,3 +186,15 @@ def init_db():
             conn.execute("ALTER TABLE lineup_games ADD COLUMN roster_json TEXT")
         except Exception:
             pass
+        # Rewrite History → Board Challenge: bir Single Player koşusu gerçek
+        # bir sezon/takımın yerine geçtiyse burada saklanır (NULL = Quick Sim,
+        # normal davranış). Board Challenge'da bu bilgi meydan okuyana taşınır
+        # — o da AYNI sezondan FARKLI bir takımı kendi bonus koşusu için seçer.
+        for col, dfn in [
+            ("real_season", "TEXT"),
+            ("real_team",   "TEXT"),
+        ]:
+            try:
+                conn.execute(f"ALTER TABLE lineup_games ADD COLUMN {col} {dfn}")
+            except Exception:
+                pass

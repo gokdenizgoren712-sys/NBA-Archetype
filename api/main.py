@@ -3408,6 +3408,11 @@ class SeasonResultBody(BaseModel):
     # YANLIŞ satırı güncelleyebiliyordu (bkz. 2026-08 online-architecture
     # denetimi) — o yüzden frontend artık her zaman id gönderiyor.
     game_id: int | None = None
+    # Rewrite History: doluysa bu koşu gerçek bir sezon/takımın yerine geçti
+    # (bkz. api/db.py real_season/real_team notu). Board Challenge bu ikisini
+    # meydan okuyana taşımak için okur.
+    real_season: str | None = None
+    real_team: str | None = None
 
 _VALID_SEASON_RESULTS = {"CHAMPION", "REPEAT", "THREEPEAT", "FINALS", "CF", "SEMI", "R1", "MISSED"}
 
@@ -3432,8 +3437,9 @@ def save_season_result(body: SeasonResultBody, user=Depends(get_current_user)):
         if not row:
             return {"ok": False, "detail": "No game score to attach to"}
         conn.execute(
-            "UPDATE lineup_games SET wins=?, season_result=?, sim_era=? WHERE id=?",
-            (body.wins, body.season_result, body.sim_era[:32], row["id"]),
+            "UPDATE lineup_games SET wins=?, season_result=?, sim_era=?, real_season=?, real_team=? WHERE id=?",
+            (body.wins, body.season_result, body.sim_era[:32],
+             (body.real_season or None), (body.real_team[:8] if body.real_team else None), row["id"]),
         )
     return {"ok": True}
 

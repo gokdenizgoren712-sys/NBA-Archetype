@@ -23,10 +23,11 @@ import CoachPicker from "../game/CoachPicker";
 import DraftAnalysis from "../game/DraftAnalysis";
 import GameBox from "../game/GameBox";
 import PlayerDetailModal from "../game/PlayerDetailModal";
+import SeasonSimPanel from "../game/SeasonSimPanel";
 import {
   WheelIcon, UsersIcon, TrophyIcon, CheckIcon, LinkIcon,
   StarIcon, CoachIcon, CapIcon, RefreshIcon, CalendarIcon, BoltIcon,
-  SearchIcon, WarnIcon, DiceIcon, PlayIcon, EyeIcon, LoopIcon,
+  SearchIcon, WarnIcon, DiceIcon, PlayIcon, EyeIcon, LoopIcon, DnaIcon,
 } from "../game/GameIcons";
 import "../game/game.css";
 
@@ -253,6 +254,7 @@ export default function WithAFriendGame() {
   const pickCoachAction = (coach) => send({ type: "pick_coach", coach_name: coach.name });
 
   let matchup = null;
+  let myCoachObj = null;
   if (game && (game.phase === "series" || game.phase === "complete")) {
     const seatLineups = { 1: game.lineups[myUserId], 2: game.lineups[opponentUserId] };
     const seatCoaches = {
@@ -260,6 +262,7 @@ export default function WithAFriendGame() {
       2: COACHES.find(c => c.name === game.coaches[opponentUserId]) || null,
     };
     matchup = buildMatchup(seatLineups, seatCoaches, simEra);
+    myCoachObj = seatCoaches[1];
   }
   const playNextGameAction = () => {
     if (!matchup) return;
@@ -545,6 +548,11 @@ export default function WithAFriendGame() {
               <SeriesPanel game={game} matchup={matchup} seatName={seatName} simEra={simEra}
                 myUserId={myUserId} opponentUserId={opponentUserId}
                 toSeatGame={toSeatGame} onNextGame={playNextGameAction} />
+            )}
+
+            {(game.phase === "series" || game.phase === "complete") && matchup &&
+              game.mode === "challenge" && game.real_season && game.real_team && (
+              <BonusHistoryPanel game={game} matchup={matchup} coach={myCoachObj} simEra={simEra} />
             )}
 
             {game.phase === "complete" && (
@@ -840,6 +848,46 @@ function TeamPreviewCard({ username, lineup, simEra, moveSrc, canRearrange, onSl
         {BENCH_SLOTS.map(pos => <Row key={pos} pos={pos} bench />)}
       </div>
       <BenchCoverage bench={BENCH_SLOTS.map(pos => lu[pos])} />
+    </div>
+  );
+}
+
+// ── Rewrite History bonus (Board Challenge) ─────────────────────────────────
+// Board kadrosu gerçek bir sezon/takımın yerine geçtiyse (bkz. LineupGame.jsx
+// Single Player Rewrite History), meydan okuyan AYNI sezondan FARKLI bir
+// gerçek takımı kendi kadrosuyla simüle edebilir. Kullanıcı kararı: bu koşu
+// 7 maçlık seriden TAMAMEN AYRI, isteğe bağlı bir ekstra — seri sonucunu
+// ETKİLEMEZ, hiçbir şey leaderboard'a kaydedilmez (SeasonSimPanel noSave).
+function BonusHistoryPanel({ game, matchup, coach, simEra }) {
+  const [open, setOpen] = useState(false);
+  const side = matchup[1];
+  return (
+    <div className="g-panel p-4 space-y-3" style={{ border: "1px solid rgba(255,177,27,.25)" }}>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="min-w-0">
+          <div className="text-[10px] uppercase tracking-widest flex items-center gap-1.5" style={{ color: "var(--yamabuki)" }}>
+            <DnaIcon size={12} /> Rewrite History — Bonus
+          </div>
+          <p className="text-[11px] text-gray-400 mt-1 leading-relaxed">
+            This board roster played as the <span className="text-white font-semibold">{game.real_season} {game.real_team}</span>.
+            Simulate your own roster as a different {game.real_season} team — just for fun, it won't change the series.
+          </p>
+        </div>
+        {!open && (
+          <button onClick={() => setOpen(true)}
+            className="shrink-0 px-3 py-2 rounded-lg text-[11px] font-bold uppercase tracking-wide inline-flex items-center gap-1.5"
+            style={{ background: "linear-gradient(90deg,#FFD470,#FFB11B)", color: "#000" }}>
+            <DnaIcon size={12} /> Simulate
+          </button>
+        )}
+      </div>
+      {open && (
+        <SeasonSimPanel
+          players={side.players} bench={side.bench} coach={coach}
+          simEra={simEra} fit={side.fit} affinity01={null}
+          enableRealHistory fixedSeason={game.real_season} excludeTeam={game.real_team} noSave
+        />
+      )}
     </div>
   );
 }
