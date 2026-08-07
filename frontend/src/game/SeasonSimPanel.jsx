@@ -3,7 +3,10 @@
 // dynasty modu: şampiyonluğu savun → back-to-back → THREEPEAT.
 
 import { useState, useRef, useEffect } from "react";
-import { simulateSeason, BASE_MINUTES, MINUTE_FLEX, agePenaltyFor } from "./seasonSim";
+import { simulateSeason, computeLeagueAwards, BASE_MINUTES, MINUTE_FLEX, agePenaltyFor } from "./seasonSim";
+import { buildLeague } from "./leagueSim";
+import { buildConferenceStandings, initBracket, computeUserPlayoffStatLines } from "./playoffBracket";
+import PlayoffBracket from "./PlayoffBracketView";
 import { useAuth } from "../contexts/AuthContext";
 import { CoachIcon, TrophyIcon, CrownIcon, PlayIcon, LoopIcon, DnaIcon, WheelIcon } from "./GameIcons";
 import "./game.css";
@@ -47,6 +50,16 @@ export default function SeasonSimPanel({
   // Faz E: dynasty durumu — {year, titles} (titles = art arda şampiyonluk)
   const [dynasty, setDynasty] = useState({ year: 1, titles: 0 });
   const timerRef = useRef(null);
+
+  // "Tam lig" (bkz. leagueSim.js buildLeague) — Rewrite History'de Simulate
+  // Season'a basılınca ÖNCE diğer 29 gerçek takımın roster-bazlı reytingi/
+  // sezonu kuruluyor, SONRA kullanıcının kendi sezonu o reytinglerle koşuyor.
+  const [leagueLoading, setLeagueLoading] = useState(false);
+  const [league, setLeague] = useState(null);   // {teamRatings, teamSeasons, rosterByAbbr}
+  // Faz C: gerçek playoff bracket'i — "Simulate Playoffs" tıklanınca kurulur.
+  const [bracket, setBracket] = useState(null);
+  // Faz D: "Season Awards" tablosunda Regular Season/Playoffs toggle.
+  const [statView, setStatView] = useState("regular");   // "regular" | "playoffs"
 
   // "Rewrite History" (bkz. plan: docs/plans/fancy-cooking-gizmo.md) — Single
   // Player'a özel, opt-in. simMode="quick" bugünkü davranış, "history" gerçek
@@ -157,10 +170,26 @@ export default function SeasonSimPanel({
 
   // Yeni dynasty (sezon 1). Yalnızca İLK koşu leaderboard'a işlenir.
   // Rewrite History'de extras.realSchedule dolu — seasonSim.js gerçek rakip/
-  // ev-deplasman/maç-maç box score yoluna geçer (bkz. plan).
-  const run = () => {
+  // ev-deplasman/maç-maç box score yoluna geçer (bkz. plan). "Tam lig" modu:
+  // önce diğer 29 gerçek takımın roster-bazlı reytingi kuruluyor (buildLeague),
+  // sonra o reytingler extras.teamRatings olarak kullanıcının kendi
+  // simulateSeason çağrısına geçiyor — rakip gücü artık win_pct-proxy değil.
+  const run = async () => {
+    setBracket(null);
     const extras = { bench, coach, minutes };
-    if (simMode === "history" && rhSchedule) extras.realSchedule = rhSchedule;
+    if (simMode === "history" && rhSchedule) {
+      extras.realSchedule = rhSchedule;
+      setLeagueLoading(true);
+      try {
+        const built = await buildLeague(rhSchedule.season, rhSchedule.team, simEra);
+        setLeague(built);
+        extras.teamRatings = built.teamRatings;
+      } catch {
+        // Sessiz fallback: teamRatings olmadan simulateSeason eski win_pct-proxy'e döner.
+      } finally {
+        setLeagueLoading(false);
+      }
+    }
     const res = simulateSeason(players, simEra, fit, affinity01, extras);
     const isFirst = runCount === 0;
     setRunCount(c => c + 1);
@@ -345,13 +374,23 @@ export default function SeasonSimPanel({
           </div>
 
           <button onClick={run}
-            disabled={simMode==="history" && !rhSchedule}
+            disabled={(simMode==="history" && !rhSchedule) || leagueLoading}
             className={`w-full py-3 text-white rounded-xl font-semibold transition-colors inline-flex items-center justify-center gap-2 disabled:opacity-40 ${
               simMode==="history" ? "" : "bg-emerald-700 hover:bg-emerald-600"}`}
             style={simMode==="history" ? {background:"linear-gradient(90deg,#FFD470,#FFB11B)",color:"#000"} : undefined}>
-            {simMode==="history" ? <DnaIcon size={16} /> : <PlayIcon size={16} />}
-            {simMode==="history" && rhSchedule ? `Simulate the ${rhSchedule.team}'s Season` : "Simulate Season"}
+            {leagueLoading ? (
+              <><span className="inline-block animate-spin"><WheelIcon size={16} /></span> Building the league…</>
+            ) : simMode==="history" ? (
+              <><DnaIcon size={16} /> {rhSchedule ? `Simulate the ${rhSchedule.team}'s Season` : "Simulate Season"}</>
+            ) : (
+              <><PlayIcon size={16} /> Simulate Season</>
+            )}
           </button>
+          {leagueLoading && (
+            <p className="text-[10.5px] text-center" style={{color:"var(--text-muted)"}}>
+              Scoring the other 29 rosters through the same engine — this is what makes it real.
+            </p>
+          )}
           {!isLoggedIn && (
             <p className="text-[10.5px] text-gray-600 text-center">Log in to record season results on the leaderboard.</p>
           )}
@@ -499,6 +538,84 @@ export default function SeasonSimPanel({
             </div>
           )}
 
+          {/* Faz B: East/West sıralaması + organik lig ödülleri — "tam lig"
+              (bkz. leagueSim.js) kurulduysa görünür. 29 gerçek takımın KENDİ
+              roster-bazlı simüle sezonu + kullanıcının kendi sonucu birlikte
+              gerçek bir alternatif-tarih ligi oluşturuyor. */}
+          {stage === "done" && league && rhSchedule && (() => {
+            const standings = buildConferenceStandings(league.teamSeasons, rhSchedule.team, result.wins, result.losses);
+            const allTeams = [
+              { abbr: rhSchedule.team, players, bench, statLines: result.statLines, wins: result.wins },
+              ...Object.entries(league.teamSeasons).map(([abbr, season]) => ({
+                abbr, players: league.rosterByAbbr[abbr]?.starters, bench: league.rosterByAbbr[abbr]?.bench,
+                statLines: season.statLines, wins: season.wins,
+              })),
+            ];
+            const leagueAwards = computeLeagueAwards(allTeams);
+            const ConfTable = ({ label, teams }) => (
+              <div className="flex-1 min-w-0">
+                <div className="text-[9.5px] uppercase tracking-widest mb-1" style={{color:"var(--text-muted)"}}>{label}</div>
+                <div className="space-y-0.5">
+                  {teams.map(t => (
+                    <div key={t.abbr} className={`flex items-center gap-2 px-1.5 py-0.5 rounded text-[10.5px] ${t.isUser ? "font-bold" : ""}`}
+                      style={t.isUser ? {background:"rgba(255,177,27,.14)", color:"var(--yamabuki)"} : {color:"var(--text-secondary,#d1d5db)"}}>
+                      <span className="w-4 text-right tabular-nums shrink-0" style={{color:"var(--text-faint)"}}>{t.seed}</span>
+                      <span className="flex-1 truncate">{t.abbr}</span>
+                      <span className="tabular-nums shrink-0">{t.wins}-{t.losses}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+            return (
+              <div className="space-y-3 pt-2.5" style={{borderTop:"1px solid rgba(255,255,255,.07)"}}>
+                <div className="text-xs text-gray-300 uppercase tracking-widest font-semibold">
+                  The League — {rhSchedule.season}
+                </div>
+                <p className="text-[10.5px] leading-relaxed" style={{color:"var(--text-muted)"}}>
+                  All 30 teams, simulated the same way your roster was — every real player scored through the same engine.
+                </p>
+                <div className="flex gap-4">
+                  <ConfTable label="Eastern Conference" teams={standings.East} />
+                  <ConfTable label="Western Conference" teams={standings.West} />
+                </div>
+                <div className="space-y-1">
+                  <div className="text-[9.5px] uppercase tracking-widest" style={{color:"var(--text-muted)"}}>League Awards</div>
+                  {leagueAwards.map((a, i) => (
+                    <div key={i} className="text-[11px] text-gray-200">
+                      {a.icon} {a.label} — {a.name} <span style={{color:"var(--text-faint)"}}>({a.team})</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Faz C: gerçek playoff bracket'i — sadece playoff'a kalan
+                    takımlar için (kullanıcının kendi playoff kalifikasyonuna
+                    bakılmaksızın ligin geneli oynanabilir). */}
+                {!bracket ? (
+                  <button
+                    onClick={() => {
+                      // Faz D: playoff box-score + organik MVP için roster/profile bilgisi
+                      // (bkz. playoffBracket.js rosterOf/accumulateBoxScores).
+                      const rosterInfo = {};
+                      for (const [abbr, r] of Object.entries(league.rosterByAbbr)) {
+                        rosterInfo[abbr] = { players: r.starters, bench: r.bench,
+                          profiles: league.teamSeasons[abbr]?.profiles, benchProfiles: league.teamSeasons[abbr]?.benchProfiles };
+                      }
+                      const userRoster = { players, bench, profiles: result.profiles, benchProfiles: result.benchProfiles };
+                      setBracket(initBracket(rhSchedule.season, league.teamSeasons, league.teamRatings, rhSchedule.team,
+                        result.rating, result.wins, result.losses, Math.random, rosterInfo, userRoster));
+                    }}
+                    className="w-full py-2.5 rounded-xl font-bold text-[11px] uppercase tracking-wide inline-flex items-center justify-center gap-1.5"
+                    style={{background:"linear-gradient(90deg,#FFD470,#FFB11B)",color:"#000"}}>
+                    <TrophyIcon size={14} /> Simulate Playoffs
+                  </button>
+                ) : (
+                  <PlayoffBracket bracket={bracket} onUpdate={setBracket} />
+                )}
+              </div>
+            );
+          })()}
+
           {/* Faz E: şampiyonluğu savun */}
           {stage === "done" && result.champion && dynasty.titles < 3 && (
             <button onClick={defend}
@@ -538,55 +655,91 @@ export default function SeasonSimPanel({
             </div>
           )}
 
-          {/* Sezon ödülleri + istatistikler */}
-          {stage === "done" && (
-            <div className="space-y-2 pt-2.5" style={{borderTop:"1px solid rgba(255,255,255,.07)"}}>
-              <div className="text-[10.5px] text-gray-400 uppercase tracking-widest">Season Awards</div>
-              {result.awards?.length > 0 ? (
-                <div className="space-y-1">
-                  {result.awards.map((a, i) => (
-                    <div key={i} className="text-[11px] text-gray-200">{a}</div>
-                  ))}
+          {/* Sezon ödülleri + istatistikler — Faz D: bracket'te kullanıcının
+              oynadığı en az bir seri varsa Regular Season/Playoffs toggle'ı
+              çıkar, playoff görünümünde PTS'in yanında regular season'a göre
+              delta (▲/▼) gösterilir ("kim playoffda iyileşmiş/kötüleşmiş"). */}
+          {stage === "done" && (() => {
+            const playoffStatLines = bracket ? computeUserPlayoffStatLines(bracket) : [];
+            const hasPlayoffStats = playoffStatLines.length > 0;
+            const showingPlayoffs = statView === "playoffs" && hasPlayoffStats;
+            const activeLines = showingPlayoffs ? playoffStatLines : result.statLines;
+            const regByName = Object.fromEntries((result.statLines || []).map(l => [l.name, l]));
+            return (
+              <div className="space-y-2 pt-2.5" style={{borderTop:"1px solid rgba(255,255,255,.07)"}}>
+                <div className="flex items-center justify-between">
+                  <div className="text-[10.5px] text-gray-400 uppercase tracking-widest">Season Awards</div>
+                  {hasPlayoffStats && (
+                    <div className="flex gap-1 p-0.5 rounded-md" style={{background:"var(--bg-surface)",border:"1px solid var(--border)"}}>
+                      <button onClick={()=>setStatView("regular")}
+                        className="px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wide">
+                        <span style={{color:statView==="regular"?"var(--text-primary)":"var(--text-faint)"}}>Regular Season</span>
+                      </button>
+                      <button onClick={()=>setStatView("playoffs")}
+                        className="px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wide"
+                        style={{background:statView==="playoffs"?"rgba(255,177,27,.16)":"transparent"}}>
+                        <span style={{color:statView==="playoffs"?"var(--yamabuki)":"var(--text-faint)"}}>Playoffs</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <div className="text-[10.5px] text-gray-600 italic">No individual hardware this season.</div>
-              )}
-              {result.statLines?.length > 0 && (() => {
-                const COLS = "grid-cols-[1fr_2.2rem_2.2rem_2.2rem_2.2rem_2.2rem_2.4rem]";
-                const tot = k => +result.statLines.reduce((a, l) => a + (l[k] || 0), 0).toFixed(1);
-                const fg3s = result.statLines.filter(l => l.fg3 != null);
-                const fg3avg = fg3s.length ? Math.round(fg3s.reduce((a, l) => a + l.fg3, 0) / fg3s.length) : null;
-                return (
-                  <div className="mt-1.5">
-                    <div className={`grid ${COLS} gap-x-1 text-[8.5px] text-gray-500 uppercase tracking-wider pb-1`}>
-                      <span>Player</span><span className="text-right">PTS</span><span className="text-right">REB</span><span className="text-right">AST</span><span className="text-right">STL</span><span className="text-right">BLK</span><span className="text-right">3P%</span>
-                    </div>
-                    {result.statLines.map((l, i) => (
-                      <div key={i} className={`grid ${COLS} gap-x-1 text-[10px] leading-relaxed ${l.bench ? "text-gray-500" : "text-gray-300"}`}>
-                        <span className="truncate">{l.bench ? "· " : ""}{l.name?.split(" ").slice(-1)[0]}</span>
-                        <span className="text-right tabular-nums">{l.pts}</span>
-                        <span className="text-right tabular-nums">{l.reb}</span>
-                        <span className="text-right tabular-nums">{l.ast}</span>
-                        <span className="text-right tabular-nums">{l.stl ?? "—"}</span>
-                        <span className="text-right tabular-nums">{l.blk ?? "—"}</span>
-                        <span className="text-right tabular-nums">{l.fg3 != null ? `${l.fg3}%` : "—"}</span>
-                      </div>
+                {result.awards?.length > 0 ? (
+                  <div className="space-y-1">
+                    {result.awards.map((a, i) => (
+                      <div key={i} className="text-[11px] text-gray-200">{a}</div>
                     ))}
-                    {/* Takım toplamları */}
-                    <div className={`grid ${COLS} gap-x-1 text-[10px] font-bold text-white mt-1 pt-1 border-t border-white/10`}>
-                      <span>TEAM</span>
-                      <span className="text-right tabular-nums">{tot("pts")}</span>
-                      <span className="text-right tabular-nums">{tot("reb")}</span>
-                      <span className="text-right tabular-nums">{tot("ast")}</span>
-                      <span className="text-right tabular-nums">{tot("stl")}</span>
-                      <span className="text-right tabular-nums">{tot("blk")}</span>
-                      <span className="text-right tabular-nums">{fg3avg != null ? `${fg3avg}%` : "—"}</span>
-                    </div>
                   </div>
-                );
-              })()}
-            </div>
-          )}
+                ) : (
+                  <div className="text-[10.5px] text-gray-600 italic">No individual hardware this season.</div>
+                )}
+                {activeLines?.length > 0 && (() => {
+                  const COLS = "grid-cols-[1fr_2.2rem_2.2rem_2.2rem_2.2rem_2.2rem_2.4rem]";
+                  const tot = k => +activeLines.reduce((a, l) => a + (l[k] || 0), 0).toFixed(1);
+                  const fg3s = activeLines.filter(l => l.fg3 != null);
+                  const fg3avg = fg3s.length ? Math.round(fg3s.reduce((a, l) => a + l.fg3, 0) / fg3s.length) : null;
+                  return (
+                    <div className="mt-1.5">
+                      <div className={`grid ${COLS} gap-x-1 text-[8.5px] text-gray-500 uppercase tracking-wider pb-1`}>
+                        <span>Player</span><span className="text-right">PTS</span><span className="text-right">REB</span><span className="text-right">AST</span><span className="text-right">STL</span><span className="text-right">BLK</span><span className="text-right">{showingPlayoffs ? "GP" : "3P%"}</span>
+                      </div>
+                      {activeLines.map((l, i) => {
+                        const reg = showingPlayoffs ? regByName[l.name] : null;
+                        const delta = reg != null ? +(l.pts - reg.pts).toFixed(1) : null;
+                        return (
+                          <div key={i} className={`grid ${COLS} gap-x-1 text-[10px] leading-relaxed ${l.bench ? "text-gray-500" : "text-gray-300"}`}>
+                            <span className="truncate">{l.bench ? "· " : ""}{l.name?.split(" ").slice(-1)[0]}</span>
+                            <span className="text-right tabular-nums">
+                              {l.pts}
+                              {delta != null && Math.abs(delta) >= 0.5 && (
+                                <span className={delta > 0 ? "text-emerald-400" : "text-red-400"} style={{fontSize:8,marginLeft:2}}>
+                                  {delta > 0 ? "▲" : "▼"}{Math.abs(delta)}
+                                </span>
+                              )}
+                            </span>
+                            <span className="text-right tabular-nums">{l.reb}</span>
+                            <span className="text-right tabular-nums">{l.ast}</span>
+                            <span className="text-right tabular-nums">{l.stl ?? "—"}</span>
+                            <span className="text-right tabular-nums">{l.blk ?? "—"}</span>
+                            <span className="text-right tabular-nums">{showingPlayoffs ? l.games : (l.fg3 != null ? `${l.fg3}%` : "—")}</span>
+                          </div>
+                        );
+                      })}
+                      {/* Takım toplamları */}
+                      <div className={`grid ${COLS} gap-x-1 text-[10px] font-bold text-white mt-1 pt-1 border-t border-white/10`}>
+                        <span>TEAM</span>
+                        <span className="text-right tabular-nums">{tot("pts")}</span>
+                        <span className="text-right tabular-nums">{tot("reb")}</span>
+                        <span className="text-right tabular-nums">{tot("ast")}</span>
+                        <span className="text-right tabular-nums">{tot("stl")}</span>
+                        <span className="text-right tabular-nums">{tot("blk")}</span>
+                        <span className="text-right tabular-nums">{showingPlayoffs ? "" : (fg3avg != null ? `${fg3avg}%` : "—")}</span>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            );
+          })()}
 
           {/* Aktif tag etkileri */}
           {stage === "done" && result.tagNotes?.length > 0 && (

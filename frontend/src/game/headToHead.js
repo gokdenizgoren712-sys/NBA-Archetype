@@ -29,7 +29,7 @@ export function buildMatchup(lineups, coaches, simEra) {
 // Tek MAÇLIK stat satırı (sezon ortalaması değil) — aynı factor/dakika-payı
 // mantığı ama ±15% maç-içi jitter, aksi halde her maç birebir aynı sayıları
 // üretirdi.
-function gameBoxLine(rawPlayer, prof, rand) {
+export function gameBoxLine(rawPlayer, prof, rand) {
   const mShare = Math.min(1.15, (prof.minutes ?? (prof.bench ? 13 : 35)) / 35);
   const factor = prof.simQuality / Math.max(0.35, prof.overall);
   const jitter = 0.85 + rand() * 0.30;

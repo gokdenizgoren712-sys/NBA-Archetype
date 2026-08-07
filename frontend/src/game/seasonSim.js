@@ -302,8 +302,12 @@ export function simulateSeason(players, simEra, fit, affinity01 = null, extras =
   let wins = 0, streak = 0, bestStreak = 0, worstSkid = 0;
   for (let g = 0; g < nGames; g++) {
     const rg = real ? real.games[g] : null;
+    // "Tam lig" modu (bkz. leagueSim.js buildLeague): extras.teamRatings doluysa
+    // rakibin gücü artık gerçek win_pct'inden DEĞİL, o takımın KENDİ roster'ından
+    // (computeTeamRating ile, aynı motorla) türetiliyor — win_pct-proxy sadece
+    // teamRatings yoksa (Quick Sim, ya da lig henüz kurulmadıysa) fallback kalıyor.
     const oppRating = rg
-      ? realOpponentRating(rg.opp_win_pct, real.league_mean_win_pct, real.league_std_win_pct)
+      ? (extras.teamRatings?.[rg.opponent] ?? realOpponentRating(rg.opp_win_pct, real.league_mean_win_pct, real.league_std_win_pct))
       : sampleOpponent(rand);
     const isHome = rg ? rg.is_home : (g % 2 === 0);
     const won = playGame(effRating, oppRating, isHome, rand);
@@ -480,4 +484,55 @@ const RESULT_LABEL = {
     playoffGameWins, seasonScore,
     resultKey, resultLabel: RESULT_LABEL[resultKey],
   };
+}
+
+// ── Faz B: "tam lig" organik ödülleri ────────────────────────────────────────
+// computeSeasonAwards'ın TEK takımlık formüllerini (mvpScore/dpoyScore, AYNEN
+// reuse) 30 takımın havuzuna genelleştirir — League MVP/All-NBA/All-Star/DPOY/
+// 6MOY artık gerçekten simüle edilmiş 30 roster arasından çıkıyor, tek bir
+// takımın 9 oyuncusundan değil (bkz. plan). teams: [{abbr, players, bench,
+// statLines, wins}, ...] — statLines sırası [...players,...bench] ile
+// birebir aynı (computeSeasonAwards'ın starterLines+benchLines deseni).
+export function computeLeagueAwards(teams) {
+  const mvpScore = l => l.pts + 0.45 * (l.ast + l.reb);
+  const pool = [];
+  for (const t of teams) {
+    const roster = [...(t.players || []), ...(t.bench || [])];
+    (t.statLines || []).forEach((l, i) => {
+      pool.push({ line: l, teamAbbr: t.abbr, wins: t.wins || 0, raw: roster[i] || {} });
+    });
+  }
+  if (!pool.length) return [];
+
+  const leagueAwards = [];
+  // League MVP: üretim + hafif takım-başarısı ağırlığı (gerçek MVP oylamasının
+  // "iyi takım" eğilimini yansıtır, ama saf skor egemen kalır).
+  const mvpBest = pool.reduce((a, b) =>
+    (mvpScore(b.line) + b.wins * 0.15) > (mvpScore(a.line) + a.wins * 0.15) ? b : a, pool[0]);
+  leagueAwards.push({ label: "League MVP", icon: "🏅", name: mvpBest.line.name, team: mvpBest.teamAbbr });
+
+  // All-NBA (top-5) + All-Star (sonraki 10) — sadece starter'lar arasından,
+  // gerçek NBA All-NBA/All-Star seçim büyüklüğüne yakın.
+  const starters = pool.filter(p => !p.line.bench).sort((a, b) => mvpScore(b.line) - mvpScore(a.line));
+  starters.slice(0, 5).forEach(p => leagueAwards.push({ label: "All-NBA", icon: "🌟", name: p.line.name, team: p.teamAbbr }));
+  starters.slice(5, 15).forEach(p => leagueAwards.push({ label: "All-Star", icon: "⭐", name: p.line.name, team: p.teamAbbr }));
+
+  // DPOY: aynı savunma-üretim formülü (STL+BLK ağırlıklı + savunma arketibi)
+  const dpoyScore = p => {
+    const l = p.line, raw = p.raw;
+    return l.stl + l.blk * 1.5 + Math.max(
+      parseFloat(raw["score_Anchor"] || 0), parseFloat(raw["score_Stopper"] || 0), parseFloat(raw["score_Two-Way"] || 0),
+    ) * 3.0;
+  };
+  const dBest = pool.reduce((a, b) => (dpoyScore(b) > dpoyScore(a) ? b : a), pool[0]);
+  leagueAwards.push({ label: "Defensive POY", icon: "🛡", name: dBest.line.name, team: dBest.teamAbbr });
+
+  // 6th Man: sadece bench havuzundan
+  const benchPool = pool.filter(p => p.line.bench);
+  if (benchPool.length) {
+    const b6 = benchPool.reduce((a, b) => (mvpScore(b.line) > mvpScore(a.line) ? b : a), benchPool[0]);
+    leagueAwards.push({ label: "Sixth Man of the Year", icon: "🔥", name: b6.line.name, team: b6.teamAbbr });
+  }
+
+  return leagueAwards;
 }
