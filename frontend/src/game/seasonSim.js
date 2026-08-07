@@ -165,6 +165,20 @@ export function computeTeamRating(players, simEra, fit, affinity01 = null, extra
     const sQ = profiles.reduce((a, b) => a + b.effQ, 0) / profiles.length;
     rosterQ = (rosterQ * totalMin + sQ * 0.70 * (240 - totalMin)) / 240;
   }
+  // 2026-08 gerçekçilik denetimi (bkz. C:\...\scratchpad\variant-test.mjs, 12
+  // sezon-koşusu × 4+ varyant): "tam lig" modunda (30 takımın hepsi
+  // roster-bazlı) düz dakika-ağırlıklı ortalama, takım rating dağılımını
+  // gerçek NBA'e göre fazla sıkıştırıyordu (galibiyet std'si 12.2→8.5,
+  // ~%31 daralma → playoff upset oranı %35, gerçek ~%20-25 yerine) — 9
+  // oyuncuyu düz ortalamak varyansı matematiksel olarak yutuyor, tam da
+  // core overall_score motorunun (top-4-of-12 + ^1.5 üs) KAÇINDIĞI tuzak.
+  // Varyans geri-germe (z-score stretch, sabit çapa RQ_ANCHOR≈lig-ortalama
+  // roster kalitesi): ölçülen 12 sezonluk karşılaştırmada (MAE/korelasyon/
+  // std/upset-oranı) tek başına en dengeli iyileşmeyi bu verdi — "peak-
+  // ağırlıklı" (effQ^1.5) alternatifi test edildi, DAHA KÖTÜ çıktı (corr
+  // 0.62→0.58), reddedildi.
+  const RQ_ANCHOR = 0.60, RQ_STRETCH = 1.44;
+  rosterQ = RQ_ANCHOR + (rosterQ - RQ_ANCHOR) * RQ_STRETCH;
 
   // Yıldız gücü: dakikası kısılan yıldız o kadar taşıyamaz
   const starPower = Math.max(...all.map(p => p.effQ * Math.min(1, p.minutes / 32)));
@@ -205,7 +219,13 @@ export function computeTeamRating(players, simEra, fit, affinity01 = null, extra
 // fit_s4.mjs ile YENİDEN fit et (roleFit geri eklenince μ 0.560→0.679, k=9 kaldı).
 export const OPP_MEAN   = 0.682;
 export const OPP_STD    = 0.055;
-export const LOGISTIC_K = 8.5;
+// 2026-08 gerçekçilik denetimi: rosterQ varyans geri-germesiyle (yukarıda)
+// birlikte test edildi (12 sezon-koşusu) — 8.5 tek başına dar dağılımı
+// yeterince ayrıştırmıyordu (korelasyon 0.62, MAE 8.0). 11.0 + varyans
+// geri-germe kombinasyonu en iyi sonucu verdi (korelasyon 0.74, MAE 6.8) —
+// bkz. C:\...\scratchpad\variant-test.mjs. PLAYOFF_K ayrı, kendi
+// kalibrasyonuyla (aşağıda) KASITLI OLARAK dokunulmadı.
+export const LOGISTIC_K = 11.0;
 // Playoff serileri regular sezondan daha yumuşak eğimli: gerçek 7-maçlık seriler
 // daha çok sürpriz barındırır; k=11 favoriyi kilitleyip şampiyon title%'i ~%44'e
 // çıkarıyordu. PLAYOFF_K en iyi takımı NBA-gerçekçi ~%25-30 title'a çeker.

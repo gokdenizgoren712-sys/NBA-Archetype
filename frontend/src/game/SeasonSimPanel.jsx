@@ -62,6 +62,15 @@ export default function SeasonSimPanel({
   const [leagueWarning, setLeagueWarning] = useState(null);
   // Faz C: gerçek playoff bracket'i — "Simulate Playoffs" tıklanınca kurulur.
   const [bracket, setBracket] = useState(null);
+  // Rewrite History'de dynasty/"Defend the Title" artık BU sezonun GERÇEK
+  // bracket'inin sonucuna bağlı — eskiden simulateSeason'ın İÇİNDEKİ sentetik
+  // playoff'un result.champion'ına bağlıydı, bu da (a) "Defend the Title"nın
+  // kullanıcı gerçek bracket'i HENÜZ BİTİRMEDEN görünmesine (b) gerçekten
+  // şampiyon olunan bir sezonda THREEPEAT'e izin vermemesine yol açıyordu
+  // (iki ayrı kullanıcı raporu, 2026-08). run()/defend() başında false'a
+  // döner (yeni sezon = henüz kazanılmamış), bracket.champion kullanıcının
+  // takımıyla eşleşince true olur (aşağıdaki effect).
+  const [rhTitleWon, setRhTitleWon] = useState(false);
   // Faz D: "Season Awards" tablosunda Regular Season/Playoffs toggle.
   const [statView, setStatView] = useState("regular");   // "regular" | "playoffs"
 
@@ -109,6 +118,14 @@ export default function SeasonSimPanel({
   };
 
   useEffect(() => () => clearInterval(timerRef.current), []);
+
+  // Gerçek bracket'in kendi kendine "kim şampiyon" karar verdiği tek yer —
+  // dynasty/Defend the Title BUNU izler (bkz. yukarıdaki rhTitleWon notu).
+  useEffect(() => {
+    if (bracket?.champion && rhSchedule && bracket.champion.abbr === rhSchedule.team) {
+      setRhTitleWon(true);
+    }
+  }, [bracket?.champion, rhSchedule]);
 
   const minuteBank = 240 - minutes.reduce((a, b) => a + b, 0);
   const bumpMinute = (i, d) => {
@@ -204,7 +221,13 @@ export default function SeasonSimPanel({
     const res = simulateSeason(players, simEra, fit, affinity01, extras);
     const isFirst = runCount === 0;
     setRunCount(c => c + 1);
-    setDynasty({ year: 1, titles: res.champion ? 1 : 0 });
+    setRhTitleWon(false);   // yeni sezon — gerçek bracket henüz kazanılmadı
+    // RH'de "şampiyon musun" artık SADECE gerçek bracket'ten gelir (bkz.
+    // yukarıdaki rhTitleWon notu) — regular season biter bitmez sentetik
+    // result.champion'a bakıp 0/1 title vermek, kullanıcı gerçek bracket'i
+    // oynamadan/kaybederken bile "şampiyon" sayabiliyordu. Quick Sim eski
+    // davranışını (sentetik result.champion) korur.
+    setDynasty({ year: 1, titles: simMode === "history" ? 0 : (res.champion ? 1 : 0) });
     animate(res);
     if (isFirst && isLoggedIn && token && !noSave) postResult(res, res.resultKey);
   };
@@ -248,11 +271,18 @@ export default function SeasonSimPanel({
       }
     }
     const res = simulateSeason(players, simEra, fit, affinity01, extras);
-    const newTitles = res.champion ? dynasty.titles + 1 : dynasty.titles;
-    setDynasty({ year: nextYear, titles: newTitles, ended: !res.champion });
+    // defend() RH modda SADECE rhTitleWon===true iken tetiklenebiliyor
+    // (bkz. buton gating aşağıda) — ama yine de burada AÇIKÇA hangi sinyali
+    // kullandığımızı belirtelim (Quick Sim hâlâ sentetik result.champion'a
+    // bakar, RH artık BU sezonun (defend'e girmeden ÖNCEki) gerçek
+    // bracket sonucuna bakar).
+    const wonThisSeason = simMode === "history" ? rhTitleWon : !!res.champion;
+    const newTitles = wonThisSeason ? dynasty.titles + 1 : dynasty.titles;
+    setRhTitleWon(false);   // yeni sezon başlıyor — bir sonraki gerçek bracket henüz kazanılmadı
+    setDynasty({ year: nextYear, titles: newTitles, ended: !wonThisSeason });
     animate(res, () => {
       // İlk dynasty koşusunda repeat/threepeat leaderboard'a yükseltilir
-      if (runCount === 1 && isLoggedIn && token && res.champion && !noSave) {
+      if (runCount === 1 && isLoggedIn && token && !noSave && wonThisSeason) {
         if (newTitles >= 3)      postResult(res, "THREEPEAT");
         else if (newTitles === 2) postResult(res, "REPEAT");
       }
@@ -692,8 +722,10 @@ export default function SeasonSimPanel({
             );
           })()}
 
-          {/* Faz E: şampiyonluğu savun */}
-          {stage === "done" && result.champion && dynasty.titles < 3 && (
+          {/* Faz E: şampiyonluğu savun — RH'de SADECE gerçek bracket'i
+              kazandıysan (rhTitleWon) görünür, Quick Sim eskisi gibi
+              result.champion'a bakar (bkz. yukarıdaki rhTitleWon notu). */}
+          {stage === "done" && (rhActive ? rhTitleWon : result.champion) && dynasty.titles < 3 && (
             <button onClick={defend} disabled={leagueLoading}
               className="w-full py-3 rounded-xl font-bold transition-colors text-gray-900 disabled:opacity-60"
               style={{background:"linear-gradient(90deg,#FFD470,#FFB11B)"}}>

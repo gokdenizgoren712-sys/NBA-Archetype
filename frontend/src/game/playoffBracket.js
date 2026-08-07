@@ -93,33 +93,59 @@ function rosterOf(bracket, abbr) {
   return abbr === bracket.userAbbr ? bracket.userRoster : bracket.rosterInfo?.[abbr];
 }
 
-// Bir maçta İKİ takımın da TÜM oyuncuları için box-score üretip seriye
-// biriktirir — headToHead.js'in gameBoxLine'ı (tek-maçlık, per-game jitter)
-// AYNEN reuse edilir, yeni formül yok. rosterInfo yoksa (teorik olarak
-// olmamalı, ama savunma amaçlı) sessizce atlanır.
-function accumulateBoxScores(series, teamKey, abbr, bracket, rand) {
+// Bir takımın tek maçlık box-line'larını üretir (henüz seriye YAZILMAZ —
+// reconcileGameLines'ın her iki tarafı da bilmesi gerekiyor, bkz. aşağı).
+function genTeamLines(bracket, abbr, rand) {
   const roster = rosterOf(bracket, abbr);
-  if (!roster) return;
+  if (!roster) return [];
+  const all = [...(roster.players || []).map((p, i) => [p, roster.profiles?.[i]]),
+               ...(roster.bench || []).map((p, i) => [p, roster.benchProfiles?.[i]])];
+  const lines = [];
+  for (const [rawPlayer, prof] of all) {
+    if (!prof) continue;
+    lines.push(gameBoxLine(rawPlayer, prof, rand));
+  }
+  return lines;
+}
+
+// Maçın GERÇEK kazananı (playGame() — takım rating'inden, PLAYOFF_K'lı bir
+// olasılıktan) ile box-score toplamı (gameBoxLine — oyuncu başına BAĞIMSIZ
+// jitter) FARKLI rastgelelik kaynağı — reconcile edilmezse "118 sayı attı
+// ama kaybetti" gibi anlamsız sonuçlar çıkabiliyordu (kullanıcı raporu,
+// 2026-08). Kaybeden takımın box toplamı kazanandan yüksekse, kazananın
+// oyuncu skorlarını KÜÇÜK gerçekçi bir marjla (3-12 sayı) öne geçirecek
+// şekilde ORANTILI ölçekle — bireysel oyuncu PAYLARI (kim daha çok/az
+// attı) bozulmaz, sadece takım toplamının ölçeği düzelir.
+function reconcileGameLines(linesA, linesB, aWon, rand) {
+  const sum = lines => lines.reduce((a, l) => a + l.pts, 0);
+  const ptsA = sum(linesA), ptsB = sum(linesB);
+  const winnerLines = aWon ? linesA : linesB;
+  const winnerPts = aWon ? ptsA : ptsB;
+  const loserPts = aWon ? ptsB : ptsA;
+  if (winnerPts <= loserPts) {
+    const margin = 3 + Math.floor(rand() * 10);
+    const scale = (loserPts + margin) / Math.max(1, winnerPts);
+    for (const l of winnerLines) l.pts = Math.round(l.pts * scale);
+  }
+}
+
+// Reconcile edilmiş line'ları seriye yazar: hem kümülatif SERİ toplamına
+// (boxTotals{A,B} — seriesMVP/computeUserPlayoffStatLines bunu okur) hem de
+// "en son oynanan TEK maç" anlık görüntüsüne (lastGameBox{A,B} — her
+// stepBracket'te ÜZERİNE YAZILIR, biriktirmez; Finals UI'ı "maç maç
+// ilerlerken sadece o anki maçın box score'u, aşağı doğru birikmesin"
+// isteği için bunu gösteriyor, bkz. PlayoffBracketView.jsx).
+function commitGameLines(series, teamKey, lines) {
   const totalsKey = teamKey === "A" ? "boxTotalsA" : "boxTotalsB";
-  // lastGameBox{A,B}: SERİ toplamı değil, EN SON oynanan tek maçın box'u —
-  // her stepBracket çağrısında ÜZERİNE YAZILIR (biriktirmez). Finals UI'ı
-  // bunu gösteriyor: "maç maç ilerlerken sadece o anki maçın box score'u,
-  // aşağı doğru birikmesin" isteği için (bkz. PlayoffBracketView.jsx).
   const lastKey = teamKey === "A" ? "lastGameBoxA" : "lastGameBoxB";
   if (!series[totalsKey]) series[totalsKey] = {};
   const totals = series[totalsKey];
-  const lastGame = [];
-  const all = [...(roster.players || []).map((p, i) => [p, roster.profiles?.[i]]),
-               ...(roster.bench || []).map((p, i) => [p, roster.benchProfiles?.[i]])];
-  for (const [rawPlayer, prof] of all) {
-    if (!prof) continue;
-    const line = gameBoxLine(rawPlayer, prof, rand);
+  for (const line of lines) {
     const cur = totals[line.name] || { name: line.name, bench: line.bench, games: 0, pts: 0, reb: 0, ast: 0, stl: 0, blk: 0 };
     cur.games++; cur.pts += line.pts; cur.reb += line.reb; cur.ast += line.ast; cur.stl += line.stl; cur.blk += line.blk;
     totals[line.name] = cur;
-    lastGame.push(line);
   }
-  series[lastKey] = lastGame;
+  series[lastKey] = lines;
 }
 
 // Bir serinin box-score havuzundan (iki takım birden) MVP seç — mevcut
@@ -295,8 +321,11 @@ export function stepBracket(bracket, rand = Math.random) {
     const aHome = pattern.includes(gameNo) ? homeAdvA : !homeAdvA;
     const aWon = playGame(series.teamA.rating, series.teamB.rating, aHome, rand, PLAYOFF_K);
     series.games.push({ aWon, aHome });
-    accumulateBoxScores(series, "A", series.teamA.abbr, bracket, rand);
-    accumulateBoxScores(series, "B", series.teamB.abbr, bracket, rand);
+    const linesA = genTeamLines(bracket, series.teamA.abbr, rand);
+    const linesB = genTeamLines(bracket, series.teamB.abbr, rand);
+    reconcileGameLines(linesA, linesB, aWon, rand);
+    commitGameLines(series, "A", linesA);
+    commitGameLines(series, "B", linesB);
     aWon ? series.wA++ : series.wB++;
     if (series.wA === series.winsNeeded) series.winner = series.teamA;
     else if (series.wB === series.winsNeeded) series.winner = series.teamB;
