@@ -16,8 +16,20 @@ function pickRotation(roster) {
   return { starters: sorted.slice(0, 5), bench: sorted.slice(5, 9) };
 }
 
-async function fetchJson(url) {
+// 429 (rate limit) sessizce "veri yok" sayılıp atlanamaz — bu, 29 takımlık
+// paralel fetch fırtınasında (özellikle iki oyuncunun aynı anda Board
+// Challenge bonus koşusu tetiklediği ya da arkada başka bir istemcinin backend'i
+// yorduğu senaryoda) TÜM ligi sessizce boşaltıp buildLeague'i "başarılı ama
+// boş" döndürüyordu — hiçbir hata görünmüyordu. 429'da backoff'la yeniden
+// dene; başka bir non-ok (gerçekten eksik veri, örn. o sezon o takım için
+// roster kaydı yok) hâlâ null döner, o durumlar normal/beklenen.
+async function fetchJson(url, attempt = 0) {
   const r = await fetch(url);
+  if (r.status === 429 && attempt < 4) {
+    const retryAfter = parseInt(r.headers.get("retry-after") || "5", 10);
+    await new Promise(res => setTimeout(res, (retryAfter + 1) * 1000));
+    return fetchJson(url, attempt + 1);
+  }
   if (!r.ok) return null;
   return r.json();
 }
@@ -62,5 +74,9 @@ export async function buildLeague(season, excludeTeam, simEra) {
     });
   }
 
-  return { teamRatings, teamSeasons, rosterByAbbr };
+  // teamsExpected/teamsBuilt: çağıran taraf (SeasonSimPanel) ligin gerçekten
+  // tam kurulduğunu doğrulayabilsin diye — retry sonrası hâlâ eksikse (örn.
+  // kalıcı bir ağ sorunu) kullanıcıya sessizce bozuk bir lig göstermek yerine
+  // uyarı verilebilsin.
+  return { teamRatings, teamSeasons, rosterByAbbr, teamsExpected: otherAbbrs.length, teamsBuilt: Object.keys(teamSeasons).length };
 }

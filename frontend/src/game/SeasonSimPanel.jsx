@@ -56,6 +56,10 @@ export default function SeasonSimPanel({
   // sezonu kuruluyor, SONRA kullanıcının kendi sezonu o reytinglerle koşuyor.
   const [leagueLoading, setLeagueLoading] = useState(false);
   const [league, setLeague] = useState(null);   // {teamRatings, teamSeasons, rosterByAbbr}
+  // Ligin çoğu takımı fetch/rate-limit hatasıyla sessizce eksik kurulduysa
+  // (bkz. leagueSim.js fetchJson notu) kullanıcıya bozuk bir "lig" göstermek
+  // yerine bunu açıkça söyle.
+  const [leagueWarning, setLeagueWarning] = useState(null);
   // Faz C: gerçek playoff bracket'i — "Simulate Playoffs" tıklanınca kurulur.
   const [bracket, setBracket] = useState(null);
   // Faz D: "Season Awards" tablosunda Regular Season/Playoffs toggle.
@@ -176,6 +180,7 @@ export default function SeasonSimPanel({
   // simulateSeason çağrısına geçiyor — rakip gücü artık win_pct-proxy değil.
   const run = async () => {
     setBracket(null);
+    setLeagueWarning(null);
     const extras = { bench, coach, minutes };
     if (simMode === "history" && rhSchedule) {
       extras.realSchedule = rhSchedule;
@@ -184,8 +189,14 @@ export default function SeasonSimPanel({
         const built = await buildLeague(rhSchedule.season, rhSchedule.team, simEra);
         setLeague(built);
         extras.teamRatings = built.teamRatings;
+        // Retry sonrası hâlâ takımların %70'inden azı kurulduysa (kalıcı ağ/
+        // rate-limit sorunu), sessizce bozuk bir lig göstermek yerine söyle —
+        // standings/League Awards/bracket hepsi bu veriye dayanıyor.
+        if (built.teamsBuilt < built.teamsExpected * 0.7) {
+          setLeagueWarning(`Only ${built.teamsBuilt} of ${built.teamsExpected} teams built successfully — the league, awards, and playoff bracket below may be incomplete. Try "Run It Back" to rebuild.`);
+        }
       } catch {
-        // Sessiz fallback: teamRatings olmadan simulateSeason eski win_pct-proxy'e döner.
+        setLeagueWarning("Couldn't build the rest of the league (network error) — opponent strength fell back to the old win-rate estimate, and the league/playoff sections below won't appear. Try again.");
       } finally {
         setLeagueLoading(false);
       }
@@ -198,11 +209,45 @@ export default function SeasonSimPanel({
     if (isFirst && isLoggedIn && token && !noSave) postResult(res, res.resultKey);
   };
 
-  // Faz E: şampiyonluğu savun — kadro her sezon yaşlanır (S6: hızlanan eğri, agePenaltyFor)
-  const defend = () => {
+  // Faz E: şampiyonluğu savun — kadro her sezon yaşlanır (S6: hızlanan eğri, agePenaltyFor).
+  // Rewrite History'de bu ARTIK bir sonraki GERÇEK sezona ilerliyor (aynı era
+  // içinde) — kadron yaşlanırken lig de o yeni sezonun gerçek 30 takımıyla
+  // yeniden kuruluyor (buildLeague tekrar çalışır). Era'da bir sonraki sezon
+  // yoksa (veya o sezonun verisi yoksa/takım o sezon farklı bir kısaltmayla
+  // oynuyorsa) sessizce eski senkron-dışı moda düşmek YERİNE aynı sezonu
+  // (yaşlanmış kadronla) tekrar oynatır ve bunu açıkça söyler.
+  const defend = async () => {
+    setBracket(null);
+    setLeagueWarning(null);
     const nextYear = dynasty.year + 1;
-    const res = simulateSeason(players, simEra, fit, affinity01,
-      { bench, coach, minutes, agePenalty: agePenaltyFor(nextYear) });
+    const extras = { bench, coach, minutes, agePenalty: agePenaltyFor(nextYear) };
+    if (simMode === "history" && rhSchedule) {
+      const idx = rhSeasons.indexOf(rhSchedule.season);
+      const nextSeason = idx >= 0 && idx < rhSeasons.length - 1 ? rhSeasons[idx + 1] : null;
+      const targetSeason = nextSeason || rhSchedule.season;
+      setLeagueLoading(true);
+      try {
+        const sched = await fetch(`/api/historical/${targetSeason}/team/${rhSchedule.team}/schedule`).then(r => r.json());
+        if (!sched?.games?.length) throw new Error("no schedule for target season");
+        const built = await buildLeague(targetSeason, rhSchedule.team, simEra);
+        setLeague(built);
+        setRhSchedule(sched);
+        extras.realSchedule = sched;
+        extras.teamRatings = built.teamRatings;
+        if (built.teamsBuilt < built.teamsExpected * 0.7) {
+          setLeagueWarning(`Only ${built.teamsBuilt} of ${built.teamsExpected} teams built successfully for ${targetSeason} — the league/bracket below may be incomplete.`);
+        } else if (!nextSeason) {
+          setLeagueWarning(`No more real ${simEra.label} seasons after this one — replaying ${targetSeason} with your aged roster.`);
+        }
+      } catch {
+        setLeagueWarning(`Couldn't advance to a new real season — replayed ${rhSchedule.season} again instead.`);
+        extras.realSchedule = rhSchedule;
+        if (league?.teamRatings) extras.teamRatings = league.teamRatings;
+      } finally {
+        setLeagueLoading(false);
+      }
+    }
+    const res = simulateSeason(players, simEra, fit, affinity01, extras);
     const newTitles = res.champion ? dynasty.titles + 1 : dynasty.titles;
     setDynasty({ year: nextYear, titles: newTitles, ended: !res.champion });
     animate(res, () => {
@@ -484,6 +529,15 @@ export default function SeasonSimPanel({
             </div>
           )}
 
+          {/* Lig kurulumu eksik/başarısız kaldıysa (bkz. leagueSim.js fetchJson notu) —
+              stage her zaman görünür, league null bile olsa (o zaman League bloğu hiç
+              render olmaz, uyarı TEK görsel ipucu olur). */}
+          {stage === "done" && leagueWarning && (
+            <div className="rounded-xl p-3 text-[11px] leading-relaxed" style={{background:"rgba(248,113,113,.08)",border:"1px solid rgba(248,113,113,.3)",color:"#fca5a5"}}>
+              {leagueWarning}
+            </div>
+          )}
+
           {/* Verdict — nihai rekor, gerçek takımın gerçek sezonuyla karşılaştırılır
               (2026-08 "üst seviye simülasyon" şablonu). Yeni fetch yok:
               result.gameSchedule'daki gerçek skorlardan türetilir. */}
@@ -542,7 +596,7 @@ export default function SeasonSimPanel({
               (bkz. leagueSim.js) kurulduysa görünür. 29 gerçek takımın KENDİ
               roster-bazlı simüle sezonu + kullanıcının kendi sonucu birlikte
               gerçek bir alternatif-tarih ligi oluşturuyor. */}
-          {stage === "done" && league && rhSchedule && (() => {
+          {stage === "done" && league && rhSchedule && league.teamsBuilt >= 20 && (() => {
             const standings = buildConferenceStandings(league.teamSeasons, rhSchedule.team, result.wins, result.losses);
             const allTeams = [
               { abbr: rhSchedule.team, players, bench, statLines: result.statLines, wins: result.wins },
@@ -618,41 +672,20 @@ export default function SeasonSimPanel({
 
           {/* Faz E: şampiyonluğu savun */}
           {stage === "done" && result.champion && dynasty.titles < 3 && (
-            <button onClick={defend}
-              className="w-full py-3 rounded-xl font-bold transition-colors text-gray-900"
+            <button onClick={defend} disabled={leagueLoading}
+              className="w-full py-3 rounded-xl font-bold transition-colors text-gray-900 disabled:opacity-60"
               style={{background:"linear-gradient(90deg,#FFD470,#FFB11B)"}}>
-              <span className="inline-flex items-center justify-center gap-1.5"><CrownIcon size={16} /> Defend the Title — Season {dynasty.year + 1}</span>
-              <span className="block text-[10px] font-medium mt-0.5 opacity-80">
-                {dynasty.titles === 2 ? "One more for the THREEPEAT" : "The roster ages: −1.2 rating per extra season"}
-              </span>
+              {leagueLoading ? (
+                <span className="inline-flex items-center justify-center gap-1.5"><span className="inline-block animate-spin"><WheelIcon size={16} /></span> Advancing the league…</span>
+              ) : (
+                <>
+                  <span className="inline-flex items-center justify-center gap-1.5"><CrownIcon size={16} /> Defend the Title — Season {dynasty.year + 1}</span>
+                  <span className="block text-[10px] font-medium mt-0.5 opacity-80">
+                    {dynasty.titles === 2 ? "One more for the THREEPEAT" : "The roster ages: −1.2 rating per extra season"}
+                  </span>
+                </>
+              )}
             </button>
-          )}
-
-          {/* Oyuncu era performansı */}
-          {stage === "done" && (
-            <div className="space-y-1.5 pt-2.5" style={{borderTop:"1px solid rgba(255,255,255,.07)"}}>
-              <div className="text-xs text-gray-300 uppercase tracking-widest font-semibold">Era Performance</div>
-              {[...result.profiles, ...(result.benchProfiles || [])].map((pr, i) => {
-                const qPct = Math.round(pr.simQuality * 100);
-                return (
-                  <div key={i} className={`flex items-center gap-2 ${pr.bench ? "opacity-70" : ""}`}>
-                    {pr.bench && <span className="text-[9px] px-1.5 rounded-md shrink-0" style={{color:"var(--text-faint)",background:"rgba(255,255,255,.05)"}}>B</span>}
-                    <span className="text-[13px] text-white flex-1 truncate">{pr.name?.split(" ").slice(-1)[0]}</span>
-                    <span className="text-[11px] text-gray-500 shrink-0 tabular-nums">{pr.minutes}m</span>
-                    {pr.fatigue > 0 && <span className="text-[10px] text-red-400 shrink-0">−{Math.round(pr.fatigue*100)}% tired</span>}
-                    <span className="text-[11px] text-gray-500 shrink-0">{pr.arch}</span>
-                    {pr.timeless && <span className="text-[10px] font-bold text-purple-400 shrink-0" title="Timeless — era distance fully ignored">TL</span>}
-                    {!pr.timeless && pr.fitShift < 0 && <span className="text-[10px] text-emerald-400 shrink-0" title="Archetype fits this era — travels one era closer">fits era</span>}
-                    {pr.dist > 0 && !pr.timeless && <span className="text-[10px] text-yamabuki shrink-0">−{pr.dist} era</span>}
-                    {pr.posP != null && pr.posP < 1 && <span className="text-[10px] text-red-400 shrink-0">{pr.posP <= 0.75 ? "−25% pos" : "−10% pos"}</span>}
-                    <div className="g-bar-track w-20 shrink-0" style={{height:8}}>
-                      <div className="h-full rounded-full" style={{ width: `${qPct}%`, background: qPct >= 70 ? "#059669" : qPct >= 50 ? "#2a3d6b" : "#7f1d1d" }} />
-                    </div>
-                    <span className="text-[13px] font-semibold w-6 text-right text-gray-300 shrink-0">{qPct}</span>
-                  </div>
-                );
-              })}
-            </div>
           )}
 
           {/* Sezon ödülleri + istatistikler — Faz D: bracket'te kullanıcının
