@@ -42,6 +42,20 @@ async function fetchTeam(season, abbr) {
   return { abbr, players: playersRes?.players || [], schedule: scheduleRes };
 }
 
+// Tüm 29 takımı TEK Promise.all ile aynı anda ateşlemek (58 eşzamanlı istek)
+// backend'de gereksiz bir yük tepesi yaratıyordu (bkz. api/main.py
+// /api/game/players notu — orada asıl kaynak zaten düzeltildi, ama küçük
+// gruplar hâlde ateşlemek ekstra bir güvenlik payı: hem backend tarafında
+// hem Railway'in 512MB limitinde tepe yükü daha da düzleşir).
+async function mapBatched(items, batchSize, fn) {
+  const out = [];
+  for (let i = 0; i < items.length; i += batchSize) {
+    const batch = items.slice(i, i + batchSize);
+    out.push(...await Promise.all(batch.map(fn)));
+  }
+  return out;
+}
+
 // buildLeague: sezon + kullanıcının yerine geçtiği takım + kullanıcının
 // seçtiği era. Dönüş: { teamRatings: {ABBR: rating}, teamSeasons:
 // {ABBR: simulateSeason sonucu} } — kullanıcının KENDİ takımı bu objelerde
@@ -52,7 +66,7 @@ export async function buildLeague(season, excludeTeam, simEra) {
     .map(t => t.abbr)
     .filter(a => a !== excludeTeam);
 
-  const teamsData = await Promise.all(otherAbbrs.map(a => fetchTeam(season, a)));
+  const teamsData = await mapBatched(otherAbbrs, 6, a => fetchTeam(season, a));
 
   const teamRatings = {};
   const rosterByAbbr = {};

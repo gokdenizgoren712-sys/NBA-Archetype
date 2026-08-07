@@ -2520,7 +2520,18 @@ def game_players(season: str = Query("2025-26"), team: str = Query("")):
         tl_cutoff = _timeless_cutoff(full["overall_score"]) if "overall_score" in full.columns else 1.0
         df = full[full["TEAM_ABBREVIATION"].str.upper() == team.upper()] if team else full
     else:
-        full = _load_historical().copy()
+        # _load_historical() lru_cache'li (tek DataFrame, tüm process boyunca
+        # aynı obje) — burada .copy() ETMEMEK önemli: Rewrite History'nin
+        # buildLeague()'i AYNI sezon için 29 arka plan takımını PARALEL
+        # çekiyor (bkz. leagueSim.js), her biri bu endpoint'e düşüyor.
+        # Önceden her istek TÜM 16k+ satırlık tarihsel tabloyu kopyalıyordu —
+        # 29 eşzamanlı istek = 29 eşzamanlı tam-tablo kopyası, Railway'in
+        # 512MB limitini OOM'a götüren asıl sebep buydu. Aşağıdaki boolean-mask
+        # filtreleri (SEASON==season, TEAM_ABBREVIATION dışlama) zaten YENİ,
+        # bağımsız (küçük, ~sezon-havuzu boyutunda) DataFrame'ler üretiyor —
+        # ayrıca kopyalamaya gerek yok. Mutasyon güvenliği için asıl .copy()
+        # zaten aşağıda (df = df.copy(), filtrelerden SONRA, küçük havuzda).
+        full = _load_historical()
         full = full[full["SEASON"] == season]
         # Multi-team (2TM/3TM/TOT) satırlarını filtrele — sadece per-takım satırları kalsın
         _multi = {"2TM","3TM","4TM","TOT"}

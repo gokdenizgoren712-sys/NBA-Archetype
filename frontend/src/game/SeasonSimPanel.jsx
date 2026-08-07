@@ -486,8 +486,14 @@ export default function SeasonSimPanel({
             </div>
           )}
 
-          {/* Playoff bracket — tur tur */}
-          {result.madePlayoffs && (stage === "playoffs" || stage === "done") && (
+          {/* Playoff bracket — tur tur. Bu SENTETİK ladder (result.playoffRounds,
+              "vs 73-rated" gibi kimliksiz rakipler) — Rewrite History'de artık
+              GERÇEK bracket var (aşağıda "The League" → Simulate Playoffs),
+              o yüzden "done" aşamasına ulaşınca (kalıcı görünüm) Rewrite
+              History'de bu ladder'ı GİZLE, sadece reveal sırasında (stage
+              === "playoffs") dramatik tempo için kalsın. Quick Sim'de hiç
+              değişmedi — o modun TEK playoff gösterimi hâlâ bu. */}
+          {result.madePlayoffs && (stage === "playoffs" || (stage === "done" && !rhActive)) && (
             <div className="space-y-1.5">
               <div className="text-[10.5px] text-gray-400 uppercase tracking-widest">Playoffs</div>
               {result.playoffRounds.slice(0, revealRounds).map((rd, i) => (
@@ -691,8 +697,13 @@ export default function SeasonSimPanel({
           {/* Sezon ödülleri + istatistikler — Faz D: bracket'te kullanıcının
               oynadığı en az bir seri varsa Regular Season/Playoffs toggle'ı
               çıkar, playoff görünümünde PTS'in yanında regular season'a göre
-              delta (▲/▼) gösterilir ("kim playoffda iyileşmiş/kötüleşmiş"). */}
+              delta (▲/▼) gösterilir ("kim playoffda iyileşmiş/kötüleşmiş").
+              result.awards (tek-takımlık, "Season Awards") artık SADECE
+              League Awards'ın kapsamadığı yerde (Quick Sim, ya da RH'de lig
+              henüz kurulmamışsa) gösteriliyor — ikisi aynı bilgiyi (kendi
+              oyuncuların MVP/All-NBA vs.) iki kez göstermesin diye. */}
           {stage === "done" && (() => {
+            const leagueAwardsCover = rhActive && league && league.teamsBuilt >= 20;
             const playoffStatLines = bracket ? computeUserPlayoffStatLines(bracket) : [];
             const hasPlayoffStats = playoffStatLines.length > 0;
             const showingPlayoffs = statView === "playoffs" && hasPlayoffStats;
@@ -701,7 +712,7 @@ export default function SeasonSimPanel({
             return (
               <div className="space-y-2 pt-2.5" style={{borderTop:"1px solid rgba(255,255,255,.07)"}}>
                 <div className="flex items-center justify-between">
-                  <div className="text-[10.5px] text-gray-400 uppercase tracking-widest">Season Awards</div>
+                  <div className="text-[10.5px] text-gray-400 uppercase tracking-widest">{leagueAwardsCover ? "Roster Stats" : "Season Awards"}</div>
                   {hasPlayoffStats && (
                     <div className="flex gap-1 p-0.5 rounded-md" style={{background:"var(--bg-surface)",border:"1px solid var(--border)"}}>
                       <button onClick={()=>setStatView("regular")}
@@ -716,7 +727,7 @@ export default function SeasonSimPanel({
                     </div>
                   )}
                 </div>
-                {result.awards?.length > 0 ? (
+                {!leagueAwardsCover && (result.awards?.length > 0 ? (
                   <div className="space-y-1">
                     {result.awards.map((a, i) => (
                       <div key={i} className="text-[11px] text-gray-200">{a}</div>
@@ -724,7 +735,7 @@ export default function SeasonSimPanel({
                   </div>
                 ) : (
                   <div className="text-[10.5px] text-gray-600 italic">No individual hardware this season.</div>
-                )}
+                ))}
                 {activeLines?.length > 0 && (() => {
                   const COLS = "grid-cols-[1fr_2.2rem_2.2rem_2.2rem_2.2rem_2.2rem_2.4rem]";
                   const tot = k => +activeLines.reduce((a, l) => a + (l[k] || 0), 0).toFixed(1);
