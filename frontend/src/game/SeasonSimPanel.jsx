@@ -487,13 +487,14 @@ export default function SeasonSimPanel({
           )}
 
           {/* Playoff bracket — tur tur. Bu SENTETİK ladder (result.playoffRounds,
-              "vs 73-rated" gibi kimliksiz rakipler) — Rewrite History'de artık
-              GERÇEK bracket var (aşağıda "The League" → Simulate Playoffs),
-              o yüzden "done" aşamasına ulaşınca (kalıcı görünüm) Rewrite
-              History'de bu ladder'ı GİZLE, sadece reveal sırasında (stage
-              === "playoffs") dramatik tempo için kalsın. Quick Sim'de hiç
-              değişmedi — o modun TEK playoff gösterimi hâlâ bu. */}
-          {result.madePlayoffs && (stage === "playoffs" || (stage === "done" && !rhActive)) && (
+              "vs 73-rated" gibi kimliksiz rakipler) — Rewrite History'de HİÇ
+              gösterilmesin (ne reveal sırasında ne "done"da): playofflar
+              artık SADECE "Simulate Playoffs" tıklanınca, GERÇEK bracket
+              üzerinden oynanıyor. animate()'in playoffs-reveal zamanlayıcısı
+              hâlâ arka planda çalışır (stage sonunda "done"a döner), sadece
+              bu blok görünmez olur. Quick Sim'de hiç değişmedi — o modun TEK
+              playoff gösterimi hâlâ bu. */}
+          {!rhActive && result.madePlayoffs && (stage === "playoffs" || stage === "done") && (
             <div className="space-y-1.5">
               <div className="text-[10.5px] text-gray-400 uppercase tracking-widest">Playoffs</div>
               {result.playoffRounds.slice(0, revealRounds).map((rd, i) => (
@@ -509,28 +510,43 @@ export default function SeasonSimPanel({
             </div>
           )}
 
-          {/* Final banner — dynasty farkındalıklı (Faz E) */}
+          {/* Final banner — dynasty farkındalıklı (Faz E). Rewrite History'de
+              result.champion/resultLabel SENTETİK playoff'tan geliyor — o
+              artık HİÇ oynanmıyor/gösterilmiyor (bkz. yukarıdaki not), o
+              yüzden "NBA CHAMPIONS"/"Lost in the X Round" gibi SOMUT bir
+              tur iddiası göstermek gerçek bracket'le (aşağıda, Simulate
+              Playoffs) çelişebiliyordu — RH'de nötr bir "Regular Season
+              Complete" başlığına düşer, gerçek playoff sonucu SADECE
+              aşağıdaki gerçek bracket'ten gelir. Dynasty/puan/THREEPEAT
+              mekaniği (leaderboard skorlaması) altyapıda AYNEN çalışmaya
+              devam ediyor — sadece YANILTICI görünür metin kaldırıldı. */}
           {stage === "done" && (
             <div className={`text-center py-3 rounded-xl border ${
-              dynasty.titles >= 3
+              !rhActive && dynasty.titles >= 3
                 ? "border-yamabuki bg-gradient-to-b from-yamabuki/60 to-yamabuki/40 shadow-[0_0_24px_rgba(250,204,21,.25)]"
-                : result.champion
+                : !rhActive && result.champion
                 ? "border-yamabuki/60 bg-gradient-to-b from-yamabuki/40 to-yamabuki/30"
                 : "border-white/10 bg-white/[.03]"}`}>
-              <div className={`font-black inline-flex items-center gap-1.5 ${dynasty.titles>=3?"text-2xl text-yamabuki":result.champion?"text-lg text-yamabuki":"text-lg text-gray-300"}`}>
-                {dynasty.titles >= 3 ? <><CrownIcon size={24} /> THREEPEAT — DYNASTY COMPLETE</>
+              <div className={`font-black inline-flex items-center gap-1.5 ${!rhActive && dynasty.titles>=3?"text-2xl text-yamabuki":!rhActive && result.champion?"text-lg text-yamabuki":"text-lg text-gray-300"}`}>
+                {rhActive ? "REGULAR SEASON COMPLETE"
+                  : dynasty.titles >= 3 ? <><CrownIcon size={24} /> THREEPEAT — DYNASTY COMPLETE</>
                   : result.champion && dynasty.titles === 2 ? <><TrophyIcon size={18} /><TrophyIcon size={18} /> BACK-TO-BACK CHAMPIONS</>
                   : result.champion ? <><TrophyIcon size={18} /> NBA CHAMPIONS</>
                   : result.resultLabel}
               </div>
-              {dynasty.ended && dynasty.titles > 0 && !result.champion && (
+              {!rhActive && dynasty.ended && dynasty.titles > 0 && !result.champion && (
                 <div className="text-[11px] text-yamabuki/90 mt-1">
                   Dynasty over — {dynasty.titles} straight title{dynasty.titles>1?"s":""}. The league caught up.
                 </div>
               )}
               <div className="text-[10.5px] text-gray-500 mt-1">
-                Season {dynasty.year} · Score: <span className="text-white font-bold">{result.seasonScore}</span>
-                <span className="text-gray-600"> — {result.wins} wins{result.playoffGameWins > 0 ? ` + ${result.playoffGameWins} playoff wins` : ""}{result.champion ? " + championship bonus" : ""}</span>
+                {rhActive ? (
+                  <>{result.wins}–{result.losses} · the real bracket below decides the playoffs</>
+                ) : (
+                  <>Season {dynasty.year} · Score: <span className="text-white font-bold">{result.seasonScore}</span>
+                    <span className="text-gray-600"> — {result.wins} wins{result.playoffGameWins > 0 ? ` + ${result.playoffGameWins} playoff wins` : ""}{result.champion ? " + championship bonus" : ""}</span>
+                  </>
+                )}
               </div>
             </div>
           )}

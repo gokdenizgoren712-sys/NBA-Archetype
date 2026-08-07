@@ -101,8 +101,14 @@ function accumulateBoxScores(series, teamKey, abbr, bracket, rand) {
   const roster = rosterOf(bracket, abbr);
   if (!roster) return;
   const totalsKey = teamKey === "A" ? "boxTotalsA" : "boxTotalsB";
+  // lastGameBox{A,B}: SERİ toplamı değil, EN SON oynanan tek maçın box'u —
+  // her stepBracket çağrısında ÜZERİNE YAZILIR (biriktirmez). Finals UI'ı
+  // bunu gösteriyor: "maç maç ilerlerken sadece o anki maçın box score'u,
+  // aşağı doğru birikmesin" isteği için (bkz. PlayoffBracketView.jsx).
+  const lastKey = teamKey === "A" ? "lastGameBoxA" : "lastGameBoxB";
   if (!series[totalsKey]) series[totalsKey] = {};
   const totals = series[totalsKey];
+  const lastGame = [];
   const all = [...(roster.players || []).map((p, i) => [p, roster.profiles?.[i]]),
                ...(roster.bench || []).map((p, i) => [p, roster.benchProfiles?.[i]])];
   for (const [rawPlayer, prof] of all) {
@@ -111,7 +117,9 @@ function accumulateBoxScores(series, teamKey, abbr, bracket, rand) {
     const cur = totals[line.name] || { name: line.name, bench: line.bench, games: 0, pts: 0, reb: 0, ast: 0, stl: 0, blk: 0 };
     cur.games++; cur.pts += line.pts; cur.reb += line.reb; cur.ast += line.ast; cur.stl += line.stl; cur.blk += line.blk;
     totals[line.name] = cur;
+    lastGame.push(line);
   }
+  series[lastKey] = lastGame;
 }
 
 // Bir serinin box-score havuzundan (iki takım birden) MVP seç — mevcut

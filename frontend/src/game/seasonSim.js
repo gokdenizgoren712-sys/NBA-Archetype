@@ -511,11 +511,11 @@ export function computeLeagueAwards(teams) {
     (mvpScore(b.line) + b.wins * 0.15) > (mvpScore(a.line) + a.wins * 0.15) ? b : a, pool[0]);
   leagueAwards.push({ label: "League MVP", icon: "🏅", name: mvpBest.line.name, team: mvpBest.teamAbbr });
 
-  // All-NBA (top-5) + All-Star (sonraki 10) — sadece starter'lar arasından,
-  // gerçek NBA All-NBA/All-Star seçim büyüklüğüne yakın.
+  // All-NBA (top-5) — sadece starter'lar arasından. All-Star kasıtlı olarak
+  // yok: 30 takımlık havuzda 10 kişilik ek liste "Season Awards"ı gereksiz
+  // kalabalıklaştırıyordu.
   const starters = pool.filter(p => !p.line.bench).sort((a, b) => mvpScore(b.line) - mvpScore(a.line));
   starters.slice(0, 5).forEach(p => leagueAwards.push({ label: "All-NBA", icon: "🌟", name: p.line.name, team: p.teamAbbr }));
-  starters.slice(5, 15).forEach(p => leagueAwards.push({ label: "All-Star", icon: "⭐", name: p.line.name, team: p.teamAbbr }));
 
   // DPOY: aynı savunma-üretim formülü (STL+BLK ağırlıklı + savunma arketibi)
   const dpoyScore = p => {
