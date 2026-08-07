@@ -112,7 +112,7 @@ function PillarBreakdown({ result, lang = "en" }) {
     Spacing:     result.spacing    ?? null,
     Defense:     result.defense    ?? null,
     Finishing:   result.finishing  ?? null,
-    "Role Fit":  result.role_fit   ?? result.Denge ?? null,
+    "Chemistry": result.role_fit   ?? result.Denge ?? null,
   };
   const score = result.lineup_score ?? result.Uyum_Skoru ?? 0;
   const nShooters = result.n_shooters;

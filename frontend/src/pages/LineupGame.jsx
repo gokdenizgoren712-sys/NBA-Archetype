@@ -172,7 +172,7 @@ function ScoreReveal({ fit, lineup, primaryCount, onReset, lang, affinityMatrix,
               {[
                 ["Quality",  qualityPct,                    "45%"],
                 ["Coverage", coveragePct,                   "40%"],
-                ["Role Fit", Math.round(fit.roleFit * 100), "15%"],
+                ["Chemistry", Math.round(fit.roleFit * 100), "15%"],
               ].map(([label, val, w]) => (
                 <div key={label} className="g-score-part">
                   <div className="v" style={{ color: VAL_HEX(val / 100) }}>{val}</div>
@@ -414,7 +414,7 @@ function ShareCard({ pct, grade, fit, lineup, simEra, coach }) {
     const parts = [
       ["QUALITY", Math.round((fit.avgQuality || 0) * 100), "45%"],
       ["COVERAGE", Math.round((fit.coverage || 0) * 100), "40%"],
-      ["ROLE FIT", Math.round((fit.roleFit || 0) * 100), "15%"],
+      ["CHEMISTRY", Math.round((fit.roleFit || 0) * 100), "15%"],
     ];
     parts.forEach(([label, v, w], i) => {
       const x = W - P - (2 - i) * 132 - 96;

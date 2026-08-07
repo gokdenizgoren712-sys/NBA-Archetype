@@ -998,7 +998,7 @@ function TeamEvalCard({ name, wins, won, coach, lineup, simEra, mine, token, onP
           <div className={`font-logo text-sm font-bold ${pct >= 85 ? "text-blue-300" : pct >= 78 ? "text-sky-300" : pct >= 70 ? "text-emerald-300" : pct >= 62 ? "text-yamabuki" : "text-red-400"}`}>{grade}</div>
         </div>
         <div className="flex-1 grid grid-cols-3 gap-1.5 min-w-0">
-          {[["Quality", qualityPct], ["Coverage", coveragePct], ["Role Fit", roleFitPct]].map(([label, val]) => (
+          {[["Quality", qualityPct], ["Coverage", coveragePct], ["Chemistry", roleFitPct]].map(([label, val]) => (
             <div key={label} className="g-panel subtle py-1.5 text-center">
               <div className={`text-sm font-black ${val >= 75 ? "text-blue-300" : val >= 55 ? "text-gray-200" : "text-red-400"}`}>{val}</div>
               <div className="text-[8px] text-gray-500 mt-0.5">{label}</div>

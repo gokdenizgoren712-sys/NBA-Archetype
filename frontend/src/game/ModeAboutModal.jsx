@@ -15,7 +15,7 @@ import "./game.css";
 const SCORE = [
   ["Quality", "45%", "#60a5fa", "Each player's overall, scaled by how far their prime sits from your sim era, then by position fit."],
   ["Coverage", "40%", "#4ade80", "Whether your archetypes collectively cover Creation, Spacing, Defense and Finishing."],
-  ["Role Fit", "15%", "#FFB11B", "A penalty for redundancy — stacking three ball-dominant Engines costs you."],
+  ["Chemistry", "15%", "#FFB11B", "A penalty for redundancy — stacking three ball-dominant Engines costs you."],
 ];
 
 const MODES = {

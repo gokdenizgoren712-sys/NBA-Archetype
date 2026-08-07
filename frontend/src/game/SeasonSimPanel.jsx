@@ -10,6 +10,11 @@ import "./game.css";
 
 const MONTHS = ["OCT", "NOV", "DEC", "JAN", "FEB", "MAR", "APR"];
 
+// "Üst seviye simülasyon" şablonu (2026-08) — Rewrite History modundayken
+// panelin TAMAMI (idle→running→done) bu altın kimliğe bürünür, sadece
+// pre-sim banner'da değil (bkz. plan: docs/plans/fancy-cooking-gizmo.md).
+const RH_ACCENT_STYLE = { "--accent": "#FFB11B", "--accent-a": "rgba(255,177,27,.10)", "--accent-line": "rgba(255,177,27,.35)" };
+
 // "Rewrite History" — era.years [start, endExclusive) aralığındaki gerçek
 // sezon string'lerini üretir (bkz. game/eras.js ERAS).
 function seasonsInEra(era) {
@@ -185,11 +190,29 @@ export default function SeasonSimPanel({
   const shownLosses = shownLog.length - shownWins;
   const month = MONTHS[Math.min(6, Math.floor(revealGames / 12))];
 
+  // Rewrite History kalıcı kimliği — simMode değişmeden run/defend arasında
+  // sabit kalır (mid-run mode-switch UI yok), bu yüzden tüm aşamalarda
+  // (idle/regular/playoffs/done) tek, tutarlı bir bayrak olarak kullanılabilir.
+  const rhActive = simMode === "history";
+  // Canlı reveal sırasında gerçek takımın O ANA KADAR ki galibiyet/mağlubiyeti —
+  // yeni fetch yok, result.gameSchedule zaten her maçın gerçek skorunu taşıyor.
+  const shownReal = result?.gameSchedule ? result.gameSchedule.slice(0, revealGames) : [];
+  const shownRealWins = shownReal.filter(g => g.realTeamPts > g.realOppPts).length;
+  const shownRealLosses = shownReal.length - shownRealWins;
+
   return (
-    <div className="g-panel p-4 space-y-3">
+    <div className="g-panel p-4 space-y-3" style={rhActive ? RH_ACCENT_STYLE : undefined}>
       <div className="flex items-center justify-between">
         <div className="text-[11px] text-gray-400 uppercase tracking-widest flex items-center gap-1">
-          <span>Season Simulation{stage!=="idle"&&dynasty.year>1?` · Year ${dynasty.year}`:""}</span>
+          {rhActive ? (
+            <span className="inline-flex items-center gap-1.5" style={{color:"var(--yamabuki)"}}>
+              <DnaIcon size={12} />
+              <span className="font-bold">Rewrite History{rhSchedule ? `: ${rhSchedule.team} · ${rhSchedule.season}` : ""}</span>
+            </span>
+          ) : (
+            <span>Season Simulation</span>
+          )}
+          {stage!=="idle"&&dynasty.year>1&&<span className="text-gray-500 normal-case">· Year {dynasty.year}</span>}
           {stage!=="idle"&&dynasty.titles>0&&(
             <span className="text-yamabuki flex items-center gap-0.5">
               {Array.from({length:Math.min(dynasty.titles,3)}).map((_,i)=><TrophyIcon key={i} size={12}/>)}
@@ -357,6 +380,12 @@ export default function SeasonSimPanel({
                 {" · "}Worst skid: <span className="text-red-400">L{result.worstSkid}</span>
               </div>
             )}
+            {result.gameSchedule?.length > 0 && revealGames > 0 && revealGames < nGames && (
+              <div className="text-[10.5px] mt-1" style={{color:"var(--text-muted)"}}>
+                Real {result.realTeam} at this point: <span className="text-gray-300 font-semibold tabular-nums">{shownRealWins}–{shownRealLosses}</span>
+                {" · "}You: <span className="font-semibold tabular-nums" style={{color:"var(--yamabuki)"}}>{shownWins}–{shownLosses}</span>
+              </div>
+            )}
           </div>
 
           {/* Progress bar */}
@@ -412,6 +441,60 @@ export default function SeasonSimPanel({
               <div className="text-[10.5px] text-gray-500 mt-1">
                 Season {dynasty.year} · Score: <span className="text-white font-bold">{result.seasonScore}</span>
                 <span className="text-gray-600"> — {result.wins} wins{result.playoffGameWins > 0 ? ` + ${result.playoffGameWins} playoff wins` : ""}{result.champion ? " + championship bonus" : ""}</span>
+              </div>
+            </div>
+          )}
+
+          {/* Verdict — nihai rekor, gerçek takımın gerçek sezonuyla karşılaştırılır
+              (2026-08 "üst seviye simülasyon" şablonu). Yeni fetch yok:
+              result.gameSchedule'daki gerçek skorlardan türetilir. */}
+          {stage === "done" && result.gameSchedule?.length > 0 && (() => {
+            const realWins = result.gameSchedule.filter(g => g.realTeamPts > g.realOppPts).length;
+            const realLosses = result.gameSchedule.length - realWins;
+            const delta = result.wins - realWins;
+            const verdictColor = delta > 0 ? "#34d399" : delta < 0 ? "#f87171" : "var(--yamabuki)";
+            const verdictWord = delta > 0 ? "You improved history" : delta < 0 ? "History took a hit" : "Exactly as it happened";
+            return (
+              <div className="rounded-xl p-3.5" style={{background:"rgba(255,177,27,.06)", border:"1px solid rgba(255,177,27,.28)"}}>
+                <div className="text-[10px] uppercase tracking-widest mb-1" style={{color:"var(--yamabuki)"}}>Verdict</div>
+                <div className="text-[13px] text-gray-200 leading-relaxed">
+                  <span className="font-black" style={{color: verdictColor}}>{verdictWord}</span> — you finished{" "}
+                  <span className="font-bold text-white tabular-nums">{result.wins}–{result.losses}</span>, the real {result.realTeam} went{" "}
+                  <span className="font-bold text-white tabular-nums">{realWins}–{realLosses}</span>
+                  {delta !== 0 && <> (<span style={{color: verdictColor}} className="font-semibold">{delta > 0 ? "+" : ""}{delta} game{Math.abs(delta) === 1 ? "" : "s"}</span>)</>}.
+                </div>
+                {rhSchedule?.league_rank && (
+                  <div className="text-[10.5px] text-gray-500 mt-1">
+                    Real record: #{rhSchedule.league_rank} of {rhSchedule.league_size} in the league that season.
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
+          {/* Game Log — Rewrite History'ye özel: gerçek takvimin 82 (ya da
+              kısaltılmış sezonda daha az) maçının rakip/skor/sonucu. Verdict'in
+              hemen altına taşındı (2026-08) — Quick Sim'de olmayan tek içerik,
+              en görünür yerde olmalı (önceden ödül/istatistik bloklarından
+              sonra, en altta gömülüydü). */}
+          {stage === "done" && result.gameSchedule?.length > 0 && (
+            <div className="space-y-1.5">
+              <div className="text-[10.5px] text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
+                <DnaIcon size={11} /> Game Log — {result.realTeam} · {result.realSeason}
+              </div>
+              <div className="max-h-56 overflow-y-auto space-y-0.5 pr-0.5">
+                {result.gameSchedule.map((g, i) => (
+                  <div key={i} className="flex items-center gap-2 px-2 py-1 rounded-md text-[10.5px]"
+                    style={{background: i % 2 === 0 ? "rgba(255,255,255,.02)" : "transparent"}}>
+                    <span className="w-5 text-gray-600 tabular-nums shrink-0">{g.gameNum}</span>
+                    <span className="w-8 text-gray-500 shrink-0">{g.isHome ? "vs" : "@"}</span>
+                    <span className="flex-1 text-gray-300 truncate">{g.opponent}</span>
+                    <span className="text-gray-600 tabular-nums shrink-0">{g.realTeamPts}-{g.realOppPts}</span>
+                    <span className={`w-4 text-right font-bold shrink-0 ${g.won ? "text-emerald-400" : "text-red-400"}`}>
+                      {g.won ? "W" : "L"}
+                    </span>
+                  </div>
+                ))}
               </div>
             </div>
           )}
@@ -502,30 +585,6 @@ export default function SeasonSimPanel({
                   </div>
                 );
               })()}
-            </div>
-          )}
-
-          {/* Game Log — Rewrite History'ye özel: gerçek takvimin 82 (ya da
-              kısaltılmış sezonda daha az) maçının rakip/skor/sonucu (bkz. plan). */}
-          {stage === "done" && result.gameSchedule?.length > 0 && (
-            <div className="space-y-1.5 pt-2.5" style={{borderTop:"1px solid rgba(255,255,255,.07)"}}>
-              <div className="text-[10.5px] text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
-                <DnaIcon size={11} /> Game Log — {result.realTeam} · {result.realSeason}
-              </div>
-              <div className="max-h-56 overflow-y-auto space-y-0.5 pr-0.5">
-                {result.gameSchedule.map((g, i) => (
-                  <div key={i} className="flex items-center gap-2 px-2 py-1 rounded-md text-[10.5px]"
-                    style={{background: i % 2 === 0 ? "rgba(255,255,255,.02)" : "transparent"}}>
-                    <span className="w-5 text-gray-600 tabular-nums shrink-0">{g.gameNum}</span>
-                    <span className="w-8 text-gray-500 shrink-0">{g.isHome ? "vs" : "@"}</span>
-                    <span className="flex-1 text-gray-300 truncate">{g.opponent}</span>
-                    <span className="text-gray-600 tabular-nums shrink-0">{g.realTeamPts}-{g.realOppPts}</span>
-                    <span className={`w-4 text-right font-bold shrink-0 ${g.won ? "text-emerald-400" : "text-red-400"}`}>
-                      {g.won ? "W" : "L"}
-                    </span>
-                  </div>
-                ))}
-              </div>
             </div>
           )}
 

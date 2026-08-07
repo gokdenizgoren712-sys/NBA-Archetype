@@ -1766,6 +1766,10 @@ def get_historical_team_schedule(season: str, abbr: str):
     pct_series = pd.Series([v["win_pct"] for v in wp.values()])
     league_mean = float(pct_series.mean()) if not pct_series.empty else 0.5
     league_std = float(pct_series.std()) if len(pct_series) > 1 else 0.15
+    # 2026-08 "üst seviye simülasyon" şablonu: gerçek takımın o sezonki lig
+    # sırası — frontend "Standing in for" bandında bağlam vermek için kullanır.
+    ranked = sorted(wp.items(), key=lambda kv: kv[1]["win_pct"], reverse=True)
+    league_rank = next((i + 1 for i, (ab, _) in enumerate(ranked) if ab == abbr), None)
 
     games = []
     for i, r in team_games.iterrows():
@@ -1786,6 +1790,7 @@ def get_historical_team_schedule(season: str, abbr: str):
     return {
         "season": season, "team": abbr,
         "wins": team_wp.get("wins"), "losses": team_wp.get("losses"),
+        "league_rank": league_rank, "league_size": len(wp),
         "league_mean_win_pct": round(league_mean, 4),
         "league_std_win_pct": round(league_std, 4),
         "games": games,

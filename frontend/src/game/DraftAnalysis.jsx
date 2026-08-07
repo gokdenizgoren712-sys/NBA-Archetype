@@ -65,7 +65,7 @@ function Parts({ fit, align = "left" }) {
   const parts = [
     ["Quality", pct100(fit.avgQuality), "45%"],
     ["Coverage", pct100(fit.coverage), "40%"],
-    ["Role Fit", pct100(fit.roleFit), "15%"],
+    ["Chemistry", pct100(fit.roleFit), "15%"],
   ];
   return (
     <div className={`flex gap-4${align === "right" ? " flex-row-reverse" : ""}`}>
@@ -266,7 +266,7 @@ export default function DraftAnalysis({
               — burada tek satırlık künyeye indi. */}
           <span className="g-mono shrink-0" style={{ color: "var(--text-faint)" }}>
             {rows.map(r => `${r.fit.nShooters} shooter${r.fit.nShooters === 1 ? "" : "s"}`).join(" · ")}
-            {rows.some(r => r.fit.roleFit < 1) && " · role fit penalty"}
+            {rows.some(r => r.fit.roleFit < 1) && " · chemistry penalty"}
           </span>
         </div>
       </div>
