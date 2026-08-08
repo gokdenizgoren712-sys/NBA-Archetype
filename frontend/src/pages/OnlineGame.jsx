@@ -286,18 +286,29 @@ export default function OnlineGame() {
       setMatchedRoomCode(data.room_code);
       setOpponent(data.opponent || null);
       setQueueState("found");
-    } else if (data.type === "error") {
+    } else if (data.type === "error" || data.type === "fatal") {
       setNotice(data.message || "Matchmaking error");
       setQueueState("idle");
       clearInterval(tickRef.current);
     }
   }, []);
 
-  useGameSocket(
+  const { fatalError: mmFatalError } = useGameSocket(
     queueState !== "idle" ? "/ws/game/matchmaking" : null,
     token,
     { onMessage: onMmMessage },
   );
+
+  // Faz3-M6 savunma katmanı: "fatal" mesajı bir sebeple hiç gelmezse (ör.
+  // sunucu accept() sonrası send_json'dan önce çökerse) useGameSocket'in
+  // kendi kapanış-kodu tespiti yine de burayı tetikler — arama sonsuza
+  // dek "Searching…" göstermesin diye.
+  useEffect(() => {
+    if (!mmFatalError) return;
+    setNotice(mmFatalError.message);
+    setQueueState("idle");
+    clearInterval(tickRef.current);
+  }, [mmFatalError]);
 
   const startQueue = useCallback(() => {
     if (!isLoggedIn) { setNotice("Log in to play against other people."); return; }

@@ -107,11 +107,22 @@ export default function WithAFriendGame() {
     }
   }, [roomCode, refreshRoom]);
 
-  const { connected, send } = useGameSocket(
+  const { connected, send, fatalError } = useGameSocket(
     roomCode ? `/ws/game/room/${roomCode}` : null,
     token,
     { onMessage: onSocketMessage },
   );
+
+  // Faz3-M6: sunucu bağlantıyı kalıcı reddettiğinde (oda yok/artık senin
+  // değil, oturum süresi doldu) useGameSocket bir daha denemeyi bırakır ve
+  // bunu bildirir — önceden bu durumda ekran sonsuza dek "Connecting…"
+  // gösterirdi. Odayı tamamen terk edip lobiye dön.
+  const leaveFatalRoom = () => {
+    setRoomCode(null);
+    setServerState(null);
+    setActionError("");
+    setOpponentDisconnected(false);
+  };
 
   const createRoom = () => {
     setErrorMsg(""); setCreating(true);
@@ -377,7 +388,18 @@ export default function WithAFriendGame() {
         )}
 
 
-        {roomCode && !game && (
+        {roomCode && fatalError && (
+          <div className="max-w-md mx-auto text-center g-panel p-6 space-y-3">
+            <div className="text-[11px] text-red-400 uppercase tracking-widest">Can't reach this room</div>
+            <p className="text-sm" style={{ color: "var(--text-muted)" }}>{fatalError.message}</p>
+            <button onClick={leaveFatalRoom} className="aura-rating-btn"
+              style={{ padding: "10px 24px", fontSize: 13 }}>
+              Back to Lobby
+            </button>
+          </div>
+        )}
+
+        {roomCode && !game && !fatalError && (
           <div className="max-w-md mx-auto text-center g-panel p-6 space-y-4">
             {!connected && <p className="text-sm text-gray-500 animate-pulse">Connecting…</p>}
             {connected && !opponentConnected && (
@@ -401,6 +423,19 @@ export default function WithAFriendGame() {
 
         {game && (
           <div className="space-y-3">
+            {fatalError ? (
+              <div className="max-w-md mx-auto text-center g-panel p-4 space-y-2">
+                <div className="text-[11px] text-red-400 uppercase tracking-widest">Lost this room</div>
+                <p className="text-[12px]" style={{ color: "var(--text-muted)" }}>{fatalError.message}</p>
+                <button onClick={leaveFatalRoom} className="aura-rating-btn" style={{ padding: "8px 20px", fontSize: 12 }}>
+                  Back to Lobby
+                </button>
+              </div>
+            ) : !connected && (
+              <div className="max-w-md mx-auto text-center text-[11px] text-gray-500 bg-gray-900/40 border border-gray-700/40 rounded-lg py-1.5 px-3 animate-pulse">
+                Reconnecting…
+              </div>
+            )}
             {actionError && (
               <div className="max-w-md mx-auto text-center text-[11px] text-red-400 bg-red-950/30 border border-red-800/40 rounded-lg py-1.5 px-3">{actionError}</div>
             )}

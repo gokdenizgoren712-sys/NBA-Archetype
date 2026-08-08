@@ -478,12 +478,26 @@ export default function SeasonSimPanel({
       {stage !== "idle" && result && (() => {
         const nGames = result.gameLog.length;   // 82 sabit değil — bkz. animate() notu
         const halfway = Math.ceil(nGames / 2);
+        // RH'de result.seed her zaman seasonSim.js'in İÇ senkron (82-maçlık
+        // eşik tablosuna göre) tahmini — gerçek bracket'in konferans
+        // sıralamasından türeyen seed'le ÇAKIŞMAYABİLİR (bkz. 2026-08 denetimi:
+        // testte "#2 seed" başlığı, gerçek Western Conference tablosunda "#3"
+        // çıkmıştı). RH'de lig kurulduysa gerçek standings'ten türeyen seed'i
+        // göster; kurulmadıysa hiç seed gösterme (yanlış bir sayı vermektense).
+        const displaySeed = rhActive
+          ? (league && league.teamsBuilt >= 20 && rhSchedule
+              ? (() => {
+                  const st = buildConferenceStandings(league.teamSeasons, rhSchedule.team, result.wins, result.losses);
+                  return [...st.East, ...st.West].find(e => e.isUser)?.seed ?? null;
+                })()
+              : null)
+          : result.seed;
         return (
         <div className="space-y-3">
           {/* Running record */}
           <div className="text-center">
             <div className="text-[10.5px] text-gray-400 uppercase tracking-widest mb-1">
-              {revealGames < nGames ? `Regular Season · ${month}` : `Final Record${result.seed ? ` · #${result.seed} seed` : ""}`}
+              {revealGames < nGames ? `Regular Season · ${month}` : `Final Record${displaySeed ? ` · #${displaySeed} seed` : ""}`}
             </div>
             <div className="text-4xl font-black text-white tabular-nums">
               {shownWins}<span className="text-gray-600 mx-1">–</span>{shownLosses}

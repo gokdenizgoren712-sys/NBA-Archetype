@@ -37,6 +37,25 @@ def _gen_room_code(n: int = 6) -> str:
     return "".join(random.choices(_ROOM_CODE_ALPHABET, k=n))
 
 
+async def _reject(ws: WebSocket, reason: str, message: str) -> None:
+    """Kalıcı/tekrar-denenmeyecek bağlantı reddi (2026-08 dayanıklılık,
+    Faz3-M6). Önceden accept() ÖNCESİ özel close code'la (4401/4403)
+    reddediliyordu — ama WebSocket handshake tamamlanmadan reddedilen bir
+    bağlantıda tarayıcı CloseEvent.code'u güvenilir iletmiyor (çoğu tarayıcı/
+    ASGI sunucu kombinasyonunda düz 1006 "abnormal closure" görülür),
+    istemci bunu geçici bir ağ kopması sanıp sonsuza dek yeniden dener
+    (bkz. useGameSocket.js — Faz3-M6'nın somut, gözlemlenen kırılma noktası).
+    Bunun yerine ÖNCE accept() edip GERÇEK bir JSON mesajı gönderiyoruz —
+    istemci her tarayıcı/sunucuda güvenilir alır, "fatal" tipini tanıyıp
+    yeniden denemeyi durdurur ve nedeni kullanıcıya gösterir."""
+    await ws.accept()
+    try:
+        await ws.send_json({"type": "fatal", "reason": reason, "message": message})
+    except Exception:
+        pass
+    await ws.close(code=1000)
+
+
 class ConnectionManager:
     """room_code -> {user_id: WebSocket}. Tek process, in-memory (Railway tek
     container çalıştırıyor — çoklu instance'a ölçeklenirse bir mesaj kuyruğu
@@ -878,10 +897,10 @@ async def matchmaking_socket(ws: WebSocket, token: str = Query(...)):
         payload = _decode(token)
         user_id = int(payload["sub"])
     except Exception:
-        await ws.close(code=4401)
+        await _reject(ws, "invalid_token", "Your session expired — log in again.")
         return
     if _is_banned(user_id):
-        await ws.close(code=4403)
+        await _reject(ws, "banned", "This account can't use online matchmaking.")
         return
 
     await ws.accept()
@@ -1098,10 +1117,10 @@ async def room_socket(ws: WebSocket, room_code: str, token: str = Query(...)):
         payload = _decode(token)
         user_id = int(payload["sub"])
     except Exception:
-        await ws.close(code=4401)
+        await _reject(ws, "invalid_token", "Your session expired — log in again.")
         return
     if _is_banned(user_id):
-        await ws.close(code=4403)
+        await _reject(ws, "banned", "This account can't use online play.")
         return
 
     with get_conn() as conn:
@@ -1109,7 +1128,7 @@ async def room_socket(ws: WebSocket, room_code: str, token: str = Query(...)):
             "SELECT * FROM game_rooms WHERE room_code = ?", (room_code,)
         ).fetchone()
     if not row or user_id not in (row["player1_user_id"], row["player2_user_id"]):
-        await ws.close(code=4403)
+        await _reject(ws, "room_not_found", "This room doesn't exist, or someone else already took your spot in it.")
         return
 
     await manager.connect(room_code, user_id, ws)

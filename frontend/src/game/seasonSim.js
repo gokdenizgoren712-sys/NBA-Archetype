@@ -289,14 +289,19 @@ function playSeries(myRating, opp, homeAdv, rand, boost = 0) {
   return { w, l, won: w === 4, games };
 }
 
-function winsToSeed(wins) {
-  if (wins >= 60) return 1;
-  if (wins >= 56) return 2;
-  if (wins >= 52) return 3;
-  if (wins >= 48) return 4;
-  if (wins >= 45) return 5;
-  if (wins >= 43) return 6;
-  if (wins >= 42) return 7;
+// nGames: 82 varsayılan, ama Rewrite History'de kısaltılmış gerçek sezonlar da
+// olabilir (1998-99 lockout 50 maç, 2019-20/21 COVID ~72 maç) — eşikler orantılı
+// ölçeklenmezse kısa sezonda playoff'a kalan güçlü bir takım bile seed=8 (en zayıf)
+// ya da hiç seed alamaz görünürdü.
+function winsToSeed(wins, nGames = 82) {
+  const s = nGames / 82;
+  if (wins >= 60 * s) return 1;
+  if (wins >= 56 * s) return 2;
+  if (wins >= 52 * s) return 3;
+  if (wins >= 48 * s) return 4;
+  if (wins >= 45 * s) return 5;
+  if (wins >= 43 * s) return 6;
+  if (wins >= 42 * s) return 7;
   return 8;
 }
 
@@ -353,7 +358,7 @@ export function simulateSeason(players, simEra, fit, affinity01 = null, extras =
   // Rewrite History'de kısaltılmış gerçek sezonlar da olabilir (1998-99 lockout
   // 50 maç, 2019-20/2020-21 COVID ~72 maç) — sabit 41 o sezonlarda yanlış olurdu.
   const madePlayoffs = wins >= Math.ceil(nGames / 2);
-  const seed = madePlayoffs ? winsToSeed(wins) : null;
+  const seed = madePlayoffs ? winsToSeed(wins, nGames) : null;
 
   // Playoff koşusu: yıldız gücü + koç DNA'sı + yüzükler + taze bacaklar (Faz D)
   const playoffRating = 0.82 * effRating + 0.18 * starPower
@@ -390,7 +395,7 @@ export function simulateSeason(players, simEra, fit, affinity01 = null, extras =
   // ── Sezon ödülleri (Faz 3) ───────────────────────────────────────────────────
 // Simüle box-stat: gerçek PTS/REB/AST × (sim etkinliği / gerçek overall) × dakika payı.
 // Ödüller bu istatistik + takım başarısı + şans üzerinden dağıtılır.
-function computeSeasonAwards({ profiles, benchProfiles, players, bench, wins, champion, realGames }, rand) {
+function computeSeasonAwards({ profiles, benchProfiles, players, bench, wins, champion, realGames, isRH }, rand) {
   const factor = prof => prof ? prof.simQuality / Math.max(0.35, prof.overall) : 1;
   const line = (pl, prof, isBench) => {
     // Dakika payı: 35dk taban — 25dk'lık 6th man üretimin ~%71'ini, 12dk'lık ~%34'ünü verir
@@ -472,8 +477,11 @@ function computeSeasonAwards({ profiles, benchProfiles, players, bench, wins, ch
     if (mvpScore(b6) >= 14 && rand() < (hasTag ? 0.72 : 0.32))
       awards.push(`🔥 Sixth Man of the Year — ${b6.name}`);
   }
-  // Finals MVP: şampiyonlukta en iyi üretim
-  if (champion && mvpBest) awards.push(`🏆 Finals MVP — ${mvpBest.name}`);
+  // Finals MVP: şampiyonlukta en iyi üretim — RH'de gösterilmez, çünkü buradaki
+  // `champion` her zaman İÇ SENTETİK Quick-Sim playoff'undan gelir (RH kullanıcıya
+  // hiç göstermediği bir playoff), gerçek bracket'in Finals MVP'si ayrı yerde
+  // (playoffBracket.js seriesMVP / ChampionModal) hesaplanıyor.
+  if (!isRH && champion && mvpBest) awards.push(`🏆 Finals MVP — ${mvpBest.name}`);
 
   return { statLines: [...starterLines, ...benchLines], awards };
 }
@@ -488,7 +496,7 @@ const RESULT_LABEL = {
   };
 
   const { statLines, awards } = computeSeasonAwards(
-    { profiles, benchProfiles, players, bench: extras.bench || [], wins, champion, realGames: gameSchedule },
+    { profiles, benchProfiles, players, bench: extras.bench || [], wins, champion, realGames: gameSchedule, isRH: !!real },
     rand,
   );
 
