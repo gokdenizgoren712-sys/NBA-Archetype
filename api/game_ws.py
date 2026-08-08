@@ -607,6 +607,41 @@ def _advance_series(state: dict, uid: int, game: dict) -> str | None:
     return None
 
 
+def _format_series_score(wins_a: int, wins_b: int) -> str:
+    """'4-2' formatında seri skoru, kazananın galibiyeti önce — paylaşılan tek
+    formatter (bkz. docs/online-architecture-review-and-roadmap.md §1.2 madde 7:
+    önceden bu ad-hoc olarak WithAFriendGame.jsx'te tek bir yerde yapılıyordu,
+    challenge_results için de aynı fonksiyon kullanılıyor, ikinci bir reinvent yok)."""
+    return f"{max(wins_a, wins_b)}-{min(wins_a, wins_b)}"
+
+
+def _record_challenge_result(state: dict) -> None:
+    """Board Challenge serisi bitince challenge_results'a yazar (2026-08,
+    roadmap §2.3/§9 karar 2: şema Faz 4'te oluşturulmuştu ama hiç
+    doldurulmuyordu — kullanıcı kararıyla şimdi dolduruluyor; ayrı bir
+    'roster_battles' sistemi KURULMUYOR, kullanıcı Board Challenge'ın zaten bu
+    ihtiyacı karşıladığını belirtti). challenger_id = meydan okuyan (p1, her
+    zaman gerçek bağlı kullanıcı — p2/donmuş kadro sahibi hiç bağlanmaz).
+    state["_challenge_result_saved"] ile idempotent — ama zaten _advance_series
+    tamamlanmış bir seriye yeni maç kabul etmiyor ("Series already over"),
+    bu yüzden pratikte bu fonksiyon serinin bittiği ANDA tam olarak bir kez
+    çağrılır; flag sadece ekstra bir güvence katmanı."""
+    if state.get("mode") != "challenge" or state.get("_challenge_result_saved"):
+        return
+    entry_id = state.get("entry_id")
+    if entry_id is None:
+        return
+    p1, p2 = state["player1_user_id"], state["player2_user_id"]
+    wins = state.get("series_wins") or {}
+    w1, w2 = wins.get(p1, 0), wins.get(p2, 0)
+    with get_conn() as conn:
+        conn.execute(
+            "INSERT INTO challenge_results (challenger_id, entry_id, won, series_score) VALUES (?, ?, ?, ?)",
+            (p1, entry_id, 1 if w1 > w2 else 0, _format_series_score(w1, w2)),
+        )
+    state["_challenge_result_saved"] = True
+
+
 HANDLERS = {
     "pick_era":          lambda s, uid, m: _pick_era(s, uid, m.get("era_id")),
     "pick_player":       lambda s, uid, m: _pick_player(s, uid, m.get("player")),
@@ -942,13 +977,15 @@ _CHALLENGE_COACH_POOL = [
 
 
 def _init_challenge_state(p1: int, p2: int, usernames: dict, roster: list, sim_era_id: str,
-                           real_season: str | None = None, real_team: str | None = None) -> dict:
+                           real_season: str | None = None, real_team: str | None = None,
+                           entry_id: int | None = None) -> dict:
     lineup_p2 = {s: None for s in ALL_SLOTS}
     for i, slot in enumerate(ALL_SLOTS):
         if i < len(roster):
             lineup_p2[slot] = roster[i]
     state = {
         "mode": "challenge",
+        "entry_id": entry_id,   # challenge_results.entry_id — bkz. _record_challenge_result
         "wheel_mode": "round",
         "phase": "drafting",   # _begin_round aşağıda hemen üzerine yazıyor — "era" fazı hiç yok
         "usernames": usernames,
@@ -1097,7 +1134,8 @@ def challenge_board(body: ChallengeBody, user=Depends(get_current_user)):
     real_season = row["real_season"] or None
     real_team = row["real_team"] or None
     ROOM_STATES[room_code] = _init_challenge_state(
-        user_id, opponent_user_id, usernames, roster, sim_era, real_season, real_team)
+        user_id, opponent_user_id, usernames, roster, sim_era, real_season, real_team,
+        entry_id=body.entry_id)
     _save_state(room_code, ROOM_STATES[room_code])
 
     return {
@@ -1192,6 +1230,8 @@ async def room_socket(ws: WebSocket, room_code: str, token: str = Query(...)):
                 if err:
                     await ws.send_json({"type": "error", "message": err})
                     continue
+                if state.get("phase") == "complete":
+                    _record_challenge_result(state)
                 _save_state(room_code, state)
                 await manager.broadcast(room_code, _envelope(room_code, state))
     except WebSocketDisconnect:

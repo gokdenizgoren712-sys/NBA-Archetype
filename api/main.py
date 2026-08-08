@@ -874,10 +874,28 @@ def sitemap_xml():
             )
     except Exception:
         pass
+    # 2026-08 (roadmap §4.2/§5): yayınlanmış blog yazıları sitemap'te hiç
+    # yoktu — SEO içerik hub'ı (Blog.jsx/BlogPost.jsx, zaten canlı) yazılar
+    # yazıldıkça Google'a hiç ulaşmazdı. published olanlar (App.jsx'teki
+    # /blog/:slug rotasıyla birebir) burada da listeleniyor.
+    blog_urls = ""
+    try:
+        with get_conn() as conn:
+            slugs = conn.execute(
+                "SELECT slug, updated_at FROM articles WHERE status='published' ORDER BY created_at DESC"
+            ).fetchall()
+        blog_urls = "\n".join(
+            f'  <url><loc>{BASE_URL}/blog/{urllib.parse.quote(str(r["slug"]), safe="")}</loc>'
+            f'<changefreq>monthly</changefreq><priority>0.7</priority></url>'
+            for r in slugs
+        )
+    except Exception:
+        pass
     xml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 {static_urls}
 {player_urls}
+{blog_urls}
 </urlset>"""
     from fastapi.responses import Response
     return Response(content=xml, media_type="application/xml")

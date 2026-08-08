@@ -1,6 +1,6 @@
 # Primary Arch — Online Sistem Eleştirisi + v2.0 Yol Haritası
 
-**Tarih:** 2026-08-04 · **Durum:** Taslak — üzerinde çalışılacak, uygulanmadan önce onaylanmalı
+**Tarih:** 2026-08-04 · **Durum:** §9'daki açık kararlar 2026-08-09'da netleşti (bkz. o bölümdeki güncellemeler) — Faz 1 "yeni sistem" olarak İPTAL edildi (kullanıcı kararı: Kadro Savaşı zaten Board Challenge), onun yerine Board Challenge'ın kendi eksiği (`challenge_results`) dolduruldu + sitemap blog-post eksikliği düzeltildi. Faz 2-5 hâlâ büyük ölçüde içerik-ops/hukuk işi, mühendislik tarafı bekliyor.
 **Kapsam:** (1) "Kadro Kaydetme + Kadro Savaşı" PDF önerisinin gerçek repoya karşı doğrulanması, (2) genel online mimarinin (With a Friend / Online Opponent / Board Challenge) kapsamlı eleştirisi, (3) Faz 1'den Faz 5'e uzanan, frontend/backend/içerik olarak ayrıştırılmış bir uygulama yol haritası.
 
 ---
@@ -54,13 +54,15 @@ PDF'in kendi ifadesiyle: *"gerçek api/db.py/main.py içeriği elde yoktu"*, *"g
 - **Stale room DB kilidi** — bu session'da bulundu ve düzeltildi (`_user_in_active_game` artık `updated_at` eşiği kullanıyor, ayrıca startup'ta otomatik süpürme var). Artık sorun değil ama neden 3 gün önce böyle bir hata bırakıldığının kök nedeni şuydu: yeni bir alt-sistem (matchmaking) eklenirken, DB durumunun ne zaman "bitti" sayılacağına dair TEK bir yer yoktu. **Bu ders Kadro Savaşı'na da uygulanmalı** — `roster_battles` anlık sonuçlandığı için bu spesifik hataya düşmez, ama ileride "pending/bekleme" modeli eklenirse (PDF §7'de öneriliyor) aynı riske dikkat edilmeli.
 
 ### 2.3 Board Challenge (Faz 4, bu session) — gerçek eksikler
-- **`challenge_results` tablosu ölü kod.** Şema var (`db.py:78-85`), hiçbir INSERT yok. Orijinal plan ("board bir merdivene dönüşsün") hiç uygulanmadı. Bu belge kapsamında karar verilmeli: doldur (küçük iş) ya da resmi olarak vazgeç.
+- **~~`challenge_results` tablosu ölü kod.~~ Dolduruldu (2026-08-09).** `_init_challenge_state`/`challenge_board()` artık `entry_id`'yi state'e taşıyor; `room_socket`'ın mesaj döngüsü seri `phase="complete"` olunca `_record_challenge_result(state)` çağırıyor — `challenger_id`, `entry_id`, `won`, `series_score` (`_format_series_score` ortak yardımcısıyla, "4-2" formatında) yazılıyor. İdempotent (state flag'i + `_advance_series`'in zaten tamamlanmış seriye yeni maç kabul etmemesi). Gerçek FK'lerle (kullanıcı+lineup_games satırı) uçtan uca smoke test edildi, temizlendi.
 - **Eski kayıtların `_cost`/`_posPenalty` alanları tahmini** (backfill'de `0`/`1.0` varsayılıyor, `main.py:998`) — sadece görsel, oyun mantığını bozmuyor ama gerçek veriyle karışmasın diye not düşülmeli.
 - **İsim eşleştirme aksan/case-duyarsız TAM eşleşme, substring yok** (`_fold` kullanıyor) — CLAUDE.md'nin "Bilinen Kısıtlar" bölümündeki genel isim-normalizasyonu sorununun bir başka örneği. Kadro Savaşı'nın frontend'i **isim eşleştirmeye hiç girmiyor** (kullanıcı zaten kendi tarayıcısında JSON kaydediyor) — bu açıdan Board Challenge'dan daha sağlam bir tasarım, doğru.
 
-### 2.4 Üç paralel "kadro deposu + lider tablosu" riski — **en önemli mimari karar noktası**
+### 2.4 Üç paralel "kadro deposu + lider tablosu" riski — **2026-08-09'da karara bağlandı**
 
-Şu an (ya da bu belge sonrası) elimizde şunlar olacak:
+**Karar: Kadro Savaşı (PDF'in `saved_rosters`/`roster_battles`'ı) AYRI bir sistem olarak KURULMAYACAK.** Kullanıcı gerekçesi: "kadro savaşı zaten board challenge, aynı şeyler zaten" — üçüncü bir depo+lider-tablosu eklemek, §0'daki 2. bulgunun tam olarak uyardığı karmaşayı yaratırdı. Bunun yerine mevcut Board Challenge'ın kendi eksiği (`challenge_results`, bkz. §2.3) tamamlandı. Aşağıdaki tablo ve §3'teki uygulama planı artık **yapılmayacak** — tarihsel kayıt olarak bırakılıyor.
+
+Şu an (ya da bu belge sonrası) elimizde şunlar olacaktı:
 
 | Sistem | Kaynak veri | Depo | Lider tablosu | Ne zaman tetiklenir |
 |---|---|---|---|---|
@@ -76,7 +78,9 @@ PDF'in kendi ifadesiyle: *"gerçek api/db.py/main.py içeriği elde yoktu"*, *"g
 
 ---
 
-## 3. FAZ 1: Kadro Kaydetme + Kadro Savaşı — Düzeltilmiş Uygulama Planı
+## 3. FAZ 1: Kadro Kaydetme + Kadro Savaşı — Düzeltilmiş Uygulama Planı (İPTAL — bkz. §2.4)
+
+**2026-08-09: Bu faz UYGULANMAYACAK.** Kullanıcı kararı: Kadro Savaşı, mevcut Board Challenge'ın yaptığı işin aynısı — ayrı bir `saved_rosters`/`roster_battles` sistemi kurmak gereksiz. Aşağıdaki plan yalnızca "neden bu yola gidilmedi" sorusuna referans olsun diye tarihsel kayıt olarak bırakıldı, uygulanmayacak.
 
 **Bağımlılık:** Backend track önce şemayı + endpoint'leri bitirmeli (frontend onlara fetch atıyor), ama iki track paralel başlayabilir — frontend mock/sabit veriyle UI'yi kurabilir, gerçek entegrasyon backend hazır olunca yapılır.
 
@@ -129,7 +133,7 @@ PDF'in kendi ifadesiyle: *"gerçek api/db.py/main.py içeriği elde yoktu"*, *"g
 **Frontend:**
 - GA4: `index.html`'e `gtag.js` script + `frontend/src/hooks/useSEO.jsx`'e (zaten var, sayfa başına meta yönetiyor) sayfa-değişimi pageview event'i eklenebilir.
 - Google Search Console: kod değişikliği gerekmiyor, sadece `sitemap.xml`'in doğruluğu önemli.
-- **Bulunan gerçek eksik:** `sitemap.xml` (`api/main.py:858-883`) şu an sadece statik route'lar + oyuncu profilleri içeriyor, **blog yazıları (`/blog/:slug`) sitemap'te YOK**. Faz 3 içerik hub'ı canlıya alınmadan önce bu eklenmeli, yoksa yazılan makaleler Google'a hiç gitmez.
+- **~~Bulunan gerçek eksik: blog yazıları sitemap'te yok.~~ Düzeltildi (2026-08-09).** `sitemap_xml()` artık `articles` tablosundan `status='published'` olanları da `/blog/{slug}` olarak ekliyor (`api/main.py`, `blog_urls` bloğu) — throwaway bir published makaleyle uçtan uca doğrulandı (sitemap'te göründü, silinince kayboldu), sonra temizlendi.
 
 ---
 
@@ -185,12 +189,17 @@ Faz 4 (Monetizasyon)  ◄──────────────────�
 
 ---
 
-## 9. Açık Kararlar (kullanıcı onayı gerekiyor)
+## 9. Açık Kararlar
 
-1. **Board Challenge ile Kadro Savaşı UI'da nasıl ayrışacak?** Tek "Battles" hub + 2 sekme mi, tamamen ayrı sayfalar mı?
-2. **`challenge_results` şimdi doldurulsun mu**, yoksa Faz 4'ün kapsamı dışında bırakılıp ayrı bir işe mi ertelensin?
-3. **Kadro Savaşı'nda koç seçimi var mı?** PDF'in şemasında yok (`sim_era` var, koç yok) — Same Screen/With a Friend'in koçlu deneyimiyle tutarsız olur, `headToHead.js`'in `buildMatchup`'ı koç bekliyor. Varsayılan/rastgele mi, yoksa kaydederken koç da mı seçtirilsin?
-4. **ELO/rating** — Faz 1'de mi, yoksa hem Live matchmaking hem Board hem Quick Battle için TEK bir ortak rating sistemi olarak mı sonra eklensin (§2.2'de değinildi)?
+**2026-08-09'da netleşenler (1-4):**
+
+1. ~~Board Challenge ile Kadro Savaşı UI'da nasıl ayrışacak?~~ **Ayrışmayacak — Kadro Savaşı ayrı bir sistem olarak kurulmuyor, kullanıcı kararı: "zaten board challenge, aynı şeyler zaten."** Bkz. §2.4.
+2. ~~`challenge_results` şimdi doldurulsun mu?~~ **Evet, dolduruldu** (bkz. §2.3) — Kadro Savaşı iptal olunca bu, "yeni sistem"e değil mevcut Board Challenge'a ait kalan tek gerçek eksikti.
+3. ~~Kadro Savaşı'nda koç seçimi var mı?~~ **Konu kalktı** — Kadro Savaşı hiç kurulmuyor, sorunun kendisi geçersiz.
+4. ~~ELO/rating Faz 1'de mi eklensin?~~ **Ertelendi** — Live matchmaking + Board için TEK ortak bir sistem olarak, ayrı bir iş olarak ele alınacak (henüz zamanlanmadı).
+
+**Hâlâ açık:**
+
 5. **AdSense başvuru eşiği** (30-50 ziyaretçi/gün) — GA4 kurulana kadar bu sayı nereden biliniyor? Faz 2 bitmeden bu karar verilemez, sıralamayı etkiler.
 6. **Affiliate tıklama sayacı** gerekli mi, yoksa dış platformların kendi analytics'ine mi güvenilecek?
 
