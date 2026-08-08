@@ -3,6 +3,7 @@ import { useState, useEffect, lazy, Suspense } from "react";
 import { Logo, GameIcon, NBAIcon, GLeagueIcon, NCAAIcon, EuroLeagueIcon,
          LineupsIcon, ExploreIcon, BlogIcon,
          GlossaryIcon, AdminIcon, RefreshIcon } from "./components/BrandIcons";
+import Footer from "./components/Footer";
 
 // Route sayfaları LAZY — her biri kendi chunk'ına bölünür. Ağır lib'ler böylece
 // initial bundle'dan çıkar: tiptap→ArticleEditor chunk'ı, recharts→paylaşılan radar
@@ -32,6 +33,10 @@ const EuroLeaguePage = lazy(() => import("./pages/EuroLeaguePage"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const ResetPassword  = lazy(() => import("./pages/ResetPassword"));
 const PlayerProfile  = lazy(() => import("./pages/PlayerProfile"));
+const PrivacyPolicy      = lazy(() => import("./pages/legal/PrivacyPolicy"));
+const TermsOfService     = lazy(() => import("./pages/legal/TermsOfService"));
+const ContactDisclaimer  = lazy(() => import("./pages/legal/ContactDisclaimer"));
+const AffiliateDisclosure = lazy(() => import("./pages/legal/AffiliateDisclosure"));
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
@@ -286,10 +291,17 @@ function AppInner() {
               <Route path="/gleague"                  element={<GLeague />} />
               <Route path="/ncaa"                     element={<NCAAPage />} />
               <Route path="/euroleague"               element={<EuroLeaguePage />} />
+              {/* Legal — taslak, bkz. pages/legal/LegalPageLayout.jsx notu */}
+              <Route path="/privacy-policy"           element={<PrivacyPolicy />} />
+              <Route path="/terms-of-service"         element={<TermsOfService />} />
+              <Route path="/contact"                  element={<ContactDisclaimer />} />
+              <Route path="/affiliate-disclosure"     element={<AffiliateDisclosure />} />
             </Routes>
             </Suspense>
           </main>
         </div>
+
+        <Footer />
 
         <MobileDrawer open={menuOpen} onClose={() => setMenuOpen(false)} />
       </div>
