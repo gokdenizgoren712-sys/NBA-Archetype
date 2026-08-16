@@ -849,7 +849,16 @@ def _safe(df: pd.DataFrame) -> list[dict]:
 # ─── SEO ──────────────────────────────────────────────────────────────────────
 
 BASE_URL = SITE_URL   # env-driven (Render: onrender default; Railway: SITE_URL set edilir)
-STATIC_ROUTES = ["/", "/players", "/explore", "/compare", "/lineups", "/affinity", "/glossary", "/game", "/about"]
+# 2026-08: site tek domainde iki bağımsız spora ayrıldı — spor sayfaları artık
+# /basketball/* altında (eski öneksiz URL'ler frontend'de kalıcı yönlendiriliyor,
+# bkz. App.jsx Legacy). /football henüz geliştirme aşamasında ve noindex, o yüzden
+# sitemap'e girmiyor; yayına hazır olunca buraya eklenmeli.
+STATIC_ROUTES = [
+    "/", "/blog",
+    "/basketball/game", "/basketball/players", "/basketball/explore", "/basketball/compare",
+    "/basketball/lineups", "/basketball/affinity", "/basketball/glossary", "/basketball/about",
+    "/basketball/gleague", "/basketball/ncaa", "/basketball/euroleague",
+]
 
 @app.get("/robots.txt", response_class=PlainTextResponse, include_in_schema=False)
 def robots_txt():
@@ -868,7 +877,7 @@ def sitemap_xml():
         if sp.exists():
             names = pd.read_parquet(sp, columns=["PLAYER_NAME"])["PLAYER_NAME"].dropna()
             player_urls = "\n".join(
-                f'  <url><loc>{BASE_URL}/players/{urllib.parse.quote(str(n), safe="")}</loc>'
+                f'  <url><loc>{BASE_URL}/basketball/players/{urllib.parse.quote(str(n), safe="")}</loc>'
                 f'<changefreq>weekly</changefreq><priority>0.6</priority></url>'
                 for n in names
             )
@@ -3476,6 +3485,53 @@ def get_leaderboard(limit: int = Query(50, le=100), mode: str = Query("classic")
             ORDER BY lg.pct DESC LIMIT ?
         """, (mode, limit)).fetchall()
     return {"entries": [dict(r) for r in rows]}
+
+
+# ── Futbol arketip sözlüğü geri bildirimi ─────────────────────────────────────
+# Basketboldaki /api/corrections'tan ayrı: orada bir OYUNCUnun etiketi
+# düzeltiliyor, burada sözlüğün kendisi (isim / eksik arketip) tartışılıyor.
+# Futbol tarafı henüz oyuncu verisi olmadan geliştirme aşamasında.
+
+FOOTBALL_PHASES = {"gk", "def", "mid", "fwd"}
+FOOTBALL_FEEDBACK_KINDS = {"rename", "add", "other"}
+
+class FootballFeedbackBody(BaseModel):
+    phase: str
+    kind: str = "other"
+    archetype: str | None = None     # 'rename' ise mevcut arketip adı
+    suggestion: str
+    note: str | None = None
+
+@app.post("/api/football/archetype-feedback")
+def submit_football_feedback(body: FootballFeedbackBody, user=Depends(get_current_user)):
+    if body.phase not in FOOTBALL_PHASES:
+        raise HTTPException(400, "Invalid phase")
+    if body.kind not in FOOTBALL_FEEDBACK_KINDS:
+        raise HTTPException(400, "Invalid feedback type")
+    suggestion = (body.suggestion or "").strip()
+    if not 2 <= len(suggestion) <= 120:
+        raise HTTPException(400, "Suggestion must be between 2 and 120 characters")
+    note = (body.note or "").strip()[:600] or None
+    with get_conn() as conn:
+        conn.execute(
+            """INSERT INTO football_archetype_feedback
+               (user_id, phase, kind, archetype, suggestion, note)
+               VALUES (?,?,?,?,?,?)""",
+            (int(user["sub"]), body.phase, body.kind,
+             (body.archetype or None), suggestion, note),
+        )
+    return {"ok": True}
+
+@app.get("/api/admin/football-feedback")
+def admin_list_football_feedback(status: str = "pending", user=Depends(require_admin)):
+    with get_conn() as conn:
+        rows = conn.execute(
+            """SELECT f.*, u.username
+               FROM football_archetype_feedback f LEFT JOIN users u ON f.user_id = u.id
+               WHERE f.status = ? ORDER BY f.created_at DESC""",
+            (status,),
+        ).fetchall()
+    return {"feedback": [dict(r) for r in rows]}
 
 
 # ── Tag Corrections ───────────────────────────────────────────────────────────

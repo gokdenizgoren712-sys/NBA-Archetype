@@ -5,13 +5,14 @@
       "name": "dev",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["--prefix", "frontend", "run", "dev"],
-      "port": 5173
+      "port": 5173,
+      "env": { "API_PORT": "8010" }
     },
     {
       "name": "api",
       "runtimeExecutable": "C:\\Users\\ggore\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
-      "runtimeArgs": ["-m", "uvicorn", "api.main:app", "--port", "8000"],
-      "port": 8000
+      "runtimeArgs": ["-m", "uvicorn", "api.main:app", "--port", "8010"],
+      "port": 8010
     }
   ]
 }

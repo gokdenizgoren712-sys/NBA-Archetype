@@ -59,31 +59,31 @@ const WHAT = [
     icon: "🏷",
     title: "Archetype Tagging",
     text: `Using 12 core archetypes (Ecosystem, Engine, Anchor, Spacer…) and 22 modifier tags (Pressure, Gravity, Switchable…), we assign a multi-layered identity to each player. Tags are grounded in a hand-crafted jargon dictionary; metrics validate and extend these definitions.`,
-    link: "/glossary", linkLabel: "Browse the glossary",
+    link: "/basketball/glossary", linkLabel: "Browse the glossary",
   },
   {
     icon: "📐",
     title: "Percentile-Based Scoring",
     text: `Raw statistics are not comparable across eras. All metrics are converted to within-season percentile ranks — the only reliable way to evaluate a 1990 player on the same scale as a 2025-26 player.`,
-    link: "/players", linkLabel: "See it applied to players",
+    link: "/basketball/players", linkLabel: "See it applied to players",
   },
   {
     icon: "🔗",
     title: "Lineup Compatibility",
     text: `A compatibility engine built on 11 functional role slots (Primary Creation, Floor Spacing, Interior Defense…) computes the theoretically best 5-man lineups with real NBA dynamics baked in.`,
-    link: "/lineups", linkLabel: "Build a lineup",
+    link: "/basketball/lineups", linkLabel: "Build a lineup",
   },
   {
     icon: "📚",
     title: "Historical Depth",
     text: `All seasons from 1989-90 onward. Fallback signatures handle missing tracking and hustle metrics in older seasons, allowing Michael Jordan and Shai Gilgeous-Alexander to be evaluated within the same framework.`,
-    link: "/players", linkLabel: "Explore a historical season",
+    link: "/basketball/players", linkLabel: "Explore a historical season",
   },
   {
     icon: "🗺",
     title: "Archetype Map",
     text: `The 12-dimensional score vector is projected to 2D and visualized as an interactive scatter plot. See which players are similar, how archetypes cluster, and the demographic spread of the league.`,
-    link: "/explore", linkLabel: "Open the map",
+    link: "/basketball/explore", linkLabel: "Open the map",
   },
 ];
 

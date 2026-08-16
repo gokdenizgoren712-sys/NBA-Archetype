@@ -30,7 +30,7 @@ export default function LegalPageLayout({ title, description, path, children }) 
         </div>
 
         <div className="mt-12 pt-6" style={{ borderTop: "1px solid var(--border)" }}>
-          <Link to="/game" className="text-[12.5px] hover:underline" style={{ color: "var(--yamabuki)" }}>
+          <Link to="/" className="text-[12.5px] hover:underline" style={{ color: "var(--yamabuki)" }}>
             ← Back to Primary Arch
           </Link>
         </div>

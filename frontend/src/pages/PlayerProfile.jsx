@@ -72,7 +72,7 @@ export default function PlayerProfile() {
   if (notFound || !detail) return (
     <div className="h-full flex flex-col items-center justify-center gap-3">
       <div className="text-sm" style={{ color: "var(--text-muted)" }}>Player not found: {name}</div>
-      <button onClick={() => navigate("/players")} className="aura-pill-btn active">← Back to Players</button>
+      <button onClick={() => navigate("/basketball/players")} className="aura-pill-btn active">← Back to Players</button>
     </div>
   );
 
@@ -81,14 +81,14 @@ export default function PlayerProfile() {
       <SEO
         title={name}
         description={seoDesc}
-        path={`/players/${encodeURIComponent(name)}`}
+        path={`/basketball/players/${encodeURIComponent(name)}`}
       />
       <div className="h-full overflow-y-auto">
         <div className="max-w-md mx-auto px-4 py-6 pb-16 space-y-5">
 
           {/* Top bar — bare, no boxes */}
           <div className="flex items-center justify-between">
-            <button onClick={() => navigate("/players")}
+            <button onClick={() => navigate("/basketball/players")}
               className="aura-pill-btn" style={{ paddingLeft: 8 }}>
               ← Players
             </button>

@@ -96,7 +96,7 @@ export default function EuroLeaguePage() {
     <SEO
       title="EuroLeague"
       description="EuroLeague player archetype profiles — engine, anchor, spacer and more, scored within league context."
-      path="/euroleague"
+      path="/basketball/euroleague"
     />
     <div className="relative flex flex-col h-full min-h-0 overflow-hidden">
       {/* Slim filter bar — no box, just floating controls */}

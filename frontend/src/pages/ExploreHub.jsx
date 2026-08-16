@@ -6,21 +6,21 @@ import AffinityContent from "./Affinity";
 
 const TABS = [
   {
-    key: "map", path: "/explore", label: "Map",
+    key: "map", path: "/basketball/explore", label: "Map",
     seo: {
       title: "Explore Archetypes",
       description: "Explore all NBA player archetypes with projections, percentile scores, and role breakdowns. Filter by position, archetype, and modifier tags across 40+ seasons.",
     },
   },
   {
-    key: "compare", path: "/compare", label: "Compare",
+    key: "compare", path: "/basketball/compare", label: "Compare",
     seo: {
       title: "Compare NBA Players",
       description: "Compare any two NBA players side by side across any season from 1983 to today. Radar profiles, archetype tags, BPM, and 12 role scores for every player-season.",
     },
   },
   {
-    key: "affinity", path: "/affinity", label: "Affinity",
+    key: "affinity", path: "/basketball/affinity", label: "Affinity",
     seo: {
       title: "Archetype Affinity Network",
       description: "Discover which NBA archetypes work best together. Explore an interactive affinity network across all 12 player roles, with real lineup drill-downs showing net rating data.",

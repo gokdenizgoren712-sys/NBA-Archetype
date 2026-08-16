@@ -345,7 +345,7 @@ export default function OnlineGame() {
 
   const acceptMatch = useCallback(() => {
     if (!matchedRoomCode) return;
-    navigate(`/game/friend?room=${matchedRoomCode}`);
+    navigate(`/basketball/game/friend?room=${matchedRoomCode}`);
   }, [matchedRoomCode, navigate]);
 
   const challengeBoard = useCallback(() => {
@@ -361,7 +361,7 @@ export default function OnlineGame() {
       .then(r => r.json().then(d => ({ ok: r.ok, d })))
       .then(({ ok, d }) => {
         if (!ok) throw new Error(d.detail || "Could not start challenge");
-        navigate(`/game/friend?room=${d.room_code}`);
+        navigate(`/basketball/game/friend?room=${d.room_code}`);
       })
       .catch(e => setNotice(e.message))
       .finally(() => setChallenging(false));
@@ -379,7 +379,7 @@ export default function OnlineGame() {
     <div className="h-full overflow-y-auto">
       <SEO title="Online Opponent — Lineup Builder"
         description="Get matched with another fan, or draft head-to-head against the 25 best Salary Cap rosters ever submitted."
-        path="/game/online" />
+        path="/basketball/game/online" />
 
       <div className="p-4 sm:p-6 max-w-[1400px] mx-auto space-y-3 pb-6">
         {/* ── HEADER DOCK: başlık | giriş | yol seçimi ── */}

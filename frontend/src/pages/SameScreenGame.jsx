@@ -415,7 +415,7 @@ export default function SameScreenGame() {
 
   return (
     <div className="h-full overflow-y-auto">
-      <SEO title="Same Screen — Lineup Builder" description="Two players draft head-to-head on one screen — same shared pool, snake order, BAN joker, best-of-7 series." path="/game/same-screen" />
+      <SEO title="Same Screen — Lineup Builder" description="Two players draft head-to-head on one screen — same shared pool, snake order, BAN joker, best-of-7 series." path="/basketball/game/same-screen" />
       <div className="p-4 sm:p-6 max-w-[1400px] mx-auto space-y-3 pb-6">
         {/* ── HEADER DOCK: başlık + çark alt-modu anahtarı tek barda ── */}
         {gamePhase === "idle" ? (

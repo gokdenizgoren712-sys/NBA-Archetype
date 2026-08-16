@@ -935,7 +935,7 @@ export default function LineupGame() {
     <SEO
       title="Lineup Builder Game"
       description="Build the greatest 5-man lineup in NBA history. Pick players from any era — 1983 to today — and see how well your roster fits together across archetypes and eras."
-      path="/game/single"
+      path="/basketball/game/single"
     />
     <div className="p-4 sm:p-6 max-w-[1560px] mx-auto space-y-3 pb-6">
 

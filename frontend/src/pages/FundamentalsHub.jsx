@@ -5,14 +5,14 @@ import AboutContent from "./About";
 
 const TABS = [
   {
-    key: "glossary", path: "/glossary", label: "Glossary",
+    key: "glossary", path: "/basketball/glossary", label: "Glossary",
     seo: {
       title: "Archetype Glossary",
       description: "Full glossary of NBA archetype components: 12 core roles and 22 modifier tags explained with the metrics and thresholds used to classify every player.",
     },
   },
   {
-    key: "about", path: "/about", label: "About",
+    key: "about", path: "/basketball/about", label: "About",
     seo: {
       title: "About",
       description: "Learn how the Primary Arch system works: 12 core roles, 22 modifier tags, percentile-based scoring across every season since 1983. Full changelog and methodology.",

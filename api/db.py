@@ -116,6 +116,23 @@ def init_db():
             created_at      TEXT DEFAULT (datetime('now'))
         );
 
+        -- Futbol arketip sözlüğü geri bildirimi (2026-08). Basketboldaki
+        -- tag_corrections'tan AYRI ve farklı şekilli: orada bir OYUNCUnun
+        -- etiketi düzeltiliyor, burada henüz oyuncu yok — sözlüğün KENDİSİ
+        -- (isim değişikliği ya da eksik arketip) tartışılıyor.
+        -- phase: gk | def | mid | fwd   ·   kind: rename | add | other
+        CREATE TABLE IF NOT EXISTS football_archetype_feedback (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id      INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            phase        TEXT NOT NULL,
+            kind         TEXT NOT NULL DEFAULT 'other',
+            archetype    TEXT,
+            suggestion   TEXT NOT NULL,
+            note         TEXT,
+            status       TEXT NOT NULL DEFAULT 'pending',
+            created_at   TEXT DEFAULT (datetime('now'))
+        );
+
         CREATE TABLE IF NOT EXISTS game_rooms (
             id               INTEGER PRIMARY KEY AUTOINCREMENT,
             room_code        TEXT UNIQUE NOT NULL,

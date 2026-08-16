@@ -13,7 +13,7 @@ const MODES = [
     title: "Single Player",
     meta: "Solo · Leaderboard",
     desc: "Spin the wheels, draft nine across any era, hire a coach and simulate a full season.",
-    path: "/game/single",
+    path: "/basketball/game/single",
     live: true,
     accent: "#FFB11B",
   },
@@ -23,7 +23,7 @@ const MODES = [
     title: "With a Friend",
     meta: "2 devices · Room code",
     desc: "Invite a friend with a code and snake-draft head-to-head, synced live across both screens.",
-    path: "/game/friend",
+    path: "/basketball/game/friend",
     live: true,
     accent: "#60a5fa",
   },
@@ -33,7 +33,7 @@ const MODES = [
     title: "Same Screen",
     meta: "2 players · 1 device",
     desc: "Pass one device back and forth. Shared roster, snake order, and a BAN to block their pick.",
-    path: "/game/same-screen",
+    path: "/basketball/game/same-screen",
     live: true,
     accent: "#4ade80",
   },
@@ -43,7 +43,7 @@ const MODES = [
     title: "Online Opponent",
     meta: "Matchmaking · The Board",
     desc: "Queue against a random fan, or draft head-to-head against the 25 best Salary Cap rosters ever submitted.",
-    path: "/game/online",
+    path: "/basketball/game/online",
     live: true,
     accent: "#f472b6",
   },
@@ -58,7 +58,7 @@ export default function GameModeSelect() {
       <SEO
         title="Lineup Builder Game"
         description="Build the greatest 5-man lineup in NBA history — solo, with a friend, or online."
-        path="/game"
+        path="/basketball/game"
       />
 
       {/* Alttan yükselen duman dokusu — başlığın arkasındaki nokta-glow'un

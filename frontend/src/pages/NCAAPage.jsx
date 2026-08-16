@@ -99,7 +99,7 @@ export default function NCAAPage() {
     <SEO
       title="NCAA D-I"
       description="NCAA Division I college basketball player archetype profiles — engine, anchor, spacer and more, scored within league context."
-      path="/ncaa"
+      path="/basketball/ncaa"
     />
     <div className="relative flex flex-col h-full min-h-0 overflow-hidden">
       {/* Slim filter bar — no box, just floating controls */}

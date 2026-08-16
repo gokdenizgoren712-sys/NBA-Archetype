@@ -489,7 +489,7 @@ export default function Lineups() {
     <SEO
       title="NBA Lineup Builder"
       description="Build and analyze 5-man NBA lineups from any era. Evaluate real historical lineups by role coverage, archetype balance, and net rating across 40+ seasons."
-      path="/lineups"
+      path="/basketball/lineups"
     />
     <div className="h-full overflow-y-auto">
       <div className="p-6 max-w-[1400px] mx-auto space-y-6">

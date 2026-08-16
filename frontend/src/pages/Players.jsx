@@ -110,7 +110,7 @@ export default function Players() {
     <SEO
       title="NBA Players — Archetype Profiles"
       description="Browse every NBA player from 1983 to 2026 with their archetype classification, percentile scores, and modifier tags. Filter by position, archetype, or season."
-      path="/players"
+      path="/basketball/players"
     />
     <div className="relative flex flex-col h-full min-h-0 overflow-hidden">
       {/* Slim filter bar — no box, just floating controls */}

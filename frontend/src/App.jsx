@@ -1,7 +1,7 @@
-import { BrowserRouter, Routes, Route, NavLink, Navigate, useNavigate, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, NavLink, Navigate, useNavigate, useLocation, useParams } from "react-router-dom";
 import { useState, useEffect, lazy, Suspense } from "react";
 import { Logo, GameIcon, NBAIcon, GLeagueIcon, NCAAIcon, EuroLeagueIcon,
-         LineupsIcon, ExploreIcon, BlogIcon,
+         LineupsIcon, ExploreIcon, BlogIcon, FootballIcon,
          GlossaryIcon, AdminIcon, RefreshIcon } from "./components/BrandIcons";
 import Footer from "./components/Footer";
 
@@ -33,6 +33,8 @@ const EuroLeaguePage = lazy(() => import("./pages/EuroLeaguePage"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const ResetPassword  = lazy(() => import("./pages/ResetPassword"));
 const PlayerProfile  = lazy(() => import("./pages/PlayerProfile"));
+const SportSelect    = lazy(() => import("./pages/SportSelect"));
+const FootballHome   = lazy(() => import("./pages/football/FootballHome"));
 const PrivacyPolicy      = lazy(() => import("./pages/legal/PrivacyPolicy"));
 const TermsOfService     = lazy(() => import("./pages/legal/TermsOfService"));
 const ContactDisclaimer  = lazy(() => import("./pages/legal/ContactDisclaimer"));
@@ -42,18 +44,57 @@ import { LanguageProvider } from "./contexts/LanguageContext";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { api } from "./api";
 
-/* ── Nav config ──────────────────────────────────────────────────── */
-const NAV = [
-  { to: "/game",       Icon: GameIcon,       label: "Game"    },
-  { to: "/players",    Icon: NBAIcon,        label: "NBA"     },
-  { to: "/gleague",    Icon: GLeagueIcon,    label: "G-Lg",    color: "#A8263F" },
-  { to: "/ncaa",       Icon: NCAAIcon,       label: "NCAA",    color: "#3D7EC9" },
-  { to: "/euroleague", Icon: EuroLeagueIcon, label: "EUR",     color: "#FF6900" },
-  { to: "/lineups",    Icon: LineupsIcon,    label: "Lineups" },
-  { to: "/explore",    Icon: ExploreIcon,    label: "Explore", extraActive: ["/compare", "/affinity"] },
-  { to: "/blog",       Icon: BlogIcon,       label: "Blog"    },
-  { to: "/glossary",   Icon: GlossaryIcon,   label: "About", extraActive: ["/about"] },
+/* ── Nav config ──────────────────────────────────────────────────────
+   2026-08: site tek domainde iki bağımsız spora ayrıldı. Nav artık sabit
+   değil — hangi sporun içindeysen onun menüsü çıkıyor. Spor-nötr sayfalarda
+   (blog, profil, admin, yasal) ikisi arasında geçiş menüsü gösteriliyor. */
+const BASKETBALL_NAV = [
+  { to: "/basketball/game",       Icon: GameIcon,       label: "Game"    },
+  { to: "/basketball/players",    Icon: NBAIcon,        label: "NBA"     },
+  { to: "/basketball/gleague",    Icon: GLeagueIcon,    label: "G-Lg",    color: "#A8263F" },
+  { to: "/basketball/ncaa",       Icon: NCAAIcon,       label: "NCAA",    color: "#3D7EC9" },
+  { to: "/basketball/euroleague", Icon: EuroLeagueIcon, label: "EUR",     color: "#FF6900" },
+  { to: "/basketball/lineups",    Icon: LineupsIcon,    label: "Lineups" },
+  { to: "/basketball/explore",    Icon: ExploreIcon,    label: "Explore", extraActive: ["/basketball/compare", "/basketball/affinity"] },
+  { to: "/blog",                  Icon: BlogIcon,       label: "Blog"    },
+  { to: "/basketball/glossary",   Icon: GlossaryIcon,   label: "About",   extraActive: ["/basketball/about"] },
 ];
+
+const FOOTBALL_NAV = [
+  { to: "/football", Icon: FootballIcon, label: "Football", color: "#3FB08C" },
+  { to: "/blog",     Icon: BlogIcon,     label: "Blog" },
+];
+
+// Spor-nötr sayfalarda (blog, profil, admin, yasal) — iki spora da kapı aç
+const SHARED_NAV = [
+  { to: "/basketball", Icon: NBAIcon,      label: "Basket" },
+  { to: "/football",   Icon: FootballIcon, label: "Football", color: "#3FB08C" },
+  { to: "/blog",       Icon: BlogIcon,     label: "Blog"     },
+];
+
+function sportOf(pathname) {
+  if (pathname === "/basketball" || pathname.startsWith("/basketball/")) return "basketball";
+  if (pathname === "/football"   || pathname.startsWith("/football/"))   return "football";
+  return null;
+}
+
+function navFor(pathname) {
+  const sport = sportOf(pathname);
+  if (sport === "basketball") return BASKETBALL_NAV;
+  if (sport === "football")   return FOOTBALL_NAV;
+  return pathname === "/" ? [] : SHARED_NAV;   // kök ekranda menü yok
+}
+
+/* Eski (spor öneki olmayan) URL'ler → /basketball/*. Query ve hash korunur;
+   bu adresler sitemap.xml'e girmişti, kırılmamalı. */
+function Legacy({ to }) {
+  const { search, hash } = useLocation();
+  return <Navigate to={`${to}${search}${hash}`} replace />;
+}
+function LegacyPlayer() {
+  const { name } = useParams();
+  return <Navigate to={`/basketball/players/${encodeURIComponent(name)}`} replace />;
+}
 
 /* ── User button (top-right) ─────────────────────────────────────── */
 function UserButton() {
@@ -77,6 +118,8 @@ function UserButton() {
 /* ── Top bar ─────────────────────────────────────────────────────── */
 function TopBar({ onMenu }) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const sport = sportOf(location.pathname);
   const [meta, setMeta] = useState(null);
 
   useEffect(() => { api.meta().then(setMeta).catch(() => {}); }, []);
@@ -99,13 +142,22 @@ function TopBar({ onMenu }) {
         </span>
         <span style={{ color: "var(--text-faint)", fontSize: 9, marginLeft: -2 }}>▾</span>
       </button>
-      <button onClick={() => navigate("/game")}
+      {/* Logo artık /game'e değil KÖK spor seçimine gider — iki bağımsız
+          spor arasında geçişin tek sabit noktası burası. */}
+      <button onClick={() => navigate("/")}
         className="hidden md:flex relative items-center gap-2 hover:opacity-80 transition-opacity">
         <Logo size={30} />
         <span className="font-logo text-lg tracking-widest flex leading-none pt-0.5">
           <span className="font-semibold text-white">PRIMARY</span>
           <span className="font-bold text-yamabuki ml-1">ARCH</span>
         </span>
+        {sport && (
+          <span className="text-[9.5px] uppercase tracking-widest px-1.5 py-0.5 rounded ml-1"
+            style={{ color: sport === "football" ? "#3FB08C" : "var(--yamabuki)",
+                     border: `1px solid ${sport === "football" ? "#3FB08C55" : "rgba(255,177,27,.4)"}` }}>
+            {sport === "football" ? "Football" : "Basketball"}
+          </span>
+        )}
       </button>
 
       <div className="relative ml-auto flex items-center gap-1.5">
@@ -135,8 +187,10 @@ function SideNav() {
   const location = useLocation();
   const { isAdmin } = useAuth();
 
+  const base = navFor(location.pathname);
+  if (!base.length) return null;          // kök spor-seçim ekranı: menü yok
   const items = [
-    ...NAV,
+    ...base,
     ...(isAdmin ? [{ to: "/admin/articles", Icon: AdminIcon, label: "Admin" }] : []),
   ];
 
@@ -193,7 +247,7 @@ function MobileDrawer({ open, onClose }) {
   useEffect(() => { onClose(); }, [location.pathname]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   const items = [
-    ...NAV,
+    ...(navFor(location.pathname).length ? navFor(location.pathname) : SHARED_NAV),
     ...(isAdmin ? [{ to: "/admin/articles", Icon: AdminIcon, label: "Admin" }] : []),
   ];
 
@@ -254,21 +308,49 @@ function AppInner() {
           <main className="flex-1 min-h-0 overflow-hidden">
             <Suspense fallback={<PageLoading />}>
             <Routes>
-              <Route path="/"                         element={<Navigate to="/game" replace />} />
-              <Route path="/game"                     element={<GameModeSelect />} />
-              <Route path="/game/single"              element={<LineupGame />} />
-              <Route path="/game/same-screen"          element={<SameScreenGame />} />
-              <Route path="/game/friend"               element={<WithAFriendGame />} />
-              <Route path="/game/online"               element={<OnlineGame />} />
-              <Route path="/players"                  element={<Players />} />
-              <Route path="/players/:name"           element={<PlayerProfile />} />
-              <Route path="/lineups"                  element={<Lineups />} />
-              <Route path="/explore"                  element={<ExploreHub />} />
-              <Route path="/compare"                  element={<ExploreHub />} />
-              <Route path="/affinity"                 element={<ExploreHub />} />
-              <Route path="/glossary"                 element={<FundamentalsHub />} />
-              <Route path="/about"                    element={<FundamentalsHub />} />
-              <Route path="/historical"               element={<Navigate to="/players" replace />} />
+              {/* Kök: spor seçimi */}
+              <Route path="/"                         element={<SportSelect />} />
+
+              {/* ── Basketbol (mevcut ürünün tamamı) ── */}
+              <Route path="/basketball"                     element={<Navigate to="/basketball/game" replace />} />
+              <Route path="/basketball/game"                element={<GameModeSelect />} />
+              <Route path="/basketball/game/single"         element={<LineupGame />} />
+              <Route path="/basketball/game/same-screen"    element={<SameScreenGame />} />
+              <Route path="/basketball/game/friend"         element={<WithAFriendGame />} />
+              <Route path="/basketball/game/online"         element={<OnlineGame />} />
+              <Route path="/basketball/players"             element={<Players />} />
+              <Route path="/basketball/players/:name"       element={<PlayerProfile />} />
+              <Route path="/basketball/lineups"             element={<Lineups />} />
+              <Route path="/basketball/explore"             element={<ExploreHub />} />
+              <Route path="/basketball/compare"             element={<ExploreHub />} />
+              <Route path="/basketball/affinity"            element={<ExploreHub />} />
+              <Route path="/basketball/glossary"            element={<FundamentalsHub />} />
+              <Route path="/basketball/about"               element={<FundamentalsHub />} />
+              <Route path="/basketball/gleague"             element={<GLeague />} />
+              <Route path="/basketball/ncaa"                element={<NCAAPage />} />
+              <Route path="/basketball/euroleague"          element={<EuroLeaguePage />} />
+
+              {/* ── Futbol (geliştirme aşaması) ── */}
+              <Route path="/football"                 element={<FootballHome />} />
+
+              {/* ── Eski spor-öneksiz URL'ler → /basketball/* (301 muadili) ── */}
+              <Route path="/game"                     element={<Legacy to="/basketball/game" />} />
+              <Route path="/game/single"              element={<Legacy to="/basketball/game/single" />} />
+              <Route path="/game/same-screen"         element={<Legacy to="/basketball/game/same-screen" />} />
+              <Route path="/game/friend"              element={<Legacy to="/basketball/game/friend" />} />
+              <Route path="/game/online"              element={<Legacy to="/basketball/game/online" />} />
+              <Route path="/players"                  element={<Legacy to="/basketball/players" />} />
+              <Route path="/players/:name"            element={<LegacyPlayer />} />
+              <Route path="/lineups"                  element={<Legacy to="/basketball/lineups" />} />
+              <Route path="/explore"                  element={<Legacy to="/basketball/explore" />} />
+              <Route path="/compare"                  element={<Legacy to="/basketball/compare" />} />
+              <Route path="/affinity"                 element={<Legacy to="/basketball/affinity" />} />
+              <Route path="/glossary"                 element={<Legacy to="/basketball/glossary" />} />
+              <Route path="/about"                    element={<Legacy to="/basketball/about" />} />
+              <Route path="/gleague"                  element={<Legacy to="/basketball/gleague" />} />
+              <Route path="/ncaa"                     element={<Legacy to="/basketball/ncaa" />} />
+              <Route path="/euroleague"               element={<Legacy to="/basketball/euroleague" />} />
+              <Route path="/historical"               element={<Legacy to="/basketball/players" />} />
               {/* Auth */}
               <Route path="/login"                    element={<Login />} />
               <Route path="/register"                 element={<Register />} />
@@ -287,10 +369,6 @@ function AppInner() {
               <Route path="/admin/users"              element={<UserList />} />
               <Route path="/admin/corrections"        element={<CorrectionList />} />
               <Route path="/admin/lineups"            element={<LineupModeration />} />
-              {/* League pages */}
-              <Route path="/gleague"                  element={<GLeague />} />
-              <Route path="/ncaa"                     element={<NCAAPage />} />
-              <Route path="/euroleague"               element={<EuroLeaguePage />} />
               {/* Legal — taslak, bkz. pages/legal/LegalPageLayout.jsx notu */}
               <Route path="/privacy-policy"           element={<PrivacyPolicy />} />
               <Route path="/terms-of-service"         element={<TermsOfService />} />

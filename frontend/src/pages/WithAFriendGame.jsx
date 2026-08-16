@@ -300,7 +300,7 @@ export default function WithAFriendGame() {
 
   return (
     <div className="h-full overflow-y-auto">
-      <SEO title="With a Friend — Lineup Builder" description="Challenge a friend to a head-to-head draft, from two different devices — same rules as Same Screen, synced live over the network." path="/game/friend" />
+      <SEO title="With a Friend — Lineup Builder" description="Challenge a friend to a head-to-head draft, from two different devices — same rules as Same Screen, synced live over the network." path="/basketball/game/friend" />
       <div className="p-4 sm:p-6 max-w-[1400px] mx-auto space-y-3 pb-6">
         {/* ── HEADER DOCK: başlık + çark alt-modu anahtarı tek barda ── */}
         {!roomCode ? (

@@ -48,6 +48,22 @@ export const NBAIcon = ({ size = 24, className = "" }) => (
   </svg>
 );
 
+/* 2b. Futbol — pentagon çekirdekli top (spor seçim ekranı + paylaşılan nav) */
+// stroke="currentColor": diğer marka ikonları rengi Tailwind sınıfıyla
+// (stroke-yamabuki vb.) alıyor, bu ikon ise kapsayıcının color'ını miras
+// alsın — hem .mode-emblem (var(--accent)) hem nav hem futbol sayfası
+// kendi rengini veriyor. Bu satır olmadan SVG varsayılanı stroke:none,
+// yani ikon hiç görünmüyordu.
+export const FootballIcon = ({ size = 24, className = "" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <circle cx="12" cy="12" r="9" />
+    <polygon points="12,7.6 15.7,10.3 14.3,14.6 9.7,14.6 8.3,10.3" />
+    <path d="M12 3v4.6" /><path d="M20.6 9.6l-4.9.7" /><path d="M17.2 19.4l-2.9-4.8" />
+    <path d="M6.8 19.4l2.9-4.8" /><path d="M3.4 9.6l4.9.7" />
+  </svg>
+);
+
 /* 3. G-Lg (brandRed) */
 export const GLeagueIcon = (p) => (
   <Svg {...p} className={`stroke-brandRed ${p.className || ""}`}>

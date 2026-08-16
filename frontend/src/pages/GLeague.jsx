@@ -98,7 +98,7 @@ export default function GLeague() {
     <SEO
       title="G-League"
       description="NBA G-League player archetype profiles — engine, anchor, spacer and more, scored within league context."
-      path="/gleague"
+      path="/basketball/gleague"
     />
     <div className="relative flex flex-col h-full min-h-0 overflow-hidden">
       {/* Slim filter bar — no box, just floating controls */}

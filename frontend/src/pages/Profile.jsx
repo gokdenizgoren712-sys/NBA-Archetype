@@ -147,7 +147,7 @@ export default function Profile() {
               <div key={p.id} className="flex items-center justify-between p-3 rounded-lg"
                 style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
                 <div>
-                  <Link to={`/players?q=${encodeURIComponent(p.player_name)}`}
+                  <Link to={`/basketball/players?q=${encodeURIComponent(p.player_name)}`}
                     className="font-logo font-medium text-sm hover:underline"
                     style={{ color: "var(--text-primary)" }}>
                     {p.player_name}
