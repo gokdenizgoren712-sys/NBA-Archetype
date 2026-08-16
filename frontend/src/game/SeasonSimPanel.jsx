@@ -5,7 +5,7 @@
 import { useState, useRef, useEffect } from "react";
 import { simulateSeason, computeLeagueAwards, BASE_MINUTES, MINUTE_FLEX, agePenaltyFor } from "./seasonSim";
 import { buildLeague } from "./leagueSim";
-import { buildConferenceStandings, initBracket, computeUserPlayoffStatLines } from "./playoffBracket";
+import { buildConferenceStandings, initBracket, computeUserPlayoffStatLines, deriveRhResultKey } from "./playoffBracket";
 import PlayoffBracket from "./PlayoffBracketView";
 import { useAuth } from "../contexts/AuthContext";
 import { CoachIcon, TrophyIcon, CrownIcon, PlayIcon, LoopIcon, DnaIcon, WheelIcon } from "./GameIcons";
@@ -127,6 +127,22 @@ export default function SeasonSimPanel({
     }
   }, [bracket?.champion, rhSchedule]);
 
+  // 2026-08 denetimi: leaderboard'a yazılan season_result RH'de hâlâ
+  // seasonSim.js'in İÇ sentetik playoff'undan geliyordu (bkz. run()'daki
+  // postResult çağrısı notu) — gerçek bracket'in kaderi burada belli olunca
+  // (deriveRhResultKey null DEĞİL döndüğünde) DOĞRU değeri postluyoruz.
+  // Sadece 1. sezon (dynasty.year===1) — 2+ sezonlarda REPEAT/THREEPEAT
+  // zaten kendi postResult'ını yapıyor (bkz. defend()), bir kayıp o satırı
+  // ezmemeli (şampiyonluk geçmişi kaybolmasın).
+  const postedRhResultRef = useRef(false);
+  useEffect(() => {
+    if (simMode !== "history" || !bracket || dynasty.year !== 1 || postedRhResultRef.current) return;
+    const key = deriveRhResultKey(bracket, rhSchedule?.team);
+    if (!key) return;
+    postedRhResultRef.current = true;
+    if (isLoggedIn && token && !noSave && result) postResult(result, key);
+  }, [bracket, rhSchedule, simMode, dynasty.year, isLoggedIn, token, noSave, result]);
+
   const minuteBank = 240 - minutes.reduce((a, b) => a + b, 0);
   const bumpMinute = (i, d) => {
     setMinutes(ms => {
@@ -198,6 +214,7 @@ export default function SeasonSimPanel({
   const run = async () => {
     setBracket(null);
     setLeagueWarning(null);
+    postedRhResultRef.current = false;   // yeni dynasty — gerçek sonuç henüz postlanmadı
     const extras = { bench, coach, minutes };
     if (simMode === "history" && rhSchedule) {
       extras.realSchedule = rhSchedule;
@@ -229,7 +246,21 @@ export default function SeasonSimPanel({
     // davranışını (sentetik result.champion) korur.
     setDynasty({ year: 1, titles: simMode === "history" ? 0 : (res.champion ? 1 : 0) });
     animate(res);
-    if (isFirst && isLoggedIn && token && !noSave) postResult(res, res.resultKey);
+    // RH'de res.resultKey (CHAMPION/FINALS/CF/SEMI/R1) İÇ sentetik Quick-Sim
+    // playoff'undan geliyor — kullanıcı gerçek bracket'i hiç oynamadan/
+    // kaybederken bile leaderboard'da sahte bir sonuç görünebiliyordu (2026-08
+    // denetimi). Playoff'a kalmadıysa (madePlayoffs gerçek galibiyet sayısına
+    // dayanıyor, sentetik değil) bu KESİN ve doğru — hemen postla. Kaldıysa
+    // gerçek sonuç henüz bilinmiyor; yukarıdaki deriveRhResultKey efekti
+    // gerçek bracket kararını verince postlar (backend'de "TBD" durumu yok,
+    // o yüzden burada hiç göndermemek satırın mevcut durumunu korur).
+    if (isFirst && isLoggedIn && token && !noSave) {
+      if (simMode === "history") {
+        if (!res.madePlayoffs) postResult(res, "MISSED");
+      } else {
+        postResult(res, res.resultKey);
+      }
+    }
   };
 
   // Faz E: şampiyonluğu savun — kadro her sezon yaşlanır (S6: hızlanan eğri, agePenaltyFor).
@@ -339,13 +370,13 @@ export default function SeasonSimPanel({
         <div className="space-y-3">
           {enableRealHistory && !fixedSeason && (
             <div className="flex gap-1.5 p-1 rounded-lg" style={{background:"var(--bg-surface)",border:"1px solid var(--border)"}}>
-              <button onClick={()=>setSimMode("quick")}
-                className="flex-1 py-1.5 rounded-md text-[10.5px] font-bold uppercase tracking-wide transition-colors"
+              <button onClick={()=>setSimMode("quick")} disabled={leagueLoading}
+                className="flex-1 py-1.5 rounded-md text-[10.5px] font-bold uppercase tracking-wide transition-colors disabled:opacity-40"
                 style={{background:simMode==="quick"?"var(--bg-elevated)":"transparent",color:simMode==="quick"?"var(--text-primary)":"var(--text-faint)"}}>
                 <WheelIcon size={12} /> <span className="ml-1">Quick Sim</span>
               </button>
-              <button onClick={()=>setSimMode("history")}
-                className="flex-1 py-1.5 rounded-md text-[10.5px] font-bold uppercase tracking-wide transition-colors"
+              <button onClick={()=>setSimMode("history")} disabled={leagueLoading}
+                className="flex-1 py-1.5 rounded-md text-[10.5px] font-bold uppercase tracking-wide transition-colors disabled:opacity-40"
                 style={{background:simMode==="history"?"rgba(255,177,27,.16)":"transparent",color:simMode==="history"?"var(--yamabuki)":"var(--text-faint)"}}>
                 <DnaIcon size={12} /> <span className="ml-1">Rewrite History</span>
               </button>
@@ -366,7 +397,7 @@ export default function SeasonSimPanel({
               {rhStep === "season" && (
                 <div className="grid grid-cols-3 gap-1.5">
                   {rhSeasons.map(s => (
-                    <button key={s} onClick={()=>pickRhSeason(s)} disabled={rhLoading}
+                    <button key={s} onClick={()=>pickRhSeason(s)} disabled={rhLoading || leagueLoading}
                       className="g-tile" style={{padding:"10px 6px","--accent":"#FFB11B","--accent-a":"rgba(255,177,27,.10)","--accent-line":"rgba(255,177,27,.35)"}}>
                       <div className="g-tile-title" style={{fontSize:12,color:"var(--yamabuki)"}}>{s}</div>
                     </button>
@@ -380,12 +411,12 @@ export default function SeasonSimPanel({
               {rhStep === "team" && (
                 <div className="space-y-2">
                   {!fixedSeason && (
-                    <button onClick={()=>{setRhStep("season"); setRhTeam(null);}}
-                      className="text-[10.5px]" style={{color:"var(--text-muted)"}}>← Back to seasons</button>
+                    <button onClick={()=>{setRhStep("season"); setRhTeam(null);}} disabled={leagueLoading}
+                      className="text-[10.5px] disabled:opacity-40" style={{color:"var(--text-muted)"}}>← Back to seasons</button>
                   )}
                   <div className="grid grid-cols-2 gap-1.5 max-h-64 overflow-y-auto pr-0.5">
                     {visibleRhTeams.map(t => (
-                      <button key={t.abbr} onClick={()=>pickRhTeam(t.abbr)} disabled={rhLoading}
+                      <button key={t.abbr} onClick={()=>pickRhTeam(t.abbr)} disabled={rhLoading || leagueLoading}
                         className="g-tile" style={{padding:"9px 8px","--accent":"#FFB11B","--accent-a":"rgba(255,177,27,.10)","--accent-line":"rgba(255,177,27,.35)"}}>
                         <div className="flex items-center justify-between">
                           <span className="g-tile-title" style={{fontSize:12}}>{t.abbr}</span>
@@ -408,7 +439,8 @@ export default function SeasonSimPanel({
                   {rhSchedule.season} {rhSchedule.team} <span className="font-normal text-gray-500">({rhSchedule.wins}-{rhSchedule.losses})</span>
                 </div>
               </div>
-              <button onClick={()=>{setRhStep("team");}} className="text-[10.5px]" style={{color:"var(--text-muted)"}}>Change</button>
+              <button onClick={()=>{setRhStep("team");}} disabled={leagueLoading}
+                className="text-[10.5px] disabled:opacity-40" style={{color:"var(--text-muted)"}}>Change</button>
             </div>
           )}
           <p className="text-[11.5px] text-gray-400 leading-relaxed">
@@ -713,6 +745,8 @@ export default function SeasonSimPanel({
                     bakılmaksızın ligin geneli oynanabilir). */}
                 {!bracket ? (
                   <button
+                    disabled={leagueLoading}
+                    title={leagueLoading ? "Advancing to the next season — wait for it to finish first" : undefined}
                     onClick={() => {
                       // Faz D: playoff box-score + organik MVP için roster/profile bilgisi
                       // (bkz. playoffBracket.js rosterOf/accumulateBoxScores).
@@ -722,10 +756,19 @@ export default function SeasonSimPanel({
                           profiles: league.teamSeasons[abbr]?.profiles, benchProfiles: league.teamSeasons[abbr]?.benchProfiles };
                       }
                       const userRoster = { players, bench, profiles: result.profiles, benchProfiles: result.benchProfiles };
-                      setBracket(initBracket(rhSchedule.season, league.teamSeasons, league.teamRatings, rhSchedule.team,
-                        result.rating, result.wins, result.losses, Math.random, rosterInfo, userRoster));
+                      // initBracket bir konferansta çok az takım kurulduysa
+                      // artık sessizce çökmek yerine açık bir Error fırlatıyor
+                      // (bkz. playoffBracket.js notu) — burada yakalayıp aynı
+                      // leagueWarning banner'ında göster.
+                      try {
+                        setBracket(initBracket(rhSchedule.season, league.teamSeasons, league.teamRatings, rhSchedule.team,
+                          result.rating, result.wins, result.losses, Math.random, rosterInfo, userRoster,
+                          agePenaltyFor(dynasty.year)));
+                      } catch (err) {
+                        setLeagueWarning(err.message);
+                      }
                     }}
-                    className="w-full py-2.5 rounded-xl font-bold text-[11px] uppercase tracking-wide inline-flex items-center justify-center gap-1.5"
+                    className="w-full py-2.5 rounded-xl font-bold text-[11px] uppercase tracking-wide inline-flex items-center justify-center gap-1.5 disabled:opacity-40"
                     style={{background:"linear-gradient(90deg,#FFD470,#FFB11B)",color:"#000"}}>
                     <TrophyIcon size={14} /> Simulate Playoffs
                   </button>
@@ -857,10 +900,16 @@ export default function SeasonSimPanel({
             </div>
           )}
 
-          {/* Run it back */}
+          {/* Run it back — leagueLoading ile kilitli: "Defend the Title"
+              (defend()) hâlâ kendi lig kurulumunu beklerken stage "done"da
+              kalıyor, bu buton o pencerede de tıklanabilir kalırsa run()
+              ile defend() AYNI state'i (league/bracket/dynasty/rhTitleWon)
+              eşzamanlı yazar — hangisi geç biterse o kazanır, tutarsız bir
+              karışım kalır (2026-08 denetimi). Diğer iki aksiyon butonu
+              zaten aynı kilidi kullanıyor, bu üçüncüsü unutulmuştu. */}
           {stage === "done" && (
-            <button onClick={run}
-              className="aura-pill-btn w-full justify-center" style={{padding:"9px"}}>
+            <button onClick={run} disabled={leagueLoading}
+              className="aura-pill-btn w-full justify-center disabled:opacity-40" style={{padding:"9px"}}>
               <span className="inline-flex items-center gap-1.5"><LoopIcon size={14} /> Run It Back</span>
               <span className="text-[9.5px] text-gray-600 ml-1.5">
                 {noSave ? "(fresh dynasty — just for fun, nothing is saved)" : "(fresh dynasty — only your first counts for the board)"}

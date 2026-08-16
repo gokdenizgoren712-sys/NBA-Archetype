@@ -105,6 +105,22 @@ function genTeamLines(bracket, abbr, rand) {
     if (!prof) continue;
     lines.push(gameBoxLine(rawPlayer, prof, rand));
   }
+  // 2026-08 denetimi: dynasty yaşlanması (agePenaltyFor) regular-season
+  // box-score'a (computeSeasonAwards, seasonSim.js) uygulandı ama playoff
+  // box-score'ları hep tazeydi — Yıl 5'te takım kaydı düşerken oyuncunun
+  // playoff üretimi/Finals MVP adaylığı Yıl 1'dekiyle birebir aynı kalırdı.
+  // Sadece kullanıcının kendi takımı yaşlanır — diğer 29 takım her sezon
+  // taze gerçek roster'la yeniden kuruluyor (leagueSim.js), onlara uygulanmaz.
+  if (abbr === bracket.userAbbr && bracket.agePenalty) {
+    const ageFactor = Math.max(0.5, 1 - bracket.agePenalty);
+    for (const l of lines) {
+      l.pts = Math.round(l.pts * ageFactor);
+      l.reb = Math.round(l.reb * ageFactor);
+      l.ast = Math.round(l.ast * ageFactor);
+      l.stl = Math.round(l.stl * ageFactor);
+      l.blk = Math.round(l.blk * ageFactor);
+    }
+  }
   return lines;
 }
 
@@ -231,9 +247,28 @@ function resolvePlayIn(seeded, userAbbr, userRating, teamRatings, rand) {
 // eşleşmeleri. Oynamaya başlamaz — stepBracket() bekler (round-gating).
 // rosterInfo/userRoster (opsiyonel): verilirse Faz D'nin playoff box-score +
 // organik MVP hesabı devreye girer (bkz. rosterOf/accumulateBoxScores).
-export function initBracket(season, teamSeasons, teamRatings, userAbbr, userRating, userWins, userLosses, rand = Math.random, rosterInfo = null, userRoster = null) {
+export function initBracket(season, teamSeasons, teamRatings, userAbbr, userRating, userWins, userLosses, rand = Math.random, rosterInfo = null, userRoster = null, agePenalty = 0) {
   const format = playoffFormat(season);
   let standings = buildConferenceStandings(teamSeasons, userAbbr, userWins, userLosses);
+
+  // 2026-08 denetimi: SeasonSimPanel'in lig-kurulumu eşiği GLOBAL bir sayım
+  // (teamsBuilt >= 20, 29 takımın ~%69'u) — ama build hataları konferanslar
+  // arasında EŞİT dağılmayabilir. 20 takım kurulsa bile (uyarı zaten
+  // gösteriliyor ama Playoffs butonu yine de aktif kalıyor) o 20'si tek bir
+  // konferansta toplanmışsa öbür konferans 8'in (ya da play-in'de 10'un)
+  // altında kalabilir — firstRoundPairs/resolvePlayIn undefined bir takıma
+  // ("bySeed[8]" vb.) .abbr okumaya çalışıp TypeError'la çökerdi, kullanıcıya
+  // hiçbir mesaj göstermeden. Burada açık, yakalanabilir bir hata fırlat —
+  // çağıran taraf (SeasonSimPanel.jsx) bunu leagueWarning olarak gösterir.
+  const minPerConf = format.hasPlayIn ? 10 : 8;
+  for (const conf of ["East", "West"]) {
+    if (standings[conf].length < minPerConf) {
+      throw new Error(
+        `Not enough ${conf} Conference teams built to run the playoffs (${standings[conf].length} of ${minPerConf} needed) — try "Run It Back" to rebuild the league.`
+      );
+    }
+  }
+
   if (format.hasPlayIn) {
     standings = {
       East: resolvePlayIn(standings.East, userAbbr, userRating, teamRatings, rand),
@@ -260,7 +295,7 @@ export function initBracket(season, teamSeasons, teamRatings, userAbbr, userRati
 
   return {
     season, format, standings, rounds: [round1], userAbbr, userRating, teamRatings,
-    rosterInfo, userRoster, champion: null,
+    rosterInfo, userRoster, champion: null, agePenalty,
   };
 }
 
@@ -336,4 +371,30 @@ export function stepBracket(bracket, rand = Math.random) {
     bracket.champion = lastRound[0].winner;
   }
   return bracket;
+}
+
+// 2026-08 denetimi: leaderboard'a yazılan "season_result" (CHAMPION/FINALS/
+// CF/SEMI/R1) RH'de hâlâ seasonSim.js'in İÇ sentetik Quick-Sim playoff'undan
+// geliyordu — kullanıcı gerçek bracket'i hiç oynamadan/kaybederken bile
+// leaderboard'da sahte bir "CHAMPION" görünebiliyordu (bkz. rhTitleWon/
+// Defend the Title fix'iyle AYNI kök sebep, sadece burada UI değil DB'ye
+// yazılan veri). Bu fonksiyon kullanıcının GERÇEK bracket'teki kaderini
+// bulur: en son (en ileri round) karara bağlanmış serisine bakar. Hâlâ
+// hayattaysa (serisi henüz bitmedi, ya da kazandı ama sonraki round henüz
+// kurulmadı) null döner — backend'de "TBD" durumu yok, çağıran taraf null
+// döndüğünde hiç postlamamalı (satırın mevcut durumunu korumak, sentetik
+// bir değer göndermekten daha doğru).
+export function deriveRhResultKey(bracket, userAbbr) {
+  if (!bracket || !userAbbr) return null;
+  if (bracket.champion?.abbr === userAbbr) return "CHAMPION";
+  for (let i = bracket.rounds.length - 1; i >= 0; i--) {
+    const series = bracket.rounds[i].find((s) => s.teamA.abbr === userAbbr || s.teamB.abbr === userAbbr);
+    if (!series) continue;
+    if (!series.winner) return null;                 // bu round hâlâ oynanıyor
+    if (series.winner.abbr !== userAbbr) {
+      return series.round === "F" ? "FINALS" : series.round;   // "CF" | "SEMI" | "R1"
+    }
+    return null;                                      // bu round'u kazandı, kader hâlâ belli değil
+  }
+  return null;
 }

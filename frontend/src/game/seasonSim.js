@@ -395,8 +395,15 @@ export function simulateSeason(players, simEra, fit, affinity01 = null, extras =
   // ── Sezon ödülleri (Faz 3) ───────────────────────────────────────────────────
 // Simüle box-stat: gerçek PTS/REB/AST × (sim etkinliği / gerçek overall) × dakika payı.
 // Ödüller bu istatistik + takım başarısı + şans üzerinden dağıtılır.
-function computeSeasonAwards({ profiles, benchProfiles, players, bench, wins, champion, realGames, isRH }, rand) {
-  const factor = prof => prof ? prof.simQuality / Math.max(0.35, prof.overall) : 1;
+function computeSeasonAwards({ profiles, benchProfiles, players, bench, wins, champion, realGames, isRH, agePenalty = 0 }, rand) {
+  // 2026-08 denetimi: agePenalty önceden SADECE computeTeamRating'in nihai
+  // skalar rating'inden düşülüyordu (dynasty sezonları takım rekorunu
+  // görünür şekilde kötüleştiriyordu) — ama buradaki box-score üretimi hiç
+  // haberdar değildi, yıldız oyuncunun PTS/REB/AST'si 5. sezonda bile
+  // 1. sezondakiyle bit-bit aynı kalıyordu. "Rekor düşüyor ama oyuncum
+  // hiç değişmemiş" çelişkisini önlemek için aynı sinyal buraya da geçiyor.
+  const ageFactor = Math.max(0.5, 1 - agePenalty);
+  const factor = prof => (prof ? prof.simQuality / Math.max(0.35, prof.overall) : 1) * ageFactor;
   const line = (pl, prof, isBench) => {
     // Dakika payı: 35dk taban — 25dk'lık 6th man üretimin ~%71'ini, 12dk'lık ~%34'ünü verir
     const mShare = Math.min(1.15, (prof.minutes ?? (isBench ? 13 : 35)) / 35);
@@ -496,7 +503,7 @@ const RESULT_LABEL = {
   };
 
   const { statLines, awards } = computeSeasonAwards(
-    { profiles, benchProfiles, players, bench: extras.bench || [], wins, champion, realGames: gameSchedule, isRH: !!real },
+    { profiles, benchProfiles, players, bench: extras.bench || [], wins, champion, realGames: gameSchedule, isRH: !!real, agePenalty: extras.agePenalty || 0 },
     rand,
   );
 
