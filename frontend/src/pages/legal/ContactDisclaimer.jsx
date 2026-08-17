@@ -9,10 +9,13 @@ export default function ContactDisclaimer() {
     >
       <Section heading="Contact">
         <p>
-          [PLACEHOLDER: add a real contact method — a support email address is the simplest.
-          If you want a contact form instead of a raw email link, that's a small additional
-          build, not a content change — let me know and I'll wire one up once you have a
-          destination (email or a form-handling service) for it.]
+          Email: <a href="mailto:info@primaryarch.net" style={{ color: "var(--yamabuki)" }}>info@primaryarch.net</a>
+        </p>
+        <p>
+          You can also reach us on{" "}
+          <a href="https://x.com/primary_arch" target="_blank" rel="noopener noreferrer" style={{ color: "var(--yamabuki)" }}>X (Twitter)</a>
+          {" "}and{" "}
+          <a href="https://www.instagram.com/primary_arch" target="_blank" rel="noopener noreferrer" style={{ color: "var(--yamabuki)" }}>Instagram</a>.
         </p>
       </Section>
 
