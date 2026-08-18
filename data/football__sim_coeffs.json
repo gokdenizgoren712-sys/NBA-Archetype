@@ -1,0 +1,48 @@
+{
+ "season": "2025-2026",
+ "n_matches": 1705,
+ "n_rows": 3273,
+ "goals_for": {
+  "const": 0.009817132118079929,
+  "quality": 4.363440792584482,
+  "chemistry": 0.45339262174868344,
+  "opp_quality": -2.747441220926903,
+  "home": 0.30506684168952125
+ },
+ "goals_against": {
+  "const": 0.5981482685398531,
+  "quality": -2.8056837352717294,
+  "chemistry": 0.07935507734925429,
+  "opp_quality": 4.333321830964788,
+  "home": -0.2968265382754225
+ },
+ "r2": {
+  "goals_for": 0.1431,
+  "goals_against": 0.1428
+ },
+ "league_mean_goals": 1.3910785212343415,
+ "poisson_check": {
+  "observed": {
+   "0": 854,
+   "1": 1095,
+   "2": 755,
+   "3": 399,
+   "4": 117,
+   "5": 38,
+   "6": 13
+  },
+  "expected": {
+   "0": 814,
+   "1": 1133,
+   "2": 788,
+   "3": 365,
+   "4": 127,
+   "5": 35,
+   "6": 8
+  },
+  "mean": 1.391,
+  "var": 1.459
+ },
+ "lambda_floor": 0.15,
+ "note": "Kimya katsayisi kaliteye gore kucuk: kalite kontrol edilince kimyanin R2 katkisi ~0.001. Oyunda kimya bir bulmaca hedefi; sonuc tahmininde belirleyici degil."
+}

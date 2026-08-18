@@ -536,3 +536,19 @@
   box-shadow: 0 0 8px var(--fill-color-a), 0 1px 0 rgba(255, 255, 255, 0.3) inset;
   transition: width 0.35s ease;
 }
+
+/* ── Futbol kartı: sabit yükseklik ────────────────────────────────────────
+   NBA arketipleri kısa ("Engine"), futbolunkiler uzun ("Overlapping
+   Fullback", "Sweeper Keeper"). Takım satırı + arketip tek flex satırında
+   olunca uzun adlar sarıyor, isim bandı büyüyor ve kartlar oyuncudan
+   oyuncuya farklı boyda çıkıyordu. Çözüm: iki AYRI satır, her biri tek
+   satıra kilitli ve yüksekliği sabit — içerik ne olursa olsun kart aynı. */
+.pcard-stage.fb .pcard-meta {
+  display: block; margin-top: 2px;
+  height: 14px; line-height: 14px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.pcard-stage.fb .pcard-meta.fb-arch { margin-top: 1px; }
+.pcard-stage.fb .pcard-name {
+  height: 22px; line-height: 22px;
+}

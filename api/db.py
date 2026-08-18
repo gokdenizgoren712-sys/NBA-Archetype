@@ -91,6 +91,10 @@ def init_db():
             roster_json  TEXT NOT NULL,
             overall_pct  REAL,
             grade        TEXT,
+            -- Futbol kadrolari 18 kisi ve dizilis kodlu ('4-3-3'); basketbol
+            -- 9 kisi ve 'classic'/'salarycap'. Tek tabloyu ikisi paylasiyor,
+            -- ayrimi bu kolon tutuyor. Eski satirlar basketbol.
+            sport        TEXT NOT NULL DEFAULT 'basketball',
             created_at   TEXT DEFAULT (datetime('now')),
             UNIQUE(user_id, name)
         );
@@ -159,7 +163,186 @@ def init_db():
             pick_number  INTEGER NOT NULL,
             created_at   TEXT DEFAULT (datetime('now'))
         );
+
+        -- RankIt by Primary Arch: scouting verisinden tamamen bagimsiz sosyal
+        -- mac gunlugu. Tum tablolar rankit_ prefix'iyle izole tutulur.
+        CREATE TABLE IF NOT EXISTS rankit_competitions (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            sport       TEXT NOT NULL CHECK(sport IN ('Basketball','Football','Olympics')),
+            name        TEXT NOT NULL,
+            country     TEXT,
+            season      TEXT NOT NULL,
+            UNIQUE(sport, name, season)
+        );
+
+        CREATE TABLE IF NOT EXISTS rankit_teams (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            sport       TEXT NOT NULL,
+            name        TEXT NOT NULL,
+            short_name  TEXT NOT NULL,
+            color       TEXT NOT NULL DEFAULT '#FFB11B',
+            crest_url   TEXT,
+            country     TEXT,
+            UNIQUE(sport, name)
+        );
+
+        CREATE TABLE IF NOT EXISTS rankit_players (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            sport       TEXT NOT NULL,
+            team_id     INTEGER REFERENCES rankit_teams(id) ON DELETE SET NULL,
+            name        TEXT NOT NULL,
+            shirt_no    TEXT,
+            image_url   TEXT,
+            UNIQUE(sport, name)
+        );
+
+        CREATE TABLE IF NOT EXISTS rankit_matches (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            sport           TEXT NOT NULL,
+            competition_id  INTEGER REFERENCES rankit_competitions(id),
+            season          TEXT NOT NULL,
+            starts_at       TEXT NOT NULL,
+            status          TEXT NOT NULL DEFAULT 'upcoming',
+            home_team_id    INTEGER REFERENCES rankit_teams(id),
+            away_team_id    INTEGER REFERENCES rankit_teams(id),
+            home_score      INTEGER,
+            away_score      INTEGER,
+            broadcaster     TEXT,
+            editorial       INTEGER NOT NULL DEFAULT 0,
+            summary         TEXT,
+            cover_variant   TEXT,
+            provider        TEXT,
+            provider_match_id TEXT,
+            created_at      TEXT DEFAULT (datetime('now')),
+            UNIQUE(competition_id, starts_at, home_team_id, away_team_id)
+        );
+
+        CREATE TABLE IF NOT EXISTS rankit_match_players (
+            match_id    INTEGER REFERENCES rankit_matches(id) ON DELETE CASCADE,
+            player_id   INTEGER REFERENCES rankit_players(id) ON DELETE CASCADE,
+            team_id     INTEGER REFERENCES rankit_teams(id),
+            starter     INTEGER NOT NULL DEFAULT 1,
+            PRIMARY KEY(match_id, player_id)
+        );
+
+        CREATE TABLE IF NOT EXISTS rankit_diary_entries (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id       INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            match_id      INTEGER REFERENCES rankit_matches(id) ON DELETE CASCADE,
+            watched_date  TEXT NOT NULL,
+            rating        REAL CHECK(rating IS NULL OR (rating >= 0.5 AND rating <= 5.0)),
+            review        TEXT,
+            is_rewatch    INTEGER NOT NULL DEFAULT 0,
+            visibility    TEXT NOT NULL DEFAULT 'public' CHECK(visibility IN ('public','followers','private')),
+            classic       INTEGER NOT NULL DEFAULT 0,
+            spoiler       INTEGER NOT NULL DEFAULT 0,
+            created_at    TEXT DEFAULT (datetime('now'))
+        );
+
+        CREATE TABLE IF NOT EXISTS rankit_entry_tags (
+            entry_id    INTEGER REFERENCES rankit_diary_entries(id) ON DELETE CASCADE,
+            tag         TEXT NOT NULL,
+            PRIMARY KEY(entry_id, tag)
+        );
+
+        CREATE TABLE IF NOT EXISTS rankit_potm_votes (
+            user_id     INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            match_id    INTEGER REFERENCES rankit_matches(id) ON DELETE CASCADE,
+            player_id   INTEGER REFERENCES rankit_players(id) ON DELETE CASCADE,
+            updated_at  TEXT DEFAULT (datetime('now')),
+            PRIMARY KEY(user_id, match_id)
+        );
+
+        CREATE TABLE IF NOT EXISTS rankit_respect_votes (
+            user_id     INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            match_id    INTEGER REFERENCES rankit_matches(id) ON DELETE CASCADE,
+            player_id   INTEGER REFERENCES rankit_players(id) ON DELETE CASCADE,
+            created_at  TEXT DEFAULT (datetime('now')),
+            PRIMARY KEY(user_id, match_id, player_id)
+        );
+
+        CREATE TABLE IF NOT EXISTS rankit_review_likes (
+            user_id     INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            entry_id    INTEGER REFERENCES rankit_diary_entries(id) ON DELETE CASCADE,
+            created_at  TEXT DEFAULT (datetime('now')),
+            PRIMARY KEY(user_id, entry_id)
+        );
+
+        CREATE TABLE IF NOT EXISTS rankit_review_comments (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id     INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            entry_id    INTEGER REFERENCES rankit_diary_entries(id) ON DELETE CASCADE,
+            content     TEXT NOT NULL,
+            created_at  TEXT DEFAULT (datetime('now'))
+        );
+
+        CREATE TABLE IF NOT EXISTS rankit_follows (
+            user_id      INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            target_type  TEXT NOT NULL CHECK(target_type IN ('user','team','player','competition')),
+            target_id    INTEGER NOT NULL,
+            notify       INTEGER NOT NULL DEFAULT 0,
+            created_at   TEXT DEFAULT (datetime('now')),
+            PRIMARY KEY(user_id, target_type, target_id)
+        );
+
+        CREATE TABLE IF NOT EXISTS rankit_lists (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id     INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            title       TEXT NOT NULL,
+            description TEXT,
+            ranked      INTEGER NOT NULL DEFAULT 0,
+            visibility  TEXT NOT NULL DEFAULT 'public',
+            created_at  TEXT DEFAULT (datetime('now')),
+            updated_at  TEXT DEFAULT (datetime('now'))
+        );
+
+        CREATE TABLE IF NOT EXISTS rankit_list_items (
+            list_id     INTEGER REFERENCES rankit_lists(id) ON DELETE CASCADE,
+            match_id    INTEGER REFERENCES rankit_matches(id) ON DELETE CASCADE,
+            position    INTEGER NOT NULL,
+            note        TEXT,
+            PRIMARY KEY(list_id, match_id),
+            UNIQUE(list_id, position)
+        );
+
+        CREATE TABLE IF NOT EXISTS rankit_watchlist (
+            user_id     INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            match_id    INTEGER REFERENCES rankit_matches(id) ON DELETE CASCADE,
+            created_at  TEXT DEFAULT (datetime('now')),
+            PRIMARY KEY(user_id, match_id)
+        );
+
+        CREATE TABLE IF NOT EXISTS rankit_favorites (
+            user_id      INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            target_type  TEXT NOT NULL CHECK(target_type IN ('match','team','player','competition')),
+            target_id    INTEGER NOT NULL,
+            created_at   TEXT DEFAULT (datetime('now')),
+            PRIMARY KEY(user_id, target_type, target_id)
+        );
+
+        CREATE TABLE IF NOT EXISTS rankit_watchalong_messages (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            match_id    INTEGER REFERENCES rankit_matches(id) ON DELETE CASCADE,
+            user_id     INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            room        TEXT NOT NULL DEFAULT 'community',
+            content     TEXT NOT NULL,
+            created_at  TEXT DEFAULT (datetime('now'))
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_rankit_matches_start ON rankit_matches(starts_at);
+        CREATE INDEX IF NOT EXISTS idx_rankit_diary_user ON rankit_diary_entries(user_id, watched_date DESC);
+        CREATE INDEX IF NOT EXISTS idx_rankit_diary_match ON rankit_diary_entries(match_id);
+        CREATE INDEX IF NOT EXISTS idx_rankit_comments_entry ON rankit_review_comments(entry_id, created_at);
+        CREATE INDEX IF NOT EXISTS idx_rankit_watchalong_match ON rankit_watchalong_messages(match_id, room, id);
         """)
+        # RankIt katalog senkronizasyonu: dis veri kaynagindaki mac kimligi
+        # tekrar calistirmalarda ayni maci gunceller, kopya uretmez.
+        for col, dfn in [("provider", "TEXT"), ("provider_match_id", "TEXT")]:
+            try:
+                conn.execute(f"ALTER TABLE rankit_matches ADD COLUMN {col} {dfn}")
+            except Exception:
+                pass
+        conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_rankit_provider_match ON rankit_matches(provider, provider_match_id)")
         # Migration: add columns to existing DBs that predate these fields
         for col, dfn in [
             ("is_banned",     "INTEGER NOT NULL DEFAULT 0"),
@@ -215,3 +398,12 @@ def init_db():
                 conn.execute(f"ALTER TABLE lineup_games ADD COLUMN {col} {dfn}")
             except Exception:
                 pass
+
+        # saved_rosters.sport — futbol kadrolari (18 kisi, dizilis kodu) ile
+        # basketbol kadrolari (9 kisi, classic/salarycap) ayni tabloyu
+        # paylasiyor. Mevcut satirlarin hepsi basketbol.
+        try:
+            conn.execute("ALTER TABLE saved_rosters ADD COLUMN "
+                         "sport TEXT NOT NULL DEFAULT 'basketball'")
+        except Exception:
+            pass

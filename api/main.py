@@ -94,6 +94,10 @@ app.add_middleware(
 from .game_ws import router as _game_ws_router
 app.include_router(_game_ws_router)
 
+# RankIt sosyal mac gunlugu - scouting/oyun API'lerinden bagimsiz router.
+from .rankit import router as _rankit_router
+app.include_router(_rankit_router)
+
 # Güvenlik header'ları
 @app.middleware("http")
 async def security_headers(request: Request, call_next):
@@ -2802,6 +2806,11 @@ from pydantic import BaseModel, EmailStr
 import re as _re
 
 init_db()
+try:
+    from .rankit import seed_rankit as _seed_rankit
+    _seed_rankit()
+except Exception as _e:
+    print(f"[startup] RankIt seed failed: {_e}", flush=True)
 
 # Faz 4 sonrası tek-seferlik otomatik migration'lar — deploy'da HER başlangıçta
 # çalışır, admin'in elle bir endpoint çağırmasına gerek YOK (ikisi de idempotent,
@@ -2926,14 +2935,22 @@ class SaveLineupBody(BaseModel):
 class SaveRosterBody(BaseModel):
     name: str
     source_mode: str = "single"    # 'single' | 'same_screen' | 'with_a_friend'
-    mode: str = "classic"          # 'classic' | 'salarycap'
+    mode: str = "classic"          # basketbol: 'classic'|'salarycap' — futbol: diziliş
     sim_era: str = None
-    roster: list                   # 9 tam oyuncu satırı — bkz. saved_rosters CREATE TABLE notu (db.py)
+    roster: list                   # basketbol 9, futbol 18 satır (bkz. ROSTER_SIZE)
     overall_pct: float = None
     grade: str = None
+    sport: str = "basketball"      # 'basketball' | 'football'
 
 _VALID_SOURCE_MODES = {"single", "same_screen", "with_a_friend"}
 _VALID_ROSTER_MODES = {"classic", "salarycap"}
+# Futbol kadrosu 18 kişi (11 ilk + 7 yedek) ve `mode` diziliş kodu taşıyor
+# ('4-3-3'). Uç nokta basketbolun 9/classic kuralını sabit kodladığı için
+# futbolda Save HİÇ çalışmıyordu — istek 400 dönüyor, arayüz sadece
+# "Could not save." yazıyordu. Kurallar artık spora göre.
+_VALID_SPORTS = {"basketball", "football"}
+ROSTER_SIZE = {"basketball": 9, "football": 18}
+_FOOTBALL_SHAPES = {"4-3-3", "4-2-3-1", "4-4-2", "3-5-2", "3-4-2-1", "4-1-4-1", "5-3-2"}
 
 # ── Yardımcı ─────────────────────────────────────────────────────────────────
 
@@ -3358,22 +3375,29 @@ def delete_lineup(item_id: int, user=Depends(get_current_user)):
 # hatasına burada tekrar düşülmesin diye kasıtlı.
 @app.post("/api/rosters")
 def save_roster(body: SaveRosterBody, user=Depends(get_current_user)):
+    sport = (body.sport or "basketball").lower()
+    if sport not in _VALID_SPORTS:
+        raise HTTPException(400, f"Invalid sport: {body.sport}")
     if body.source_mode not in _VALID_SOURCE_MODES:
         raise HTTPException(400, f"Invalid source_mode: {body.source_mode}")
-    if body.mode not in _VALID_ROSTER_MODES:
+    valid_modes = _FOOTBALL_SHAPES if sport == "football" else _VALID_ROSTER_MODES
+    if body.mode not in valid_modes:
         raise HTTPException(400, f"Invalid mode: {body.mode}")
     if not body.name.strip():
         raise HTTPException(400, "Give the roster a name")
-    if not isinstance(body.roster, list) or len(body.roster) != 9:
-        raise HTTPException(400, "Roster must have exactly 9 players")
+    need = ROSTER_SIZE[sport]
+    if not isinstance(body.roster, list) or len(body.roster) != need:
+        raise HTTPException(400, f"Roster must have exactly {need} players")
     try:
         with get_conn() as conn:
             cur = conn.execute(
                 """INSERT INTO saved_rosters
-                   (user_id, name, source_mode, mode, sim_era, roster_json, overall_pct, grade)
-                   VALUES (?,?,?,?,?,?,?,?)""",
+                   (user_id, name, source_mode, mode, sim_era, roster_json,
+                    overall_pct, grade, sport)
+                   VALUES (?,?,?,?,?,?,?,?,?)""",
                 (int(user["sub"]), body.name.strip()[:60], body.source_mode, body.mode,
-                 body.sim_era, json.dumps(body.roster), body.overall_pct, body.grade),
+                 body.sim_era, json.dumps(body.roster), body.overall_pct, body.grade,
+                 sport),
             )
         return {"id": cur.lastrowid, "ok": True}
     except Exception as e:
@@ -3485,6 +3509,695 @@ def get_leaderboard(limit: int = Query(50, le=100), mode: str = Query("classic")
             ORDER BY lg.pct DESC LIMIT ?
         """, (mode, limit)).fetchall()
     return {"entries": [dict(r) for r in rows]}
+
+
+# ── Futbol liderlik tablosu ──────────────────────────────────────────────────
+# Basketboldaki /api/leaderboard lineup_games'ten okuyor: orada her oyun bir
+# SİMÜLASYON SONUCU (galibiyet, sezon sonucu) üretiyor ve sıralama ona göre.
+# Futbolda o tablo yok — kaydedilen şey kadronun kendisi. Bu yüzden sıralama
+# saved_rosters üzerinden ve ölçüt kimya skoru.
+#
+# DİKKAT: ham skor değil PERSANTİL gösteriliyor. Ham 0-1 skorun kendi başına
+# ölçeği yok; persantil "17.936 gerçek ilk-11'in yüzde kaçından iyi kurulmuş"
+# demek (bkz. src/football/chem_reference.py).
+
+@app.get("/api/football/leaderboard")
+def get_football_leaderboard(limit: int = Query(50, ge=1, le=100),
+                             shape: Optional[str] = Query(None)):
+    q = """SELECT r.name, r.mode AS shape, r.overall_pct, r.created_at,
+                  u.username, r.roster_json
+           FROM saved_rosters r JOIN users u ON r.user_id = u.id
+           WHERE r.sport = 'football'"""
+    args: list = []
+    if shape:
+        q += " AND r.mode = ?"
+        args.append(shape)
+    q += " ORDER BY r.overall_pct DESC LIMIT ?"
+    args.append(limit)
+    with get_conn() as conn:
+        rows = conn.execute(q, args).fetchall()
+
+    ref = _chem_reference()
+    out = []
+    for r in rows:
+        d = dict(r)
+        try:
+            roster = json.loads(d.pop("roster_json") or "[]")
+        except Exception:
+            roster = []
+        d["squad_size"] = len(roster)
+        # En güçlü üç oyuncu — tabloyu okurken kadronun ne olduğu anlaşılsın
+        top = sorted(roster, key=lambda p: -(p.get("overall_score") or 0))[:3]
+        d["top_players"] = [{"name": p.get("PLAYER_NAME"),
+                             "arch": p.get("primary_arch")} for p in top]
+        d["percentile"] = _pct_of(ref, "score", d.get("overall_pct"))
+        out.append(d)
+    return {"entries": out, "reference_n": (ref or {}).get("n")}
+
+
+def _pct_of(ref, comp, value):
+    """Ham skoru gerçek ilk-11 dağılımındaki persantile çevirir."""
+    if not ref or value is None:
+        return None
+    q = ref["components"].get(comp, {}).get("q")
+    if not q:
+        return None
+    lo, hi = 0, len(q) - 1
+    while lo < hi:
+        mid = (lo + hi + 1) // 2
+        if q[mid] <= value:
+            lo = mid
+        else:
+            hi = mid - 1
+    return lo
+
+
+# ── Futbol oyuncuları ─────────────────────────────────────────────────────────
+# Basketboldan TAMAMEN ayrı hat: kendi parquet'i, kendi faz bazlı sözlüğü.
+# Kaynak: FotMob (bkz. src/football/fetch_fotmob.py başlığı — denenen tüm
+# kaynaklar ve neden bu seçildiği orada). Satır anahtarı (PLAYER_ID, PHASE):
+# iki fazı birden kapsayan oyuncu iki satır, iki ayrı arketiple.
+#
+# NOT: 2015/16 StatsBomb hattı (football__2015-16__player_scores.parquet,
+# suggested_archetype/cluster_* kolonları) BU UÇ NOKTALAR TARAFINDAN ARTIK
+# OKUNMUYOR — şeması farklı. Parquet duruyor, karşılaştırma için değerli.
+
+FOOTBALL_PHASE_LABELS = {"gk": "Goalkeeper", "def": "Defence",
+                         "mid": "Midfield", "fwd": "Attack"}
+
+
+def _football_seasons() -> list[str]:
+    """Skorlanmış sezonlar, en yeni önce."""
+    return sorted((p.name.split("__")[1] for p in DATA.glob("football__*__scores.parquet")),
+                  reverse=True)
+
+
+@lru_cache(maxsize=8)
+def _load_football_scores(season: str) -> pd.DataFrame:
+    p = DATA / f"football__{season}__scores.parquet"
+    if not p.exists():
+        raise FileNotFoundError(p)
+    return pd.read_parquet(p)
+
+
+def _football_default_season() -> str:
+    ss = _football_seasons()
+    return ss[0] if ss else "2025-2026"
+
+
+@app.get("/api/football/players")
+def get_football_players(
+    season:   Optional[str] = Query(None),
+    league:   Optional[str] = Query(None),
+    phase:    Optional[str] = Query(None, description="gk | def | mid | fwd"),
+    position: Optional[str] = Query(None, description="GK|CB|FB|DM|CM|W|ST"),
+    archetype: Optional[str] = Query(None),
+    team:     Optional[str] = Query(None),
+    confidence: Optional[str] = Query(None, description="prototype|clear|between roles"),
+    search:   Optional[str] = Query(None),
+    min_minutes: Optional[int] = Query(None, ge=0),
+    sort:     str = Query("primary_score"),
+    limit:    int = Query(200, ge=1, le=800),
+    offset:   int = Query(0, ge=0),
+):
+    season = season or _football_default_season()
+    try:
+        df = _load_football_scores(season).copy()
+    except FileNotFoundError:
+        return {"players": [], "total": 0,
+                "message": "Run src/football/fetch_fotmob.py then build_scores.py"}
+
+    if league:
+        df = df[df["LEAGUE"] == league]
+    if phase:
+        df = df[df["PHASE"] == phase]
+    if position:
+        df = df[df["POSITION"] == position]
+    if archetype:
+        df = df[df["primary_arch"] == archetype]
+    if team:
+        df = df[df["TEAM"] == team]
+    if confidence:
+        df = df[df["confidence"] == confidence]
+    if min_minutes:
+        df = df[df["MINUTES_TOTAL"] >= min_minutes]
+    if search:
+        s = _fold(search)
+        df = df[df["PLAYER_NAME"].map(lambda n: s in _fold(str(n)))]
+
+    if sort in df.columns:
+        df = df.sort_values(sort, ascending=(sort == "PLAYER_NAME"))
+
+    total = len(df)
+    page = df.iloc[offset:offset + limit]
+
+    # Kart hem arketip kırılımını (score_*) hem ham metrikleri (_90 ve türetilmiş
+    # oranlar) gösterdiği için satırın tamamı gidiyor — ayrı bir detay çağrısı
+    # gerekmiyor, sayfa tek istekte tam çalışıyor.
+    drop = [c for c in page.columns if c.startswith("cover_")]
+    return {
+        "players": json.loads(page.drop(columns=drop).to_json(orient="records")),
+        "total": total,
+        "season": season,
+        "phase_labels": FOOTBALL_PHASE_LABELS,
+    }
+
+
+@app.get("/api/football/players/{player_id}/career")
+def get_football_career(player_id: int):
+    """Oyuncunun skorlanmış tüm sezonları — kartın Career sekmesi.
+
+    Sezonlar ayrı parquet'lerde tutulduğu için hepsi taranıyor; sezon sayısı
+    az (arşiv 2016/17'ye kadar) ve dosyalar lru_cache'te, maliyet önemsiz.
+    """
+    out = []
+    for s in _football_seasons():
+        try:
+            df = _load_football_scores(s)
+        except FileNotFoundError:
+            continue
+        hit = df[df["PLAYER_ID"] == player_id]
+        for _, r in hit.iterrows():
+            out.append({
+                "SEASON": r["SEASON"], "LEAGUE": r["LEAGUE"], "TEAM": r["TEAM"],
+                "PHASE": r["PHASE"], "POSITION": r["POSITION"],
+                "MINUTES_TOTAL": float(r["MINUTES_TOTAL"]),
+                "APPS": int(r["APPS"]) if pd.notna(r.get("APPS")) else None,
+                "primary_arch": r["primary_arch"],
+                "primary_score": float(r["primary_score"]) if pd.notna(r["primary_score"]) else None,
+            })
+    out.sort(key=lambda x: str(x["SEASON"]), reverse=True)
+    return {"player_id": player_id, "seasons": out}
+
+
+# ── Futbol çark oyunu ─────────────────────────────────────────────────────────
+# Basketbol tarafındaki /api/game/* akışının futbol karşılığı: çark sezon+takım
+# seçer, oyuncu o takımın kadrosundan alınır, XI dolunca kimya hesaplanır.
+#
+# İKİ MOD (kullanıcı kararı):
+#   league  — çark yalnızca seçilen ligin takımlarını içerir
+#   open    — üç lig birden tek havuzda; Barcelona'dan sonra Newcastle çıkabilir
+#
+# BASKETBOLDAN AYRILAN NOKTA: futbolda dizilişin kendisi bir kısıt. Basketbolda
+# beş slot her zaman PG/SG/SF/PF/C; burada hangi slotların doldurulacağı seçilen
+# dizilişe bağlı (4-3-3 ile 3-5-2 farklı faz sayıları ister), o yüzden çark
+# çevrilmeden önce diziliş belirlenmiş olmalı.
+
+@app.get("/api/football/game/teams")
+def football_game_teams(
+    season: Optional[str] = Query(None, description="verilmezse TÜM sezonların geçerli çiftleri"),
+    league: Optional[str] = Query(None, description="verilirse çark tek lige kısıtlanır"),
+    min_players: int = Query(11, ge=1, description="çarkta çıkabilmesi için gereken kadro derinliği"),
+):
+    """Çark havuzu — GEÇERLİ (sezon, kulüp) çiftleri.
+
+    Yıl çarkı eklenince kritik hale geldi: sezon ve takım BAĞIMSIZ seçilirse
+    var olmayan bir çift çıkabiliyor (La Liga'da yalnız 2025/26 var ama çark
+    2022/23'ü de öneriyordu) ve kullanıcı boşa spin harcıyor. Bu yüzden istemci
+    iki çarkı ayrı ayrı döndürmüyor: buradan gelen geçerli çiftlerden birini
+    seçip iki çarkı da o sonuca sürüyor.
+
+    min_players eşiği: kadrosu sığ bir takım çarkta çıkarsa oyuncu listesi boş
+    gelir (basketbol tarafında '2TM/TOT' sözde-takımlarının yarattığı sorunun
+    aynısı).
+    """
+    seasons = [season] if season else _football_seasons()
+    rows, leagues = [], set()
+    for s in seasons:
+        try:
+            df = _load_football_scores(s)
+        except FileNotFoundError:
+            continue
+        df = df[df["primary_arch"].notna()]
+        if league:
+            df = df[df["LEAGUE"] == league]
+        if df.empty:
+            continue
+        leagues |= set(df["LEAGUE"].dropna().unique().tolist())
+        g = (df.drop_duplicates(["PLAYER_ID", "TEAM"])
+               .groupby(["LEAGUE", "TEAM"]).size().rename("n").reset_index())
+        g = g[g["n"] >= min_players]
+        for r in g.itertuples():
+            rows.append({"team": r.TEAM, "league": r.LEAGUE,
+                         "season": s, "players": int(r.n)})
+
+    rows.sort(key=lambda x: (x["season"], x["league"], x["team"]))
+    return {
+        "mode": "league" if league else "open",
+        "pairs": rows,                                   # geçerli (sezon, kulüp)
+        "teams": sorted({r["team"] for r in rows}),       # çark animasyonu için
+        "seasons": sorted({r["season"] for r in rows}, reverse=True),
+        "leagues": sorted(leagues),
+    }
+
+
+@app.get("/api/football/game/players")
+def football_game_players(
+    team: str = Query(...),
+    season: Optional[str] = Query(None),
+    phase: Optional[str] = Query(None, description="boş bırakılırsa tüm fazlar"),
+):
+    """Çarkta çıkan takımın seçilebilir oyuncuları.
+
+    Kaleci de döner (XI'in 11. adamı) ama kimya hesabına girmez — bkz.
+    src/football/affinity.lineup_fit.
+    """
+    season = season or _football_default_season()
+    try:
+        df = _load_football_scores(season)
+    except FileNotFoundError:
+        return {"players": [], "team": team, "season": season}
+    df = df[(df["TEAM"] == team) & df["primary_arch"].notna()]
+    if phase:
+        df = df[df["PHASE"] == phase]
+    if df.empty:
+        return {"players": [], "team": team, "season": season}
+
+    df = df.sort_values("overall_score", ascending=False)
+    keep = ["PLAYER_ID", "PLAYER_NAME", "TEAM", "LEAGUE", "SEASON", "PHASE",
+            "POSITION", "MINUTES_TOTAL", "APPS", "primary_arch", "primary_score",
+            "alt_arch", "overall_score", "confidence", "goals_90", "assists_90",
+            "CLEAN_SHEETS"]
+    keep = [c for c in keep if c in df.columns]
+    return {
+        "season": season, "team": team,
+        "players": json.loads(df[keep].to_json(orient="records")),
+    }
+
+
+# ── Futbol XI uyumu ───────────────────────────────────────────────────────────
+# Basketbol tarafındaki /api/lineup-compat + /api/affinity'nin futbol karşılığı.
+# DURUM: ALTYAPI — ağırlıklar ve önsel matris henüz ground truth'a karşı
+# kalibre edilmedi, arayüz bunu açıkça belirtmeli.
+
+@lru_cache(maxsize=4)
+def _load_football_affinity(season: str):
+    """Ampirik arketip-arketip uyum matrisi (gerçek maç sonuçlarından).
+    Yoksa None — o zaman skorlayıcı elle-yazılmış önsele düşer."""
+    p = DATA / f"football__{season}__affinity.parquet"
+    if not p.exists():
+        return None
+    return pd.read_parquet(p)
+
+
+def _football_affinity_diag(season: str) -> dict:
+    p = DATA / f"football__{season}__affinity_diag.json"
+    if not p.exists():
+        return {}
+    try:
+        return json.loads(p.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+@app.get("/api/football/affinity")
+def get_football_affinity(season: Optional[str] = Query(None)):
+    """Uyum matrisi + hangi çiftin ölçüldüğü/önselden geldiği."""
+    import importlib.util
+    season = season or _football_default_season()
+    spec = importlib.util.spec_from_file_location(
+        "fb_roles", ROOT / "config" / "football_roles.py")
+    roles = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(roles)
+
+    emp = _load_football_affinity(season)
+    names = sorted(roles.ROLE_SLOTS and
+                   {a for slot in roles.ROLE_SLOTS.values() for a in slot})
+    pairs = []
+    for i, a in enumerate(names):
+        for b in names[i:]:
+            e = None
+            if emp is not None and a in emp.index and b in emp.columns:
+                v = emp.loc[a, b]
+                e = None if pd.isna(v) else round(float(v), 4)
+            pr = roles.affinity_prior(a, b)
+            if e is None and pr == 0:
+                continue
+            pairs.append({"a": a, "b": b, "empirical": e,
+                          "prior": round(pr, 3),
+                          "source": "empirical" if e is not None else "prior"})
+    pairs.sort(key=lambda x: -(x["empirical"] if x["empirical"] is not None
+                               else x["prior"]))
+    return {
+        "season": season,
+        "has_empirical": emp is not None,
+        "diagnostics": _football_affinity_diag(season),
+        "role_slots": {k: v for k, v in roles.ROLE_SLOTS.items()},
+        "shapes": roles.VALID_SHAPES,
+        "pairs": pairs,
+        "note": "Infrastructure build — weights are not yet calibrated "
+                "against ground truth.",
+    }
+
+
+@app.get("/api/football/best-xi")
+def get_football_best_xi(
+    season: Optional[str] = Query(None),
+    shape: str = Query("4-3-3"),
+    league: Optional[str] = Query(None),
+    team: Optional[str] = Query(None),
+    quality_weight: float = Query(0.35, ge=0.0, le=1.0),
+    restarts: int = Query(4, ge=1, le=10),
+):
+    """Havuzdan verilen dizilişe en uyumlu 10 saha oyuncusu (kaleci hariç)."""
+    import importlib.util
+    season = season or _football_default_season()
+    try:
+        df = _load_football_scores(season)
+    except FileNotFoundError:
+        return {"error": "no season data"}
+
+    df = df[df.get("qualified", True) & df["primary_arch"].notna()]
+    if league:
+        df = df[df["LEAGUE"] == league]
+    if team:
+        df = df[df["TEAM"] == team]
+    if df.empty:
+        return {"error": "no players match the filters"}
+
+    spec = importlib.util.spec_from_file_location(
+        "fb_affinity", ROOT / "src" / "football" / "affinity.py")
+    aff = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(aff)
+
+    res = aff.best_xi(df.to_dict("records"), shape=shape,
+                      emp=_load_football_affinity(season),
+                      quality_weight=quality_weight, restarts=restarts)
+    res["season"] = season
+    res["pool_size"] = int(len(df))
+    return res
+
+
+@lru_cache(maxsize=4)
+def _load_football_real_xi(season: str) -> pd.DataFrame:
+    p = DATA / f"football__{season}__real_xi.parquet"
+    if not p.exists():
+        raise FileNotFoundError(p)
+    return pd.read_parquet(p)
+
+
+@app.get("/api/football/real-xi")
+def get_football_real_xi(
+    season: Optional[str] = Query(None),
+    league: Optional[str] = Query(None),
+    team: Optional[str] = Query(None),
+    result: Optional[str] = Query(None, description="W|D|L"),
+    sort: str = Query("chemistry"),
+    limit: int = Query(60, ge=1, le=300),
+):
+    """Sahada oynanmış gerçek ilk 11'ler + o maçın sonucu + bizim kimya skorumuz.
+
+    Basketbolun 'Real lineups' sekmesinin karşılığı ama daha zengin: orada
+    beşli+net rating var, burada gerçek bir maçın kadrosu ve sonucu.
+
+    Yanıttaki `validation` bloğu motorun kendi kendini sınadığı yer. Kritik
+    sayı `chemistry_partial`: kalite sabit tutulduğunda kimyanın gol farkıyla
+    korelasyonu. Ham korelasyon yanıltıcı çünkü yüksek kimyalı XI'ler zaten
+    yüksek kaliteli oluyor.
+    """
+    import numpy as _np
+    season = season or _football_default_season()
+    try:
+        df = _load_football_real_xi(season)
+    except FileNotFoundError:
+        return {"lineups": [], "message": "Run src/football/real_xi.py"}
+
+    full = df
+    if league:
+        df = df[df["league"] == league]
+    if team:
+        df = df[df["team"] == team]
+    if result:
+        df = df[df["result"] == result.upper()]
+
+    def _partial(a, b, c):
+        ra = a - _np.polyval(_np.polyfit(c, a, 1), c)
+        rb = b - _np.polyval(_np.polyfit(c, b, 1), c)
+        return float(_np.corrcoef(ra, rb)[0, 1])
+
+    val = {}
+    if len(full) > 30:
+        x = full["chemistry"].to_numpy(float)
+        y = full["goal_diff"].to_numpy(float)
+        q = full["avg_quality"].to_numpy(float)
+        val = {
+            "n": int(len(full)),
+            "chemistry_raw": round(float(_np.corrcoef(x, y)[0, 1]), 3),
+            "quality_raw": round(float(_np.corrcoef(q, y)[0, 1]), 3),
+            "chemistry_partial": round(_partial(x, y, q), 3),
+            "chemistry_quality_overlap": round(float(_np.corrcoef(x, q)[0, 1]), 3),
+        }
+
+    if sort in df.columns:
+        df = df.sort_values(sort, ascending=(sort == "goal_diff" and False))
+    page = df.head(limit)
+    return {
+        "season": season,
+        "total": int(len(df)),
+        "validation": val,
+        "teams": sorted(full["team"].dropna().unique().tolist()),
+        "leagues": sorted(full["league"].dropna().unique().tolist()),
+        "lineups": json.loads(page.to_json(orient="records")),
+    }
+
+
+@app.get("/api/football/search")
+def football_player_search(
+    q: str = Query(..., min_length=1),
+    season: Optional[str] = Query(None),
+    phase: Optional[str] = Query(None),
+    limit: int = Query(10, ge=1, le=40),
+):
+    """Custom XI kurarken otomatik tamamlama."""
+    season = season or _football_default_season()
+    try:
+        df = _load_football_scores(season)
+    except FileNotFoundError:
+        return {"players": []}
+    df = df[df["primary_arch"].notna()]
+    if phase:
+        df = df[df["PHASE"] == phase]
+    s = _fold(q)
+    df = df[df["PLAYER_NAME"].map(lambda n: s in _fold(str(n)))]
+    df = df.sort_values("overall_score", ascending=False).head(limit)
+    # goals_90/assists_90: sezon simülasyonu takım golünü oyunculara bunlarla
+    # dağıtıyor — Custom XI'den de simülasyona gidilebildiği için burada da lazım.
+    keep = ["PLAYER_ID", "PLAYER_NAME", "TEAM", "LEAGUE", "PHASE", "POSITION",
+            "primary_arch", "overall_score", "goals_90", "assists_90"]
+    return {"players": json.loads(df[[c for c in keep if c in df.columns]]
+                                  .to_json(orient="records"))}
+
+
+class FootballLineupBody(BaseModel):
+    player_ids: list[int]
+    season: str | None = None
+    # Çark oyunu FARKLI SEZONLARDAN oyuncu veriyor (Pogba 2018/19 + Salah
+    # 2025/26 aynı XI'de olabilir). Tek sezonun tablosunda arayınca oyuncuların
+    # çoğu bulunamıyor, kimya NaN dönüyordu. entries verilirse her oyuncu KENDİ
+    # sezonundan çekilir; verilmezse eski (tek sezon) davranış korunur.
+    entries: list[dict] | None = None
+
+
+# ── Kimya persantili ─────────────────────────────────────────────────────────
+# Kimyayı "sonuç tahmini" olarak sunmuyoruz: 17.936 gerçek ilk-11'de ölçüldü,
+# kadro kalitesi kontrol edilince etki ayrıştırılamıyor (bkz.
+# src/football/chem_reference.py docstring). Cevaplanabilir soru şu: bu XI
+# gerçekte sahaya çıkmış kadrolara ne kadar benziyor? Referans dağılım gerçek.
+
+def _json_safe(o):
+    """NaN/Inf -> None. Yanıtta tek bir NaN kalırsa FastAPI 500 veriyor
+    ('Out of range float values are not JSON compliant'). Skorlanmamış bir
+    oyuncu XI'e karışınca (ID eşleşip overall_score boş olunca) tam olarak
+    bu oluyordu — kullanıcı sebebini göremeden istek patlıyordu."""
+    if isinstance(o, float):
+        return None if (o != o or o in (float("inf"), float("-inf"))) else o
+    if isinstance(o, dict):
+        return {k: _json_safe(v) for k, v in o.items()}
+    if isinstance(o, (list, tuple)):
+        return [_json_safe(v) for v in o]
+    return o
+
+
+@lru_cache(maxsize=1)
+def _chem_reference() -> dict | None:
+    p = DATA / "football__chem_reference.json"
+    if not p.exists():
+        return None
+    return json.loads(p.read_text(encoding="utf-8"))
+
+
+def _chem_percentiles(fit: dict) -> dict | None:
+    ref = _chem_reference()
+    if not ref or "error" in fit:
+        return None
+    out = {"n": ref["n"], "seasons": len(ref["seasons"])}
+    for k, comp in ref["components"].items():
+        v = fit.get(k)
+        if v is None:
+            continue
+        q = comp["q"]
+        # q artan sıralı: kaç eşiği geçtiysek persantil o
+        lo, hi = 0, len(q) - 1
+        while lo < hi:
+            mid = (lo + hi + 1) // 2
+            if q[mid] <= v:
+                lo = mid
+            else:
+                hi = mid - 1
+        out[k] = lo
+    return out
+
+
+@app.post("/api/football/lineup-fit")
+def post_football_lineup_fit(body: FootballLineupBody):
+    """Elle seçilmiş oyuncular için uyum skoru (kaleci sessizce atılır)."""
+    import importlib.util
+    season = body.season or _football_default_season()
+
+    if body.entries:
+        # Sezon bazında grupla, her grubu kendi tablosundan çek.
+        # Parquet içindeki SEASON "2018/2019", dosya adı ve API anahtarı
+        # "2018-2019". Frontend oyuncunun SEASON alanını olduğu gibi
+        # gönderiyor, burada tek biçime indiriliyor.
+        want: dict[str, set[int]] = {}
+        for e in body.entries:
+            pid, s = e.get("player_id"), e.get("season") or season
+            if pid is None:
+                continue
+            want.setdefault(str(s).replace("/", "-"), set()).add(int(pid))
+        parts = []
+        for s, ids in want.items():
+            try:
+                dfs = _load_football_scores(s)
+            except FileNotFoundError:
+                continue
+            hit = dfs[dfs["PLAYER_ID"].isin(ids)]
+            if not hit.empty:
+                # Aynı oyuncu ara transferde iki satır olabilir — daha çok
+                # dakika oynadığı yeri al.
+                hit = (hit.sort_values("MINUTES_PHASE", ascending=False)
+                          .drop_duplicates("PLAYER_ID"))
+                parts.append(hit)
+        if not parts:
+            return {"error": "no matching players"}
+        sel = pd.concat(parts, ignore_index=True)
+    else:
+        try:
+            df = _load_football_scores(season)
+        except FileNotFoundError:
+            return {"error": "no season data"}
+        sel = df[df["PLAYER_ID"].isin(body.player_ids)]
+        if sel.empty:
+            return {"error": "no matching players"}
+
+    # Kaç oyuncu bulunamadı — arayüz sessizce yanlış skor göstermesin.
+    missing = len(set(body.player_ids)) - int(sel["PLAYER_ID"].nunique())
+
+    spec = importlib.util.spec_from_file_location(
+        "fb_affinity", ROOT / "src" / "football" / "affinity.py")
+    aff = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(aff)
+
+    # Ampirik çift matrisi sezona özgü — karışık sezonlu XI'de hangisini
+    # kullanacağımız belirsiz, o yüzden yalnız tek sezonluk çağrıda veriliyor.
+    emp = None if body.entries else _load_football_affinity(season)
+    fit = aff.lineup_fit(sel.to_dict("records"), emp)
+    fit["season"] = season
+    fit["missing"] = missing
+    fit["reference"] = _chem_percentiles(fit)
+    fit["players"] = json.loads(
+        sel[["PLAYER_ID", "PLAYER_NAME", "TEAM", "PHASE", "POSITION",
+             "primary_arch", "overall_score"]].to_json(orient="records"))
+    return _json_safe(fit)
+
+
+# ── Sezon simülasyonu kurulumu ───────────────────────────────────────────────
+# Basketbol tarafındaki leagueSim.js 30 takımın roster'ını tek tek çekip
+# client'ta reyting hesaplıyor. Futbolda buna gerek yok: her kulübün gerçek
+# ilk-11'leri zaten real_xi'de skorlanmış durumda, ortalamaları doğrudan
+# takım gücü. Tek bir istekte lig + katsayı + kulüp güçleri dönüyor.
+
+@lru_cache(maxsize=1)
+def _sim_coeffs() -> dict:
+    p = DATA / "football__sim_coeffs.json"
+    if not p.exists():
+        raise FileNotFoundError(p)
+    return json.loads(p.read_text(encoding="utf-8"))
+
+
+@lru_cache(maxsize=8)
+def _club_strength(season: str) -> list[dict]:
+    """Kulüp başına gerçek XI'lerinden ortalama kalite/kimya."""
+    df = _load_football_real_xi(season)
+    df = df[df["known_players"] >= 9]
+    g = (df.groupby(["league", "team"])
+           .agg(matches=("match_id", "size"), quality=("avg_quality", "mean"),
+                chemistry=("chemistry", "mean"), gf=("goals_for", "mean"),
+                ga=("goals_against", "mean"))
+           .reset_index())
+    # 15 maçın altında ortalama gürültülü — havuza alma
+    g = g[g["matches"] >= 15]
+    return [{"league": r.league, "team": r.team, "matches": int(r.matches),
+             "quality": round(float(r.quality), 4),
+             "chemistry": round(float(r.chemistry), 4),
+             "gf": round(float(r.gf), 2), "ga": round(float(r.ga), 2)}
+            for r in g.itertuples()]
+
+
+@app.get("/api/football/sim-setup")
+def get_football_sim_setup(season: Optional[str] = Query(None),
+                           league: Optional[str] = Query(None)):
+    """Sezon simülasyonu için gol modeli katsayıları + rakip kulüp güçleri."""
+    seasons = _football_seasons()
+    if not seasons:
+        return {"available": False}
+    season = season or seasons[0]
+    try:
+        coeffs = _sim_coeffs()
+        clubs = _club_strength(season)
+    except FileNotFoundError as e:
+        return {"available": False, "season": season, "reason": Path(e.args[0]).name}
+    if league:
+        clubs = [c for c in clubs if c["league"] == league]
+    return {
+        "available": bool(clubs),
+        "season": season,
+        "seasons": seasons,
+        "leagues": sorted({c["league"] for c in _club_strength(season)}),
+        "coeffs": coeffs,
+        "clubs": clubs,
+    }
+
+
+@app.get("/api/football/meta")
+def get_football_meta(season: Optional[str] = Query(None)):
+    """Sayfa açılışı: sezonlar, ligler, takımlar, faz başına arketip listesi."""
+    seasons = _football_seasons()
+    if not seasons:
+        return {"available": False}
+    season = season or seasons[0]
+    try:
+        df = _load_football_scores(season)
+    except FileNotFoundError:
+        return {"available": False, "seasons": seasons}
+
+    archs = {ph: sorted(g["primary_arch"].dropna().unique().tolist())
+             for ph, g in df.groupby("PHASE")}
+    by = (df.groupby(["LEAGUE", "PHASE"]).size()
+            .rename("n").reset_index().to_dict("records"))
+    return {
+        "available": True,
+        "season": season,
+        "seasons": seasons,
+        "leagues": sorted(df["LEAGUE"].dropna().unique().tolist()),
+        "teams": sorted(df["TEAM"].dropna().unique().tolist()),
+        "archetypes": archs,
+        "players": int(df["PLAYER_ID"].nunique()),
+        "rows": int(len(df)),
+        "min_minutes": int(df["MINUTES_TOTAL"].min()) if len(df) else None,
+        "by_league_phase": by,
+        "phase_labels": FOOTBALL_PHASE_LABELS,
+    }
 
 
 # ── Futbol arketip sözlüğü geri bildirimi ─────────────────────────────────────

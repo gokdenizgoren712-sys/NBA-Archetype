@@ -34,7 +34,12 @@ const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const ResetPassword  = lazy(() => import("./pages/ResetPassword"));
 const PlayerProfile  = lazy(() => import("./pages/PlayerProfile"));
 const SportSelect    = lazy(() => import("./pages/SportSelect"));
-const FootballHome   = lazy(() => import("./pages/football/FootballHome"));
+const FootballPlayers = lazy(() => import("./pages/football/FootballPlayers"));
+const FootballLineups = lazy(() => import("./pages/football/FootballLineups"));
+const FootballGame    = lazy(() => import("./pages/football/FootballGame"));
+const FootballMap     = lazy(() => import("./pages/football/FootballMap"));
+const FootballCompare = lazy(() => import("./pages/football/FootballCompare"));
+const RankItPrototype = lazy(() => import("./rankit/RankItPrototype"));
 const PrivacyPolicy      = lazy(() => import("./pages/legal/PrivacyPolicy"));
 const TermsOfService     = lazy(() => import("./pages/legal/TermsOfService"));
 const ContactDisclaimer  = lazy(() => import("./pages/legal/ContactDisclaimer"));
@@ -60,9 +65,16 @@ const BASKETBALL_NAV = [
   { to: "/basketball/glossary",   Icon: GlossaryIcon,   label: "About",   extraActive: ["/basketball/about"] },
 ];
 
+// Basketbolla ayni desen: giris sayfasi YOK, /football dogrudan oyuna
+// yonleniyor. Onceki "Football" sekmesi /football'a gidiyordu ve artik
+// "Game" ile ayni yere dusecegi icin kaldirildi.
 const FOOTBALL_NAV = [
-  { to: "/football", Icon: FootballIcon, label: "Football", color: "#3FB08C" },
-  { to: "/blog",     Icon: BlogIcon,     label: "Blog" },
+  { to: "/football/game",    Icon: GameIcon,     label: "Game",      color: "#3FB08C" },
+  { to: "/football/players", Icon: NBAIcon,      label: "Players",  color: "#3FB08C" },
+  { to: "/football/lineups", Icon: LineupsIcon,  label: "Chemistry", color: "#3FB08C" },
+  { to: "/football/map",     Icon: ExploreIcon,  label: "Explore",   color: "#3FB08C",
+    extraActive: ["/football/compare"] },
+  { to: "/blog",             Icon: BlogIcon,     label: "Blog" },
 ];
 
 // Spor-nötr sayfalarda (blog, profil, admin, yasal) — iki spora da kapı aç
@@ -310,6 +322,7 @@ function AppInner() {
             <Routes>
               {/* Kök: spor seçimi */}
               <Route path="/"                         element={<SportSelect />} />
+              <Route path="/rankit"                   element={<RankItPrototype />} />
 
               {/* ── Basketbol (mevcut ürünün tamamı) ── */}
               <Route path="/basketball"                     element={<Navigate to="/basketball/game" replace />} />
@@ -331,7 +344,12 @@ function AppInner() {
               <Route path="/basketball/euroleague"          element={<EuroLeaguePage />} />
 
               {/* ── Futbol (geliştirme aşaması) ── */}
-              <Route path="/football"                 element={<FootballHome />} />
+              <Route path="/football"                 element={<Navigate to="/football/game" replace />} />
+              <Route path="/football/players"         element={<FootballPlayers />} />
+              <Route path="/football/lineups"         element={<FootballLineups />} />
+              <Route path="/football/game"            element={<FootballGame />} />
+              <Route path="/football/map"             element={<FootballMap />} />
+              <Route path="/football/compare"         element={<FootballCompare />} />
 
               {/* ── Eski spor-öneksiz URL'ler → /basketball/* (301 muadili) ── */}
               <Route path="/game"                     element={<Legacy to="/basketball/game" />} />

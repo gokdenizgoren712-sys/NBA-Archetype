@@ -66,3 +66,40 @@ data/*
 
 # Vite dependency cache (makine-yerel)
 .vite/
+
+# ── Futbol: ÇALIŞMA ZAMANINDA gereken dosyalar ────────────────────────────────
+# api/main.py bunları doğrudan okuyor. Repoda olmazlarsa production'da futbol
+# tarafı boş açılır (endpoint'ler "no season data" döner). Toplam ~16 MB.
+# Ham fotmob parquet'leri (football__{lig}__{sezon}__fotmob.parquet) BİLEREK
+# dışarıda: yalnızca skorları yeniden üretmek için gerekli, çalışma zamanında
+# okunmuyor, 12+ MB tutuyor.
+!data/football__2016-2017__scores.parquet
+!data/football__2017-2018__scores.parquet
+!data/football__2018-2019__scores.parquet
+!data/football__2019-2020__scores.parquet
+!data/football__2020-2021__scores.parquet
+!data/football__2021-2022__scores.parquet
+!data/football__2022-2023__scores.parquet
+!data/football__2023-2024__scores.parquet
+!data/football__2024-2025__scores.parquet
+!data/football__2025-2026__scores.parquet
+!data/football__2016-2017__real_xi.parquet
+!data/football__2017-2018__real_xi.parquet
+!data/football__2018-2019__real_xi.parquet
+!data/football__2019-2020__real_xi.parquet
+!data/football__2020-2021__real_xi.parquet
+!data/football__2021-2022__real_xi.parquet
+!data/football__2022-2023__real_xi.parquet
+!data/football__2023-2024__real_xi.parquet
+!data/football__2024-2025__real_xi.parquet
+!data/football__2025-2026__real_xi.parquet
+!data/football__2025-2026__affinity.parquet
+!data/football__2025-2026__affinity_diag.json
+!data/football__chem_reference.json
+!data/football__sim_coeffs.json
+
+# Oyuncu fotograflari — 91 MB / 1720 dosya. Repoyu 176'dan 267 MB'a cikariyor
+# ve git gecmisinden geri almak zahmetli. Kart bileseni eksik fotografta
+# bas harfli avatara dusuyor (FootballPlayerCard onError + naturalWidth),
+# yani disarida birakmak kirmiyor. Kalici cozum ayrica kararlastirilacak.
+frontend/public/football-photos/

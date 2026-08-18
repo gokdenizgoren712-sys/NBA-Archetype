@@ -3,7 +3,12 @@ const BASE = "/api";
 async function get(path, params = {}) {
   const q = new URLSearchParams(params).toString();
   const url = `${BASE}${path}${q ? "?" + q : ""}`;
-  const res = await fetch(url);
+  // no-store: API yanıtları önbelleğe alınmamalı. Parquet'ler yeniden
+  // üretildikçe veri değişiyor; ayrıca geliştirme sırasında henüz eklenmemiş
+  // bir uç noktaya istek gidince Vite SPA kabuğunu 200+HTML olarak dönüyor ve
+  // tarayıcı onu önbelleğe alıyor — uç nokta sonradan eklendiğinde bile eski
+  // HTML servis edilmeye devam ediyordu.
+  const res = await fetch(url, { cache: "no-store" });
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   return res.json();
 }
@@ -68,6 +73,24 @@ export const api = {
 
   // Comparables (bağımsız — herhangi bir ligden herhangi bir oyuncu)
   comparables: (name, league = "nba", p = {}) => get("/comparables", { name, league, ...p }),
+
+  // Futbol — basketboldan tamamen ayrı hat (kendi parquet'i, kendi sözlüğü)
+  footballMeta:    (season) => get("/football/meta", season ? { season } : {}),
+  footballPlayers: (p) => get("/football/players", p),
+  footballCareer:  (id) => get(`/football/players/${id}/career`),
+  footballAffinity: (season) => get("/football/affinity", season ? { season } : {}),
+  footballBestXI:   (p) => get("/football/best-xi", p),
+  // entries: [{player_id, season}] — çark oyunu karışık sezonlu XI kuruyor,
+  // her oyuncu KENDİ sezonunun tablosundan çekilmeli.
+  footballLineupFit: (player_ids, season, entries) =>
+    post("/football/lineup-fit", { player_ids, season, entries }),
+  footballRealXI:      (p) => get("/football/real-xi", p),
+  footballSearch:      (p) => get("/football/search", p),
+  // Çark oyunu
+  footballSimSetup:    (p) => get("/football/sim-setup", p),
+  footballLeaderboard: (p) => get("/football/leaderboard", p),
+  footballGameTeams:   (p) => get("/football/game/teams", p),
+  footballGamePlayers: (p) => get("/football/game/players", p),
 
   // Meta
   meta: () => get("/meta"),

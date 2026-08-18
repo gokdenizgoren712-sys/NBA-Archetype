@@ -1,0 +1,11 @@
+{
+ "matches_used": 3106,
+ "matches_skipped": 1,
+ "strength_coef_k": 6.692,
+ "strength_controlled": true,
+ "league_mean_residual": 0.028,
+ "pairs_total": 204,
+ "pairs_reliable": 195,
+ "pairs_dropped_low_n": 9,
+ "min_pair_matches": 40
+}
