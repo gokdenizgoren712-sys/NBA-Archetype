@@ -99,7 +99,9 @@ export default function FootballAbout() {
         <SectionLabel>The four phases</SectionLabel>
         <p style={{ fontSize: 12.5, color: "var(--text-muted)", lineHeight: 1.7, marginBottom: 12 }}>
           Every role lives inside one phase, because the metrics that separate a Regista
-          from a Metronome say nothing about a Poacher. Tap a phase to see its roles.
+          from a Metronome say nothing about a Poacher. Tap a phase to see its roles, or
+          open the <Link to="/football/glossary" style={{ color: ACC }}>glossary</Link> for
+          the exact metrics behind each one.
         </p>
         <div style={{ display: "grid", gap: 8 }}>
           {PHASES.map(p => <PhaseCard key={p.key} p={p} />)}
@@ -184,6 +186,7 @@ export default function FootballAbout() {
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 26 }}>
           <Link to="/football/game" className="aura-rating-btn"
             style={{ borderColor: ACC, color: ACC }}>Play the game</Link>
+          <Link to="/football/glossary" className="aura-pill-btn">Every role, in detail</Link>
           <Link to="/football/players" className="aura-pill-btn">Browse players</Link>
           <Link to="/football/lineups" className="aura-pill-btn">Squad chemistry</Link>
         </div>

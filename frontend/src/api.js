@@ -89,6 +89,7 @@ export const api = {
   // Çark oyunu
   footballSimSetup:    (p) => get("/football/sim-setup", p),
   footballLeaderboard: (p) => get("/football/leaderboard", p),
+  footballRealSeason:  (p) => get("/football/real-season", p),
   footballGameTeams:   (p) => get("/football/game/teams", p),
   footballGamePlayers: (p) => get("/football/game/players", p),
 

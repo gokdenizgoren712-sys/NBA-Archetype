@@ -229,6 +229,136 @@ export function simulateSeason(you, clubs, coeffs, opts = {}) {
 }
 
 /**
+ * REWRITE HISTORY — gerçek bir kulübün GERÇEK takvimini senin XI'inle oynat.
+ *
+ * Quick Sim'den farkı: rakipler Berger tablosundan üretilmiş soyut bir sıra
+ * değil, o kulübün o sezon GERÇEKTEN karşılaştığı takımlar; ev/deplasman da
+ * gerçek. Karşılaştırma referansı da gerçek — aynı maçlarda kulübün kendisi
+ * ne yapmıştı.
+ *
+ * İKİ KARŞILAŞTIRMA birden üretiyor ve ikisi de gerekli:
+ *
+ *   vs GERÇEK    — kulübün o sezon gerçekten aldığı puan.
+ *   vs MODEL     — aynı motorun, aynı fikstürde, KULÜBÜN KENDİ kadrosuyla
+ *                  ürettiği puan.
+ *
+ * İkincisi olmadan karşılaştırma bozuk oluyor. Model R²=0.14 ile çalışıyor,
+ * yani tahminleri ortalamaya çekiyor: ölçtüğümüzde en iyi 6 kulübü ~5 puan
+ * eksik, en kötü 6'yı ~6.5 puan fazla tahmin ediyor. Senin SİMÜLE puanını
+ * onların GERÇEK puanıyla kıyaslamak, modelin bu regresifliğini "sen daha
+ * kötüsün" diye okumak demek. Aynı motorun iki çıktısını kıyaslamak ise
+ * o yanlılığı ikisinden de aynı şekilde düşürüyor.
+ *
+ * @param you       {name, quality, chemistry, players}
+ * @param fixtures  [{opponent, home, opp_quality, real_gf, real_ga}]
+ * @param coeffs    kalibre gol modeli
+ * @param opts      {seed, theirs:{quality,chemistry}} — theirs verilirse
+ *                  model-model karşılaştırması da hesaplanır
+ */
+export function simulateRealSeason(you, fixtures, coeffs, opts = {}) {
+  const rand = makeRng(opts.seed ?? ((Math.random() * 1e9) | 0));
+  const squad = (you.players || []).filter((p) => p && p.PHASE !== "gk");
+  const keeper = (you.players || []).find((p) => p && p.PHASE === "gk") || null;
+  const gCum = squad.length ? cumulative(weights(squad, "goals_90", FALLBACK_G)) : null;
+  const aCum = squad.length ? cumulative(weights(squad, "assists_90", FALLBACK_A)) : null;
+  const stat = {};
+  (you.players || []).forEach((p) => {
+    stat[p.PLAYER_NAME] = { name: p.PLAYER_NAME, phase: p.PHASE, pos: p.POSITION,
+                            arch: p.primary_arch, goals: 0, assists: 0, cs: 0 };
+  });
+
+  const me = EMPTY(), real = EMPTY(), model = EMPTY();
+  const theirs = opts.theirs
+    ? { quality: opts.theirs.quality, chemistry: opts.theirs.chemistry }
+    : null;
+  const matches = [];
+  fixtures.forEach((f, i) => {
+    const opp = { quality: f.opp_quality, chemistry: you.chemistry };
+    // playMatch ev sahibini önce alıyor; senin ev/deplasman durumun f.home
+    const r = f.home
+      ? playMatch(coeffs, you, opp, rand)
+      : playMatch(coeffs, opp, you, rand);
+    const gf = f.home ? r.hg : r.ag;
+    const ga = f.home ? r.ag : r.hg;
+
+    const tally = (t, a, b) => {
+      t.p++; t.gf += a; t.ga += b;
+      const res = a > b ? "W" : a === b ? "D" : "L";
+      t[res.toLowerCase()]++; t.pts += res === "W" ? 3 : res === "D" ? 1 : 0;
+      t.form.push(res);
+      return res;
+    };
+    const res = tally(me, gf, ga);
+    tally(real, f.real_gf, f.real_ga);
+
+    // Kulübün KENDİ kadrosu aynı maçta ne yapardı — model-model kıyas
+    if (theirs) {
+      const tr = f.home
+        ? playMatch(coeffs, theirs, opp, rand)
+        : playMatch(coeffs, opp, theirs, rand);
+      tally(model, f.home ? tr.hg : tr.ag, f.home ? tr.ag : tr.hg);
+    }
+
+    for (let g = 0; g < gf && gCum; g++) {
+      const scorer = squad[pick(gCum, rand)];
+      if (scorer) stat[scorer.PLAYER_NAME].goals++;
+      if (rand() < 0.7) {
+        const assister = squad[pick(aCum, rand)];
+        if (assister && assister.PLAYER_NAME !== scorer?.PLAYER_NAME)
+          stat[assister.PLAYER_NAME].assists++;
+      }
+    }
+    if (ga === 0 && keeper) stat[keeper.PLAYER_NAME].cs++;
+
+    matches.push({ round: i + 1, opponent: f.opponent, home: f.home,
+                   gf, ga, result: res,
+                   realGf: f.real_gf, realGa: f.real_ga,
+                   beat: (gf - ga) > (f.real_gf - f.real_ga) });
+  });
+
+  const players = Object.values(stat)
+    .sort((a, b) => (b.goals + b.assists) - (a.goals + a.assists) || b.goals - a.goals);
+  return {
+    you: { ...me, gd: me.gf - me.ga, form: me.form.slice(-5) },
+    real: { ...real, gd: real.gf - real.ga, form: real.form.slice(-5) },
+    matches, players,
+    awards: {
+      topScorer: players.filter((p) => p.goals > 0)[0] || null,
+      topAssists: [...players].sort((a, b) => b.assists - a.assists)
+        .filter((p) => p.assists > 0)[0] || null,
+      keeper: keeper ? stat[keeper.PLAYER_NAME] : null,
+    },
+    // vs gerçek: "o sezon gerçekten olan"a göre
+    betterBy: me.pts - real.pts,
+    // vs model: aynı motorun kulübün kendi kadrosuyla ürettiği — asıl adil kıyas
+    model: theirs ? { ...model, gd: model.gf - model.ga } : null,
+    betterThanModel: theirs ? me.pts - model.pts : null,
+    seed: opts.seed,
+  };
+}
+
+/** Rewrite History'yi N kez oynat — tek koşu futbolda çok gürültülü. */
+export function simulateRealMany(you, fixtures, coeffs, runs = 200, opts = {}) {
+  const pts = [];
+  let beat = 0, beatModel = 0, modelled = 0;
+  for (let i = 0; i < runs; i++) {
+    const r = simulateRealSeason(you, fixtures, coeffs,
+      { ...opts, seed: (opts.seed ?? 1) + i * 7919 });
+    pts.push(r.you.pts);
+    if (r.betterBy > 0) beat++;
+    if (r.betterThanModel != null) { modelled++; if (r.betterThanModel > 0) beatModel++; }
+  }
+  const sorted = [...pts].sort((a, b) => a - b);
+  const q = (v) => sorted[Math.min(sorted.length - 1, Math.floor(v * sorted.length))];
+  return {
+    runs, meanPts: pts.reduce((a, b) => a + b, 0) / runs,
+    p10: q(0.1), median: q(0.5), p90: q(0.9),
+    beatPct: beat / runs,
+    beatModelPct: modelled ? beatModel / modelled : null,
+  };
+}
+
+/**
  * Aynı kadroyu N kez oynatır — tek sezon futbolda çok gürültülü (maç başına
  * R²=0.14), tek bir 38 maçlık koşu şans eseri 5 sıra kayabilir. Dağılım
  * göstermek tek sonuç göstermekten dürüst.

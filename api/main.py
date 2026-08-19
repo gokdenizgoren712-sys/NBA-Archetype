@@ -4277,6 +4277,79 @@ def _club_strength(season: str) -> list[dict]:
             for r in g.itertuples()]
 
 
+# ── Gerçek sezon: fikstür + gerçekte olan ─────────────────────────────────────
+# "Rewrite History" için: bir kulübün GERÇEK maç takvimi (rakip, ev/deplasman)
+# ve o maçların GERÇEK sonucu. Kullanıcı o kulübün yerine kendi XI'ini koyup
+# aynı takvimi oynatıyor; karşılaştırma referansı gerçekte olan.
+#
+# real_xi zaten maç bazında: her satır bir (maç, takım) ve iki tarafı da var.
+# Ayrı bir fikstür kaynağına gerek yok, aynı tablodan çıkarıyoruz.
+
+@lru_cache(maxsize=8)
+def _real_seasons_index(season: str) -> dict:
+    """(lig, takım) -> {fikstür, gerçek rekor}."""
+    df = _load_football_real_xi(season)
+    df = df[df["known_players"] >= 9]
+    # Rakibi bul: aynı match_id'nin öbür satırı
+    two = df.groupby("match_id").filter(lambda g: len(g) == 2).copy()
+    two = two.sort_values(["match_id", "team"])
+    two["opponent"] = two.groupby("match_id")["team"].transform(lambda s: s[::-1].values)
+    two["opp_quality"] = two.groupby("match_id")["avg_quality"].transform(
+        lambda s: s[::-1].values)
+
+    out: dict = {}
+    for (lg, team), g in two.groupby(["league", "team"]):
+        g = g.sort_values("match_id")
+        fixtures = [{
+            "opponent": r.opponent,
+            "home": bool(r.is_home) if "is_home" in two.columns else None,
+            "opp_quality": round(float(r.opp_quality), 4),
+            "real_gf": int(r.goals_for), "real_ga": int(r.goals_against),
+        } for r in g.itertuples()]
+        w = sum(1 for f in fixtures if f["real_gf"] > f["real_ga"])
+        d_ = sum(1 for f in fixtures if f["real_gf"] == f["real_ga"])
+        out[f"{lg}|{team}"] = {
+            "league": lg, "team": team, "season": season,
+            "matches": len(fixtures),
+            "real": {"w": w, "d": d_, "l": len(fixtures) - w - d_,
+                     "pts": w * 3 + d_,
+                     "gf": sum(f["real_gf"] for f in fixtures),
+                     "ga": sum(f["real_ga"] for f in fixtures)},
+            "quality": round(float(g.avg_quality.mean()), 4),
+            "chemistry": round(float(g.chemistry.mean()), 4),
+            "fixtures": fixtures,
+        }
+    return out
+
+
+@app.get("/api/football/real-season")
+def get_football_real_season(season: Optional[str] = Query(None),
+                             league: Optional[str] = Query(None),
+                             team: Optional[str] = Query(None)):
+    seasons = _football_seasons()
+    if not seasons:
+        return {"available": False}
+    season = season or seasons[0]
+    try:
+        idx = _real_seasons_index(season)
+    except FileNotFoundError:
+        return {"available": False, "season": season}
+
+    if team:
+        hit = [v for k, v in idx.items()
+               if v["team"] == team and (not league or v["league"] == league)]
+        if not hit:
+            return {"available": False, "season": season, "reason": "team not found"}
+        return {"available": True, **hit[0]}
+
+    # Liste modu: fikstür taşımadan sadece kulüpler (yanıt küçük kalsın)
+    clubs = [{k: v[k] for k in ("league", "team", "matches", "quality", "chemistry")}
+             | {"real": v["real"]}
+             for v in idx.values() if not league or v["league"] == league]
+    clubs.sort(key=lambda c: -c["real"]["pts"])
+    return {"available": True, "season": season, "seasons": seasons, "clubs": clubs}
+
+
 @app.get("/api/football/sim-setup")
 def get_football_sim_setup(season: Optional[str] = Query(None),
                            league: Optional[str] = Query(None)):

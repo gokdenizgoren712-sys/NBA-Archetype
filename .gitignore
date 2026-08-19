@@ -97,6 +97,14 @@ data/*
 !data/football__2025-2026__affinity_diag.json
 !data/football__chem_reference.json
 !data/football__sim_coeffs.json
+# Cloudinary haritasi: oyuncu id -> public_id. Gorsellerin KENDISI repoda
+# degil, Cloudinary'de; bu dosya yalnizca hangi oyuncunun gorselinin nerede
+# oldugunu soyluyor (~60 KB). Repoda olmazsa production kartlari yerel
+# dosyaya dusmeye calisir ve bulamaz.
+!data/football_cloudinary.json
+# Foto atfi da calisma zamaninda okunuyor (CC BY/BY-SA kosulu).
+!data/football_photo_manifest.json
+!data/football_cutout_manifest.json
 
 # Oyuncu fotograflari — 91 MB / 1720 dosya. Repoyu 176'dan 267 MB'a cikariyor
 # ve git gecmisinden geri almak zahmetli. Kart bileseni eksik fotografta

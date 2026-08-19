@@ -9,7 +9,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { api } from "../../api";
-import { simulateSeason, simulateMany } from "./seasonSim";
+import { simulateSeason, simulateMany, simulateRealSeason, simulateRealMany } from "./seasonSim";
 import { LEAGUE_LABEL } from "./leagues";
 
 const ACC = "#3FB08C";
@@ -38,6 +38,13 @@ export default function SeasonPanel({ starters, chemistry, positionPenalty = 0,
   const [busy, setBusy] = useState(false);
   const [tab, setTab] = useState("table");
   const [err, setErr] = useState(null);
+  // quick    — Berger fikstürü, lig kulüplerine karşı (sentetik takvim)
+  // rewrite  — gerçek bir kulübün GERÇEK takvimi, gerçekte olanla karşılaştırmalı
+  const [mode, setMode] = useState("quick");
+  const [rhTeam, setRhTeam] = useState("");
+  const [rhData, setRhData] = useState(null);   // {fixtures, real, ...}
+  const [rh, setRh] = useState(null);           // simülasyon sonucu
+  const [rhDist, setRhDist] = useState(null);
 
   useEffect(() => {
     api.footballSimSetup({ season })
@@ -55,6 +62,15 @@ export default function SeasonPanel({ starters, chemistry, positionPenalty = 0,
   })();
 
   const clubs = setup?.clubs.filter((c) => c.league === league) || [];
+
+  // Rewrite History: seçilen kulübün gerçek takvimi + gerçek sonucu
+  useEffect(() => {
+    if (mode !== "rewrite" || !rhTeam) { setRhData(null); return; }
+    setRhData(null); setRh(null); setRhDist(null);
+    api.footballRealSeason({ season, team: rhTeam, league })
+      .then((d) => setRhData(d.available ? d : null))
+      .catch(() => setRhData(null));
+  }, [mode, rhTeam, league, season]);
   // Bir kulübün yerine geçersen lig 20 takım (38 maç); 21. kulüp olarak
   // katılırsan tek sayı oluyor, her tur bir takım bay geçiyor -> 40 maç.
   // Her iki durumda da herkesle ikişer maç: 2*(n-1). Tek sayıda takımda
@@ -70,15 +86,27 @@ export default function SeasonPanel({ starters, chemistry, positionPenalty = 0,
       try {
         const you = { name: squadName || "Your XI", quality,
                       chemistry: chemistry ?? 0.65, players: starters };
-        const pool = setup.clubs.filter((c) => c.league === league);
         const opts = { seed: (Math.random() * 1e9) | 0, replaceTeam: replace || undefined };
-        setRun(simulateSeason(you, pool, setup.coeffs, opts));
-        setDist(simulateMany(you, pool, setup.coeffs, 200, opts));
+        if (mode === "rewrite") {
+          if (!rhData?.fixtures?.length) { setErr("Pick a club to replace first."); return; }
+          // theirs: aynı motoru kulübün KENDİ kadrosuyla da çalıştır — model
+          // regresif olduğu için gerçek puanla kıyas tek başına yanıltıcı.
+          const o = { ...opts, theirs: { quality: rhData.quality,
+                                         chemistry: rhData.chemistry } };
+          setRh(simulateRealSeason(you, rhData.fixtures, setup.coeffs, o));
+          setRhDist(simulateRealMany(you, rhData.fixtures, setup.coeffs, 200, o));
+          setRun(null); setDist(null);
+        } else {
+          const pool = setup.clubs.filter((c) => c.league === league);
+          setRun(simulateSeason(you, pool, setup.coeffs, opts));
+          setDist(simulateMany(you, pool, setup.coeffs, 200, opts));
+          setRh(null); setRhDist(null);
+        }
       } catch (e) {
         setErr("Simulation failed.");
       } finally { setBusy(false); }
     }, 30);
-  }, [setup, quality, chemistry, league, replace, squadName, starters]);
+  }, [setup, quality, chemistry, league, replace, squadName, starters, mode, rhData]);
 
   if (err) return <div className="g-panel subtle" style={{ padding: 18, fontSize: 13,
     color: "var(--text-faint)" }}>{err}</div>;
@@ -99,8 +127,20 @@ export default function SeasonPanel({ starters, chemistry, positionPenalty = 0,
         </span>
       </div>
 
-      {/* ── Kurulum ─────────────────────────────────────────────────────── */}
+      {/* ── Mod ─────────────────────────────────────────────────────────── */}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 14 }}>
+        {[["quick", "Quick Sim", "A full league season against the real clubs, on a generated fixture list."],
+          ["rewrite", "Rewrite History", "Take a real club's actual fixtures and see if your eleven does better than they did."]]
+          .map(([k, label, tip]) => (
+          <button key={k} title={tip}
+            onClick={() => { setMode(k); setRun(null); setDist(null); setRh(null); setRhDist(null); setErr(null); }}
+            className="aura-pill-btn"
+            style={mode === k ? { borderColor: ACC, color: ACC } : undefined}>{label}</button>
+        ))}
+      </div>
+
+      {/* ── Kurulum ─────────────────────────────────────────────────────── */}
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
         {setup.leagues.map((l) => (
           <button key={l} onClick={() => { setLeague(l); setReplace(""); setRun(null); setDist(null); }}
             className="aura-pill-btn"
@@ -111,19 +151,43 @@ export default function SeasonPanel({ starters, chemistry, positionPenalty = 0,
       </div>
 
       <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 12, flexWrap: "wrap" }}>
-        <label style={{ fontSize: 11, color: "var(--text-faint)" }}>Take the place of</label>
+        <label style={{ fontSize: 11, color: "var(--text-faint)" }}>
+          {mode === "rewrite" ? "Replace" : "Take the place of"}
+        </label>
         <div className="aura-select-wrap">
-          <select className="aura-select" value={replace}
-            onChange={(e) => { setReplace(e.target.value); setRun(null); setDist(null); }}>
-            <option value="">Nobody — join as a 21st club</option>
-            {clubs.map((c) => <option key={c.team} value={c.team}>{c.team}</option>)}
-          </select>
+          {mode === "rewrite" ? (
+            <select className="aura-select" value={rhTeam}
+              onChange={(e) => setRhTeam(e.target.value)}>
+              <option value="">Pick a club…</option>
+              {clubs.map((c) => <option key={c.team} value={c.team}>{c.team}</option>)}
+            </select>
+          ) : (
+            <select className="aura-select" value={replace}
+              onChange={(e) => { setReplace(e.target.value); setRun(null); setDist(null); }}>
+              <option value="">Nobody — join as a 21st club</option>
+              {clubs.map((c) => <option key={c.team} value={c.team}>{c.team}</option>)}
+            </select>
+          )}
         </div>
-        <button onClick={go} disabled={busy || quality == null}
+        <button onClick={go}
+          disabled={busy || quality == null || (mode === "rewrite" && !rhData)}
           className="aura-rating-btn" style={{ borderColor: ACC, color: ACC }}>
-          {busy ? "Simulating…" : run ? "Run again" : "Simulate season"}
+          {busy ? "Simulating…" : (run || rh) ? "Run again" : "Simulate season"}
         </button>
+        {mode === "rewrite" && rhTeam && !rhData && (
+          <span style={{ fontSize: 11, color: "var(--text-faint)" }}>loading fixtures…</span>
+        )}
       </div>
+
+      {mode === "rewrite" && rhData && (
+        <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginTop: 8, lineHeight: 1.6 }}>
+          {rhData.team} played <b style={{ color: "#fff" }}>{rhData.matches}</b> matches we
+          have lineups for, finishing <b style={{ color: "#fff" }}>
+          {rhData.real.w}-{rhData.real.d}-{rhData.real.l}</b> on{" "}
+          <b style={{ color: "#fff" }}>{rhData.real.pts}</b> points
+          ({rhData.real.gf}:{rhData.real.ga}). Your eleven plays the same fixtures.
+        </div>
+      )}
 
       {quality != null && (
         <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 8 }}>
@@ -134,6 +198,59 @@ export default function SeasonPanel({ starters, chemistry, positionPenalty = 0,
       )}
 
       {/* ── Dağılım: asıl cevap bu ──────────────────────────────────────── */}
+      {/* ── REWRITE HISTORY sonucu ─────────────────────────────────────── */}
+      {rh && rhDist && (
+        <>
+          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginTop: 20,
+            paddingTop: 16, borderTop: "1px solid var(--border)" }}>
+            <Stat label="Your points" value={rh.you.pts}
+              sub={`${rh.you.w}-${rh.you.d}-${rh.you.l} · ${rh.you.gf}:${rh.you.ga}`}
+              color={ACC} />
+            <Stat label={`${rhData?.team || "They"} actually`} value={rh.real.pts}
+              sub={`${rh.real.w}-${rh.real.d}-${rh.real.l} · ${rh.real.gf}:${rh.real.ga}`} />
+            {rh.model && (
+              <Stat label="Their squad, same model" value={rh.model.pts}
+                sub={`${rh.model.w}-${rh.model.d}-${rh.model.l}`} />
+            )}
+            <Stat label="Beat their real return"
+              value={`${Math.round(rhDist.beatPct * 100)}%`}
+              sub="of 200 runs" color={rhDist.beatPct >= 0.5 ? ACC : "#E8654C"} />
+            {rhDist.beatModelPct != null && (
+              <Stat label="Beat their squad, same model"
+                value={`${Math.round(rhDist.beatModelPct * 100)}%`}
+                sub="the fair comparison"
+                color={rhDist.beatModelPct >= 0.5 ? ACC : "#E8654C"} />
+            )}
+            <Stat label="Points range" value={`${rhDist.p10}–${rhDist.p90}`}
+              sub={`median ${rhDist.median}`} />
+          </div>
+
+          <p style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 14, lineHeight: 1.6 }}>
+            Same opponents, same home and away, same season — only the eleven is different.
+            Two comparisons are shown because they answer different questions. Beating
+            their <i>real</i> return is the romantic one, but it is not quite fair: the
+            model explains 14% of a match and so pulls every prediction toward the middle,
+            which measured out at about 5 points short for the strongest clubs and 6 points
+            generous for the weakest. Running <i>their</i> squad through the same model
+            removes that, and is the number to judge yourself on. Only matches where both
+            starting elevens were recorded are replayed, so the fixture list can be a
+            little shorter than the real season.
+          </p>
+
+          <Awards a={rh.awards} />
+
+          <div style={{ display: "flex", gap: 8, marginTop: 18, marginBottom: 10 }}>
+            {[["fixtures", "Match by match"], ["squad", "Squad stats"]].map(([k, label]) => (
+              <button key={k} onClick={() => setTab(k)} className="aura-pill-btn"
+                style={tab === k ? { borderColor: ACC, color: ACC } : undefined}>{label}</button>
+            ))}
+          </div>
+          {tab === "squad"
+            ? <SquadStats players={rh.players} />
+            : <RewriteFixtures matches={rh.matches} />}
+        </>
+      )}
+
       {dist && (
         <>
           <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginTop: 20,
@@ -294,6 +411,31 @@ function SquadStats({ players }) {
             textAlign: "right", color: "var(--text-muted)" }}>
             <b style={{ color: "#fff" }}>{p.goals}</b>G <b style={{ color: "#fff" }}>{p.assists}</b>A
           </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Gerçek sonuçla yan yana: hangi maçta onlardan iyi, hangisinde kötü oynadın.
+function RewriteFixtures({ matches }) {
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))",
+      gap: 6 }}>
+      {matches.map((m) => (
+        <div key={m.round} style={{ display: "flex", alignItems: "center", gap: 8,
+          padding: "6px 9px", borderRadius: 8, fontSize: 12,
+          background: m.beat ? `${ACC}12` : "rgba(255,255,255,.022)",
+          border: `1px solid ${m.beat ? ACC + "33" : "var(--border)"}` }}>
+          <span style={{ color: "var(--text-faint)", fontSize: 10, width: 30 }}>
+            {m.home ? "HOME" : "AWAY"}</span>
+          <span style={{ flex: 1, whiteSpace: "nowrap", overflow: "hidden",
+            textOverflow: "ellipsis" }}>{m.opponent}</span>
+          <span style={{ fontVariantNumeric: "tabular-nums", fontWeight: 600,
+            color: FORM_COLOR[m.result] }}>{m.gf}–{m.ga}</span>
+          <span title="what actually happened"
+            style={{ fontVariantNumeric: "tabular-nums", fontSize: 10.5,
+              color: "var(--text-faint)" }}>({m.realGf}–{m.realGa})</span>
         </div>
       ))}
     </div>

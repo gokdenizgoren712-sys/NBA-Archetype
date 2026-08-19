@@ -95,13 +95,16 @@ export default function PhotoLayout() {
     setLay(saved ? { scale: saved.scale, x: saved.x, y: saved.y } : DEF);
   };
 
+  // Atıf kaydı YOKSA o oyuncunun hiç fotoğrafı yok demektir. Eskiden burada
+  // ham .jpg yolu döndürülüyordu ve olmayan dosya kırık görsel olarak
+  // çiziliyordu — "raw photo" yazıp boş kare göstermek yanıltıcıydı.
+  const credit = sel && meta ? meta.credits?.[String(sel.PLAYER_ID)] : null;
   const src = (() => {
-    if (!sel || !meta) return null;
+    if (!sel || !meta || !credit) return null;
     const id = meta.cloudinary?.ids?.[String(sel.PLAYER_ID)];
     if (id && meta.cloudinary?.cloud_name)
       return `https://res.cloudinary.com/${meta.cloudinary.cloud_name}/image/upload/f_auto,q_auto,h_472/${id}`;
-    const c = meta.credits?.[String(sel.PLAYER_ID)];
-    return c?.modified
+    return credit.modified
       ? `/football-cutouts/${sel.PLAYER_ID}.webp`
       : `/football-photos/${sel.PLAYER_ID}.jpg`;
   })();
@@ -200,8 +203,8 @@ export default function PhotoLayout() {
                   </div>
                   <div style={{ fontSize: 11, color: "var(--text-faint)" }}>
                     {sel.TEAM} · {PHASE_LABEL[sel.PHASE] || sel.PHASE} · {sel.POSITION}
-                    {meta?.credits?.[String(sel.PLAYER_ID)]?.modified
-                      ? " · cut-out" : " · raw photo"}
+                    {!credit ? " · no photo"
+                      : credit.modified ? " · cut-out" : " · raw photo"}
                   </div>
                 </div>
 
@@ -222,8 +225,10 @@ export default function PhotoLayout() {
                 </div>
 
                 {!src && (
-                  <div style={{ fontSize: 11, color: "#E8654C" }}>
-                    No photo for this player &mdash; nothing to position.
+                  <div style={{ fontSize: 11, color: "#E8654C", lineHeight: 1.6 }}>
+                    No photo for this player. Either Wikimedia has none under a free
+                    licence, or the fetch has not reached him yet &mdash; there is
+                    nothing to position until one exists.
                   </div>
                 )}
               </div>

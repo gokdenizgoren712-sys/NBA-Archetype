@@ -41,6 +41,7 @@ const FootballGame    = lazy(() => import("./pages/football/FootballGame"));
 const FootballMap     = lazy(() => import("./pages/football/FootballMap"));
 const FootballCompare = lazy(() => import("./pages/football/FootballCompare"));
 const FootballAbout   = lazy(() => import("./pages/football/FootballAbout"));
+const FootballGlossary = lazy(() => import("./pages/football/FootballGlossary"));
 const RankItPrototype = lazy(() => import("./rankit/RankItPrototype"));
 const PrivacyPolicy      = lazy(() => import("./pages/legal/PrivacyPolicy"));
 const TermsOfService     = lazy(() => import("./pages/legal/TermsOfService"));
@@ -77,7 +78,8 @@ const FOOTBALL_NAV = [
   { to: "/football/map",     Icon: ExploreIcon,  label: "Explore",   color: "#3FB08C",
     extraActive: ["/football/compare"] },
   { to: "/blog",             Icon: BlogIcon,     label: "Blog" },
-  { to: "/football/about",   Icon: GlossaryIcon, label: "About",     color: "#3FB08C" },
+  { to: "/football/glossary", Icon: GlossaryIcon, label: "About",    color: "#3FB08C",
+    extraActive: ["/football/about"] },
 ];
 
 // Spor-nötr sayfalarda (blog, profil, admin, yasal) — iki spora da kapı aç
@@ -354,6 +356,7 @@ function AppInner() {
               <Route path="/football/map"             element={<FootballMap />} />
               <Route path="/football/compare"         element={<FootballCompare />} />
               <Route path="/football/about"           element={<FootballAbout />} />
+              <Route path="/football/glossary"        element={<FootballGlossary />} />
 
               {/* ── Eski spor-öneksiz URL'ler → /basketball/* (301 muadili) ── */}
               <Route path="/game"                     element={<Legacy to="/basketball/game" />} />
