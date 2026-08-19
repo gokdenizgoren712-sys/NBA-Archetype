@@ -337,6 +337,64 @@ export function simulateRealSeason(you, fixtures, coeffs, opts = {}) {
   };
 }
 
+/**
+ * TÜM LİGİ gerçek fikstürlerde oynat — alternatif bir sezon tablosu.
+ *
+ * simulateRealSeason yalnızca SENİN maçlarını oynatıyor; ligin geri kalanı
+ * gerçek sonuçlarında kalıyordu, yani "Arsenal'i geçtim" diyebiliyor ama
+ * "kaçıncı bitirdim" diyemiyorduk. Burada her kulüp kendi gerçek takvimini
+ * kendi kadrosuyla oynuyor, sen de birinin yerine geçiyorsun.
+ *
+ * BİLİNÇLİ BASİTLEŞTİRME: her kulübün maçları KENDİ geçişinde ayrı ayrı
+ * çekiliyor, yani "A, B'yi yendi" ile "B'nin sezonundaki A maçı" bağımsız
+ * zar atıyor. Tam senkron (her eşleşmeyi bir kez oynatmak) daha doğru olurdu
+ * ama kullanıcıya gösterilen tek şey her takımın KENDİ toplamı; karşılıklı
+ * tutarlılık hiçbir yerde görünmüyor. Basketbol tarafında da aynı tercih
+ * yapılmıştı (bkz. leagueSim.js).
+ *
+ * @param clubs  [{team, quality, chemistry, fixtures, real}]
+ * @param you    {name, quality, chemistry, players} | null
+ * @param replaceTeam  senin yerine geçtiğin kulüp
+ */
+export function simulateRealLeague(clubs, you, replaceTeam, coeffs, opts = {}) {
+  const rand = makeRng(opts.seed ?? ((Math.random() * 1e9) | 0));
+  const rows = [];
+
+  for (const c of clubs) {
+    const isYou = replaceTeam && c.team === replaceTeam;
+    const side = isYou && you
+      ? { quality: you.quality, chemistry: you.chemistry }
+      : { quality: c.quality, chemistry: c.chemistry };
+    const t = EMPTY();
+    for (const f of (c.fixtures || [])) {
+      const opp = { quality: f.opp_quality, chemistry: c.chemistry };
+      const r = f.home ? playMatch(coeffs, side, opp, rand)
+                       : playMatch(coeffs, opp, side, rand);
+      const gf = f.home ? r.hg : r.ag, ga = f.home ? r.ag : r.hg;
+      t.p++; t.gf += gf; t.ga += ga;
+      const res = gf > ga ? "W" : gf === ga ? "D" : "L";
+      t[res.toLowerCase()]++; t.pts += res === "W" ? 3 : res === "D" ? 1 : 0;
+      t.form.push(res);
+    }
+    rows.push({
+      team: isYou && you ? (you.name || "Your XI") : c.team,
+      isYou: !!isYou,
+      ...t, gd: t.gf - t.ga, form: t.form.slice(-5),
+      // Gerçekte ne olmuştu — tablo yanında referans dursun
+      realPts: c.real?.pts ?? null,
+    });
+  }
+
+  // Maç sayıları kulüpten kulübe değişiyor (her maçın iki ilk-11'i
+  // kayıtlı değil), o yüzden ham puan haksız. MAÇ BAŞINA puana göre sırala.
+  rows.sort((a, b) => (b.pts / Math.max(1, b.p)) - (a.pts / Math.max(1, a.p))
+                   || (b.gd / Math.max(1, b.p)) - (a.gd / Math.max(1, a.p)));
+  rows.forEach((r, i) => { r.pos = i + 1; r.ppg = r.pts / Math.max(1, r.p); });
+
+  const me = rows.find((r) => r.isYou) || null;
+  return { standings: rows, you: me, champion: rows[0], seed: opts.seed };
+}
+
 /** Rewrite History'yi N kez oynat — tek koşu futbolda çok gürültülü. */
 export function simulateRealMany(you, fixtures, coeffs, runs = 200, opts = {}) {
   const pts = [];

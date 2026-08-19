@@ -4325,7 +4325,8 @@ def _real_seasons_index(season: str) -> dict:
 @app.get("/api/football/real-season")
 def get_football_real_season(season: Optional[str] = Query(None),
                              league: Optional[str] = Query(None),
-                             team: Optional[str] = Query(None)):
+                             team: Optional[str] = Query(None),
+                             full: bool = Query(False)):
     seasons = _football_seasons()
     if not seasons:
         return {"available": False}
@@ -4342,10 +4343,18 @@ def get_football_real_season(season: Optional[str] = Query(None),
             return {"available": False, "season": season, "reason": "team not found"}
         return {"available": True, **hit[0]}
 
-    # Liste modu: fikstür taşımadan sadece kulüpler (yanıt küçük kalsın)
-    clubs = [{k: v[k] for k in ("league", "team", "matches", "quality", "chemistry")}
-             | {"real": v["real"]}
-             for v in idx.values() if not league or v["league"] == league]
+    # Liste modu: fikstür taşımadan sadece kulüpler (yanıt küçük kalsın).
+    # full=1 ise fikstürler de gelir — tüm ligi yeniden oynatmak için gerekli
+    # ve bir lig için ~50 KB, tek çağrıda taşınabilir.
+    keys = ("league", "team", "matches", "quality", "chemistry")
+    clubs = []
+    for v in idx.values():
+        if league and v["league"] != league:
+            continue
+        row = {k: v[k] for k in keys} | {"real": v["real"]}
+        if full:
+            row["fixtures"] = v["fixtures"]
+        clubs.append(row)
     clubs.sort(key=lambda c: -c["real"]["pts"])
     return {"available": True, "season": season, "seasons": seasons, "clubs": clubs}
 

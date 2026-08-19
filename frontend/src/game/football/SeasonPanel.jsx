@@ -9,7 +9,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { api } from "../../api";
-import { simulateSeason, simulateMany, simulateRealSeason, simulateRealMany } from "./seasonSim";
+import { simulateSeason, simulateMany, simulateRealSeason, simulateRealMany,
+         simulateRealLeague } from "./seasonSim";
 import { LEAGUE_LABEL } from "./leagues";
 
 const ACC = "#3FB08C";
@@ -45,6 +46,8 @@ export default function SeasonPanel({ starters, chemistry, positionPenalty = 0,
   const [rhData, setRhData] = useState(null);   // {fixtures, real, ...}
   const [rh, setRh] = useState(null);           // simülasyon sonucu
   const [rhDist, setRhDist] = useState(null);
+  const [rhLeague, setRhLeague] = useState(null);  // tüm ligin fikstürleri
+  const [rhTable, setRhTable] = useState(null);    // alternatif tablo
 
   useEffect(() => {
     api.footballSimSetup({ season })
@@ -64,13 +67,21 @@ export default function SeasonPanel({ starters, chemistry, positionPenalty = 0,
   const clubs = setup?.clubs.filter((c) => c.league === league) || [];
 
   // Rewrite History: seçilen kulübün gerçek takvimi + gerçek sonucu
+  // Tüm ligin gerçek fikstürleri — bir kez, lig başına (~60 KB). Hem seçilen
+  // kulübün maçları hem alternatif tabloyu kurmak için gereken her şey burada.
   useEffect(() => {
-    if (mode !== "rewrite" || !rhTeam) { setRhData(null); return; }
-    setRhData(null); setRh(null); setRhDist(null);
-    api.footballRealSeason({ season, team: rhTeam, league })
-      .then((d) => setRhData(d.available ? d : null))
-      .catch(() => setRhData(null));
-  }, [mode, rhTeam, league, season]);
+    if (mode !== "rewrite") { setRhLeague(null); return; }
+    setRhLeague(null);
+    api.footballRealSeason({ season, league, full: 1 })
+      .then((d) => setRhLeague(d.available ? d.clubs : null))
+      .catch(() => setRhLeague(null));
+  }, [mode, league, season]);
+
+  useEffect(() => {
+    setRh(null); setRhDist(null); setRhTable(null);
+    if (mode !== "rewrite" || !rhTeam || !rhLeague) { setRhData(null); return; }
+    setRhData(rhLeague.find((c) => c.team === rhTeam) || null);
+  }, [mode, rhTeam, rhLeague]);
   // Bir kulübün yerine geçersen lig 20 takım (38 maç); 21. kulüp olarak
   // katılırsan tek sayı oluyor, her tur bir takım bay geçiyor -> 40 maç.
   // Her iki durumda da herkesle ikişer maç: 2*(n-1). Tek sayıda takımda
@@ -95,6 +106,11 @@ export default function SeasonPanel({ starters, chemistry, positionPenalty = 0,
                                          chemistry: rhData.chemistry } };
           setRh(simulateRealSeason(you, rhData.fixtures, setup.coeffs, o));
           setRhDist(simulateRealMany(you, rhData.fixtures, setup.coeffs, 200, o));
+          // Ligin tamamı da kendi gerçek takvimini oynasın — yoksa "onları
+          // geçtim" diyebiliyoruz ama "kaçıncı bitirdim" diyemiyoruz.
+          if (rhLeague) {
+            setRhTable(simulateRealLeague(rhLeague, you, rhTeam, setup.coeffs, opts));
+          }
           setRun(null); setDist(null);
         } else {
           const pool = setup.clubs.filter((c) => c.league === league);
@@ -106,7 +122,8 @@ export default function SeasonPanel({ starters, chemistry, positionPenalty = 0,
         setErr("Simulation failed.");
       } finally { setBusy(false); }
     }, 30);
-  }, [setup, quality, chemistry, league, replace, squadName, starters, mode, rhData]);
+  }, [setup, quality, chemistry, league, replace, squadName, starters, mode,
+      rhData, rhLeague, rhTeam]);
 
   if (err) return <div className="g-panel subtle" style={{ padding: 18, fontSize: 13,
     color: "var(--text-faint)" }}>{err}</div>;
@@ -240,13 +257,17 @@ export default function SeasonPanel({ starters, chemistry, positionPenalty = 0,
           <Awards a={rh.awards} />
 
           <div style={{ display: "flex", gap: 8, marginTop: 18, marginBottom: 10 }}>
-            {[["fixtures", "Match by match"], ["squad", "Squad stats"]].map(([k, label]) => (
+            {[["table", "Where you finish"], ["fixtures", "Match by match"],
+              ["squad", "Squad stats"]].map(([k, label]) => (
               <button key={k} onClick={() => setTab(k)} className="aura-pill-btn"
                 style={tab === k ? { borderColor: ACC, color: ACC } : undefined}>{label}</button>
             ))}
           </div>
-          {tab === "squad"
-            ? <SquadStats players={rh.players} />
+          {tab === "squad" ? <SquadStats players={rh.players} />
+            : tab === "table" ? (rhTable
+                ? <RealTable rows={rhTable.standings} />
+                : <div style={{ fontSize: 12, color: "var(--text-faint)" }}>
+                    League fixtures not loaded.</div>)
             : <RewriteFixtures matches={rh.matches} />}
         </>
       )}
@@ -418,6 +439,57 @@ function SquadStats({ players }) {
 }
 
 // Gerçek sonuçla yan yana: hangi maçta onlardan iyi, hangisinde kötü oynadın.
+// Alternatif tablo. Kulüplerin maç sayısı EŞİT DEĞİL — her maçın iki ilk-11'i
+// kayıtlı olmadığı için kimi 32, kimi 37 maç oynuyor. Ham puana göre sıralamak
+// haksız olurdu, o yüzden sıralama ve gösterim maç başına puan üzerinden.
+function RealTable({ rows }) {
+  return (
+    <div style={{ overflowX: "auto" }}>
+      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12,
+        fontVariantNumeric: "tabular-nums" }}>
+        <thead>
+          <tr style={{ color: "var(--text-faint)", fontSize: 10, textTransform: "uppercase",
+            letterSpacing: ".07em" }}>
+            {["", "Club", "P", "W", "D", "L", "GD", "Pts", "Per game", "Really got"]
+              .map((h, i) => (
+              <th key={i} style={{ textAlign: i < 2 ? "left" : "right", padding: "6px 6px",
+                borderBottom: "1px solid var(--border)", whiteSpace: "nowrap" }}>{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((s) => (
+            <tr key={s.team} style={{
+              background: s.isYou ? `${ACC}14` : undefined,
+              borderLeft: s.isYou ? `2px solid ${ACC}` : "2px solid transparent" }}>
+              <td style={{ padding: "5px 6px", color: "var(--text-faint)" }}>{s.pos}</td>
+              <td style={{ padding: "5px 6px", fontWeight: s.isYou ? 700 : 400,
+                color: s.isYou ? ACC : "var(--text)", whiteSpace: "nowrap" }}>{s.team}</td>
+              {[s.p, s.w, s.d, s.l].map((v, i) => (
+                <td key={i} style={{ textAlign: "right", padding: "5px 6px",
+                  color: "var(--text-faint)" }}>{v}</td>
+              ))}
+              <td style={{ textAlign: "right", padding: "5px 6px",
+                color: s.gd > 0 ? ACC : s.gd < 0 ? "#E8654C" : "var(--text-faint)" }}>
+                {s.gd > 0 ? "+" : ""}{s.gd}</td>
+              <td style={{ textAlign: "right", padding: "5px 6px", fontWeight: 700 }}>{s.pts}</td>
+              <td style={{ textAlign: "right", padding: "5px 6px", color: ACC }}>
+                {s.ppg.toFixed(2)}</td>
+              <td style={{ textAlign: "right", padding: "5px 6px",
+                color: "var(--text-faint)" }}>{s.realPts ?? "—"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p style={{ fontSize: 10.5, color: "var(--text-faint)", marginTop: 8, lineHeight: 1.6 }}>
+        Clubs play different numbers of matches here, because only games where both
+        starting elevens were recorded can be replayed. Ranking is by points per game
+        for that reason. The last column is what each club really finished on.
+      </p>
+    </div>
+  );
+}
+
 function RewriteFixtures({ matches }) {
   return (
     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))",
