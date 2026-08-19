@@ -113,7 +113,9 @@ function MiniRadar({ scores }) {
 }
 
 /* ── Mini career trajectory chart ───────────────────────────────────── */
-function MiniCareerChart({ seasons }) {
+// Futbol kartı da bunu kullanıyor (FootballPlayerCard) — iki spor tek
+// grafik bileşeni paylaşsın diye export edildi.
+export function MiniCareerChart({ seasons }) {
   const scored = seasons.filter(s => s.overall_score != null);
   if (scored.length < 2) return null;
 

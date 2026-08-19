@@ -103,3 +103,4 @@ data/*
 # bas harfli avatara dusuyor (FootballPlayerCard onError + naturalWidth),
 # yani disarida birakmak kirmiyor. Kalici cozum ayrica kararlastirilacak.
 frontend/public/football-photos/
+frontend/public/football-cutouts/

@@ -28,7 +28,7 @@ const SPORTS = [
     meta: "Premier League · La Liga · Serie A · Bundesliga · Ligue 1",
     desc: "Player cards for Europe's big five, built on a separate archetype dictionary with its own roles for every phase of the game.",
     path: "/football",
-    live: false,
+    live: true,
     accent: "#3FB08C",
   },
 ];

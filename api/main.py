@@ -3511,6 +3511,123 @@ def get_leaderboard(limit: int = Query(50, le=100), mode: str = Query("classic")
     return {"entries": [dict(r) for r in rows]}
 
 
+# ── Fotoğraf atfı ────────────────────────────────────────────────────────────
+# Görsellerin 1679/1717'si CC BY ya da CC BY-SA — atıf ZORUNLU. Arka planı
+# kaldırılmış sürüm ayrıca TÜREV ESER, yani "değiştirildi" notu da gerekiyor
+# (BY-SA'da türev aynı lisansla paylaşılmalı; bir web sayfasında göstermek
+# için bu, görselin yanında lisansı belirtmek demek).
+#
+# Tek bir harita olarak dönüyor: kart başına istek atmak 1717 küçük çağrı
+# demekti. Ön yüz bir kez çekip bellekte tutuyor (~120 KB, gzip ~30 KB).
+
+@lru_cache(maxsize=1)
+def _photo_credits() -> dict:
+    out: dict[str, dict] = {}
+    # Önce ham fotoğraflar, sonra cutout'lar — cutout varsa o kazanır
+    # (türev olduğu için "modified" notunu o taşıyor).
+    for name in ("football_photo_manifest.json", "football_cutout_manifest.json"):
+        p = DATA / name
+        if not p.exists():
+            continue
+        try:
+            man = json.loads(p.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        for pid, v in man.items():
+            if v.get("status") not in (None, "ok"):
+                continue
+            if not v.get("artist") and not v.get("license"):
+                continue
+            out[str(pid)] = {
+                "artist": v.get("artist"),
+                "license": v.get("license"),
+                "source": v.get("source"),
+                "modified": v.get("modified"),
+            }
+    return out
+
+
+# ── Fotoğraf yerleşimi (admin) ───────────────────────────────────────────────
+# Cutout'lar farklı en/boy oranlarında çıkıyor: kimi omuzdan kesilmiş, kimi
+# belden, kiminde oyuncu sağa/sola kaymış. Tek bir CSS kuralı hepsine oturmuyor
+# ve otomatik hizalama yüzü kırpabiliyor. Admin tek tek düzeltebilsin diye
+# ölçek + konum DB'de tutuluyor; kaydı olmayan oyuncu varsayılanı kullanıyor,
+# yani tablo boşken hiçbir şey değişmiyor.
+
+class PhotoLayoutBody(BaseModel):
+    player_id: int
+    scale: float = 1.0
+    offset_x: float = 50.0
+    offset_y: float = 100.0
+
+
+def _photo_layouts() -> dict:
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT player_id, scale, offset_x, offset_y FROM football_photo_layout"
+        ).fetchall()
+    return {str(r["player_id"]): {"scale": r["scale"], "x": r["offset_x"],
+                                  "y": r["offset_y"]} for r in rows}
+
+
+@app.post("/api/admin/football/photo-layout")
+def set_photo_layout(body: PhotoLayoutBody, user=Depends(require_admin)):
+    # Aralık dışı değerler kartı bozar (0.2 ölçek görünmez, 5.0 taşırır).
+    scale = max(0.5, min(2.5, float(body.scale)))
+    ox = max(0.0, min(100.0, float(body.offset_x)))
+    oy = max(0.0, min(100.0, float(body.offset_y)))
+    with get_conn() as conn:
+        conn.execute(
+            """INSERT INTO football_photo_layout
+                 (player_id, scale, offset_x, offset_y, updated_at, updated_by)
+               VALUES (?,?,?,?, datetime('now'), ?)
+               ON CONFLICT(player_id) DO UPDATE SET
+                 scale=excluded.scale, offset_x=excluded.offset_x,
+                 offset_y=excluded.offset_y, updated_at=excluded.updated_at,
+                 updated_by=excluded.updated_by""",
+            (body.player_id, scale, ox, oy, int(user["sub"])))
+    return {"ok": True, "player_id": body.player_id,
+            "scale": scale, "offset_x": ox, "offset_y": oy}
+
+
+@app.delete("/api/admin/football/photo-layout/{player_id}")
+def reset_photo_layout(player_id: int, _user=Depends(require_admin)):
+    """Varsayılana dön — satırı silmek, sıfır yazmaktan doğru."""
+    with get_conn() as conn:
+        conn.execute("DELETE FROM football_photo_layout WHERE player_id=?", (player_id,))
+    return {"ok": True}
+
+
+@lru_cache(maxsize=1)
+def _cloudinary_map() -> dict:
+    """player_id -> Cloudinary public_id. Yoksa boş — ön yüz yerele düşer."""
+    p = DATA / "football_cloudinary.json"
+    if not p.exists():
+        return {}
+    try:
+        return json.loads(p.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+@app.get("/api/football/photo-credits")
+def get_football_photo_credits():
+    # Atıf ve barındırma haritası TEK yanıtta: ikisi de kart çizilirken lazım
+    # ve ikisi de tüm oyuncular için tek seferde çekiliyor.
+    c = _photo_credits()
+    cdn = _cloudinary_map()
+    return {
+        "credits": c,
+        "n": len(c),
+        # Admin'in elle düzelttiği yerleşimler — kart çizerken lazım, aynı
+        # çağrıda geliyor ki ekstra istek olmasın.
+        "layouts": _photo_layouts(),
+        "cloudinary": {"cloud_name": os.environ.get("CLOUDINARY_CLOUD_NAME")
+                                     or os.environ.get("VITE_CLOUDINARY_CLOUD_NAME"),
+                       "ids": cdn},
+    }
+
+
 # ── Futbol liderlik tablosu ──────────────────────────────────────────────────
 # Basketboldaki /api/leaderboard lineup_games'ten okuyor: orada her oyun bir
 # SİMÜLASYON SONUCU (galibiyet, sezon sonucu) üretiyor ve sıralama ona göre.
@@ -3677,14 +3794,30 @@ def get_football_career(player_id: int):
         except FileNotFoundError:
             continue
         hit = df[df["PLAYER_ID"] == player_id]
+        # NaN korumasi ZORUNLU: parquet'te eksik hucre NaN geliyor ve NaN
+        # JSON'a serialize edilemiyor — endpoint komple 500 veriyordu
+        # ("Out of range float values are not JSON compliant"), yani kartin
+        # Career sekmesi hicbir oyuncuda calismiyordu.
+        def _f(v):
+            return float(v) if pd.notna(v) else None
+
+        def _s(v):
+            return str(v) if pd.notna(v) else None
+
         for _, r in hit.iterrows():
             out.append({
-                "SEASON": r["SEASON"], "LEAGUE": r["LEAGUE"], "TEAM": r["TEAM"],
-                "PHASE": r["PHASE"], "POSITION": r["POSITION"],
-                "MINUTES_TOTAL": float(r["MINUTES_TOTAL"]),
+                "SEASON": _s(r["SEASON"]), "LEAGUE": _s(r["LEAGUE"]), "TEAM": _s(r["TEAM"]),
+                "PHASE": _s(r["PHASE"]), "POSITION": _s(r["POSITION"]),
+                "MINUTES_TOTAL": _f(r["MINUTES_TOTAL"]),
                 "APPS": int(r["APPS"]) if pd.notna(r.get("APPS")) else None,
-                "primary_arch": r["primary_arch"],
-                "primary_score": float(r["primary_score"]) if pd.notna(r["primary_score"]) else None,
+                "primary_arch": _s(r["primary_arch"]),
+                "primary_score": _f(r.get("primary_score")),
+                # Kartin "Overall Trajectory" grafigi ve sezon satirindaki not
+                # bunu istiyor; eskiden hic donmuyordu.
+                "overall_score": _f(r.get("overall_score")),
+                "goals_90": _f(r.get("goals_90")),
+                "assists_90": _f(r.get("assists_90")),
+                "CLEAN_SHEETS": _f(r.get("CLEAN_SHEETS")),
             })
     out.sort(key=lambda x: str(x["SEASON"]), reverse=True)
     return {"player_id": player_id, "seasons": out}

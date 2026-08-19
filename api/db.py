@@ -125,6 +125,19 @@ def init_db():
         -- etiketi düzeltiliyor, burada henüz oyuncu yok — sözlüğün KENDİSİ
         -- (isim değişikliği ya da eksik arketip) tartışılıyor.
         -- phase: gk | def | mid | fwd   ·   kind: rename | add | other
+        -- Oyuncu fotografinin kartta nasil oturdugu. Cutout'lar farkli en/boy
+        -- oranlarinda cikiyor (kimi omuzdan, kimi belden); tek bir CSS kurali
+        -- hepsine uymuyor. Admin bunlari tek tek duzeltebilsin diye kalici
+        -- olarak burada. Kayit YOKSA kart varsayilan yerlesimi kullanir.
+        CREATE TABLE IF NOT EXISTS football_photo_layout (
+            player_id  INTEGER PRIMARY KEY,
+            scale      REAL NOT NULL DEFAULT 1.0,   -- 0.6 .. 2.0
+            offset_x   REAL NOT NULL DEFAULT 50.0,  -- object-position %
+            offset_y   REAL NOT NULL DEFAULT 100.0, -- 100 = alta hizali
+            updated_at TEXT DEFAULT (datetime('now')),
+            updated_by INTEGER REFERENCES users(id) ON DELETE SET NULL
+        );
+
         CREATE TABLE IF NOT EXISTS football_archetype_feedback (
             id           INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id      INTEGER REFERENCES users(id) ON DELETE CASCADE,

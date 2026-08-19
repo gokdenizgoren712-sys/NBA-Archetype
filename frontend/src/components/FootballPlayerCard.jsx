@@ -1,5 +1,6 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { api } from "../api";
+import { MiniCareerChart } from "./PlayerCard";
 import "./PlayerCard.css";
 
 // ── Futbol oyuncu kartı ──────────────────────────────────────────────────────
@@ -103,6 +104,51 @@ function FitRadar({ scores, accent }) {
   );
 }
 
+
+// ── Fotoğraf atfı ────────────────────────────────────────────────────────────
+// Görsellerin büyük çoğunluğu CC BY / CC BY-SA; atıf lisansın koşulu, süs
+// değil. Harita tek seferde çekiliyor ve modül düzeyinde paylaşılıyor —
+// kart başına istek 1717 küçük çağrı demekti.
+let _creditsCache = null;
+let _creditsPromise = null;
+const _creditSubs = new Set();
+
+let _cdn = null;      // {cloud_name, ids}
+let _layouts = {};    // {player_id: {scale,x,y}} — admin düzeltmeleri
+
+function usePhotoCredit(playerId) {
+  const [, force] = useState(0);
+  useEffect(() => {
+    if (_creditsCache) return;
+    if (!_creditsPromise) {
+      _creditsPromise = fetch("/api/football/photo-credits", { cache: "no-store" })
+        .then(r => r.json())
+        .then(d => { _creditsCache = d.credits || {}; _cdn = d.cloudinary || null;
+                     _layouts = d.layouts || {}; })
+        .catch(() => { _creditsCache = {}; })
+        .finally(() => { _creditSubs.forEach(f => f(n => n + 1)); _creditSubs.clear(); });
+    }
+    _creditSubs.add(force);
+    return () => _creditSubs.delete(force);
+  }, [force]);
+  return _creditsCache ? _creditsCache[String(playerId)] : null;
+}
+
+// Fotoğrafın adresi. Sıra: Cloudinary (CDN + otomatik format/boyut) → yerel
+// cutout → ham fotoğraf. Cloudinary haritası boşken hiçbir şey değişmiyor,
+// yani yükleme yapılmadan da site çalışıyor.
+// h_472: kart 236px yükseklikte gösteriyor, 2x ekran için iki katı.
+function photoSrc(playerId, hasCut) {
+  const id = _cdn?.ids?.[String(playerId)];
+  if (id && _cdn.cloud_name) {
+    return `https://res.cloudinary.com/${_cdn.cloud_name}` +
+           `/image/upload/f_auto,q_auto,h_472/${id}`;
+  }
+  return hasCut
+    ? `/football-cutouts/${playerId}.webp`
+    : `/football-photos/${playerId}.jpg`;
+}
+
 export default function FootballPlayerCard({ player, rank, season }) {
   const [expanded, setExpanded] = useState(false);
   const [tab, setTab] = useState(player.qualified === false ? "stats" : "fit");
@@ -147,7 +193,19 @@ export default function FootballPlayerCard({ player, rank, season }) {
       cardRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }));
   };
 
-  const photo = `/football-photos/${player.PLAYER_ID}.jpg`;
+  const credit = usePhotoCredit(player.PLAYER_ID);
+  // Arka planı kaldırılmış sürüm varsa onu göster, yoksa ham fotoğrafa düş.
+  // credit.modified yalnızca cutout üretilmiş oyuncularda dolu — kaynağı
+  // bu belirliyor ki kartta "edited" yazarken ham görsel gösterilmesin.
+  const hasCut = !!credit?.modified;
+  const photo = photoSrc(player.PLAYER_ID, hasCut);
+  // Admin bu oyuncu için yerleşim kaydettiyse onu uygula. Cutout'lar farklı
+  // oranlarda kesildiği için tek bir kural hepsine oturmuyor.
+  const lay = _layouts[String(player.PLAYER_ID)];
+  const photoStyle = lay
+    ? { objectPosition: `${lay.x}% ${lay.y}%`, transform: `scale(${lay.scale})`,
+        transformOrigin: `${lay.x}% ${lay.y}%` }
+    : undefined;
   const mins = Math.round(player.MINUTES_TOTAL || 0);
 
   // Karttaki üç hızlı istatistik — faza göre değişir
@@ -196,6 +254,7 @@ export default function FootballPlayerCard({ player, rank, season }) {
           <span className="pcard-toppct">{PHASE_LABEL[phase]}</span>
           {imgOk
             ? <img src={photo} alt="" className="pcard-photo-img" loading="lazy"
+                style={photoStyle}
                 onError={() => setImgOk(false)}
                 // Vite dev sunucusu eksik dosyada 404 değil SPA index.html'i
                 // 200 ile döndürüyor -> onError HİÇ tetiklenmiyor, kart ne
@@ -208,6 +267,16 @@ export default function FootballPlayerCard({ player, rank, season }) {
                 {initials(player.PLAYER_NAME)}
               </div>}
           <div className="pcard-photo-fade" />
+          {/* Lisans koşulu: eser sahibi + lisans, ve türevse değiştirildiği
+              notu. Fotoğrafın üstünde duruyor ki görselden ayrı düşmesin. */}
+          {imgOk && credit && (credit.artist || credit.license) && (
+            <span className="pcard-photo-credit" title={
+              [credit.artist, credit.license, credit.modified].filter(Boolean).join(" · ")}>
+              {credit.artist || "Unknown"}
+              {credit.license ? ` · ${credit.license}` : ""}
+              {hasCut ? " · edited" : ""}
+            </span>
+          )}
         </div>
 
         <div className="pcard-nameband">
@@ -357,17 +426,43 @@ export default function FootballPlayerCard({ player, rank, season }) {
                           Only {season} is loaded so far — earlier seasons are still being collected.
                         </div>
                       : (
-                        <div className="pcard-season-row">
-                          {career.map(s => (
-                            <div key={`${s.SEASON}-${s.LEAGUE}`} className="pcard-stat-row"
-                              style={{ borderBottom: "1px solid var(--border)", padding: "5px 0" }}>
-                              <div style={{ minWidth: 62 }}>{s.SEASON}</div>
-                              <div style={{ flex: 1, color: "var(--text-muted)" }}>{s.TEAM}</div>
-                              <div style={{ color: accent, fontWeight: 700 }}>{s.primary_arch}</div>
-                              <div style={{ minWidth: 46, textAlign: "right" }}>{Math.round(s.MINUTES_TOTAL)}′</div>
-                            </div>
-                          ))}
-                        </div>
+                        <>
+                          {/* NBA kartıyla AYNI iskelet: önce gidişat grafiği,
+                              sonra sezon satırları. Grafik bileşeni de ortak
+                              (PlayerCard'tan import) — iki spor tek çizim. */}
+                          <div className="pcard-section-lbl">Overall Trajectory</div>
+                          <MiniCareerChart seasons={career.slice().reverse()} />
+
+                          <div className="pcard-section-lbl" style={{ marginTop: 10 }}>Season-by-Season</div>
+                          {career.map(s => {
+                            const score = s.overall_score != null ? Math.round(s.overall_score * 100) : null;
+                            const isCur = s.SEASON === (career[0]?.SEASON);
+                            // Faz başına anlamlı çizgi: kaleci/defans temiz
+                            // çıkışla, orta saha ve hücum gol/asistle okunur.
+                            const line = (s.PHASE === "gk" || s.PHASE === "def")
+                              ? [s.CLEAN_SHEETS != null ? `${Math.round(s.CLEAN_SHEETS)}cs` : null,
+                                 s.assists_90 != null ? `${s.assists_90.toFixed(1)}a` : null]
+                              : [s.goals_90 != null ? `${s.goals_90.toFixed(1)}g` : null,
+                                 s.assists_90 != null ? `${s.assists_90.toFixed(1)}a` : null];
+                            return (
+                              <div key={`${s.SEASON}-${s.LEAGUE}`}
+                                className={`pcard-season-row${isCur ? " cur" : ""}`}>
+                                <span className="yr">
+                                  {(() => {
+                                    const m = String(s.SEASON || "").match(/(\d{4})\D+(\d{2,4})/);
+                                    return m ? `${m[1].slice(2)}-${m[2].slice(-2)}` : s.SEASON;
+                                  })()}
+                                </span>
+                                {/* Futbol kulüp adları uzun ("FC Bayern München"),
+                                    NBA'deki 3 harfli kodun yerine taşma kesiliyor. */}
+                                <span className="tm fb-tm" title={s.TEAM}>{s.TEAM}</span>
+                                <span className="arc">{s.primary_arch || "—"}</span>
+                                <span className="stat">{line.filter(Boolean).join(" ")}</span>
+                                {score != null && <span className="sc">{score}</span>}
+                              </div>
+                            );
+                          })}
+                        </>
                       )
                 )}
               </div>

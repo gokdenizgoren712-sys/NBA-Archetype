@@ -25,6 +25,7 @@ const Profile        = lazy(() => import("./pages/Profile"));
 const ArticleList    = lazy(() => import("./pages/admin/ArticleList"));
 const ArticleEditor  = lazy(() => import("./pages/admin/ArticleEditor"));
 const UserList       = lazy(() => import("./pages/admin/UserList"));
+const PhotoLayout     = lazy(() => import("./pages/admin/PhotoLayout"));
 const CorrectionList = lazy(() => import("./pages/admin/CorrectionList"));
 const LineupModeration = lazy(() => import("./pages/admin/LineupModeration"));
 const GLeague        = lazy(() => import("./pages/GLeague"));
@@ -39,6 +40,7 @@ const FootballLineups = lazy(() => import("./pages/football/FootballLineups"));
 const FootballGame    = lazy(() => import("./pages/football/FootballGame"));
 const FootballMap     = lazy(() => import("./pages/football/FootballMap"));
 const FootballCompare = lazy(() => import("./pages/football/FootballCompare"));
+const FootballAbout   = lazy(() => import("./pages/football/FootballAbout"));
 const RankItPrototype = lazy(() => import("./rankit/RankItPrototype"));
 const PrivacyPolicy      = lazy(() => import("./pages/legal/PrivacyPolicy"));
 const TermsOfService     = lazy(() => import("./pages/legal/TermsOfService"));
@@ -75,6 +77,7 @@ const FOOTBALL_NAV = [
   { to: "/football/map",     Icon: ExploreIcon,  label: "Explore",   color: "#3FB08C",
     extraActive: ["/football/compare"] },
   { to: "/blog",             Icon: BlogIcon,     label: "Blog" },
+  { to: "/football/about",   Icon: GlossaryIcon, label: "About",     color: "#3FB08C" },
 ];
 
 // Spor-nötr sayfalarda (blog, profil, admin, yasal) — iki spora da kapı aç
@@ -350,6 +353,7 @@ function AppInner() {
               <Route path="/football/game"            element={<FootballGame />} />
               <Route path="/football/map"             element={<FootballMap />} />
               <Route path="/football/compare"         element={<FootballCompare />} />
+              <Route path="/football/about"           element={<FootballAbout />} />
 
               {/* ── Eski spor-öneksiz URL'ler → /basketball/* (301 muadili) ── */}
               <Route path="/game"                     element={<Legacy to="/basketball/game" />} />
@@ -387,6 +391,7 @@ function AppInner() {
               <Route path="/admin/users"              element={<UserList />} />
               <Route path="/admin/corrections"        element={<CorrectionList />} />
               <Route path="/admin/lineups"            element={<LineupModeration />} />
+              <Route path="/admin/photo-layout"       element={<PhotoLayout />} />
               {/* Legal — taslak, bkz. pages/legal/LegalPageLayout.jsx notu */}
               <Route path="/privacy-policy"           element={<PrivacyPolicy />} />
               <Route path="/terms-of-service"         element={<TermsOfService />} />

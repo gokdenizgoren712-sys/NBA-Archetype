@@ -140,6 +140,16 @@
 }
 .pcard-photo-fallback { position: absolute; inset: 0; background: linear-gradient(160deg, #201c14, #0c0b0e); }
 .pcard-toppct { position: absolute; z-index: 2; top: 8px; left: 10px; font-size: 9px; color: var(--text-muted); }
+/* Fotoğraf atfı — CC BY/BY-SA koşulu. Okunur ama kartı bölmeyecek kadar
+   sessiz; tam metin title'da. */
+.pcard-photo-credit {
+  position: absolute; z-index: 3; right: 6px; bottom: 4px;
+  max-width: 78%; font-size: 7.5px; line-height: 1.2;
+  color: rgba(255,255,255,.42);
+  text-shadow: 0 1px 2px rgba(0,0,0,.9);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  pointer-events: auto;
+}
 .pcard-photo-fade {
   position: absolute; z-index: 2; left: 0; right: 0; bottom: 0; height: 46px;
   background: linear-gradient(to top, #14100a 0%, transparent 100%); pointer-events: none; opacity: .8;
@@ -552,3 +562,11 @@
 .pcard-stage.fb .pcard-name {
   height: 22px; line-height: 22px;
 }
+
+/* Futbol sezon satırı: kulüp adları NBA'deki 3 harfli kodlardan çok uzun,
+   sabit 26px kolona sığmıyor. Esnek ama taşmayan bir hücre veriyoruz. */
+.pcard-season-row .tm.fb-tm {
+  width: auto; max-width: 78px; flex-shrink: 1;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.pcard-season-row .yr { white-space: nowrap; }
