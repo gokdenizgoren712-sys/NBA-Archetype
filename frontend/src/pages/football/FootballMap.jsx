@@ -29,6 +29,8 @@ export default function FootballMap() {
   const [hover, setHover]   = useState(null);
   const [sel, setSel]       = useState(null);
   const [q, setQ]           = useState("");
+  // Arketip filtresi — seçilince harita o role odaklanır
+  const [arch, setArch]     = useState("");
 
   useEffect(() => {
     api.footballMeta().then(m => {
@@ -47,7 +49,13 @@ export default function FootballMap() {
       .finally(() => setLoading(false));
   }, [season, phase, league]);
 
+  // Arketipler faza özgü: faz değişince eski seçim anlamsız kalır.
+  useEffect(() => { setArch(""); }, [phase]);
+
   const cfg = MAP_ANCHORS[phase];
+  // Bu fazın arketip listesi — çapa tanımları zaten faz bazlı, tek kaynak.
+  const archOptions = Object.keys(MAP_ANCHORS[phase]?.points || {});
+  const archPoint = arch ? MAP_ANCHORS[phase]?.points?.[arch] : null;
   const accent = PHASES.find(p => p.key === phase)?.color || "#3FB08C";
 
   const dots = useMemo(() => rows.map(p => {
@@ -114,9 +122,21 @@ export default function FootballMap() {
               {p.label}
             </button>
           ))}
+          {/* Arketip filtresi — seçilince harita o role geçiyor: yalnızca o
+              roldeki oyuncular renkli kalıyor, çapası referans olarak
+              beliriyor ve eksen etiketleri aynı kalıyor (aynı düzlem). */}
+          <span className="g-label shrink-0" style={{ marginLeft: 8 }}>Archetype</span>
+          <div className="aura-select-wrap">
+            <select value={arch} onChange={e => setArch(e.target.value)}
+              className={`aura-select${arch ? " accent" : ""}`}>
+              <option value="">All archetypes</option>
+              {archOptions.map(a => <option key={a} value={a}>{a}</option>)}
+            </select>
+          </div>
+
           <input value={q} onChange={e => setQ(e.target.value)}
             placeholder="Highlight a player…" className="aura-ghost-input"
-            style={{ width: 170 }} />
+            style={{ width: 150 }} />
           {(meta?.leagues || []).map(l => (
             <button key={l} onClick={() => setLeague(league === l ? "" : l)}
               className={`aura-pill-btn${league === l ? " active" : ""}`}>
@@ -124,8 +144,13 @@ export default function FootballMap() {
             </button>
           ))}
           <span className="text-[11px] ml-auto" style={{ color: "var(--text-faint)" }}>
-            {dots.length} players
+            {arch
+              ? <><b style={{ color: accent }}>{dots.filter(d => d.primary_arch === arch).length}</b> {arch} · {dots.length} total</>
+              : <>{dots.length} players</>}
           </span>
+          {arch && (
+            <button onClick={() => setArch("")} className="aura-pill-btn">✕ Clear role</button>
+          )}
         </div>
 
         <div className="g-panel p-2" style={{ position: "relative" }}>
@@ -150,28 +175,38 @@ export default function FootballMap() {
               <rect x={PAD} y={PAD} width={W - PAD * 2} height={H - PAD * 2}
                 fill="none" stroke="var(--border)" strokeWidth="1" rx="6" />
 
-              {/* Arketip çapaları */}
-              {Object.entries(cfg?.points || {}).map(([name, pt]) => (
-                <g key={name}>
-                  <circle cx={sx(pt.x)} cy={sy(pt.y)} r="4"
-                    fill="none" stroke={accent} strokeWidth="1.2" opacity="0.55" />
-                  <text x={sx(pt.x)} y={sy(pt.y) - 9} fontSize="10.5"
-                    textAnchor="middle" fill={accent} opacity="0.8"
-                    style={{ fontWeight: 700 }}>{name}</text>
+              {/* Arketip çapaları (halka + isim) KALDIRILDI — kullanıcı kararı:
+                  haritayı kalabalıklaştırıyordu. Yerine, bir arketip
+                  seçildiğinde YALNIZCA onun çapası referans olarak gösteriliyor
+                  (aşağıda), böylece "bu rol haritanın neresinde" sorusu
+                  cevaplanıyor ama boştaki harita temiz kalıyor. */}
+              {archPoint && (
+                <g>
+                  <circle cx={sx(archPoint.x)} cy={sy(archPoint.y)} r="7"
+                    fill="none" stroke={accent} strokeWidth="1.4" opacity="0.75"
+                    strokeDasharray="3 3" />
+                  <text x={sx(archPoint.x)} y={sy(archPoint.y) - 12} fontSize="11"
+                    textAnchor="middle" fill={accent} style={{ fontWeight: 700 }}>
+                    {arch}
+                  </text>
                 </g>
-              ))}
+              )}
 
               {/* Oyuncular */}
               {dots.map(p => {
                 const match = !qq || p.PLAYER_NAME.toLowerCase().includes(qq);
+                // Arketip seçiliyse o role ait olmayanlar geri plana düşer —
+                // silinmiyor, çünkü rolün komşularını görmek haritanın anlamı.
+                const inArch = !arch || p.primary_arch === arch;
                 const isSel = sel?.PLAYER_ID === p.PLAYER_ID;
+                const dimmed = (qq && !match) || !inArch;
                 return (
                   <circle key={`${p.PLAYER_ID}-${p.PHASE}-${p.LEAGUE}`}
                     cx={sx(p.x)} cy={sy(p.y)}
-                    r={isSel ? 6 : match && qq ? 5 : 3.2}
-                    fill={isSel || (qq && match) ? accent : `${accent}88`}
+                    r={isSel ? 6 : (qq && match) || (arch && inArch) ? 4.6 : 3.2}
+                    fill={isSel || (qq && match) || (arch && inArch) ? accent : `${accent}88`}
                     stroke={isSel ? "#fff" : "none"} strokeWidth="1.5"
-                    opacity={qq && !match ? 0.08 : 0.85}
+                    opacity={dimmed ? 0.07 : 0.85}
                     style={{ cursor: "pointer" }}
                     onMouseEnter={() => setHover(p)}
                     onMouseLeave={() => setHover(null)}

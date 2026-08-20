@@ -4277,6 +4277,228 @@ def _club_strength(season: str) -> list[dict]:
             for r in g.itertuples()]
 
 
+# ── Futbol kafa kafaya odaları ───────────────────────────────────────────────
+# Basketbolun game_rooms'undan AYRI bir hat. Orada iki NBA takımından canlı
+# sırayla draft ediliyor ve durum bir websocket state machine'de tutuluyor
+# (api/game_ws.py, 1150 satır). Futbolda daha basit ve daha sağlam bir model
+# seçildi: her oyuncu kendi XI'ini KURUP GÖNDERİYOR, iki taraf da gönderince
+# eşleşme SUNUCUDA çözülüyor.
+#
+# Neden sunucuda: sonucu istemcide hesaplamak, oyuncunun kendi skorunu
+# bildirmesi demek olurdu. Kalite/kimya da burada hesaplanıyor — gönderilen
+# şey yalnızca oyuncu kimlikleri.
+#
+# Same Screen bu uçları HİÇ kullanmıyor: tek cihazda iki kadro var, sonuç
+# tarayıcıda headToHead.js ile üretiliyor. Oda yalnızca iki ayrı cihaz
+# gerektiğinde (friend / online) devreye giriyor.
+
+_H2H_MODES = {"friend", "online"}
+_XI_SIZE = 11
+
+
+class H2HCreateBody(BaseModel):
+    mode: str = "friend"
+    season: str | None = None
+    name: str | None = None
+
+
+class H2HSquadBody(BaseModel):
+    # [{player_id, season}] — çark karışık sezonlu XI kurabildiği için
+    # her oyuncu kendi sezonunu taşıyor (bkz. lineup-fit entries).
+    entries: list[dict]
+    name: str | None = None
+
+
+def _h2h_code(n: int = 6) -> str:
+    alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"   # I, O, 0, 1 yok
+    return "".join(secrets.choice(alphabet) for _ in range(n))
+
+
+def _h2h_row(code: str):
+    with get_conn() as conn:
+        return conn.execute(
+            "SELECT * FROM football_h2h_rooms WHERE room_code=?", (code,)).fetchone()
+
+
+def _score_squad(entries: list[dict], fallback_season: str) -> dict | None:
+    """Gönderilen XI'i sunucuda skorla: kalite + kimya.
+
+    SeasonPanel'deki tanımla birebir aynı olmalı — kalite XI'in ortalama
+    overall_score'u, kimya lineup_fit'in skoru. Farklı olursa iki mod farklı
+    sayılar üretir ve kullanıcı hangisine bakacağını bilemez.
+    """
+    want: dict[str, set[int]] = {}
+    for e in entries:
+        pid = e.get("player_id")
+        if pid is None:
+            continue
+        s = str(e.get("season") or fallback_season).replace("/", "-")
+        want.setdefault(s, set()).add(int(pid))
+
+    parts = []
+    for s, ids in want.items():
+        try:
+            df = _load_football_scores(s)
+        except FileNotFoundError:
+            continue
+        hit = df[df["PLAYER_ID"].isin(ids)]
+        if not hit.empty:
+            parts.append(hit.sort_values("MINUTES_PHASE", ascending=False)
+                            .drop_duplicates("PLAYER_ID"))
+    if not parts:
+        return None
+    sel = pd.concat(parts, ignore_index=True)
+
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "fb_affinity", ROOT / "src" / "football" / "affinity.py")
+    aff = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(aff)
+    fit = aff.lineup_fit(sel.to_dict("records"))
+    if "error" in fit:
+        return None
+
+    q = pd.to_numeric(sel["overall_score"], errors="coerce").mean()
+    return {
+        "quality": float(max(0.25, min(0.95, q if q == q else 0.5))),
+        "chemistry": float(fit.get("score") or 0.65),
+        "found": int(sel["PLAYER_ID"].nunique()),
+        "players": json.loads(sel[["PLAYER_ID", "PLAYER_NAME", "PHASE",
+                                   "POSITION", "primary_arch"]]
+                              .to_json(orient="records")),
+    }
+
+
+def _resolve_h2h(row) -> dict:
+    """İki kadro da geldiyse elemeyi çöz. Sonuç bir kez üretilir ve saklanır."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "fb_tie", ROOT / "src" / "football" / "tie.py")
+    tie = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(tie)
+
+    p1 = json.loads(row["p1_squad_json"])
+    p2 = json.loads(row["p2_squad_json"])
+    a = {"name": row["p1_name"] or "Player 1", **p1["side"]}
+    b = {"name": row["p2_name"] or "Player 2", **p2["side"]}
+    coeffs = _sim_coeffs()
+
+    # Tohum oda koduna bağlı — aynı oda her sorguda AYNI sonucu vermeli,
+    # yoksa sayfayı yenileyen oyuncu farklı bir skor görür.
+    seed = int.from_bytes(row["room_code"].encode()[:4], "big")
+    result = tie.play_tie(coeffs, a, b, seed=seed)
+    result["odds"] = tie.tie_odds(coeffs, a, b, runs=400, seed=seed)
+    result["sides"] = {"a": a, "b": b}
+    return result
+
+
+def _h2h_public(row, uid: int) -> dict:
+    """Odanın dışa açık hâli. RAKİBİN KADROSU, eşleşme çözülene kadar GİZLİ —
+    yoksa ikinci oyuncu birincininkine bakarak kurar."""
+    resolved = row["status"] == "resolved"
+    me = "p1" if uid == row["p1_user_id"] else ("p2" if uid == row["p2_user_id"] else None)
+    out = {
+        "room_code": row["room_code"], "mode": row["mode"],
+        "status": row["status"], "season": row["season"],
+        "you": me,
+        "p1_name": row["p1_name"], "p2_name": row["p2_name"],
+        "p1_ready": bool(row["p1_squad_json"]),
+        "p2_ready": bool(row["p2_squad_json"]),
+    }
+    if me:
+        mine = row[me + "_squad_json"]
+        out["your_squad"] = json.loads(mine)["players"] if mine else None
+    if resolved and row["result_json"]:
+        out["result"] = json.loads(row["result_json"])
+    return out
+
+
+@app.post("/api/football/h2h/room")
+def create_h2h_room(body: H2HCreateBody, user=Depends(get_current_user)):
+    if body.mode not in _H2H_MODES:
+        raise HTTPException(400, "Invalid mode: " + str(body.mode))
+    season = body.season or _football_default_season()
+    for _ in range(6):
+        code = _h2h_code()
+        try:
+            with get_conn() as conn:
+                conn.execute(
+                    "INSERT INTO football_h2h_rooms "
+                    "(room_code, mode, status, season, p1_user_id, p1_name) "
+                    "VALUES (?,?,'waiting',?,?,?)",
+                    (code, body.mode, season, int(user["sub"]),
+                     (body.name or "").strip()[:40] or None))
+            return {"room_code": code, "season": season, "mode": body.mode}
+        except Exception as e:
+            if "UNIQUE" not in str(e):
+                raise HTTPException(500, "Could not create the room")
+    raise HTTPException(500, "Could not generate a room code")
+
+
+@app.post("/api/football/h2h/room/{code}/join")
+def join_h2h_room(code: str, user=Depends(get_current_user)):
+    uid = int(user["sub"])
+    row = _h2h_row(code)
+    if not row:
+        raise HTTPException(404, "Room not found")
+    if row["p1_user_id"] == uid or row["p2_user_id"] == uid:
+        return _h2h_public(row, uid)          # zaten içeride
+    if row["p2_user_id"]:
+        raise HTTPException(409, "Room is full")
+    with get_conn() as conn:
+        conn.execute("UPDATE football_h2h_rooms "
+                     "SET p2_user_id=?, status='building', updated_at=datetime('now') "
+                     "WHERE room_code=? AND p2_user_id IS NULL", (uid, code))
+    return _h2h_public(_h2h_row(code), uid)
+
+
+@app.post("/api/football/h2h/room/{code}/squad")
+def submit_h2h_squad(code: str, body: H2HSquadBody, user=Depends(get_current_user)):
+    uid = int(user["sub"])
+    row = _h2h_row(code)
+    if not row:
+        raise HTTPException(404, "Room not found")
+    if uid not in (row["p1_user_id"], row["p2_user_id"]):
+        raise HTTPException(403, "You are not in this room")
+    if row["status"] == "resolved":
+        raise HTTPException(409, "This tie has already been played")
+    if len(body.entries) != _XI_SIZE:
+        raise HTTPException(400, "Send exactly " + str(_XI_SIZE) + " players")
+
+    side = _score_squad(body.entries, row["season"])
+    if not side:
+        raise HTTPException(400, "Could not score that squad")
+    slot = "p1" if uid == row["p1_user_id"] else "p2"
+    payload = json.dumps({"entries": body.entries,
+                          "side": {"quality": side["quality"],
+                                   "chemistry": side["chemistry"]},
+                          "players": side["players"]}, ensure_ascii=False)
+    with get_conn() as conn:
+        conn.execute("UPDATE football_h2h_rooms SET " + slot + "_squad_json=?, "
+                     + slot + "_name=COALESCE(?," + slot + "_name), "
+                     "updated_at=datetime('now') WHERE room_code=?",
+                     (payload, (body.name or "").strip()[:40] or None, code))
+
+    row = _h2h_row(code)
+    if row["p1_squad_json"] and row["p2_squad_json"] and row["status"] != "resolved":
+        result = _resolve_h2h(row)
+        with get_conn() as conn:
+            conn.execute("UPDATE football_h2h_rooms "
+                         "SET result_json=?, status='resolved', "
+                         "updated_at=datetime('now') WHERE room_code=?",
+                         (json.dumps(result, ensure_ascii=False), code))
+        row = _h2h_row(code)
+    return _h2h_public(row, uid)
+
+
+@app.get("/api/football/h2h/room/{code}")
+def get_h2h_room(code: str, user=Depends(get_current_user)):
+    row = _h2h_row(code)
+    if not row:
+        raise HTTPException(404, "Room not found")
+    return _h2h_public(row, int(user["sub"]))
+
+
 # ── Gerçek sezon: fikstür + gerçekte olan ─────────────────────────────────────
 # "Rewrite History" için: bir kulübün GERÇEK maç takvimi (rakip, ev/deplasman)
 # ve o maçların GERÇEK sonucu. Kullanıcı o kulübün yerine kendi XI'ini koyup

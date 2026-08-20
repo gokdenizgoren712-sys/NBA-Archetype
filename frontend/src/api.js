@@ -23,6 +23,38 @@ async function post(path, body) {
   return res.json();
 }
 
+
+// Oturum gerektiren istekler. Anahtar AuthContext'inkiyle AYNI olmalı —
+// ayrı bir isim kullanmak sessizce yetkisiz istek göndermek demek.
+const TOKEN_KEY = "nba_arch_token";
+
+function authHeaders() {
+  const t = localStorage.getItem(TOKEN_KEY);
+  return t ? { Authorization: `Bearer ${t}` } : {};
+}
+
+async function authGet(path) {
+  const res = await fetch(`${BASE}${path}`, {
+    cache: "no-store", headers: authHeaders(),
+  });
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
+
+async function authPost(path, body) {
+  const res = await fetch(`${BASE}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    let detail = `${res.status}`;
+    try { detail = (await res.json()).detail || detail; } catch {}
+    throw new Error(detail);
+  }
+  return res.json();
+}
+
 export const api = {
   // Oyuncular
   players:      (p) => get("/players", p),
@@ -90,6 +122,12 @@ export const api = {
   footballSimSetup:    (p) => get("/football/sim-setup", p),
   footballLeaderboard: (p) => get("/football/leaderboard", p),
   footballRealSeason:  (p) => get("/football/real-season", p),
+  // Kafa kafaya odaları — sonuç SUNUCUDA çözülüyor, istemci yalnızca kadro
+  // gönderiyor (bkz. api/main.py h2h bloğu).
+  footballH2HCreate: (body) => authPost("/football/h2h/room", body),
+  footballH2HJoin:   (code) => authPost(`/football/h2h/room/${code}/join`, {}),
+  footballH2HSquad:  (code, body) => authPost(`/football/h2h/room/${code}/squad`, body),
+  footballH2HRoom:   (code) => authGet(`/football/h2h/room/${code}`),
   footballGameTeams:   (p) => get("/football/game/teams", p),
   footballGamePlayers: (p) => get("/football/game/players", p),
 

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { api } from "../../api";
+import PlayerSearch from "../../game/football/PlayerSearch";
 import SeasonPanel from "../../game/football/SeasonPanel";
 import SquadAnalysis from "../../game/football/SquadAnalysis";
 
@@ -29,29 +30,17 @@ function Bar({ label, value, accent = "#3FB08C" }) {
 }
 
 export default function FootballCustomXI({ season }) {
-  const [q, setQ] = useState("");
-  const [hits, setHits] = useState([]);
   const [picked, setPicked] = useState([]);
   const [fit, setFit] = useState(null);
   const [busy, setBusy] = useState(false);
   const deb = useRef();
 
-  useEffect(() => {
-    if (!q.trim()) { setHits([]); return; }
-    clearTimeout(deb.current);
-    deb.current = setTimeout(() => {
-      api.footballSearch({ q, season, limit: 8 })
-        .then(r => setHits(r.players || []))
-        .catch(() => setHits([]));
-    }, 250);
-    return () => clearTimeout(deb.current);
-  }, [q, season]);
 
   const add = (p) => {
     if (picked.length >= 11) return;
     if (picked.some(x => x.PLAYER_ID === p.PLAYER_ID)) return;
     setPicked(v => [...v, p]);
-    setQ(""); setHits([]); setFit(null);
+    setFit(null);
   };
   const drop = (id) => {
     setPicked(v => v.filter(p => p.PLAYER_ID !== id));
@@ -75,34 +64,10 @@ export default function FootballCustomXI({ season }) {
         judged on how they fit together.
       </div>
 
-      <div style={{ position: "relative" }}>
-        <input value={q} onChange={e => setQ(e.target.value)}
-          placeholder="Search a player…" className="aura-ghost-input w-full"
-          disabled={picked.length >= 11} />
-        {hits.length > 0 && (
-          <div className="absolute z-30 w-full mt-1 rounded-lg overflow-hidden"
-            style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
-            {/* Anahtar lig+faz içeriyor: ara transferde aynı PLAYER_ID iki
-                ligde birden dönüyor (ör. Lookman: Atlético + Atalanta). */}
-            {hits.map(p => (
-              <button key={`${p.PLAYER_ID}-${p.LEAGUE}-${p.PHASE}`} onClick={() => add(p)}
-                className="w-full text-left px-3 py-1.5 flex items-center gap-2"
-                style={{ borderBottom: "1px solid var(--border)" }}>
-                <span className="text-[9.5px] uppercase"
-                  style={{ color: PHASE_COLOR[p.PHASE], minWidth: 22 }}>{p.POSITION}</span>
-                <span className="text-[12px] text-white truncate" style={{ flex: 1 }}>
-                  {p.PLAYER_NAME}
-                </span>
-                <span className="text-[10.5px] truncate"
-                  style={{ color: "var(--text-faint)", maxWidth: 110 }}>{p.TEAM}</span>
-                <b className="text-[11px]" style={{ color: PHASE_COLOR[p.PHASE] }}>
-                  {Math.round((p.overall_score || 0) * 100)}
-                </b>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+      {/* Ortak arama bileşeni — açılır liste portal ile çiziliyor, yoksa
+          .g-panel'in overflow:hidden'ı kırpıyordu (bkz. PlayerSearch). */}
+      <PlayerSearch season={season} onPick={p => p && add(p)} value={null}
+        placeholder={picked.length >= 11 ? "XI is full" : "Search a player…"} />
 
       <div className="flex items-center gap-2 text-[11px]" style={{ color: "var(--text-muted)" }}>
         <span>{picked.length}/11 · {outfield} outfield</span>

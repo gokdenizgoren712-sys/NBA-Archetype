@@ -42,6 +42,7 @@ const FootballMap     = lazy(() => import("./pages/football/FootballMap"));
 const FootballCompare = lazy(() => import("./pages/football/FootballCompare"));
 const FootballAbout   = lazy(() => import("./pages/football/FootballAbout"));
 const FootballGlossary = lazy(() => import("./pages/football/FootballGlossary"));
+const FootballVersus  = lazy(() => import("./pages/football/FootballVersus"));
 const RankItPrototype = lazy(() => import("./rankit/RankItPrototype"));
 const PrivacyPolicy      = lazy(() => import("./pages/legal/PrivacyPolicy"));
 const TermsOfService     = lazy(() => import("./pages/legal/TermsOfService"));
@@ -357,6 +358,7 @@ function AppInner() {
               <Route path="/football/compare"         element={<FootballCompare />} />
               <Route path="/football/about"           element={<FootballAbout />} />
               <Route path="/football/glossary"        element={<FootballGlossary />} />
+              <Route path="/football/versus"          element={<FootballVersus />} />
 
               {/* ── Eski spor-öneksiz URL'ler → /basketball/* (301 muadili) ── */}
               <Route path="/game"                     element={<Legacy to="/basketball/game" />} />

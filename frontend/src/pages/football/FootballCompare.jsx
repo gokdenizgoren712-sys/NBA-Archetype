@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { api } from "../../api";
 import { SEO } from "../../hooks/useSEO";
+import PlayerSearch from "../../game/football/PlayerSearch";
 import "../../game/game.css";
 
 // ── İki oyuncuyu karşılaştır — FAZ İÇİ ───────────────────────────────────────
@@ -45,52 +46,6 @@ const fmt = (k, v) => v == null || Number.isNaN(v) ? "—"
   : PCT.has(k) ? `${Math.round(v * 100)}%`
   : v >= 10 ? v.toFixed(1) : v.toFixed(2);
 
-function Search({ label, value, onPick, phase, season, accent }) {
-  const [q, setQ] = useState("");
-  const [hits, setHits] = useState([]);
-  const deb = useRef();
-  useEffect(() => {
-    if (!q.trim()) { setHits([]); return; }
-    clearTimeout(deb.current);
-    deb.current = setTimeout(() => {
-      api.footballSearch({ q, season, limit: 8, ...(phase ? { phase } : {}) })
-        .then(r => setHits(r.players || [])).catch(() => setHits([]));
-    }, 250);
-    return () => clearTimeout(deb.current);
-  }, [q, phase, season]);
-
-  return (
-    <div style={{ position: "relative", flex: 1 }}>
-      <div className="g-label mb-1.5" style={{ "--accent": accent }}>{label}</div>
-      <input value={value ? value.PLAYER_NAME : q}
-        onChange={e => { setQ(e.target.value); if (value) onPick(null); }}
-        placeholder={phase ? `Search ${PHASE_LABEL[phase]}…` : "Search a player…"}
-        className="aura-ghost-input w-full"
-        style={value ? { borderColor: accent } : undefined} />
-      {hits.length > 0 && !value && (
-        <div className="absolute z-30 w-full mt-1 rounded-lg overflow-hidden"
-          style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
-          {hits.map(p => (
-            <button key={`${p.PLAYER_ID}-${p.PHASE}-${p.LEAGUE}`}
-              onClick={() => { onPick(p); setQ(""); setHits([]); }}
-              className="w-full text-left px-3 py-1.5 flex items-center gap-2"
-              style={{ borderBottom: "1px solid var(--border)" }}>
-              <span className="text-[9.5px] uppercase"
-                style={{ color: PHASE_COLOR[p.PHASE], minWidth: 22 }}>{p.POSITION}</span>
-              <span className="text-[12px] text-white truncate" style={{ flex: 1 }}>
-                {p.PLAYER_NAME}
-              </span>
-              <span className="text-[10.5px] truncate"
-                style={{ color: "var(--text-faint)", maxWidth: 100 }}>{p.TEAM}</span>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// Faz içi arketip radarı — iki oyuncu üst üste
 function DualRadar({ a, b, names, accent }) {
   const n = names.length;
   if (n < 3) return null;
@@ -207,9 +162,9 @@ export default function FootballCompare() {
                 {(meta?.seasons || []).map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
-            <Search label="Player A" value={a} onPick={setA}
+            <PlayerSearch label="Player A" value={a} onPick={setA}
               phase={b?.PHASE || null} season={season} accent={accent} />
-            <Search label="Player B" value={b} onPick={setB}
+            <PlayerSearch label="Player B" value={b} onPick={setB}
               phase={a?.PHASE || null} season={season} accent="#E8654C" />
           </div>
           {a && !b && (

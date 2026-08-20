@@ -129,6 +129,28 @@ def init_db():
         -- oranlarinda cikiyor (kimi omuzdan, kimi belden); tek bir CSS kurali
         -- hepsine uymuyor. Admin bunlari tek tek duzeltebilsin diye kalici
         -- olarak burada. Kayit YOKSA kart varsayilan yerlesimi kullanir.
+        -- Futbol kafa kafaya odalari. Basketbolun game_rooms'undan AYRI:
+        -- orada iki NBA takimindan canli sirayla draft ediliyor, burada her
+        -- oyuncu kendi XI'ini kurup GONDERIYOR ve iki taraf da gonderince
+        -- eslesme SUNUCUDA cozuluyor. Sonucu istemciye birakmak, oyuncunun
+        -- kendi skorunu bildirmesi demek olurdu.
+        CREATE TABLE IF NOT EXISTS football_h2h_rooms (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            room_code     TEXT UNIQUE NOT NULL,
+            mode          TEXT NOT NULL DEFAULT 'friend',   -- friend | online
+            status        TEXT NOT NULL DEFAULT 'waiting',  -- waiting|building|resolved|abandoned
+            season        TEXT,
+            p1_user_id    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            p2_user_id    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            p1_squad_json TEXT,      -- [{PLAYER_ID, SEASON}] — 11 ilk 11
+            p2_squad_json TEXT,
+            p1_name       TEXT,
+            p2_name       TEXT,
+            result_json   TEXT,      -- sunucuda cozulen eslesme
+            created_at    TEXT DEFAULT (datetime('now')),
+            updated_at    TEXT DEFAULT (datetime('now'))
+        );
+
         CREATE TABLE IF NOT EXISTS football_photo_layout (
             player_id  INTEGER PRIMARY KEY,
             scale      REAL NOT NULL DEFAULT 1.0,   -- 0.6 .. 2.0
