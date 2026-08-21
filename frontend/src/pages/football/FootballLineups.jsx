@@ -78,17 +78,17 @@ export default function FootballLineups() {
   const byPhase = ph => (xi?.players || []).filter(p => p.PHASE === ph);
 
   return (
-    <div className="h-full overflow-y-auto relative">
+    <div className="h-full flex flex-col overflow-hidden relative">
       <SEO title="Football — Squad Chemistry"
         description="Which ten outfield players fit together best, by archetype."
         path="/football/lineups" noindex />
       <div className="g-smoke" />
 
-      <div className="relative max-w-5xl mx-auto p-5 space-y-4">
+      <div className="relative max-w-5xl w-full mx-auto p-5 flex-1 flex flex-col min-h-0 gap-3">
 
         {/* ── HEADER DOCK — basketbol tarafındaki 3 bölgeli yapının aynısı:
             solda kimlik, ortada sezon/diziliş kontrolleri, sagda durum. ── */}
-        <div className="g-dock" style={{ "--accent": ACCENT, "--accent-line": ACCENT + "55" }}>
+        <div className="g-dock shrink-0" style={{ "--accent": ACCENT, "--accent-line": ACCENT + "55" }}>
           <span className="aura-blob" style={{ "--slot-color": ACCENT, left: -30, top: -70, width: 240, height: 150, opacity: 0.16 }} />
 
           <div className="g-dock-left">
@@ -120,23 +120,17 @@ export default function FootballLineups() {
           </div>
         </div>
 
-        <div>
-          <p className="text-[12px]" style={{ color: "var(--text-muted)" }}>
-            The goalkeeper sits outside this: his archetype doesn't interact
-            with the other ten.
-          </p>
-            {/* Eski uyari ("henüz kalibre değil") artık YANLIŞ: kimya 28.388
-                gerçek ilk-11'e karşı ölçüldü ve arketip-çifti önseli o ölçüm
-                sonucu skordan çıkarıldı. Neyin iddia EDİLMEDİĞİ About'ta. */}
-            <div className="mt-2 text-[11px]" style={{ color: "var(--text-faint)" }}>
-              Scored against the spread of 28,388 starting elevens clubs actually
-              fielded. What that number does <i>not</i> claim is spelled out in{" "}
-              <Link to="/football/about" style={{ color: "#3FB08C" }}>About</Link>.
-            </div>
+        {/* Eski uyari ("henüz kalibre değil") artık YANLIŞ: kimya 28.388 gerçek
+            ilk-11'e karşı ölçüldü. Neyin iddia EDİLMEDİĞİ About'ta. */}
+        <div className="text-[11px] shrink-0 leading-snug" style={{ color: "var(--text-faint)" }}>
+          The goalkeeper sits outside this — his archetype doesn't interact with the
+          other ten. Scored against the spread of 28,388 starting elevens clubs actually
+          fielded; what that does <i>not</i> claim is in{" "}
+          <Link to="/football/about" style={{ color: "#3FB08C" }}>About</Link>.
         </div>
 
         {/* Lig filtresi + kimya/kalite dengesi. Sezon ve diziliş dock'a taşındı. */}
-        <div className="g-panel p-4 flex flex-wrap gap-2 items-center"
+        <div className="g-panel p-3 shrink-0 flex flex-wrap gap-2 items-center"
           style={{ "--accent": ACCENT, "--accent-line": ACCENT + "3d" }}>
           <span className="aura-blob" style={{ "--slot-color": ACCENT, left: "8%", top: -40, width: 190, height: 100, opacity: 0.13 }} />
           <span className="g-label shrink-0">Leagues</span>
@@ -157,7 +151,7 @@ export default function FootballLineups() {
         </div>
 
         {/* Sekmeler — oyun modundaki segmented switcher ile aynı bileşen */}
-        <div className="g-seg" style={{ "--accent": ACCENT, "--accent-a": ACCENT + "22", "--accent-line": ACCENT + "66" }}>
+        <div className="g-seg shrink-0" style={{ "--accent": ACCENT, "--accent-a": ACCENT + "22", "--accent-line": ACCENT + "66" }}>
           {[["xi", "Best XI"], ["custom", "Custom XI"], ["real", "Real XIs"],
             ["pairs", "Pair Affinity"], ["slots", "Role Slots"]]
             .map(([k, l]) => (
@@ -166,6 +160,7 @@ export default function FootballLineups() {
             ))}
         </div>
 
+        <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-3">
         {tab === "xi" && (
           loading ? (
             <div className="g-panel p-8 text-center text-sm"
@@ -174,9 +169,9 @@ export default function FootballLineups() {
             <div className="g-panel p-8 text-center text-sm"
               style={{ color: "var(--text-muted)" }}>{xi.error}</div>
           ) : xi ? (
-            <>
-              <div className="grid gap-3" style={{ gridTemplateColumns: "1fr 260px" }}>
-                <div className="g-panel p-4 space-y-3">
+            <div className="flex flex-col gap-3 lg:grid lg:h-full lg:min-h-0
+              lg:grid-cols-[minmax(0,1fr)_260px]">
+                <div className="g-panel p-4 space-y-3 shrink-0 lg:min-h-0 lg:overflow-y-auto">
                   {["fwd", "mid", "def"].map(ph => {
                     const list = byPhase(ph);
                     if (!list.length) return null;
@@ -219,7 +214,8 @@ export default function FootballLineups() {
                   })}
                 </div>
 
-                <div className="g-panel p-4 space-y-2.5"
+                <div className="flex flex-col gap-3 shrink-0 lg:min-h-0 lg:overflow-y-auto">
+                <div className="g-panel p-4 space-y-2.5 shrink-0"
                   style={{ "--accent": ACCENT, "--accent-line": ACCENT + "3d" }}>
                   <span className="aura-blob" style={{ "--slot-color": ACCENT, right: "12%", top: -42, width: 190, height: 105, opacity: 0.18 }} />
                   <div className="g-label">Chemistry</div>
@@ -242,10 +238,9 @@ export default function FootballLineups() {
                       ? "matches + prior" : "prior only"}
                   </div>
                 </div>
-              </div>
 
               {fit?.slot_scores && (
-                <div className="g-panel p-4 space-y-2"
+                <div className="g-panel p-4 space-y-2 shrink-0"
                   style={{ "--accent": ACCENT, "--accent-line": ACCENT + "3d" }}>
                   <span className="aura-blob" style={{ "--slot-color": ACCENT, left: "20%", top: -40, width: 200, height: 100, opacity: 0.12 }} />
                   <div className="g-label">How well each job is covered</div>
@@ -257,7 +252,8 @@ export default function FootballLineups() {
                     ))}
                 </div>
               )}
-            </>
+                </div>
+            </div>
           ) : null
         )}
 
@@ -319,6 +315,7 @@ export default function FootballLineups() {
             ))}
           </div>
         )}
+        </div>
       </div>
     </div>
   );

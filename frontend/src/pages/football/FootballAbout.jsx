@@ -74,28 +74,29 @@ function PhaseCard({ p }) {
 
 export default function FootballAbout() {
   return (
-    <div className="h-full overflow-y-auto relative">
+    <div className="h-full flex flex-col overflow-hidden relative">
       <SEO title="About — Football"
         description="How Primary Arch labels footballers: four phases, 24 roles, and what the numbers can and cannot tell you."
         path="/football/about" />
       <div className="g-smoke" />
 
-      <div className="relative max-w-3xl mx-auto p-5 pb-16">
-        <h1 className="font-logo text-3xl font-bold text-white tracking-wide">Football</h1>
-        <p style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 8, lineHeight: 1.7 }}>
+      <div className="relative max-w-3xl w-full mx-auto p-5 flex-1 flex flex-col min-h-0">
+        <h1 className="font-logo text-3xl font-bold text-white tracking-wide shrink-0">Football</h1>
+        <p className="shrink-0" style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 6, lineHeight: 1.6 }}>
           A separate dictionary from the basketball side, with its own language. A player
           is not described by his position but by the <b style={{ color: "#fff" }}>job he
           does</b> in one phase of the game — and a player who does two jobs gets two rows.
         </p>
 
-        <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginTop: 20,
-          paddingTop: 16, borderTop: "1px solid var(--border)" }}>
+        <div className="shrink-0" style={{ display: "flex", gap: 14, flexWrap: "wrap", marginTop: 14,
+          paddingTop: 12, paddingBottom: 4, borderTop: "1px solid var(--border)" }}>
           <Fact n="24" label="roles" />
           <Fact n="5" label="leagues" />
           <Fact n="10" label="seasons" />
           <Fact n="28,388" label="real elevens" />
         </div>
 
+        <div className="flex-1 min-h-0 overflow-y-auto pr-1">
         <SectionLabel>The four phases</SectionLabel>
         <p style={{ fontSize: 12.5, color: "var(--text-muted)", lineHeight: 1.7, marginBottom: 12 }}>
           Every role lives inside one phase, because the metrics that separate a Regista
@@ -189,6 +190,7 @@ export default function FootballAbout() {
           <Link to="/football/glossary" className="aura-pill-btn">Every role, in detail</Link>
           <Link to="/football/players" className="aura-pill-btn">Browse players</Link>
           <Link to="/football/lineups" className="aura-pill-btn">Squad chemistry</Link>
+        </div>
         </div>
       </div>
     </div>

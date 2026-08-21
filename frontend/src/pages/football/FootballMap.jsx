@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { api } from "../../api";
 import { SEO } from "../../hooks/useSEO";
 import { MAP_ANCHORS, placeOnMap } from "../../game/football/mapAnchors";
@@ -64,20 +64,42 @@ export default function FootballMap() {
   }).filter(Boolean), [rows, phase]);
 
   const qq = q.trim().toLowerCase();
-  const W = 760, H = 560, PAD = 54;
+
+  // Kutu olcusu layout-effect ile aliniyor (ResizeObserver DEGIL): observer
+  // frame dongusune bagli, ilk boyamada gec kalabiliyor. Filtre paneli sarinca
+  // haritanin yuksekligi degistigi icin meta/faz degisiminde de yeniden olculuyor.
+  const wrapRef = useRef(null);
+  const [box, setBox] = useState({ w: 760, h: 560 });
+  useLayoutEffect(() => {
+    const measure = () => {
+      const el = wrapRef.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      const w = Math.round(r.width - 16), h = Math.round(r.height - 16);  // p-2
+      if (w > 40 && h > 40)
+        setBox(b => (b.w === w && b.h === h ? b : { w, h }));
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [meta, loading, phase, arch, league]);
+
+  // Kisa kutuda sabit 54px kenar payi cizim alanini bogar — yukseklikle olcekle.
+  const W = box.w, H = box.h;
+  const PAD = Math.max(26, Math.min(54, Math.round(H * 0.1)));
   const sx = v => PAD + v * (W - PAD * 2);
   const sy = v => PAD + v * (H - PAD * 2);
 
   return (
-    <div className="h-full overflow-y-auto relative">
+    <div className="h-full flex flex-col overflow-hidden relative">
       <SEO title="Football — Archetype Map"
         description="Every player placed by role. Nearby players play the same way."
         path="/football/map" noindex />
       <div className="g-smoke" />
 
-      <div className="relative max-w-5xl mx-auto p-5 space-y-3">
+      <div className="relative max-w-5xl w-full mx-auto p-5 flex-1 flex flex-col min-h-0 gap-3">
         {/* ── HEADER DOCK — sol kimlik, orta sezon, sag Explore sekmeleri ── */}
-        <div className="g-dock" style={{ "--accent": ACCENT, "--accent-line": ACCENT + "55" }}>
+        <div className="g-dock shrink-0" style={{ "--accent": ACCENT, "--accent-line": ACCENT + "55" }}>
           <span className="aura-blob" style={{ "--slot-color": ACCENT, left: -30, top: -70, width: 240, height: 150, opacity: 0.16 }} />
 
           <div className="g-dock-left">
@@ -106,13 +128,7 @@ export default function FootballMap() {
           </div>
         </div>
 
-        <p className="text-[12px]" style={{ color: "var(--text-muted)" }}>
-          Each dot is a player, placed by how closely he matches each role in
-          his phase. Keepers, defenders, midfielders and attackers get their own
-          map — they share no common axis, so one map would say nothing.
-        </p>
-
-        <div className="g-panel p-3 flex flex-wrap gap-2 items-center"
+        <div className="g-panel p-3 shrink-0 flex flex-wrap gap-2 items-center"
           style={{ "--accent": ACCENT, "--accent-line": ACCENT + "3d" }}>
           <span className="aura-blob" style={{ "--slot-color": ACCENT, left: "8%", top: -38, width: 180, height: 96, opacity: 0.12 }} />
           <span className="g-label shrink-0">Phase</span>
@@ -153,13 +169,15 @@ export default function FootballMap() {
           )}
         </div>
 
-        <div className="g-panel p-2" style={{ position: "relative" }}>
+        <div ref={wrapRef} className="g-panel p-2 flex-1 min-h-0"
+          style={{ position: "relative", minHeight: 260 }}>
           {loading ? (
-            <div className="text-center py-24 text-sm" style={{ color: "var(--text-muted)" }}>
+            <div className="h-full grid place-items-center text-sm" style={{ color: "var(--text-muted)" }}>
               Loading…
             </div>
           ) : (
-            <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", display: "block" }}>
+            <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet"
+              style={{ width: "100%", height: "100%", display: "block" }}>
               {/* Eksen etiketleri */}
               <text x={PAD} y={H - 12} fontSize="11" fill="var(--text-faint)">
                 ← {cfg?.axes.x[0]}
@@ -244,10 +262,10 @@ export default function FootballMap() {
           )}
         </div>
 
-        <div className="text-[11px]" style={{ color: "var(--text-faint)" }}>
-          Anchor positions are laid out by hand for readability — they are not a
-          measured embedding. A player sits at the weighted average of the roles
-          he matches, so someone between two roles lands between their anchors.
+        <div className="text-[10.5px] shrink-0 leading-snug" style={{ color: "var(--text-faint)" }}>
+          Each phase gets its own map — keepers and strikers share no axis. A player
+          sits at the weighted average of the roles he matches; anchors are laid out
+          by hand for readability, not a measured embedding.
         </div>
       </div>
     </div>

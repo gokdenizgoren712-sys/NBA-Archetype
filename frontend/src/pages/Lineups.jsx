@@ -491,11 +491,11 @@ export default function Lineups() {
       description="Build and analyze 5-man NBA lineups from any era. Evaluate real historical lineups by role coverage, archetype balance, and net rating across 40+ seasons."
       path="/basketball/lineups"
     />
-    <div className="h-full overflow-y-auto">
-      <div className="p-6 max-w-[1400px] mx-auto space-y-6">
+    <div className="h-full flex flex-col overflow-hidden">
+      <div className="p-5 max-w-[1400px] w-full mx-auto flex-1 flex flex-col min-h-0 gap-4">
 
         {/* Season selector */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <span className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>Season</span>
           <div className="aura-select-wrap">
             <select value={season} onChange={e => { setSeason(e.target.value); setTab("theoretical"); }}
@@ -508,6 +508,10 @@ export default function Lineups() {
           )}
         </div>
 
+        <div className="flex-1 min-h-0 overflow-y-auto lg:overflow-hidden flex flex-col gap-4
+          lg:grid lg:grid-cols-[clamp(420px,38%,520px)_minmax(0,1fr)]">
+
+        <div className="shrink-0 lg:min-h-0 lg:overflow-y-auto lg:pr-1 space-y-4">
         {/* Custom lineup — the hero moment of this page, gets the card's punch */}
         <div className="relative aura-glass rounded-2xl p-5 overflow-hidden">
           <span className="aura-glow"
@@ -549,10 +553,11 @@ export default function Lineups() {
 
         {/* Role impact chart — sadece güncel sezon */}
         {isCurrent && <RoleImpactChart />}
+        </div>
 
         {/* Top lineups */}
-        <div>
-          <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+        <div className="shrink-0 lg:min-h-0 flex flex-col">
+          <div className="flex items-center justify-between mb-3 shrink-0 flex-wrap gap-2">
             <div className="flex gap-2">
               <TabBtn active={tab === "theoretical"} onClick={() => setTab("theoretical")}>
                 {lang === "tr" ? "Teorik" : "Theoretical"}
@@ -583,6 +588,7 @@ export default function Lineups() {
             )}
           </div>
 
+          <div className="pr-1 lg:flex-1 lg:min-h-0 lg:overflow-y-auto">
           {tab === "theoretical" && (
             <>
               {isCurrent && mode === "positional" && (
@@ -631,6 +637,8 @@ export default function Lineups() {
               )}
             </>
           )}
+          </div>
+        </div>
         </div>
       </div>
     </div>

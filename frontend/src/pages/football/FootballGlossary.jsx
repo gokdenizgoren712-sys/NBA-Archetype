@@ -102,21 +102,21 @@ export default function FootballGlossary() {
   }, [phase, q]);
 
   return (
-    <div className="h-full overflow-y-auto relative">
+    <div className="h-full flex flex-col overflow-hidden relative">
       <SEO title="Glossary — Football"
         description="Every football archetype, what it means, and the exact metrics behind it."
         path="/football/glossary" />
       <div className="g-smoke" />
 
-      <div className="relative max-w-3xl mx-auto p-5 pb-16">
-        <h1 className="font-logo text-3xl font-bold text-white tracking-wide">Glossary</h1>
-        <p style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 8, lineHeight: 1.7 }}>
+      <div className="relative max-w-3xl w-full mx-auto p-5 flex-1 flex flex-col min-h-0">
+        <h1 className="font-logo text-3xl font-bold text-white tracking-wide shrink-0">Glossary</h1>
+        <p style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 6, lineHeight: 1.6 }}>
           All 24 roles, and the metrics each one actually weighs. Open a card to see the
           weights — they are read straight from the engine, so what you see here is what
           the scoring uses, not a description of it.
         </p>
 
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 18 }}>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 12 }}>
           {PHASES.map(p => (
             <button key={p.key} onClick={() => setPhase(p.key)} className="aura-pill-btn"
               style={phase === p.key ? { borderColor: p.hex, color: p.hex } : undefined}>
@@ -127,16 +127,18 @@ export default function FootballGlossary() {
 
         <input value={q} onChange={e => setQ(e.target.value)}
           placeholder="Search a role or a metric…"
-          className="aura-ghost-input w-full" style={{ marginTop: 10 }} />
+          className="aura-ghost-input w-full" style={{ marginTop: 8 }} />
 
-        <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 10 }}>
+        <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 8 }}>
           {shown.length} role{shown.length === 1 ? "" : "s"}
           {" · "}<span style={{ color: "#E8654C" }}>↓</span> means lower is better
           {" · "}<span style={{ color: "#E8654C" }}>rare</span> marks a metric recorded for
           about 3% of players
         </div>
 
-        <div style={{ display: "grid", gap: 8, marginTop: 12 }}>
+        <div className="flex-1 min-h-0 overflow-y-auto pr-1"
+          style={{ marginTop: 12 }}>
+        <div style={{ display: "grid", gap: 8 }}>
           {shown.map(a => <ArchCard key={`${a.phase}-${a.name}`} a={a} />)}
         </div>
 
@@ -156,6 +158,7 @@ export default function FootballGlossary() {
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 20 }}>
           <Link to="/football/about" className="aura-pill-btn">How this works</Link>
           <Link to="/football/players" className="aura-pill-btn">Browse players</Link>
+        </div>
         </div>
       </div>
     </div>
