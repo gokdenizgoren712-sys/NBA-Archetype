@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import {
   TargetIcon, WheelIcon, CoachIcon, TrophyIcon, CardsIcon, DnaIcon,
@@ -197,7 +198,12 @@ export function ModeInfoButton({ mode, style }) {
 export default function ModeAbout({ mode, onClose }) {
   const m = MODES[mode];
   if (!m) return null;
-  return (
+  // PORTAL ŞART. Modal, dock'un içindeki bir başlıktan açılıyor ve dock'ta
+  // backdrop-filter var; bir ata üzerinde backdrop-filter/transform/filter
+  // olduğunda position:fixed artık VIEWPORT'a değil o ataya göre konumlanıyor.
+  // Sonuç: modal dock'un içine hapsolup kırpılıyor ve sayfa öğeleri metnin
+  // üstüne biniyordu. PlayerSearch aynı sorunu aynı şekilde çözmüştü.
+  return createPortal(
     <div className="g-modal-backdrop" onClick={onClose}>
       <div className="g-modal" onClick={(e) => e.stopPropagation()}
         style={{ "--accent": ACC, "--accent-line": `${ACC}55`, maxWidth: 560 }}>
@@ -256,6 +262,7 @@ export default function ModeAbout({ mode, onClose }) {
           <Link to="/football/glossary" style={{ color: ACC }}>glossary</Link>.
         </p>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
