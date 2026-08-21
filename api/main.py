@@ -3906,6 +3906,19 @@ def football_game_players(
     if df.empty:
         return {"players": [], "team": team, "season": season}
 
+    # Bir sezonda iki mevkide yeterli dakika alan oyuncu skor tablosunda İKİ
+    # SATIR: (Hector, FB) ve (Hector, CM). Skorlama için doğru — adam iki işi
+    # farklı yapıyor — ama OYUN için bir satır bir oyuncu demek. Tekilleştirmeden
+    # çarkta aynı kişi iki kez çıkıyor (2023-24'te ~111 oyuncu, beş ligde de),
+    # biri seçilince öbürü ölü bir satır olarak listede kalıyordu.
+    # En çok dakika aldığı mevki = asıl mevkisi, o satır kalır.
+    # PHASE burada mevki grubu (gk/def/mid/fwd), transfer dönemi değil — yani
+    # yineleme TAM OLARAK iki farklı faz demek. PHASE'i tekilleştirme anahtarına
+    # koymak yinelemeyi olduğu gibi bırakırdı; anahtar yalnız PLAYER_ID.
+    if "MINUTES_TOTAL" in df.columns:
+        df = df.sort_values("MINUTES_TOTAL", ascending=False)
+    df = df.drop_duplicates(subset=["PLAYER_ID"], keep="first")
+
     df = df.sort_values("overall_score", ascending=False)
     keep = ["PLAYER_ID", "PLAYER_NAME", "TEAM", "LEAGUE", "SEASON", "PHASE",
             "POSITION", "MINUTES_TOTAL", "APPS", "primary_arch", "primary_score",

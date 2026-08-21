@@ -1,35 +1,40 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { SEO } from "../../hooks/useSEO";
 import { api } from "../../api";
 import { useAuth } from "../../contexts/AuthContext";
 import { playTie, tieOdds, buildSide } from "../../game/football/headToHead";
 import { ModeInfoButton } from "../../game/football/ModeAbout";
 import SameScreenDraft from "../../game/football/SameScreenDraft";
+import { UsersIcon, GlobeIcon, LinkIcon, CheckIcon, LoopIcon } from "../../game/GameIcons";
+import "../../game/game.css";
 
 // ── Kafa kafaya ──────────────────────────────────────────────────────────────
-// TASLAK ARAYÜZ (kullanıcı kararı: altyapı tam, ön yüz iskelet).
-//
 // Üç mod, iki farklı yol:
-//   Same Screen — tek cihaz, sunucuya HİÇ gitmiyor. İki kadro da burada,
-//                 eleme headToHead.js ile tarayıcıda çözülüyor.
-//   With a Friend / Online — iki ayrı cihaz. Oda açılıyor, herkes kendi
-//                 XI'ini gönderiyor, eleme SUNUCUDA çözülüyor. Sonucu
-//                 istemcide hesaplamak, oyuncunun kendi skorunu bildirmesi
-//                 demek olurdu.
+//   Same Screen — tek cihaz, sunucuya HİÇ gitmiyor. Draft de eleme de burada.
+//   With a Friend / Online — iki ayrı cihaz. Oda açılıyor, herkes kendi XI'ini
+//                 gönderiyor, eleme SUNUCUDA çözülüyor. Sonucu istemcide
+//                 hesaplamak, oyuncunun kendi skorunu bildirmesi demek olurdu.
 //
 // Rakibin kadrosu, iki taraf da göndermeden görünmüyor — yoksa ikinci oyuncu
 // birincininkine bakarak kurar.
+//
+// EKRAN DÜZENİ basketbolun SameScreenGame/WithAFriendGame'iyle aynı: geniş
+// kolon, g-dock başlık barı, g-panel kutular. Önceden dar (max-w-3xl) bir
+// sütunda düz paragraf + pill satırı vardı; sitenin geri kalanına benzemiyordu.
 
 const ACC = "#3FB08C";
 const RED = "#E8654C";
+const MODE_META = {
+  friend: { title: "With a Friend", sub: "2 devices · room code · two legs", Icon: UsersIcon },
+  online: { title: "Online", sub: "2 devices · open room · two legs", Icon: GlobeIcon },
+};
 
 function Side({ label, side, color }) {
   if (!side) return null;
   return (
     <div style={{ flex: "1 1 160px", minWidth: 150 }}>
-      <div style={{ fontSize: 9.5, textTransform: "uppercase", letterSpacing: ".08em",
-        color: "var(--text-faint)" }}>{label}</div>
+      <div className="g-label">{label}</div>
       <div style={{ fontSize: 15, fontWeight: 700, color }}>{side.name}</div>
       <div style={{ fontSize: 11, color: "var(--text-faint)" }}>
         quality {Number(side.quality).toFixed(3)} · chemistry {Number(side.chemistry).toFixed(3)}
@@ -42,7 +47,7 @@ function TieResult({ tie, odds }) {
   if (!tie) return null;
   const aWon = tie.winner === "a";
   return (
-    <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid var(--border)" }}>
+    <div>
       <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
         <Side label="Home first leg" side={tie.sides?.a} color={aWon ? ACC : "var(--text)"} />
         <Side label="Home second leg" side={tie.sides?.b} color={!aWon ? ACC : "var(--text)"} />
@@ -97,17 +102,15 @@ function TieResult({ tie, odds }) {
   );
 }
 
-/* ── Same Screen: gercek draft, sunucu yok ────────────────────────────────── */
-// Onceden iki kaydiriciyla soyut "kalite/kimya" giriliyordu — oynanacak bir sey
-// yoktu. Artik basketboldaki gibi gercek draft: yilan sirasi, cark, slot
-// yerlesimi (draft.js + SameScreenDraft.jsx), sonunda ayni eleme motoru.
+/* ── Same Screen: gerçek draft, sunucu yok ────────────────────────────────── */
+// Önceden iki kaydırıcıyla soyut "kalite/kimya" giriliyordu — oynanacak bir şey
+// yoktu. Artık basketboldaki gibi gerçek draft: yılan sırası, çark, slot
+// yerleşimi (draft.js + SameScreenDraft.jsx), sonunda aynı eleme motoru.
 function SameScreen({ coeffs }) {
-  const [squads, setSquads] = useState(null);
   const [tie, setTie] = useState(null);
   const [odds, setOdds] = useState(null);
 
   const play = (sq) => {
-    setSquads(sq);
     if (!coeffs) return;
     const a = buildSide(sq[1].name, sq[1].players, null, sq[1].positionPenalty);
     const b = buildSide(sq[2].name, sq[2].players, null, sq[2].positionPenalty);
@@ -119,11 +122,33 @@ function SameScreen({ coeffs }) {
 
   if (!tie) return <SameScreenDraft onDone={play} />;
 
+  const aWon = tie.winner === "a";
   return (
-    <div className="g-panel p-4" style={{ "--accent": ACC, "--accent-line": `${ACC}44` }}>
-      <TieResult tie={tie} odds={odds} />
-      <button onClick={() => { setTie(null); setOdds(null); setSquads(null); }}
-        className="aura-pill-btn" style={{ marginTop: 14 }}>New draft</button>
+    <div className="space-y-3">
+      <div className="g-dock thin">
+        <span className="aura-blob" style={{ "--slot-color": ACC, left: -30, top: -60,
+          width: 220, height: 130, opacity: 0.22 }} />
+        <div className="g-dock-left"><h1 className="g-dock-title">Tie Result</h1></div>
+        <div className="g-dock-center">
+          <span className="font-logo text-[13px] font-bold uppercase tracking-widest"
+            style={{ color: ACC }}>
+            {(aWon ? tie.sides?.a?.name : tie.sides?.b?.name)} go through
+          </span>
+        </div>
+        <div className="g-dock-right">
+          <button onClick={() => { setTie(null); setOdds(null); }}
+            className="aura-rating-btn" style={{ padding: "9px 20px", fontSize: 12 }}>
+            <LoopIcon size={14} /><span className="ml-2">New Draft</span>
+          </button>
+        </div>
+      </div>
+
+      <div className="g-panel p-4 max-w-3xl mx-auto"
+        style={{ "--accent": ACC, "--accent-line": `${ACC}44` }}>
+        <span className="aura-blob" style={{ "--slot-color": ACC, left: "20%", top: -50,
+          width: 260, height: 140, opacity: 0.14 }} />
+        <TieResult tie={tie} odds={odds} />
+      </div>
     </div>
   );
 }
@@ -131,13 +156,16 @@ function SameScreen({ coeffs }) {
 /* ── Oda: With a Friend / Online ───────────────────────────────────────────── */
 function RoomPanel({ mode }) {
   const { isLoggedIn } = useAuth();
+  const navigate = useNavigate();
   const [code, setCode] = useState("");
   const [room, setRoom] = useState(null);
   const [msg, setMsg] = useState("");
+  const [copied, setCopied] = useState(false);
   const poll = useRef(null);
+  const M = MODE_META[mode] || MODE_META.friend;
 
   // Rakip kadrosunu gönderene kadar oda değişmiyor; kısa aralıklı yoklama
-  // websocket kurmadan yeterli (bu bir taslak, canlı draft yok).
+  // websocket kurmadan yeterli (oda içinde canlı draft henüz yok).
   useEffect(() => {
     clearInterval(poll.current);
     if (!room?.room_code || room.status === "resolved") return;
@@ -162,97 +190,168 @@ function RoomPanel({ mode }) {
       .catch((e) => setMsg(String(e.message || e)));
   }, [code]);
 
-  if (!isLoggedIn) {
+  const copy = () => {
+    navigator.clipboard?.writeText(room.room_code).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1600);
+    }).catch(() => {});
+  };
+
+  /* Odaya girilmemiş: dock + açıklama */
+  if (!room) {
     return (
-      <div className="g-panel subtle p-4" style={{ fontSize: 12.5, color: "var(--text-muted)" }}>
-        Log in to open or join a room. Same Screen works without an account.
+      <div className="space-y-3">
+        <div className="g-dock">
+          <span className="aura-blob" style={{ "--slot-color": ACC, left: -30, top: -70,
+            width: 240, height: 150, opacity: 0.16 }} />
+          <div className="g-dock-left">
+            <h1 className="g-dock-title">{M.title}</h1>
+            <p className="g-dock-sub">{M.sub}</p>
+          </div>
+
+          <div className="g-dock-center">
+            {isLoggedIn ? (
+              <button onClick={create} className="aura-rating-btn"
+                style={{ padding: "17px 42px", fontSize: 14, letterSpacing: ".14em" }}>
+                <M.Icon size={16} /><span className="ml-2">Open a Room</span>
+              </button>
+            ) : (
+              <button onClick={() => navigate("/login")} className="aura-rating-btn"
+                style={{ padding: "17px 42px", fontSize: 14, letterSpacing: ".14em" }}>
+                Log In to Play
+              </button>
+            )}
+          </div>
+
+          <div className="g-dock-right">
+            {isLoggedIn && (
+              <div className="flex items-center gap-2">
+                <input className="aura-ghost-input" placeholder="paste a code"
+                  value={code} onChange={(e) => setCode(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && code.trim().length >= 4 && join()}
+                  style={{ width: 132, textTransform: "uppercase", letterSpacing: ".1em" }} />
+                <button onClick={join} disabled={code.trim().length < 4}
+                  className="aura-pill-btn" style={{ opacity: code.trim().length < 4 ? 0.4 : 1 }}>
+                  Join
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="g-panel subtle p-4 max-w-3xl mx-auto">
+          <p className="text-xs leading-relaxed" style={{ color: "var(--text-muted)" }}>
+            {mode === "friend"
+              ? "Open a room and send the six-character code to whoever you want to play. "
+              : "Open a room and wait, or paste a code you were given. "}
+            Each of you builds an eleven and neither sees the other's until both have
+            sent. The tie is played on the server, from player ids — quality and
+            chemistry are computed there, with the same definitions the season panel
+            uses. Working it out in the browser would amount to letting a player report
+            their own score.
+          </p>
+          {!isLoggedIn && (
+            <p className="text-xs mt-2" style={{ color: "var(--text-faint)" }}>
+              A room needs an account so the two devices can find each other.{" "}
+              <Link to="/football/game/same-screen" style={{ color: ACC }}>Same Screen</Link>{" "}
+              works without one.
+            </p>
+          )}
+          {msg && <div className="text-xs mt-2" style={{ color: RED }}>{msg}</div>}
+        </div>
       </div>
     );
   }
 
+  /* Odaya girilmiş */
+  const seats = [["p1", room.p1_name, room.p1_ready], ["p2", room.p2_name, room.p2_ready]];
   return (
-    <div className="g-panel p-4" style={{ "--accent": ACC, "--accent-line": `${ACC}44` }}>
-      {!room && (
-        <>
-          <p style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.6 }}>
-            {mode === "friend"
-              ? "Open a room and send the code to whoever you want to play."
-              : "Open a room and wait, or paste a code you were given."}
-            {" "}Each of you builds an eleven; neither sees the other's until both
-            have sent. The tie is played on the server.
-          </p>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 14 }}>
-            <button onClick={create} className="aura-rating-btn"
-              style={{ borderColor: ACC, color: ACC }}>Open a room</button>
-            <input className="aura-ghost-input" placeholder="or paste a code"
-              value={code} onChange={(e) => setCode(e.target.value)}
-              style={{ width: 150, textTransform: "uppercase" }} />
-            <button onClick={join} disabled={code.trim().length < 4}
-              className="aura-pill-btn">Join</button>
-          </div>
-        </>
-      )}
-
-      {room && (
-        <>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
-            <span style={{ fontSize: 22, fontWeight: 800, letterSpacing: ".12em", color: ACC }}>
-              {room.room_code}
-            </span>
-            <span className="g-status" style={{ "--accent": "#9ca3af",
-              "--accent-a": "rgba(156,163,175,.12)", "--accent-line": "rgba(156,163,175,.35)" }}>
-              {room.status}
-            </span>
-            <button onClick={() => { setRoom(null); setCode(""); }}
-              className="aura-pill-btn" style={{ marginLeft: "auto", fontSize: 11 }}>
-              Leave
+    <div className="space-y-3">
+      <div className="g-dock thin">
+        <span className="aura-blob" style={{ "--slot-color": ACC, left: -30, top: -60,
+          width: 220, height: 130, opacity: 0.2 }} />
+        <div className="g-dock-left flex items-center gap-3">
+          <h1 className="g-dock-title">{M.title}</h1>
+          <span className="g-status" style={{ "--accent": "#9ca3af",
+            "--accent-a": "rgba(156,163,175,.14)", "--accent-line": "rgba(156,163,175,.4)" }}>
+            {room.status}
+          </span>
+        </div>
+        <div className="g-dock-center">
+          <div className="flex items-center gap-2">
+            <span className="font-logo text-3xl font-black tracking-[0.2em]"
+              style={{ color: ACC }}>{room.room_code}</span>
+            <button onClick={copy} title="Copy code"
+              className="w-8 h-8 flex items-center justify-center rounded-xl"
+              style={{ color: "var(--text-muted)", border: "1px solid rgba(255,255,255,.12)" }}>
+              {copied ? <CheckIcon size={14} /> : <LinkIcon size={14} />}
             </button>
           </div>
+        </div>
+        <div className="g-dock-right">
+          <button onClick={() => { setRoom(null); setCode(""); }}
+            className="aura-pill-btn">Leave</button>
+        </div>
+      </div>
 
-          <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginTop: 12 }}>
-            {[["p1", room.p1_name, room.p1_ready], ["p2", room.p2_name, room.p2_ready]]
-              .map(([slot, name, ready]) => (
-              <div key={slot} style={{ flex: "1 1 150px", padding: "9px 11px", borderRadius: 10,
-                background: ready ? `${ACC}0f` : "rgba(255,255,255,.022)",
-                border: `1px solid ${ready ? ACC + "33" : "var(--border)"}` }}>
-                <div style={{ fontSize: 9.5, textTransform: "uppercase",
-                  letterSpacing: ".08em", color: "var(--text-faint)" }}>
-                  {slot === room.you ? "You" : "Opponent"}
-                </div>
-                <div style={{ fontSize: 13.5, fontWeight: 700, color: "#fff" }}>
-                  {name || (slot === "p2" && !room.p2_name ? "waiting…" : slot)}
-                </div>
-                <div style={{ fontSize: 11, color: ready ? ACC : "var(--text-faint)" }}>
-                  {ready ? "squad sent" : "still building"}
-                </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-3xl mx-auto">
+        {seats.map(([slot, name, ready]) => {
+          const you = slot === room.you;
+          return (
+            <div key={slot} className="rounded-2xl border p-3"
+              style={ready
+                ? { borderColor: ACC + "55", background: ACC + "0f" }
+                : { borderColor: "rgba(255,255,255,.08)", background: "rgba(255,255,255,.02)" }}>
+              <div className="g-label">{you ? "You" : "Opponent"}</div>
+              <div className="font-logo text-sm font-bold text-white mt-1">
+                {name || (slot === "p2" && !room.p2_name ? "waiting to join…" : slot)}
               </div>
-            ))}
-          </div>
+              <div className="text-[11.5px] mt-0.5"
+                style={{ color: ready ? ACC : "var(--text-faint)" }}>
+                {ready ? "squad sent" : "still building"}
+              </div>
+            </div>
+          );
+        })}
+      </div>
 
-          {!room.your_squad && (
-            <p style={{ fontSize: 11.5, color: "var(--text-muted)", marginTop: 12,
-              lineHeight: 1.6 }}>
-              Build an eleven in <Link to="/football/game" style={{ color: ACC }}>Spin
-              &amp; Build</Link>, then send it here. (Submission from the game screen is
-              not wired up yet — this panel is the infrastructure, not the finished flow.)
-            </p>
-          )}
-
-          {room.result && <TieResult tie={room.result} odds={room.result.odds} />}
-        </>
+      {!room.your_squad && (
+        <div className="g-panel subtle p-4 max-w-3xl mx-auto">
+          <p className="text-xs leading-relaxed" style={{ color: "var(--text-muted)" }}>
+            Build an eleven in{" "}
+            <Link to="/football/game/single" style={{ color: ACC }}>Spin &amp; Build</Link>,
+            then send it here. Drafting inside the room — turn by turn across two devices,
+            the way Same Screen does it — is the part still to be wired; what works today
+            is submitting a finished eleven.
+          </p>
+        </div>
       )}
 
-      {msg && <div style={{ fontSize: 11.5, color: RED, marginTop: 10 }}>{msg}</div>}
+      {room.result && (
+        <div className="g-panel p-4 max-w-3xl mx-auto"
+          style={{ "--accent": ACC, "--accent-line": `${ACC}44` }}>
+          <TieResult tie={room.result} odds={room.result.odds} />
+        </div>
+      )}
+
+      {msg && (
+        <div className="text-xs max-w-3xl mx-auto" style={{ color: RED }}>{msg}</div>
+      )}
     </div>
   );
 }
 
-// Artık her mod KENDİ rotasında (/football/game/same-screen, /friend, /online),
+// Her mod KENDİ rotasında (/football/game/same-screen, /friend, /online),
 // basketboldaki gibi. Sekme yerine rota olmasının sebebi: mod seçim ekranından
 // gelen kişi zaten modunu seçmiş oluyor, bir de sekmeyle tekrar seçtirmek
 // gereksiz — ve tek bir /versus sayfası mod seçim kartlarından görünmüyordu.
 export default function FootballVersus({ mode: fixedMode }) {
-  const [mode, setMode] = useState(fixedMode || "same");
+  // TÜRETİLMİŞ, state DEĞİL. Üç rota da bu bileşeni render ediyor, dolayısıyla
+  // /same-screen'den /friend'e geçildiğinde React aynı örneği yeniden kullanıyor
+  // ve useState(fixedMode) ilk mount'taki değerde donup kalıyordu — Same Screen'in
+  // sonucu Friend rotasında ekranda kalıyordu.
+  const [pickedMode, setPickedMode] = useState("same");
+  const mode = fixedMode || pickedMode;
   const [coeffs, setCoeffs] = useState(null);
 
   useEffect(() => {
@@ -268,38 +367,27 @@ export default function FootballVersus({ mode: fixedMode }) {
         path="/football/versus" noindex />
       <div className="g-smoke" />
 
-      <div className="relative max-w-3xl mx-auto p-5 pb-16">
-        <h1 className="font-logo text-2xl font-bold text-white tracking-wide">Head to head</h1>
-        <p style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 8, lineHeight: 1.7 }}>
-          Two elevens, two legs, aggregate score. Level after both matches means extra
-          time at the second leg's ground, then penalties. No away-goals rule — UEFA
-          dropped it in 2021. The match engine is the same one the season simulation
-          uses, with the same coefficients fitted on real matches.
-        </p>
+      <div className="relative p-4 sm:p-6 max-w-[1400px] mx-auto space-y-3 pb-8">
+        {/* Sabit moda gelindiyse mod seçtirme satırı YOK — kullanıcı modunu
+            zaten mod seçim ekranında seçti. Yalnız kuralların ⓘ'si duruyor. */}
+        {fixedMode ? (
+          <div className="flex justify-end">
+            <ModeInfoButton mode={fixedMode} />
+          </div>
+        ) : (
+          <div className="flex gap-2 flex-wrap items-center">
+            {[["same", "Same screen"], ["friend", "With a friend"], ["online", "Online"]]
+              .map(([k, label]) => (
+              <span key={k} className="inline-flex items-center gap-1.5">
+                <button onClick={() => setPickedMode(k)} className="aura-pill-btn"
+                  style={mode === k ? { borderColor: ACC, color: ACC } : undefined}>{label}</button>
+                <ModeInfoButton mode={k} />
+              </span>
+            ))}
+          </div>
+        )}
 
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 16 }}>
-          {(fixedMode
-            ? [[fixedMode, { same: "Same screen", friend: "With a friend",
-                             online: "Online" }[fixedMode]]]
-            : [["same", "Same screen"], ["friend", "With a friend"], ["online", "Online"]])
-            .map(([k, label]) => (
-            <span key={k} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
-              <button onClick={() => setMode(k)} className="aura-pill-btn"
-                style={mode === k ? { borderColor: ACC, color: ACC } : undefined}>{label}</button>
-              <ModeInfoButton mode={k} />
-            </span>
-          ))}
-        </div>
-
-        <div style={{ marginTop: 14 }}>
-          {mode === "same" ? <SameScreen coeffs={coeffs} /> : <RoomPanel mode={mode} />}
-        </div>
-
-        <p style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 18, lineHeight: 1.7 }}>
-          Same Screen runs a full draft. The room modes create, join and resolve
-          correctly, but drafting inside a room — rather than submitting a finished
-          eleven — is still to be wired.
-        </p>
+        {mode === "same" ? <SameScreen coeffs={coeffs} /> : <RoomPanel mode={mode} />}
       </div>
     </div>
   );
