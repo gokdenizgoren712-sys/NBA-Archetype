@@ -5,6 +5,7 @@ import { api } from "../../api";
 import { useAuth } from "../../contexts/AuthContext";
 import { playTie, tieOdds, buildSide } from "../../game/football/headToHead";
 import { ModeInfoButton } from "../../game/football/ModeAbout";
+import SameScreenDraft from "../../game/football/SameScreenDraft";
 
 // ── Kafa kafaya ──────────────────────────────────────────────────────────────
 // TASLAK ARAYÜZ (kullanıcı kararı: altyapı tam, ön yüz iskelet).
@@ -96,57 +97,33 @@ function TieResult({ tie, odds }) {
   );
 }
 
-/* ── Same Screen: sunucu yok ───────────────────────────────────────────────── */
+/* ── Same Screen: gercek draft, sunucu yok ────────────────────────────────── */
+// Onceden iki kaydiriciyla soyut "kalite/kimya" giriliyordu — oynanacak bir sey
+// yoktu. Artik basketboldaki gibi gercek draft: yilan sirasi, cark, slot
+// yerlesimi (draft.js + SameScreenDraft.jsx), sonunda ayni eleme motoru.
 function SameScreen({ coeffs }) {
-  const [a, setA] = useState({ name: "Player 1", quality: 0.68, chemistry: 0.66 });
-  const [b, setB] = useState({ name: "Player 2", quality: 0.64, chemistry: 0.66 });
+  const [squads, setSquads] = useState(null);
   const [tie, setTie] = useState(null);
   const [odds, setOdds] = useState(null);
 
-  const run = () => {
+  const play = (sq) => {
+    setSquads(sq);
     if (!coeffs) return;
+    const a = buildSide(sq[1].name, sq[1].players, null, sq[1].positionPenalty);
+    const b = buildSide(sq[2].name, sq[2].players, null, sq[2].positionPenalty);
     const t = playTie(coeffs, a, b);
     t.sides = { a, b };
     setTie(t);
     setOdds(tieOdds(coeffs, a, b, 400));
   };
 
-  const field = (side, set, label) => (
-    <div style={{ flex: "1 1 220px", display: "flex", flexDirection: "column", gap: 8 }}>
-      <div style={{ fontSize: 9.5, textTransform: "uppercase", letterSpacing: ".08em",
-        color: "var(--text-faint)" }}>{label}</div>
-      <input className="aura-ghost-input" value={side.name}
-        onChange={(e) => set({ ...side, name: e.target.value })} />
-      {[["quality", "Quality", 0.25, 0.95], ["chemistry", "Chemistry", 0.3, 0.9]].map(
-        ([k, lbl, min, max]) => (
-        <div key={k} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>
-          <span style={{ width: 70, color: "var(--text-muted)" }}>{lbl}</span>
-          <input type="range" min={min} max={max} step={0.005} value={side[k]}
-            onChange={(e) => set({ ...side, [k]: parseFloat(e.target.value) })}
-            style={{ flex: 1, accentColor: ACC }} />
-          <span style={{ width: 40, textAlign: "right", color: ACC,
-            fontVariantNumeric: "tabular-nums" }}>{side[k].toFixed(3)}</span>
-        </div>
-      ))}
-    </div>
-  );
+  if (!tie) return <SameScreenDraft onDone={play} />;
 
   return (
     <div className="g-panel p-4" style={{ "--accent": ACC, "--accent-line": `${ACC}44` }}>
-      <p style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.6 }}>
-        Two squads on one device. Nothing is sent anywhere — the tie is played in your
-        browser. Draft eleven in Spin &amp; Build first if you want real numbers; the
-        sliders below stand in for a squad until then.
-      </p>
-      <div style={{ display: "flex", gap: 18, flexWrap: "wrap", marginTop: 14 }}>
-        {field(a, setA, "Side A — hosts the first leg")}
-        {field(b, setB, "Side B — hosts the second leg")}
-      </div>
-      <button onClick={run} disabled={!coeffs} className="aura-rating-btn"
-        style={{ borderColor: ACC, color: ACC, marginTop: 14 }}>
-        {tie ? "Play again" : "Play the tie"}
-      </button>
       <TieResult tie={tie} odds={odds} />
+      <button onClick={() => { setTie(null); setOdds(null); setSquads(null); }}
+        className="aura-pill-btn" style={{ marginTop: 14 }}>New draft</button>
     </div>
   );
 }
@@ -319,9 +296,9 @@ export default function FootballVersus({ mode: fixedMode }) {
         </div>
 
         <p style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 18, lineHeight: 1.7 }}>
-          Draft note: Same Screen is playable now; the room modes create, join and
-          resolve correctly, but sending a squad straight from Spin &amp; Build still
-          has to be wired to them.
+          Same Screen runs a full draft. The room modes create, join and resolve
+          correctly, but drafting inside a room — rather than submitting a finished
+          eleven — is still to be wired.
         </p>
       </div>
     </div>
