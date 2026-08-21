@@ -270,8 +270,12 @@ function RoomPanel({ mode }) {
   );
 }
 
-export default function FootballVersus() {
-  const [mode, setMode] = useState("same");
+// Artık her mod KENDİ rotasında (/football/game/same-screen, /friend, /online),
+// basketboldaki gibi. Sekme yerine rota olmasının sebebi: mod seçim ekranından
+// gelen kişi zaten modunu seçmiş oluyor, bir de sekmeyle tekrar seçtirmek
+// gereksiz — ve tek bir /versus sayfası mod seçim kartlarından görünmüyordu.
+export default function FootballVersus({ mode: fixedMode }) {
+  const [mode, setMode] = useState(fixedMode || "same");
   const [coeffs, setCoeffs] = useState(null);
 
   useEffect(() => {
@@ -297,7 +301,10 @@ export default function FootballVersus() {
         </p>
 
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 16 }}>
-          {[["same", "Same screen"], ["friend", "With a friend"], ["online", "Online"]]
+          {(fixedMode
+            ? [[fixedMode, { same: "Same screen", friend: "With a friend",
+                             online: "Online" }[fixedMode]]]
+            : [["same", "Same screen"], ["friend", "With a friend"], ["online", "Online"]])
             .map(([k, label]) => (
             <span key={k} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
               <button onClick={() => setMode(k)} className="aura-pill-btn"
@@ -312,9 +319,9 @@ export default function FootballVersus() {
         </div>
 
         <p style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 18, lineHeight: 1.7 }}>
-          Draft note: this page is the plumbing. Same Screen is playable now; the room
-          modes create, join and resolve correctly, but sending a squad straight from
-          Spin &amp; Build still has to be wired to them.
+          Draft note: Same Screen is playable now; the room modes create, join and
+          resolve correctly, but sending a squad straight from Spin &amp; Build still
+          has to be wired to them.
         </p>
       </div>
     </div>
