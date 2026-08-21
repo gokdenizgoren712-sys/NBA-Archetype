@@ -12,6 +12,7 @@ import FootballLeaderboard from "../../game/football/LeaderboardPanel";
 import { RefreshIcon, CalendarIcon, BoltIcon, UsersIcon, SearchIcon } from "../../game/GameIcons";
 import "../../game/game.css";
 import { LEAGUE_LABEL } from "../../game/football/leagues";
+import { ModeInfoButton } from "../../game/football/ModeAbout";
 
 // ── Futbol çark oyunu ────────────────────────────────────────────────────────
 // Basketbol LineupGame'in futbol karşılığı. Ortak mekanikler: iki çark (yıl +
@@ -387,7 +388,10 @@ export default function FootballGame() {
 
           <div className="g-dock-left flex items-center gap-3">
             <div>
-              <h1 className="g-dock-title">Spin &amp; Build</h1>
+              <h1 className="g-dock-title" style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                Spin &amp; Build
+                <ModeInfoButton mode="spin" />
+              </h1>
               <p className="g-dock-sub">Draft eighteen · one club-season at a time</p>
             </div>
             {filledCount > 0 && (
@@ -432,15 +436,6 @@ export default function FootballGame() {
             you want him on the pitch, and build eighteen. The same club can come
             up again in a different season — it's a different squad.
           </p>
-          <div className={`mt-2 text-[11px] px-3 py-2 rounded-lg ${setupScreen ? "" : "hidden"}`}
-            style={{ background: "#E8654C14", border: "1px solid #E8654C40",
-                     color: "var(--text-muted)" }}>
-            <b style={{ color: "#E8654C" }}>Not calibrated yet.</b>{" "}
-            The squad score runs on the chemistry engine, which is not calibrated
-            against ground truth yet — read it as directional. The season
-            simulation underneath it is a separate thing and <i>is</i> fitted on
-            real matches.
-          </div>
         </div>
 
         {/* Kurulum — diziliş dock'a taşındı, çarkın havuzu burada seçiliyor.

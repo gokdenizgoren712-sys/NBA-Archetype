@@ -12,6 +12,7 @@ import { api } from "../../api";
 import { simulateSeason, simulateMany, simulateRealSeason, simulateRealMany,
          simulateRealLeague } from "./seasonSim";
 import { LEAGUE_LABEL } from "./leagues";
+import { ModeInfoButton } from "./ModeAbout";
 
 const ACC = "#3FB08C";
 
@@ -149,10 +150,13 @@ export default function SeasonPanel({ starters, chemistry, positionPenalty = 0,
         {[["quick", "Quick Sim", "A full league season against the real clubs, on a generated fixture list."],
           ["rewrite", "Rewrite History", "Take a real club's actual fixtures and see if your eleven does better than they did."]]
           .map(([k, label, tip]) => (
-          <button key={k} title={tip}
-            onClick={() => { setMode(k); setRun(null); setDist(null); setRh(null); setRhDist(null); setErr(null); }}
-            className="aura-pill-btn"
-            style={mode === k ? { borderColor: ACC, color: ACC } : undefined}>{label}</button>
+          <span key={k} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+            <button title={tip}
+              onClick={() => { setMode(k); setRun(null); setDist(null); setRh(null); setRhDist(null); setErr(null); }}
+              className="aura-pill-btn"
+              style={mode === k ? { borderColor: ACC, color: ACC } : undefined}>{label}</button>
+            <ModeInfoButton mode={k} />
+          </span>
         ))}
       </div>
 

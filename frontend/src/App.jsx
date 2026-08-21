@@ -76,6 +76,7 @@ const FOOTBALL_NAV = [
   { to: "/football/game",    Icon: GameIcon,     label: "Game",      color: "#3FB08C" },
   { to: "/football/players", Icon: NBAIcon,      label: "Players",  color: "#3FB08C" },
   { to: "/football/lineups", Icon: LineupsIcon,  label: "Chemistry", color: "#3FB08C" },
+  { to: "/football/versus",  Icon: UsersIcon,    label: "Versus",   color: "#3FB08C" },
   { to: "/football/map",     Icon: ExploreIcon,  label: "Explore",   color: "#3FB08C",
     extraActive: ["/football/compare"] },
   { to: "/blog",             Icon: BlogIcon,     label: "Blog" },

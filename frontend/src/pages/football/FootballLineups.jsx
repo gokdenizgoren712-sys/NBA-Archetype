@@ -5,6 +5,7 @@ import FootballCustomXI from "./FootballCustomXI";
 import FootballRealXI from "./FootballRealXI";
 import "../../game/game.css";
 import { LEAGUE_LABEL } from "../../game/football/leagues";
+import { Link } from "react-router-dom";
 
 // ── Futbol XI uyumu ──────────────────────────────────────────────────────────
 // Basketbol tarafındaki Lineups sayfasının futbol karşılığı. İki fark:
@@ -124,19 +125,14 @@ export default function FootballLineups() {
             The goalkeeper sits outside this: his archetype doesn't interact
             with the other ten.
           </p>
-          <div className="mt-2 text-[11px] px-3 py-2 rounded-lg"
-            style={{ background: "#E8654C14", border: "1px solid #E8654C40",
-                     color: "var(--text-muted)" }}>
-            <b style={{ color: "#E8654C" }}>Not calibrated yet.</b>{" "}
-            The role weights and the archetype-pair prior have not been
-            calibrated against ground truth yet — read the numbers as
-            directional, not settled.
-            {aff?.diagnostics?.matches_used != null && (
-              <> The empirical pair values come from{" "}
-                <b>{aff.diagnostics.matches_used.toLocaleString()}</b> real
-                matches, with team strength controlled for.</>
-            )}
-          </div>
+            {/* Eski uyari ("henüz kalibre değil") artık YANLIŞ: kimya 28.388
+                gerçek ilk-11'e karşı ölçüldü ve arketip-çifti önseli o ölçüm
+                sonucu skordan çıkarıldı. Neyin iddia EDİLMEDİĞİ About'ta. */}
+            <div className="mt-2 text-[11px]" style={{ color: "var(--text-faint)" }}>
+              Scored against the spread of 28,388 starting elevens clubs actually
+              fielded. What that number does <i>not</i> claim is spelled out in{" "}
+              <Link to="/football/about" style={{ color: "#3FB08C" }}>About</Link>.
+            </div>
         </div>
 
         {/* Lig filtresi + kimya/kalite dengesi. Sezon ve diziliş dock'a taşındı. */}

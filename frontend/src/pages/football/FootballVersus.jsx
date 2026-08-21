@@ -4,6 +4,7 @@ import { SEO } from "../../hooks/useSEO";
 import { api } from "../../api";
 import { useAuth } from "../../contexts/AuthContext";
 import { playTie, tieOdds, buildSide } from "../../game/football/headToHead";
+import { ModeInfoButton } from "../../game/football/ModeAbout";
 
 // ── Kafa kafaya ──────────────────────────────────────────────────────────────
 // TASLAK ARAYÜZ (kullanıcı kararı: altyapı tam, ön yüz iskelet).
@@ -298,8 +299,11 @@ export default function FootballVersus() {
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 16 }}>
           {[["same", "Same screen"], ["friend", "With a friend"], ["online", "Online"]]
             .map(([k, label]) => (
-            <button key={k} onClick={() => setMode(k)} className="aura-pill-btn"
-              style={mode === k ? { borderColor: ACC, color: ACC } : undefined}>{label}</button>
+            <span key={k} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+              <button onClick={() => setMode(k)} className="aura-pill-btn"
+                style={mode === k ? { borderColor: ACC, color: ACC } : undefined}>{label}</button>
+              <ModeInfoButton mode={k} />
+            </span>
           ))}
         </div>
 
