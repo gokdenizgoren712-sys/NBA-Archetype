@@ -4316,10 +4316,33 @@ class H2HCreateBody(BaseModel):
 
 
 class H2HSquadBody(BaseModel):
-    # [{player_id, season}] — çark karışık sezonlu XI kurabildiği için
+    # [{player_id, season, slot}] — çark karışık sezonlu XI kurabildiği için
     # her oyuncu kendi sezonunu taşıyor (bkz. lineup-fit entries).
+    #
+    # shape ve her entry'nin slot'u ZORUNLU. Öncesinde sunucu yalnız "11 tane
+    # mi?" diye bakıyordu — yani elle hazırlanmış bir istek kalecisiz, 11
+    # forvetli bir kadro gönderip skorlatabiliyordu, aynı kişiyi iki kez
+    # sayabiliyordu. Doğrulamayı isteğe bağlı yapmak açığı kapatmaz: atlayan
+    # istek yine doğrulanmadan geçerdi. İstemci draft ettiği XI'i zaten
+    # slotlarıyla biliyor, göndermemesi için bir sebep yok.
     entries: list[dict]
+    shape: str
     name: str | None = None
+
+
+@lru_cache(maxsize=1)
+def _draft_rules():
+    """src/football/draft_rules.py — diziliş, slot uygunluğu, ceza, draft sırası.
+
+    frontend/src/game/football/{formations,positions,draft}.js'in sunucu
+    kopyası; parite tests/test_draft_parity.py'de iki tarafı da koşturarak
+    doğrulanıyor. lru_cache: her istekte dosyayı yeniden exec etmeyelim."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "fb_draft_rules", ROOT / "src" / "football" / "draft_rules.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
 
 
 def _h2h_code(n: int = 6) -> str:
@@ -4372,8 +4395,14 @@ def _score_squad(entries: list[dict], fallback_season: str) -> dict | None:
         return None
 
     q = pd.to_numeric(sel["overall_score"], errors="coerce").mean()
+    q = float(q) if q == q else 0.5
     return {
-        "quality": float(max(0.25, min(0.95, q if q == q else 0.5))),
+        # quality_raw = kırpılmamış ortalama. Pozisyon cezası çağıranda
+        # uygulanıyor (slot bilgisi orada) ve buildSide gibi TEK kırpma
+        # istiyoruz: clamp(ortalama − ceza). Burada kırpıp orada çıkarmak
+        # ortalama 0.95'i aştığında farklı sonuç verirdi.
+        "quality_raw": q,
+        "quality": float(max(0.25, min(0.95, q))),
         "chemistry": float(fit.get("score") or 0.65),
         "found": int(sel["PLAYER_ID"].nunique()),
         "players": json.loads(sel[["PLAYER_ID", "PLAYER_NAME", "PHASE",
@@ -4481,9 +4510,29 @@ def submit_h2h_squad(code: str, body: H2HSquadBody, user=Depends(get_current_use
     side = _score_squad(body.entries, row["season"])
     if not side:
         raise HTTPException(400, "Could not score that squad")
+
+    # Kadro kurallara uyuyor mu? Skorlama oyuncuları zaten yükledi (side
+    # ["players"]), pozisyonları oradan okuyup diziliş/slot/kaleci kuralını
+    # doğruluyoruz. Skorlamadan SONRA olması önemli değil — kayıt aşağıda,
+    # burada patlarsa hiçbir şey yazılmıyor.
+    rules = _draft_rules()
+    by_id = {int(p["PLAYER_ID"]): p for p in side["players"] if p.get("PLAYER_ID") is not None}
+    try:
+        check = rules.validate_xi(body.entries, body.shape, by_id)
+    except rules.InvalidXI as e:
+        raise HTTPException(400, str(e))
+
+    # Pozisyon cezası artık burada da uygulanıyor — headToHead.buildSide ile
+    # aynı formül: clamp(ortalama − ceza). Öncesinde sunucu slotları hiç
+    # bilmediği için cezayı uygulayamıyordu, yani kalecisini sağ bekte oynatan
+    # bir XI Same Screen'de cezalanıp odada cezasız kalıyordu.
+    quality = float(max(0.25, min(0.95, side["quality_raw"] - check["position_penalty"])))
+
     slot = "p1" if uid == row["p1_user_id"] else "p2"
     payload = json.dumps({"entries": body.entries,
-                          "side": {"quality": side["quality"],
+                          "shape": check["shape"],
+                          "position_penalty": check["position_penalty"],
+                          "side": {"quality": quality,
                                    "chemistry": side["chemistry"]},
                           "players": side["players"]}, ensure_ascii=False)
     with get_conn() as conn:
