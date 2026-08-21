@@ -112,3 +112,7 @@ data/*
 # yani disarida birakmak kirmiyor. Kalici cozum ayrica kararlastirilacak.
 frontend/public/football-photos/
 frontend/public/football-cutouts/
+
+# Gecici kabuk betikleri (uzun suren isleri arka planda kosturmak icin)
+_*.sh
+_*.mjs
