@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route, NavLink, Navigate, useNavigate, useLocati
 import { useState, useEffect, lazy, Suspense } from "react";
 import { Logo, GameIcon, NBAIcon, GLeagueIcon, NCAAIcon, EuroLeagueIcon,
          LineupsIcon, ExploreIcon, BlogIcon, FootballIcon,
-         GlossaryIcon, AdminIcon, RefreshIcon } from "./components/BrandIcons";
+         GlossaryIcon, AdminIcon, RefreshIcon, CompareIcon } from "./components/BrandIcons";
 import Footer from "./components/Footer";
 
 // Route sayfaları LAZY — her biri kendi chunk'ına bölünür. Ağır lib'ler böylece
@@ -76,7 +76,7 @@ const FOOTBALL_NAV = [
   { to: "/football/game",    Icon: GameIcon,     label: "Game",      color: "#3FB08C" },
   { to: "/football/players", Icon: NBAIcon,      label: "Players",  color: "#3FB08C" },
   { to: "/football/lineups", Icon: LineupsIcon,  label: "Chemistry", color: "#3FB08C" },
-  { to: "/football/versus",  Icon: UsersIcon,    label: "Versus",   color: "#3FB08C" },
+  { to: "/football/versus",  Icon: CompareIcon,  label: "Versus",   color: "#3FB08C" },
   { to: "/football/map",     Icon: ExploreIcon,  label: "Explore",   color: "#3FB08C",
     extraActive: ["/football/compare"] },
   { to: "/blog",             Icon: BlogIcon,     label: "Blog" },
