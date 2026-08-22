@@ -442,3 +442,20 @@ def init_db():
                          "sport TEXT NOT NULL DEFAULT 'basketball'")
         except Exception:
             pass
+
+        # football_h2h_rooms.draft_state_json — oda içi canlı draft durumu
+        # (sıra, havuz, iki kadro). Basketbolun game_rooms.state_json'ıyla aynı
+        # gerekçe: durum yalnız bellekte dururken deploy/çökme aktif draftı
+        # siliyordu. Her seçimde buraya yazılıyor, bağlantı yeniden kurulunca
+        # buradan geri yükleniyor (bkz. api/football_ws.py).
+        try:
+            conn.execute("ALTER TABLE football_h2h_rooms ADD COLUMN draft_state_json TEXT")
+        except Exception:
+            pass
+        # Oda hangi akışta: 'submit' = bitmiş XI gönder (eski yol),
+        # 'draft' = odada sırayla draft. Eski satırlar submit.
+        try:
+            conn.execute("ALTER TABLE football_h2h_rooms ADD COLUMN "
+                         "flow TEXT NOT NULL DEFAULT 'submit'")
+        except Exception:
+            pass

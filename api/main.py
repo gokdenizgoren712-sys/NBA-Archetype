@@ -94,6 +94,12 @@ app.add_middleware(
 from .game_ws import router as _game_ws_router
 app.include_router(_game_ws_router)
 
+# Futbol oda ici canli draft (WebSocket) — api/football_ws.py
+# Basketbolun game_ws'iyle ayni gerekce: iki cihazda sira/havuz/gecerlilik
+# kararlari sunucunun olmali. Kurallar src/football/draft_rules.py'de.
+from .football_ws import router as _football_ws_router
+app.include_router(_football_ws_router)
+
 # RankIt sosyal mac gunlugu - scouting/oyun API'lerinden bagimsiz router.
 from .rankit import router as _rankit_router
 app.include_router(_rankit_router)
@@ -966,6 +972,13 @@ def clear_cache(_user=Depends(_require_admin_early)):
     _load_lineups_with_archs.cache_clear()
     _load_position_lookup.cache_clear()
     _load_role_stats.cache_clear()
+    # Oda draftının çark havuzu da önbellekli — yeni sezon çekildikten sonra
+    # temizlenmezse odalar eski kulüp listesiyle dönmeye devam eder.
+    try:
+        from .football_ws import _pairs_cached
+        _pairs_cached.cache_clear()
+    except Exception:
+        pass
     global _SCORES_MTIME, _HIST_MTIME
     _SCORES_MTIME = 0.0
     _HIST_MTIME   = 0.0
@@ -2826,6 +2839,12 @@ try:
     print(f"[startup] stale room sweep: {_n_swept} room(s) marked abandoned", flush=True)
 except Exception as _e:
     print(f"[startup] stale room sweep failed: {_e}", flush=True)
+try:
+    from .football_ws import sweep_stale_football_rooms as _sweep_football_rooms
+    _n_fb = _sweep_football_rooms()
+    print(f"[startup] football room sweep: {_n_fb} room(s) marked abandoned", flush=True)
+except Exception as _e:
+    print(f"[startup] football room sweep failed: {_e}", flush=True)
 
 # Teşhis: app.db gerçekte nereye yazıyor + kaç satır var? Volume kalıcılığını
 # loglardan doğrulamak için. Restart sonrası sayılar 0'a düşüyorsa persistence bozuk.
