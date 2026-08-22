@@ -44,11 +44,14 @@ SRC_MANIFEST = DATA / "football_photo_manifest.json"
 OUT_DIR = ROOT / "frontend" / "public" / "football-cutouts"
 OUT_MANIFEST = DATA / "football_cutout_manifest.json"
 
-UA = {"User-Agent": "PrimaryArch/1.0 (football archetype research)"}
+# Wikimedia UA politikasi iletisim adresi istiyor; genel bir UA daha sert
+# kisiliyor. Site adresi yeterli, kisisel veri gerekmiyor.
+UA = {"User-Agent": "PrimaryArch/1.0 (https://primaryarch.net; football archetype research)"}
 WIKI = "https://en.wikipedia.org/w/api.php"
 THUMB = 960          # Wikimedia mevcut en yakın boyutu döner
-PAUSE = 0.7          # API — 0.4'te toplu kosuda hiz sinirina takiliyor
-IMG_PAUSE = 1.0      # upload.wikimedia.org daha sıkı
+PAUSE = 1.2          # API — 0.7'de 25 kayitin 8'i 429 aldi (olculdu)
+IMG_PAUSE = 2.0      # upload.wikimedia.org daha sıkı: 1.0'da 13/17 429
+COOLDOWN = 60        # 429 uzerine bu kadar bekle (Retry-After yoksa)
 ALPHA_MIN = 12       # bu değerin altındaki alfa "arka plan" sayılır
 MIN_BLOB = 0.02      # en büyük bölgenin %2'sinden küçük parçalar atılır
 # Kart fotoğrafı 236px yükseklikte gösteriliyor; 2x ekranda 472px gerekiyor.
@@ -83,6 +86,36 @@ def largest_component(alpha: np.ndarray) -> np.ndarray:
     return out
 
 
+def _get(url, **kw):
+    """429'u CİDDİYE ALAN istek.
+
+    Önceki hâli 429'u sıradan bir hata sayıp 1.5-4.5s sonra tekrar deniyordu —
+    hız sınırı penceresi bundan çok daha uzun, o yüzden üç deneme de aynı duvara
+    çarpıyordu ve kayıt "kalıcı hata" diye işaretleniyordu. 2763 fotoğrafın
+    1184'ü böyle düştü; hepsinin kaynağı ve lisansı geçerliydi, tek sorun
+    tempoydu (ölçüldü: 0.7s/1.0s temposunda 25 kayıttan 21'i 429).
+
+    Sunucu Retry-After veriyorsa ona uyuyoruz — tahmin etmekten iyisi."""
+    for attempt in range(4):
+        try:
+            r = requests.get(url, headers=UA, **kw)
+        except Exception:
+            time.sleep(3.0 * (attempt + 1))
+            continue
+        if r.status_code != 429:
+            return r
+        wait = COOLDOWN * (attempt + 1)
+        ra = r.headers.get("Retry-After")
+        if ra:
+            try:
+                wait = max(wait, int(float(ra)))
+            except ValueError:
+                pass
+        print(f"    [429] {wait}s bekleniyor…", flush=True)
+        time.sleep(wait)
+    return None
+
+
 def fetch_big(title: str) -> Image.Image | None:
     """Sayfanın infobox fotoğrafını büyük boyutta indirir.
 
@@ -96,16 +129,16 @@ def fetch_big(title: str) -> Image.Image | None:
     # ("Expecting value: line 1 column 1").
     j = None
     for attempt in range(3):
-        try:
-            r = requests.get(WIKI, params={
-                "action": "query", "titles": title, "redirects": 1,
-                "prop": "pageimages", "piprop": "thumbnail",
-                "pithumbsize": THUMB, "format": "json"}, headers=UA, timeout=25)
-            if r.status_code == 200 and r.headers.get("content-type", "").startswith("application/json"):
+        r = _get(WIKI, params={
+            "action": "query", "titles": title, "redirects": 1,
+            "prop": "pageimages", "piprop": "thumbnail",
+            "pithumbsize": THUMB, "format": "json"}, timeout=25)
+        if r is not None and r.status_code == 200 and                 r.headers.get("content-type", "").startswith("application/json"):
+            try:
                 j = r.json()
                 break
-        except Exception:
-            pass
+            except Exception:
+                pass
         time.sleep(2.0 * (attempt + 1))
     time.sleep(PAUSE)
     if j is None:
@@ -115,13 +148,13 @@ def fetch_big(title: str) -> Image.Image | None:
         return None
     url = pages[0]["thumbnail"]["source"].split("?")[0]
     for attempt in range(3):
-        try:
-            r = requests.get(url, headers=UA, timeout=30)
-            time.sleep(IMG_PAUSE)
-            if r.status_code == 200 and r.headers.get("content-type", "").startswith("image/"):
+        r = _get(url, timeout=30)
+        time.sleep(IMG_PAUSE)
+        if r is not None and r.status_code == 200 and                 r.headers.get("content-type", "").startswith("image/"):
+            try:
                 return Image.open(io.BytesIO(r.content)).convert("RGB")
-        except Exception:
-            pass
+            except Exception:
+                pass
         time.sleep(1.5 * (attempt + 1))
     return None
 
