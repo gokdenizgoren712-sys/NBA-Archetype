@@ -6,6 +6,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { playTie, tieOdds, buildSide } from "../../game/football/headToHead";
 import { ModeInfoButton } from "../../game/football/ModeAbout";
 import SameScreenDraft from "../../game/football/SameScreenDraft";
+import RoomDraft from "../../game/football/RoomDraft";
 import { UsersIcon, GlobeIcon, LinkIcon, CheckIcon, LoopIcon } from "../../game/GameIcons";
 import "../../game/game.css";
 
@@ -264,7 +265,22 @@ function RoomPanel({ mode }) {
   }
 
   /* Odaya girilmiş */
-  const seats = [["p1", room.p1_name, room.p1_ready], ["p2", room.p2_name, room.p2_ready]];
+  // İki kişi de geldiyse ekranı DRAFT devralıyor: kendi dock'u oda kodunu,
+  // bağlantı durumunu ve çıkışı zaten taşıyor. Buranın ikinci bir dock +
+  // ikinci bir oyuncu kartı çifti çizmesi aynı bilgiyi iki kez göstermekti.
+  const bothIn = Boolean(room.p2_name || room.p2_ready);
+  if (bothIn) {
+    return (
+      <div className="space-y-3">
+        <RoomDraft roomCode={room.room_code}
+          onLeave={() => { setRoom(null); setCode(""); }}
+          onResult={() => api.footballH2HRoom(room.room_code).then(setRoom).catch(() => {})} />
+        {msg && <div className="text-xs text-center" style={{ color: RED }}>{msg}</div>}
+      </div>
+    );
+  }
+
+  // Tek başına bekliyor: kod büyük dursun, kopyalanabilsin.
   return (
     <div className="space-y-3">
       <div className="g-dock thin">
@@ -294,49 +310,12 @@ function RoomPanel({ mode }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-3xl mx-auto">
-        {seats.map(([slot, name, ready]) => {
-          const you = slot === room.you;
-          return (
-            <div key={slot} className="rounded-2xl border p-3"
-              style={ready
-                ? { borderColor: ACC + "55", background: ACC + "0f" }
-                : { borderColor: "rgba(255,255,255,.08)", background: "rgba(255,255,255,.02)" }}>
-              <div className="g-label">{you ? "You" : "Opponent"}</div>
-              <div className="font-logo text-sm font-bold text-white mt-1">
-                {name || (slot === "p2" && !room.p2_name ? "waiting to join…" : slot)}
-              </div>
-              <div className="text-[11.5px] mt-0.5"
-                style={{ color: ready ? ACC : "var(--text-faint)" }}>
-                {ready ? "squad sent" : "still building"}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {!room.your_squad && (
-        <div className="g-panel subtle p-4 max-w-3xl mx-auto">
-          <p className="text-xs leading-relaxed" style={{ color: "var(--text-muted)" }}>
-            Build an eleven in{" "}
-            <Link to="/football/game/single" style={{ color: ACC }}>Spin &amp; Build</Link>,
-            then send it here. Drafting inside the room — turn by turn across two devices,
-            the way Same Screen does it — is the part still to be wired; what works today
-            is submitting a finished eleven.
-          </p>
-        </div>
-      )}
-
-      {room.result && (
-        <div className="g-panel p-4 max-w-3xl mx-auto"
-          style={{ "--accent": ACC, "--accent-line": `${ACC}44` }}>
-          <TieResult tie={room.result} odds={room.result.odds} />
-        </div>
-      )}
-
-      {msg && (
-        <div className="text-xs max-w-3xl mx-auto" style={{ color: RED }}>{msg}</div>
-      )}
+      <p className="text-center text-xs animate-pulse" style={{ color: "var(--text-faint)" }}>
+        {mode === "friend"
+          ? "Send that code to whoever you want to play. The draft starts when they join."
+          : "Waiting for an opponent. The draft starts when someone joins."}
+      </p>
+      {msg && <div className="text-xs text-center" style={{ color: RED }}>{msg}</div>}
     </div>
   );
 }
