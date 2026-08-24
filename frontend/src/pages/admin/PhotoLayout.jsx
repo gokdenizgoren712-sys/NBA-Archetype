@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { SEO } from "../../hooks/useSEO";
-import { api } from "../../api";
+import PlayerSearch from "../../game/football/PlayerSearch";
 
 // ── Fotoğraf yerleşimi ───────────────────────────────────────────────────────
 // Arka planı kaldırılmış fotoğraflar farklı oranlarda kesiliyor: kimi omuzdan,
@@ -14,6 +14,9 @@ import { api } from "../../api";
 
 const ACC = "#3FB08C";
 const DEF = { scale: 1.0, x: 50, y: 100 };
+// Sabit referans: PlayerSearch'ün arama efekti params'a bağlı, satır içi nesne
+// her render'da yeni kimlik alıp aramayı sonsuz tetiklerdi.
+const PHOTOS_ONLY = { photos_only: 1 };
 const PHASE_LABEL = { gk: "Goalkeeper", def: "Defence", mid: "Midfield", fwd: "Attack" };
 
 function authFetch(path, token, opts = {}) {
@@ -65,32 +68,22 @@ function Slider({ label, value, min, max, step, onChange, suffix }) {
 
 export default function PhotoLayout() {
   const { token } = useAuth();
-  const [q, setQ] = useState("");
-  const [hits, setHits] = useState([]);
   const [sel, setSel] = useState(null);
   const [lay, setLay] = useState(DEF);
   const [meta, setMeta] = useState(null);       // credits + cdn + layouts
   const [msg, setMsg] = useState("");
-  const deb = useRef();
 
   useEffect(() => {
     fetch("/api/football/photo-credits", { cache: "no-store" })
       .then(r => r.json()).then(setMeta).catch(() => setMeta(null));
   }, []);
 
-  useEffect(() => {
-    if (!q.trim()) { setHits([]); return; }
-    clearTimeout(deb.current);
-    deb.current = setTimeout(() => {
-      api.footballSearch({ q, limit: 10 })
-        .then(r => setHits(r.players || []))
-        .catch(() => setHits([]));
-    }, 250);
-    return () => clearTimeout(deb.current);
-  }, [q]);
-
   const pick = (p) => {
-    setSel(p); setQ(""); setHits([]); setMsg("");
+    setMsg("");
+    setSel(p);
+    // Seçili ismin üzerine yazmaya başlayınca PlayerSearch null yolluyor —
+    // o an oyuncu yok, yerleşim de yok.
+    if (!p) { setLay(DEF); return; }
     const saved = meta?.layouts?.[String(p.PLAYER_ID)];
     setLay(saved ? { scale: saved.scale, x: saved.x, y: saved.y } : DEF);
   };
@@ -161,29 +154,19 @@ export default function PhotoLayout() {
         </p>
 
         <div className="g-panel p-4" style={{ "--accent": ACC, "--accent-line": `${ACC}44` }}>
-          <div style={{ position: "relative" }}>
-            <input value={q} onChange={e => setQ(e.target.value)}
-              placeholder="Search a player…" className="aura-ghost-input w-full" />
-            {hits.length > 0 && (
-              <div className="absolute z-30 w-full mt-1 rounded-lg overflow-hidden"
-                style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
-                {hits.map(p => (
-                  <button key={`${p.PLAYER_ID}-${p.LEAGUE}-${p.PHASE}`} onClick={() => pick(p)}
-                    className="w-full text-left px-3 py-1.5 flex items-center gap-2"
-                    style={{ borderBottom: "1px solid var(--border)" }}>
-                    <span className="text-[9.5px] uppercase"
-                      style={{ minWidth: 22, color: "var(--text-faint)" }}>{p.POSITION}</span>
-                    <span className="text-[12px] text-white truncate" style={{ flex: 1 }}>
-                      {p.PLAYER_NAME}
-                    </span>
-                    <span className="text-[10.5px]" style={{ color: "var(--text-faint)" }}>
-                      {p.TEAM}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          {/* Arama PAYLAŞILAN bileşenden. Burada kendi kopyası vardı ve o
+              kopya, PlayerSearch'ün çözdüğü üç hatayı aynen taşıyordu: liste
+              .g-panel'in içinde absolute duruyordu, panelde overflow:hidden
+              olduğu için kırpılıyordu; panelin her çocuğu z-index:3 aldığından
+              DOM'da sonra gelen "Search for a player to start." yazısı listenin
+              üstüne binip tıklamayı yutuyordu; ve dışarı tıklayınca liste
+              kapanmıyordu. PlayerSearch listeyi portal ile body'ye çiziyor. */}
+          {/* season="all": yerleşim oyuncu kimliğine bağlı ve kartın çıktığı
+              her yerde geçerli, ama fotoğrafı olanların çoğu güncel sezonda
+              oynamıyor — tek sezonluk arama bu sayfayı %29'a hapsediyordu. */}
+          <PlayerSearch value={sel} onPick={pick} limit={10} season="all"
+            params={PHOTOS_ONLY}
+            placeholder="Search a player with a photo…" accent={ACC} />
 
           {!sel && (
             <div style={{ fontSize: 12, color: "var(--text-faint)", marginTop: 14 }}>

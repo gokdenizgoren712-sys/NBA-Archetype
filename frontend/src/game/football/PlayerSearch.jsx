@@ -24,6 +24,10 @@ const PHASE_LABEL = { gk: "Goalkeeper", def: "Defence", mid: "Midfield", fwd: "A
 export default function PlayerSearch({
   label, value, onPick, phase, season, accent = "#3FB08C",
   placeholder, limit = 8,
+  // Çağıranın eklemek istediği sorgu parametreleri (ör. fotoğraf yerleşimi
+  // sayfası photos_only geçiyor). Sabit bir liste tutmak yerine geçirgen:
+  // her yeni süzgeç için bu bileşeni değiştirmek gerekmesin.
+  params,
 }) {
   const [q, setQ] = useState("");
   const [hits, setHits] = useState([]);
@@ -43,12 +47,12 @@ export default function PlayerSearch({
     if (!q.trim()) { setHits([]); return; }
     clearTimeout(deb.current);
     deb.current = setTimeout(() => {
-      api.footballSearch({ q, season, limit, ...(phase ? { phase } : {}) })
+      api.footballSearch({ q, season, limit, ...(phase ? { phase } : {}), ...params })
         .then(r => { setHits(r.players || []); measure(); })
         .catch(() => setHits([]));
     }, 250);
     return () => clearTimeout(deb.current);
-  }, [q, phase, season, limit, measure]);
+  }, [q, phase, season, limit, params, measure]);
 
   // Liste açıkken sayfa kayarsa/boyut değişirse girdiye yapışık kalsın
   useEffect(() => {

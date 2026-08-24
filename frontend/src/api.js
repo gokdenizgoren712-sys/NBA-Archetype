@@ -1,7 +1,14 @@
 const BASE = "/api";
 
 async function get(path, params = {}) {
-  const q = new URLSearchParams(params).toString();
+  // undefined/null parametreleri AT. URLSearchParams bunları "undefined"
+  // STRING'ine çeviriyor: {season: undefined} -> "season=undefined". Sunucu o
+  // adda bir sezon arıyor, bulamıyor ve 200 ile boş liste dönüyor — yani hata
+  // hiçbir yerde görünmüyor, sadece sonuç gelmiyor. Photo layout'taki arama
+  // tam olarak böyle sessizce boş kalıyordu.
+  const clean = Object.fromEntries(
+    Object.entries(params).filter(([, v]) => v !== undefined && v !== null));
+  const q = new URLSearchParams(clean).toString();
   const url = `${BASE}${path}${q ? "?" + q : ""}`;
   // no-store: API yanıtları önbelleğe alınmamalı. Parquet'ler yeniden
   // üretildikçe veri değişiyor; ayrıca geliştirme sırasında henüz eklenmemiş

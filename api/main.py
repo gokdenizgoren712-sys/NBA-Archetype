@@ -4132,16 +4132,49 @@ def football_player_search(
     season: Optional[str] = Query(None),
     phase: Optional[str] = Query(None),
     limit: int = Query(10, ge=1, le=40),
+    photos_only: bool = Query(False, description="yalnızca fotoğrafı olanlar"),
 ):
-    """Custom XI kurarken otomatik tamamlama."""
-    season = season or _football_default_season()
-    try:
-        df = _load_football_scores(season)
-    except FileNotFoundError:
-        return {"players": []}
-    df = df[df["primary_arch"].notna()]
+    """Oyuncu otomatik tamamlama (Custom XI, Compare, fotoğraf yerleşimi).
+
+    season="all" TÜM sezonlarda arar ve oyuncu başına en iyi satırı döndürür.
+    Buna ihtiyaç fotoğraf yerleşimi sayfasından geldi: yerleşim oyuncu
+    kimliğine göre saklanıyor ve kartın çıktığı her yerde geçerli, ama
+    fotoğrafı olan 2763 oyuncunun 1965'i güncel sezonda YOK — tek sezonluk
+    aramayla o sayfa fotoğrafların ancak %29'una ulaşabiliyordu.
+
+    Sezon verilmezse eski davranış (güncel sezon) korunuyor; XI kuran çağıranlar
+    zaten sezonu açıkça geçiyor ve tek sezonda kalmaları gerekiyor."""
+    if (season or "").lower() == "all":
+        frames = []
+        for sname in _football_seasons():
+            try:
+                frames.append(_load_football_scores(sname))
+            except FileNotFoundError:
+                continue
+        if not frames:
+            return {"players": []}
+        df = pd.concat(frames, ignore_index=True)
+        # Aynı oyuncu on sezonda on kez çıkmasın: en iyi sezonu temsilci olsun.
+        df = (df[df["primary_arch"].notna()]
+              .sort_values("overall_score", ascending=False)
+              .drop_duplicates("PLAYER_ID"))
+    else:
+        season = season or _football_default_season()
+        try:
+            df = _load_football_scores(season)
+        except FileNotFoundError:
+            return {"players": []}
+        df = df[df["primary_arch"].notna()]
     if phase:
         df = df[df["PHASE"] == phase]
+    if photos_only:
+        # Fotoğraf yerleşimi sayfası için: fotoğrafı olmayan oyuncuda
+        # ayarlanacak bir şey yok, listede durması ölü sonuç demek.
+        # Tüm sezonlarda 5146 oyuncunun 2489'unun fotoğrafı var.
+        # _photo_credits ile AYNI kaynak: sayfadaki "no photo" mesajını da o
+        # belirliyor, ayrı bir küme kullanmak ikisini ayrıştırırdı.
+        with_photo = {int(k) for k in _photo_credits()}
+        df = df[df["PLAYER_ID"].astype(int).isin(with_photo)]
     s = _fold(q)
     df = df[df["PLAYER_NAME"].map(lambda n: s in _fold(str(n)))]
     df = df.sort_values("overall_score", ascending=False).head(limit)
