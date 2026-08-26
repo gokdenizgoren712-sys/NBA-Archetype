@@ -2828,6 +2828,19 @@ try:
 except Exception as _e:
     print(f"[startup] RankIt seed failed: {_e}", flush=True)
 
+# Logo sağlayıcı çağrıları health-check'i geciktirmesin; mevcut canlı takımları
+# deploy sonrasında arka planda ve idempotent biçimde tamamla.
+def _rankit_logo_backfill_worker():
+    try:
+        from .rankit import backfill_rankit_team_logos
+        _result = backfill_rankit_team_logos()
+        print(f"[startup] RankIt logo backfill: {_result}", flush=True)
+    except Exception as _e:
+        print(f"[startup] RankIt logo backfill failed: {_e}", flush=True)
+
+import threading as _threading
+_threading.Thread(target=_rankit_logo_backfill_worker, daemon=True).start()
+
 # Faz 4 sonrası tek-seferlik otomatik migration'lar — deploy'da HER başlangıçta
 # çalışır, admin'in elle bir endpoint çağırmasına gerek YOK (ikisi de idempotent,
 # ikinci/üçüncü deploy'da no-op olur). Startup'ı asla bloklamasınlar diye try/except.

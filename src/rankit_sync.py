@@ -79,6 +79,14 @@ def _team(conn, sport: str, name: str, short: str, color: str, country: str | No
     return conn.execute("SELECT id FROM rankit_teams WHERE sport=? AND name=?", (sport, name)).fetchone()["id"]
 
 
+def _team_logo(conn, team_id: int, logo_url: str, source: str) -> None:
+    conn.execute("""INSERT INTO rankit_team_logos(team_id,logo_url,source,updated_at)
+        VALUES(?,?,?,datetime('now'))
+        ON CONFLICT(team_id) DO UPDATE SET
+          logo_url=excluded.logo_url,source=excluded.source,updated_at=datetime('now')""",
+        (team_id, logo_url, source))
+
+
 def _match(conn, *, provider: str, external_id: str, sport: str, comp_id: int, season: str,
            starts_at: str, status: str, home_id: int, away_id: int, home_score, away_score) -> int:
     conn.execute("""INSERT INTO rankit_matches
@@ -171,6 +179,8 @@ def sync_nba(season: str) -> dict:
         for abbr in sorted(abbreviations):
             item = meta.get(abbr, {"full_name": abbr})
             team_ids[abbr] = _team(conn, "Basketball", item["full_name"], abbr, NBA_COLORS.get(abbr, _color(abbr)), "USA")
+            if item.get("id"):
+                _team_logo(conn, team_ids[abbr], f"https://cdn.nba.com/logos/nba/{item['id']}/primary/L/logo.svg", "nba")
         roster = {}
         for row in players[["PLAYER_ID", "PLAYER_NAME", "TEAM_ABBREVIATION"]].dropna().drop_duplicates("PLAYER_ID").itertuples(index=False):
             if row.TEAM_ABBREVIATION not in team_ids:
@@ -214,6 +224,8 @@ def sync_football(season: str) -> dict:
                     if name and name not in team_ids:
                         short = (side.get("shortName") or name)[:12]
                         team_ids[name] = _team(conn, "Football", name, short, _color(name), country)
+                        if side.get("id"):
+                            _team_logo(conn, team_ids[name], f"https://images.fotmob.com/image_resources/logo/teamlogo/{side['id']}.png", "fotmob")
             fixture_names = list(team_ids)
             for row in roster_df.itertuples(index=False):
                 matched_team = _match_team_name(row.TEAM, fixture_names)

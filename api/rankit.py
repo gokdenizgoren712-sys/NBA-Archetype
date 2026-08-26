@@ -7,6 +7,7 @@ yerel gelistirmede ise seed_rankit() deterministik bir demo katalogu kurar.
 from __future__ import annotations
 
 import os
+import re
 from datetime import date
 from typing import Literal, Optional
 
@@ -18,6 +19,91 @@ from .db import get_conn
 
 router = APIRouter(prefix="/api/rankit", tags=["RankIt"])
 IS_PROD = bool(os.environ.get("RAILWAY_ENVIRONMENT") or os.environ.get("RENDER") == "true" or os.environ.get("IS_PROD") == "true")
+
+FOTMOB_LEAGUE_IDS = {
+    "Premier League": 47,
+    "La Liga": 87,
+    "Serie A": 55,
+    "Bundesliga": 54,
+    "Ligue 1": 53,
+}
+
+
+def _team_key(value: str) -> str:
+    return re.sub(r"[^a-z0-9]", "", str(value).lower())
+
+
+def _save_team_logo(conn, team_id: int, url: str, source: str) -> None:
+    conn.execute("""INSERT INTO rankit_team_logos(team_id,logo_url,source,updated_at)
+        VALUES(?,?,?,datetime('now'))
+        ON CONFLICT(team_id) DO UPDATE SET
+          logo_url=excluded.logo_url,source=excluded.source,updated_at=datetime('now')""",
+        (team_id, url, source))
+
+
+def backfill_rankit_team_logos() -> dict:
+    """Eksik canlı armaları sağlayıcı kimliklerinden bir kez tamamla.
+
+    Idempotenttir: yalnızca logosu olmayan takımlar için sağlayıcıya gider.
+    Deploy başlangıcını bloklamaması için main.py bunu arka planda çalıştırır.
+    """
+    added_nba = added_football = 0
+    with get_conn() as conn:
+        missing_nba = conn.execute("""SELECT t.id,t.name,t.short_name FROM rankit_teams t
+            LEFT JOIN rankit_team_logos l ON l.team_id=t.id
+            WHERE t.sport='Basketball' AND l.id IS NULL""").fetchall()
+        if missing_nba:
+            from nba_api.stats.static import teams as nba_teams
+            nba_meta = nba_teams.get_teams()
+            by_key = {_team_key(t["full_name"]): t for t in nba_meta}
+            by_abbr = {t["abbreviation"].upper(): t for t in nba_meta}
+            for row in missing_nba:
+                item = by_abbr.get(row["short_name"].upper()) or by_key.get(_team_key(row["name"]))
+                if not item:
+                    continue
+                url = f"https://cdn.nba.com/logos/nba/{item['id']}/primary/L/logo.svg"
+                _save_team_logo(conn, row["id"], url, "nba")
+                added_nba += 1
+
+        missing_football = conn.execute("""SELECT t.id,t.name FROM rankit_teams t
+            LEFT JOIN rankit_team_logos l ON l.team_id=t.id
+            WHERE t.sport='Football' AND l.id IS NULL""").fetchall()
+        missing_by_key = {_team_key(r["name"]): r["id"] for r in missing_football}
+        if missing_by_key:
+            from curl_cffi import requests as curl_requests
+            scopes = conn.execute("""SELECT DISTINCT c.name,c.season FROM rankit_competitions c
+                JOIN rankit_matches m ON m.competition_id=c.id
+                WHERE c.sport='Football'""").fetchall()
+            for scope in scopes:
+                league_id = FOTMOB_LEAGUE_IDS.get(scope["name"])
+                if not league_id:
+                    continue
+                start = str(scope["season"]).split("-")[0]
+                season = f"{start}/{int(start) + 1}"
+                try:
+                    response = curl_requests.get(
+                        "https://www.fotmob.com/api/data/leagues",
+                        params={"id": league_id, "season": season},
+                        impersonate="chrome124", timeout=20,
+                    )
+                    if response.status_code != 200:
+                        continue
+                    fixtures = ((response.json().get("fixtures") or {}).get("allMatches") or [])
+                except Exception:
+                    continue
+                for match in fixtures:
+                    for side in (match.get("home") or {}, match.get("away") or {}):
+                        team_id = missing_by_key.get(_team_key(side.get("name", "")))
+                        provider_id = side.get("id")
+                        if not team_id or not provider_id:
+                            continue
+                        url = f"https://images.fotmob.com/image_resources/logo/teamlogo/{provider_id}.png"
+                        _save_team_logo(conn, team_id, url, "fotmob")
+                        missing_by_key.pop(_team_key(side.get("name", "")), None)
+                        added_football += 1
+                if not missing_by_key:
+                    break
+    return {"nba": added_nba, "football": added_football}
 
 
 class DiaryIn(BaseModel):
