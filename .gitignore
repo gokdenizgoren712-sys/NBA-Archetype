@@ -129,3 +129,16 @@ frontend/android/app/src/main/assets/public/ # `npx cap sync` yeniden uretiyor
 *.aab
 *.keystore
 *.jks
+
+# ── Anahtarlar / kimlik bilgileri ────────────────────────────────────────────
+# .railway-temp-key/ calisma agacinda ozel SSH anahtariyla duruyordu ve hicbir
+# kural onu kapsamiyordu; bir `git add -A` onu repoya sokardi. Ad bazli degil
+# DESEN bazli kural: bir dahaki gecici anahtar klasoru baska ad tasiyabilir.
+.railway-temp-key/
+*.pem
+id_rsa
+id_ed25519
+id_ecdsa
+*_rsa
+*_ed25519
+!*.pub

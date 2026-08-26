@@ -364,6 +364,57 @@ def init_db():
             created_at  TEXT DEFAULT (datetime('now'))
         );
 
+        -- ── Yayıncı katmanı (TASLAK) ────────────────────────────────────────
+        -- "Bu maçı bende hangi kanaldan izlerim?" — İLK KAPSAM: GB, US, TR.
+        --
+        -- İKİ KATMAN, bilinçli. Maç başına elle kayıt girmek 3000 maç × 3 ülke
+        -- demek, kimse sürdüremez. Bu yüzden turnuva+ülke düzeyinde bir KURAL
+        -- ("Premier League, GB, Sky Sports") ve onu ezen maç başına KESİN kayıt
+        -- var. Ayrımı gizlemiyoruz: kural 'typical', maç kaydı 'confirmed'
+        -- olarak işaretleniyor ve arayüz ikisini aynı dille sunmamalı —
+        -- yanlış kanal göstermek, hiç göstermemekten kötü.
+        --
+        -- Hiçbiri yoksa cevap BOŞ. Tahmin üretmiyoruz.
+        CREATE TABLE IF NOT EXISTS rankit_broadcasters (
+            id       INTEGER PRIMARY KEY AUTOINCREMENT,
+            country  TEXT NOT NULL,              -- ISO 3166-1 alpha-2: GB, US, TR
+            name     TEXT NOT NULL,              -- "Sky Sports", "beIN SPORTS"
+            kind     TEXT NOT NULL DEFAULT 'tv'  -- tv | streaming
+                     CHECK(kind IN ('tv','streaming')),
+            url      TEXT,
+            UNIQUE(country, name)
+        );
+
+        -- Turnuva+ülke varsayılanı. Aynı turnuvada birden fazla yayıncı olabilir
+        -- (GB'de Premier League hem Sky hem TNT), o yüzden satır başına bir
+        -- yayıncı ve UNIQUE üçlü.
+        CREATE TABLE IF NOT EXISTS rankit_broadcast_rules (
+            id             INTEGER PRIMARY KEY AUTOINCREMENT,
+            competition_id INTEGER NOT NULL REFERENCES rankit_competitions(id) ON DELETE CASCADE,
+            country        TEXT NOT NULL,
+            broadcaster_id INTEGER NOT NULL REFERENCES rankit_broadcasters(id) ON DELETE CASCADE,
+            note           TEXT,                 -- "seçili maçlar" gibi kısıt
+            updated_by     INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            updated_at     TEXT DEFAULT (datetime('now')),
+            UNIQUE(competition_id, country, broadcaster_id)
+        );
+
+        -- Maç başına kesin kayıt. Kuralı EZER.
+        CREATE TABLE IF NOT EXISTS rankit_broadcasts (
+            id             INTEGER PRIMARY KEY AUTOINCREMENT,
+            match_id       INTEGER NOT NULL REFERENCES rankit_matches(id) ON DELETE CASCADE,
+            country        TEXT NOT NULL,
+            broadcaster_id INTEGER NOT NULL REFERENCES rankit_broadcasters(id) ON DELETE CASCADE,
+            -- Nereden geldiği ve NE ZAMAN doğrulandığı: yayın hakları sezon
+            -- içinde değişiyor, tarihsiz bir kayıt bir süre sonra yalan olur.
+            source         TEXT NOT NULL DEFAULT 'editorial'
+                           CHECK(source IN ('editorial','provider')),
+            verified_at    TEXT,
+            updated_by     INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            updated_at     TEXT DEFAULT (datetime('now')),
+            UNIQUE(match_id, country, broadcaster_id)
+        );
+
         CREATE TABLE IF NOT EXISTS mobile_auth_codes (
             id          INTEGER PRIMARY KEY AUTOINCREMENT,
             code_hash   TEXT UNIQUE NOT NULL,
@@ -379,6 +430,8 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_rankit_comments_entry ON rankit_review_comments(entry_id, created_at);
         CREATE INDEX IF NOT EXISTS idx_rankit_watchalong_match ON rankit_watchalong_messages(match_id, room, id);
         CREATE INDEX IF NOT EXISTS idx_mobile_auth_code ON mobile_auth_codes(code_hash, expires_at);
+        CREATE INDEX IF NOT EXISTS idx_rankit_bcast_match ON rankit_broadcasts(match_id, country);
+        CREATE INDEX IF NOT EXISTS idx_rankit_bcast_rule ON rankit_broadcast_rules(competition_id, country);
         """)
         # RankIt katalog senkronizasyonu: dis veri kaynagindaki mac kimligi
         # tekrar calistirmalarda ayni maci gunceller, kopya uretmez.

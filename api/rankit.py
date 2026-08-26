@@ -13,7 +13,7 @@ from typing import Literal, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, Field
 
-from .auth import get_optional_user, _decode, _is_banned
+from .auth import get_optional_user, require_admin, _decode, _is_banned
 from .db import get_conn
 
 router = APIRouter(prefix="/api/rankit", tags=["RankIt"])
@@ -320,6 +320,131 @@ def rankit_catalog(
             JOIN rankit_competitions c ON c.id=m.competition_id""" + base, args).fetchone()["n"]
         rows = conn.execute(MATCH_SELECT + base + NEAREST_MATCH_ORDER + " LIMIT ? OFFSET ?", (*args, limit, offset)).fetchall()
         return {"matches": [_match_dict(conn, row, uid) for row in rows], "total": total, "limit": limit, "offset": offset}
+
+
+# ── Yayıncı katmanı (TASLAK) ─────────────────────────────────────────────────
+# "Bu maçı bende hangi kanaldan izlerim?" İlk kapsam GB / US / TR.
+#
+# ÇÖZÜMLEME SIRASI: maç başına kesin kayıt → turnuva+ülke kuralı → BOŞ.
+# Üçüncü basamak kasıtlı: elimizde kayıt yoksa tahmin üretmiyoruz. Yanlış kanal
+# göstermek, hiç göstermemekten kötü — kullanıcı maçı kaçırır ve bir daha
+# güvenmez. Kural katmanı 'typical', maç kaydı 'confirmed' diye işaretli
+# dönüyor; arayüz ikisini aynı dille sunmamalı.
+
+BROADCAST_COUNTRIES = ("GB", "US", "TR")
+
+
+class BroadcastIn(BaseModel):
+    match_id: Optional[int] = None          # maç başına kesin kayıt
+    competition_id: Optional[int] = None    # ya da turnuva+ülke kuralı
+    country: str
+    broadcaster_id: int
+    note: str = ""
+
+
+@router.get("/broadcasters")
+def rankit_broadcasters(country: Optional[str] = None):
+    """Kanal listesi. Yönetim ekranı bunu seçim kutusunda kullanıyor."""
+    with get_conn() as conn:
+        sql = "SELECT id,country,name,kind,url FROM rankit_broadcasters"
+        args: list = []
+        if country:
+            sql += " WHERE country=?"
+            args.append(country.upper())
+        sql += " ORDER BY country,name"
+        return {"broadcasters": [dict(r) for r in conn.execute(sql, args).fetchall()],
+                "countries": list(BROADCAST_COUNTRIES)}
+
+
+def _broadcasts_for(conn, match_id: int, country: str) -> dict:
+    country = (country or "").upper()
+    exact = conn.execute("""SELECT b.name,b.kind,b.url,x.source,x.verified_at
+        FROM rankit_broadcasts x JOIN rankit_broadcasters b ON b.id=x.broadcaster_id
+        WHERE x.match_id=? AND x.country=? ORDER BY b.name""", (match_id, country)).fetchall()
+    if exact:
+        return {"country": country, "confidence": "confirmed",
+                "channels": [dict(r) for r in exact]}
+
+    rule = conn.execute("""SELECT b.name,b.kind,b.url,r.note
+        FROM rankit_broadcast_rules r JOIN rankit_broadcasters b ON b.id=r.broadcaster_id
+        JOIN rankit_matches m ON m.competition_id=r.competition_id
+        WHERE m.id=? AND r.country=? ORDER BY b.name""", (match_id, country)).fetchall()
+    if rule:
+        return {"country": country, "confidence": "typical",
+                "channels": [dict(r) for r in rule]}
+
+    # Bilmiyoruz. Uydurmuyoruz.
+    return {"country": country, "confidence": None, "channels": []}
+
+
+@router.get("/matches/{match_id}/broadcasts")
+def rankit_match_broadcasts(match_id: int, country: str = "TR"):
+    if country.upper() not in BROADCAST_COUNTRIES:
+        raise HTTPException(400, "Unsupported country: " + country)
+    with get_conn() as conn:
+        if not conn.execute("SELECT 1 FROM rankit_matches WHERE id=?", (match_id,)).fetchone():
+            raise HTTPException(404, "Match not found")
+        return _broadcasts_for(conn, match_id, country)
+
+
+@router.post("/admin/broadcasts")
+def rankit_set_broadcast(body: BroadcastIn, user=Depends(require_admin)):
+    """Eşleme gir. match_id verilirse kesin kayıt, competition_id verilirse kural."""
+    country = body.country.upper()
+    if country not in BROADCAST_COUNTRIES:
+        raise HTTPException(400, "Unsupported country: " + body.country)
+    if bool(body.match_id) == bool(body.competition_id):
+        raise HTTPException(400, "Give either match_id or competition_id, not both")
+    uid = int(user["sub"])
+    with get_conn() as conn:
+        b = conn.execute("SELECT country FROM rankit_broadcasters WHERE id=?",
+                         (body.broadcaster_id,)).fetchone()
+        if not b:
+            raise HTTPException(404, "Broadcaster not found")
+        # Kanal başka ülkeye aitse eşleme anlamsız: "TR maçına Sky Sports (GB)".
+        if b["country"] != country:
+            raise HTTPException(400, f"That broadcaster belongs to {b['country']}, not {country}")
+        if body.match_id:
+            if not conn.execute("SELECT 1 FROM rankit_matches WHERE id=?", (body.match_id,)).fetchone():
+                raise HTTPException(404, "Match not found")
+            conn.execute("""INSERT INTO rankit_broadcasts
+                (match_id,country,broadcaster_id,source,verified_at,updated_by)
+                VALUES(?,?,?,'editorial',datetime('now'),?)
+                ON CONFLICT(match_id,country,broadcaster_id) DO UPDATE SET
+                verified_at=datetime('now'),updated_by=excluded.updated_by,
+                updated_at=datetime('now')""",
+                (body.match_id, country, body.broadcaster_id, uid))
+            return {"ok": True, "kind": "confirmed"}
+        if not conn.execute("SELECT 1 FROM rankit_competitions WHERE id=?", (body.competition_id,)).fetchone():
+            raise HTTPException(404, "Competition not found")
+        conn.execute("""INSERT INTO rankit_broadcast_rules
+            (competition_id,country,broadcaster_id,note,updated_by)
+            VALUES(?,?,?,?,?)
+            ON CONFLICT(competition_id,country,broadcaster_id) DO UPDATE SET
+            note=excluded.note,updated_by=excluded.updated_by,updated_at=datetime('now')""",
+            (body.competition_id, country, body.broadcaster_id, body.note.strip()[:120], uid))
+        return {"ok": True, "kind": "typical"}
+
+
+@router.delete("/admin/broadcasts")
+def rankit_clear_broadcast(match_id: Optional[int] = None, competition_id: Optional[int] = None,
+                           country: str = "TR", broadcaster_id: Optional[int] = None,
+                           user=Depends(require_admin)):
+    country = country.upper()
+    with get_conn() as conn:
+        if match_id:
+            sql = "DELETE FROM rankit_broadcasts WHERE match_id=? AND country=?"
+            args: list = [match_id, country]
+        elif competition_id:
+            sql = "DELETE FROM rankit_broadcast_rules WHERE competition_id=? AND country=?"
+            args = [competition_id, country]
+        else:
+            raise HTTPException(400, "Give match_id or competition_id")
+        if broadcaster_id:
+            sql += " AND broadcaster_id=?"
+            args.append(broadcaster_id)
+        n = conn.execute(sql, args).rowcount
+    return {"ok": True, "removed": n}
 
 
 @router.get("/meta")
