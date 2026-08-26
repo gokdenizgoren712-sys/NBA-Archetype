@@ -91,7 +91,18 @@ def _actor_id(user, conn) -> int:
 
 
 def seed_rankit() -> None:
-    """Bos DB'de yerel prototip icin kucuk ama iliskisel bir katalog kur."""
+    """Bos DB'de YEREL prototip icin kucuk ama iliskisel bir katalog kur.
+
+    PRODUCTION'DA CALISMAZ. Onceden tek koruma "tabloda mac var mi" idi; canli
+    veritabani bos oldugu ilk aciliste bu yetmedi ve 4 demo mac + 4 demo
+    kullanici gercek veritabanina yazildi. Gercek katalog yuklendikten sonra
+    zararsiz gorunuyorlar ama gercek degiller: kullanici onlari puanlayabilir,
+    yorumlayabilir, listeye ekleyebilir.
+
+    Bos-DB kontrolu de kaliyor — ikisi birden, ciftbasli koruma.
+    """
+    if IS_PROD:
+        return
     with get_conn() as conn:
         if conn.execute("SELECT 1 FROM rankit_matches LIMIT 1").fetchone():
             return
@@ -325,6 +336,10 @@ def rankit_catalog(
 # ── Yayıncı katmanı (TASLAK) ─────────────────────────────────────────────────
 # "Bu maçı bende hangi kanaldan izlerim?" İlk kapsam GB / US / TR.
 #
+# OKUMA HERKESE AÇIK, YAZMA ADMIN'E: veri primaryarch.net admin panelinden
+# giriliyor (frontend/src/pages/admin/RankItBroadcasts.jsx), RankIt de aynı
+# uçtan çekiyor. Sağlayıcıdan gelen bir veri DEĞİL, elle yönetilen bir tablo.
+#
 # ÇÖZÜMLEME SIRASI: maç başına kesin kayıt → turnuva+ülke kuralı → BOŞ.
 # Üçüncü basamak kasıtlı: elimizde kayıt yoksa tahmin üretmiyoruz. Yanlış kanal
 # göstermek, hiç göstermemekten kötü — kullanıcı maçı kaçırır ve bir daha
@@ -385,6 +400,46 @@ def rankit_match_broadcasts(match_id: int, country: str = "TR"):
         if not conn.execute("SELECT 1 FROM rankit_matches WHERE id=?", (match_id,)).fetchone():
             raise HTTPException(404, "Match not found")
         return _broadcasts_for(conn, match_id, country)
+
+
+@router.get("/admin/broadcasts")
+def rankit_list_broadcasts(country: Optional[str] = None, user=Depends(require_admin)):
+    """Panelin tablosu: girilmiş her kural ve her kesin kayıt.
+
+    Turnuva listesi de aynı yanıtta — panel bunu seçim kutusunda kullanıyor ve
+    ayrı bir istek atmasına gerek kalmıyor."""
+    with get_conn() as conn:
+        where, args = "", []
+        if country:
+            where, args = " WHERE r.country=?", [country.upper()]
+        rules = [dict(r) for r in conn.execute(f"""SELECT r.id,r.country,r.note,r.updated_at,
+            c.id competition_id,c.name competition,c.season,c.sport,
+            b.id broadcaster_id,b.name broadcaster,b.kind
+            FROM rankit_broadcast_rules r
+            JOIN rankit_competitions c ON c.id=r.competition_id
+            JOIN rankit_broadcasters b ON b.id=r.broadcaster_id{where}
+            ORDER BY r.country,c.sport,c.name,b.name""", args).fetchall()]
+
+        where = " WHERE x.country=?" if country else ""
+        exact = [dict(r) for r in conn.execute(f"""SELECT x.id,x.country,x.match_id,x.verified_at,
+            x.source,b.id broadcaster_id,b.name broadcaster,b.kind,
+            m.starts_at,c.name competition,c.season,
+            h.short_name home,a.short_name away
+            FROM rankit_broadcasts x
+            JOIN rankit_broadcasters b ON b.id=x.broadcaster_id
+            JOIN rankit_matches m ON m.id=x.match_id
+            JOIN rankit_competitions c ON c.id=m.competition_id
+            JOIN rankit_teams h ON h.id=m.home_team_id
+            JOIN rankit_teams a ON a.id=m.away_team_id{where}
+            ORDER BY x.country,m.starts_at""", args).fetchall()]
+
+        comps = [dict(r) for r in conn.execute("""SELECT c.id,c.name,c.season,c.sport,
+            COUNT(m.id) match_count FROM rankit_competitions c
+            LEFT JOIN rankit_matches m ON m.competition_id=c.id AND m.provider IS NOT NULL
+            GROUP BY c.id HAVING match_count > 0
+            ORDER BY c.sport,c.name,c.season DESC""").fetchall()]
+    return {"rules": rules, "matches": exact, "competitions": comps,
+            "countries": list(BROADCAST_COUNTRIES)}
 
 
 @router.post("/admin/broadcasts")

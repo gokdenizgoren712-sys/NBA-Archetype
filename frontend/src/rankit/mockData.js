@@ -1,4 +1,16 @@
-export const matches = [
+// ── RankIt demo verisi — YALNIZ YEREL GELİŞTİRME ────────────────────────────
+// Bu dosya API'siz çalışırken ekranı doldurmak için var. Production'da HİÇBİRİ
+// dönmüyor: sahte maç göstermek, kullanıcıya var olmayan bir karşılaşmayı
+// puanlatmak demek — ve API bir an düştüğünde bunun olduğu fark bile edilmiyor.
+//
+// Bileşenler bu dizileri hem başlangıç state'i hem de fallback olarak
+// kullanıyor (birden fazla yerde). Boşaltmayı tek noktada yapmak, o çağrı
+// yerlerinin hepsini tek tek düzeltmekten hem daha az riskli hem de kalıcı:
+// yarın yeni bir fallback eklenirse o da otomatik olarak production'da boş
+// kalır. Boş dizide mevcut "empty state" arayüzü devreye giriyor.
+const EMPTY = import.meta.env.PROD;
+
+const devMatches = [
   {
     id: "nyk-bos-2026",
     sport: "Basketball",
@@ -65,14 +77,19 @@ export const matches = [
   },
 ];
 
-export const activity = [
+const devActivity = [
   { user: "Ece", initials: "EC", action: "rated", match: matches[0], rating: 4.5, text: "That final Brunson possession was pure theatre." },
   { user: "Mert", initials: "MK", action: "marked a Classic", match: matches[2], rating: 5, text: "The kind of match you remember by where you watched it." },
   { user: "Deniz", initials: "DA", action: "added to watchlist", match: matches[1], text: "Saving this one for the knockout-night atmosphere." },
 ];
 
-export const lists = [
+const devLists = [
   { title: "Games that felt like cinema", count: 18, accent: "#FFB11B" },
   { title: "All-time Champions League nights", count: 32, accent: "#3FB08C" },
   { title: "Garden classics", count: 12, accent: "#1d428a" },
 ];
+
+
+export const matches  = EMPTY ? [] : devMatches;
+export const activity = EMPTY ? [] : devActivity;
+export const lists    = EMPTY ? [] : devLists;

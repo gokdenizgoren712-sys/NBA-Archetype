@@ -25,6 +25,7 @@ const Profile        = lazy(() => import("./pages/Profile"));
 const ArticleList    = lazy(() => import("./pages/admin/ArticleList"));
 const ArticleEditor  = lazy(() => import("./pages/admin/ArticleEditor"));
 const UserList       = lazy(() => import("./pages/admin/UserList"));
+const RankItBroadcasts = lazy(() => import("./pages/admin/RankItBroadcasts"));
 const PhotoLayout     = lazy(() => import("./pages/admin/PhotoLayout"));
 const CorrectionList = lazy(() => import("./pages/admin/CorrectionList"));
 const LineupModeration = lazy(() => import("./pages/admin/LineupModeration"));
@@ -408,6 +409,7 @@ function AppInner() {
               <Route path="/admin/corrections"        element={<CorrectionList />} />
               <Route path="/admin/lineups"            element={<LineupModeration />} />
               <Route path="/admin/photo-layout"       element={<PhotoLayout />} />
+              <Route path="/admin/rankit-broadcasts"  element={<RankItBroadcasts />} />
               {/* Legal — taslak, bkz. pages/legal/LegalPageLayout.jsx notu */}
               <Route path="/privacy-policy"           element={<PrivacyPolicy />} />
               <Route path="/terms-of-service"         element={<TermsOfService />} />
