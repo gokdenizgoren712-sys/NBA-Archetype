@@ -54,7 +54,6 @@ const AffiliateDisclosure = lazy(() => import("./pages/legal/AffiliateDisclosure
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
-import { api } from "./api";
 
 /* ── Nav config ──────────────────────────────────────────────────────
    2026-08: site tek domainde iki bağımsız spora ayrıldı. Nav artık sabit
@@ -141,9 +140,7 @@ function TopBar({ onMenu }) {
   const navigate = useNavigate();
   const location = useLocation();
   const sport = sportOf(location.pathname);
-  const [meta, setMeta] = useState(null);
 
-  useEffect(() => { api.meta().then(setMeta).catch(() => {}); }, []);
 
   return (
     <header className="relative h-12 shrink-0 flex items-center px-4 gap-3 aura-glass overflow-hidden">
@@ -182,12 +179,6 @@ function TopBar({ onMenu }) {
       </button>
 
       <div className="relative ml-auto flex items-center gap-1.5">
-        {meta?.last_updated && (
-          <span className="text-[10px] hidden md:block" style={{ color: "var(--text-muted)" }}>
-            {meta.last_updated}
-          </span>
-        )}
-
         <button
           onClick={async () => { await fetch("/api/admin/clear-cache", { method: "POST" }); window.location.reload(); }}
           title="Refresh data"
