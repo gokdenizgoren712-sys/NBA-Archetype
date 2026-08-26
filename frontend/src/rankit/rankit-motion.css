@@ -1,0 +1,68 @@
+/* RankIt motion pass — every touch gets immediate, lightweight feedback. */
+@keyframes riAppEnter{from{opacity:0;filter:blur(5px)}to{opacity:1;filter:blur(0)}}
+@keyframes riTabEnter{from{opacity:0;transform:translate3d(0,10px,0)}to{opacity:1;transform:translate3d(0,0,0)}}
+@keyframes riTabForward{from{opacity:0;transform:translate3d(18px,0,0)}to{opacity:1;transform:translate3d(0,0,0)}}
+@keyframes riTabBackward{from{opacity:0;transform:translate3d(-18px,0,0)}to{opacity:1;transform:translate3d(0,0,0)}}
+@keyframes riShimmer{from{background-position:200% 0}to{background-position:-200% 0}}
+@keyframes riBackdropIn{from{opacity:0}to{opacity:1}}
+@keyframes riSheetIn{from{opacity:.35;transform:translate3d(0,42px,0) scale(.985)}to{opacity:1;transform:translate3d(0,0,0) scale(1)}}
+@keyframes riCardEnter{from{opacity:0;transform:translate3d(14px,0,0) scale(.985)}to{opacity:1;transform:translate3d(0,0,0) scale(1)}}
+@keyframes riToastLife{0%{opacity:0;transform:translate(-50%,12px) scale(.94)}12%,78%{opacity:1;transform:translate(-50%,0) scale(1)}100%{opacity:0;transform:translate(-50%,-7px) scale(.98)}}
+@keyframes riSpin{to{transform:rotate(360deg)}}
+@keyframes riPulse{0%,100%{opacity:.42}50%{opacity:1}}
+
+.rankit-app{animation:riAppEnter .38s ease-out both}
+.ri-tab-stage{min-height:100%;animation:riTabEnter .28s cubic-bezier(.2,.8,.25,1) both;will-change:transform,opacity}
+.ri-tab-stage.forward{animation-name:riTabForward}.ri-tab-stage.backward{animation-name:riTabBackward}
+.ri-sheet-wrap{animation:riBackdropIn .2s ease-out both}
+.ri-detail-sheet,.ri-rank-sheet{animation:riSheetIn .36s cubic-bezier(.18,.86,.22,1) both;transform-origin:50% 100%;overscroll-behavior:contain}
+.ri-detail-sheet,.ri-rank-sheet{transform:translateY(var(--ri-sheet-drag,0));transition:transform .3s cubic-bezier(.2,.85,.25,1),opacity .22s ease}
+.ri-detail-sheet.is-dragging,.ri-rank-sheet.is-dragging{transition:none;user-select:none}
+.ri-detail-sheet.is-dismissing,.ri-rank-sheet.is-dismissing{opacity:.35}
+.ri-sheet-drag-handle{touch-action:none;cursor:grab;padding:9px 44px;margin:-9px auto 3px;background-clip:content-box}
+.ri-sheet-drag-handle:active{cursor:grabbing}
+.ri-match-card{animation:riCardEnter .38s cubic-bezier(.2,.8,.25,1) both;transition:transform .18s ease,border-color .2s ease,box-shadow .2s ease;will-change:transform}
+.ri-card-stack .ri-match-card:nth-child(2),.ri-hero-carousel .ri-match-card:nth-child(2){animation-delay:45ms}
+.ri-card-stack .ri-match-card:nth-child(3),.ri-hero-carousel .ri-match-card:nth-child(3){animation-delay:90ms}
+.ri-card-stack .ri-match-card:nth-child(n+4){animation-delay:120ms}
+.ri-match-card:active{transform:scale(.982);box-shadow:0 8px 20px rgba(0,0,0,.3)}
+.ri-match-card:active .ri-team-mark{filter:brightness(1.08)}
+
+.rankit-app button,.rankit-app [role="button"]{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.rankit-app button{transition:color .16s ease,background-color .16s ease,border-color .16s ease,opacity .16s ease,transform .13s ease,box-shadow .18s ease}
+.rankit-app button:active:not(:disabled){transform:scale(.955)}
+.rankit-app button:disabled{cursor:wait}
+.rankit-app button:focus-visible,.rankit-app input:focus-visible,.rankit-app select:focus-visible,.rankit-app textarea:focus-visible{outline:2px solid rgba(255,177,27,.72);outline-offset:2px}
+.ri-bottom-nav button:active:not(:disabled){transform:translateY(1px) scale(.91)}
+.ri-bottom-nav button svg{transition:transform .22s cubic-bezier(.2,.8,.3,1),filter .2s ease}
+.ri-bottom-nav button.active:not(.rank) svg{transform:translateY(-2px) scale(1.08);filter:drop-shadow(0 0 7px rgba(255,177,27,.25))}
+.ri-bottom-nav button.active small{animation:riTabEnter .2s ease-out both}
+.ri-sport-scroll button.active,.ri-diary-filters button.active,.ri-filter-panel button.active{transform:translateY(-1px)}
+.ri-tag-picker button.active,.ri-respect-grid button.active,.ri-classic.active{box-shadow:0 0 16px rgba(255,177,27,.1)}
+.ri-stars button:active:not(:disabled){transform:scale(1.22)}
+.ri-stars button.on .ri-star-glyph{filter:drop-shadow(0 0 5px rgba(255,177,27,.28))}
+.ri-spin{animation:riSpin .72s linear infinite}
+.ri-review-cta.is-busy{opacity:.78;box-shadow:none}
+.ri-entity-loading{animation:riPulse 1.15s ease-in-out infinite;display:flex;align-items:center;justify-content:center}
+.ri-entity-loading:before{content:"";width:24px;height:24px;border-radius:50%;border:2px solid rgba(255,177,27,.16);border-top-color:var(--ri-gold);animation:riSpin .75s linear infinite;margin-right:9px}
+.ri-match-skeleton{flex:0 0 min(86vw,365px);height:310px;border:1px solid #242527;border-radius:20px;background:#101113;padding:14px;display:flex;flex-direction:column;gap:14px;overflow:hidden;position:relative}
+.ri-match-skeleton:after{content:"";position:absolute;inset:0;background:linear-gradient(105deg,transparent 30%,rgba(255,255,255,.045) 48%,transparent 66%);background-size:220% 100%;animation:riShimmer 1.25s linear infinite}
+.ri-match-skeleton>i{width:35%;height:8px;border-radius:5px;background:#202124}.ri-match-skeleton>div{flex:1;display:flex;align-items:center;justify-content:space-between}.ri-match-skeleton>div span{width:66px;height:66px;border-radius:24px;background:#1b1c1f}.ri-match-skeleton>b{height:47px;border-radius:11px;background:#191a1c}.ri-match-skeleton>footer{display:flex;justify-content:space-between}.ri-match-skeleton>footer span{width:30%;height:7px;border-radius:5px;background:#1d1e20}
+.ri-network-note{position:sticky;top:4px;z-index:8;margin:6px 0 10px;padding:8px 11px;border:1px solid rgba(255,177,27,.22);border-radius:11px;background:rgba(24,20,13,.94);color:#b79a60;backdrop-filter:blur(14px);font-size:9px;text-align:center}.ri-network-note i{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--ri-gold);margin-right:6px}.ri-network-note.reconnecting i{animation:riPulse .8s ease-in-out infinite}
+
+.ri-action-toast{position:fixed;z-index:40;left:50%;bottom:calc(88px + env(safe-area-inset-bottom));max-width:calc(100vw - 40px);padding:10px 14px;border:1px solid rgba(63,176,140,.28);border-radius:999px;background:rgba(18,25,22,.96);color:#8ed6ba;box-shadow:0 12px 34px rgba(0,0,0,.5),0 0 18px rgba(63,176,140,.08);backdrop-filter:blur(16px);font:700 10px var(--font-logo);letter-spacing:.03em;white-space:nowrap;animation:riToastLife 2.25s ease both;pointer-events:none}
+.ri-action-toast.error{border-color:rgba(227,107,118,.35);background:rgba(31,18,21,.96);color:#ef9aa3}
+
+.ri-auth-card{animation:riSheetIn .46s cubic-bezier(.18,.86,.22,1) both;transform-origin:50% 70%}
+.ri-auth-brand svg{animation:riAppEnter .55s ease-out both}
+.ri-auth-submit:active:not(:disabled){transform:scale(.975)}
+.ri-mobile-account{transition:transform .16s ease,border-color .2s ease,background .2s ease}
+.ri-mobile-account:active{transform:scale(.94)}
+.ri-auth-loading svg{animation:riPulse 1.2s ease-in-out infinite}
+.ri-main{scroll-behavior:smooth;overscroll-behavior-y:contain}
+.ri-hero-carousel,.ri-sport-scroll,.ri-tag-picker,.ri-respect-grid{scroll-behavior:smooth}
+
+@media(prefers-reduced-motion:reduce){
+  .rankit-app,.ri-tab-stage,.ri-sheet-wrap,.ri-detail-sheet,.ri-rank-sheet,.ri-match-card,.ri-action-toast,.ri-entity-loading,.ri-entity-loading:before,.ri-spin,.ri-auth-card,.ri-auth-brand svg,.ri-auth-loading svg{animation-duration:.001ms!important;animation-delay:0s!important;animation-iteration-count:1!important}
+  .rankit-app *{scroll-behavior:auto!important;transition-duration:.001ms!important}
+}

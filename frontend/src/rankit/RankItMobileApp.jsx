@@ -85,6 +85,6 @@ export default function RankItMobileApp() {
   if (!user) return <AuthScreen busy={authBusy} error={authError} onStart={startWebAuth}/>;
   return <div className="ri-mobile-shell">
     <button className="ri-mobile-account" onClick={logout} aria-label="Log out"><span>{user.username?.slice(0, 2).toUpperCase()}</span><LogOut size={14}/></button>
-    <RankItPrototype/>
+    <RankItPrototype nativeBack/>
   </div>;
 }

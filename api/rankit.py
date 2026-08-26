@@ -266,8 +266,10 @@ def _match_dict(conn, row, uid: Optional[int] = None) -> dict:
 
 
 MATCH_SELECT = """SELECT m.*,c.name competition_name,
-    h.id home_id,h.name home_name,h.short_name home_short,h.color home_color,h.crest_url home_crest,
-    a.id away_id,a.name away_name,a.short_name away_short,a.color away_color,a.crest_url away_crest
+    h.id home_id,h.name home_name,h.short_name home_short,h.color home_color,
+    COALESCE((SELECT logo_url FROM rankit_team_logos WHERE team_id=h.id),h.crest_url) home_crest,
+    a.id away_id,a.name away_name,a.short_name away_short,a.color away_color,
+    COALESCE((SELECT logo_url FROM rankit_team_logos WHERE team_id=a.id),a.crest_url) away_crest
     FROM rankit_matches m JOIN rankit_competitions c ON c.id=m.competition_id
     JOIN rankit_teams h ON h.id=m.home_team_id JOIN rankit_teams a ON a.id=m.away_team_id"""
 
@@ -543,7 +545,10 @@ def rankit_search(q: str = Query(default="", max_length=80), kind: str = "All"):
             rows = conn.execute(MATCH_SELECT + " WHERE h.name LIKE ? OR a.name LIKE ? OR c.name LIKE ? ORDER BY m.starts_at DESC LIMIT 20", (term, term, term)).fetchall()
             matches = [_match_dict(conn, r) for r in rows]
         players = [dict(r) for r in conn.execute("SELECT id,name,sport,team_id FROM rankit_players WHERE name LIKE ? LIMIT 20", (term,)).fetchall()] if kind in ("All", "Players") else []
-        teams = [dict(r) for r in conn.execute("SELECT id,name,short_name,sport,color,crest_url FROM rankit_teams WHERE name LIKE ? OR short_name LIKE ? LIMIT 20", (term, term)).fetchall()] if kind in ("All", "Teams") else []
+        teams = [dict(r) for r in conn.execute("""SELECT t.id,t.name,t.short_name,t.sport,t.color,
+            COALESCE(l.logo_url,t.crest_url) crest_url FROM rankit_teams t
+            LEFT JOIN rankit_team_logos l ON l.team_id=t.id
+            WHERE t.name LIKE ? OR t.short_name LIKE ? LIMIT 20""", (term, term)).fetchall()] if kind in ("All", "Teams") else []
         members = [dict(r) for r in conn.execute("SELECT id,username FROM users WHERE username LIKE ? AND username NOT LIKE 'rankit_demo' LIMIT 20", (term,)).fetchall()] if kind in ("All", "Members") else []
         lists = [dict(r) for r in conn.execute("SELECT id,title,description,ranked FROM rankit_lists WHERE visibility='public' AND title LIKE ? LIMIT 20", (term,)).fetchall()] if kind in ("All", "Lists") else []
         return {"matches": matches, "players": players, "teams": teams, "members": members, "lists": lists}
@@ -553,8 +558,10 @@ def rankit_search(q: str = Query(default="", max_length=80), kind: str = "All"):
 def rankit_player_detail(player_id: int, user=Depends(get_optional_user)):
     with get_conn() as conn:
         player = conn.execute("""SELECT p.id,p.name,p.sport,p.shirt_no,p.image_url,p.team_id,
-            t.name team_name,t.short_name team_short,t.color team_color,t.crest_url team_crest
-            FROM rankit_players p LEFT JOIN rankit_teams t ON t.id=p.team_id WHERE p.id=?""", (player_id,)).fetchone()
+            t.name team_name,t.short_name team_short,t.color team_color,
+            COALESCE(l.logo_url,t.crest_url) team_crest
+            FROM rankit_players p LEFT JOIN rankit_teams t ON t.id=p.team_id
+            LEFT JOIN rankit_team_logos l ON l.team_id=t.id WHERE p.id=?""", (player_id,)).fetchone()
         if not player:
             raise HTTPException(404, "Player not found")
         uid = int(user["sub"]) if user else (None if IS_PROD else _demo_user_id(conn))
@@ -574,7 +581,9 @@ def rankit_player_detail(player_id: int, user=Depends(get_optional_user)):
 @router.get("/teams/{team_id}")
 def rankit_team_detail(team_id: int, user=Depends(get_optional_user)):
     with get_conn() as conn:
-        team = conn.execute("SELECT id,name,short_name,sport,color,country,crest_url FROM rankit_teams WHERE id=?", (team_id,)).fetchone()
+        team = conn.execute("""SELECT t.id,t.name,t.short_name,t.sport,t.color,t.country,
+            COALESCE(l.logo_url,t.crest_url) crest_url FROM rankit_teams t
+            LEFT JOIN rankit_team_logos l ON l.team_id=t.id WHERE t.id=?""", (team_id,)).fetchone()
         if not team:
             raise HTTPException(404, "Team not found")
         uid = int(user["sub"]) if user else (None if IS_PROD else _demo_user_id(conn))

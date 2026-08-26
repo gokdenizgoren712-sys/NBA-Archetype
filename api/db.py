@@ -221,6 +221,16 @@ def init_db():
             UNIQUE(sport, name)
         );
 
+        -- Kulup armaları maç/kullanıcı verisinden bağımsız yönetilir. Aynı
+        -- takım için kaynak ve güncelleme zamanı ayrıca izlenebilir.
+        CREATE TABLE IF NOT EXISTS rankit_team_logos (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            team_id     INTEGER NOT NULL UNIQUE REFERENCES rankit_teams(id) ON DELETE CASCADE,
+            logo_url    TEXT NOT NULL,
+            source      TEXT NOT NULL DEFAULT 'provider',
+            updated_at  TEXT DEFAULT (datetime('now'))
+        );
+
         CREATE TABLE IF NOT EXISTS rankit_players (
             id          INTEGER PRIMARY KEY AUTOINCREMENT,
             sport       TEXT NOT NULL,
@@ -432,6 +442,7 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_mobile_auth_code ON mobile_auth_codes(code_hash, expires_at);
         CREATE INDEX IF NOT EXISTS idx_rankit_bcast_match ON rankit_broadcasts(match_id, country);
         CREATE INDEX IF NOT EXISTS idx_rankit_bcast_rule ON rankit_broadcast_rules(competition_id, country);
+        CREATE INDEX IF NOT EXISTS idx_rankit_team_logo ON rankit_team_logos(team_id);
         """)
         # RankIt katalog senkronizasyonu: dis veri kaynagindaki mac kimligi
         # tekrar calistirmalarda ayni maci gunceller, kopya uretmez.
@@ -441,6 +452,10 @@ def init_db():
             except Exception:
                 pass
         conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_rankit_provider_match ON rankit_matches(provider, provider_match_id)")
+        # Eski crest_url verisini yeni bağımsız logo tablosuna bir kez taşı.
+        conn.execute("""INSERT OR IGNORE INTO rankit_team_logos(team_id,logo_url,source)
+            SELECT id,crest_url,'legacy' FROM rankit_teams
+            WHERE crest_url IS NOT NULL AND trim(crest_url)<>''""")
         # Migration: add columns to existing DBs that predate these fields
         for col, dfn in [
             ("is_banned",     "INTEGER NOT NULL DEFAULT 0"),

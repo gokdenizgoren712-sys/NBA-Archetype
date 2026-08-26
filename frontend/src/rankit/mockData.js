@@ -78,9 +78,9 @@ const devMatches = [
 ];
 
 const devActivity = [
-  { user: "Ece", initials: "EC", action: "rated", match: matches[0], rating: 4.5, text: "That final Brunson possession was pure theatre." },
-  { user: "Mert", initials: "MK", action: "marked a Classic", match: matches[2], rating: 5, text: "The kind of match you remember by where you watched it." },
-  { user: "Deniz", initials: "DA", action: "added to watchlist", match: matches[1], text: "Saving this one for the knockout-night atmosphere." },
+  { user: "Ece", initials: "EC", action: "rated", match: devMatches[0], rating: 4.5, text: "That final Brunson possession was pure theatre." },
+  { user: "Mert", initials: "MK", action: "marked a Classic", match: devMatches[2], rating: 5, text: "The kind of match you remember by where you watched it." },
+  { user: "Deniz", initials: "DA", action: "added to watchlist", match: devMatches[1], text: "Saving this one for the knockout-night atmosphere." },
 ];
 
 const devLists = [

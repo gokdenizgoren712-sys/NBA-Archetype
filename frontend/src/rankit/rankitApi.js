@@ -7,12 +7,35 @@ function headers() {
 }
 
 async function request(path, options = {}) {
-  const res = await fetch(`${BASE}${path}`, { cache: "no-store", ...options, headers: { ...headers(), ...(options.headers || {}) } });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.detail || `${res.status} ${res.statusText}`);
+  const method = options.method || "GET";
+  let userId = "guest";
+  try { userId = JSON.parse(localStorage.getItem("nba_arch_user"))?.id || "guest"; } catch { /* bozuk kullanıcı cache'i izolasyonu bozmaz */ }
+  const cacheKey = `rankit:cache:${userId}:${path}`;
+  try {
+    const res = await fetch(`${BASE}${path}`, { cache: "no-store", ...options, headers: { ...headers(), ...(options.headers || {}) } });
+    if (!res.ok) {
+      const errorBody = await res.json().catch(() => ({}));
+      throw new Error(errorBody.detail || `${res.status} ${res.statusText}`);
+    }
+    const data = await res.json();
+    if (method === "GET") {
+      try { localStorage.setItem(cacheKey, JSON.stringify({ savedAt: Date.now(), data })); } catch { /* depolama doluysa canlı veri yine kullanılır */ }
+    }
+    window.dispatchEvent(new CustomEvent("rankit:network", { detail: "online" }));
+    return data;
+  } catch (error) {
+    if (method === "GET") {
+      try {
+        const cached = JSON.parse(localStorage.getItem(cacheKey));
+        if (cached?.data) {
+          window.dispatchEvent(new CustomEvent("rankit:network", { detail: "offline" }));
+          return cached.data;
+        }
+      } catch { /* geçersiz cache normal hata yoluna düşer */ }
+    }
+    window.dispatchEvent(new CustomEvent("rankit:network", { detail: "offline" }));
+    throw error;
   }
-  return res.json();
 }
 
 const body = (method, value) => ({ method, body: JSON.stringify(value) });
@@ -22,6 +45,7 @@ export const rankitApi = {
   catalog: ({ sport = "All", competition = "All", season = "All", status = "All", limit = 60, offset = 0 } = {}) => request(`/catalog?sport=${encodeURIComponent(sport)}&competition=${encodeURIComponent(competition)}&season=${encodeURIComponent(season)}&status=${encodeURIComponent(status)}&limit=${limit}&offset=${offset}`),
   meta: () => request("/meta"),
   match: id => request(`/matches/${id}`),
+  broadcasts: (id, country = "TR") => request(`/matches/${id}/broadcasts?country=${encodeURIComponent(country)}`),
   player: id => request(`/players/${id}`),
   team: id => request(`/teams/${id}`),
   member: id => request(`/members/${id}`),
