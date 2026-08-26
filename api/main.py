@@ -3,7 +3,7 @@ NBA Arketip API — FastAPI backend
 Parquet dosyalarını okuyup JSON olarak sunar.
 """
 
-import sys, json, os, time, logging, secrets, unicodedata
+import sys, json, os, time, logging, secrets, unicodedata, hashlib
 from pathlib import Path
 from functools import lru_cache
 from typing import Optional
@@ -55,6 +55,9 @@ SMTP_FROM        = os.environ.get("SMTP_FROM", "")
 BREVO_API_KEY    = os.environ.get("BREVO_API_KEY", "")
 SITE_URL         = os.environ.get("SITE_URL", "https://nba-archetype.onrender.com")
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
+MOBILE_ORIGINS   = [x.strip() for x in os.environ.get(
+    "MOBILE_ORIGINS", "http://localhost,https://localhost,capacitor://localhost"
+).split(",") if x.strip()]
 
 # Railway'in outbound SMTP portlarını (587/2525 dahil) engellediği gözlemlendi
 # (bağlantı timeout ile ölüyordu) — bu yüzden SMTP yerine Brevo'nun HTTPS
@@ -85,7 +88,7 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[SITE_URL] if IS_PROD else ["*"],
+    allow_origins=list(dict.fromkeys([SITE_URL, *MOBILE_ORIGINS])) if IS_PROD else ["*"],
     allow_methods=["GET", "POST", "DELETE", "PUT"],
     allow_headers=["Authorization", "Content-Type"],
 )
@@ -2930,6 +2933,9 @@ class ResetBody(BaseModel):
 class GoogleAuthBody(BaseModel):
     credential: str
 
+class MobileAuthExchangeBody(BaseModel):
+    code: str
+
 class ArticleBody(BaseModel):
     title: str
     slug: str = ""
@@ -3126,6 +3132,49 @@ def me(user=Depends(get_current_user)):
     if not row:
         raise HTTPException(404, "User not found")
     return _row(row)
+
+@app.post("/api/auth/mobile-code")
+def create_mobile_auth_code(user=Depends(get_current_user)):
+    """Canli web oturumunu APK'ya tek kullanimlik kodla devreder.
+
+    JWT deep-link URL'sine yazilmaz; ham kod yalnizca bir kez ve 5 dakika
+    boyunca kullanilabilir. Veritabaninda da kodun sadece SHA-256 ozeti tutulur.
+    """
+    uid = int(user["sub"])
+    raw_code = secrets.token_urlsafe(32)
+    code_hash = hashlib.sha256(raw_code.encode("utf-8")).hexdigest()
+    expires_at = (datetime.utcnow() + timedelta(minutes=5)).strftime("%Y-%m-%d %H:%M:%S")
+    with get_conn() as conn:
+        conn.execute("DELETE FROM mobile_auth_codes WHERE expires_at < datetime('now') OR used_at IS NOT NULL")
+        conn.execute(
+            "INSERT INTO mobile_auth_codes(code_hash,user_id,expires_at) VALUES(?,?,?)",
+            (code_hash, uid, expires_at),
+        )
+    return {"code": raw_code, "expires_in": 300, "deep_link": f"rankit://auth?code={raw_code}"}
+
+@app.post("/api/auth/mobile-exchange")
+def exchange_mobile_auth_code(body: MobileAuthExchangeBody):
+    if not body.code or len(body.code) > 200:
+        raise HTTPException(400, "Invalid mobile authorization code")
+    code_hash = hashlib.sha256(body.code.encode("utf-8")).hexdigest()
+    with get_conn() as conn:
+        row = conn.execute("""SELECT c.id,c.user_id,u.email,u.username,u.role,u.is_banned
+            FROM mobile_auth_codes c JOIN users u ON u.id=c.user_id
+            WHERE c.code_hash=? AND c.used_at IS NULL AND c.expires_at >= datetime('now')""",
+            (code_hash,),
+        ).fetchone()
+        if not row:
+            raise HTTPException(401, "Mobile authorization code expired or already used")
+        changed = conn.execute(
+            "UPDATE mobile_auth_codes SET used_at=datetime('now') WHERE id=? AND used_at IS NULL",
+            (row["id"],),
+        ).rowcount
+        if changed != 1:
+            raise HTTPException(401, "Mobile authorization code already used")
+    if row["is_banned"]:
+        raise HTTPException(403, "This account has been suspended")
+    account = {"id": row["user_id"], "email": row["email"], "username": row["username"], "role": row["role"]}
+    return {"token": create_token(row["user_id"], row["role"]), "user": account}
 
 # ── Articles (public) ─────────────────────────────────────────────────────────
 

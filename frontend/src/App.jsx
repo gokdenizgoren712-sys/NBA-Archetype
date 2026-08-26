@@ -45,6 +45,7 @@ const FootballGlossary = lazy(() => import("./pages/football/FootballGlossary"))
 const FootballVersus  = lazy(() => import("./pages/football/FootballVersus"));
 const FootballModeSelect = lazy(() => import("./pages/football/FootballModeSelect"));
 const RankItPrototype = lazy(() => import("./rankit/RankItPrototype"));
+const RankItMobileAuth = lazy(() => import("./pages/RankItMobileAuth"));
 const PrivacyPolicy      = lazy(() => import("./pages/legal/PrivacyPolicy"));
 const TermsOfService     = lazy(() => import("./pages/legal/TermsOfService"));
 const ContactDisclaimer  = lazy(() => import("./pages/legal/ContactDisclaimer"));
@@ -389,6 +390,7 @@ function AppInner() {
               <Route path="/historical"               element={<Legacy to="/basketball/players" />} />
               {/* Auth */}
               <Route path="/login"                    element={<Login />} />
+              <Route path="/rankit/mobile-auth"       element={<RankItMobileAuth />} />
               <Route path="/register"                 element={<Register />} />
               <Route path="/profile"                  element={<Profile />} />
               {/* Blog */}

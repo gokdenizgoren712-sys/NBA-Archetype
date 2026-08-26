@@ -1,0 +1,11 @@
+{
+  "appId": "net.primaryarch.rankit",
+  "appName": "RankIt by Primary Arch",
+  "webDir": "dist",
+  "android": {
+    "backgroundColor": "#090a0b"
+  },
+  "server": {
+    "androidScheme": "https"
+  }
+}

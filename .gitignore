@@ -116,3 +116,16 @@ frontend/public/football-cutouts/
 # Gecici kabuk betikleri (uzun suren isleri arka planda kosturmak icin)
 _*.sh
 _*.mjs
+
+# ── RankIt mobil (Capacitor + Android) ───────────────────────────────────────
+# Kaynak ve yapilandirma repoda; uretilen her sey disarida.
+artifacts/                                   # imzalanmis/imzasiz APK, AAB
+frontend/android/.gradle/
+frontend/android/build/
+frontend/android/app/build/
+frontend/android/local.properties            # makineye ozel SDK yolu
+frontend/android/app/src/main/assets/public/ # `npx cap sync` yeniden uretiyor
+*.apk
+*.aab
+*.keystore
+*.jks

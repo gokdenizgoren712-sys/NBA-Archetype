@@ -7,12 +7,15 @@ import tailwindcss from '@tailwindcss/vite'
 // ve o durumda hiç bind edilemiyor — API_PORT=8010 verip devam edebilmek için.
 const API_PORT = process.env.API_PORT || '8000'
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [react(), tailwindcss()],
+  // RankIt mobil paketi kendi API'sinden veri alir; web sitesinin yuzlerce MB'lik
+  // oyuncu/futbol fotograf arsivini APK icine kopyalamaz.
+  publicDir: mode === 'rankit-mobile' ? false : 'public',
   server: {
     proxy: {
       '/api': `http://localhost:${API_PORT}`,
       '/ws': { target: `ws://localhost:${API_PORT}`, ws: true },
     },
   },
-})
+}))

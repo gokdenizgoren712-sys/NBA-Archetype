@@ -364,11 +364,21 @@ def init_db():
             created_at  TEXT DEFAULT (datetime('now'))
         );
 
+        CREATE TABLE IF NOT EXISTS mobile_auth_codes (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            code_hash   TEXT UNIQUE NOT NULL,
+            user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            expires_at  TEXT NOT NULL,
+            used_at     TEXT,
+            created_at  TEXT DEFAULT (datetime('now'))
+        );
+
         CREATE INDEX IF NOT EXISTS idx_rankit_matches_start ON rankit_matches(starts_at);
         CREATE INDEX IF NOT EXISTS idx_rankit_diary_user ON rankit_diary_entries(user_id, watched_date DESC);
         CREATE INDEX IF NOT EXISTS idx_rankit_diary_match ON rankit_diary_entries(match_id);
         CREATE INDEX IF NOT EXISTS idx_rankit_comments_entry ON rankit_review_comments(entry_id, created_at);
         CREATE INDEX IF NOT EXISTS idx_rankit_watchalong_match ON rankit_watchalong_messages(match_id, room, id);
+        CREATE INDEX IF NOT EXISTS idx_mobile_auth_code ON mobile_auth_codes(code_hash, expires_at);
         """)
         # RankIt katalog senkronizasyonu: dis veri kaynagindaki mac kimligi
         # tekrar calistirmalarda ayni maci gunceller, kopya uretmez.

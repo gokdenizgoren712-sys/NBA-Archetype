@@ -13,7 +13,7 @@ from typing import Literal, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, Field
 
-from .auth import get_optional_user
+from .auth import get_optional_user, _decode, _is_banned
 from .db import get_conn
 
 router = APIRouter(prefix="/api/rankit", tags=["RankIt"])
@@ -22,14 +22,14 @@ IS_PROD = bool(os.environ.get("RAILWAY_ENVIRONMENT") or os.environ.get("RENDER")
 
 class DiaryIn(BaseModel):
     match_id: int
-    watched_date: str = Field(default_factory=lambda: date.today().isoformat())
+    watched_date: date = Field(default_factory=date.today)
     rating: Optional[float] = None
-    review: str = ""
+    review: str = Field(default="", max_length=4000)
     is_rewatch: bool = False
     visibility: Literal["public", "followers", "private"] = "public"
     classic: bool = False
     spoiler: bool = False
-    tags: list[str] = []
+    tags: list[str] = Field(default_factory=list)
 
 
 class VoteIn(BaseModel):
@@ -37,7 +37,7 @@ class VoteIn(BaseModel):
 
 
 class RespectIn(BaseModel):
-    player_ids: list[int]
+    player_ids: list[int] = Field(default_factory=list)
 
 
 class FollowIn(BaseModel):
@@ -199,9 +199,14 @@ def _team(row, prefix: str) -> dict:
 
 def _match_dict(conn, row, uid: Optional[int] = None) -> dict:
     mid = row["id"]
-    rating = conn.execute("SELECT AVG(rating) avg, COUNT(rating) n FROM rankit_diary_entries WHERE match_id=? AND rating IS NOT NULL", (mid,)).fetchone()
+    # Topluluk puaninda her kullanicinin yalnizca en son puani sayilir. Rewatch
+    # gunlukleri sosyal akista kalir ama tek bir kullanici ortalamayi sisiremez.
+    rating = conn.execute("""SELECT AVG(e.rating) avg,COUNT(*) n FROM rankit_diary_entries e
+        WHERE e.id IN (SELECT MAX(id) FROM rankit_diary_entries
+            WHERE match_id=? AND rating IS NOT NULL GROUP BY user_id)""", (mid,)).fetchone()
     review_count = conn.execute("SELECT COUNT(*) n FROM rankit_diary_entries WHERE match_id=? AND review<>''", (mid,)).fetchone()["n"]
-    classics = conn.execute("SELECT SUM(classic) c, COUNT(*) n FROM rankit_diary_entries WHERE match_id=?", (mid,)).fetchone()
+    classics = conn.execute("""SELECT SUM(e.classic) c,COUNT(*) n FROM rankit_diary_entries e
+        WHERE e.id IN (SELECT MAX(id) FROM rankit_diary_entries WHERE match_id=? GROUP BY user_id)""", (mid,)).fetchone()
     potm = conn.execute("""SELECT p.id,p.name,p.shirt_no,p.image_url,COUNT(*) votes
         FROM rankit_potm_votes v JOIN rankit_players p ON p.id=v.player_id
         WHERE v.match_id=? GROUP BY p.id ORDER BY votes DESC,p.name LIMIT 1""", (mid,)).fetchone()
@@ -209,10 +214,18 @@ def _match_dict(conn, row, uid: Optional[int] = None) -> dict:
         JOIN rankit_diary_entries e ON e.id=t.entry_id WHERE e.match_id=?
         GROUP BY t.tag ORDER BY count DESC,t.tag""", (mid,)).fetchall()
     mine = None
+    my_tags, my_respect, my_potm_id = [], [], None
     watchlisted = False
     favorited = False
     if uid:
-        mine = conn.execute("SELECT rating,classic FROM rankit_diary_entries WHERE user_id=? AND match_id=? ORDER BY watched_date DESC,id DESC LIMIT 1", (uid, mid)).fetchone()
+        mine = conn.execute("""SELECT id,rating,review,classic,spoiler,visibility,is_rewatch,watched_date
+            FROM rankit_diary_entries WHERE user_id=? AND match_id=?
+            ORDER BY watched_date DESC,id DESC LIMIT 1""", (uid, mid)).fetchone()
+        if mine:
+            my_tags = [r["tag"] for r in conn.execute("SELECT tag FROM rankit_entry_tags WHERE entry_id=? ORDER BY tag", (mine["id"],)).fetchall()]
+        my_respect = [r["player_id"] for r in conn.execute("SELECT player_id FROM rankit_respect_votes WHERE user_id=? AND match_id=?", (uid, mid)).fetchall()]
+        my_potm = conn.execute("SELECT player_id FROM rankit_potm_votes WHERE user_id=? AND match_id=?", (uid, mid)).fetchone()
+        my_potm_id = my_potm["player_id"] if my_potm else None
         watchlisted = bool(conn.execute("SELECT 1 FROM rankit_watchlist WHERE user_id=? AND match_id=?", (uid, mid)).fetchone())
         favorited = bool(conn.execute("SELECT 1 FROM rankit_favorites WHERE user_id=? AND target_type='match' AND target_id=?", (uid, mid)).fetchone())
     score = None if row["home_score"] is None else f'{row["home_score"]} – {row["away_score"]}'
@@ -231,6 +244,12 @@ def _match_dict(conn, row, uid: Optional[int] = None) -> dict:
         "potm": dict(potm) if potm else None,
         "tags": [dict(t) for t in tags], "dominant_tag": tags[0]["tag"] if tags else None,
         "my_rating": mine["rating"] if mine else None, "my_classic": bool(mine["classic"]) if mine else False,
+        "my_review": mine["review"] if mine else "", "my_tags": my_tags,
+        "my_spoiler": bool(mine["spoiler"]) if mine else False,
+        "my_visibility": mine["visibility"] if mine else "public",
+        "my_rewatch": bool(mine["is_rewatch"]) if mine else False,
+        "my_watched_date": mine["watched_date"] if mine else None,
+        "my_potm_id": my_potm_id, "my_respect_ids": my_respect,
         "watchlisted": watchlisted, "favorited": favorited,
     }
 
@@ -240,6 +259,8 @@ MATCH_SELECT = """SELECT m.*,c.name competition_name,
     a.id away_id,a.name away_name,a.short_name away_short,a.color away_color,a.crest_url away_crest
     FROM rankit_matches m JOIN rankit_competitions c ON c.id=m.competition_id
     JOIN rankit_teams h ON h.id=m.home_team_id JOIN rankit_teams a ON a.id=m.away_team_id"""
+
+NEAREST_MATCH_ORDER = " ORDER BY ABS(julianday(m.starts_at)-julianday('now')),m.starts_at"
 
 
 @router.get("/home")
@@ -255,11 +276,11 @@ def rankit_home(sport: str = "All", user=Depends(get_optional_user)):
             args.append(sport)
         if where:
             sql += " WHERE " + " AND ".join(where)
-        sql += " ORDER BY m.starts_at DESC LIMIT 30"
+        sql += NEAREST_MATCH_ORDER + " LIMIT 30"
         if has_synced and sport == "All":
             by_sport = []
             for selected_sport in ("Basketball", "Football"):
-                by_sport.append(conn.execute(MATCH_SELECT + " WHERE m.provider IS NOT NULL AND m.sport=? ORDER BY m.starts_at DESC LIMIT 15", (selected_sport,)).fetchall())
+                by_sport.append(conn.execute(MATCH_SELECT + " WHERE m.provider IS NOT NULL AND m.sport=?" + NEAREST_MATCH_ORDER + " LIMIT 15", (selected_sport,)).fetchall())
             rows = [row for pair in zip(*by_sport) for row in pair]
         else:
             rows = conn.execute(sql, args).fetchall()
@@ -277,6 +298,7 @@ def rankit_home(sport: str = "All", user=Depends(get_optional_user)):
 def rankit_catalog(
     sport: str = "All",
     competition: str = "All",
+    season: str = "All",
     status: str = "All",
     limit: int = Query(60, ge=1, le=200),
     offset: int = Query(0, ge=0),
@@ -289,12 +311,14 @@ def rankit_catalog(
             where.append("m.sport=?"); args.append(sport)
         if competition != "All":
             where.append("c.name=?"); args.append(competition)
+        if season != "All":
+            where.append("m.season=?"); args.append(season)
         if status != "All":
             where.append("m.status=?"); args.append(status)
         base = " WHERE " + " AND ".join(where)
         total = conn.execute("""SELECT COUNT(*) n FROM rankit_matches m
             JOIN rankit_competitions c ON c.id=m.competition_id""" + base, args).fetchone()["n"]
-        rows = conn.execute(MATCH_SELECT + base + " ORDER BY m.starts_at DESC LIMIT ? OFFSET ?", (*args, limit, offset)).fetchall()
+        rows = conn.execute(MATCH_SELECT + base + NEAREST_MATCH_ORDER + " LIMIT ? OFFSET ?", (*args, limit, offset)).fetchall()
         return {"matches": [_match_dict(conn, row, uid) for row in rows], "total": total, "limit": limit, "offset": offset}
 
 
@@ -304,7 +328,10 @@ def rankit_meta():
         competitions = [dict(r) for r in conn.execute("""SELECT c.name,c.sport,c.country,c.season,COUNT(m.id) match_count
             FROM rankit_competitions c JOIN rankit_matches m ON m.competition_id=c.id
             WHERE m.provider IS NOT NULL GROUP BY c.id ORDER BY c.sport,c.name""").fetchall()]
-        return {"competitions": competitions, "matches": sum(c["match_count"] for c in competitions)}
+        seasons = [r["season"] for r in conn.execute("""SELECT m.season FROM rankit_matches m
+            WHERE m.provider IS NOT NULL GROUP BY m.season ORDER BY m.season DESC""").fetchall()]
+        return {"competitions": competitions, "seasons": seasons,
+                "matches": sum(c["match_count"] for c in competitions)}
 
 
 @router.get("/matches/{match_id}")
@@ -318,7 +345,7 @@ def rankit_match(match_id: int, user=Depends(get_optional_user)):
         result["players"] = [dict(r) for r in conn.execute("""SELECT p.id,p.name,p.shirt_no,p.image_url,t.short_name team
             FROM rankit_match_players mp JOIN rankit_players p ON p.id=mp.player_id
             JOIN rankit_teams t ON t.id=mp.team_id WHERE mp.match_id=? ORDER BY t.short_name,p.name""", (match_id,)).fetchall()]
-        result["reviews"] = [dict(r) for r in conn.execute("""SELECT e.id,e.rating,e.review,e.watched_date,e.classic,u.username,
+        result["reviews"] = [dict(r) for r in conn.execute("""SELECT e.id,e.rating,e.review,e.watched_date,e.classic,e.spoiler,u.username,
             (SELECT COUNT(*) FROM rankit_review_likes l WHERE l.entry_id=e.id) likes,
             EXISTS(SELECT 1 FROM rankit_review_likes l WHERE l.entry_id=e.id AND l.user_id=?) liked,
             (SELECT COUNT(*) FROM rankit_review_comments c WHERE c.entry_id=e.id) comments
@@ -415,20 +442,37 @@ def rankit_diary(view: str = "watched", user=Depends(get_optional_user)):
 
 @router.post("/diary")
 def rankit_log(body: DiaryIn, user=Depends(get_optional_user)):
-    if body.rating is not None and round(body.rating * 2) != body.rating * 2:
+    if body.rating is not None and (body.rating < .5 or body.rating > 5 or round(body.rating * 2) != body.rating * 2):
         raise HTTPException(422, "Rating must use 0.5 steps")
     if len(body.tags) > 3:
         raise HTTPException(422, "Choose at most three tags")
+    if body.watched_date > date.today():
+        raise HTTPException(422, "Watched date cannot be in the future")
     with get_conn() as conn:
         uid = _actor_id(user, conn)
-        if not conn.execute("SELECT 1 FROM rankit_matches WHERE id=?", (body.match_id,)).fetchone():
+        match = conn.execute("SELECT status FROM rankit_matches WHERE id=?", (body.match_id,)).fetchone()
+        if not match:
             raise HTTPException(404, "Match not found")
-        cur = conn.execute("""INSERT INTO rankit_diary_entries
-            (user_id,match_id,watched_date,rating,review,is_rewatch,visibility,classic,spoiler)
-            VALUES(?,?,?,?,?,?,?,?,?)""", (uid, body.match_id, body.watched_date, body.rating, body.review.strip(), int(body.is_rewatch), body.visibility, int(body.classic), int(body.spoiler)))
+        if match["status"] != "finished":
+            raise HTTPException(409, "Only finished matches can be added to the diary")
+        watched = body.watched_date.isoformat()
+        existing = None if body.is_rewatch else conn.execute("""SELECT id FROM rankit_diary_entries
+            WHERE user_id=? AND match_id=? AND is_rewatch=0 ORDER BY id DESC LIMIT 1""", (uid, body.match_id)).fetchone()
+        if existing:
+            entry_id = existing["id"]
+            conn.execute("""UPDATE rankit_diary_entries SET watched_date=?,rating=?,review=?,visibility=?,
+                classic=?,spoiler=? WHERE id=?""", (watched, body.rating, body.review.strip(), body.visibility,
+                                                     int(body.classic), int(body.spoiler), entry_id))
+            conn.execute("DELETE FROM rankit_entry_tags WHERE entry_id=?", (entry_id,))
+            updated = True
+        else:
+            cur = conn.execute("""INSERT INTO rankit_diary_entries
+                (user_id,match_id,watched_date,rating,review,is_rewatch,visibility,classic,spoiler)
+                VALUES(?,?,?,?,?,?,?,?,?)""", (uid, body.match_id, watched, body.rating, body.review.strip(), int(body.is_rewatch), body.visibility, int(body.classic), int(body.spoiler)))
+            entry_id, updated = cur.lastrowid, False
         for tag in dict.fromkeys(t.strip() for t in body.tags if t.strip()):
-            conn.execute("INSERT INTO rankit_entry_tags(entry_id,tag) VALUES(?,?)", (cur.lastrowid, tag[:40]))
-        return {"ok": True, "entry_id": cur.lastrowid}
+            conn.execute("INSERT INTO rankit_entry_tags(entry_id,tag) VALUES(?,?)", (entry_id, tag[:40]))
+        return {"ok": True, "entry_id": entry_id, "updated": updated}
 
 
 def _require_watched(conn, uid: int, match_id: int):
@@ -560,8 +604,7 @@ def toggle_favorite(body: TargetIn, user=Depends(get_optional_user)):
 def toggle_review_like(entry_id: int, user=Depends(get_optional_user)):
     with get_conn() as conn:
         uid = _actor_id(user, conn)
-        if not conn.execute("SELECT 1 FROM rankit_diary_entries WHERE id=?", (entry_id,)).fetchone():
-            raise HTTPException(404, "Review not found")
+        _require_review_access(conn, entry_id, uid)
         exists = conn.execute("SELECT 1 FROM rankit_review_likes WHERE user_id=? AND entry_id=?", (uid, entry_id)).fetchone()
         if exists:
             conn.execute("DELETE FROM rankit_review_likes WHERE user_id=? AND entry_id=?", (uid, entry_id))
@@ -571,9 +614,23 @@ def toggle_review_like(entry_id: int, user=Depends(get_optional_user)):
         return {"liked": not bool(exists), "likes": likes}
 
 
+def _require_review_access(conn, entry_id: int, uid: Optional[int] = None):
+    entry = conn.execute("SELECT user_id,visibility,review FROM rankit_diary_entries WHERE id=?", (entry_id,)).fetchone()
+    if not entry or not entry["review"]:
+        raise HTTPException(404, "Review not found")
+    if entry["visibility"] == "public" or uid == entry["user_id"]:
+        return entry
+    if entry["visibility"] == "followers" and uid and conn.execute("""SELECT 1 FROM rankit_follows
+        WHERE user_id=? AND target_type='user' AND target_id=?""", (uid, entry["user_id"])).fetchone():
+        return entry
+    raise HTTPException(403, "This review is not visible to you")
+
+
 @router.get("/reviews/{entry_id}/comments")
-def review_comments(entry_id: int):
+def review_comments(entry_id: int, user=Depends(get_optional_user)):
     with get_conn() as conn:
+        uid = int(user["sub"]) if user else (None if IS_PROD else _demo_user_id(conn))
+        _require_review_access(conn, entry_id, uid)
         rows = conn.execute("""SELECT c.id,c.content,c.created_at,u.username FROM rankit_review_comments c
             JOIN users u ON u.id=c.user_id WHERE c.entry_id=? ORDER BY c.id""", (entry_id,)).fetchall()
         return {"comments": [dict(r) for r in rows]}
@@ -583,8 +640,7 @@ def review_comments(entry_id: int):
 def add_review_comment(entry_id: int, body: ReviewCommentIn, user=Depends(get_optional_user)):
     with get_conn() as conn:
         uid = _actor_id(user, conn)
-        if not conn.execute("SELECT 1 FROM rankit_diary_entries WHERE id=?", (entry_id,)).fetchone():
-            raise HTTPException(404, "Review not found")
+        _require_review_access(conn, entry_id, uid)
         cur = conn.execute("INSERT INTO rankit_review_comments(user_id,entry_id,content) VALUES(?,?,?)", (uid, entry_id, body.content.strip()))
         return {"ok": True, "comment_id": cur.lastrowid}
 
@@ -599,13 +655,31 @@ def watchalong_history(match_id: int, room: str = "community"):
 
 @router.websocket("/ws/watchalong/{match_id}")
 async def rankit_watchalong_socket(ws: WebSocket, match_id: int, room: str = "community"):
+    token = ws.query_params.get("token", "")
+    uid = None
+    if token:
+        try:
+            payload = _decode(token)
+            candidate = int(payload["sub"])
+            if not _is_banned(candidate):
+                uid = candidate
+        except Exception:
+            uid = None
+    with get_conn() as conn:
+        if uid is None and not IS_PROD:
+            uid = _demo_user_id(conn)
+        if uid is None:
+            await ws.close(code=4401, reason="Sign in required")
+            return
+        username_row = conn.execute("SELECT username FROM users WHERE id=?", (uid,)).fetchone()
+        if not username_row:
+            await ws.close(code=4401, reason="Unknown user")
+            return
+        username = username_row["username"]
     await ws.accept()
     key = (match_id, room[:40])
     WATCHALONG_CONNECTIONS.setdefault(key, []).append(ws)
     try:
-        with get_conn() as conn:
-            uid = _demo_user_id(conn)
-            username = conn.execute("SELECT username FROM users WHERE id=?", (uid,)).fetchone()["username"]
         while True:
             payload = await ws.receive_json()
             content = str(payload.get("content", "")).strip()[:300]

@@ -1,11 +1,13 @@
 """RankIt yerel katalog senkronizasyonu.
 
-2025-26 NBA maclarini NBA Stats (nba_api), Avrupa'nin bes buyuk ligini
-FotMob lig ucundan alir. Kadrolar daha once cache'lenmis oyuncu parquet'lerinden
-kurulur; mac detayi basina yuzlerce ek istek yapilmaz.
+NBA maclarini NBA Stats (nba_api), Avrupa'nin bes buyuk ligini FotMob lig
+ucundan alir. Tamamlanmis sezonda kadrolar Primary Arch oyuncu parquet'inden
+kurulur. Yeni sezon parquet'i henuz yoksa fikstur yine eklenir; eslesen takimlar
+icin son mevcut sezon kadrosu kullanilir.
 
 Calistirma:
     python src/rankit_sync.py --season 2025-26
+    python src/rankit_sync.py --season 2026-27
 """
 from __future__ import annotations
 
@@ -96,26 +98,77 @@ def _player(conn, sport: str, team_id: int, external_id, name: str) -> int:
     return conn.execute("SELECT id FROM rankit_players WHERE sport=? AND name=?", (sport, name)).fetchone()["id"]
 
 
+def _previous_season(season: str) -> str:
+    start = int(season.split("-")[0]) - 1
+    return f"{start}-{str(start + 1)[-2:]}"
+
+
+def _season_player_file(season: str) -> Path | None:
+    exact = ROOT / "data" / f"{season}__player_scores.parquet"
+    fallback = ROOT / "data" / f"{_previous_season(season)}__player_scores.parquet"
+    return exact if exact.exists() else fallback if fallback.exists() else None
+
+
+def _nba_schedule_v2(season: str) -> pd.DataFrame:
+    """Gelecek maclari da veren NBA ScheduleLeagueV2'yi ortak semaya cevir."""
+    from nba_api.stats.endpoints import ScheduleLeagueV2
+
+    raw = ScheduleLeagueV2(season=season, timeout=45).get_data_frames()[0]
+    if raw.empty:
+        return raw
+    raw = raw[raw["gameLabel"].fillna("").str.lower() != "preseason"].copy()
+    # NBA Cup eleme slotlarinda takimlar grup asamasi bitene kadar null gelir.
+    # Bunlari uydurmak yerine sonraki idempotent senkronizasyona birak.
+    raw = raw.dropna(subset=["homeTeam_teamTricode", "awayTeam_teamTricode"])
+    return pd.DataFrame({
+        "GAME_ID": raw["gameId"].astype(str),
+        "GAME_DATE_TIME": raw["gameDateTimeUTC"],
+        "HOME_ABBREVIATION": raw["homeTeam_teamTricode"],
+        "AWAY_ABBREVIATION": raw["awayTeam_teamTricode"],
+        "GAME_STATUS": raw["gameStatus"],
+        "HOME_PTS": pd.to_numeric(raw["homeTeam_score"], errors="coerce"),
+        "AWAY_PTS": pd.to_numeric(raw["awayTeam_score"], errors="coerce"),
+    })
+
+
 def sync_nba(season: str) -> dict:
     from nba_api.stats.static import teams as nba_teams
     from fetch_schedules import fetch_season_schedule
 
-    cache = ROOT / "data" / f"{season}__schedule.parquet"
-    schedule = pd.read_parquet(cache) if cache.exists() else fetch_season_schedule(season)
-    if not cache.exists():
-        schedule.to_parquet(cache, index=False)
-    players = pd.read_parquet(ROOT / "data" / f"{season}__player_scores.parquet")
+    legacy_cache = ROOT / "data" / f"{season}__schedule.parquet"
+    fixture_cache = ROOT / "data" / f"{season}__rankit_schedule.parquet"
+    if legacy_cache.exists():
+        legacy = pd.read_parquet(legacy_cache)
+        schedule = (legacy.sort_values("IS_HOME", ascending=False).drop_duplicates("GAME_ID")
+                    .rename(columns={"TEAM_ABBREVIATION":"HOME_ABBREVIATION", "OPP_ABBREVIATION":"AWAY_ABBREVIATION",
+                                     "PTS":"HOME_PTS", "OPP_PTS":"AWAY_PTS"}))
+        schedule["GAME_DATE_TIME"] = schedule["GAME_DATE"].astype(str) + "T00:00:00Z"
+        schedule["GAME_STATUS"] = schedule["WL"].notna().map({True: 3, False: 1})
+    elif fixture_cache.exists():
+        schedule = pd.read_parquet(fixture_cache)
+    else:
+        schedule = _nba_schedule_v2(season)
+        if schedule.empty:
+            legacy = fetch_season_schedule(season)
+            if legacy.empty:
+                return {"matches": 0, "players": 0, "links": 0}
+            schedule = (legacy.sort_values("IS_HOME", ascending=False).drop_duplicates("GAME_ID")
+                        .rename(columns={"TEAM_ABBREVIATION":"HOME_ABBREVIATION", "OPP_ABBREVIATION":"AWAY_ABBREVIATION",
+                                         "PTS":"HOME_PTS", "OPP_PTS":"AWAY_PTS"}))
+            schedule["GAME_DATE_TIME"] = schedule["GAME_DATE"].astype(str) + "T00:00:00Z"
+            schedule["GAME_STATUS"] = schedule["WL"].notna().map({True: 3, False: 1})
+        schedule.to_parquet(fixture_cache, index=False)
+    schedule = schedule.dropna(subset=["HOME_ABBREVIATION", "AWAY_ABBREVIATION"])
+    player_file = _season_player_file(season)
+    players = pd.read_parquet(player_file) if player_file else pd.DataFrame(columns=["PLAYER_ID","PLAYER_NAME","TEAM_ABBREVIATION"])
     meta = {t["abbreviation"]: t for t in nba_teams.get_teams()}
-    # Normal maclarda ev satiri IS_HOME=True. Neutral saha maclarinda iki satir
-    # da False olabildigi icin GAME_ID basina ev satirini tercih et, yoksa ilk
-    # satiri katalogdaki gorsel home/away sirasi olarak kullan.
-    home_games = (schedule.sort_values("IS_HOME", ascending=False)
-                          .drop_duplicates("GAME_ID").copy())
+    home_games = schedule.drop_duplicates("GAME_ID").copy()
     linked = 0
     with get_conn() as conn:
         comp_id = _competition(conn, "Basketball", "NBA", "USA", season)
         team_ids = {}
-        for abbr in sorted(set(schedule["TEAM_ABBREVIATION"])):
+        abbreviations = set(schedule["HOME_ABBREVIATION"]) | set(schedule["AWAY_ABBREVIATION"])
+        for abbr in sorted(abbreviations):
             item = meta.get(abbr, {"full_name": abbr})
             team_ids[abbr] = _team(conn, "Basketball", item["full_name"], abbr, NBA_COLORS.get(abbr, _color(abbr)), "USA")
         roster = {}
@@ -126,10 +179,10 @@ def sync_nba(season: str) -> dict:
             roster.setdefault(row.TEAM_ABBREVIATION, []).append(pid)
         for row in home_games.itertuples(index=False):
             mid = _match(conn, provider="nba", external_id=row.GAME_ID, sport="Basketball", comp_id=comp_id,
-                         season=season, starts_at=f"{row.GAME_DATE}T00:00:00Z", status="finished" if pd.notna(row.WL) else "upcoming",
-                         home_id=team_ids[row.TEAM_ABBREVIATION], away_id=team_ids[row.OPP_ABBREVIATION],
-                         home_score=None if pd.isna(row.PTS) else int(row.PTS), away_score=None if pd.isna(row.OPP_PTS) else int(row.OPP_PTS))
-            for abbr in (row.TEAM_ABBREVIATION, row.OPP_ABBREVIATION):
+                         season=season, starts_at=row.GAME_DATE_TIME, status="finished" if int(row.GAME_STATUS) == 3 else "live" if int(row.GAME_STATUS) == 2 else "upcoming",
+                         home_id=team_ids[row.HOME_ABBREVIATION], away_id=team_ids[row.AWAY_ABBREVIATION],
+                         home_score=None if pd.isna(row.HOME_PTS) else int(row.HOME_PTS), away_score=None if pd.isna(row.AWAY_PTS) else int(row.AWAY_PTS))
+            for abbr in (row.HOME_ABBREVIATION, row.AWAY_ABBREVIATION):
                 for pid in roster.get(abbr, []):
                     conn.execute("INSERT OR IGNORE INTO rankit_match_players(match_id,player_id,team_id) VALUES(?,?,?)", (mid, pid, team_ids[abbr]))
                     linked += 1
@@ -147,7 +200,10 @@ def sync_football(season: str) -> dict:
         for slug, (league_id, league_name, country) in FOOTBALL_LEAGUES.items():
             comp_id = _competition(conn, "Football", league_name, country, season)
             parquet = ROOT / "data" / f"football__{slug}__{long_season}__fotmob.parquet"
-            roster_df = pd.read_parquet(parquet)
+            if not parquet.exists():
+                previous = start_year - 1
+                parquet = ROOT / "data" / f"football__{slug}__{previous}-{previous + 1}__fotmob.parquet"
+            roster_df = pd.read_parquet(parquet) if parquet.exists() else pd.DataFrame(columns=["PLAYER_ID","PLAYER_NAME","TEAM"])
             roster_df = roster_df[["PLAYER_ID", "PLAYER_NAME", "TEAM"]].dropna().drop_duplicates("PLAYER_ID")
             payload = ff.api(f"leagues?id={league_id}&season={fotmob_season.replace('/', '%2F')}") or {}
             fixtures = ((payload.get("fixtures") or {}).get("allMatches") or [])

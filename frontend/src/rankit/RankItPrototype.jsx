@@ -5,7 +5,7 @@ import {
   Heart, Radio, Send, Star, ThumbsUp, Trophy, Users, X,
 } from "lucide-react";
 import { activity, lists, matches } from "./mockData";
-import { rankitApi } from "./rankitApi";
+import { rankitApi, rankitSocketUrl } from "./rankitApi";
 import "./rankit.css";
 
 const SPORTS = ["All", "Basketball", "Football", "Olympics"];
@@ -47,11 +47,13 @@ function RankItMark({ size = 28 }) {
 
 function Stars({ value = 0, onChange, compact = false }) {
   return <div className={`ri-stars${compact ? " compact" : ""}`} aria-label={`${value} out of 5 stars`}>
-    {[1, 2, 3, 4, 5].map(n => (
-      <button key={n} onClick={() => onChange?.(n)} className={n <= value ? "on" : ""} aria-label={`${n} stars`}>
-        <Star size={compact ? 13 : 26} fill={n <= value ? "currentColor" : "none"} />
-      </button>
-    ))}
+    {[1, 2, 3, 4, 5].map(n => {
+      const fill = value >= n ? 100 : value >= n - .5 ? 50 : 0;
+      const glyph = <span className="ri-star-glyph" style={{"--star-fill":`${fill}%`}}><Star size={compact ? 13 : 26}/><span><Star size={compact ? 13 : 26} fill="currentColor"/></span></span>;
+      if (!onChange) return <span key={n} className={fill ? "on" : ""}>{glyph}</span>;
+      return <button type="button" key={n} className={fill ? "on" : ""} aria-label={`${n - .5} or ${n} stars`}
+        onClick={event => { const box=event.currentTarget.getBoundingClientRect(); onChange(event.clientX-box.left < box.width/2 ? n-.5 : n); }}>{glyph}</button>;
+    })}
   </div>;
 }
 
@@ -106,22 +108,27 @@ function MatchCard({ match, hideScores, onOpen, featured = false }) {
     </div>
 
     <div className="ri-match-foot">
-      <span>{finished ? `${match.ratings.toLocaleString()} ratings · ${match.reviewCount ?? 0} reviews` : `Watch on ${match.broadcaster}`}</span>
+      <span>{finished
+        ? `${match.ratings.toLocaleString()} ratings · ${match.reviewCount ?? 0} reviews`
+        : match.broadcaster ? `Watch on ${match.broadcaster}` : "Broadcast details pending"}</span>
       <span>{finished && match.dominantTag ? match.dominantTag : match.date}</span>
     </div>
   </article>;
 }
 
 function MatchDetail({ match, hideScores, onClose, onSave, onToggleWatchlist, onToggleFavorite, onRefresh }) {
-  const [rating, setRating] = useState(match.status === "finished" ? 4 : 0);
-  const [classic, setClassic] = useState(false);
+  const [rating, setRating] = useState(match.my_rating ?? 0);
+  const [classic, setClassic] = useState(!!match.my_classic);
   const [watchlist, setWatchlist] = useState(!!match.watchlisted);
   const [favorited, setFavorited] = useState(!!match.favorited);
   const [section, setSection] = useState("Match");
-  const [tags, setTags] = useState([]);
-  const [respect, setRespect] = useState([]);
-  const [potmId, setPotmId] = useState(match.potm?.id || null);
-  const [review, setReview] = useState("");
+  const [tags, setTags] = useState(match.my_tags || []);
+  const [respect, setRespect] = useState(match.my_respect_ids || []);
+  const [potmId, setPotmId] = useState(match.my_potm_id || null);
+  const [review, setReview] = useState(match.my_review || "");
+  const [spoiler, setSpoiler] = useState(!!match.my_spoiler);
+  const [visibility, setVisibility] = useState(match.my_visibility || "public");
+  const [rewatch, setRewatch] = useState(false);
   const [saveState, setSaveState] = useState("idle");
   const tagOptions = match.sport === "Football"
     ? ["Nail-biter", "Great Atmosphere", "Comeback", "Penalty Drama", "Goal Fest"]
@@ -130,6 +137,12 @@ function MatchDetail({ match, hideScores, onClose, onSave, onToggleWatchlist, on
     ? ["Declan Rice", "Vinícius Jr.", "Martin Ødegaard"]
     : ["Jayson Tatum", "Josh Hart", "Derrick White"];
   const playerOptions = match.players || [];
+  useEffect(() => {
+    setRating(match.my_rating ?? 0); setClassic(!!match.my_classic);
+    setTags(match.my_tags || []); setRespect(match.my_respect_ids || []);
+    setPotmId(match.my_potm_id || null); setReview(match.my_review || "");
+    setSpoiler(!!match.my_spoiler); setVisibility(match.my_visibility || "public");
+  }, [match.id, match.my_watched_date]);
   const toggleTag = tag => setTags(v => v.includes(tag) ? v.filter(x => x !== tag) : v.length < 3 ? [...v, tag] : v);
   const toggleRespect = id => {
     if (id === potmId) return;
@@ -143,7 +156,7 @@ function MatchDetail({ match, hideScores, onClose, onSave, onToggleWatchlist, on
     setSaveState("saving");
     try {
       await onSave?.({
-        diary: { match_id: match.id, watched_date: new Date().toISOString().slice(0, 10), rating, review, classic, tags, visibility: "public" },
+        diary: { match_id: match.id, watched_date: new Date().toISOString().slice(0, 10), rating: rating || null, review, classic, tags, visibility, spoiler, is_rewatch: rewatch },
         matchId: match.id, potmId, respectIds: respect,
       });
       setSaveState("saved");
@@ -170,7 +183,7 @@ function MatchDetail({ match, hideScores, onClose, onSave, onToggleWatchlist, on
       <div className="ri-detail-tabs"><button className={section === "Match" ? "active" : ""} onClick={() => setSection("Match")}>Match</button><button className={section === "Community" ? "active" : ""} onClick={() => setSection("Community")}>Community</button></div>
       {section === "Match" ? <>
         {match.summary && <p className="ri-summary">{match.summary}</p>}
-        <div className="ri-broadcast"><small>WATCH IN TÜRKİYE</small><strong>{match.broadcaster}</strong><span>{match.status === "finished" ? "Broadcast information for this match" : "Coverage starts 15 min before the match"}</span></div>
+        <div className="ri-broadcast"><small>WATCH IN TÜRKİYE</small><strong>{match.broadcaster || "To be announced"}</strong><span>{match.status === "finished" ? "Broadcast information for this match" : "Coverage starts 15 min before the match"}</span></div>
         <div className="ri-timeline"><small>MATCH</small><div><span>{match.status === "finished" ? "FT" : match.date}</span><strong>{match.status === "finished" ? "Full time" : "Scheduled"}</strong></div><button onClick={() => setSection("Community")}>Community <ChevronRight size={14}/></button></div>
         {playerOptions.length > 0 && <div className="ri-squad-preview"><div className="ri-chip-title">SEASON SQUADS <span>{playerOptions.length}</span></div><div>{[match.home,match.away].map(team=><section key={team.id}><header><TeamMark team={team}/><strong>{team.name}</strong></header><div>{playerOptions.filter(p=>p.team===team.short).map(p=><span key={p.id}>{p.shirt_no&&<b>{p.shirt_no}</b>}{p.name}</span>)}</div></section>)}</div></div>}
         <div className="ri-detail-actions">
@@ -181,15 +194,16 @@ function MatchDetail({ match, hideScores, onClose, onSave, onToggleWatchlist, on
         <div className="ri-rating-panel"><small>YOUR RATING</small><Stars value={rating} onChange={setRating}/><ClassicStamp active={classic} onClick={() => setClassic(v => !v)}/></div>
         <div className="ri-chip-title">DESCRIBE THE MATCH <span>{tags.length}/3</span></div>
         <div className="ri-tag-picker">{tagOptions.map(tag => <button key={tag} className={tags.includes(tag) ? "active" : ""} onClick={() => toggleTag(tag)}>{tag}</button>)}</div>
-        <div className="ri-detail-row"><span>Community rating</span><strong><Star size={14} fill="currentColor"/> {match.communityRating} <small>({match.ratings.toLocaleString()})</small></strong></div>
+        <div className="ri-detail-row"><span>Community rating</span><strong><Star size={14} fill="currentColor"/> {match.communityRating ?? "Not rated"} <small>({match.ratings.toLocaleString()})</small></strong></div>
         <div className="ri-vote-block">
           <div><Trophy size={15}/><span><small>YOUR PLAYER OF THE MATCH</small><strong>{hideScores ? "Tap to reveal" : (playerOptions.find(p => p.id === potmId)?.name || "Choose a player")}</strong></span><b>{potmId ? "SELECTED" : "OPEN"}</b></div>
           <div className="ri-respect-grid">{playerOptions.map(player => <button key={`potm-${player.id}`} className={potmId === player.id ? "active" : ""} onClick={() => choosePotm(player.id)}><Trophy size={12}/>{player.name}</button>)}</div>
           <p>Choose up to two other players whose performance deserves recognition.</p>
           <div className="ri-respect-grid">{playerOptions.filter(player => player.id !== potmId).map(player => <button key={`respect-${player.id}`} className={respect.includes(player.id) ? "active" : ""} onClick={() => toggleRespect(player.id)}><ThumbsUp size={12}/>{player.name}</button>)}</div>
         </div>
-        <textarea className="ri-review-input" value={review} onChange={e=>setReview(e.target.value)} placeholder="Write an optional review…" rows="3"/>
-        <button className={`ri-review-cta${saveState === "saved" ? " saved" : ""}`} onClick={saveLog}><MessageCircle size={17}/> {saveState === "saving" ? "Saving…" : saveState === "saved" ? "Saved to Diary" : saveState === "error" ? "Try again" : "Save to Diary"}</button>
+        <textarea className="ri-review-input" maxLength={4000} value={review} onChange={e=>setReview(e.target.value)} placeholder="Write an optional review…" rows="3"/>
+        <div className="ri-review-options"><label><input type="checkbox" checked={spoiler} onChange={e=>setSpoiler(e.target.checked)}/> Contains spoilers</label><label><input type="checkbox" checked={rewatch} onChange={e=>setRewatch(e.target.checked)}/> Log as rewatch</label><select value={visibility} onChange={e=>setVisibility(e.target.value)} aria-label="Review visibility"><option value="public">Public</option><option value="followers">Followers</option><option value="private">Private</option></select></div>
+        <button disabled={saveState === "saving"} className={`ri-review-cta${saveState === "saved" ? " saved" : ""}`} onClick={saveLog}><MessageCircle size={17}/> {saveState === "saving" ? "Saving…" : saveState === "saved" ? "Saved to Diary" : saveState === "error" ? "Could not save · Try again" : match.my_watched_date && !rewatch ? "Update Diary Entry" : "Save to Diary"}</button>
         <ReviewFeed reviews={match.reviews || []} onRefresh={onRefresh}/>
       </> : <WatchalongPanel matchId={match.id}/>} 
     </section>
@@ -200,6 +214,7 @@ function ReviewFeed({ reviews, onRefresh }) {
   const [openId, setOpenId] = useState(null);
   const [comments, setComments] = useState({});
   const [draft, setDraft] = useState("");
+  const [revealed, setRevealed] = useState([]);
   const toggleComments = async id => {
     setOpenId(openId === id ? null : id);
     if (!comments[id]) setComments(v => ({ ...v, [id]: [] }));
@@ -216,7 +231,7 @@ function ReviewFeed({ reviews, onRefresh }) {
   };
   const like = async id => { await rankitApi.likeReview(id); await onRefresh?.(); };
   return <div className="ri-review-feed"><div className="ri-chip-title">COMMUNITY REVIEWS <span>{reviews.length}</span></div>{reviews.map(r => <article key={r.id}>
-    <div><strong>@{r.username}</strong><Stars value={r.rating || 0} compact/></div><p>{r.review}</p>
+    <div><strong>@{r.username}</strong><Stars value={r.rating || 0} compact/></div>{r.spoiler && !revealed.includes(r.id) ? <button className="ri-spoiler-cover" onClick={()=>setRevealed(v=>[...v,r.id])}><EyeOff size={14}/><span>Spoiler review</span><small>Tap to reveal</small></button> : <p>{r.review}</p>}
     <footer><button className={r.liked ? "active" : ""} onClick={() => like(r.id)}><Heart size={12} fill={r.liked ? "currentColor" : "none"}/> {r.likes}</button><button onClick={() => toggleComments(r.id)}><MessageCircle size={12}/> {r.comments}</button></footer>
     {openId === r.id && <div className="ri-comments">{(comments[r.id] || []).map(c => <p key={c.id}><strong>@{c.username}</strong> {c.content}</p>)}<div><input value={draft} onChange={e => setDraft(e.target.value)} placeholder="Write a reply"/><button onClick={() => addComment(r.id)}><Send size={13}/></button></div></div>}
   </article>)}</div>;
@@ -229,9 +244,8 @@ function WatchalongPanel({ matchId }) {
   const socketRef = useMemo(() => ({ current: null }), []);
   useEffect(() => {
     rankitApi.watchalong(matchId).then(d => setMessages(d.messages || [])).catch(() => {});
-    const host = window.location.hostname;
-    const port = window.location.port === "5173" ? ":8010" : window.location.port ? `:${window.location.port}` : "";
-    const ws = new WebSocket(`${window.location.protocol === "https:" ? "wss" : "ws"}://${host}${port}/api/rankit/ws/watchalong/${matchId}`);
+    const token = localStorage.getItem("nba_arch_token") || "";
+    const ws = new WebSocket(rankitSocketUrl(`/api/rankit/ws/watchalong/${matchId}?token=${encodeURIComponent(token)}`));
     socketRef.current = ws;
     ws.onopen = () => setConnected(true);
     ws.onclose = () => setConnected(false);
@@ -296,13 +310,24 @@ function EntityDetail({ detail, onClose, onOpenMatch, onOpenEntity, onChanged })
 
 function RankSheet({ onClose, onOpenMatch, catalog = matches }) {
   const [query, setQuery] = useState("");
-  const filtered = catalog.filter(m => `${m.home.name} ${m.away.name}`.toLowerCase().includes(query.toLowerCase()));
+  const [filtered, setFiltered] = useState(catalog.filter(m=>m.status==="finished"));
+  const [loading, setLoading] = useState(false);
+  useEffect(()=>{
+    const timer=setTimeout(async()=>{
+      setLoading(true);
+      try {
+        const data=query.trim().length>=2 ? await rankitApi.search(query.trim(),"Matches") : await rankitApi.catalog({status:"finished",limit:60});
+        setFiltered((data.matches||[]).map(fromApiMatch));
+      } finally { setLoading(false); }
+    },180);
+    return()=>clearTimeout(timer);
+  },[query]);
   return <div className="ri-sheet-wrap" onClick={onClose}>
     <section className="ri-rank-sheet" onClick={e => e.stopPropagation()}>
       <div className="ri-sheet-grab" />
       <div className="ri-rank-head"><div><small>ADD TO YOUR DIARY</small><h2>Rank a match</h2></div><button onClick={onClose}><X size={20} /></button></div>
       <label className="ri-search"><Search size={17} /><input autoFocus value={query} onChange={e => setQuery(e.target.value)} placeholder="Search teams or matches" /></label>
-      <div className="ri-quick-date"><CalendarDays size={15} /> Recently played</div>
+      <div className="ri-quick-date"><CalendarDays size={15} /> {loading ? "Searching all matches…" : query ? `${filtered.length} matches found` : "Recently played"}</div>
       <div className="ri-rank-results">
         {filtered.map(m => <button key={m.id} onClick={() => { onClose(); onOpenMatch(m); }}>
           <div className="ri-mini-crests"><TeamMark team={m.home} /><TeamMark team={m.away} /></div>
@@ -342,6 +367,8 @@ function HomeView({ sport, setSport, hideScores, setHideScores, onOpen, onNaviga
 function DiscoverView({ hideScores, onOpen, catalog = matches, meta, listCatalog = [], onCreateList, onOpenList }) {
   const [sportFilter, setSportFilter] = useState("All");
   const [competition, setCompetition] = useState("All");
+  const [season, setSeason] = useState("All");
+  const [status, setStatus] = useState("All");
   const [pageCatalog, setPageCatalog] = useState(catalog);
   const [total, setTotal] = useState(catalog.length);
   const [loading, setLoading] = useState(false);
@@ -349,13 +376,15 @@ function DiscoverView({ hideScores, onOpen, catalog = matches, meta, listCatalog
   const load = async (append = false) => {
     setLoading(true);
     const offset = append ? pageCatalog.length : 0;
-    const data = await rankitApi.catalog({ sport: sportFilter, competition, limit: 60, offset });
+    const data = await rankitApi.catalog({ sport: sportFilter, competition, season, status: status === "All" ? "All" : status.toLowerCase(), limit: 60, offset });
     setPageCatalog(v => append ? [...v, ...(data.matches || []).map(fromApiMatch)] : (data.matches || []).map(fromApiMatch));
     setTotal(data.total || 0); setLoading(false);
   };
-  useEffect(() => { load(false).catch(()=>setLoading(false)); }, [sportFilter, competition]);
+  useEffect(() => { load(false).catch(()=>setLoading(false)); }, [sportFilter, competition, season, status]);
+  const clearFilters = () => { setSportFilter("All"); setCompetition("All"); setSeason("All"); setStatus("All"); };
+  const activeFilterCount = [sportFilter,competition,season,status].filter(x=>x!=="All").length;
   return <><div className="ri-page-title"><small>FIND YOUR NEXT MATCH</small><h1>Discover</h1></div>
-    <div className="ri-catalog-filters"><div>{["All","Basketball","Football"].map(s=><button key={s} className={sportFilter===s?"active":""} onClick={()=>{setSportFilter(s);setCompetition("All")}}>{s}</button>)}</div><select value={competition} onChange={e=>setCompetition(e.target.value)}><option value="All">All competitions</option>{competitions.map(c=><option key={`${c.sport}-${c.name}`} value={c.name}>{c.name} · {c.match_count}</option>)}</select></div>
+    <div className="ri-filter-panel"><div className="ri-filter-top"><div>{["All","Basketball","Football"].map(s=><button key={s} className={sportFilter===s?"active":""} onClick={()=>{setSportFilter(s);setCompetition("All")}}>{s}</button>)}</div>{activeFilterCount>0&&<button className="ri-filter-reset" onClick={clearFilters}>Reset · {activeFilterCount}</button>}</div><div className="ri-status-scroll">{["All","Live","Upcoming","Finished"].map(s=><button key={s} className={status===s?"active":""} onClick={()=>setStatus(s)}>{s}</button>)}</div><div className="ri-catalog-selects"><label><span>SEASON</span><select value={season} onChange={e=>setSeason(e.target.value)}><option value="All">All seasons</option>{(meta?.seasons||[]).map(s=><option key={s} value={s}>{s}</option>)}</select></label><label><span>COMPETITION</span><select value={competition} onChange={e=>setCompetition(e.target.value)}><option value="All">All competitions</option>{competitions.filter(c=>season==="All"||c.season===season).map(c=><option key={`${c.sport}-${c.name}-${c.season}`} value={c.name}>{c.name} · {c.season}</option>)}</select></label></div></div>
     <section className="ri-section"><div className="ri-section-head"><div><small>COMMUNITY PICKS</small><h2>Popular this week</h2></div></div>
       <div className="ri-discover-grid">{pageCatalog.map(m => <MatchCard key={m.id} match={m} hideScores={hideScores} onOpen={onOpen} />)}</div>
       {pageCatalog.length < total && <button className="ri-load-more" disabled={loading} onClick={()=>load(true)}>{loading?"Loading…":`Load more · ${pageCatalog.length}/${total}`}</button>}

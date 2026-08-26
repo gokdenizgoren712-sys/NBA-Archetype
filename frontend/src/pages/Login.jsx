@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { SEO } from "../hooks/useSEO";
+import { safeNextPath } from "../lib/safeNext";
 import GoogleSignIn from "../components/GoogleSignIn";
 
 const BASE = "/api";
@@ -11,6 +12,7 @@ export default function Login() {
   const navigate   = useNavigate();
   const [searchParams] = useSearchParams();
   const expired = searchParams.get("expired") === "1";
+  const nextPath = safeNextPath(searchParams.get("next"));
   const [form, setForm] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -27,7 +29,7 @@ export default function Login() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Login failed");
       login(data.token, data.user);
-      navigate(data.user.role === "admin" ? "/admin/articles" : "/profile");
+      navigate(nextPath || (data.user.role === "admin" ? "/admin/articles" : "/profile"));
     } catch (e) {
       setError(e.message);
     } finally {
@@ -88,11 +90,11 @@ export default function Login() {
           </button>
         </form>
 
-        <GoogleSignIn />
+        <GoogleSignIn successPath={nextPath} />
 
         <p className="text-center text-sm mt-4" style={{ color: "var(--text-muted)" }}>
           Don't have an account?{" "}
-          <Link to="/register" style={{ color: "var(--accent)" }}>Sign up</Link>
+          <Link to={nextPath ? `/register?next=${encodeURIComponent(nextPath)}` : "/register"} style={{ color: "var(--accent)" }}>Sign up</Link>
         </p>
       </div>
     </div>

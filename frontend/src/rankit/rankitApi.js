@@ -1,4 +1,5 @@
-const BASE = "/api/rankit";
+export const API_ROOT = (import.meta.env.VITE_RANKIT_API_URL || "").replace(/\/$/, "");
+const BASE = `${API_ROOT}/api/rankit`;
 
 function headers() {
   const token = localStorage.getItem("nba_arch_token");
@@ -18,7 +19,7 @@ const body = (method, value) => ({ method, body: JSON.stringify(value) });
 
 export const rankitApi = {
   home: (sport = "All") => request(`/home?sport=${encodeURIComponent(sport)}`),
-  catalog: ({ sport = "All", competition = "All", status = "All", limit = 60, offset = 0 } = {}) => request(`/catalog?sport=${encodeURIComponent(sport)}&competition=${encodeURIComponent(competition)}&status=${encodeURIComponent(status)}&limit=${limit}&offset=${offset}`),
+  catalog: ({ sport = "All", competition = "All", season = "All", status = "All", limit = 60, offset = 0 } = {}) => request(`/catalog?sport=${encodeURIComponent(sport)}&competition=${encodeURIComponent(competition)}&season=${encodeURIComponent(season)}&status=${encodeURIComponent(status)}&limit=${limit}&offset=${offset}`),
   meta: () => request("/meta"),
   match: id => request(`/matches/${id}`),
   player: id => request(`/players/${id}`),
@@ -43,3 +44,41 @@ export const rankitApi = {
   addComment: (entryId, content) => request(`/reviews/${entryId}/comments`, body("POST", { content })),
   watchalong: (matchId, room = "community") => request(`/matches/${matchId}/watchalong?room=${encodeURIComponent(room)}`),
 };
+
+export async function rankitAuth(path, value) {
+  const res = await fetch(`${API_ROOT}/api/auth/${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(value),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.detail || `${res.status} ${res.statusText}`);
+  return data;
+}
+
+export async function rankitMe() {
+  const res = await fetch(`${API_ROOT}/api/auth/me`, { headers: headers(), cache: "no-store" });
+  if (!res.ok) throw new Error("Session expired");
+  return res.json();
+}
+
+export async function rankitForgotPassword(email) {
+  const res = await fetch(`${API_ROOT}/api/auth/forgot-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.detail || "Could not send reset email");
+  return data;
+}
+
+export async function rankitMobileExchange(code) {
+  return rankitAuth("mobile-exchange", { code });
+}
+
+export function rankitSocketUrl(path) {
+  if (API_ROOT) return `${API_ROOT.replace(/^http/, "ws")}${path}`;
+  const scheme = window.location.protocol === "https:" ? "wss:" : "ws:";
+  return `${scheme}//${window.location.host}${path}`;
+}

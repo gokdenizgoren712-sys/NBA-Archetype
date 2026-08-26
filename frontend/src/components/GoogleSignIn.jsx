@@ -4,7 +4,7 @@ import { useAuth } from "../contexts/AuthContext";
 
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
 
-export default function GoogleSignIn() {
+export default function GoogleSignIn({ successPath = null }) {
   const { login } = useAuth();
   const navigate  = useNavigate();
   const btnRef    = useRef(null);
@@ -28,7 +28,7 @@ export default function GoogleSignIn() {
             const d = await res.json();
             if (!res.ok) throw new Error(d.detail || "Google sign-in failed");
             login(d.token, d.user);
-            navigate(d.user.role === "admin" ? "/admin/articles" : "/profile");
+            navigate(successPath || (d.user.role === "admin" ? "/admin/articles" : "/profile"));
           } catch (e) {
             setError(e.message);
           }
@@ -49,7 +49,7 @@ export default function GoogleSignIn() {
       const script = document.querySelector('script[src*="gsi/client"]');
       if (script) script.addEventListener("load", initButton, { once: true });
     }
-  }, []);
+  }, [login, navigate, successPath]);
 
   if (!CLIENT_ID) return null;
 
