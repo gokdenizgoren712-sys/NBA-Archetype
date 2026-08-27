@@ -21,11 +21,14 @@ router = APIRouter(prefix="/api/rankit", tags=["RankIt"])
 IS_PROD = bool(os.environ.get("RAILWAY_ENVIRONMENT") or os.environ.get("RENDER") == "true" or os.environ.get("IS_PROD") == "true")
 
 FOTMOB_LEAGUE_IDS = {
-    "Premier League": 47,
-    "La Liga": 87,
-    "Serie A": 55,
-    "Bundesliga": 54,
-    "Ligue 1": 53,
+    "Premier League": [47],
+    "La Liga": [87],
+    "Serie A": [55],
+    "Bundesliga": [54],
+    "Ligue 1": [53],
+    "UEFA Champions League": [42, 10611],
+    "UEFA Europa League": [73, 10613],
+    "UEFA Conference League": [10216, 10615],
 }
 
 
@@ -75,32 +78,33 @@ def backfill_rankit_team_logos() -> dict:
                 JOIN rankit_matches m ON m.competition_id=c.id
                 WHERE c.sport='Football'""").fetchall()
             for scope in scopes:
-                league_id = FOTMOB_LEAGUE_IDS.get(scope["name"])
-                if not league_id:
+                league_ids = FOTMOB_LEAGUE_IDS.get(scope["name"])
+                if not league_ids:
                     continue
                 start = str(scope["season"]).split("-")[0]
                 season = f"{start}/{int(start) + 1}"
-                try:
-                    response = curl_requests.get(
-                        "https://www.fotmob.com/api/data/leagues",
-                        params={"id": league_id, "season": season},
-                        impersonate="chrome124", timeout=20,
-                    )
-                    if response.status_code != 200:
-                        continue
-                    fixtures = ((response.json().get("fixtures") or {}).get("allMatches") or [])
-                except Exception:
-                    continue
-                for match in fixtures:
-                    for side in (match.get("home") or {}, match.get("away") or {}):
-                        team_id = missing_by_key.get(_team_key(side.get("name", "")))
-                        provider_id = side.get("id")
-                        if not team_id or not provider_id:
+                for league_id in league_ids:
+                    try:
+                        response = curl_requests.get(
+                            "https://www.fotmob.com/api/data/leagues",
+                            params={"id": league_id, "season": season},
+                            impersonate="chrome124", timeout=20,
+                        )
+                        if response.status_code != 200:
                             continue
-                        url = f"https://images.fotmob.com/image_resources/logo/teamlogo/{provider_id}.png"
-                        _save_team_logo(conn, team_id, url, "fotmob")
-                        missing_by_key.pop(_team_key(side.get("name", "")), None)
-                        added_football += 1
+                        fixtures = ((response.json().get("fixtures") or {}).get("allMatches") or [])
+                    except Exception:
+                        continue
+                    for match in fixtures:
+                        for side in (match.get("home") or {}, match.get("away") or {}):
+                            team_id = missing_by_key.get(_team_key(side.get("name", "")))
+                            provider_id = side.get("id")
+                            if not team_id or not provider_id:
+                                continue
+                            url = f"https://images.fotmob.com/image_resources/logo/teamlogo/{provider_id}.png"
+                            _save_team_logo(conn, team_id, url, "fotmob")
+                            missing_by_key.pop(_team_key(side.get("name", "")), None)
+                            added_football += 1
                 if not missing_by_key:
                     break
     return {"nba": added_nba, "football": added_football}
@@ -330,6 +334,7 @@ def _match_dict(conn, row, uid: Optional[int] = None) -> dict:
     return {
         "id": mid, "sport": row["sport"], "competition": row["competition_name"],
         "competition_id": row["competition_id"], "season": row["season"],
+        "stage": row["stage"] if "stage" in row.keys() else None,
         "provider": row["provider"],
         "status": row["status"], "starts_at": row["starts_at"],
         "home": _team(row, "home"), "away": _team(row, "away"), "score": score,
@@ -607,6 +612,70 @@ def rankit_meta():
         return {"competitions": competitions, "seasons": seasons,
                 "matches": sum(c["match_count"] for c in competitions),
                 "live_sync": dict(sync_row) if sync_row else None}
+
+
+@router.get("/competitions/{competition_id}")
+def rankit_competition_detail(competition_id: int, user=Depends(get_optional_user)):
+    """Karttan açılan hafif turnuva yüzeyi: fikstür, tablo ve popüler oyuncular."""
+    with get_conn() as conn:
+        competition = conn.execute("SELECT * FROM rankit_competitions WHERE id=?", (competition_id,)).fetchone()
+        if not competition:
+            raise HTTPException(404, "Competition not found")
+        uid = int(user["sub"]) if user else (None if IS_PROD else _demo_user_id(conn))
+        fixture_rows = conn.execute(MATCH_SELECT + """ WHERE m.competition_id=?
+            AND (m.status='live' OR (m.status='upcoming' AND datetime(m.starts_at)>=datetime('now')))
+            ORDER BY CASE m.status WHEN 'live' THEN 0 ELSE 1 END,m.starts_at LIMIT 60""",
+            (competition_id,)).fetchall()
+
+        # Avrupa kupalarında yalnızca lig aşaması tabloya girer; eleme ve
+        # knockout maçları puan durumunu yapay biçimde değiştirmez.
+        table_sql = """SELECT m.home_team_id,m.away_team_id,m.home_score,m.away_score,
+            h.name home_name,h.short_name home_short,h.color home_color,COALESCE(hl.logo_url,h.crest_url) home_crest,
+            a.name away_name,a.short_name away_short,a.color away_color,COALESCE(al.logo_url,a.crest_url) away_crest
+            FROM rankit_matches m JOIN rankit_teams h ON h.id=m.home_team_id
+            JOIN rankit_teams a ON a.id=m.away_team_id
+            LEFT JOIN rankit_team_logos hl ON hl.team_id=h.id LEFT JOIN rankit_team_logos al ON al.team_id=a.id
+            WHERE m.competition_id=? AND m.status='finished' AND m.home_score IS NOT NULL AND m.away_score IS NOT NULL"""
+        table_args: list = [competition_id]
+        if str(competition["name"]).startswith("UEFA "):
+            table_sql += " AND m.stage LIKE 'League phase%'"
+        played = conn.execute(table_sql, table_args).fetchall()
+        table = {}
+        for game in played:
+            for side in ("home", "away"):
+                tid = game[f"{side}_team_id"]
+                table.setdefault(tid, {"team_id": tid, "name": game[f"{side}_name"],
+                    "short_name": game[f"{side}_short"], "color": game[f"{side}_color"],
+                    "crest_url": game[f"{side}_crest"], "played": 0, "won": 0, "drawn": 0,
+                    "lost": 0, "gf": 0, "ga": 0, "points": 0})
+            home, away = table[game["home_team_id"]], table[game["away_team_id"]]
+            hs, aws = int(game["home_score"]), int(game["away_score"])
+            home["played"] += 1; away["played"] += 1
+            home["gf"] += hs; home["ga"] += aws; away["gf"] += aws; away["ga"] += hs
+            if hs > aws:
+                home["won"] += 1; home["points"] += 3; away["lost"] += 1
+            elif aws > hs:
+                away["won"] += 1; away["points"] += 3; home["lost"] += 1
+            else:
+                home["drawn"] += 1; away["drawn"] += 1; home["points"] += 1; away["points"] += 1
+        standings = sorted(({**row, "gd": row["gf"] - row["ga"]} for row in table.values()),
+                           key=lambda row: (-row["points"], -row["gd"], -row["gf"], row["name"]))
+
+        popular = [dict(row) for row in conn.execute("""SELECT p.id,p.name,p.image_url,t.name team_name,t.short_name team_short,
+            COUNT(DISTINCT mp.match_id) appearances,
+            COUNT(DISTINCT pv.user_id || '-' || pv.match_id) potm_votes,
+            COUNT(DISTINCT rv.user_id || '-' || rv.match_id) respect_votes
+            FROM rankit_match_players mp JOIN rankit_matches m ON m.id=mp.match_id
+            JOIN rankit_players p ON p.id=mp.player_id LEFT JOIN rankit_teams t ON t.id=p.team_id
+            LEFT JOIN rankit_potm_votes pv ON pv.match_id=m.id AND pv.player_id=p.id
+            LEFT JOIN rankit_respect_votes rv ON rv.match_id=m.id AND rv.player_id=p.id
+            WHERE m.competition_id=? GROUP BY p.id
+            ORDER BY (COUNT(DISTINCT pv.user_id || '-' || pv.match_id)*3 +
+                      COUNT(DISTINCT rv.user_id || '-' || rv.match_id)) DESC,
+                     appearances DESC,p.name LIMIT 30""", (competition_id,)).fetchall()]
+        return {"competition": dict(competition),
+                "fixtures": [_match_dict(conn, row, uid) for row in fixture_rows],
+                "standings": standings, "popular_players": popular}
 
 
 @router.get("/matches/{match_id}")

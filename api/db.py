@@ -266,6 +266,7 @@ def init_db():
             cover_variant   TEXT,
             provider        TEXT,
             provider_match_id TEXT,
+            stage           TEXT,
             created_at      TEXT DEFAULT (datetime('now')),
             UNIQUE(competition_id, starts_at, home_team_id, away_team_id)
         );
@@ -488,6 +489,12 @@ def init_db():
         # Faz 3: With a Friend — round-bazlı/pick-bazlı çark alt-modu odaya kayıtlı
         try:
             conn.execute("ALTER TABLE game_rooms ADD COLUMN wheel_mode TEXT NOT NULL DEFAULT 'round'")
+        except Exception:
+            pass
+        # RankIt 0.4: Avrupa kupalarında ön eleme, play-off ve ana aşama
+        # maçlarını aynı turnuva altında ayrıştırır.
+        try:
+            conn.execute("ALTER TABLE rankit_matches ADD COLUMN stage TEXT")
         except Exception:
             pass
         # 2026-07 dayanıklılık: canlı oyun state'i (ROOM_STATES, önceden sadece

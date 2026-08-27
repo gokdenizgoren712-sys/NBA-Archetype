@@ -29,11 +29,17 @@ from api.db import get_conn, init_db  # noqa: E402
 
 
 FOOTBALL_LEAGUES = {
-    "premier-league": (47, "Premier League", "England"),
-    "la-liga": (87, "La Liga", "Spain"),
-    "serie-a": (55, "Serie A", "Italy"),
-    "bundesliga": (54, "Bundesliga", "Germany"),
-    "ligue-1": (53, "Ligue 1", "France"),
+    "premier-league": (47, "Premier League", "England", False),
+    "la-liga": (87, "La Liga", "Spain", False),
+    "serie-a": (55, "Serie A", "Italy", False),
+    "bundesliga": (54, "Bundesliga", "Germany", False),
+    "ligue-1": (53, "Ligue 1", "France", False),
+    "champions-league": (42, "UEFA Champions League", "Europe", False),
+    "champions-league-qualification": (10611, "UEFA Champions League", "Europe", True),
+    "europa-league": (73, "UEFA Europa League", "Europe", False),
+    "europa-league-qualification": (10613, "UEFA Europa League", "Europe", True),
+    "conference-league": (10216, "UEFA Conference League", "Europe", False),
+    "conference-league-qualification": (10615, "UEFA Conference League", "Europe", True),
 }
 
 NBA_COLORS = {
@@ -88,15 +94,18 @@ def _team_logo(conn, team_id: int, logo_url: str, source: str) -> None:
 
 
 def _match(conn, *, provider: str, external_id: str, sport: str, comp_id: int, season: str,
-           starts_at: str, status: str, home_id: int, away_id: int, home_score, away_score) -> int:
+           starts_at: str, status: str, home_id: int, away_id: int, home_score, away_score,
+           stage: str | None = None) -> int:
     conn.execute("""INSERT INTO rankit_matches
         (sport,competition_id,season,starts_at,status,home_team_id,away_team_id,home_score,away_score,
-         editorial,summary,cover_variant,provider,provider_match_id)
-        VALUES(?,?,?,?,?,?,?,?,?,0,'','crests',?,?)
+         editorial,summary,cover_variant,provider,provider_match_id,stage)
+        VALUES(?,?,?,?,?,?,?,?,?,0,'','crests',?,?,?)
         ON CONFLICT(provider,provider_match_id) DO UPDATE SET
           starts_at=excluded.starts_at,status=excluded.status,home_score=excluded.home_score,
-          away_score=excluded.away_score,home_team_id=excluded.home_team_id,away_team_id=excluded.away_team_id""",
-        (sport, comp_id, season, starts_at, status, home_id, away_id, home_score, away_score, provider, str(external_id)))
+          away_score=excluded.away_score,home_team_id=excluded.home_team_id,away_team_id=excluded.away_team_id,
+          competition_id=excluded.competition_id,season=excluded.season,stage=excluded.stage""",
+        (sport, comp_id, season, starts_at, status, home_id, away_id, home_score, away_score,
+         provider, str(external_id), stage))
     return conn.execute("SELECT id FROM rankit_matches WHERE provider=? AND provider_match_id=?", (provider, str(external_id))).fetchone()["id"]
 
 
@@ -115,6 +124,25 @@ def _season_player_file(season: str) -> Path | None:
     exact = ROOT / "data" / f"{season}__player_scores.parquet"
     fallback = ROOT / "data" / f"{_previous_season(season)}__player_scores.parquet"
     return exact if exact.exists() else fallback if fallback.exists() else None
+
+
+def _fotmob_stage(item: dict, qualification: bool) -> str:
+    """FotMob tur kodunu kullanıcıya dönük sabit bir aşama adına çevir."""
+    round_code = str(item.get("round") or "")
+    round_name = str(item.get("roundName") or "")
+    if qualification:
+        return {"1": "First qualifying round", "2": "Second qualifying round",
+                "3": "Third qualifying round", "final": "Play-off round"}.get(round_code, round_name or "Qualifying")
+    return {"playoff": "Knockout phase play-offs", "1/8": "Round of 16",
+            "1/4": "Quarter-finals", "1/2": "Semi-finals", "final": "Final"}.get(
+                round_code, f"League phase · Matchday {round_code}" if round_code.isdigit() else round_name)
+
+
+def _fixture_in_season(item: dict, start_year: int) -> bool:
+    """Sağlayıcı geçersiz gelecek sezonu sessizce eski sezona düşürürse engelle."""
+    utc_time = str((item.get("status") or {}).get("utcTime") or "")
+    date_part = utc_time[:10]
+    return f"{start_year}-07-01" <= date_part < f"{start_year + 1}-07-01"
 
 
 def _nba_schedule_v2(season: str) -> pd.DataFrame:
@@ -207,7 +235,7 @@ def sync_football(season: str) -> dict:
     fotmob_season = f"{start_year}/{start_year + 1}"
     total_matches = total_players = linked = 0
     with get_conn() as conn:
-        for slug, (league_id, league_name, country) in FOOTBALL_LEAGUES.items():
+        for slug, (league_id, league_name, country, qualification) in FOOTBALL_LEAGUES.items():
             comp_id = _competition(conn, "Football", league_name, country, season)
             parquet = ROOT / "data" / f"football__{slug}__{long_season}__fotmob.parquet"
             if not parquet.exists():
@@ -216,7 +244,17 @@ def sync_football(season: str) -> dict:
             roster_df = pd.read_parquet(parquet) if parquet.exists() else pd.DataFrame(columns=["PLAYER_ID","PLAYER_NAME","TEAM"])
             roster_df = roster_df[["PLAYER_ID", "PLAYER_NAME", "TEAM"]].dropna().drop_duplicates("PLAYER_ID")
             payload = ff.api(f"leagues?id={league_id}&season={fotmob_season.replace('/', '%2F')}") or {}
-            fixtures = ((payload.get("fixtures") or {}).get("allMatches") or [])
+            fixtures = [item for item in ((payload.get("fixtures") or {}).get("allMatches") or [])
+                        if _fixture_in_season(item, start_year)]
+            if country == "Europe" and not qualification:
+                # Kura çekilmeden önce sağlayıcı aynı saate yüzlerce boş slot
+                # döndürebiliyor; gerçek tur kodu oluşana kadar bunları alma.
+                fixtures = [item for item in fixtures if _fotmob_stage(item, False)]
+            if country == "Europe":
+                conn.execute("""DELETE FROM rankit_matches WHERE provider='fotmob' AND competition_id=?
+                    AND (substr(starts_at,1,10)<? OR substr(starts_at,1,10)>=?
+                         OR stage IS NULL OR stage='')""",
+                    (comp_id, f"{start_year}-07-01", f"{start_year + 1}-07-01"))
             team_ids, rosters = {}, {}
             for item in fixtures:
                 for side in (item.get("home") or {}, item.get("away") or {}):
@@ -244,7 +282,8 @@ def sync_football(season: str) -> dict:
                 status = "finished" if st.get("finished") else "live" if st.get("started") else "upcoming"
                 mid = _match(conn, provider="fotmob", external_id=item["id"], sport="Football", comp_id=comp_id,
                              season=season, starts_at=st.get("utcTime") or "", status=status,
-                             home_id=team_ids[home["name"]], away_id=team_ids[away["name"]], home_score=hs, away_score=aws)
+                             home_id=team_ids[home["name"]], away_id=team_ids[away["name"]], home_score=hs, away_score=aws,
+                             stage=_fotmob_stage(item, qualification))
                 for team_name in (home["name"], away["name"]):
                     for pid in rosters.get(team_name, []):
                         conn.execute("INSERT OR IGNORE INTO rankit_match_players(match_id,player_id,team_id) VALUES(?,?,?)", (mid, pid, team_ids[team_name]))

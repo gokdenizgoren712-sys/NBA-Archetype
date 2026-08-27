@@ -44,6 +44,7 @@ export const rankitApi = {
   home: (sport = "All", windowStart = "", windowEnd = "") => request(`/home?sport=${encodeURIComponent(sport)}${windowStart ? `&window_start=${encodeURIComponent(windowStart)}` : ""}${windowEnd ? `&window_end=${encodeURIComponent(windowEnd)}` : ""}`),
   catalog: ({ sport = "All", competition = "All", season = "All", status = "All", limit = 60, offset = 0 } = {}) => request(`/catalog?sport=${encodeURIComponent(sport)}&competition=${encodeURIComponent(competition)}&season=${encodeURIComponent(season)}&status=${encodeURIComponent(status)}&limit=${limit}&offset=${offset}`),
   meta: () => request("/meta"),
+  competition: id => request(`/competitions/${id}`),
   match: id => request(`/matches/${id}`),
   broadcasts: (id, country = "TR") => request(`/matches/${id}/broadcasts?country=${encodeURIComponent(country)}`),
   player: id => request(`/players/${id}`),

@@ -13,11 +13,14 @@ from .db import get_conn
 
 
 FOTMOB_LEAGUES = {
-    "Premier League": 47,
-    "La Liga": 87,
-    "Serie A": 55,
-    "Bundesliga": 54,
-    "Ligue 1": 53,
+    "Premier League": [(47, False)],
+    "La Liga": [(87, False)],
+    "Serie A": [(55, False)],
+    "Bundesliga": [(54, False)],
+    "Ligue 1": [(53, False)],
+    "UEFA Champions League": [(42, False), (10611, True)],
+    "UEFA Europa League": [(73, False), (10613, True)],
+    "UEFA Conference League": [(10216, False), (10615, True)],
 }
 JOB_NAME = "rankit_live_scores"
 
@@ -48,33 +51,46 @@ def _parse_score(value) -> tuple[int | None, int | None]:
     return (int(left), int(right)) if left.isdigit() and right.isdigit() else (None, None)
 
 
+def _stage(item: dict, qualification: bool) -> str:
+    code = str(item.get("round") or "")
+    name = str(item.get("roundName") or "")
+    if qualification:
+        return {"1": "First qualifying round", "2": "Second qualifying round",
+                "3": "Third qualifying round", "final": "Play-off round"}.get(code, name or "Qualifying")
+    return {"playoff": "Knockout phase play-offs", "1/8": "Round of 16",
+            "1/4": "Quarter-finals", "1/2": "Semi-finals", "final": "Final"}.get(
+                code, f"League phase · Matchday {code}" if code.isdigit() else name)
+
+
 def _refresh_fotmob(competition: str, season: str) -> int:
     from curl_cffi import requests
 
-    league_id = FOTMOB_LEAGUES.get(competition)
-    if not league_id:
+    sources = FOTMOB_LEAGUES.get(competition)
+    if not sources:
         return 0
     start = str(season).split("-")[0]
-    response = requests.get(
-        "https://www.fotmob.com/api/data/leagues",
-        params={"id": league_id, "season": f"{start}/{int(start) + 1}"},
-        impersonate="chrome124", timeout=25,
-    )
-    response.raise_for_status()
-    fixtures = ((response.json().get("fixtures") or {}).get("allMatches") or [])
     updated = 0
-    with get_conn() as conn:
-        for item in fixtures:
-            status_data = item.get("status") or {}
-            status = "finished" if status_data.get("finished") else "live" if status_data.get("started") else "upcoming"
-            home_score, away_score = _parse_score(status_data.get("scoreStr"))
-            cur = conn.execute("""UPDATE rankit_matches SET starts_at=?,status=?,home_score=?,away_score=?
-                WHERE provider='fotmob' AND provider_match_id=?
-                  AND (starts_at<>? OR status<>? OR COALESCE(home_score,-1)<>COALESCE(?,-1)
-                       OR COALESCE(away_score,-1)<>COALESCE(?,-1))""",
-                (status_data.get("utcTime") or "", status, home_score, away_score, str(item.get("id")),
-                 status_data.get("utcTime") or "", status, home_score, away_score))
-            updated += max(0, cur.rowcount)
+    for league_id, qualification in sources:
+        response = requests.get(
+            "https://www.fotmob.com/api/data/leagues",
+            params={"id": league_id, "season": f"{start}/{int(start) + 1}"},
+            impersonate="chrome124", timeout=25,
+        )
+        response.raise_for_status()
+        fixtures = ((response.json().get("fixtures") or {}).get("allMatches") or [])
+        with get_conn() as conn:
+            for item in fixtures:
+                status_data = item.get("status") or {}
+                status = "finished" if status_data.get("finished") else "live" if status_data.get("started") else "upcoming"
+                home_score, away_score = _parse_score(status_data.get("scoreStr"))
+                stage = _stage(item, qualification)
+                cur = conn.execute("""UPDATE rankit_matches SET starts_at=?,status=?,home_score=?,away_score=?,stage=?
+                    WHERE provider='fotmob' AND provider_match_id=?
+                      AND (starts_at<>? OR status<>? OR COALESCE(home_score,-1)<>COALESCE(?,-1)
+                           OR COALESCE(away_score,-1)<>COALESCE(?,-1) OR COALESCE(stage,'')<>?)""",
+                    (status_data.get("utcTime") or "", status, home_score, away_score, stage, str(item.get("id")),
+                     status_data.get("utcTime") or "", status, home_score, away_score, stage))
+                updated += max(0, cur.rowcount)
     return updated
 
 
