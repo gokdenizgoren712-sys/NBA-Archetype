@@ -444,6 +444,10 @@ def init_db():
         );
 
         CREATE INDEX IF NOT EXISTS idx_rankit_matches_start ON rankit_matches(starts_at);
+        CREATE INDEX IF NOT EXISTS idx_rankit_matches_comp_status_start
+            ON rankit_matches(competition_id,status,starts_at);
+        CREATE INDEX IF NOT EXISTS idx_rankit_matches_provider_status_start
+            ON rankit_matches(provider,status,starts_at);
         CREATE INDEX IF NOT EXISTS idx_rankit_diary_user ON rankit_diary_entries(user_id, watched_date DESC);
         CREATE INDEX IF NOT EXISTS idx_rankit_diary_match ON rankit_diary_entries(match_id);
         CREATE INDEX IF NOT EXISTS idx_rankit_comments_entry ON rankit_review_comments(entry_id, created_at);
@@ -497,6 +501,7 @@ def init_db():
             conn.execute("ALTER TABLE rankit_matches ADD COLUMN stage TEXT")
         except Exception:
             pass
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_rankit_matches_comp_stage ON rankit_matches(competition_id,stage)")
         # 2026-07 dayanıklılık: canlı oyun state'i (ROOM_STATES, önceden sadece
         # bellekte) her değişiklikte buraya JSON olarak yazılır — sunucu restart
         # olursa (deploy/crash) aktif maçlar artık kaybolmuyor, DB'den geri

@@ -26,6 +26,11 @@ FOTMOB_LEAGUE_IDS = {
     "Serie A": [55],
     "Bundesliga": [54],
     "Ligue 1": [53],
+    "FA Cup": [132],
+    "Copa del Rey": [138],
+    "Coppa Italia": [141],
+    "DFB-Pokal": [209],
+    "Coupe de France": [134],
     "UEFA Champions League": [42, 10611],
     "UEFA Europa League": [73, 10613],
     "UEFA Conference League": [10216, 10615],
@@ -391,7 +396,9 @@ def rankit_home(
             args.append(window_end)
         if where:
             sql += " WHERE " + " AND ".join(where)
-        sql += " ORDER BY m.starts_at LIMIT 60"
+        # Ana ekran yalnızca üç hero kart gösteriyor. Küçük bir yedek havuz,
+        # 60 kartın sosyal özet sorgularını boşuna çalıştırmadan yeterli çeşit sağlar.
+        sql += " ORDER BY m.starts_at LIMIT 12"
         rows = conn.execute(sql, args).fetchall()
         cards = [_match_dict(conn, r, uid) for r in rows]
         activity_rows = conn.execute("""SELECT e.id,e.review,e.rating,e.created_at,u.username,m.id match_id,
@@ -637,9 +644,13 @@ def rankit_competition_detail(competition_id: int, user=Depends(get_optional_use
             LEFT JOIN rankit_team_logos hl ON hl.team_id=h.id LEFT JOIN rankit_team_logos al ON al.team_id=a.id
             WHERE m.competition_id=? AND m.status='finished' AND m.home_score IS NOT NULL AND m.away_score IS NOT NULL"""
         table_args: list = [competition_id]
-        if str(competition["name"]).startswith("UEFA "):
+        competition_name = str(competition["name"])
+        knockout_only = competition_name in {"FA Cup", "Copa del Rey", "Coppa Italia", "DFB-Pokal", "Coupe de France"}
+        if competition_name.startswith("UEFA "):
             table_sql += " AND m.stage LIKE 'League phase%'"
-        played = conn.execute(table_sql, table_args).fetchall()
+        elif competition_name == "EuroLeague":
+            table_sql += " AND m.stage LIKE 'Round %'"
+        played = [] if knockout_only else conn.execute(table_sql, table_args).fetchall()
         table = {}
         for game in played:
             for side in ("home", "away"):
@@ -652,10 +663,11 @@ def rankit_competition_detail(competition_id: int, user=Depends(get_optional_use
             hs, aws = int(game["home_score"]), int(game["away_score"])
             home["played"] += 1; away["played"] += 1
             home["gf"] += hs; home["ga"] += aws; away["gf"] += aws; away["ga"] += hs
+            win_points = 1 if competition["sport"] == "Basketball" else 3
             if hs > aws:
-                home["won"] += 1; home["points"] += 3; away["lost"] += 1
+                home["won"] += 1; home["points"] += win_points; away["lost"] += 1
             elif aws > hs:
-                away["won"] += 1; away["points"] += 3; home["lost"] += 1
+                away["won"] += 1; away["points"] += win_points; home["lost"] += 1
             else:
                 home["drawn"] += 1; away["drawn"] += 1; home["points"] += 1; away["points"] += 1
         standings = sorted(({**row, "gd": row["gf"] - row["ga"]} for row in table.values()),

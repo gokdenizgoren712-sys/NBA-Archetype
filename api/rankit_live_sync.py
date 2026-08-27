@@ -13,14 +13,14 @@ from .db import get_conn
 
 
 FOTMOB_LEAGUES = {
-    "Premier League": [(47, False)],
-    "La Liga": [(87, False)],
-    "Serie A": [(55, False)],
-    "Bundesliga": [(54, False)],
-    "Ligue 1": [(53, False)],
-    "UEFA Champions League": [(42, False), (10611, True)],
-    "UEFA Europa League": [(73, False), (10613, True)],
-    "UEFA Conference League": [(10216, False), (10615, True)],
+    "Premier League": [(47, "league")], "La Liga": [(87, "league")],
+    "Serie A": [(55, "league")], "Bundesliga": [(54, "league")],
+    "Ligue 1": [(53, "league")], "FA Cup": [(132, "cup")],
+    "Copa del Rey": [(138, "cup")], "Coppa Italia": [(141, "cup")],
+    "DFB-Pokal": [(209, "cup")], "Coupe de France": [(134, "cup")],
+    "UEFA Champions League": [(42, "uefa"), (10611, "qualifying")],
+    "UEFA Europa League": [(73, "uefa"), (10613, "qualifying")],
+    "UEFA Conference League": [(10216, "uefa"), (10615, "qualifying")],
 }
 JOB_NAME = "rankit_live_scores"
 
@@ -51,12 +51,17 @@ def _parse_score(value) -> tuple[int | None, int | None]:
     return (int(left), int(right)) if left.isdigit() and right.isdigit() else (None, None)
 
 
-def _stage(item: dict, qualification: bool) -> str:
+def _stage(item: dict, mode: str) -> str:
     code = str(item.get("round") or "")
     name = str(item.get("roundName") or "")
-    if qualification:
+    if mode == "qualifying":
         return {"1": "First qualifying round", "2": "Second qualifying round",
                 "3": "Third qualifying round", "final": "Play-off round"}.get(code, name or "Qualifying")
+    if mode == "cup":
+        return name or {"1/8": "Round of 16", "1/4": "Quarter-finals",
+                        "1/2": "Semi-finals", "final": "Final"}.get(code, "Cup tie")
+    if mode == "league":
+        return f"Matchday {code}" if code.isdigit() else name
     return {"playoff": "Knockout phase play-offs", "1/8": "Round of 16",
             "1/4": "Quarter-finals", "1/2": "Semi-finals", "final": "Final"}.get(
                 code, f"League phase · Matchday {code}" if code.isdigit() else name)
@@ -70,7 +75,7 @@ def _refresh_fotmob(competition: str, season: str) -> int:
         return 0
     start = str(season).split("-")[0]
     updated = 0
-    for league_id, qualification in sources:
+    for league_id, mode in sources:
         response = requests.get(
             "https://www.fotmob.com/api/data/leagues",
             params={"id": league_id, "season": f"{start}/{int(start) + 1}"},
@@ -83,7 +88,7 @@ def _refresh_fotmob(competition: str, season: str) -> int:
                 status_data = item.get("status") or {}
                 status = "finished" if status_data.get("finished") else "live" if status_data.get("started") else "upcoming"
                 home_score, away_score = _parse_score(status_data.get("scoreStr"))
-                stage = _stage(item, qualification)
+                stage = _stage(item, mode)
                 cur = conn.execute("""UPDATE rankit_matches SET starts_at=?,status=?,home_score=?,away_score=?,stage=?
                     WHERE provider='fotmob' AND provider_match_id=?
                       AND (starts_at<>? OR status<>? OR COALESCE(home_score,-1)<>COALESCE(?,-1)
@@ -91,6 +96,40 @@ def _refresh_fotmob(competition: str, season: str) -> int:
                     (status_data.get("utcTime") or "", status, home_score, away_score, stage, str(item.get("id")),
                      status_data.get("utcTime") or "", status, home_score, away_score, stage))
                 updated += max(0, cur.rowcount)
+    return updated
+
+
+def _refresh_euroleague(season: str) -> int:
+    from curl_cffi import requests
+
+    start = str(season).split("-")[0]
+    response = requests.get(
+        f"https://api-live.euroleague.net/v2/competitions/E/seasons/E{start}/games",
+        headers={"User-Agent": "PrimaryArch-RankIt/0.4"}, timeout=25,
+    )
+    response.raise_for_status()
+    updated = 0
+    with get_conn() as conn:
+        for item in (response.json() or {}).get("data") or []:
+            game_status = str(item.get("gameStatus") or "").lower()
+            played = bool(item.get("played"))
+            status = "finished" if played else "live" if game_status in {"live", "playing", "in progress", "started"} else "upcoming"
+            home, away = item.get("local") or {}, item.get("road") or {}
+            phase = str((item.get("phaseType") or {}).get("name") or "").strip().title()
+            group = str((item.get("group") or {}).get("rawName") or "").strip().title()
+            round_name = str(item.get("roundName") or "").strip()
+            stage = round_name if phase == "Regular Season" else " · ".join(p for p in (phase, group) if p) or round_name
+            home_score = int(home.get("score") or 0) if played or status == "live" else None
+            away_score = int(away.get("score") or 0) if played or status == "live" else None
+            external_id = str(item.get("identifier") or item.get("id"))
+            starts_at = str(item.get("utcDate") or item.get("date") or "")
+            cur = conn.execute("""UPDATE rankit_matches SET starts_at=?,status=?,home_score=?,away_score=?,stage=?
+                WHERE provider='euroleague' AND provider_match_id=?
+                  AND (starts_at<>? OR status<>? OR COALESCE(home_score,-1)<>COALESCE(?,-1)
+                       OR COALESCE(away_score,-1)<>COALESCE(?,-1) OR COALESCE(stage,'')<>?)""",
+                (starts_at, status, home_score, away_score, stage, external_id,
+                 starts_at, status, home_score, away_score, stage))
+            updated += max(0, cur.rowcount)
     return updated
 
 
@@ -131,6 +170,8 @@ def refresh_live_scores() -> dict:
                 updated += _refresh_fotmob(scope["competition"], scope["season"])
             elif scope["provider"] == "nba":
                 updated += _refresh_nba(scope["season"])
+            elif scope["provider"] == "euroleague":
+                updated += _refresh_euroleague(scope["season"])
         except Exception as exc:
             errors.append(f"{scope['competition']} {scope['season']}: {exc}")
     with get_conn() as conn:

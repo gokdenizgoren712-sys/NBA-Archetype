@@ -14,8 +14,10 @@ from __future__ import annotations
 import argparse
 import difflib
 import hashlib
+import json
 import re
 import sys
+from urllib.request import Request, urlopen
 from pathlib import Path
 
 import pandas as pd
@@ -29,17 +31,22 @@ from api.db import get_conn, init_db  # noqa: E402
 
 
 FOOTBALL_LEAGUES = {
-    "premier-league": (47, "Premier League", "England", False),
-    "la-liga": (87, "La Liga", "Spain", False),
-    "serie-a": (55, "Serie A", "Italy", False),
-    "bundesliga": (54, "Bundesliga", "Germany", False),
-    "ligue-1": (53, "Ligue 1", "France", False),
-    "champions-league": (42, "UEFA Champions League", "Europe", False),
-    "champions-league-qualification": (10611, "UEFA Champions League", "Europe", True),
-    "europa-league": (73, "UEFA Europa League", "Europe", False),
-    "europa-league-qualification": (10613, "UEFA Europa League", "Europe", True),
-    "conference-league": (10216, "UEFA Conference League", "Europe", False),
-    "conference-league-qualification": (10615, "UEFA Conference League", "Europe", True),
+    "premier-league": (47, "Premier League", "England", "league"),
+    "la-liga": (87, "La Liga", "Spain", "league"),
+    "serie-a": (55, "Serie A", "Italy", "league"),
+    "bundesliga": (54, "Bundesliga", "Germany", "league"),
+    "ligue-1": (53, "Ligue 1", "France", "league"),
+    "fa-cup": (132, "FA Cup", "England", "cup"),
+    "copa-del-rey": (138, "Copa del Rey", "Spain", "cup"),
+    "coppa-italia": (141, "Coppa Italia", "Italy", "cup"),
+    "dfb-pokal": (209, "DFB-Pokal", "Germany", "cup"),
+    "coupe-de-france": (134, "Coupe de France", "France", "cup"),
+    "champions-league": (42, "UEFA Champions League", "Europe", "uefa"),
+    "champions-league-qualification": (10611, "UEFA Champions League", "Europe", "qualifying"),
+    "europa-league": (73, "UEFA Europa League", "Europe", "uefa"),
+    "europa-league-qualification": (10613, "UEFA Europa League", "Europe", "qualifying"),
+    "conference-league": (10216, "UEFA Conference League", "Europe", "uefa"),
+    "conference-league-qualification": (10615, "UEFA Conference League", "Europe", "qualifying"),
 }
 
 NBA_COLORS = {
@@ -126,13 +133,19 @@ def _season_player_file(season: str) -> Path | None:
     return exact if exact.exists() else fallback if fallback.exists() else None
 
 
-def _fotmob_stage(item: dict, qualification: bool) -> str:
+def _fotmob_stage(item: dict, mode: str) -> str:
     """FotMob tur kodunu kullanıcıya dönük sabit bir aşama adına çevir."""
     round_code = str(item.get("round") or "")
     round_name = str(item.get("roundName") or "")
-    if qualification:
+    if mode == "qualifying":
         return {"1": "First qualifying round", "2": "Second qualifying round",
                 "3": "Third qualifying round", "final": "Play-off round"}.get(round_code, round_name or "Qualifying")
+    if mode == "cup":
+        return round_name or {"1": "First round", "2": "Second round", "3": "Third round",
+                              "1/8": "Round of 16", "1/4": "Quarter-finals",
+                              "1/2": "Semi-finals", "final": "Final"}.get(round_code, "Cup tie")
+    if mode == "league":
+        return f"Matchday {round_code}" if round_code.isdigit() else round_name
     return {"playoff": "Knockout phase play-offs", "1/8": "Round of 16",
             "1/4": "Quarter-finals", "1/2": "Semi-finals", "final": "Final"}.get(
                 round_code, f"League phase · Matchday {round_code}" if round_code.isdigit() else round_name)
@@ -143,6 +156,80 @@ def _fixture_in_season(item: dict, start_year: int) -> bool:
     utc_time = str((item.get("status") or {}).get("utcTime") or "")
     date_part = utc_time[:10]
     return f"{start_year}-07-01" <= date_part < f"{start_year + 1}-07-01"
+
+
+def _euroleague_payload(season: str) -> list[dict]:
+    start = int(season.split("-")[0])
+    url = f"https://api-live.euroleague.net/v2/competitions/E/seasons/E{start}/games"
+    request = Request(url, headers={"User-Agent": "PrimaryArch-RankIt/0.4"})
+    with urlopen(request, timeout=30) as response:
+        return (json.load(response) or {}).get("data") or []
+
+
+def _euroleague_stage(item: dict) -> str:
+    phase = str((item.get("phaseType") or {}).get("name") or "").strip().title()
+    group = str((item.get("group") or {}).get("rawName") or "").strip().title()
+    round_name = str(item.get("roundName") or "").strip()
+    if phase == "Regular Season":
+        return round_name or "Regular Season"
+    return " · ".join(part for part in (phase, group) if part) or round_name or "EuroLeague"
+
+
+def sync_euroleague(season: str) -> dict:
+    """Resmi EuroLeague canlı feed'ini ortak RankIt maç şemasına aktar."""
+    games = _euroleague_payload(season)
+    if not games:
+        return {"matches": 0, "players": 0, "links": 0}
+    player_path = ROOT / "data" / f"euroleague__{season}__player_scores.parquet"
+    if not player_path.exists():
+        player_path = ROOT / "data" / f"euroleague__{_previous_season(season)}__player_scores.parquet"
+    players = pd.read_parquet(player_path) if player_path.exists() else pd.DataFrame(
+        columns=["PLAYER_ID", "PLAYER_NAME", "TEAM_ABBREVIATION"])
+    linked = 0
+    with get_conn() as conn:
+        comp_id = _competition(conn, "Basketball", "EuroLeague", "Europe", season)
+        team_ids: dict[str, int] = {}
+        for game in games:
+            for side_key in ("local", "road"):
+                club = (game.get(side_key) or {}).get("club") or {}
+                code, name = str(club.get("code") or ""), str(club.get("name") or "")
+                if not code or not name or code in team_ids:
+                    continue
+                team_ids[code] = _team(conn, "Basketball", name,
+                                       str(club.get("abbreviatedName") or code)[:12], _color(name), "Europe")
+                crest = ((club.get("images") or {}).get("crest") or "").strip()
+                if crest:
+                    _team_logo(conn, team_ids[code], crest, "euroleague")
+        rosters: dict[str, list[int]] = {}
+        required = ["PLAYER_ID", "PLAYER_NAME", "TEAM_ABBREVIATION"]
+        for row in players[required].dropna().drop_duplicates("PLAYER_ID").itertuples(index=False):
+            code = str(row.TEAM_ABBREVIATION)
+            if code not in team_ids:
+                continue
+            pid = _player(conn, "Basketball", team_ids[code], row.PLAYER_ID, row.PLAYER_NAME)
+            rosters.setdefault(code, []).append(pid)
+        for game in games:
+            home, away = game.get("local") or {}, game.get("road") or {}
+            home_code = str((home.get("club") or {}).get("code") or "")
+            away_code = str((away.get("club") or {}).get("code") or "")
+            if home_code not in team_ids or away_code not in team_ids:
+                continue
+            game_status = str(game.get("gameStatus") or "").lower()
+            played = bool(game.get("played"))
+            status = "finished" if played else "live" if game_status in {"live", "playing", "in progress", "started"} else "upcoming"
+            mid = _match(conn, provider="euroleague", external_id=game.get("identifier") or game.get("id"),
+                         sport="Basketball", comp_id=comp_id, season=season,
+                         starts_at=str(game.get("utcDate") or game.get("date") or ""), status=status,
+                         home_id=team_ids[home_code], away_id=team_ids[away_code],
+                         home_score=int(home.get("score") or 0) if played or status == "live" else None,
+                         away_score=int(away.get("score") or 0) if played or status == "live" else None,
+                         stage=_euroleague_stage(game))
+            for code in (home_code, away_code):
+                for pid in rosters.get(code, []):
+                    conn.execute("INSERT OR IGNORE INTO rankit_match_players(match_id,player_id,team_id) VALUES(?,?,?)",
+                                 (mid, pid, team_ids[code]))
+                    linked += 1
+    return {"matches": len(games), "players": sum(map(len, rosters.values())), "links": linked}
 
 
 def _nba_schedule_v2(season: str) -> pd.DataFrame:
@@ -235,7 +322,7 @@ def sync_football(season: str) -> dict:
     fotmob_season = f"{start_year}/{start_year + 1}"
     total_matches = total_players = linked = 0
     with get_conn() as conn:
-        for slug, (league_id, league_name, country, qualification) in FOOTBALL_LEAGUES.items():
+        for slug, (league_id, league_name, country, mode) in FOOTBALL_LEAGUES.items():
             comp_id = _competition(conn, "Football", league_name, country, season)
             parquet = ROOT / "data" / f"football__{slug}__{long_season}__fotmob.parquet"
             if not parquet.exists():
@@ -246,11 +333,11 @@ def sync_football(season: str) -> dict:
             payload = ff.api(f"leagues?id={league_id}&season={fotmob_season.replace('/', '%2F')}") or {}
             fixtures = [item for item in ((payload.get("fixtures") or {}).get("allMatches") or [])
                         if _fixture_in_season(item, start_year)]
-            if country == "Europe" and not qualification:
+            if mode == "uefa":
                 # Kura çekilmeden önce sağlayıcı aynı saate yüzlerce boş slot
                 # döndürebiliyor; gerçek tur kodu oluşana kadar bunları alma.
-                fixtures = [item for item in fixtures if _fotmob_stage(item, False)]
-            if country == "Europe":
+                fixtures = [item for item in fixtures if _fotmob_stage(item, mode)]
+            if country == "Europe" or mode == "cup":
                 conn.execute("""DELETE FROM rankit_matches WHERE provider='fotmob' AND competition_id=?
                     AND (substr(starts_at,1,10)<? OR substr(starts_at,1,10)>=?
                          OR stage IS NULL OR stage='')""",
@@ -283,7 +370,7 @@ def sync_football(season: str) -> dict:
                 mid = _match(conn, provider="fotmob", external_id=item["id"], sport="Football", comp_id=comp_id,
                              season=season, starts_at=st.get("utcTime") or "", status=status,
                              home_id=team_ids[home["name"]], away_id=team_ids[away["name"]], home_score=hs, away_score=aws,
-                             stage=_fotmob_stage(item, qualification))
+                             stage=_fotmob_stage(item, mode))
                 for team_name in (home["name"], away["name"]):
                     for pid in rosters.get(team_name, []):
                         conn.execute("INSERT OR IGNORE INTO rankit_match_players(match_id,player_id,team_id) VALUES(?,?,?)", (mid, pid, team_ids[team_name]))
@@ -295,11 +382,13 @@ def sync_football(season: str) -> dict:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--season", default="2025-26")
-    parser.add_argument("--only", choices=["nba", "football", "all"], default="all")
+    parser.add_argument("--only", choices=["nba", "euroleague", "football", "all"], default="all")
     args = parser.parse_args()
     init_db()
     if args.only in ("nba", "all"):
         print("NBA", sync_nba(args.season))
+    if args.only in ("euroleague", "all"):
+        print("EUROLEAGUE", sync_euroleague(args.season))
     if args.only in ("football", "all"):
         print("FOOTBALL", sync_football(args.season))
 
