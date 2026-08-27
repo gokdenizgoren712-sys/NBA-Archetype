@@ -41,7 +41,7 @@ async function request(path, options = {}) {
 const body = (method, value) => ({ method, body: JSON.stringify(value) });
 
 export const rankitApi = {
-  home: (sport = "All") => request(`/home?sport=${encodeURIComponent(sport)}`),
+  home: (sport = "All", windowStart = "", windowEnd = "") => request(`/home?sport=${encodeURIComponent(sport)}${windowStart ? `&window_start=${encodeURIComponent(windowStart)}` : ""}${windowEnd ? `&window_end=${encodeURIComponent(windowEnd)}` : ""}`),
   catalog: ({ sport = "All", competition = "All", season = "All", status = "All", limit = 60, offset = 0 } = {}) => request(`/catalog?sport=${encodeURIComponent(sport)}&competition=${encodeURIComponent(competition)}&season=${encodeURIComponent(season)}&status=${encodeURIComponent(status)}&limit=${limit}&offset=${offset}`),
   meta: () => request("/meta"),
   match: id => request(`/matches/${id}`),

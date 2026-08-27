@@ -363,7 +363,12 @@ NEAREST_MATCH_ORDER = " ORDER BY ABS(julianday(m.starts_at)-julianday('now')),m.
 
 
 @router.get("/home")
-def rankit_home(sport: str = "All", user=Depends(get_optional_user)):
+def rankit_home(
+    sport: str = "All",
+    window_start: Optional[str] = None,
+    window_end: Optional[str] = None,
+    user=Depends(get_optional_user),
+):
     with get_conn() as conn:
         uid = int(user["sub"]) if user else (None if IS_PROD else _demo_user_id(conn))
         has_synced = bool(conn.execute("SELECT 1 FROM rankit_matches WHERE provider IS NOT NULL LIMIT 1").fetchone())
@@ -373,16 +378,16 @@ def rankit_home(sport: str = "All", user=Depends(get_optional_user)):
         if sport != "All":
             where.append("m.sport=?")
             args.append(sport)
+        if window_start:
+            where.append("datetime(m.starts_at)>=datetime(?)")
+            args.append(window_start)
+        if window_end:
+            where.append("datetime(m.starts_at)<datetime(?)")
+            args.append(window_end)
         if where:
             sql += " WHERE " + " AND ".join(where)
-        sql += NEAREST_MATCH_ORDER + " LIMIT 30"
-        if has_synced and sport == "All":
-            by_sport = []
-            for selected_sport in ("Basketball", "Football"):
-                by_sport.append(conn.execute(MATCH_SELECT + " WHERE m.provider IS NOT NULL AND m.sport=?" + NEAREST_MATCH_ORDER + " LIMIT 15", (selected_sport,)).fetchall())
-            rows = [row for pair in zip(*by_sport) for row in pair]
-        else:
-            rows = conn.execute(sql, args).fetchall()
+        sql += " ORDER BY m.starts_at LIMIT 60"
+        rows = conn.execute(sql, args).fetchall()
         cards = [_match_dict(conn, r, uid) for r in rows]
         activity_rows = conn.execute("""SELECT e.id,e.review,e.rating,e.created_at,u.username,m.id match_id,
             h.short_name home_short,h.name home_name,a.short_name away_short,a.name away_name
@@ -598,8 +603,10 @@ def rankit_meta():
             WHERE m.provider IS NOT NULL GROUP BY c.id ORDER BY c.sport,c.name""").fetchall()]
         seasons = [r["season"] for r in conn.execute("""SELECT m.season FROM rankit_matches m
             WHERE m.provider IS NOT NULL GROUP BY m.season ORDER BY m.season DESC""").fetchall()]
+        sync_row = conn.execute("SELECT * FROM rankit_sync_state WHERE job_name='rankit_live_scores'").fetchone()
         return {"competitions": competitions, "seasons": seasons,
-                "matches": sum(c["match_count"] for c in competitions)}
+                "matches": sum(c["match_count"] for c in competitions),
+                "live_sync": dict(sync_row) if sync_row else None}
 
 
 @router.get("/matches/{match_id}")

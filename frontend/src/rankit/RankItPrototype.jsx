@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { App as CapacitorApp } from "@capacitor/app";
 import {
-  Bell, Bookmark, CalendarDays, ChevronLeft, ChevronRight, CircleUserRound,
+  Award, Bell, Bookmark, CalendarDays, ChevronLeft, ChevronRight, CircleUserRound,
   Compass, Eye, EyeOff, Home, LayoutGrid, List, ListPlus, MessageCircle, Plus, Search,
   ChevronDown, Heart, LoaderCircle, Radio, RotateCcw, Send, Share2, SlidersHorizontal,
   Star, ThumbsUp, Trophy, Users, X,
@@ -13,6 +13,7 @@ import "./rankit.css";
 import "./rankit-motion.css";
 import "./rankit-filter.css";
 import "./rankit-next.css";
+import "./rankit-v030.css";
 
 const SPORTS = ["All", "Basketball", "Football", "Olympics"];
 const TABS = [
@@ -23,9 +24,9 @@ function fromApiMatch(m) {
   if (!m) return m;
   const when = new Date(m.starts_at);
   const fullDate = Number.isNaN(when.getTime()) ? m.starts_at : new Intl.DateTimeFormat("en-GB", {
-    day: "2-digit", month: "short", year: "numeric", timeZone: m.provider === "nba" ? "UTC" : undefined,
+    day: "2-digit", month: "short", year: "numeric",
   }).format(when);
-  const time = Number.isNaN(when.getTime()) || m.provider === "nba" ? "" : new Intl.DateTimeFormat("en-GB", {
+  const time = Number.isNaN(when.getTime()) ? "" : new Intl.DateTimeFormat("en-GB", {
     hour: "2-digit", minute: "2-digit",
   }).format(when);
   return {
@@ -41,6 +42,27 @@ function fromApiMatch(m) {
     dominantTag: m.dominant_tag,
     friends: [],
   };
+}
+
+function rankitDayContext(now = new Date()) {
+  const start = new Date(now);
+  start.setHours(11, 0, 0, 0);
+  if (now < start) start.setDate(start.getDate() - 1);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 1);
+  const hour = now.getHours();
+  const daytime = hour >= 5 && hour < 17;
+  return {
+    start: start.toISOString(),
+    end: end.toISOString(),
+    eyebrow: daytime ? "YOUR DAY" : "YOUR NIGHT",
+    title: daytime ? "Today on RankIt" : "Tonight on RankIt",
+  };
+}
+
+function loadRankitHome(sport = "All") {
+  const day = rankitDayContext();
+  return rankitApi.home(sport, day.start, day.end);
 }
 
 function RankItMark({ size = 28 }) {
@@ -132,11 +154,12 @@ async function shareMatch(match, hideScores = false) {
 
 function MatchCard({ match, hideScores, onOpen, featured = false }) {
   const finished = match.status === "finished";
+  const live = match.status === "live";
   return <article className={`ri-match-card${featured ? " featured" : ""}${match.instantClassic ? " instant" : ""}`} onClick={() => onOpen(match)} style={{ "--home": match.home.color, "--away": match.away.color }}>
     <div className="ri-card-holo" />
     <div className="ri-match-top">
       <span>{match.instantClassic ? "INSTANT CLASSIC" : match.competition}</span>
-      {finished ? <span className="ri-community-rating"><Star size={11} fill="currentColor" /> {match.communityRating}</span> : <span className="ri-live-date">{match.date}</span>}
+      {finished ? <span className="ri-community-rating"><Star size={11} fill="currentColor" /> {match.communityRating}</span> : live ? <span className="ri-live-tag">LIVE</span> : <span className="ri-live-date">{match.date}</span>}
     </div>
 
     <div className="ri-match-art">
@@ -190,6 +213,8 @@ function MatchDetail({ match, hideScores, onClose, onSave, onToggleWatchlist, on
   const [favoriteBusy, setFavoriteBusy] = useState(false);
   const [actionNotice, setActionNotice] = useState(null);
   const [showMoreTags, setShowMoreTags] = useState(false);
+  const [showPotmPicker, setShowPotmPicker] = useState(false);
+  const [showRespectPicker, setShowRespectPicker] = useState(false);
   const [broadcastInfo, setBroadcastInfo] = useState(null);
   const tagOptions = match.sport === "Football"
     ? ["Nail-biter", "Great Atmosphere", "Comeback", "Penalty Drama", "Goal Fest", "Tactical Battle", "Upset", "Late Winner", "Derby Energy"]
@@ -197,6 +222,9 @@ function MatchDetail({ match, hideScores, onClose, onSave, onToggleWatchlist, on
   const playerOptions = match.players || [];
   const visibleTags = showMoreTags ? tagOptions : tagOptions.slice(0,5);
   const playersByTeam = playerOptions.reduce((groups, player) => ({ ...groups, [player.team]: [...(groups[player.team] || []), player] }), {});
+  const communityTags = Array.isArray(match.tags) ? match.tags : [];
+  const selectedPotm = playerOptions.find(player => player.id === potmId);
+  const selectedRespect = playerOptions.filter(player => respect.includes(player.id));
   useEffect(() => {
     setRating(match.my_rating ?? 0); setClassic(!!match.my_classic);
     setTags(match.my_tags || []); setRespect(match.my_respect_ids || []);
@@ -282,13 +310,14 @@ function MatchDetail({ match, hideScores, onClose, onSave, onToggleWatchlist, on
     <section className="ri-detail-sheet" onClick={e => e.stopPropagation()}>
       <SheetHandle onClose={onClose}/>
       <button className="ri-sheet-close" onClick={onClose}><X size={19} /></button>
-      <div className="ri-detail-kicker">{match.competition}</div>
-      <div className="ri-detail-teams">
-        <TeamMark team={match.home} />
-        <div><small>{match.date}</small><strong className={hideScores && match.status === "finished" ? "ri-blur" : ""}><ScoreValue match={match} detail/></strong></div>
-        <TeamMark team={match.away} />
+      <div className="ri-v03-hero" style={{"--detail-home":match.home.color,"--detail-away":match.away.color}}>
+        <div className={`ri-detail-kicker ${match.status}`}><span>{match.competition}</span><b>{match.status === "finished" ? "FULL TIME" : match.status === "live" ? "LIVE" : "UPCOMING"}</b></div>
+        <div className="ri-detail-teams">
+          <div className="ri-v03-team"><TeamMark team={match.home}/><strong>{match.home.short}</strong><small>{match.home.name}</small></div>
+          <div className="ri-v03-score"><small>{match.date}</small><strong className={hideScores && match.status === "finished" ? "ri-blur" : ""}><ScoreValue match={match} detail/></strong><span>{match.season}</span></div>
+          <div className="ri-v03-team"><TeamMark team={match.away}/><strong>{match.away.short}</strong><small>{match.away.name}</small></div>
+        </div>
       </div>
-      <h2>{match.home.name} vs {match.away.name}</h2>
       <div className="ri-detail-tabs"><button className={section === "Match" ? "active" : ""} onClick={() => setSection("Match")}>Match</button><button className={section === "Community" ? "active" : ""} onClick={() => setSection("Community")}>Community</button></div>
       {section === "Match" ? <>
         {match.summary && <p className="ri-summary">{match.summary}</p>}
@@ -300,15 +329,25 @@ function MatchDetail({ match, hideScores, onClose, onSave, onToggleWatchlist, on
           <button disabled={favoriteBusy} aria-busy={favoriteBusy} className={`ri-review-cta secondary${favorited ? " saved" : ""}${favoriteBusy ? " is-busy" : ""}`} onClick={toggleFavorite}>{favoriteBusy ? <LoaderCircle className="ri-spin" size={17}/> : <Heart size={17} fill={favorited ? "currentColor" : "none"}/>} {favorited ? "Favourite" : "Add to favourites"}</button>
         </div>
       </> : match.status === "finished" ? <>
+        <div className="ri-v03-community-stats">
+          <div><Star size={15} fill="currentColor"/><strong>{match.communityRating ?? "—"}</strong><span>COMMUNITY</span></div>
+          <div><MessageCircle size={15}/><strong>{match.reviewCount || 0}</strong><span>REVIEWS</span></div>
+          <div><Award size={15}/><strong>{match.classic_count || 0}</strong><span>CLASSICS</span></div>
+        </div>
+        {(match.potm || communityTags.length > 0) && <section className="ri-v03-consensus">
+          {match.potm && <div className="ri-v03-potm"><Trophy size={18}/><span><small>COMMUNITY PLAYER OF THE MATCH</small><strong>{match.potm.name}</strong></span><b>{match.potm.votes || 0}×</b></div>}
+          {communityTags.length > 0 && <div className="ri-v03-tag-cloud">{communityTags.map(item=><span key={item.tag} className={item.tag===match.dominantTag?"dominant":""}>{item.tag}<b>{item.count.toLocaleString()}×</b></span>)}</div>}
+        </section>}
+        <div className="ri-v03-log-head"><div><small>YOUR MATCH DIARY</small><h3>{match.my_watched_date ? "Update your entry" : "Log this match"}</h3></div>{match.my_watched_date&&<b>LOGGED</b>}</div>
         <div className="ri-rating-panel"><small>YOUR RATING</small><Stars value={rating} onChange={setRating}/><ClassicStamp active={classic} onClick={() => setClassic(v => !v)}/></div>
         <div className="ri-chip-title">DESCRIBE THE MATCH <span>{tags.length}/3</span></div>
         <div className="ri-tag-picker">{visibleTags.map(tag => <button key={tag} className={tags.includes(tag) ? "active" : ""} onClick={() => toggleTag(tag)}>{tag}</button>)}<button className="ri-more-tags" onClick={()=>setShowMoreTags(v=>!v)}>{showMoreTags?"Less":"More"}</button></div>
         <div className="ri-detail-row"><span>Community rating</span><strong><Star size={14} fill="currentColor"/> {match.communityRating ?? "Not rated"} <small>({match.ratings.toLocaleString()})</small></strong></div>
-        <div className="ri-vote-block">
-          <div><Trophy size={15}/><span><small>YOUR PLAYER OF THE MATCH</small><strong>{hideScores ? "Tap to reveal" : (playerOptions.find(p => p.id === potmId)?.name || "Choose a player")}</strong></span><b>{potmId ? "SELECTED" : "OPEN"}</b></div>
-          <div className="ri-match-player-groups">{Object.entries(playersByTeam).map(([team,players])=><section key={`potm-${team}`}><small>{team}</small><div className="ri-respect-grid">{players.map(player => <button key={`potm-${player.id}`} className={potmId === player.id ? "active" : ""} onClick={() => choosePotm(player.id)}>{player.image_url?<img src={player.image_url} alt=""/>:<Trophy size={12}/>}<span>{player.name}</span></button>)}</div></section>)}</div>
-          <p>Choose up to two other players whose performance deserves recognition.</p>
-          <div className="ri-match-player-groups">{Object.entries(playersByTeam).map(([team,players])=><section key={`respect-${team}`}><small>{team}</small><div className="ri-respect-grid">{players.filter(player=>player.id!==potmId).map(player => <button key={`respect-${player.id}`} className={respect.includes(player.id) ? "active" : ""} onClick={() => toggleRespect(player.id)}>{player.image_url?<img src={player.image_url} alt=""/>:<ThumbsUp size={12}/>}<span>{player.name}</span></button>)}</div></section>)}</div>
+        <div className="ri-vote-block ri-v03-votes">
+          <button className="ri-v03-vote-trigger" onClick={()=>setShowPotmPicker(value=>!value)}><Trophy size={16}/><span><small>YOUR PLAYER OF THE MATCH</small><strong>{selectedPotm?.name || "Choose one player"}</strong></span><b>{showPotmPicker ? "CLOSE" : potmId ? "CHANGE" : "CHOOSE"}</b></button>
+          {showPotmPicker && <div className="ri-match-player-groups">{Object.entries(playersByTeam).map(([team,players])=><section key={`potm-${team}`}><small>{team}</small><div className="ri-respect-grid">{players.map(player => <button key={`potm-${player.id}`} className={potmId === player.id ? "active" : ""} onClick={() => {choosePotm(player.id);setShowPotmPicker(false)}}>{player.image_url?<img src={player.image_url} alt=""/>:<Trophy size={12}/>}<span>{player.name}</span></button>)}</div></section>)}</div>}
+          <button className="ri-v03-vote-trigger respect" onClick={()=>setShowRespectPicker(value=>!value)}><ThumbsUp size={16}/><span><small>RESPECT · UP TO TWO</small><strong>{selectedRespect.length ? selectedRespect.map(player=>player.name).join(" · ") : "Recognise other performances"}</strong></span><b>{showRespectPicker ? "CLOSE" : respect.length ? "CHANGE" : "CHOOSE"}</b></button>
+          {showRespectPicker && <div className="ri-match-player-groups">{Object.entries(playersByTeam).map(([team,players])=><section key={`respect-${team}`}><small>{team}</small><div className="ri-respect-grid">{players.filter(player=>player.id!==potmId).map(player => <button key={`respect-${player.id}`} className={respect.includes(player.id) ? "active" : ""} onClick={() => toggleRespect(player.id)}>{player.image_url?<img src={player.image_url} alt=""/>:<ThumbsUp size={12}/>}<span>{player.name}</span></button>)}</div></section>)}</div>}
         </div>
         <textarea className="ri-review-input" maxLength={4000} value={review} onChange={e=>setReview(e.target.value)} placeholder="Write an optional review…" rows="3"/>
         <div className="ri-review-options"><label><input type="checkbox" checked={spoiler} onChange={e=>setSpoiler(e.target.checked)}/> Contains spoilers</label><label><input type="checkbox" checked={rewatch} onChange={e=>setRewatch(e.target.checked)}/> Log as rewatch</label><select value={visibility} onChange={e=>setVisibility(e.target.value)} aria-label="Review visibility"><option value="public">Public</option><option value="followers">Followers</option><option value="private">Private</option></select></div>
@@ -473,6 +512,7 @@ function MatchCardSkeleton({ featured = false }) {
 
 function HomeView({ sport, setSport, hideScores, setHideScores, onOpen, onNavigate, catalog = matches, feed = activity, loading = false }) {
   const shown = useMemo(() => catalog.filter(m => sport === "All" || m.sport === sport), [sport, catalog]);
+  const day = rankitDayContext();
   return <>
     <div className="ri-home-controls">
       <div className="ri-sport-scroll">
@@ -483,9 +523,9 @@ function HomeView({ sport, setSport, hideScores, setHideScores, onOpen, onNaviga
       </button>
     </div>
     <section className="ri-section">
-      <div className="ri-section-head"><div><small>YOUR EVENING</small><h2>Tonight on RankIt</h2></div><button onClick={() => onNavigate("Discover")}>See all</button></div>
-      <div className="ri-hero-carousel">{loading ? [0,1,2].map(i=><MatchCardSkeleton key={i} featured/>) : shown.slice(0, 3).map(m => <MatchCard key={m.id} match={m} hideScores={hideScores} onOpen={onOpen} featured />)}</div>
-      <div className="ri-carousel-dots"><i className="active"/><i/><i/></div>
+      <div className="ri-section-head"><div><small>{day.eyebrow}</small><h2>{day.title}</h2></div><button onClick={() => onNavigate("Discover")}>See all</button></div>
+      <div className="ri-hero-carousel">{loading ? [0,1,2].map(i=><MatchCardSkeleton key={i} featured/>) : shown.length ? shown.slice(0, 3).map(m => <MatchCard key={m.id} match={m} hideScores={hideScores} onOpen={onOpen} featured />) : <div className="ri-day-empty"><CalendarDays size={20}/><strong>No {sport === "All" ? "matches" : sport.toLowerCase()} in this RankIt day</strong><span>11:00 today → 11:00 tomorrow</span></div>}</div>
+      {shown.length > 0 && <div className="ri-carousel-dots">{shown.slice(0,3).map((match,index)=><i key={match.id} className={index===0?"active":""}/>)}</div>}
     </section>
     <section className="ri-section ri-friends-preview">
       <div className="ri-section-head"><div><small>POPULAR ACROSS RANKIT</small><h2>Community reviews</h2></div><button onClick={() => onNavigate("Activity")}>Activity</button></div>
@@ -693,13 +733,13 @@ export default function RankItPrototype({ nativeBack = false }) {
     setWatchlist((watchData.matches || []).map(fromApiMatch));
   };
   const refreshPersonal = async () => {
-    const [diary, profile, home] = await Promise.all([rankitApi.diary(), rankitApi.profile(), rankitApi.home("All")]);
+    const [diary, profile, home] = await Promise.all([rankitApi.diary(), rankitApi.profile(), loadRankitHome("All")]);
     setDiaryEntries(diary.entries || []);
     setProfileData(profile);
     setCatalog((home.matches || []).map(fromApiMatch));
   };
   useEffect(() => {
-    rankitApi.home("All").then(data => {
+    loadRankitHome("All").then(data => {
       setCatalog((data.matches || []).map(fromApiMatch));
       setFeed((data.activity || []).map(a => ({
         id: a.id, user: a.username, initials: a.username?.slice(0,2).toUpperCase(), action: "reviewed",
@@ -712,6 +752,16 @@ export default function RankItPrototype({ nativeBack = false }) {
     rankitApi.meta().then(setCatalogMeta).catch(()=>{});
     refreshCollections().catch(()=>{});
   }, []);
+  useEffect(() => {
+    const refreshVisibleMatches = () => {
+      loadRankitHome("All").then(data => setCatalog((data.matches || []).map(fromApiMatch))).catch(()=>{});
+      if (detail?.id) rankitApi.match(detail.id).then(data => setDetail(fromApiMatch(data))).catch(()=>{});
+    };
+    const interval = setInterval(refreshVisibleMatches, 15 * 60 * 1000);
+    const onVisibility = () => { if (document.visibilityState === "visible") refreshVisibleMatches(); };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => { clearInterval(interval); document.removeEventListener("visibilitychange", onVisibility); };
+  }, [detail?.id]);
   const openMatch = async match => {
     setEntityDetail(null);
     const hasPreview = !!(match?.home && match?.away);

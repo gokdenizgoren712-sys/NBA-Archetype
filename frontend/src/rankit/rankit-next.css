@@ -10,7 +10,7 @@
 .rankit-app.header-hidden .ri-header{transform:translateY(-100%);margin-bottom:-64px;opacity:0;pointer-events:none}
 .rankit-app.header-hidden .ri-main{height:calc(100% - 73px)}
 .ri-floating-search{bottom:94px!important}.ri-floating-search.expanded{right:max(16px,calc((100vw - 520px)/2));width:min(calc(100% - 32px),420px);height:48px}
-.ri-team-mark.has-logo{background:color-mix(in srgb,var(--team) 12%,#101113);padding:5px}.ri-team-mark.has-logo img{width:100%;height:100%;object-fit:contain;transform:rotate(-45deg);filter:drop-shadow(0 4px 7px rgba(0,0,0,.35))}
+.ri-team-mark.has-logo{position:relative;background:color-mix(in srgb,var(--team) 12%,#101113);padding:0;transform-origin:50% 50%}.ri-team-mark.has-logo img{position:absolute;left:50%;top:50%;width:74%;height:74%;object-fit:contain;transform:translate(-50%,-50%) rotate(-45deg);transform-origin:50% 50%;filter:drop-shadow(0 4px 7px rgba(0,0,0,.35))}
 
 /* Çerçeve koleksiyon kartı elması olarak eğik kalır; kulüp arması düz okunur.
    Hero ölçüsü önce ana 56px değeri 48px'e düşürüyordu, artık logo yaklaşık

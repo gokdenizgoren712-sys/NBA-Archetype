@@ -231,6 +231,14 @@ def init_db():
             updated_at  TEXT DEFAULT (datetime('now'))
         );
 
+        CREATE TABLE IF NOT EXISTS rankit_sync_state (
+            job_name         TEXT PRIMARY KEY,
+            last_attempt     TEXT,
+            last_success     TEXT,
+            last_error       TEXT,
+            updated_matches  INTEGER NOT NULL DEFAULT 0
+        );
+
         CREATE TABLE IF NOT EXISTS rankit_players (
             id          INTEGER PRIMARY KEY AUTOINCREMENT,
             sport       TEXT NOT NULL,

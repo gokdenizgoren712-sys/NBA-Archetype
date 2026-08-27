@@ -2841,6 +2841,12 @@ def _rankit_logo_backfill_worker():
 import threading as _threading
 _threading.Thread(target=_rankit_logo_backfill_worker, daemon=True).start()
 
+try:
+    from .rankit_live_sync import start_rankit_live_sync as _start_rankit_live_sync
+    _start_rankit_live_sync()
+except Exception as _e:
+    print(f"[startup] RankIt live sync failed to start: {_e}", flush=True)
+
 # Faz 4 sonrası tek-seferlik otomatik migration'lar — deploy'da HER başlangıçta
 # çalışır, admin'in elle bir endpoint çağırmasına gerek YOK (ikisi de idempotent,
 # ikinci/üçüncü deploy'da no-op olur). Startup'ı asla bloklamasınlar diye try/except.
