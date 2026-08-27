@@ -10,4 +10,13 @@
 .rankit-app.header-hidden .ri-header{transform:translateY(-100%);margin-bottom:-64px;opacity:0;pointer-events:none}
 .rankit-app.header-hidden .ri-main{height:calc(100% - 73px)}
 .ri-floating-search{bottom:94px!important}.ri-floating-search.expanded{right:max(16px,calc((100vw - 520px)/2));width:min(calc(100% - 32px),420px);height:48px}
-.ri-team-mark.has-logo{background:color-mix(in srgb,var(--team) 12%,#101113);padding:7px}.ri-team-mark.has-logo img{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 4px 7px rgba(0,0,0,.35))}
+.ri-team-mark.has-logo{background:color-mix(in srgb,var(--team) 12%,#101113);padding:5px}.ri-team-mark.has-logo img{width:100%;height:100%;object-fit:contain;transform:rotate(-45deg);filter:drop-shadow(0 4px 7px rgba(0,0,0,.35))}
+
+/* Çerçeve koleksiyon kartı elması olarak eğik kalır; kulüp arması düz okunur.
+   Hero ölçüsü önce ana 56px değeri 48px'e düşürüyordu, artık logo yaklaşık
+   %50 daha geniş bir kullanılabilir yüzeye sahip. */
+.ri-team-mark{width:64px;height:64px}
+.ri-hero-carousel .ri-team-mark{width:62px;height:62px;border-radius:18px 18px 21px 21px}
+.ri-discover-grid .ri-team-mark{width:52px;height:52px;border-radius:16px}
+.ri-mini-crests .ri-team-mark{width:34px;height:34px}
+.ri-squad-preview header .ri-team-mark{width:30px;height:30px}
