@@ -379,25 +379,60 @@ function ReviewFeed({ reviews, onRefresh }) {
   const [comments, setComments] = useState({});
   const [draft, setDraft] = useState("");
   const [revealed, setRevealed] = useState([]);
+  const [reactions, setReactions] = useState({});
+  const [busyLikes, setBusyLikes] = useState([]);
+  const [commentState, setCommentState] = useState({});
+  useEffect(() => {
+    setReactions(Object.fromEntries(reviews.map(review => [review.id, { liked: !!review.liked, likes: review.likes || 0 }])));
+  }, [reviews]);
   const toggleComments = async id => {
     setOpenId(openId === id ? null : id);
+    if (openId === id) return;
     if (!comments[id]) setComments(v => ({ ...v, [id]: [] }));
-    const data = await rankitApi.comments(id);
-    setComments(v => ({ ...v, [id]: data.comments || [] }));
+    setCommentState(v => ({ ...v, [id]: "loading" }));
+    try {
+      const data = await rankitApi.comments(id);
+      setComments(v => ({ ...v, [id]: data.comments || [] }));
+      setCommentState(v => ({ ...v, [id]: "ready" }));
+    } catch {
+      setCommentState(v => ({ ...v, [id]: "error" }));
+    }
   };
   const addComment = async id => {
     if (!draft.trim()) return;
-    await rankitApi.addComment(id, draft.trim());
-    setDraft("");
-    const data = await rankitApi.comments(id);
-    setComments(v => ({ ...v, [id]: data.comments || [] }));
-    await onRefresh?.();
+    setCommentState(v => ({ ...v, [id]: "saving" }));
+    try {
+      await rankitApi.addComment(id, draft.trim());
+      setDraft("");
+      const data = await rankitApi.comments(id);
+      setComments(v => ({ ...v, [id]: data.comments || [] }));
+      setCommentState(v => ({ ...v, [id]: "ready" }));
+      await onRefresh?.();
+    } catch {
+      setCommentState(v => ({ ...v, [id]: "error" }));
+    }
   };
-  const like = async id => { await rankitApi.likeReview(id); await onRefresh?.(); };
+  const like = async review => {
+    if (busyLikes.includes(review.id)) return;
+    const previous = reactions[review.id] || { liked: !!review.liked, likes: review.likes || 0 };
+    const optimistic = { liked: !previous.liked, likes: Math.max(0, previous.likes + (previous.liked ? -1 : 1)) };
+    setReactions(v => ({ ...v, [review.id]: optimistic }));
+    setBusyLikes(v => [...v, review.id]);
+    rankitHaptics.selection();
+    try {
+      const result = await rankitApi.likeReview(review.id);
+      setReactions(v => ({ ...v, [review.id]: result }));
+      await onRefresh?.();
+    } catch {
+      setReactions(v => ({ ...v, [review.id]: previous }));
+    } finally {
+      setBusyLikes(v => v.filter(id => id !== review.id));
+    }
+  };
   return <div className="ri-review-feed"><div className="ri-chip-title">COMMUNITY REVIEWS <span>{reviews.length}</span></div>{reviews.map(r => <article key={r.id}>
     <div><strong>@{r.username}</strong><Stars value={r.rating || 0} compact/></div>{r.spoiler && !revealed.includes(r.id) ? <button className="ri-spoiler-cover" onClick={()=>setRevealed(v=>[...v,r.id])}><EyeOff size={14}/><span>Spoiler review</span><small>Tap to reveal</small></button> : <p>{r.review}</p>}
-    <footer><button className={r.liked ? "active" : ""} onClick={() => like(r.id)}><Heart size={12} fill={r.liked ? "currentColor" : "none"}/> {r.likes}</button><button onClick={() => toggleComments(r.id)}><MessageCircle size={12}/> {r.comments}</button></footer>
-    {openId === r.id && <div className="ri-comments">{(comments[r.id] || []).map(c => <p key={c.id}><strong>@{c.username}</strong> {c.content}</p>)}<div><input value={draft} onChange={e => setDraft(e.target.value)} placeholder="Write a reply"/><button onClick={() => addComment(r.id)}><Send size={13}/></button></div></div>}
+    <footer><button disabled={busyLikes.includes(r.id)} aria-label={`${reactions[r.id]?.liked ? "Unlike" : "Like"} review by ${r.username}`} className={reactions[r.id]?.liked ? "active" : ""} onClick={() => like(r)}><Heart size={12} fill={reactions[r.id]?.liked ? "currentColor" : "none"}/> {reactions[r.id]?.likes ?? r.likes}</button><button onClick={() => toggleComments(r.id)}><MessageCircle size={12}/> {r.comments}</button></footer>
+    {openId === r.id && <div className="ri-comments">{commentState[r.id] === "loading" ? <p className="ri-inline-state">Loading replies…</p> : (comments[r.id] || []).map(c => <p key={c.id}><strong>@{c.username}</strong> {c.content}</p>)}{commentState[r.id] === "error" && <p className="ri-inline-state error">Could not update replies. Try again.</p>}<div><input value={draft} onChange={e => setDraft(e.target.value)} onKeyDown={e=>e.key === "Enter" && addComment(r.id)} placeholder="Write a reply"/><button disabled={commentState[r.id] === "saving" || !draft.trim()} onClick={() => addComment(r.id)}>{commentState[r.id] === "saving" ? <LoaderCircle className="ri-spin" size={13}/> : <Send size={13}/>}</button></div></div>}
   </article>)}</div>;
 }
 
@@ -640,7 +675,7 @@ function ActivityView({ diaryEntries = [], watchlist = [], listCatalog = [], fri
       {filter === "Watchlist" ? <><label className="ri-watch-sort"><span>SORT WATCHLIST</span><select value={watchSort} onChange={e=>setWatchSort(e.target.value)}><option>Match date</option><option>Added</option><option>Competition</option></select></label><div className="ri-discover-grid">{sortedWatchlist.map(m=><MatchCard key={m.id} match={m} hideScores={false} onOpen={onOpen}/>)}</div></>
       : filter === "Lists" ? <div className="ri-list-stack">{listCatalog.map(l=><article key={l.id} onClick={()=>onOpenList(l.id)}><ListPlus size={18}/><div><strong>{l.title}</strong><span>{l.match_count} matches · {l.ranked?"Ranked":"Unranked"}</span></div></article>)}</div>
       : diaryView === "Timeline" ? <><div className="ri-diary-heat"><header><span>LAST 28 DAYS</span><strong>{heatDays.reduce((a,n)=>a+n,0)} watched</strong></header><div>{heatDays.map((n,i)=><i key={i} data-level={Math.min(3,n)}/>)}</div></div>{filteredDiary.map((e,index)=>{const month=new Date(`${e.watched_date}T12:00:00`).toLocaleDateString("en-GB",{month:"long",year:"numeric"});const prev=index?new Date(`${filteredDiary[index-1].watched_date}T12:00:00`).toLocaleDateString("en-GB",{month:"long",year:"numeric"}):null;return <div key={e.id}>{month!==prev&&<div className="ri-diary-group"><span>{e.competition}</span><strong>{month}</strong></div>}<div className="ri-diary-row" onClick={()=>onOpen({id:e.match_id})}><span className="ri-diary-date">{e.watched_date}</span><div className="ri-mini-crests"><TeamMark team={{short:e.home_short,color:e.home_color}}/><TeamMark team={{short:e.away_short,color:e.away_color}}/></div><div><strong>{e.home_short} vs {e.away_short}</strong><small>{e.home_score} - {e.away_score} · {e.competition}</small></div><Stars value={e.rating||0} compact/></div></div>})}</>
-      : <div className="ri-diary-cards">{filteredDiary.map(e=><div key={e.id} style={{"--card-a":e.home_color,"--card-b":e.away_color}}><small>{e.competition}</small><strong>{e.home_short}</strong><b>{e.sport==="Basketball"?<>{e.home_score}<br/>{e.away_score}</>:<>{e.home_score} – {e.away_score}</>}</b><strong>{e.away_short}</strong><Stars value={e.rating||0} compact/><ClassicStamp active={!!e.classic} small/></div>)}</div>}</div>}
+      : <div className="ri-diary-cards">{filteredDiary.map(e=><div role="button" tabIndex={0} aria-label={`Open ${e.home_short} vs ${e.away_short}`} onClick={()=>onOpen({id:e.match_id})} onKeyDown={event=>{if(event.key==="Enter"||event.key===" "){event.preventDefault();onOpen({id:e.match_id})}}} key={e.id} style={{"--card-a":e.home_color,"--card-b":e.away_color}}><small>{e.competition}</small><strong>{e.home_short}</strong><b>{e.sport==="Basketball"?<>{e.home_score}<br/>{e.away_score}</>:<>{e.home_score} – {e.away_score}</>}</b><strong>{e.away_short}</strong><Stars value={e.rating||0} compact/><ClassicStamp active={!!e.classic} small/></div>)}</div>}</div>}
   </>;
 }
 
