@@ -50,7 +50,7 @@ export const rankitApi = {
   player: id => request(`/players/${id}`),
   team: id => request(`/teams/${id}`),
   member: id => request(`/members/${id}`),
-  search: (q, kind = "All") => request(`/search?q=${encodeURIComponent(q)}&kind=${encodeURIComponent(kind)}`),
+  search: (q, kind = "All", status = "All") => request(`/search?q=${encodeURIComponent(q)}&kind=${encodeURIComponent(kind)}&status=${encodeURIComponent(status)}`),
   diary: () => request("/diary"),
   log: value => request("/diary", body("POST", value)),
   profile: () => request("/profile"),

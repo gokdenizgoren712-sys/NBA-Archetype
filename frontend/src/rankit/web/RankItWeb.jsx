@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, NavLink, useParams, useNavigate } from "react-router-dom";
 import {
   Home, Compass, Activity as ActivityIcon, List as ListIcon, CircleUserRound,
-  Smartphone, Star, X, ChevronRight, FileText,
+  Smartphone, Star, X, ChevronRight, FileText, Plus, Search,
 } from "lucide-react";
 import { SEO } from "../../hooks/useSEO";
 import { useAuth } from "../../contexts/AuthContext";
@@ -20,11 +20,14 @@ import "./rankit-web.css";
 // Download rayın beşlisine DAHİL DEĞİL, dibinde ve kendi çizgisinin altında:
 // ürüne girmenin değil, ürünü almanın yolu.
 
+// Telefonun TABS dizisiyle AYNI sıra: Rank ortada. Alt bar beş yer taşır ve
+// ortadaki bir gezinme değil bir EYLEM — puanlanacak maçı aramak. Lists o yeri
+// işgal ediyordu, Discover'ın içine sekme olarak taşındı.
 const SECTIONS = [
   { to: "/rankit", end: true, Icon: Home, label: "Home" },
   { to: "/rankit/discover", Icon: Compass, label: "Discover" },
+  { rank: true, Icon: Plus, label: "Rank" },
   { to: "/rankit/activity", Icon: ActivityIcon, label: "Activity" },
-  { to: "/rankit/lists", Icon: ListIcon, label: "Lists" },
   { to: "/rankit/profile", Icon: CircleUserRound, label: "Profile" },
 ];
 
@@ -53,7 +56,7 @@ function toCard(m) {
 
 /* ── Ray ──────────────────────────────────────────────────────────────────── */
 
-function Rail({ user }) {
+function Rail({ user, onRank }) {
   return (
     <aside className="riw-rail">
       <div className="riw-brand">
@@ -65,11 +68,18 @@ function Rail({ user }) {
       </div>
 
       <nav className="riw-nav">
-        {SECTIONS.map(({ to, end, Icon, label }) => (
-          <NavLink key={to} to={to} end={end}
-            className={({ isActive }) => (isActive ? "on" : undefined)}>
-            <Icon size={16} /> <span>{label}</span>
-          </NavLink>
+        {SECTIONS.map(({ to, end, Icon, label, rank }) => (
+          rank ? (
+            <button key={label} type="button" className="rank" onClick={onRank}>
+              <span className="riw-rank-gem"><Icon size={22} /></span>
+              <span>{label}</span>
+            </button>
+          ) : (
+            <NavLink key={to} to={to} end={end}
+              className={({ isActive }) => (isActive ? "on" : undefined)}>
+              <Icon size={16} /> <span>{label}</span>
+            </NavLink>
+          )
         ))}
       </nav>
 
@@ -229,6 +239,74 @@ function Inspector({ id, onClose, onLogged }) {
   );
 }
 
+
+/* ── Rank: puanlanacak maçı bul ───────────────────────────────────────────────
+   Telefondaki orta düğmenin karşılığı. Duvarda maçı aramak "önce filtrele,
+   sonra bul" demek; buradaki iş tek bir maçı hatırlayıp puanlamak, o yüzden
+   ayrı bir yüzey ve doğrudan arama. Yalnızca BİTMİŞ maçlar: oynanmamış bir
+   maçı puanlatmak anlamsız. */
+function RankSheet({ onClose, onPick }) {
+  const [q, setQ] = useState("");
+  const [rows, setRows] = useState(null);
+  const [err, setErr] = useState("");
+
+  useEffect(() => {
+    let alive = true;
+    const t = setTimeout(() => {
+      setRows(null); setErr("");
+      const p = q.trim().length >= 2
+        ? rankitApi.search(q.trim(), "Matches", "finished")
+        : rankitApi.catalog({ status: "finished", limit: 40 });
+      p.then((d) => alive && setRows((d.matches || []).map(toCard)))
+       .catch((e) => alive && setErr(String(e.message || e)));
+    }, 200);
+    return () => { alive = false; clearTimeout(t); };
+  }, [q]);
+
+  useEffect(() => {
+    const onKey = (e) => e.key === "Escape" && onClose();
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  return (
+    <div className="riw-inspect-wrap" onClick={onClose}>
+      <section className="riw-inspect riw-rank-sheet" onClick={(e) => e.stopPropagation()}
+        role="dialog" aria-modal="true" aria-label="Rank a match">
+        <button onClick={onClose} className="ri-sheet-close" aria-label="Close"><X size={16} /></button>
+
+        <h2 className="riw-rank-title">Rank a match</h2>
+        <label className="riw-rank-search">
+          <Search size={16} />
+          <input autoFocus value={q} onChange={(e) => setQ(e.target.value)}
+            placeholder="Search finished matches — team, competition…" />
+        </label>
+
+        {err && <div className="riw-note">{err}</div>}
+
+        <div className="riw-rank-results">
+          {rows === null && !err && (
+            <p className="ri-entity-loading">Looking…</p>
+          )}
+          {rows?.map((m) => (
+            <button key={m.id} type="button" onClick={() => onPick(m.id)}>
+              <span className="riw-rank-comp">{m.competition}</span>
+              <span className="riw-rank-teams">
+                {m.home.short || m.home.name} <b>{m.score || "—"}</b> {m.away.short || m.away.name}
+              </span>
+              <span className="riw-rank-date">{m.date}</span>
+            </button>
+          ))}
+          {rows && !rows.length && (
+            <Empty icon={Search} title="No finished match matches that"
+              note="Try a club's short name, or clear the search to see the most recent." />
+          )}
+        </div>
+      </section>
+    </div>
+  );
+}
+
 /* ── Bölümler ─────────────────────────────────────────────────────────────── */
 
 function useCatalog(filters) {
@@ -256,7 +334,7 @@ function useCatalog(filters) {
   return { ...state, more: () => setOffset((o) => o + 24), canLoadMore: state.matches.length < state.total };
 }
 
-function Catalog({ title, note, meta }) {
+function Catalog({ title, note, meta, tabs }) {
   const [sport, setSport] = useState("All");
   const [competition, setCompetition] = useState("All");
   const [season, setSeason] = useState("All");
@@ -279,6 +357,7 @@ function Catalog({ title, note, meta }) {
           {loading ? "…" : `${matches.length} of ${total.toLocaleString()}`}
         </span>
       </header>
+      {tabs}
 
       <div className="riw-main">
         <div className="riw-filters">
@@ -370,7 +449,7 @@ function Diary() {
   );
 }
 
-function Lists() {
+function Lists({ tabs }) {
   const { isLoggedIn } = useAuth();
   const [lists, setLists] = useState(null);
   useEffect(() => {
@@ -381,10 +460,11 @@ function Lists() {
   return (
     <>
       <header className="riw-head">
-        <h1>Lists</h1>
+        <h1>Discover</h1>
         <p>Collections you have made, ranked or not.</p>
         {lists && <span className="riw-count">{lists.length}</span>}
       </header>
+      {tabs}
       <div className="riw-main solo">
         <div className="ri-list-stack">
           {(lists || []).map((l) => (
@@ -488,17 +568,45 @@ function Profile() {
 
 export default function RankItWeb({ section = "home" }) {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [meta, setMeta] = useState(null);
+  const [rankOpen, setRankOpen] = useState(false);
+  const [rankPick, setRankPick] = useState(null);
+
+  // Lists artık gezinme değil, Discover'ın ikinci sekmesi. /rankit/lists eski
+  // bağlantıları kırmasın diye duruyor ve doğrudan o sekmeyi açıyor.
+  const [discoverTab, setDiscoverTab] = useState(section === "lists" ? "lists" : "matches");
+  useEffect(() => { setDiscoverTab(section === "lists" ? "lists" : "matches"); }, [section]);
 
   useEffect(() => { rankitApi.meta().then(setMeta).catch(() => setMeta(null)); }, []);
+
+  const discoverTabs = (
+    <div className="riw-tabs" role="tablist" aria-label="Discover">
+      {[["matches", "Matches"], ["lists", "Lists"]].map(([key, label]) => (
+        <button key={key} role="tab" aria-selected={discoverTab === key}
+          className={discoverTab === key ? "on" : undefined}
+          onClick={() => {
+            setDiscoverTab(key);
+            navigate(key === "lists" ? "/rankit/lists" : "/rankit/discover",
+                     { replace: true });
+          }}>
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+
+  const discover = discoverTab === "lists"
+    ? <Lists tabs={discoverTabs} />
+    : <Catalog meta={meta} title="Discover" tabs={discoverTabs}
+        note="Filter down to a competition, a season or a state of play." />;
 
   const body = {
     home: <Catalog meta={meta} title="Matches"
       note="Every fixture we carry, nearest first. Open one to rate it." />,
-    discover: <Catalog meta={meta} title="Discover"
-      note="Filter down to a competition, a season or a state of play." />,
+    discover,
+    lists: discover,
     activity: <Diary />,
-    lists: <Lists />,
     profile: <Profile />,
   }[section];
 
@@ -507,8 +615,14 @@ export default function RankItWeb({ section = "home" }) {
       <SEO title="RankIt — rate the matches you watch"
         description="A social diary for football and basketball. Rate matches, keep a record, follow people whose taste you recognise."
         path="/rankit" />
-      <Rail user={user} />
+      <Rail user={user} onRank={() => setRankOpen(true)} />
       <div className="riw-body">{body}</div>
+
+      {rankOpen && (
+        <RankSheet onClose={() => setRankOpen(false)}
+          onPick={(id) => { setRankOpen(false); setRankPick(id); }} />
+      )}
+      {rankPick && <Inspector id={rankPick} onClose={() => setRankPick(null)} />}
     </div>
   );
 }

@@ -199,6 +199,84 @@
 
 /* ── Dar ekran: ray üstte yatay şeride düşer ─────────────────────────────── */
 
+/* ── Rank: ortadaki eylem ─────────────────────────────────────────────────────
+   Telefonun alt barındaki altın elmasın karşılığı; ölçüler oradan birebir
+   (48px, 45° döndürülmüş, ikon ters döndürülmüş, bardan yukarı taşan).
+   Diğer dördü GEZİNME, bu bir EYLEM — biçim farkı o farkı taşıyor. */
+
+.riw-nav button.rank {
+  display: flex; align-items: center; gap: 11px;
+  padding: 9px 10px; border: 1px solid rgba(255, 177, 27, .22);
+  border-radius: 11px; background: rgba(255, 177, 27, .06);
+  color: var(--ri-gold, #FFB11B);
+  font: 700 12.5px var(--font-sans); text-align: left;
+  transition: background .16s ease, border-color .16s ease;
+}
+.riw-nav button.rank:hover { background: rgba(255, 177, 27, .12); border-color: rgba(255, 177, 27, .4); }
+
+.riw-rank-gem {
+  flex: none; width: 30px; height: 30px; border-radius: 10px;
+  display: grid; place-items: center;
+  transform: rotate(45deg);
+  background: linear-gradient(135deg, #ffe09a, var(--ri-gold, #FFB11B));
+  color: #15100a; border: 1px solid #ffe4a8;
+  box-shadow: 0 0 16px rgba(255, 177, 27, .3);
+}
+.riw-rank-gem svg { transform: rotate(-45deg); }
+
+/* ── Discover sekmeleri ──────────────────────────────────────────────────── */
+
+.riw-tabs {
+  display: flex; gap: 4px; padding: 0 26px 12px;
+  border-bottom: 1px solid var(--ri-line, rgba(255, 255, 255, .08));
+  margin-bottom: 16px;
+}
+.riw-tabs button {
+  position: relative; border: 0; background: none;
+  padding: 7px 3px; margin-right: 16px;
+  color: #6f7376; font: 700 11.5px var(--font-logo); letter-spacing: .06em;
+  text-transform: uppercase;
+  transition: color .15s ease;
+}
+.riw-tabs button:hover { color: #a9acae; }
+.riw-tabs button.on { color: #eceeef; }
+.riw-tabs button.on::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: -13px; height: 2px;
+  background: var(--ri-gold, #FFB11B); border-radius: 2px;
+}
+
+/* ── Rank sayfası ────────────────────────────────────────────────────────── */
+
+.riw-rank-sheet { width: min(560px, 100%); }
+.riw-rank-title { font: 800 19px var(--font-logo); margin: 2px 0 16px; }
+
+.riw-rank-search {
+  display: flex; align-items: center; gap: 9px;
+  padding: 0 12px; height: 44px; border-radius: 12px;
+  border: 1px solid var(--ri-line, rgba(255, 255, 255, .08)); background: #0c0d0f;
+  color: #6f7376;
+}
+.riw-rank-search:focus-within { border-color: rgba(255, 177, 27, .45); }
+.riw-rank-search input {
+  flex: 1; min-width: 0; border: 0; outline: 0; background: none;
+  color: #ddd; font-size: 12.5px;
+}
+.riw-rank-search input::placeholder { color: #5a5d60; }
+
+.riw-rank-results { display: grid; gap: 5px; margin-top: 14px; max-height: 52vh; overflow-y: auto; }
+.riw-rank-results > button {
+  display: grid; grid-template-columns: 1fr auto; gap: 2px 10px;
+  padding: 11px 13px; border-radius: 12px; text-align: left;
+  border: 1px solid var(--ri-line, rgba(255, 255, 255, .08));
+  background: #101113; color: #b8babc;
+  transition: background .14s ease, border-color .14s ease;
+}
+.riw-rank-results > button:hover { background: #16171a; border-color: rgba(255, 177, 27, .32); }
+.riw-rank-comp { font: 700 7.5px var(--font-logo); letter-spacing: .13em; color: #6f7376; text-transform: uppercase; }
+.riw-rank-date { grid-row: 1 / 3; align-self: center; font-size: 10px; color: #5f6265; font-variant-numeric: tabular-nums; }
+.riw-rank-teams { font: 600 12.5px var(--font-sans); color: #e2e4e5; }
+.riw-rank-teams b { color: var(--ri-gold, #FFB11B); margin: 0 5px; font-variant-numeric: tabular-nums; }
+
 @media (max-width: 1080px) {
   .riw-main { grid-template-columns: 1fr; }
   .riw-filters { position: static; }
@@ -244,6 +322,19 @@
   .riw-nav a:hover { background: none; color: #8b8f93; }
   .riw-nav a.on { color: #eee; background: none; border-color: transparent; }
   .riw-nav a.on svg { color: var(--ri-gold, #FFB11B); }
+
+  /* Ortadaki eylem telefonla BİREBİR: 48px elmas, bardan -18px yukarı. */
+  .riw-nav button.rank {
+    flex-direction: column; gap: 4px; align-items: center;
+    padding: 6px 0; border: 0; background: none; border-radius: 0;
+    font: 700 9px var(--font-sans); color: var(--ri-gold, #FFB11B);
+  }
+  .riw-nav button.rank:hover { background: none; }
+  .riw-rank-gem {
+    width: 48px; height: 48px; margin-top: -18px; border-radius: 16px;
+    box-shadow: 0 0 22px rgba(255, 177, 27, .35);
+  }
+  .riw-tabs { padding-left: 16px; padding-right: 16px; }
 
   /* Bar içeriğin üstüne binmesin. */
   .riw-body { padding-bottom: 88px; }

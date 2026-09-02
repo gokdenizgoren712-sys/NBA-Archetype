@@ -711,12 +711,23 @@ def rankit_match(match_id: int, user=Depends(get_optional_user)):
 
 
 @router.get("/search")
-def rankit_search(q: str = Query(default="", max_length=80), kind: str = "All"):
+def rankit_search(q: str = Query(default="", max_length=80), kind: str = "All",
+                  status: str = Query("All", description="upcoming|live|finished")):
+    """Arama. status verilirse maç sonuçları ona göre kısılır.
+
+    "Rank a match" yüzeyi bunu 'finished' ile çağırıyor: orada iş bir maçı
+    PUANLAMAK ve oynanmamış bir maç o listede ölü bir satır. Varsayılan "All",
+    yani mevcut çağıranlar (genel arama) etkilenmiyor."""
     term = f"%{q.strip()}%"
     with get_conn() as conn:
         matches = []
         if kind in ("All", "Matches"):
-            rows = conn.execute(MATCH_SELECT + " WHERE h.name LIKE ? OR a.name LIKE ? OR c.name LIKE ? ORDER BY m.starts_at DESC LIMIT 20", (term, term, term)).fetchall()
+            where = "WHERE (h.name LIKE ? OR a.name LIKE ? OR c.name LIKE ?)"
+            args = [term, term, term]
+            if status != "All":
+                where += " AND m.status=?"
+                args.append(status)
+            rows = conn.execute(MATCH_SELECT + " " + where + " ORDER BY m.starts_at DESC LIMIT 20", args).fetchall()
             matches = [_match_dict(conn, r) for r in rows]
         players = [dict(r) for r in conn.execute("SELECT id,name,sport,team_id FROM rankit_players WHERE name LIKE ? LIMIT 20", (term,)).fetchall()] if kind in ("All", "Players") else []
         teams = [dict(r) for r in conn.execute("""SELECT t.id,t.name,t.short_name,t.sport,t.color,
