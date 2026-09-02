@@ -4,7 +4,36 @@
       "Bash(ls \"C:\\\\Users\\\\posei\\\\Documents\\\\Nba-Archetypes\\\\\" 2>/dev/null || ls /c/Users/posei/Documents/Nba-Archetypes/)",
       "PowerShell(pip install -r \"C:\\\\Users\\\\posei\\\\Documents\\\\Nba-Archetypes\\\\requirements.txt\" 2>&1)",
       "PowerShell(Get-ChildItem \"C:\\\\Users\\\\posei\\\\Documents\\\\Nba-Archetypes\\\\\" -Recurse | Where-Object {$_.Extension -in \".xlsx\",\".xls\"} | Select-Object FullName)",
-      "PowerShell(cd \"C:\\\\Users\\\\posei\\\\Documents\\\\Nba-Archetypes\"; $env:PYTHONIOENCODING = \"utf-8\"; python src/test_new_sigs.py 2>&1)"
+      "PowerShell(cd \"C:\\\\Users\\\\posei\\\\Documents\\\\Nba-Archetypes\"; $env:PYTHONIOENCODING = \"utf-8\"; python src/test_new_sigs.py 2>&1)",
+      "Bash(cd \"C:\\\\Users\\\\ggore\\\\Documents\\\\Nba-Archetypes\" && git status --short > /tmp/gs.txt 2>/dev/null; awk '{print $1}' /tmp/gs.txt | sort | uniq -c *)"
     ]
-  }
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"const p=process.argv[1];const f=require('fs');if(f.existsSync(p)){const r=require('child_process').spawnSync(process.execPath,[p],{stdio:'inherit'});process.exit(r.status===null?1:r.status);}\" \"${CLAUDE_PROJECT_DIR}/.claude/skills/impeccable/scripts/hook.mjs\"",
+            "timeout": 5,
+            "statusMessage": "Checking UI changes"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"const p=process.argv[1];const f=require('fs');if(f.existsSync(p)){const r=require('child_process').spawnSync(process.execPath,[p],{stdio:'inherit'});process.exit(r.status===null?1:r.status);}\" \"${CLAUDE_PROJECT_DIR}/.claude/skills/impeccable/scripts/hook.mjs\"",
+            "timeout": 30,
+            "statusMessage": "Design deep pass"
+          }
+        ]
+      }
+    ]
+  },
+  "description": "Impeccable design detector: immediate-tier checks after Edit/Write on UI files, full-rule deep pass on Stop."
 }
