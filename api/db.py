@@ -440,6 +440,29 @@ def init_db():
         -- burada yalnizca kaydi tutulur.
         -- version_code Android'in tamsayisi: guncelleme icin artmak ZORUNDA,
         -- o yuzden benzersiz.
+        -- Katalog senkronizasyon gunlugu. Sync elle calistirilan bir script'ti
+        -- ve zamanlanmis hale gelince tek soru onemli oluyor: "en son ne zaman
+        -- basariyla calisti ve kac mac guncellendi?" Bunu disaridan gormenin
+        -- hicbir yolu yoktu; sessizce bozulan bir job ile hic kurulmamis bir
+        -- job ayirt edilemiyordu. Her calisma -- basarili ya da degil -- buraya
+        -- bir satir birakir; /api/rankit/sync-health bunu okur.
+        CREATE TABLE IF NOT EXISTS rankit_sync_runs (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            provider     TEXT NOT NULL,          -- nba | euroleague | football
+            season       TEXT NOT NULL,
+            ok           INTEGER NOT NULL,       -- 0/1
+            matches      INTEGER NOT NULL DEFAULT 0,
+            players      INTEGER NOT NULL DEFAULT 0,
+            links        INTEGER NOT NULL DEFAULT 0,
+            pruned       INTEGER NOT NULL DEFAULT 0,
+            stale        INTEGER NOT NULL DEFAULT 0,   -- saglayici bos dondu, cache kullanildi
+            error        TEXT NOT NULL DEFAULT '',
+            duration_ms  INTEGER NOT NULL DEFAULT 0,
+            created_at   TEXT DEFAULT (datetime('now'))
+        );
+        CREATE INDEX IF NOT EXISTS idx_rankit_sync_runs_lookup
+            ON rankit_sync_runs(provider, created_at DESC);
+
         CREATE TABLE IF NOT EXISTS rankit_app_releases (
             id            INTEGER PRIMARY KEY AUTOINCREMENT,
             version_name  TEXT NOT NULL,

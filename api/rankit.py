@@ -116,15 +116,25 @@ def backfill_rankit_team_logos() -> dict:
 
 
 class DiaryIn(BaseModel):
+    """Kısmi güncelleme sözleşmesi: GÖNDERİLMEYEN alan DEĞİŞTİRİLMEZ.
+
+    Eskiden bu alanların hepsinin somut bir varsayılanı vardı (visibility
+    "public", classic False, tags []). Web denetçisi yalnızca {match_id,
+    rating, review} gönderdiği için, telefonda yazılmış bir kaydı web'den
+    puanlamak sessizce: Classic damgasını siliyor, tüm etiketleri siliyor,
+    izlenme tarihini bugüne çekiyor ve en ağırı — GİZLİ bir yorumu HERKESE
+    AÇIK yapıyor, spoiler işaretini kaldırıyordu. Bu bir gizlilik geri
+    adımıydı ve geri alınamıyordu (silme/undo yok). Artık None = "dokunma".
+    """
     match_id: int
-    watched_date: date = Field(default_factory=date.today)
+    watched_date: Optional[date] = None
     rating: Optional[float] = None
-    review: str = Field(default="", max_length=4000)
+    review: Optional[str] = Field(default=None, max_length=4000)
     is_rewatch: bool = False
-    visibility: Literal["public", "followers", "private"] = "public"
-    classic: bool = False
-    spoiler: bool = False
-    tags: list[str] = Field(default_factory=list)
+    visibility: Optional[Literal["public", "followers", "private"]] = None
+    classic: Optional[bool] = None
+    spoiler: Optional[bool] = None
+    tags: Optional[list[str]] = None
 
 
 class VoteIn(BaseModel):
@@ -408,6 +418,35 @@ def rankit_home(
             JOIN rankit_teams a ON a.id=m.away_team_id
             WHERE e.visibility='public' AND e.review<>'' ORDER BY e.id DESC LIMIT 8""").fetchall()
         return {"matches": cards, "activity": [dict(r) for r in activity_rows]}
+
+
+@router.get("/sync-health")
+def rankit_sync_health():
+    """Katalog senkronizasyonunun dışarıdan görünen tek sağlık göstergesi.
+
+    Sağlayıcı başına EN SON çalışma ve EN SON BAŞARILI çalışma ayrı ayrı
+    dönüyor: ikisinin arası açılmışsa job koşuyor ama başarısız oluyor demektir
+    — sessizce bozulan bir job ile hiç kurulmamış bir job'ı ayıran tek şey bu.
+    """
+    with get_conn() as conn:
+        providers = ["nba", "euroleague", "football"]
+        out = {}
+        for name in providers:
+            last = conn.execute("""SELECT ok,matches,players,links,pruned,stale,error,duration_ms,created_at,
+                CAST((julianday('now')-julianday(created_at))*24 AS REAL) age_hours
+                FROM rankit_sync_runs WHERE provider=? ORDER BY id DESC LIMIT 1""", (name,)).fetchone()
+            ok_row = conn.execute("""SELECT created_at,matches,
+                CAST((julianday('now')-julianday(created_at))*24 AS REAL) age_hours
+                FROM rankit_sync_runs WHERE provider=? AND ok=1 ORDER BY id DESC LIMIT 1""", (name,)).fetchone()
+            out[name] = {
+                "last_run": dict(last) if last else None,
+                "last_success": dict(ok_row) if ok_row else None,
+                "never_run": last is None,
+            }
+        totals = conn.execute("""SELECT COUNT(*) matches,
+            SUM(status='finished') finished, SUM(status='upcoming') upcoming, SUM(status='live') live
+            FROM rankit_matches""").fetchone()
+        return {"providers": out, "catalog": dict(totals)}
 
 
 @router.get("/catalog")
@@ -805,9 +844,13 @@ def rankit_member_detail(member_id: int, user=Depends(get_optional_user)):
 def rankit_diary(view: str = "watched", user=Depends(get_optional_user)):
     with get_conn() as conn:
         uid = _actor_id(user, conn)
-        rows = conn.execute("""SELECT e.*,m.sport,m.status,m.home_score,m.away_score,c.name competition,
+        # starts_at ve armalar da gerekiyor: web günlüğü kartı maç kartıyla aynı
+        # bileşenle çiziyor, bunlar olmadan saat ve kulüp arması boş kalıyordu.
+        rows = conn.execute("""SELECT e.*,m.sport,m.status,m.starts_at,m.home_score,m.away_score,c.name competition,
             h.name home_name,h.short_name home_short,h.color home_color,
-            a.name away_name,a.short_name away_short,a.color away_color
+            COALESCE((SELECT logo_url FROM rankit_team_logos WHERE team_id=h.id),h.crest_url) home_crest,
+            a.name away_name,a.short_name away_short,a.color away_color,
+            COALESCE((SELECT logo_url FROM rankit_team_logos WHERE team_id=a.id),a.crest_url) away_crest
             FROM rankit_diary_entries e JOIN rankit_matches m ON m.id=e.match_id
             JOIN rankit_competitions c ON c.id=m.competition_id JOIN rankit_teams h ON h.id=m.home_team_id
             JOIN rankit_teams a ON a.id=m.away_team_id WHERE e.user_id=? ORDER BY e.watched_date DESC,e.id DESC""", (uid,)).fetchall()
@@ -818,9 +861,9 @@ def rankit_diary(view: str = "watched", user=Depends(get_optional_user)):
 def rankit_log(body: DiaryIn, user=Depends(get_optional_user)):
     if body.rating is not None and (body.rating < .5 or body.rating > 5 or round(body.rating * 2) != body.rating * 2):
         raise HTTPException(422, "Rating must use 0.5 steps")
-    if len(body.tags) > 3:
+    if body.tags is not None and len(body.tags) > 3:
         raise HTTPException(422, "Choose at most three tags")
-    if body.watched_date > date.today():
+    if body.watched_date is not None and body.watched_date > date.today():
         raise HTTPException(422, "Watched date cannot be in the future")
     with get_conn() as conn:
         uid = _actor_id(user, conn)
@@ -829,22 +872,39 @@ def rankit_log(body: DiaryIn, user=Depends(get_optional_user)):
             raise HTTPException(404, "Match not found")
         if match["status"] != "finished":
             raise HTTPException(409, "Only finished matches can be added to the diary")
-        watched = body.watched_date.isoformat()
         existing = None if body.is_rewatch else conn.execute("""SELECT id FROM rankit_diary_entries
             WHERE user_id=? AND match_id=? AND is_rewatch=0 ORDER BY id DESC LIMIT 1""", (uid, body.match_id)).fetchone()
         if existing:
             entry_id = existing["id"]
-            conn.execute("""UPDATE rankit_diary_entries SET watched_date=?,rating=?,review=?,visibility=?,
-                classic=?,spoiler=? WHERE id=?""", (watched, body.rating, body.review.strip(), body.visibility,
-                                                     int(body.classic), int(body.spoiler), entry_id))
-            conn.execute("DELETE FROM rankit_entry_tags WHERE entry_id=?", (entry_id,))
+            # Yalnızca gerçekten gönderilen sütunlar yazılır. rating her zaman
+            # yazılır: None "puanı kaldır" demek, "dokunma" değil.
+            sets, args = ["rating=?"], [body.rating]
+            if body.watched_date is not None:
+                sets.append("watched_date=?"); args.append(body.watched_date.isoformat())
+            if body.review is not None:
+                sets.append("review=?"); args.append(body.review.strip())
+            if body.visibility is not None:
+                sets.append("visibility=?"); args.append(body.visibility)
+            if body.classic is not None:
+                sets.append("classic=?"); args.append(int(body.classic))
+            if body.spoiler is not None:
+                sets.append("spoiler=?"); args.append(int(body.spoiler))
+            conn.execute(f"UPDATE rankit_diary_entries SET {','.join(sets)} WHERE id=?", (*args, entry_id))
+            # Etiketler ancak istemci bir etiket listesi gönderdiyse değişir.
+            if body.tags is not None:
+                conn.execute("DELETE FROM rankit_entry_tags WHERE entry_id=?", (entry_id,))
             updated = True
         else:
+            # Yeni kayıtta eski varsayılanlar geçerli — burada "gönderilmedi"
+            # gerçekten "boş" demek, silinecek bir şey yok.
             cur = conn.execute("""INSERT INTO rankit_diary_entries
                 (user_id,match_id,watched_date,rating,review,is_rewatch,visibility,classic,spoiler)
-                VALUES(?,?,?,?,?,?,?,?,?)""", (uid, body.match_id, watched, body.rating, body.review.strip(), int(body.is_rewatch), body.visibility, int(body.classic), int(body.spoiler)))
+                VALUES(?,?,?,?,?,?,?,?,?)""", (uid, body.match_id,
+                                               (body.watched_date or date.today()).isoformat(), body.rating,
+                                               (body.review or "").strip(), int(body.is_rewatch),
+                                               body.visibility or "public", int(bool(body.classic)), int(bool(body.spoiler))))
             entry_id, updated = cur.lastrowid, False
-        for tag in dict.fromkeys(t.strip() for t in body.tags if t.strip()):
+        for tag in dict.fromkeys(t.strip() for t in (body.tags or []) if t.strip()):
             conn.execute("INSERT INTO rankit_entry_tags(entry_id,tag) VALUES(?,?)", (entry_id, tag[:40]))
         return {"ok": True, "entry_id": entry_id, "updated": updated}
 

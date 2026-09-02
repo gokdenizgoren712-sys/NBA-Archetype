@@ -17,6 +17,7 @@ import hashlib
 import json
 import re
 import sys
+import time
 from urllib.request import Request, urlopen
 from pathlib import Path
 
@@ -57,6 +58,26 @@ NBA_COLORS = {
     "OKC":"#007AC1","ORL":"#0077C0","PHI":"#006BB6","PHX":"#1D1160","POR":"#E03A3E",
     "SAC":"#5A2D81","SAS":"#C4CED4","TOR":"#CE1141","UTA":"#002B5C","WAS":"#002B5C",
 }
+
+
+# Bir maçı "kullanıcı içeriği taşıyor" yapan her şey. Bu id'lerin hiçbiri
+# katalog temizliğinde silinemez (hepsi rankit_matches'e ON DELETE CASCADE ile
+# bağlı; maçı silmek içeriği de siler).
+#
+# rankit_match_players ve rankit_broadcasts BİLEREK dışarıda: ilki sistemin
+# kendi ürettiği kadro bağı, ikincisi editoryal yayın kaydı — ikisi de maçla
+# birlikte gitmeli. rankit_favorites gerçek bir yabancı anahtar değil
+# (target_id polimorfik), o yüzden cascade olmaz ama öksüz kalır; onu da
+# koruma listesine alıyoruz.
+USER_CONTENT_MATCH_IDS = """
+    SELECT match_id FROM rankit_diary_entries
+    UNION SELECT match_id FROM rankit_potm_votes
+    UNION SELECT match_id FROM rankit_respect_votes
+    UNION SELECT match_id FROM rankit_watchlist
+    UNION SELECT match_id FROM rankit_list_items
+    UNION SELECT match_id FROM rankit_watchalong_messages
+    UNION SELECT target_id FROM rankit_favorites WHERE target_type='match'
+"""
 
 
 def _color(name: str) -> str:
@@ -254,27 +275,51 @@ def _nba_schedule_v2(season: str) -> pd.DataFrame:
     })
 
 
-def sync_nba(season: str) -> dict:
+def _cache_is_fresh(path: Path, max_age_hours: float | None) -> bool:
+    """max_age_hours None ise cache süresiz geçerli (eski davranış).
+
+    Zamanlanmış sync için bu şart: cache dosyası bir kez oluştuktan sonra
+    sağlayıcıya bir daha gidilmiyordu, dolayısıyla skorlar hiç güncellenmiyor
+    ve upcoming→live→finished geçişi hiç olmuyordu. 6 saatte bir koşan bir job
+    NBA tarafında hiçbir şey değiştirmezdi.
+    """
+    if not path.exists():
+        return False
+    if max_age_hours is None:
+        return True
+    age_h = (time.time() - path.stat().st_mtime) / 3600
+    return age_h < max_age_hours
+
+
+def sync_nba(season: str, max_age_hours: float | None = None) -> dict:
     from nba_api.stats.static import teams as nba_teams
     from fetch_schedules import fetch_season_schedule
 
+    stale = False   # True: saglayici bos dondu, elimizdeki bayat cache kullanildi
+
     legacy_cache = ROOT / "data" / f"{season}__schedule.parquet"
     fixture_cache = ROOT / "data" / f"{season}__rankit_schedule.parquet"
-    if legacy_cache.exists():
+    if _cache_is_fresh(legacy_cache, max_age_hours):
         legacy = pd.read_parquet(legacy_cache)
         schedule = (legacy.sort_values("IS_HOME", ascending=False).drop_duplicates("GAME_ID")
                     .rename(columns={"TEAM_ABBREVIATION":"HOME_ABBREVIATION", "OPP_ABBREVIATION":"AWAY_ABBREVIATION",
                                      "PTS":"HOME_PTS", "OPP_PTS":"AWAY_PTS"}))
         schedule["GAME_DATE_TIME"] = schedule["GAME_DATE"].astype(str) + "T00:00:00Z"
         schedule["GAME_STATUS"] = schedule["WL"].notna().map({True: 3, False: 1})
-    elif fixture_cache.exists():
+    elif _cache_is_fresh(fixture_cache, max_age_hours):
         schedule = pd.read_parquet(fixture_cache)
     else:
         schedule = _nba_schedule_v2(season)
         if schedule.empty:
             legacy = fetch_season_schedule(season)
             if legacy.empty:
-                return {"matches": 0, "players": 0, "links": 0}
+                # Sağlayıcı boş döndü. Bayat da olsa elimizdeki cache hiç
+                # veriden iyidir — katalogu boşaltmak yerine ona düşüyoruz.
+                if fixture_cache.exists():
+                    stale = True
+                    schedule = pd.read_parquet(fixture_cache)
+                else:
+                    return {"matches": 0, "players": 0, "links": 0}
             schedule = (legacy.sort_values("IS_HOME", ascending=False).drop_duplicates("GAME_ID")
                         .rename(columns={"TEAM_ABBREVIATION":"HOME_ABBREVIATION", "OPP_ABBREVIATION":"AWAY_ABBREVIATION",
                                          "PTS":"HOME_PTS", "OPP_PTS":"AWAY_PTS"}))
@@ -311,7 +356,8 @@ def sync_nba(season: str) -> dict:
                 for pid in roster.get(abbr, []):
                     conn.execute("INSERT OR IGNORE INTO rankit_match_players(match_id,player_id,team_id) VALUES(?,?,?)", (mid, pid, team_ids[abbr]))
                     linked += 1
-    return {"matches": len(home_games), "players": sum(map(len, roster.values())), "links": linked}
+    return {"matches": len(home_games), "players": sum(map(len, roster.values())),
+            "links": linked, "stale": stale}
 
 
 def sync_football(season: str) -> dict:
@@ -320,7 +366,7 @@ def sync_football(season: str) -> dict:
     start_year = int(season.split("-")[0])
     long_season = f"{start_year}-{start_year + 1}"
     fotmob_season = f"{start_year}/{start_year + 1}"
-    total_matches = total_players = linked = 0
+    total_matches = total_players = linked = total_pruned = 0
     with get_conn() as conn:
         for slug, (league_id, league_name, country, mode) in FOOTBALL_LEAGUES.items():
             comp_id = _competition(conn, "Football", league_name, country, season)
@@ -337,11 +383,25 @@ def sync_football(season: str) -> dict:
                 # Kura çekilmeden önce sağlayıcı aynı saate yüzlerce boş slot
                 # döndürebiliyor; gerçek tur kodu oluşana kadar bunları alma.
                 fixtures = [item for item in fixtures if _fotmob_stage(item, mode)]
-            if country == "Europe" or mode == "cup":
-                conn.execute("""DELETE FROM rankit_matches WHERE provider='fotmob' AND competition_id=?
-                    AND (substr(starts_at,1,10)<? OR substr(starts_at,1,10)>=?
-                         OR stage IS NULL OR stage='')""",
-                    (comp_id, f"{start_year}-07-01", f"{start_year + 1}-07-01"))
+            # Kura öncesi boş slotları temizle — AMA iki koşulla.
+            #
+            # (1) Sağlayıcı bize hiçbir fikstür vermediyse HİÇBİR ŞEY SİLME.
+            #     Eskiden silme, ff.api() boş dönse bile çalışıyordu: sağlayıcı
+            #     çöktüğünde satırlar gidiyor, yerine yenisi konmuyordu.
+            # (2) Kullanıcı içeriği taşıyan maça DOKUNMA. rankit_diary_entries
+            #     match_id'ye ON DELETE CASCADE ile bağlı; bir maçı silmek o
+            #     maça yazılmış puanları, yorumları, yorum beğenilerini ve
+            #     yorum cevaplarını da siliyor. Geri alma yok, silinen içerik
+            #     geri gelmiyor. Katalog temizliği asla kullanıcının yazdığını
+            #     silmemeli — böyle bir satır varsa maç kalır.
+            if (country == "Europe" or mode == "cup") and fixtures:
+                pruned = conn.execute(f"""DELETE FROM rankit_matches
+                    WHERE provider='fotmob' AND competition_id=?
+                      AND (substr(starts_at,1,10)<? OR substr(starts_at,1,10)>=?
+                           OR stage IS NULL OR stage='')
+                      AND id NOT IN ({USER_CONTENT_MATCH_IDS})""",
+                    (comp_id, f"{start_year}-07-01", f"{start_year + 1}-07-01")).rowcount
+                total_pruned += pruned
             team_ids, rosters = {}, {}
             for item in fixtures:
                 for side in (item.get("home") or {}, item.get("away") or {}):
@@ -376,21 +436,67 @@ def sync_football(season: str) -> dict:
                         conn.execute("INSERT OR IGNORE INTO rankit_match_players(match_id,player_id,team_id) VALUES(?,?,?)", (mid, pid, team_ids[team_name]))
                         linked += 1
                 total_matches += 1
-    return {"matches": total_matches, "players": total_players, "links": linked}
+    return {"matches": total_matches, "players": total_players, "links": linked, "pruned": total_pruned}
+
+
+def _record_run(provider: str, season: str, ok: bool, result: dict, error: str, duration_ms: int) -> None:
+    """Her çalışmayı günlüğe yaz — başarılıyı da, başarısızı da.
+
+    Zamanlanmış bir job'ın sessizce bozulması ile hiç kurulmamış olması
+    dışarıdan aynı görünüyordu. Bu satır ikisini ayırır.
+    """
+    with get_conn() as conn:
+        conn.execute("""INSERT INTO rankit_sync_runs
+            (provider,season,ok,matches,players,links,pruned,stale,error,duration_ms)
+            VALUES(?,?,?,?,?,?,?,?,?,?)""",
+            (provider, season, int(ok), int(result.get("matches") or 0), int(result.get("players") or 0),
+             int(result.get("links") or 0), int(result.get("pruned") or 0), int(bool(result.get("stale"))),
+             error[:500], duration_ms))
+
+
+def _run(provider: str, fn, season: str) -> bool:
+    """Bir sağlayıcıyı çalıştır, sonucu günlüğe yaz, patlamasına izin verme.
+
+    Önceden herhangi bir sağlayıcının hatası tüm script'i düşürüyordu: FotMob
+    500 dönerse NBA senkronizasyonu da yapılmamış oluyordu. Sağlayıcılar
+    birbirinden bağımsız, hataları da öyle olmalı.
+    """
+    started = time.time()
+    try:
+        result = fn()
+        ms = int((time.time() - started) * 1000)
+        _record_run(provider, season, True, result, "", ms)
+        print(provider.upper(), result)
+        return True
+    except Exception as exc:                       # noqa: BLE001 — sağlayıcı hatası ölümcül değil
+        ms = int((time.time() - started) * 1000)
+        _record_run(provider, season, False, {}, f"{type(exc).__name__}: {exc}", ms)
+        print(f"{provider.upper()} BASARISIZ: {type(exc).__name__}: {exc}", file=sys.stderr)
+        return False
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--season", default="2025-26")
     parser.add_argument("--only", choices=["nba", "euroleague", "football", "all"], default="all")
+    parser.add_argument("--refresh", action="store_true",
+                        help="Cache'i yok say, saglayiciya git (--max-age 0 ile ayni)")
+    parser.add_argument("--max-age", type=float, default=None, metavar="SAAT",
+                        help="NBA fikstur cache'i bu saatten eskiyse saglayiciya git. "
+                             "Verilmezse cache suresiz gecerli (eski davranis).")
     args = parser.parse_args()
+    max_age = 0.0 if args.refresh else args.max_age
+
     init_db()
+    ok = True
     if args.only in ("nba", "all"):
-        print("NBA", sync_nba(args.season))
+        ok &= _run("nba", lambda: sync_nba(args.season, max_age), args.season)
     if args.only in ("euroleague", "all"):
-        print("EUROLEAGUE", sync_euroleague(args.season))
+        ok &= _run("euroleague", lambda: sync_euroleague(args.season), args.season)
     if args.only in ("football", "all"):
-        print("FOOTBALL", sync_football(args.season))
+        ok &= _run("football", lambda: sync_football(args.season), args.season)
+    # Zamanlayıcının başarısızlığı görebilmesi için çıkış kodu.
+    sys.exit(0 if ok else 1)
 
 
 if __name__ == "__main__":
