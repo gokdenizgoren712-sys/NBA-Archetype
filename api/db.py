@@ -434,6 +434,25 @@ def init_db():
             UNIQUE(match_id, country, broadcaster_id)
         );
 
+        -- RankIt Android yayinlari. Dagitim su an sideload: derleme tek
+        -- makinede birikiyordu (8 APK, kayit yok, sagalama yok, "guncel olan
+        -- hangisi" sorusunun cevabi yok). Dosya Railway volume'unda durur,
+        -- burada yalnizca kaydi tutulur.
+        -- version_code Android'in tamsayisi: guncelleme icin artmak ZORUNDA,
+        -- o yuzden benzersiz.
+        CREATE TABLE IF NOT EXISTS rankit_app_releases (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            version_name  TEXT NOT NULL,
+            version_code  INTEGER NOT NULL UNIQUE,
+            channel       TEXT NOT NULL DEFAULT 'alpha',
+            notes         TEXT NOT NULL DEFAULT '',
+            file_name     TEXT NOT NULL,
+            size_bytes    INTEGER NOT NULL,
+            sha256        TEXT NOT NULL,
+            uploaded_by   INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            created_at    TEXT DEFAULT (datetime('now'))
+        );
+
         CREATE TABLE IF NOT EXISTS mobile_auth_codes (
             id          INTEGER PRIMARY KEY AUTOINCREMENT,
             code_hash   TEXT UNIQUE NOT NULL,
@@ -453,6 +472,7 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_rankit_comments_entry ON rankit_review_comments(entry_id, created_at);
         CREATE INDEX IF NOT EXISTS idx_rankit_watchalong_match ON rankit_watchalong_messages(match_id, room, id);
         CREATE INDEX IF NOT EXISTS idx_mobile_auth_code ON mobile_auth_codes(code_hash, expires_at);
+        CREATE INDEX IF NOT EXISTS idx_rankit_release_code ON rankit_app_releases(version_code DESC);
         CREATE INDEX IF NOT EXISTS idx_rankit_bcast_match ON rankit_broadcasts(match_id, country);
         CREATE INDEX IF NOT EXISTS idx_rankit_bcast_rule ON rankit_broadcast_rules(competition_id, country);
         CREATE INDEX IF NOT EXISTS idx_rankit_team_logo ON rankit_team_logos(team_id);

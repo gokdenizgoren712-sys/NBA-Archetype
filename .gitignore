@@ -142,3 +142,6 @@ id_ecdsa
 *_rsa
 *_ed25519
 !*.pub
+
+# Kod grafigi ciktisi — yerelde uretilir, surumlenmez
+graphify-out/

@@ -26,6 +26,8 @@ const ArticleList    = lazy(() => import("./pages/admin/ArticleList"));
 const ArticleEditor  = lazy(() => import("./pages/admin/ArticleEditor"));
 const UserList       = lazy(() => import("./pages/admin/UserList"));
 const RankItBroadcasts = lazy(() => import("./pages/admin/RankItBroadcasts"));
+const RankItReleases = lazy(() => import("./pages/admin/RankItReleases"));
+const RankItDownload = lazy(() => import("./pages/RankItDownload"));
 const PhotoLayout     = lazy(() => import("./pages/admin/PhotoLayout"));
 const CorrectionList = lazy(() => import("./pages/admin/CorrectionList"));
 const LineupModeration = lazy(() => import("./pages/admin/LineupModeration"));
@@ -383,6 +385,7 @@ function AppInner() {
               {/* Auth */}
               <Route path="/login"                    element={<Login />} />
               <Route path="/rankit/mobile-auth"       element={<RankItMobileAuth />} />
+              <Route path="/rankit/download"          element={<RankItDownload />} />
               <Route path="/register"                 element={<Register />} />
               <Route path="/profile"                  element={<Profile />} />
               {/* Blog */}
@@ -401,6 +404,7 @@ function AppInner() {
               <Route path="/admin/lineups"            element={<LineupModeration />} />
               <Route path="/admin/photo-layout"       element={<PhotoLayout />} />
               <Route path="/admin/rankit-broadcasts"  element={<RankItBroadcasts />} />
+              <Route path="/admin/rankit-builds"      element={<RankItReleases />} />
               {/* Legal — taslak, bkz. pages/legal/LegalPageLayout.jsx notu */}
               <Route path="/privacy-policy"           element={<PrivacyPolicy />} />
               <Route path="/terms-of-service"         element={<TermsOfService />} />

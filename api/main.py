@@ -103,6 +103,10 @@ app.include_router(_game_ws_router)
 from .football_ws import router as _football_ws_router
 app.include_router(_football_ws_router)
 
+# RankIt Android yayinlari (APK deposu + dagitim) — api/rankit_releases.py
+from .rankit_releases import router as _rankit_releases_router
+app.include_router(_rankit_releases_router)
+
 # RankIt sosyal mac gunlugu - scouting/oyun API'lerinden bagimsiz router.
 from .rankit import router as _rankit_router
 app.include_router(_rankit_router)
