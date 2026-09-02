@@ -1,0 +1,44 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": [
+          "frontend/src/pages/admin/ArticleEditor.jsx"
+        ],
+        "createdAt": "2026-09-02T15:54:00.076Z",
+        "reason": "blockquote left-border (tiptap .tiptap blockquote, line 265) is a conventional typographic quote-indent style, not a fake-depth card border; reviewed 2026-09 UI consistency pass"
+      },
+      {
+        "rule": "layout-transition",
+        "value": "*",
+        "files": [
+          "frontend/src/pages/Affinity.jsx"
+        ],
+        "createdAt": "2026-09-02T15:54:06.580Z",
+        "reason": "scanner matched SVG strokeWidth (paint-only property on an <line>), not the CSS layout width property; not a layout-thrash risk. Reviewed 2026-09 UI consistency pass"
+      },
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": [
+          "frontend/src/index.css"
+        ],
+        "createdAt": "2026-09-02T21:01:35.766Z",
+        "reason": "prose-nba blockquote left-border (L110) is the same conventional typographic quote-indent style already reviewed/suppressed for ArticleEditor.jsx's tiptap blockquote — not a fake-depth card border. 2026-09 UI consistency pass"
+      },
+      {
+        "rule": "layout-transition",
+        "value": "*",
+        "files": [
+          "frontend/src/game/game.css"
+        ],
+        "createdAt": "2026-09-02T21:01:43.425Z",
+        "reason": "reviewed during 2026-09 UI consistency pass (L327/424/730): all three are small isolated progress/stat-bar-fill or accent-rail elements (g-rr rail height, g-bar-fill/g-progress width), not full-layout animation — negligible reflow cost, consistent with the same pattern already used at PlayerCard.css:547. Converting to transform:scaleX would need transform-origin/border-radius rework for marginal gain; judged not worth the risk. Not user-confirmed, my own risk assessment."
+      }
+    ]
+  }
+}

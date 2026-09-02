@@ -1,0 +1,112 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-03T00:00:00Z",
+  "title": "Design System: Primary Arch",
+  "extensions": {
+    "colorMeta": {
+      "draft-card-foil": { "role": "primary", "displayName": "Draft Card Foil", "canonical": "#FFB11B" },
+      "pitch-teal": { "role": "secondary", "displayName": "Pitch Teal", "canonical": "#3FB08C" },
+      "logo-teal": { "role": "tertiary", "displayName": "Logo Teal", "canonical": "#00A3AF" },
+      "void-black": { "role": "neutral", "displayName": "Void Black", "canonical": "#0b0b0b" },
+      "card-stock": { "role": "neutral", "displayName": "Card Stock", "canonical": "#131313" },
+      "raised-panel": { "role": "neutral", "displayName": "Raised Panel", "canonical": "#1a1a1a" },
+      "hairline": { "role": "neutral", "displayName": "Hairline", "canonical": "#262626" },
+      "ink-primary": { "role": "neutral", "displayName": "Ink Primary", "canonical": "#e5e5e5" },
+      "ink-muted": { "role": "neutral", "displayName": "Ink Muted", "canonical": "#8a8a8a" },
+      "ink-faint": { "role": "neutral", "displayName": "Ink Faint", "canonical": "#3a3a3a" },
+      "nba-red": { "role": "utility", "displayName": "NBA Red", "canonical": "#c8102e" },
+      "nba-blue": { "role": "utility", "displayName": "NBA Blue", "canonical": "#1d428a" }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Game module dock/hero titles only — uppercase, loudest text in the system." },
+      "label": { "displayName": "Label", "purpose": "Eyebrows, column headers, badges — always uppercase, tracked out." },
+      "body": { "displayName": "Body", "purpose": "Stat values, descriptions, list rows — the volume-read layer." }
+    },
+    "shadows": [
+      { "name": "card-lift", "value": "0 24px 48px -18px rgba(0,0,0,0.8)", "purpose": "Under the trading card stage only — the one element that feels physically raised." },
+      { "name": "accent-glow", "value": "0 0 16px rgba(255,177,27,0.35)", "purpose": "Active/selected/CTA state glow at the accent color. Never a resting-state shadow." }
+    ],
+    "motion": [
+      { "name": "ease-standard", "value": "cubic-bezier(0.2, 0.7, 0.3, 1)", "purpose": "Hover lifts, tile selection, drawer slide — the system's default motion curve." },
+      { "name": "ease-snap", "value": "cubic-bezier(0.2, 0.8, 0.3, 1)", "purpose": "Expand/collapse transitions (search box growing, bar fills)." },
+      { "name": "shine-sweep", "value": "4.5s ease-in-out infinite", "purpose": "The one ambient looping animation allowed at rest, reserved for the primary CTA and the trading card's foil. Respects prefers-reduced-motion everywhere it's used." }
+    ],
+    "breakpoints": [
+      { "name": "mobile", "value": "768px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one CTA style with ambient motion — gold foil gradient, dark ink text, continuous shine sweep.",
+      "html": "<button class=\"ds-btn-primary\">Calculate Fit</button>",
+      "css": ".ds-btn-primary { position: relative; overflow: hidden; display: inline-flex; align-items: center; justify-content: center; font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 13px; color: #14110a; background: linear-gradient(100deg, #ffe9b0, #FFB11B 55%, #ffe9b0 100%); padding: 9px 18px; border-radius: 10px; border: none; cursor: pointer; box-shadow: 0 0 16px rgba(255,177,27,0.35), 0 1px 0 rgba(255,255,255,0.5) inset; transition: transform 0.15s ease, box-shadow 0.15s ease; } .ds-btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(255,177,27,0.5), 0 1px 0 rgba(255,255,255,0.5) inset; } .ds-btn-primary:focus-visible { outline: 2px solid #fff; outline-offset: 2px; } .ds-btn-primary::after { content: ''; position: absolute; top: -60%; left: -30%; width: 40%; height: 220%; background: rgba(255,255,255,0.5); transform: rotate(20deg); animation: dsShineSweep 3.2s ease-in-out infinite; } @keyframes dsShineSweep { 0%, 30% { left: -30%; } 70%, 100% { left: 130%; } } @media (prefers-reduced-motion: reduce) { .ds-btn-primary::after { animation: none; } }"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "No resting box — background and color only appear on hover or when holding a value (.active).",
+      "html": "<button class=\"ds-btn-ghost active\">Sort by Value</button>",
+      "css": ".ds-btn-ghost { display: inline-flex; align-items: center; gap: 6px; background: transparent; border: none; border-radius: 999px; padding: 6px 12px; font-size: 13px; color: #8a8a8a; cursor: pointer; transition: background 0.2s, color 0.2s; } .ds-btn-ghost:hover { background: rgba(255,255,255,0.06); color: #e5e5e5; } .ds-btn-ghost.active { color: #FFB11B; } .ds-btn-ghost.active:hover { background: rgba(255,177,27,0.1); } .ds-btn-ghost:focus-visible { outline: 2px solid #FFB11B; outline-offset: 2px; }"
+    },
+    {
+      "name": "Ghost Select",
+      "kind": "input",
+      "refersTo": "select-ghost",
+      "description": "Invisible until hover/focus; gold text signals a non-default value is selected.",
+      "html": "<div class=\"ds-select-wrap\"><select class=\"ds-select accent\"><option>2025-26</option></select></div>",
+      "css": ".ds-select-wrap { position: relative; display: inline-flex; align-items: center; } .ds-select-wrap::after { content: ''; position: absolute; right: 7px; top: 50%; width: 6px; height: 6px; border-right: 1.5px solid #3a3a3a; border-bottom: 1.5px solid #3a3a3a; transform: translateY(-65%) rotate(45deg); pointer-events: none; } .ds-select { appearance: none; background: transparent; border: none; outline: none; color: #e5e5e5; font-size: 13px; padding: 6px 22px 6px 8px; border-radius: 8px; cursor: pointer; transition: background 0.2s; } .ds-select:hover, .ds-select:focus { background: rgba(255,255,255,0.06); } .ds-select.accent { color: #FFB11B; font-weight: 600; }"
+    },
+    {
+      "name": "Trading Card",
+      "kind": "card",
+      "refersTo": "card-surface",
+      "description": "The signature component: cut-corner notch, always-on holo stripe, skewed foil rating badge. Every other surface is a quieter descendant of this.",
+      "html": "<div class=\"ds-card\"><div class=\"ds-card-holo\"></div><div class=\"ds-card-top\"><span class=\"ds-card-rank\">#12</span><span class=\"ds-card-rating\">94</span></div><div class=\"ds-card-name\">J. Tatum</div></div>",
+      "css": ".ds-card { width: 220px; position: relative; border-radius: 17px; overflow: hidden; background: linear-gradient(160deg, #17151b 0%, #0c0b0e 55%, #14100a 100%); border: 1px solid #262626; clip-path: polygon(0 0, 100% 0, 100% calc(100% - 22px), calc(100% - 22px) 100%, 0 100%); } .ds-card-holo { position: absolute; inset: 0; pointer-events: none; mix-blend-mode: color-dodge; opacity: 0.16; background: repeating-linear-gradient(72deg, transparent 0 6px, #FFB11B 6px 8px, transparent 8px 16px, #fff 16px 17px, transparent 17px 26px); } .ds-card-top { position: relative; z-index: 2; display: flex; align-items: center; justify-content: space-between; padding: 12px 14px 8px; border-bottom: 1px solid rgba(255,255,255,0.08); } .ds-card-rank { font-family: 'Rajdhani', sans-serif; font-size: 13px; font-weight: 700; color: #FFB11B; } .ds-card-rating { font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 16px; color: #14110a; background: linear-gradient(100deg, #ffe9b0, #FFB11B 55%, #ffe9b0 100%); padding: 2px 9px; border-radius: 3px; transform: skewX(-8deg); box-shadow: 0 0 10px rgba(255,177,27,0.4), 0 1px 0 rgba(255,255,255,0.5) inset; } .ds-card-name { position: relative; z-index: 2; padding: 10px 14px 14px; font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 17px; color: #e5e5e5; }"
+    },
+    {
+      "name": "Panel",
+      "kind": "card",
+      "refersTo": "card-surface",
+      "description": "The game module's base surface — same gradient/bevel language as the trading card, quieter, no notch.",
+      "html": "<div class=\"ds-panel\"><div class=\"ds-panel-label\">Draft Process</div><div class=\"ds-panel-body\">Pick nine players across any era.</div></div>",
+      "css": ".ds-panel { position: relative; border-radius: 18px; overflow: hidden; padding: 15px; background: linear-gradient(160deg, #17151b 0%, #0c0b0e 55%, #14100a 100%); border: 1px solid #262626; } .ds-panel-label { font-family: 'Rajdhani', sans-serif; font-size: 9.5px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #8b857e; display: flex; align-items: center; gap: 7px; margin-bottom: 8px; } .ds-panel-label::before { content: ''; width: 14px; height: 1px; background: #FFB11B; opacity: 0.7; } .ds-panel-body { font-family: 'Outfit', sans-serif; font-size: 13px; color: #b4afa8; line-height: 1.5; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Scout's Card Binder",
+    "overview": "Primary Arch is a scout's binder of graded player cards, not a stats terminal and not an arcade. A binder has two states, and both are correct: most of the time you're flipping fast through quiet reference pages — dense rows, muted ink, no ceremony, built for a scout who reads a hundred lines a minute. Then you pull one card out to look at it properly, and it's a real object — foil, holo stripe, a bevel of light tracing the cut corner, a rating badge that catches the light. The binder metaphor is what makes both states belong to the same object instead of reading as two different apps: the card is always the same card, only the light changes.",
+    "keyCharacteristics": [
+      "One accent color, two energy levels — see The One Root Rule.",
+      "The trading card (holo, foil, cut corner, rating badge) is the signature object; every other surface is the same card face flattened out.",
+      "Dark-committed, not dark-mode-as-default — no light variant exists.",
+      "Ghost-until-interaction inputs: visibility is a state signal, not a permanent frame."
+    ],
+    "rules": [
+      { "name": "The One Root Rule", "body": "There is one color system, not two. Game surfaces re-declare a brighter text scale than data surfaces because a large glass card face needs it — never brighten data to match game, or dim game to match data.", "section": "colors" },
+      { "name": "The One Voice Rule", "body": "Gold is the only color that glows, animates, or gets a shine sweep. Pitch Teal gets full parity everywhere else but never shimmers.", "section": "colors" },
+      { "name": "The Uppercase-Means-Game Rule", "body": "Loud, tracked-out uppercase Rajdhani signals the game module. Data-page headlines stay sentence case even at bold weight.", "section": "typography" },
+      { "name": "The Flat-By-Default Rule", "body": "Nothing gets a shadow just for existing. Reserved for the trading card itself and actively-glowing accent states.", "section": "elevation" },
+      { "name": "The One Notch Rule", "body": "The cut-corner silhouette belongs to the trading card alone — reusing it elsewhere blurs the one shape a user should always recognize as 'that's a player.'", "section": "shapes" },
+      { "name": "The Ghost-Until-Earned Rule", "body": "Inputs with nothing to say (empty, unfocused, default) should be nearly invisible. Visibility is a signal the user has done something.", "section": "components" }
+    ],
+    "dos": [
+      "Do keep the trading card's cut-corner + holo + foil vocabulary exclusive to the card itself.",
+      "Do let game surfaces run brighter/louder than data surfaces — deliberate, not drift.",
+      "Do keep inputs invisible until they have something to say.",
+      "Do use var(--accent) for sport-conditional color and var(--yamabuki) only for always-gold elements.",
+      "Do respect prefers-reduced-motion on every ambient/looping animation."
+    ],
+    "donts": [
+      "Don't use gradient-clipped text anywhere, including for signature headings.",
+      "Don't put a resting box-shadow on anything but the trading card or an actively-glowing accent state.",
+      "Don't give a second color the gold accent's shine-sweep/glow treatment.",
+      "Don't brighten the data register's ink-faint to match the game module's, or dim the game module's to match data.",
+      "Don't reach for rounded-lg/generic Tailwind defaults, raw palette classes, or a thick single-side accent border as a substitute for the system's own tokens."
+    ]
+  }
+}
