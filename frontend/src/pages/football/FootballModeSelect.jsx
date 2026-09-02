@@ -5,6 +5,7 @@ import { PlayIcon, UsersIcon, GlobeIcon, ScreenIcon, InfoIcon } from "../../game
 import ModeAbout from "../../game/football/ModeAbout";
 import "../../components/PlayerCard.css";
 import "../../game/game.css";
+import { ACCENT, PHASE_COLOR } from "../../game/football/theme";
 
 // ── Futbol mod seçimi ────────────────────────────────────────────────────────
 // Basketboldaki GameModeSelect'in karşılığı ve aynı yeri tutuyor: /football/game
@@ -24,7 +25,7 @@ const MODES = [
           "then play out a full league season.",
     path: "/football/game/single",
     live: true,
-    accent: "#3FB08C",
+    accent: ACCENT,
   },
   {
     key: "same",
@@ -35,7 +36,7 @@ const MODES = [
           "no account is needed.",
     path: "/football/game/same-screen",
     live: true,
-    accent: "#4ade80",
+    accent: PHASE_COLOR.gk,
   },
   {
     key: "friend",
@@ -46,7 +47,7 @@ const MODES = [
           "tie is played on the server once both are in.",
     path: "/football/game/friend",
     live: true,
-    accent: "#60a5fa",
+    accent: PHASE_COLOR.def,
   },
   {
     key: "online",
@@ -57,7 +58,7 @@ const MODES = [
           "Matchmaking is not wired up yet.",
     path: "/football/game/online",
     live: true,
-    accent: "#f472b6",
+    accent: PHASE_COLOR.fwd,
   },
 ];
 

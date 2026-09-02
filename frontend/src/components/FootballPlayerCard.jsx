@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { api } from "../api";
 import { MiniCareerChart } from "./PlayerCard";
 import "./PlayerCard.css";
+import { PHASE_COLOR } from "../game/football/theme";
 
 // ── Futbol oyuncu kartı ──────────────────────────────────────────────────────
 // Basketbol kartıyla AYNI prensip: tıklayınca pop-up değil, aşağı doğru açılan
@@ -9,12 +10,6 @@ import "./PlayerCard.css";
 // böylece iki spor görsel olarak tek sistem gibi duruyor. İçerik tamamen
 // futbola özgü — ortak olan sadece kabuk.
 
-const PHASE_COLOR = {
-  gk:  "#F2C14E",
-  def: "#4C9BE8",
-  mid: "#3FB08C",
-  fwd: "#E8654C",
-};
 const PHASE_LABEL = { gk: "Goalkeeper", def: "Defence", mid: "Midfield", fwd: "Attack" };
 
 // Sekmelerdeki ham metrikler — arketiplere göre DEĞİL, futbol aksiyon türüne

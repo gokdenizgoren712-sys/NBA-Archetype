@@ -103,7 +103,9 @@ export default function RoleImpactChart() {
             {[["impact","Win Correlation"],["coverage","League Coverage"],["avg","Avg Score"]].map(([k,l])=>(
               <button key={k} onClick={() => setSort(k)}
                 className={`text-[10px] px-2 py-1 rounded transition-colors ${
-                  sort === k ? "bg-blue-700 text-white" : "bg-surfaceCard text-gray-400 hover:text-white"
+                  sort === k
+                    ? "bg-[var(--accent)] text-[var(--bg-base)]"
+                    : "bg-[var(--bg-elevated)] text-[var(--text-muted)] hover:text-[var(--text-primary)]"
                 }`}>{l}</button>
             ))}
           </div>

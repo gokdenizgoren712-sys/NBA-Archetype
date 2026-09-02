@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { SEO } from "../../hooks/useSEO";
 import PlayerSearch from "../../game/football/PlayerSearch";
+import { ACCENT as ACC } from "../../game/football/theme";
 
 // ── Fotoğraf yerleşimi ───────────────────────────────────────────────────────
 // Arka planı kaldırılmış fotoğraflar farklı oranlarda kesiliyor: kimi omuzdan,
@@ -12,7 +13,6 @@ import PlayerSearch from "../../game/football/PlayerSearch";
 // önizleme, sağda üç kaydırma. Kaydı olmayan oyuncu varsayılanı kullanır,
 // yani burada hiçbir şey yapılmazsa site bugünküyle aynı görünür.
 
-const ACC = "#3FB08C";
 const DEF = { scale: 1.0, x: 50, y: 100 };
 // Sabit referans: PlayerSearch'ün arama efekti params'a bağlı, satır içi nesne
 // her render'da yeni kimlik alıp aramayı sonsuz tetiklerdi.

@@ -22,7 +22,7 @@ export default function Blog() {
     />
     <div className="h-full overflow-y-auto" style={{ background: "var(--bg-base)" }}>
       <div className="p-6 max-w-3xl mx-auto">
-        <h1 className="text-2xl font-bold mb-6" style={{ color: "var(--text-primary)" }}>Blog</h1>
+        <h1 className="font-logo text-3xl font-bold mb-6 tracking-wide" style={{ color: "var(--text-primary)" }}>Blog</h1>
 
         {loading ? (
           <p style={{ color: "var(--text-muted)" }}>Loading…</p>
@@ -32,14 +32,13 @@ export default function Blog() {
           <div className="space-y-4">
             {articles.map(a => (
               <Link key={a.id} to={`/blog/${a.slug}`}
-                className="block rounded-xl overflow-hidden transition-opacity hover:opacity-80"
-                style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
+                className="aura-glass block rounded-xl overflow-hidden transition-opacity hover:opacity-80">
                 {a.cover_image_url && (
                   <img src={a.cover_image_url} alt={a.title}
                     className="w-full h-48 object-cover" />
                 )}
                 <div className="p-4">
-                  <h2 className="font-semibold text-base mb-1" style={{ color: "var(--text-primary)" }}>
+                  <h2 className="font-logo font-semibold text-base mb-1 tracking-wide" style={{ color: "var(--text-primary)" }}>
                     {a.title}
                   </h2>
                   <p className="text-xs" style={{ color: "var(--text-muted)" }}>

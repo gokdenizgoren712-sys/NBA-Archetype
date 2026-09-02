@@ -9,6 +9,7 @@ import SameScreenDraft from "../../game/football/SameScreenDraft";
 import RoomDraft from "../../game/football/RoomDraft";
 import { UsersIcon, GlobeIcon, LinkIcon, CheckIcon, LoopIcon } from "../../game/GameIcons";
 import "../../game/game.css";
+import { ACCENT as ACC } from "../../game/football/theme";
 
 // ── Kafa kafaya ──────────────────────────────────────────────────────────────
 // Üç mod, iki farklı yol:
@@ -24,7 +25,6 @@ import "../../game/game.css";
 // kolon, g-dock başlık barı, g-panel kutular. Önceden dar (max-w-3xl) bir
 // sütunda düz paragraf + pill satırı vardı; sitenin geri kalanına benzemiyordu.
 
-const ACC = "#3FB08C";
 const RED = "#E8654C";
 const MODE_META = {
   friend: { title: "With a Friend", sub: "2 devices · room code · two legs", Icon: UsersIcon },

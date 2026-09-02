@@ -3,6 +3,7 @@ import { api } from "../../api";
 import { SEO } from "../../hooks/useSEO";
 import PlayerSearch from "../../game/football/PlayerSearch";
 import "../../game/game.css";
+import { ACCENT, PHASE_COLOR } from "../../game/football/theme";
 
 // ── İki oyuncuyu karşılaştır — FAZ İÇİ ───────────────────────────────────────
 // Basketbol Compare'i herhangi iki oyuncuyu yan yana koyabiliyor, çünkü orada
@@ -10,8 +11,6 @@ import "../../game/game.css";
 // 8 forvet arketibi üzerinde kıyaslayamazsın, kalecinin o skorları YOK.
 // Bu yüzden sert kural: ikinci oyuncu birincinin FAZINDAN seçilir.
 
-const ACCENT = "#3FB08C";
-const PHASE_COLOR = { gk: "#F2C14E", def: "#4C9BE8", mid: "#3FB08C", fwd: "#E8654C" };
 const PHASE_LABEL = { gk: "goalkeepers", def: "defenders", mid: "midfielders", fwd: "attackers" };
 
 // Ham metrik karşılaştırması — faz'a göre değişir, nötr gruplamayla aynı mantık

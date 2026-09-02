@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { api } from "../../api";
 import "../game.css";
+import { PHASE_COLOR } from "./theme";
 
 // ── Futbol oyuncu araması ────────────────────────────────────────────────
 // Compare ve Custom XI ayrı ayrı kendi arama kutusunu taşıyordu ve ikisi de
@@ -18,7 +19,6 @@ import "../game.css";
 // Çözüm: liste PORTAL ile body'ye çiziliyor ve girdinin ekran koordinatına
 // sabitleniyor (position: fixed). Böylece hiçbir kapsayıcı onu kırpamıyor.
 
-const PHASE_COLOR = { gk: "#F2C14E", def: "#4C9BE8", mid: "#3FB08C", fwd: "#E8654C" };
 const PHASE_LABEL = { gk: "Goalkeeper", def: "Defence", mid: "Midfield", fwd: "Attack" };
 
 export default function PlayerSearch({

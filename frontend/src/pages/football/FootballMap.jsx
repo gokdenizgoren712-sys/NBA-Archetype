@@ -4,6 +4,7 @@ import { SEO } from "../../hooks/useSEO";
 import { MAP_ANCHORS, placeOnMap } from "../../game/football/mapAnchors";
 import "../../game/game.css";
 import { LEAGUE_LABEL } from "../../game/football/leagues";
+import { ACCENT } from "../../game/football/theme";
 
 // ── Arketip haritası — FAZ BAŞINA ────────────────────────────────────────────
 // Basketbolun Explore haritası tek düzlem, çünkü orada bütün oyuncular aynı 12
@@ -11,7 +12,6 @@ import { LEAGUE_LABEL } from "../../game/football/leagues";
 // santraforun ortak ekseni yok, eksenlerin anlamı bulanıklaşırdı. Kullanıcı
 // kararı da bu yöndeydi — dört ayrı harita, her biri kendi gerilimiyle.
 
-const ACCENT = "#3FB08C";
 const PHASES = [
   { key: "gk",  label: "Goalkeepers", color: "#F2C14E" },
   { key: "def", label: "Defenders",   color: "#4C9BE8" },

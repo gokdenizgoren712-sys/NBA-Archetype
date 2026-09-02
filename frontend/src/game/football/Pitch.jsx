@@ -1,5 +1,6 @@
 import { FORMATIONS } from "./formations";
 import { posPenaltyFor, isPrimarySlot, canPlace } from "./positions";
+import { PHASE_COLOR } from "./theme";
 
 // ── Futbol sahası ────────────────────────────────────────────────────────────
 // Basketbolda tahta bir liste; futbolda oyuncunun sahadaki YERİ bilginin bir
@@ -7,7 +8,6 @@ import { posPenaltyFor, isPrimarySlot, canPlace } from "./positions";
 // diziliş tanımının içinde duruyor — saha ile pozisyon cezası aynı kaynaktan
 // besleniyor, biri değişince öbürü kaymıyor.
 
-const PHASE_COLOR = { gk: "#F2C14E", def: "#4C9BE8", mid: "#3FB08C", fwd: "#E8654C" };
 const LINE = "1.5px solid rgba(255,255,255,.16)";
 
 export default function Pitch({ shape, squad, onSlotClick, moveSrc, pickingFor, fill = false }) {

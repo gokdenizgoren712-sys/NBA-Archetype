@@ -53,6 +53,8 @@
   --accent:       #FFB11B;   /* yamabuki */
   --accent-dim:   rgba(255,177,27,0.12);
   --accent-border:rgba(255,177,27,0.32);
+  --yamabuki:     #FFB11B;   /* her zaman altın — spor/sayfa bağımsız (kupa, şampiyon vb.) */
+  --accent-football: #3FB08C;
   --text-primary: #e5e5e5;
   --text-muted:   #8a8a8a;
   --text-faint:   #3a3a3a;

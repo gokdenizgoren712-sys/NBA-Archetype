@@ -11,10 +11,10 @@
 // Bu yüzden panelin merkezinde ROL KAPSAMASI var: sekiz işin kaçını
 // yapabiliyorsun.
 
-const ACC = "#3FB08C";
+import { ACCENT as ACC, PHASE_COLOR } from "./theme";
+
 const WARN = "#E8654C";
 const MID = "#F2C14E";
-const PHASE_COLOR = { gk: "#F2C14E", def: "#4C9BE8", mid: "#3FB08C", fwd: "#E8654C" };
 
 const hex = (v) => (v >= 0.72 ? ACC : v >= 0.52 ? MID : WARN);
 const pct = (v) => Math.round((v || 0) * 100);

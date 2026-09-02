@@ -7,6 +7,7 @@ import {
   ShieldIcon, EyeIcon, InfoIcon, BoltIcon,
 } from "../GameIcons";
 import "../game.css";
+import { ACCENT as ACC } from "./theme";
 
 // ── Moda özel "about" pop-up'ı ───────────────────────────────────────────────
 // Basketboldaki ModeAboutModal'ın futbol karşılığı: her mod kendi ⓘ düğmesini
@@ -21,8 +22,6 @@ import "../game.css";
 // İçerik uydurulmuyor: akış ve sayılar oyunun kendi kodundan geliyor
 // (positions.js cezaları, managers.js bonusu, seasonSim.js katsayıları,
 // headToHead.js format kuralları).
-
-const ACC = "#3FB08C";
 
 const MODES = {
   spin: {

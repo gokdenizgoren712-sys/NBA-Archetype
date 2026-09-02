@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { SEO } from "../../hooks/useSEO";
+import { ACCENT as ACC, PHASE_COLOR } from "../../game/football/theme";
 
 // ── Futbol About ─────────────────────────────────────────────────────────────
 // Basketboldaki About'un futbol karşılığı, ama içerik ortak değil: futbol
@@ -10,9 +11,6 @@ import { SEO } from "../../hooks/useSEO";
 // yazıyor. Kimya bölümü bunun en net örneği — 28 bin gerçek ilk-11'de
 // ölçtüğümüz şey "iyi kurulmuş kadro maç kazandırır" demeye yetmiyor ve
 // sayfa bunu saklamak yerine söylüyor.
-
-const ACC = "#3FB08C";
-const PHASE_COLOR = { gk: "#F2C14E", def: "#4C9BE8", mid: "#3FB08C", fwd: "#E8654C" };
 
 const PHASES = [
   { key: "gk", label: "Goalkeeper", blurb: "Judged apart from the ten outfield players — a keeper's archetype does not interact with theirs.",

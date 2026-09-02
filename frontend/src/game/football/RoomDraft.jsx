@@ -9,6 +9,7 @@ import { SHAPE_KEYS, FORMATIONS } from "./formations";
 import { canPlace } from "./positions";
 import { LEAGUE_LABEL } from "./leagues";
 import "../game.css";
+import { ACCENT as ACC } from "./theme";
 
 // ── Oda içi canlı draft (With a Friend / Online) ─────────────────────────────
 // Same Screen'in ekranıyla AYNI parçaları kullanıyor (SeatPanel, Pitch,
@@ -20,8 +21,6 @@ import "../game.css";
 // ekran, sunucudan yeni durum gelene kadar olduğu gibi kalıyor. İyimser
 // çizmek, sunucunun reddettiği bir seçimi bir an için olmuş gibi göstermek
 // demek olurdu — ve iki cihazda o "bir an" ikisinde farklı görünür.
-
-const ACC = "#3FB08C";
 
 export default function RoomDraft({ roomCode, onResult, onLeave }) {
   const { token, user } = useAuth();

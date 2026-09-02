@@ -37,6 +37,9 @@ const GRADE_HEX = { S: "#c4b5fd", A: "#4ade80", B: "#60a5fa", C: "#FFB11B", D: "
 const POS_HEX   = { PG: "#a78bfa", SG: "#60a5fa", SF: "#34d399", PF: "#fb923c", C: "#f87171" };
 // Pillar/kalite barları için sürekli kalite skalası (Lineups sayfasıyla aynı).
 const VAL_HEX = (v) => v >= 0.75 ? "#4ade80" : v >= 0.55 ? "#facc15" : v >= 0.40 ? "#fb923c" : "#f87171";
+// Paylaşım kartı canvas'ı DOM dışında çizildiği için var(--accent) kullanamıyor;
+// index.css :root'taki var(--accent)/var(--yamabuki) ile aynı tutulmalı.
+const ACCENT_HEX = "#FFB11B";
 
 // ── Skorlama çekirdeği ────────────────────────────────────────────────────────
 // computePlayerFit / computeLineupFit / computeAffinity → game/lineupScore.js'e
@@ -294,9 +297,7 @@ function ShareCard({ pct, grade, fit, lineup, simEra, coach }) {
   // matrisi + holo şeritler + aura parıltısı, Rajdhani başlıklar, mevki
   // rozetleri, era-ağırlıklı sütun barları. Sağ altta logo + isim.
   const TXT = { primary: "#f2efea", muted: "#b4afa8", faint: "#8b857e" };
-  const GH = { S: "#c4b5fd", A: "#4ade80", B: "#60a5fa", C: "#FFB11B", D: "#f87171" };
-  const PH = { PG: "#a78bfa", SG: "#60a5fa", SF: "#34d399", PF: "#fb923c", C: "#f87171" };
-  const vHex = (v) => v >= 0.75 ? "#4ade80" : v >= 0.55 ? "#facc15" : v >= 0.40 ? "#fb923c" : "#f87171";
+  // GRADE_HEX/POS_HEX/VAL_HEX (module scope, üstte) ile birebir aynıydı — tekilleştirildi.
 
   // Logo işareti — favicon.svg ile birebir aynı geometri (12-gen + dikiş
   // çizgileri). Kartın hem üstünde hem sağ alt imzasında kullanılıyor.
@@ -304,7 +305,7 @@ function ShareCard({ pct, grade, fit, lineup, simEra, coach }) {
     const s = size / 48, r = (x, y) => [cx + (x - 24) * s, cy + (y - 24) * s];
     const pts = [[24,4],[34,6.7],[41.3,14],[44,24],[41.3,34],[34,41.3],[24,44],[14,41.3],[6.7,34],[4,24],[6.7,14],[14,6.7]];
     ctx.lineJoin = "round"; ctx.lineCap = "round";
-    ctx.strokeStyle = "#FFB11B"; ctx.lineWidth = 4 * s;
+    ctx.strokeStyle = ACCENT_HEX; ctx.lineWidth = 4 * s;
     ctx.beginPath();
     pts.forEach(([x, y], i) => { const [px, py] = r(x, y); i ? ctx.lineTo(px, py) : ctx.moveTo(px, py); });
     ctx.closePath(); ctx.stroke();
@@ -330,7 +331,7 @@ function ShareCard({ pct, grade, fit, lineup, simEra, coach }) {
     ctx.scale(2, 2);
     ctx.textBaseline = "alphabetic";
 
-    const gHex = GH[grade] || "#9ca3af";
+    const gHex = GRADE_HEX[grade] || "#9ca3af";
     const font = (w, s, f = "Rajdhani") => { ctx.font = `${w} ${s}px ${f}, system-ui, sans-serif`; };
     const body = (w, s) => { ctx.font = `${w} ${s}px Outfit, system-ui, sans-serif`; };
 
@@ -345,7 +346,7 @@ function ShareCard({ pct, grade, fit, lineup, simEra, coach }) {
     glow.addColorStop(0, gHex + "30"); glow.addColorStop(1, gHex + "00");
     ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
     const glow2 = ctx.createRadialGradient(W * 0.95, H * 0.1, 0, W * 0.95, H * 0.1, 300);
-    glow2.addColorStop(0, "#FFB11B22"); glow2.addColorStop(1, "#FFB11B00");
+    glow2.addColorStop(0, ACCENT_HEX + "22"); glow2.addColorStop(1, ACCENT_HEX + "00");
     ctx.fillStyle = glow2; ctx.fillRect(0, 0, W, H);
 
     // Nokta matrisi (.g-dotgrid)
@@ -355,7 +356,7 @@ function ShareCard({ pct, grade, fit, lineup, simEra, coach }) {
     // Holo şeritler (.g-holo) — çok düşük opaklık, 72°
     ctx.save();
     ctx.globalAlpha = 0.035;
-    ctx.strokeStyle = "#FFB11B"; ctx.lineWidth = 2;
+    ctx.strokeStyle = ACCENT_HEX; ctx.lineWidth = 2;
     for (let i = -H; i < W + H; i += 26) {
       ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i + H * 0.32, H); ctx.stroke();
     }
@@ -364,11 +365,11 @@ function ShareCard({ pct, grade, fit, lineup, simEra, coach }) {
     // Çerçeve + üst accent şeridi
     ctx.strokeStyle = "rgba(255,255,255,.09)"; ctx.lineWidth = 1;
     ctx.strokeRect(0.5, 0.5, W - 1, H - 1);
-    ctx.fillStyle = "#FFB11B"; ctx.fillRect(0, 0, W, 3);
+    ctx.fillStyle = ACCENT_HEX; ctx.fillRect(0, 0, W, 3);
 
     // ── Üst bar: logo + isim | era ──
     drawMark(ctx, P + 13, P + 8, 30);
-    font(700, 23); ctx.fillStyle = "#FFB11B";
+    font(700, 23); ctx.fillStyle = ACCENT_HEX;
     ctx.fillText("PRIMARY ARCH", P + 36, P + 16);
     body(400, 12); ctx.fillStyle = TXT.faint;
     ctx.fillText("Lineup Builder", P + 36, P + 33);
@@ -418,7 +419,7 @@ function ShareCard({ pct, grade, fit, lineup, simEra, coach }) {
     ];
     parts.forEach(([label, v, w], i) => {
       const x = W - P - (2 - i) * 132 - 96;
-      font(700, 40); ctx.fillStyle = vHex(v / 100);
+      font(700, 40); ctx.fillStyle = VAL_HEX(v / 100);
       ctx.fillText(String(v), x, heroY + 52);
       body(500, 10.5); ctx.fillStyle = TXT.muted;
       ctx.fillText(label, x, heroY + 72);
@@ -434,7 +435,7 @@ function ShareCard({ pct, grade, fit, lineup, simEra, coach }) {
 
     const drawPlayer = (p, slot, x, y, isBench) => {
       if (!p) return;
-      const hex = isBench ? "#6b7280" : (PH[slot] || "#9ca3af");
+      const hex = isBench ? "#6b7280" : (POS_HEX[slot] || "#9ca3af");
       const pf = computePlayerFit(p, simEraObj);
       const q = Math.round(pf.quality * 100);
       // mevki rozeti
@@ -458,7 +459,7 @@ function ShareCard({ pct, grade, fit, lineup, simEra, coach }) {
         ctx.fillText(`· −${pf.dist} era`, x + 46 + aw, y + 15);
       }
       // kalite
-      font(700, 19); ctx.fillStyle = isBench ? TXT.muted : vHex(q / 100);
+      font(700, 19); ctx.fillStyle = isBench ? TXT.muted : VAL_HEX(q / 100);
       ctx.textAlign = "right";
       ctx.fillText(String(q), x + 480, y + 2);
       ctx.textAlign = "left";
@@ -485,9 +486,9 @@ function ShareCard({ pct, grade, fit, lineup, simEra, coach }) {
       // bar
       ctx.fillStyle = "rgba(255,255,255,.06)";
       ctx.beginPath(); ctx.roundRect(x, pillY + 10, colW - 26, 8, 4); ctx.fill();
-      ctx.fillStyle = vHex(v / 100);
+      ctx.fillStyle = VAL_HEX(v / 100);
       ctx.beginPath(); ctx.roundRect(x, pillY + 10, (colW - 26) * (v / 100), 8, 4); ctx.fill();
-      font(700, 17); ctx.fillStyle = vHex(v / 100);
+      font(700, 17); ctx.fillStyle = VAL_HEX(v / 100);
       ctx.fillText(String(v), x, pillY + 40);
     });
 
@@ -504,7 +505,7 @@ function ShareCard({ pct, grade, fit, lineup, simEra, coach }) {
     // İmza — logo + isim + adres, sağ alt
     drawMark(ctx, W - P - 122, footY - 14, 26);
     ctx.textAlign = "left";
-    font(700, 16); ctx.fillStyle = "#FFB11B";
+    font(700, 16); ctx.fillStyle = ACCENT_HEX;
     ctx.fillText("PRIMARY ARCH", W - P - 104, footY - 15);
     body(400, 10); ctx.fillStyle = TXT.faint;
     ctx.fillText(SITE_URL.replace(/^https?:\/\//, ""), W - P - 104, footY - 2);
@@ -952,7 +953,7 @@ export default function LineupGame() {
           </p>
           {TAG_INFO.map(t=>(
             <div key={t.key} className="rounded-lg p-2.5 flex items-start gap-2.5"
-              style={{background:t.color+"0d",borderLeft:`3px solid ${t.color}`}}>
+              style={{background:t.color+"0d"}}>
               {/* baş harf rozeti = satırlarda göründüğü hâli */}
               <span className="shrink-0 mt-0.5 inline-flex items-center justify-center text-[10px] font-bold rounded px-1.5 h-[18px] min-w-[18px]"
                 style={{color:t.color,background:t.color+"22",border:`1px solid ${t.color}66`}}>{t.abbr}</span>
@@ -975,7 +976,7 @@ export default function LineupGame() {
           birbiriyle yarışmıyor, biri açıkça aktif. */}
       {phase==="idle"&&(
         <div className="g-dock">
-          <span className="aura-blob" style={{"--slot-color":"#FFB11B",left:-30,top:-70,width:240,height:150,opacity:0.16}} />
+          <span className="aura-blob" style={{"--slot-color":"var(--accent)",left:-30,top:-70,width:240,height:150,opacity:0.16}} />
           <div className="g-dock-left">
             <h1 className="g-dock-title">Lineup Builder</h1>
             <p className="g-dock-sub">Draft 9 players · 5 starters, 4 bench · 1 coach</p>
@@ -1016,7 +1017,7 @@ export default function LineupGame() {
           panel tüm genişliği oyuncu havuzuna + korta bırakıyor. */}
       {phase!=="idle"&&phase!=="complete"&&(
         <div className="g-dock thin">
-          <span className="aura-blob" style={{"--slot-color":"#FFB11B",left:-30,top:-60,width:220,height:130,opacity:isSpinPhase?0.24:0.12,transition:"opacity .4s ease"}} />
+          <span className="aura-blob" style={{"--slot-color":"var(--accent)",left:-30,top:-60,width:220,height:130,opacity:isSpinPhase?0.24:0.12,transition:"opacity .4s ease"}} />
 
           {/* SOL — koşu durumu */}
           <div className="g-dock-left flex items-center gap-3">
@@ -1041,7 +1042,7 @@ export default function LineupGame() {
             {isSpinPhase ? (
               <div className="g-spin-row flex items-center gap-7">
                 <InlineSpin items={seasons} spinning={spinSeasons} targetIdx={targetSIdx}
-                  label={lang==="tr"?"Sezon":"Season"} accent="#FFB11B" />
+                  label={lang==="tr"?"Sezon":"Season"} />
                 <InlineSpin items={teamPool.length>0?teamPool:["…"]} spinning={spinTeams} targetIdx={targetTIdx}
                   label={lang==="tr"?"Takım":"Team"} accent="#60a5fa" />
               </div>
@@ -1192,7 +1193,7 @@ export default function LineupGame() {
         // flex-1: panel sol sütunun kalanını doldurur → alt hattı kortla
         // hizalanır ve kort iki fazda da aynı boyutta kalır.
         <div className="g-panel p-5 flex flex-col gap-3 flex-1 min-h-0">
-          <span className="aura-blob" style={{ "--slot-color": "#FFB11B", left: "20%", top: -50, width: 260, height: 140, opacity: 0.16 }} />
+          <span className="aura-blob" style={{ "--slot-color": "var(--accent)", left: "20%", top: -50, width: 260, height: 140, opacity: 0.16 }} />
           <div className="shrink-0">
             <div className="g-label mb-2">Step 1 — Pick Your Simulation Era</div>
             <p className="text-xs leading-relaxed" style={{ color: "var(--text-muted)" }}>
@@ -1373,8 +1374,8 @@ export default function LineupGame() {
         const eligible=getEligiblePos(pickedPlayer);
         const primary=eligible[0];
         return (
-          <div className="g-panel p-4" style={{"--accent":"#FFB11B","--accent-line":"rgba(255,177,27,.5)"}}>
-            <span className="aura-blob" style={{"--slot-color":"#FFB11B",left:"10%",top:-40,width:220,height:120,opacity:0.2}} />
+          <div className="g-panel p-4" style={{"--accent":"var(--accent)","--accent-line":"rgba(255,177,27,.5)"}}>
+            <span className="aura-blob" style={{"--slot-color":"var(--accent)",left:"10%",top:-40,width:220,height:120,opacity:0.2}} />
             <div className="flex items-start justify-between mb-3">
               <div className="min-w-0">
                 <div className="font-logo text-[17px] font-bold flex items-center gap-2 flex-wrap" style={{color:"var(--text-primary)"}}>

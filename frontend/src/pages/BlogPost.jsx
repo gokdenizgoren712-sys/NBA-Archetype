@@ -76,7 +76,7 @@ export default function BlogPost() {
           ← Blog
         </Link>
 
-        <h1 className="text-2xl font-bold mb-2" style={{ color: "var(--text-primary)" }}>
+        <h1 className="font-logo text-3xl font-bold mb-2 tracking-wide" style={{ color: "var(--text-primary)" }}>
           {article.title}
         </h1>
         <p className="text-sm mb-6" style={{ color: "var(--text-muted)" }}>
@@ -98,7 +98,7 @@ export default function BlogPost() {
 
         {/* Comments */}
         <div className="mt-12 border-t pt-8" style={{ borderColor: "var(--border)" }}>
-          <h2 className="font-semibold mb-4 text-base" style={{ color: "var(--text-primary)" }}>
+          <h2 className="font-logo font-semibold mb-4 text-base tracking-wide" style={{ color: "var(--text-primary)" }}>
             Comments ({comments.length})
           </h2>
 
@@ -114,7 +114,7 @@ export default function BlogPost() {
               />
               {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
               <button onClick={submitComment} disabled={posting || !comment.trim()}
-                className="mt-2 px-4 py-1.5 rounded-lg font-logo text-sm font-bold uppercase tracking-wide bg-yamabuki text-darkBg hover:bg-white transition-colors disabled:opacity-50">
+                className="aura-rating-btn mt-2 disabled:opacity-50">
                 {posting ? "Posting…" : "Post"}
               </button>
             </div>
@@ -126,8 +126,7 @@ export default function BlogPost() {
 
           <div className="space-y-3">
             {comments.map(c => (
-              <div key={c.id} className="p-3 rounded"
-                style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
+              <div key={c.id} className="aura-glass p-3 rounded">
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-xs font-semibold" style={{ color: "var(--accent)" }}>{c.username}</span>
                   <div className="flex items-center gap-2">

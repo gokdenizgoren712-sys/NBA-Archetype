@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { CheckIcon, WarnIcon } from "../../game/GameIcons";
 import "../../game/game.css";
+import { ACCENT } from "../../game/football/theme";
 
 // ── Futbol arketip sözlüğü geri bildirimi ────────────────────────────────────
 // Futbol tarafında henüz oyuncu verisi yok, o yüzden basketboldaki
@@ -22,8 +23,6 @@ const KINDS = [
   { key: "rename", label: "Rename one",        hint: "The name doesn't fit the role" },
   { key: "other",  label: "Something else",    hint: "Anything about the dictionary" },
 ];
-
-const ACCENT = "#3FB08C";
 
 export default function FootballFeedbackModal({ onClose }) {
   const { isLoggedIn, token } = useAuth();

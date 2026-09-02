@@ -1,4 +1,6 @@
 import Pitch from "./Pitch";
+import { PHASE_COLOR } from "./theme";
+export { PHASE_COLOR };
 
 // ── Tek koltuğun draft paneli ────────────────────────────────────────────────
 // Basketbolun PlayerSeatPanel'inin karşılığı: aktif koltuk kendi renginde
@@ -9,7 +11,6 @@ import Pitch from "./Pitch";
 // biri düzeldiğinde öbürü eski hâlinde kalırdı; basketbolda draft mantığının üç
 // kopyası olmasının bedeli tam olarak bu.
 
-export const PHASE_COLOR = { gk: "#F2C14E", def: "#4C9BE8", mid: "#3FB08C", fwd: "#E8654C" };
 export const SEAT_COLOR = { 1: "#3FB08C", 2: "#F2C14E" };
 
 /* ── Tek koltuğun paneli ───────────────────────────────────────────────────

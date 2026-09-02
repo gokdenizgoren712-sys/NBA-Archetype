@@ -13,8 +13,7 @@ import { simulateSeason, simulateMany, simulateRealSeason, simulateRealMany,
          simulateRealLeague } from "./seasonSim";
 import { LEAGUE_LABEL } from "./leagues";
 import { ModeInfoButton } from "./ModeAbout";
-
-const ACC = "#3FB08C";
+import { ACCENT as ACC, PHASE_COLOR } from "./theme";
 
 const FORM_COLOR = { W: ACC, D: "var(--text-faint)", L: "#E8654C" };
 
@@ -410,8 +409,6 @@ function Awards({ a }) {
     </div>
   );
 }
-
-const PHASE_COLOR = { gk: "#F2C14E", def: "#4C9BE8", mid: "#3FB08C", fwd: "#E8654C" };
 
 function SquadStats({ players }) {
   if (!players?.length) return <div style={{ fontSize: 12, color: "var(--text-faint)" }}>

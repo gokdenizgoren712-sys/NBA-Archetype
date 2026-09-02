@@ -13,6 +13,7 @@ import { RefreshIcon, CalendarIcon, BoltIcon, UsersIcon, SearchIcon } from "../.
 import "../../game/game.css";
 import { LEAGUE_LABEL } from "../../game/football/leagues";
 import { ModeInfoButton } from "../../game/football/ModeAbout";
+import { ACCENT, PHASE_COLOR } from "../../game/football/theme";
 
 // ── Futbol çark oyunu ────────────────────────────────────────────────────────
 // Basketbol LineupGame'in futbol karşılığı. Ortak mekanikler: iki çark (yıl +
@@ -28,7 +29,6 @@ import { ModeInfoButton } from "../../game/football/ModeAbout";
 // (Barcelona 2023/24 ile Barcelona 2025/26 farklı kadrolar). Bu yüzden
 // "kullanılmış" kaydı takım adı değil takım+sezon çifti.
 
-const ACCENT = "#3FB08C";
 // Draft satırında gösterilecek per-90 statlar — faz başına farklı, çünkü
 // bir stoperi gol/asistle, bir forveti müdahaleyle ölçmek anlamsız.
 // Basketbol tarafında tek bir kolon seti yeterliydi (herkes aynı oyunu
@@ -59,7 +59,6 @@ const GRADE_VAL = {
   "C+": 0.56, C: 0.48, "C-": 0.41, "D+": 0.34, D: 0.27, "D-": 0.20, F: 0.10,
 };
 const gradeVal = (g) => GRADE_VAL[g] ?? 0.5;
-const PHASE_COLOR = { gk: "#F2C14E", def: "#4C9BE8", mid: "#3FB08C", fwd: "#E8654C" };
 const PHASE_LABEL = { gk: "Goalkeeper", def: "Defence", mid: "Midfield", fwd: "Attack" };
 
 export default function FootballGame() {
@@ -422,7 +421,7 @@ export default function FootballGame() {
             ) : (
               <span className="g-status"
                 style={{ "--accent": "#E8654C", "--accent-a": "#E8654C1f", "--accent-line": "#E8654C55" }}>
-                Infrastructure
+                Select a team
               </span>
             )}
           </div>

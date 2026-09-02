@@ -3,6 +3,7 @@ import { api } from "../../api";
 import PlayerSearch from "../../game/football/PlayerSearch";
 import SeasonPanel from "../../game/football/SeasonPanel";
 import SquadAnalysis from "../../game/football/SquadAnalysis";
+import { PHASE_COLOR } from "../../game/football/theme";
 
 // ── Custom XI ────────────────────────────────────────────────────────────────
 // Basketboldaki customLineup deseninin futbol karşılığı: arama + otomatik
@@ -10,8 +11,6 @@ import SquadAnalysis from "../../game/football/SquadAnalysis";
 // GİRMEZ — motor onu sessizce atıyor (src/football/affinity.lineup_fit), o
 // yüzden arayüz bunu açıkça söylüyor, kullanıcı puanın neden 10 kişilik
 // olduğunu merak etmesin.
-
-const PHASE_COLOR = { gk: "#F2C14E", def: "#4C9BE8", mid: "#3FB08C", fwd: "#E8654C" };
 
 function Bar({ label, value, accent = "#3FB08C" }) {
   const v = Math.round((value ?? 0) * 100);

@@ -576,8 +576,7 @@
 .g-dock-title {
   font-family: var(--font-logo); font-size: 23px; font-weight: 800;
   letter-spacing: 0.06em; text-transform: uppercase; line-height: 1;
-  background: linear-gradient(95deg, #ffe9b0, var(--yamabuki, #FFB11B) 45%, #7fd4e8 100%);
-  -webkit-background-clip: text; background-clip: text; color: transparent;
+  color: var(--yamabuki, #FFB11B);
 }
 .g-dock-sub { font-size: 11px; color: var(--text-faint); margin-top: 5px; letter-spacing: 0.02em; }
 

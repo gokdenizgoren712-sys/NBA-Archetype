@@ -13,8 +13,8 @@
 
 import { useEffect, useState } from "react";
 import { api } from "../../api";
+import { ACCENT as ACC } from "./theme";
 
-const ACC = "#3FB08C";
 const SHAPES = ["4-3-3", "4-2-3-1", "4-4-2", "3-5-2", "3-4-2-1", "4-1-4-1", "5-3-2"];
 
 const ordinal = (n) => {

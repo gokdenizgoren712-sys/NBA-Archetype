@@ -5,6 +5,7 @@ import FootballCustomXI from "./FootballCustomXI";
 import FootballRealXI from "./FootballRealXI";
 import "../../game/game.css";
 import { LEAGUE_LABEL } from "../../game/football/leagues";
+import { ACCENT, PHASE_COLOR } from "../../game/football/theme";
 import { Link } from "react-router-dom";
 
 // ── Futbol XI uyumu ──────────────────────────────────────────────────────────
@@ -14,8 +15,6 @@ import { Link } from "react-router-dom";
 // DURUM: altyapı. Ağırlıklar ground truth'a karşı kalibre edilmedi ve sayfa
 // bunu kullanıcıya açıkça söylüyor — ölçülmüş bir şey gibi sunulmamalı.
 
-const ACCENT = "#3FB08C";
-const PHASE_COLOR = { def: "#4C9BE8", mid: "#3FB08C", fwd: "#E8654C" };
 const PHASE_LABEL = { def: "Defence", mid: "Midfield", fwd: "Attack" };
 const SHAPES = ["4-3-3", "4-2-3-1", "4-4-2", "3-5-2", "3-4-2-1", "4-1-4-1", "5-3-2"];
 
@@ -112,12 +111,6 @@ export default function FootballLineups() {
             </div>
           </div>
 
-          <div className="g-dock-right">
-            <span className="g-status"
-              style={{ "--accent": "#E8654C", "--accent-a": "#E8654C1f", "--accent-line": "#E8654C55" }}>
-              Infrastructure
-            </span>
-          </div>
         </div>
 
         {/* Eski uyari ("henüz kalibre değil") artık YANLIŞ: kimya 28.388 gerçek
