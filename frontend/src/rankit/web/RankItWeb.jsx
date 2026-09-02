@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, NavLink, useParams, useNavigate } from "react-router-dom";
 import {
   Home, Compass, Activity as ActivityIcon, List as ListIcon, CircleUserRound,
-  Smartphone, Star, X,
+  Smartphone, Star, X, ChevronRight, FileText,
 } from "lucide-react";
 import { SEO } from "../../hooks/useSEO";
 import { useAuth } from "../../contexts/AuthContext";
@@ -74,13 +74,8 @@ function Rail({ user }) {
       </nav>
 
       <div className="riw-rail-foot">
-        <Link to="/rankit/download" className="riw-get">
-          <Smartphone size={17} />
-          <span>
-            <strong>Download RankIt</strong>
-            <small>Android · sideload</small>
-          </span>
-        </Link>
+        {/* Uygulamayı almak/güncellemek gezinme değil — alt bar en fazla beş
+            birincil yer taşımalı ve altıncısı Settings'e gider. Profile'da. */}
         {user ? (
           <div className="riw-account">
             Signed in as <b>@{user.username}</b>
@@ -415,38 +410,75 @@ function Lists() {
 function Profile() {
   const { isLoggedIn, user } = useAuth();
   const [data, setData] = useState(null);
+  const [build, setBuild] = useState(undefined);   // undefined = yükleniyor
+
   useEffect(() => {
-    if (!isLoggedIn) return;
-    rankitApi.profile().then(setData).catch(() => setData(null));
+    if (isLoggedIn) rankitApi.profile().then(setData).catch(() => setData(null));
   }, [isLoggedIn]);
 
-  if (!isLoggedIn) {
-    return (
-      <>
-        <header className="riw-head"><h1>Profile</h1></header>
-        <div className="riw-main solo">
-          <Empty icon={CircleUserRound} title="Not signed in"
-            note="RankIt uses your Primary Arch account — the same one that owns your squads and lineups." />
-        </div>
-      </>
-    );
-  }
+  // Yayın bilgisi girişten bağımsız: sürümü görmek için hesap gerekmiyor.
+  useEffect(() => {
+    fetch("/api/rankit/releases/latest", { cache: "no-store" })
+      .then((r) => r.json()).then((d) => setBuild(d.release || null))
+      .catch(() => setBuild(null));
+  }, []);
+
   const s = data?.stats || {};
   return (
     <>
       <header className="riw-head">
-        <h1>@{user?.username}</h1>
-        <p>Your record across both sports.</p>
+        <h1>{isLoggedIn ? `@${user?.username}` : "Profile"}</h1>
+        <p>{isLoggedIn ? "Your record across both sports." : "Sign in to keep a diary."}</p>
       </header>
+
       <div className="riw-main solo">
-        <div className="ri-entity-stats">
-          <div><strong>{s.matches ?? 0}</strong><span>matches</span></div>
-          <div><strong>{s.classics ?? 0}</strong><span>classics</span></div>
-          <div><strong>{s.diary_count ?? 0}</strong><span>diary entries</span></div>
-          <div><strong>{s.watchlist ?? 0}</strong><span>watchlist</span></div>
-          <div><strong>{s.favorites ?? 0}</strong><span>favourites</span></div>
-          <div><strong>{s.lists ?? 0}</strong><span>lists</span></div>
-        </div>
+        {isLoggedIn ? (
+          <div className="ri-entity-stats">
+            <div><strong>{s.matches ?? 0}</strong><span>matches</span></div>
+            <div><strong>{s.classics ?? 0}</strong><span>classics</span></div>
+            <div><strong>{s.diary_count ?? 0}</strong><span>diary entries</span></div>
+            <div><strong>{s.watchlist ?? 0}</strong><span>watchlist</span></div>
+            <div><strong>{s.favorites ?? 0}</strong><span>favourites</span></div>
+            <div><strong>{s.lists ?? 0}</strong><span>lists</span></div>
+          </div>
+        ) : (
+          <Empty icon={CircleUserRound} title="Not signed in"
+            note="RankIt uses your Primary Arch account — the same one that owns your squads and lineups." />
+        )}
+
+        <section className="riw-settings">
+          <h2>Settings</h2>
+
+          <div className="riw-set-group">
+            <span>ANDROID APP</span>
+            <Link to="/rankit/download" className="riw-set-row">
+              <Smartphone size={16} />
+              <div>
+                <strong>Update RankIt</strong>
+                <small>
+                  {build === undefined ? "Checking for a build…"
+                    : build ? `${build.version_name} · ${(build.size_bytes / 1048576).toFixed(1)} MB`
+                    : "No build published yet"}
+                </small>
+              </div>
+              <ChevronRight size={15} />
+            </Link>
+          </div>
+
+          <div className="riw-set-group">
+            <span>LEGAL</span>
+            {[["/privacy-policy", "Privacy policy"],
+              ["/terms-of-service", "Terms of service"],
+              ["/contact", "Contact"],
+              ["/affiliate-disclosure", "Affiliate disclosure"]].map(([to, label]) => (
+              <Link key={to} to={to} className="riw-set-row">
+                <FileText size={16} />
+                <div><strong>{label}</strong></div>
+                <ChevronRight size={15} />
+              </Link>
+            ))}
+          </div>
+        </section>
       </div>
     </>
   );

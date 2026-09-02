@@ -206,19 +206,48 @@
 }
 
 @media (max-width: 820px) {
+  /* Telefonda navigasyon ALTTA. Uygulamanın alt barı tek elle erişim için
+     böyle (73px, beş eşit sütun, ikon üstünde etiket) ve web de aynı yerde
+     olmalı — aynı ürünün iki yüzü, başparmak ikisinde de aynı yere gidiyor.
+     Ray üste kaldığında bunu bozuyordu.
+
+     Download üstteki şeritte kalıyor: sürekli basılan bir şey değil, alt
+     bardaki beş yeri daraltması anlamsız olurdu. */
   .riw { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+
   .riw-rail {
-    flex-direction: row; align-items: center; gap: 4px;
-    overflow-x: auto; scrollbar-width: none;
-    border-right: 0; border-bottom: 1px solid var(--ri-line, rgba(255, 255, 255, .08));
-    padding: 10px 12px;
+    flex-direction: row; align-items: center; gap: 10px;
+    padding: 9px 14px;
+    border-right: 0;
+    border-bottom: 1px solid var(--ri-line, rgba(255, 255, 255, .08));
   }
-  .riw-brand { display: none; }
-  .riw-nav { flex-direction: row; padding-top: 0; }
-  .riw-nav a { padding: 8px 11px; white-space: nowrap; }
-  .riw-nav a span { display: none; }
-  .riw-rail-foot { margin: 0 0 0 auto; padding-top: 0; border: 0; }
+  .riw-brand { padding: 0; margin: 0; border-bottom: 0; }
+  .riw-rail-foot { margin: 0 0 0 auto; padding-top: 0; border-top: 0; }
+  .riw-get { padding: 8px 12px; }
   .riw-get small, .riw-account { display: none; }
+
+  /* Nav raydan çıkıp ekranın dibine sabitleniyor. */
+  .riw-nav {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+    display: grid; grid-template-columns: repeat(5, 1fr);
+    gap: 0; padding: 9px 10px calc(9px + env(safe-area-inset-bottom));
+    background: rgba(13, 14, 15, .94);
+    backdrop-filter: blur(20px);
+    border-top: 1px solid var(--ri-line, rgba(255, 255, 255, .08));
+  }
+  .riw-nav a {
+    flex-direction: column; gap: 4px;
+    min-height: 52px; padding: 6px 0; border: 0; border-radius: 0;
+    font-size: 9px; color: #606468;
+  }
+  .riw-nav a span { display: block; }
+  .riw-nav a:hover { background: none; color: #8b8f93; }
+  .riw-nav a.on { color: #eee; background: none; border-color: transparent; }
+  .riw-nav a.on svg { color: var(--ri-gold, #FFB11B); }
+
+  /* Bar içeriğin üstüne binmesin. */
+  .riw-body { padding-bottom: 88px; }
+
   .riw-head, .riw-main { padding-left: 16px; padding-right: 16px; }
 }
 
@@ -239,3 +268,39 @@
 /* Kart yuksekligi icerikten bagimsiz sabit kalsin ki duvar satirlari
    hizali dursun. */
 .riw-wall .ri-match-card { align-content: start; }
+
+/* ── Ayarlar (Profile içinde) ─────────────────────────────────────────────────
+   Uygulamayı güncellemek ve yasal sayfalar gezinme değil; alt bar beş birincil
+   yerini korusun diye buraya toplandı. Satır deseni bilinçli olarak sıradan:
+   ayarlar okunmak için değil, bulunmak için var. */
+
+.riw-settings { margin-top: 26px; max-width: 560px; }
+.riw-settings h2 {
+  font: 800 15px var(--font-logo); letter-spacing: .03em; margin: 0 0 14px 2px;
+}
+.riw-set-group { margin-bottom: 18px; }
+.riw-set-group > span {
+  display: block; margin: 0 0 7px 2px;
+  font: 700 7.5px var(--font-logo); letter-spacing: .14em; color: #5f6265;
+}
+
+.riw-set-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 13px;
+  border: 1px solid var(--ri-line, rgba(255, 255, 255, .08));
+  background: #101113;
+  color: #b8babc;
+  transition: background .15s ease, border-color .15s ease, color .15s ease;
+}
+/* Grup içindeki satırlar tek bir blok gibi otursun. */
+.riw-set-row + .riw-set-row { border-top: 0; }
+.riw-set-group .riw-set-row:first-of-type { border-radius: 13px 13px 0 0; }
+.riw-set-group .riw-set-row:last-of-type { border-radius: 0 0 13px 13px; }
+.riw-set-group .riw-set-row:only-of-type { border-radius: 13px; }
+
+.riw-set-row:hover { background: #16171a; border-color: rgba(255, 255, 255, .16); color: #e4e6e7; }
+.riw-set-row > svg:first-child { flex: none; color: var(--ri-gold, #FFB11B); }
+.riw-set-row > div { flex: 1; min-width: 0; }
+.riw-set-row strong { display: block; font: 600 12.5px var(--font-sans); color: inherit; }
+.riw-set-row small { display: block; margin-top: 2px; font-size: 10.5px; color: #6f7376; }
+.riw-set-row > svg:last-child { flex: none; color: #4e5155; }
