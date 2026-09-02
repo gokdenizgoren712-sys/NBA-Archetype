@@ -145,3 +145,10 @@ id_ecdsa
 
 # Kod grafigi ciktisi — yerelde uretilir, surumlenmez
 graphify-out/
+
+# Impeccable calisma dosyalari — yuzey brief'leri surumleniyor, gerisi degil
+.impeccable/questions/
+.impeccable/payload-*.json
+.impeccable/review/
+.impeccable/mocks/
+.impeccable/build/

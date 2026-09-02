@@ -48,6 +48,7 @@ const FootballGlossary = lazy(() => import("./pages/football/FootballGlossary"))
 const FootballVersus  = lazy(() => import("./pages/football/FootballVersus"));
 const FootballModeSelect = lazy(() => import("./pages/football/FootballModeSelect"));
 const RankItPrototype = lazy(() => import("./rankit/RankItPrototype"));
+const RankItWeb = lazy(() => import("./rankit/web/RankItWeb"));
 const RankItMobileAuth = lazy(() => import("./pages/RankItMobileAuth"));
 const PrivacyPolicy      = lazy(() => import("./pages/legal/PrivacyPolicy"));
 const TermsOfService     = lazy(() => import("./pages/legal/TermsOfService"));
@@ -324,7 +325,13 @@ function AppInner() {
             <Routes>
               {/* Kök: spor seçimi */}
               <Route path="/"                         element={<SportSelect />} />
-              <Route path="/rankit"                   element={<RankItPrototype />} />
+              <Route path="/rankit"                   element={<RankItWeb section="home" />} />
+              <Route path="/rankit/discover"          element={<RankItWeb section="discover" />} />
+              <Route path="/rankit/activity"          element={<RankItWeb section="activity" />} />
+              <Route path="/rankit/lists"             element={<RankItWeb section="lists" />} />
+              <Route path="/rankit/profile"           element={<RankItWeb section="profile" />} />
+              {/* Telefon arayüzü: APK bunu paketliyor, web'de de açılabilir kalsın. */}
+              <Route path="/rankit/app"               element={<RankItPrototype />} />
 
               {/* ── Basketbol (mevcut ürünün tamamı) ── */}
               <Route path="/basketball"                     element={<Navigate to="/basketball/game" replace />} />
