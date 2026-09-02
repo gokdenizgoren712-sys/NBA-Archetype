@@ -277,6 +277,194 @@
 .riw-rank-teams { font: 600 12.5px var(--font-sans); color: #e2e4e5; }
 .riw-rank-teams b { color: var(--ri-gold, #FFB11B); margin: 0 5px; font-variant-numeric: tabular-nums; }
 
+/* ── Araç çubuğu + soldan açılan filtre paneli ────────────────────────────────
+   Filtreler ayakta duran bir raydı ve duvardan kalıcı olarak yer çalıyordu.
+   Artık sitenin Players sayfasındaki desen: bir "Filters" düğmesi, soldan
+   kayan yarı saydam bir panel. Duvar tüm genişliği kullanıyor. */
+
+.riw-toolbar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 0 26px 14px;
+}
+.riw-toolbar-gap { flex: 1; }
+
+.riw-filter-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  min-height: 32px; padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--ri-line, rgba(255, 255, 255, .08));
+  background: #121315; color: #b8babc; font-size: 11.5px;
+  transition: color .14s ease, border-color .14s ease, background .14s ease;
+}
+.riw-filter-btn:hover { color: #eceded; border-color: rgba(255, 255, 255, .2); }
+.riw-filter-btn.on { border-color: rgba(255, 177, 27, .45); color: var(--ri-gold, #FFB11B); }
+.riw-filter-badge {
+  min-width: 16px; height: 16px; padding: 0 4px;
+  display: grid; place-items: center; border-radius: 999px;
+  background: var(--ri-gold, #FFB11B); color: #17120a;
+  font: 700 9px var(--font-logo);
+}
+
+.riw-hide {
+  display: inline-flex; align-items: center; gap: 6px;
+  min-height: 32px; padding: 0 12px; border: 0; border-radius: 999px;
+  background: none; color: #9aa0a6; font-size: 11.5px;
+  transition: color .14s ease;
+}
+.riw-hide:hover { color: #dcdedf; }
+.riw-hide.on { color: var(--ri-gold, #FFB11B); }
+
+.riw-scrim {
+  position: fixed; inset: 0; z-index: 14;
+  background: rgba(0, 0, 0, .55);
+}
+
+.riw-drawer {
+  position: fixed; top: 0; bottom: 0; left: 0; z-index: 15;
+  width: 288px; max-width: 85vw;
+  display: flex; flex-direction: column;
+  background: rgba(16, 17, 19, .92);
+  backdrop-filter: blur(18px);
+  border-right: 1px solid var(--ri-line, rgba(255, 255, 255, .08));
+  border-radius: 0 18px 18px 0;
+  box-shadow: 18px 0 44px -16px rgba(0, 0, 0, .75);
+  transform: translateX(-100%);
+  transition: transform .28s ease;
+  visibility: hidden;
+}
+.riw-drawer.open { transform: translateX(0); visibility: visible; }
+
+.riw-drawer > header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 15px 16px 12px;
+  border-bottom: 1px solid var(--ri-line, rgba(255, 255, 255, .08));
+}
+.riw-drawer > header span {
+  font: 700 11px var(--font-logo); letter-spacing: .16em; color: var(--ri-gold, #FFB11B);
+}
+.riw-drawer > header button {
+  width: 28px; height: 28px; display: grid; place-items: center;
+  border: 0; border-radius: 50%; background: none; color: #9aa0a6;
+}
+.riw-drawer > header button:hover { color: #eceded; }
+
+.riw-drawer-body { flex: 1; overflow-y: auto; padding: 16px; display: grid; gap: 18px; }
+
+.riw-drawer > footer { padding: 0 16px 16px; }
+.riw-drawer > footer button {
+  width: 100%; min-height: 34px; border-radius: 999px;
+  border: 1px solid rgba(255, 177, 27, .4);
+  background: rgba(255, 177, 27, .08); color: var(--ri-gold, #FFB11B);
+  font-size: 11.5px;
+}
+
+/* Panel içindeki etiketler artık gerçek <label>: ekran okuyucu select'i
+   adlandırabiliyor. Kontrast da AA'ya çekildi (#5f6265 → #9aa0a6). */
+.riw-drawer .riw-fgroup > span,
+.riw-drawer .riw-fgroup > label {
+  display: block; margin: 0 0 7px 2px;
+  font: 700 9px var(--font-logo); letter-spacing: .14em; color: #9aa0a6;
+}
+.riw-drawer .riw-fgroup button { font-size: 11px; padding: 7px 12px; }
+.riw-drawer .riw-fgroup select { height: 36px; font-size: 12px; color: #c9cbcd; }
+
+/* ── Home ────────────────────────────────────────────────────────────────── */
+
+.riw-home-controls {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 0 26px 16px;
+}
+.riw-chips { display: flex; gap: 7px; }
+.riw-chips button {
+  min-height: 32px; padding: 0 14px; border-radius: 999px;
+  border: 1px solid var(--ri-line, rgba(255, 255, 255, .08));
+  background: #121315; color: #9aa0a6; font-size: 12px;
+  transition: color .14s ease, background .14s ease, border-color .14s ease;
+}
+.riw-chips button:hover { color: #eceded; }
+.riw-chips button.on {
+  background: var(--ri-gold, #FFB11B); border-color: var(--ri-gold, #FFB11B);
+  color: #17120a; font-weight: 700;
+}
+
+.riw-section { margin-top: 34px; }
+.riw-section-head { margin-bottom: 14px; }
+.riw-section-head small {
+  font: 700 9px var(--font-logo); letter-spacing: .17em; color: var(--ri-gold, #FFB11B);
+}
+.riw-section-head h2 { font: 700 21px/1 var(--font-logo); margin: 5px 0 0; }
+
+/* ── Topluluk yorumları ──────────────────────────────────────────────────── */
+
+.riw-review-list { display: grid; gap: 2px; }
+
+.riw-review {
+  display: flex; gap: 12px; padding: 14px 4px;
+  border-top: 1px solid var(--ri-line, rgba(255, 255, 255, .08));
+  cursor: pointer; transition: background .14s ease;
+}
+.riw-review:hover { background: rgba(255, 255, 255, .022); }
+.riw-review > div { min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+.riw-review p { margin: 0; font-size: 12px; color: #9aa0a6; }
+.riw-review p strong { color: #eceded; }
+.riw-review p b { color: #c9cbcd; font-weight: 600; }
+.riw-review blockquote {
+  margin: 0; font-size: 12px; line-height: 1.5; color: #a4a8ab;
+  border-left: 2px solid rgba(255, 177, 27, .3); padding-left: 10px;
+}
+
+.riw-avatar {
+  flex: 0 0 34px; height: 34px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: linear-gradient(145deg, #31343a, #151619);
+  border: 1px solid var(--ri-line, rgba(255, 255, 255, .08));
+  font: 700 12px var(--font-logo); color: var(--ri-gold, #FFB11B);
+}
+
+/* ── Denetçi: künye + topluluk ───────────────────────────────────────────── */
+
+.riw-detail-teams > div:first-child,
+.riw-detail-teams > div:last-child {
+  display: flex; flex-direction: column; align-items: center; gap: 9px;
+}
+.riw-detail-teams .ri-team-mark { width: 54px; height: 54px; }
+
+.riw-facts { display: grid; gap: 1px; margin-top: 18px; }
+.riw-facts > div {
+  display: flex; align-items: center; justify-content: space-between; gap: 14px;
+  padding: 12px 3px;
+  border-bottom: 1px solid var(--ri-line, rgba(255, 255, 255, .08));
+}
+.riw-facts span { font: 700 9px var(--font-logo); letter-spacing: .14em; color: #9aa0a6; }
+.riw-facts strong { font-size: 12.5px; color: #dcdedf; text-align: right; }
+
+.riw-community-stats {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; margin-top: 4px;
+}
+.riw-community-stats > div {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 14px 8px; border-radius: 15px;
+  border: 1px solid var(--ri-line, rgba(255, 255, 255, .08));
+  background: rgba(255, 255, 255, .02);
+  color: var(--ri-gold, #FFB11B);
+}
+.riw-community-stats strong { font: 800 19px var(--font-logo); color: #eceded; }
+.riw-community-stats span { font: 700 8.5px var(--font-logo); letter-spacing: .14em; color: #9aa0a6; }
+
+.riw-tagcloud { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 16px; }
+.riw-tagcloud span {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 11px; border-radius: 999px;
+  border: 1px solid var(--ri-line, rgba(255, 255, 255, .08));
+  background: #121315; color: #c1c4c6; font-size: 11.5px;
+}
+.riw-tagcloud b { color: var(--ri-gold, #FFB11B); font-variant-numeric: tabular-nums; }
+
+.riw-quiet {
+  text-align: center; font-size: 12px; color: #9aa0a6; margin-top: 18px;
+}
+.riw-merge-note { margin-top: 10px; font-size: 11px; }
+
 @media (max-width: 1080px) {
   .riw-main { grid-template-columns: 1fr; }
   .riw-filters { position: static; }

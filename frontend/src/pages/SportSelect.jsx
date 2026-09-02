@@ -1,8 +1,10 @@
 import { useNavigate } from "react-router-dom";
 import { SEO } from "../hooks/useSEO";
 import { NBAIcon, FootballIcon } from "../components/BrandIcons";
+import { RankItMark } from "../rankit/web/cards";
 import "../components/PlayerCard.css";
 import "../game/game.css";
+import "./sport-select.css";
 
 // ── Kök spor seçim ekranı ────────────────────────────────────────────────────
 // 2026-08: site tek domainde İKİ BAĞIMSIZ ürüne ayrıldı (/basketball, /football).
@@ -55,6 +57,20 @@ export default function SportSelect() {
             Pick a sport to start scouting
           </p>
         </div>
+
+        {/* RankIt bir spor değil, ikisinin de üstünde duran ayrı bir ürün:
+            izlediğin maçları puanladığın sosyal günlük. O yüzden spor
+            kartlarıyla aynı dikey desende değil, onların üstünde yatay bir
+            şerit olarak duruyor — "önce bir spor seç" hareketini kesmiyor,
+            kendi kapısını açıyor. */}
+        <button onClick={() => navigate("/rankit")} className="rankit-strip">
+          <span className="rankit-strip-mark"><RankItMark size={30} /></span>
+          <span className="rankit-strip-copy">
+            <strong>RankIt</strong>
+            <small>Rate the matches you watch — a social diary for football and basketball.</small>
+          </span>
+          <span className="rankit-strip-go">Open <span aria-hidden="true">→</span></span>
+        </button>
 
         <div className="flex flex-wrap gap-6 justify-center">
           {SPORTS.map(({ key, Icon, title, meta, desc, path, live, accent }) => (

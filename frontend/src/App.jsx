@@ -101,7 +101,21 @@ function sportOf(pathname) {
   return null;
 }
 
+/* RankIt kendi sol rayını taşıyor (riw-rail). Sitenin ikon rayı da açık
+   kalınca ekranda yan yana ÜÇ gezinme oluyordu: üst bar + Primary Arch rayı +
+   RankIt rayı. RankIt'in içindeyken gezinme RankIt'indir — site rayı çekilir,
+   üst bar ortak kimlik olarak kalır. /rankit/download ve /rankit/mobile-auth
+   sıradan sayfalar, onlar kapsam dışı. */
+const RANKIT_APP_ROUTES = new Set([
+  "/rankit", "/rankit/discover", "/rankit/activity", "/rankit/lists", "/rankit/profile", "/rankit/app",
+]);
+
+function isRankItApp(pathname) {
+  return RANKIT_APP_ROUTES.has(pathname.replace(/\/+$/, "") || "/");
+}
+
 function navFor(pathname) {
+  if (isRankItApp(pathname)) return [];        // RankIt kendi rayını gösteriyor
   const sport = sportOf(pathname);
   if (sport === "basketball") return BASKETBALL_NAV;
   if (sport === "football")   return FOOTBALL_NAV;
@@ -147,7 +161,7 @@ function TopBar({ onMenu }) {
 
   return (
     <header className="relative h-12 shrink-0 flex items-center px-4 gap-3 aura-glass overflow-hidden">
-      <div className="aura-glow" style={{ "--aura-color": "#FFB11B", width: 180, height: 180, left: -40, top: -70 }} />
+      <div className="aura-glow" style={{ "--aura-color": "var(--accent)", width: 180, height: 180, left: -40, top: -70 }} />
 
       {/* Logo — mobilde menüyü açar (alt nav'ın yerini aldı), desktop'ta
           sol icon bar zaten hep açık olduğu için doğrudan /game'e gider. */}
@@ -174,7 +188,7 @@ function TopBar({ onMenu }) {
         </span>
         {sport && (
           <span className="text-[9.5px] uppercase tracking-widest px-1.5 py-0.5 rounded ml-1"
-            style={{ color: sport === "football" ? "#3FB08C" : "var(--yamabuki)",
+            style={{ color: sport === "football" ? "var(--accent-football)" : "var(--yamabuki)",
                      border: `1px solid ${sport === "football" ? "#3FB08C55" : "rgba(255,177,27,.4)"}` }}>
             {sport === "football" ? "Football" : "Basketball"}
           </span>

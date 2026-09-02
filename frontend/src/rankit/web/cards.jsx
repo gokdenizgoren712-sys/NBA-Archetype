@@ -1,6 +1,19 @@
 import { Star } from "lucide-react";
 
 // ── Web yüzeyinin kart parçaları ─────────────────────────────────────────────
+//
+// Tarih biçimi telefonla AYNI olmalı (RankItPrototype.fromApiMatch): iki yüzey
+// aynı maçı farklı yazarsa kullanıcı iki ayrı ürün görür. Sunucu yalnızca ISO
+// `starts_at` gönderiyor — `date_label` diye bir alan HİÇ yoktu, web onu okuyup
+// boşa düşüyordu ve kartlarda saat hiç görünmüyordu.
+export function formatWhen(startsAt) {
+  const when = new Date(startsAt);
+  if (!startsAt || Number.isNaN(when.getTime())) return { date: startsAt || "", time: "", full: startsAt || "" };
+  const date = new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric" }).format(when);
+  const time = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit" }).format(when);
+  return { date, time, full: `${date} · ${time}` };
+}
+
 // Telefonun kartıyla AYNI CSS'i (ri-match-card ve ailesi) kullanıyor, ama aynı
 // bileşen değil: telefonda kart sayfa açıyor, duvarda denetçiye yazıyor, ve
 // masaüstünde yer olduğu için skor ile topluluk puanı aynı anda görünüyor.
@@ -65,19 +78,27 @@ export function Stars({ value = 0, onChange, compact = false }) {
 }
 
 export function TeamMark({ team }) {
+  // Sunucu bu alanı `crest_url` diye gönderiyor (api/rankit.py _team). Burası
+  // `crest` okuyordu, o yüzden web'de HİÇBİR kulüp arması render olmuyordu —
+  // telefonun en tanınır görseli masaüstünde tamamen kayıptı.
+  const crest = team?.crest_url || team?.crest;
   return (
     <div className="ri-team-mark" style={{ "--team": team?.color || "#2a2c30" }}>
-      {team?.crest
-        ? <img src={team.crest} alt="" loading="lazy" />
+      {crest
+        ? <img src={crest} alt="" loading="lazy" />
         : <span>{(team?.short || team?.name || "?").slice(0, 3).toUpperCase()}</span>}
     </div>
   );
 }
 
-export function MatchCard({ match, onOpen }) {
+export function MatchCard({ match, onOpen, hideScores = false }) {
   const finished = match.status === "finished";
   const live = match.status === "live";
   const rated = typeof match.communityRating === "number" && match.communityRating > 0;
+  // Skor gizleme telefonda ürünün imzası: maçı henüz izlememiş biri siteye
+  // girip sonucu görmesin diye. Webde hiç yoktu — masaüstünde açan bir üye
+  // dün geceyi puanlamaya gelirken sonucu kapıda öğreniyordu.
+  const blur = hideScores && finished;
 
   return (
     <article
@@ -103,10 +124,14 @@ export function MatchCard({ match, onOpen }) {
         <div className="ri-team-side home"><TeamMark team={match.home} /></div>
         <div className="ri-versus">
           {/* Skoru olan maçta skor, olmayanda VS — puanlanmamış bir maça
-              sıfır yazmak, oynanmamışı oynanmış gibi göstermek olurdu. */}
+              sıfır yazmak, oynanmamışı oynanmış gibi göstermek olurdu.
+              VS'nin üstündeki satır eskiden "VERSUS" yazıyordu: altındaki
+              "VS"i kelimesi kelimesine tekrar eden, hiçbir şey söylemeyen bir
+              etiket. Yerini maçın saati aldı — okuyucunun gerçekten ihtiyacı
+              olan tek bilgi. */}
           {finished && match.score
-            ? <strong>{match.score}</strong>
-            : <><small>VERSUS</small><strong>VS</strong></>}
+            ? <strong className={blur ? "ri-blur" : undefined}>{match.score}</strong>
+            : <>{match.time && <small>{match.time}</small>}<strong>VS</strong></>}
         </div>
         <div className="ri-team-side away"><TeamMark team={match.away} /></div>
       </div>
