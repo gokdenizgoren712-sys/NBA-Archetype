@@ -277,6 +277,27 @@
 .riw-rank-teams { font: 600 12.5px var(--font-sans); color: #e2e4e5; }
 .riw-rank-teams b { color: var(--ri-gold, #FFB11B); margin: 0 5px; font-variant-numeric: tabular-nums; }
 
+/* ── Kulüp arması ─────────────────────────────────────────────────────────────
+   Elmas çerçeve rotate(45deg); arma içinde ters-döndürülüp ortalanıyor, yoksa
+   45° yatık duruyor. Bu kural telefonda rankit-next.css'te yaşıyor ama web
+   yüzeyi o dosyayı yüklemiyor (yüklemesi de doğru olmaz: içinde web düzenini
+   değiştiren başka override'lar var), o yüzden burada tekrarlanıyor. */
+
+.riw .ri-team-mark.has-logo {
+  position: relative;
+  background: color-mix(in srgb, var(--team) 12%, #101113);
+  padding: 0;
+  transform-origin: 50% 50%;
+}
+.riw .ri-team-mark.has-logo img {
+  position: absolute; left: 50%; top: 50%;
+  width: 74%; height: 74%;
+  object-fit: contain;
+  transform: translate(-50%, -50%) rotate(-45deg);
+  transform-origin: 50% 50%;
+  filter: drop-shadow(0 4px 7px rgba(0, 0, 0, .35));
+}
+
 /* ── Araç çubuğu + soldan açılan filtre paneli ────────────────────────────────
    Filtreler ayakta duran bir raydı ve duvardan kalıcı olarak yer çalıyordu.
    Artık sitenin Players sayfasındaki desen: bir "Filters" düğmesi, soldan

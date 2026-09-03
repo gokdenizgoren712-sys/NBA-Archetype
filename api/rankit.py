@@ -406,9 +406,15 @@ def rankit_home(
             args.append(window_end)
         if where:
             sql += " WHERE " + " AND ".join(where)
-        # Ana ekran yalnızca üç hero kart gösteriyor. Küçük bir yedek havuz,
+        # Ana ekran yalnızca birkaç hero kart gösteriyor. Küçük bir yedek havuz,
         # 60 kartın sosyal özet sorgularını boşuna çalıştırmadan yeterli çeşit sağlar.
-        sql += " ORDER BY m.starts_at LIMIT 12"
+        #
+        # Sıralama ŞİMDİYE YAKINLIK olmalı, artan tarih değil: düz `ORDER BY
+        # starts_at` katalogun EN ESKİ maçlarını veriyordu, yani "Tonight on
+        # RankIt" başlığının altında bir yıl önceki eleme maçları duruyordu.
+        # /catalog zaten bu sabiti kullanıyor; ana ekranın kullanmaması gözden
+        # kaçmış.
+        sql += NEAREST_MATCH_ORDER + " LIMIT 12"
         rows = conn.execute(sql, args).fetchall()
         cards = [_match_dict(conn, r, uid) for r in rows]
         activity_rows = conn.execute("""SELECT e.id,e.review,e.rating,e.created_at,u.username,m.id match_id,

@@ -82,8 +82,13 @@ export function TeamMark({ team }) {
   // `crest` okuyordu, o yüzden web'de HİÇBİR kulüp arması render olmuyordu —
   // telefonun en tanınır görseli masaüstünde tamamen kayıptı.
   const crest = team?.crest_url || team?.crest;
+  // `has-logo` şart: elmas çerçeve rotate(45deg) ve armayı düzelten
+  // ters-döndürme + boyutlandırma YALNIZCA bu sınıfın kuralında. Sınıfsız
+  // render'da <img> 0×0 kalıyor ve döndürülmüş kalıyordu — telefonda sınıf
+  // var, webde yoktu.
   return (
-    <div className="ri-team-mark" style={{ "--team": team?.color || "#2a2c30" }}>
+    <div className={`ri-team-mark${crest ? " has-logo" : ""}`}
+      style={{ "--team": team?.color || "#2a2c30" }}>
       {crest
         ? <img src={crest} alt="" loading="lazy" />
         : <span>{(team?.short || team?.name || "?").slice(0, 3).toUpperCase()}</span>}
