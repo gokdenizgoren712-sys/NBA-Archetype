@@ -32,6 +32,9 @@ function fromApiMatch(m) {
   return {
     ...m,
     date: `${fullDate}${time ? ` · ${time}` : ""}`,
+    // Saat AYRI da lazım: kartın üst şeridi tam tarihi zaten yazıyor, ortadaki
+    // VS bloğu aynı dizeyi bir daha yazınca tarih iki kez görünüyordu.
+    time,
     communityRating: m.community_rating,
     ratings: m.rating_count || 0,
     reviewCount: m.review_count || 0,
@@ -187,17 +190,26 @@ function MatchCard({ match, hideScores, onOpen, onOpenCompetition, featured = fa
           <div className="ri-potm"><small>COMMUNITY POTM</small><strong>{match.player}</strong></div>
         </div>
       ) : (
-        <div className="ri-versus"><small>{match.editorial ? "FEATURED MATCH" : match.date}</small><strong>VS</strong></div>
+        <div className="ri-versus"><small>{match.editorial ? "FEATURED MATCH" : match.time}</small><strong>VS</strong></div>
       )}
       <div className="ri-team-side away"><TeamMark team={match.away} /></div>
     </div>
 
+    {/* Kısa ad çoğu kulüpte tam adın AYNISI ("Toulouse / Toulouse",
+        "Sassuolo / Sassuolo") — ikinci satır o zaman bilgi değil tekrar.
+        rankit/DESIGN.md'de "wrong" diye kayıtlıydı, düzeltilmemişti. */}
     <div className="ri-score-band">
-      <div><strong>{match.home.short}</strong><small>{match.home.name}</small></div>
+      <div>
+        <strong>{match.home.short}</strong>
+        {match.home.name !== match.home.short && <small>{match.home.name}</small>}
+      </div>
       <div className={`ri-score${hideScores && finished ? " hidden" : ""}`}>
         {finished ? <ScoreValue match={match}/> : "—"}
       </div>
-      <div><strong>{match.away.short}</strong><small>{match.away.name}</small></div>
+      <div>
+        <strong>{match.away.short}</strong>
+        {match.away.name !== match.away.short && <small>{match.away.name}</small>}
+      </div>
     </div>
 
     <div className="ri-match-foot">
@@ -344,9 +356,9 @@ function MatchDetail({ match, hideScores, onClose, onSave, onToggleWatchlist, on
       <div className="ri-v03-hero" style={{"--detail-home":match.home.color,"--detail-away":match.away.color}}>
         <div className={`ri-detail-kicker ${match.status}`}><span>{match.competition}{match.stage ? ` · ${match.stage}` : ""}</span><b>{match.status === "finished" ? "FULL TIME" : match.status === "live" ? "LIVE" : "UPCOMING"}</b></div>
         <div className="ri-detail-teams">
-          <div className="ri-v03-team"><TeamMark team={match.home}/><strong>{match.home.short}</strong><small>{match.home.name}</small></div>
+          <div className="ri-v03-team"><TeamMark team={match.home}/><strong>{match.home.short}</strong>{match.home.name !== match.home.short && <small>{match.home.name}</small>}</div>
           <div className="ri-v03-score"><small>{match.date}</small><strong className={hideScores && match.status === "finished" ? "ri-blur" : ""}><ScoreValue match={match} detail/></strong><span>{match.season}</span></div>
-          <div className="ri-v03-team"><TeamMark team={match.away}/><strong>{match.away.short}</strong><small>{match.away.name}</small></div>
+          <div className="ri-v03-team"><TeamMark team={match.away}/><strong>{match.away.short}</strong>{match.away.name !== match.away.short && <small>{match.away.name}</small>}</div>
         </div>
       </div>
       <div className="ri-detail-tabs"><button className={section === "Match" ? "active" : ""} onClick={() => setSection("Match")}>Match</button><button className={section === "Community" ? "active" : ""} onClick={() => setSection("Community")}>Community</button></div>
