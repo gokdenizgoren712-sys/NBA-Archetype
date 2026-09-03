@@ -148,17 +148,24 @@ export function MatchCard({ match, onOpen, hideScores = false }) {
       </div>
 
       <div className="ri-match-foot">
+        {/* Eskiden burası, maç bitmemişse tam tarihi ÜÇÜNCÜ kez yazıyordu
+            (üst şeritte ve ortadaki VS'nin üstünde zaten var). Telefonun
+            kendi kartı bu satırı hiç tarih için kullanmıyor — yayın bilgisi
+            için kullanıyor. Aynı desen: gerçekten yeni bir bilgi, tekrar
+            değil. */}
         {typeof match.myRating === "number" && match.myRating > 0 ? (
           <Stars value={match.myRating} compact />
+        ) : finished ? (
+          <span style={{ fontSize: 9, color: "#7f868b" }}>Not logged</span>
         ) : (
-          // #5f6265 ölçüldü: kartın gerçek zeminlerinde (card/app/web) 2.8-3.2:1 —
-          // AA'nın (4.5:1) epey altında. #7f868b (rankit/DESIGN.md'nin text-faint'i)
-          // aynı zeminlerde 4.66-5.36:1, hepsini geçiyor.
           <span style={{ fontSize: 9, color: "#7f868b" }}>
-            {finished ? "Not logged" : match.date}
+            {match.broadcaster ? `Watch on ${match.broadcaster}` : "Broadcast details pending"}
           </span>
         )}
-        <span>{match.reviews ? `${match.reviews} reviews` : ""}</span>
+        <span>
+          {finished && match.dominantTag ? match.dominantTag
+            : match.stage || (match.reviews ? `${match.reviews} reviews` : "")}
+        </span>
       </div>
     </article>
   );

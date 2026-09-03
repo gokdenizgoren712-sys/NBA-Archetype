@@ -140,24 +140,66 @@
 
 /* ── Denetçi: kart açılınca üstüne yükselen sayfa ─────────────────────────── */
 
+/* Ortada beliren bir modal'dı — "rezalet" denen tam olarak buydu. Telefonun
+   kendi çekmece dili: alta yaslı, yalnızca üstten yuvarlak, aşağıdan yukarı
+   kayarak açılan bir sayfa. Masaüstünde de AYNI davranış — "aynı kart, sadece
+   ışık değişir" ilkesi burada da geçerli. */
 .riw-inspect-wrap {
   position: fixed; inset: 0; z-index: 40;
-  display: flex; align-items: center; justify-content: center;
-  padding: 28px;
+  display: flex; align-items: flex-end; justify-content: center;
   background: rgba(0, 0, 0, .72);
   backdrop-filter: blur(9px);
   animation: riwFade .18s ease both;
 }
 .riw-inspect {
   width: min(760px, 100%); max-height: 88vh; overflow-y: auto;
-  border-radius: 22px; padding: 24px;
+  border-radius: 22px 22px 0 0; padding: 28px 24px 26px;
   background: linear-gradient(155deg, #1a1b1e, #0f1012);
   border: 1px solid var(--ri-line, rgba(255, 255, 255, .08));
-  box-shadow: 0 30px 90px rgba(0, 0, 0, .6);
-  animation: riwRise .26s cubic-bezier(.2, .8, .3, 1) both;
+  border-bottom: 0;
+  box-shadow: 0 -22px 80px rgba(0, 0, 0, .6);
+  position: relative;
+  animation: riwRise .3s cubic-bezier(.18, .86, .22, 1) both;
 }
 @keyframes riwFade { from { opacity: 0 } to { opacity: 1 } }
-@keyframes riwRise { from { opacity: 0; transform: translateY(14px) scale(.985) } to { opacity: 1; transform: none } }
+@keyframes riwRise { from { opacity: .4; transform: translate3d(0, 46px, 0) scale(.99) } to { opacity: 1; transform: none } }
+
+/* Küçült + kapat, ikisi ayrı eylem — bkz. Inspector'daki yorum. */
+.riw-sheet-actions { position: absolute; right: 17px; top: 17px; display: flex; gap: 8px; z-index: 5; }
+.riw-sheet-actions .ri-sheet-close { position: static; }
+
+/* Taslak çipi — Outlook'un küçültülmüş yazma penceresi gibi: sağ altta,
+   uslu, tıklayınca aynı puanlama/yorum haliyle geri açılır. Chip'in kendisi
+   modal DEĞİL — arkasındaki sayfa tamamen kullanılabilir. */
+.riw-chip {
+  position: fixed; right: 20px; bottom: 20px; z-index: 39;
+  display: flex; align-items: center; gap: 10px;
+  width: 240px; padding: 10px 10px 10px 12px;
+  border-radius: 16px;
+  background: linear-gradient(155deg, #1a1b1e, #0f1012);
+  border: 1px solid rgba(255, 177, 27, .22);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, .45), 0 0 0 1px rgba(0, 0, 0, .2);
+  cursor: pointer;
+  animation: riwChipIn .22s cubic-bezier(.2, .8, .3, 1) both;
+  transition: transform .16s ease, border-color .16s ease;
+}
+.riw-chip:hover { transform: translateY(-2px); border-color: rgba(255, 177, 27, .4); }
+@keyframes riwChipIn { from { opacity: 0; transform: translate3d(0, 14px, 0) scale(.96) } to { opacity: 1; transform: none } }
+.riw-chip-crests { display: flex; flex-shrink: 0; }
+.riw-chip-crests .ri-team-mark { width: 28px; height: 28px; }
+.riw-chip-crests .ri-team-mark + .ri-team-mark { margin-left: -8px; }
+.riw-chip-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.riw-chip-copy strong {
+  font: 700 11.5px var(--font-logo); color: #eceded;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.riw-chip-copy small { font-size: 9.5px; color: var(--ri-gold, #FFB11B); }
+.riw-chip-close {
+  flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%;
+  display: grid; place-items: center;
+  border: 0; background: rgba(255, 255, 255, .06); color: #9aa0a6;
+}
+.riw-chip-close:hover { background: rgba(255, 255, 255, .12); color: #eceded; }
 
 /* ── Durumlar ────────────────────────────────────────────────────────────── */
 
@@ -621,7 +663,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .riw-inspect-wrap, .riw-inspect, .riw-skeleton { animation-duration: .001ms; animation-iteration-count: 1; }
+  .riw-inspect-wrap, .riw-inspect, .riw-skeleton, .riw-chip { animation-duration: .001ms; animation-iteration-count: 1; }
+  .riw-chip:hover { transform: none; }
 }
 
 /* Uzun takim adlari skor bandini iki satira itiyordu ("HEBC Hamburg",

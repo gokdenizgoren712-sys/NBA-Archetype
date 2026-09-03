@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, NavLink, useParams, useNavigate } from "react-router-dom";
 import {
   Home, Compass, Activity as ActivityIcon, List as ListIcon, CircleUserRound,
-  Smartphone, Star, X, ChevronLeft, ChevronRight, FileText, Plus, Search,
+  Smartphone, Star, X, Minus, ChevronLeft, ChevronRight, FileText, Plus, Search,
   SlidersHorizontal, MessageSquare, Award, Eye, EyeOff,
 } from "lucide-react";
 import { SEO } from "../../hooks/useSEO";
@@ -45,6 +45,14 @@ function toCard(m) {
     time: when.time,
     startsAt: m.starts_at,
     stage: m.stage,
+    // Üçü de eksikti — API zaten gönderiyordu (_match_dict), toCard hiç
+    // okumuyordu. Sonuç: her kartın ayak satırı, gerçekten hiçbir bilgisi
+    // olmasa bile tarihi ÜÇÜNCÜ kez tekrarlıyordu (üstte tam tarih, ortada
+    // tekrar tam tarih, altta yine tam tarih) — yayın/tur bilgisi olsaydı
+    // hiç kullanılmıyordu.
+    broadcaster: m.broadcaster,
+    editorial: !!m.editorial,
+    dominantTag: m.dominant_tag,
     // crest_url sunucunun alan adı; kart bileşeni ikisini de kabul ediyor ama
     // burada doğru adı geçirmek tek gerçek kaynağı korur.
     home: { name: m.home?.name, short: m.home?.short_name || m.home?.short, color: m.home?.color, crest_url: m.home?.crest_url },
@@ -347,7 +355,7 @@ function HomeView({ onOpenMatch }) {
 
 /* ── Denetçi ──────────────────────────────────────────────────────────────── */
 
-function Inspector({ id, onClose, onLogged }) {
+function Inspector({ id, minimized, onClose, onMinimize, onRestore, onLogged }) {
   const { isLoggedIn } = useAuth();
   const [detail, setDetail] = useState(null);
   const [err, setErr] = useState("");
@@ -370,10 +378,13 @@ function Inspector({ id, onClose, onLogged }) {
   }, [id]);
 
   useEffect(() => {
+    // Küçükken Escape'in kapatacak "aktif" bir diyalog yok — chip modal değil,
+    // arkasındaki sayfa tamamen kullanılabilir durumda.
+    if (minimized) return;
     const onKey = (e) => e.key === "Escape" && onClose();
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, [onClose, minimized]);
 
   // Kaydettikten sonra puanı değiştirince buton "Saved" olarak kalıyordu:
   // kullanıcı kaydedilmemiş bir değişikliği kaydedilmiş sanıp kapatıyordu.
@@ -388,11 +399,46 @@ function Inspector({ id, onClose, onLogged }) {
 
   const finished = detail?.status === "finished";
   const when = formatWhen(detail?.starts_at);
+
+  // Küçültülmüşken tam çekmece hiç DOM'da değil — sadece köşedeki taslak
+  // çipi. Bileşenin kendisi (ve içindeki rating/review state'i) mount'ta
+  // kalıyor, sadece BU dal render ediliyor; küçültüp büyütünce taslağın
+  // kaybolmaması bunun için şart.
+  if (minimized) {
+    const label = detail
+      ? `${detail.home?.short || detail.home?.name || "?"} vs ${detail.away?.short || detail.away?.name || "?"}`
+      : "Loading…";
+    return (
+      <div className="riw-chip" role="button" tabIndex={0} onClick={onRestore}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onRestore(); } }}
+        aria-label={`Resume rating ${label}`}>
+        {detail && (
+          <div className="riw-chip-crests">
+            <TeamMark team={detail.home} /><TeamMark team={detail.away} />
+          </div>
+        )}
+        <div className="riw-chip-copy">
+          <strong>{label}</strong>
+          <small>{rating > 0 ? `Draft · ${rating}★` : "Tap to resume"}</small>
+        </div>
+        <button type="button" className="riw-chip-close" aria-label="Discard and close"
+          onClick={(e) => { e.stopPropagation(); onClose(); }}><X size={13} /></button>
+      </div>
+    );
+  }
+
   return (
     <div className="riw-inspect-wrap" onClick={onClose}>
       <section className="riw-inspect" onClick={(e) => e.stopPropagation()}
         role="dialog" aria-modal="true" aria-label="Match">
-        <button onClick={onClose} className="ri-sheet-close" aria-label="Close"><X size={16} /></button>
+        <div className="ri-sheet-grab" aria-hidden="true" />
+        <div className="riw-sheet-actions">
+          {/* Outlook'un taslak penceresi gibi: kapatmak SİLMEK, küçültmek
+              ARA VERMEK. Puanlama yarım kalmışken kapatma tuşuna basmak
+              taslağı yok ediyordu — artık ikisi ayrı. */}
+          <button onClick={onMinimize} className="ri-sheet-close" aria-label="Minimize"><Minus size={16} /></button>
+          <button onClick={onClose} className="ri-sheet-close" aria-label="Close"><X size={16} /></button>
+        </div>
 
         {!detail && !err && (
           <p className="ri-entity-loading">Loading match…</p>
@@ -438,13 +484,42 @@ function Inspector({ id, onClose, onLogged }) {
                 <div className="riw-facts">
                   <div><span>KICK-OFF</span><strong>{when.full || "—"}</strong></div>
                   <div><span>COMPETITION</span><strong>{detail.competition || "—"}</strong></div>
-                  {detail.broadcaster && <div><span>BROADCAST</span><strong>{detail.broadcaster}</strong></div>}
+                  {/* Eskiden veri yoksa satır hiç basılmıyordu — sonuç: "yayın
+                      göremiyoruz" şikayeti, çünkü çoğu maçta broadcaster boş
+                      ve özellik hiç KEŞFEDİLEMİYORDU. Telefon boşken bile
+                      "pending" yazıyor; web artık aynısını yapıyor. */}
+                  <div><span>BROADCAST</span><strong>{detail.broadcaster || "Details pending"}</strong></div>
                   {detail.potm && (
                     <div><span>COMMUNITY POTM</span><strong>{detail.potm.name}</strong></div>
                   )}
                 </div>
                 {!finished && (
                   <p className="riw-quiet">This match has not been played yet.</p>
+                )}
+
+                {/* "Gerçek ilk 11 mi bilmiyoruz" — haklı: bu SEZON KADROSU,
+                    doğrulanmış maç kadrosu değil (CLAUDE.md'de kayıtlı bir
+                    kısıt). Telefon bunu hiç gizlemiyor, adı zaten "SEASON
+                    SQUADS" — burada da "Starting XI" YAZMIYORUZ, aynı dürüst
+                    etiket. */}
+                {!!detail.players?.length && (
+                  <div className="ri-squad-preview">
+                    <div className="ri-chip-title">SEASON SQUAD <span>{detail.players.length}</span></div>
+                    <div>
+                      {[detail.home, detail.away].map((team) => (
+                        <section key={team?.short || team?.name}>
+                          <header><TeamMark team={team} /><strong>{team?.short || team?.name}</strong></header>
+                          <div>
+                            {detail.players
+                              .filter((p) => p.team === (team?.short || team?.name))
+                              .map((p) => (
+                                <span key={p.id}>{p.shirt_no && <b>{p.shirt_no}</b>}{p.name}</span>
+                              ))}
+                          </div>
+                        </section>
+                      ))}
+                    </div>
+                  </div>
                 )}
               </>
             ) : (
@@ -565,6 +640,7 @@ function RankSheet({ onClose, onPick }) {
     <div className="riw-inspect-wrap" onClick={onClose}>
       <section className="riw-inspect riw-rank-sheet" onClick={(e) => e.stopPropagation()}
         role="dialog" aria-modal="true" aria-label="Rank a match">
+        <div className="ri-sheet-grab" aria-hidden="true" />
         <button onClick={onClose} className="ri-sheet-close" aria-label="Close"><X size={16} /></button>
 
         <h2 className="riw-rank-title">Rank a match</h2>
@@ -626,12 +702,11 @@ function useCatalog(filters) {
   return { ...state, more: () => setOffset((o) => o + 24), canLoadMore: state.matches.length < state.total };
 }
 
-function Catalog({ title, note, meta, tabs }) {
+function Catalog({ title, note, meta, tabs, onOpenMatch }) {
   const [sport, setSport] = useState("All");
   const [competition, setCompetition] = useState("All");
   const [season, setSeason] = useState("All");
   const [status, setStatus] = useState("All");
-  const [open, setOpen] = useState(null);
   const [filterOpen, setFilterOpen] = useState(false);
   const [hideScores, setHideScores] = useState(false);
 
@@ -739,15 +814,13 @@ function Catalog({ title, note, meta, tabs }) {
 
       <div className="riw-main solo">
         <Wall matches={matches} loading={loading} error={error} hideScores={hideScores}
-          onOpen={(m) => setOpen(m.id)}
+          onOpen={(m) => onOpenMatch(m.id)}
           empty={<Empty icon={Compass} title="Nothing matches those filters"
             note="Try a wider competition or season — the catalog covers two seasons." />} />
         {canLoadMore && !loading && (
           <button className="ri-load-more riw-more" onClick={more}>Load more</button>
         )}
       </div>
-
-      {open && <Inspector id={open} onClose={() => setOpen(null)} />}
     </>
   );
 }
@@ -756,13 +829,12 @@ function Catalog({ title, note, meta, tabs }) {
    TOPLULUK (başkalarının kayıtları ve yorumları) ve SENİN GÜNLÜĞÜN. Sayfanın
    adı "Activity" olmasına rağmen tek gösterdiği kendi kayıtlarındı; başka
    kimsenin yorumu web'de hiçbir yerde görünmüyordu. */
-function ActivityView() {
+function ActivityView({ onOpenMatch, refreshToken }) {
   const { isLoggedIn } = useAuth();
   const [tab, setTab] = useState("community");
   const [rows, setRows] = useState(null);
   const [feed, setFeed] = useState(null);
   const [err, setErr] = useState("");
-  const [open, setOpen] = useState(null);
 
   const load = useCallback(() => {
     if (!isLoggedIn) { setRows([]); return; }
@@ -770,7 +842,10 @@ function ActivityView() {
       .then((d) => setRows((d.entries || []).map(diaryToCard)))
       .catch((e) => { setErr(String(e.message || e)); setRows([]); });
   }, [isLoggedIn]);
-  useEffect(load, [load]);
+  // refreshToken: kökteki denetçi bir kayıt kaydettiğinde artıyor. Activity
+  // ekranda değilken de kaydedebilirsin (Home/Discover'dan) — mount olduğunda
+  // TEK seferlik `load` yetmiyordu, geri dönünce günlük bayat kalıyordu.
+  useEffect(load, [load, refreshToken]);
 
   useEffect(() => {
     let alive = true;
@@ -804,7 +879,7 @@ function ActivityView() {
         {tab === "community" ? (
           <div className="riw-review-list">
             {feed === null && <p className="ri-entity-loading">Loading…</p>}
-            {feed?.map((r) => <ReviewRow key={r.id} row={r} onOpen={setOpen} />)}
+            {feed?.map((r) => <ReviewRow key={r.id} row={r} onOpen={onOpenMatch} />)}
             {feed && !feed.length && (
               <Empty icon={MessageSquare} title="No public reviews yet"
                 note="Reviews members choose to make public show up here." />
@@ -812,7 +887,7 @@ function ActivityView() {
           </div>
         ) : (
           <Wall matches={rows || []} loading={rows === null} error={err}
-            onOpen={(m) => setOpen(m.id)}
+            onOpen={(m) => onOpenMatch(m.id)}
             empty={<Empty icon={ActivityIcon}
               title={isLoggedIn ? "No entries yet" : "Sign in to keep a diary"}
               note={isLoggedIn
@@ -820,7 +895,6 @@ function ActivityView() {
                 : "Your diary follows your Primary Arch account, so it is the same on the phone."} />} />
         )}
       </div>
-      {open && <Inspector id={open} onClose={() => setOpen(null)} onLogged={load} />}
     </>
   );
 }
@@ -947,7 +1021,23 @@ export default function RankItWeb({ section = "home" }) {
   const navigate = useNavigate();
   const [meta, setMeta] = useState(null);
   const [rankOpen, setRankOpen] = useState(false);
-  const [rankPick, setRankPick] = useState(null);
+
+  // Denetçi artık KÖKTE, tek örnek — Catalog/ActivityView/HomeView'ün her biri
+  // kendi "open" state'i ve kendi <Inspector>'ını taşıyordu. Küçültme özelliği
+  // (Outlook'un taslak penceresi gibi: küçült, başka bir sekmeye geç, köşede
+  // beklesin) bunu GEREKTİRİYOR — sayfa/sekme değişince state'i kaybeden bir
+  // denetçi küçültülemez, sadece kapanır. Bileşenin kendisi hep DOM'da kalıyor
+  // (minimized=true iken de) ki puanlama/yorum taslağı kaybolmasın.
+  const [inspectId, setInspectId] = useState(null);
+  const [inspectMinimized, setInspectMinimized] = useState(false);
+  // Bir kayıt kaydedildiğinde günlüğü tazelemesi gereken görünümler buna
+  // abone: hangi sekmede olursa olsun, artan sayaç yeniden çekmeyi tetikler.
+  const [logVersion, setLogVersion] = useState(0);
+
+  const openMatch = useCallback((id) => { setInspectId(id); setInspectMinimized(false); }, []);
+  const closeMatch = useCallback(() => { setInspectId(null); setInspectMinimized(false); }, []);
+  const minimizeMatch = useCallback(() => setInspectMinimized(true), []);
+  const restoreMatch = useCallback(() => setInspectMinimized(false), []);
 
   // Lists artık gezinme değil, Discover'ın ikinci sekmesi. /rankit/lists eski
   // bağlantıları kırmasın diye duruyor ve doğrudan o sekmeyi açıyor.
@@ -974,14 +1064,14 @@ export default function RankItWeb({ section = "home" }) {
 
   const discover = discoverTab === "lists"
     ? <Lists tabs={discoverTabs} />
-    : <Catalog meta={meta} title="Discover" tabs={discoverTabs}
+    : <Catalog meta={meta} title="Discover" tabs={discoverTabs} onOpenMatch={openMatch}
         note="Filter down to a competition, a season or a state of play." />;
 
   const body = {
-    home: <HomeView onOpenMatch={setRankPick} />,
+    home: <HomeView onOpenMatch={openMatch} />,
     discover,
     lists: discover,
-    activity: <ActivityView />,
+    activity: <ActivityView onOpenMatch={openMatch} refreshToken={logVersion} />,
     profile: <Profile />,
   }[section];
 
@@ -995,9 +1085,13 @@ export default function RankItWeb({ section = "home" }) {
 
       {rankOpen && (
         <RankSheet onClose={() => setRankOpen(false)}
-          onPick={(id) => { setRankOpen(false); setRankPick(id); }} />
+          onPick={(id) => { setRankOpen(false); openMatch(id); }} />
       )}
-      {rankPick && <Inspector id={rankPick} onClose={() => setRankPick(null)} />}
+      {inspectId && (
+        <Inspector id={inspectId} minimized={inspectMinimized}
+          onClose={closeMatch} onMinimize={minimizeMatch} onRestore={restoreMatch}
+          onLogged={() => setLogVersion((v) => v + 1)} />
+      )}
     </div>
   );
 }
