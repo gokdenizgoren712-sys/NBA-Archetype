@@ -59,6 +59,249 @@
         ],
         "createdAt": "2026-09-03T08:46:33.651Z",
         "reason": "RankIt gateway card's description is 11.5px to match the two sport-card descriptions it sits directly above (SportSelect.jsx inline fontSize:11.5). Moving only this one onto the ramp would break the visual consistency the card exists to create. The undocumented 11.5px step is pre-existing in the sibling cards. My own assessment, not user-confirmed."
+      },
+      {
+        "rule": "design-system-color",
+        "value": "*",
+        "files": [
+          "frontend/src/rankit/rankit.css"
+        ],
+        "createdAt": "2026-09-03T09:00:11.965Z",
+        "reason": "user decided RankIt is a separate design system with its own frontend/src/rankit/DESIGN.md (user: 'rankit icin ayri bir design.md yaz' / 'primaryarch'tan ayristiralim'). The detector reads only the root DESIGN.md sidecar, so every RankIt token reads as off-palette by construction. Scoped to the rankit subtree only; the root system stays enforced everywhere else."
+      },
+      {
+        "rule": "design-system-radius",
+        "value": "*",
+        "files": [
+          "frontend/src/rankit/rankit.css"
+        ],
+        "createdAt": "2026-09-03T09:00:12.074Z",
+        "reason": "user decided RankIt is a separate design system with its own frontend/src/rankit/DESIGN.md (user: 'rankit icin ayri bir design.md yaz' / 'primaryarch'tan ayristiralim'). The detector reads only the root DESIGN.md sidecar, so every RankIt token reads as off-palette by construction. Scoped to the rankit subtree only; the root system stays enforced everywhere else."
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "*",
+        "files": [
+          "frontend/src/rankit/rankit.css"
+        ],
+        "createdAt": "2026-09-03T09:00:12.180Z",
+        "reason": "user decided RankIt is a separate design system with its own frontend/src/rankit/DESIGN.md (user: 'rankit icin ayri bir design.md yaz' / 'primaryarch'tan ayristiralim'). The detector reads only the root DESIGN.md sidecar, so every RankIt token reads as off-palette by construction. Scoped to the rankit subtree only; the root system stays enforced everywhere else."
+      },
+      {
+        "rule": "design-system-color",
+        "value": "*",
+        "files": [
+          "frontend/src/rankit/rankit-next.css"
+        ],
+        "createdAt": "2026-09-03T09:00:12.281Z",
+        "reason": "user decided RankIt is a separate design system with its own frontend/src/rankit/DESIGN.md (user: 'rankit icin ayri bir design.md yaz' / 'primaryarch'tan ayristiralim'). The detector reads only the root DESIGN.md sidecar, so every RankIt token reads as off-palette by construction. Scoped to the rankit subtree only; the root system stays enforced everywhere else."
+      },
+      {
+        "rule": "design-system-radius",
+        "value": "*",
+        "files": [
+          "frontend/src/rankit/rankit-next.css"
+        ],
+        "createdAt": "2026-09-03T09:00:12.390Z",
+        "reason": "user decided RankIt is a separate design system with its own frontend/src/rankit/DESIGN.md (user: 'rankit icin ayri bir design.md yaz' / 'primaryarch'tan ayristiralim'). The detector reads only the root DESIGN.md sidecar, so every RankIt token reads as off-palette by construction. Scoped to the rankit subtree only; the root system stays enforced everywhere else."
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "*",
+        "files": [
+          "frontend/src/rankit/rankit-next.css"
+        ],
+        "createdAt": "2026-09-03T09:00:12.489Z",
+        "reason": "user decided RankIt is a separate design system with its own frontend/src/rankit/DESIGN.md (user: 'rankit icin ayri bir design.md yaz' / 'primaryarch'tan ayristiralim'). The detector reads only the root DESIGN.md sidecar, so every RankIt token reads as off-palette by construction. Scoped to the rankit subtree only; the root system stays enforced everywhere else."
+      },
+      {
+        "rule": "design-system-color",
+        "value": "*",
+        "files": [
+          "frontend/src/rankit/rankit-v030.css"
+        ],
+        "createdAt": "2026-09-03T09:00:12.589Z",
+        "reason": "user decided RankIt is a separate design system with its own frontend/src/rankit/DESIGN.md (user: 'rankit icin ayri bir design.md yaz' / 'primaryarch'tan ayristiralim'). The detector reads only the root DESIGN.md sidecar, so every RankIt token reads as off-palette by construction. Scoped to the rankit subtree only; the root system stays enforced everywhere else."
+      },
+      {
+        "rule": "design-system-radius",
+        "value": "*",
+        "files": [
+          "frontend/src/rankit/rankit-v030.css"
+        ],
+        "createdAt": "2026-09-03T09:00:12.701Z",
+        "reason": "user decided RankIt is a separate design system with its own frontend/src/rankit/DESIGN.md (user: 'rankit icin ayri bir design.md yaz' / 'primaryarch'tan ayristiralim'). The detector reads only the root DESIGN.md sidecar, so every RankIt token reads as off-palette by construction. Scoped to the rankit subtree only; the root system stays enforced everywhere else."
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "*",
+        "files": [
+          "frontend/src/rankit/rankit-v030.css"
+        ],
+        "createdAt": "2026-09-03T09:00:12.819Z",
+        "reason": "user decided RankIt is a separate design system with its own frontend/src/rankit/DESIGN.md (user: 'rankit icin ayri bir design.md yaz' / 'primaryarch'tan ayristiralim'). The detector reads only the root DESIGN.md sidecar, so every RankIt token reads as off-palette by construction. Scoped to the rankit subtree only; the root system stays enforced everywhere else."
+      },
+      {
+        "rule": "design-system-color",
+        "value": "*",
+        "files": [
+          "frontend/src/rankit/rankit-filter.css"
+        ],
+        "createdAt": "2026-09-03T09:00:12.933Z",
+        "reason": "user decided RankIt is a separate design system with its own frontend/src/rankit/DESIGN.md (user: 'rankit icin ayri bir design.md yaz' / 'primaryarch'tan ayristiralim'). The detector reads only the root DESIGN.md sidecar, so every RankIt token reads as off-palette by construction. Scoped to the rankit subtree only; the root system stays enforced everywhere else."
+      },
+      {
+        "rule": "design-system-radius",
+        "value": "*",
+        "files": [
+          "frontend/src/rankit/rankit-filter.css"
+        ],
+        "createdAt": "2026-09-03T09:00:13.043Z",
+        "reason": "user decided RankIt is a separate design system with its own frontend/src/rankit/DESIGN.md (user: 'rankit icin ayri bir design.md yaz' / 'primaryarch'tan ayristiralim'). The detector reads only the root DESIGN.md sidecar, so every RankIt token reads as off-palette by construction. Scoped to the rankit subtree only; the root system stays enforced everywhere else."
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "*",
+        "files": [
+          "frontend/src/rankit/rankit-filter.css"
+        ],
+        "createdAt": "2026-09-03T09:00:13.136Z",
+        "reason": "user decided RankIt is a separate design system with its own frontend/src/rankit/DESIGN.md (user: 'rankit icin ayri bir design.md yaz' / 'primaryarch'tan ayristiralim'). The detector reads only the root DESIGN.md sidecar, so every RankIt token reads as off-palette by construction. Scoped to the rankit subtree only; the root system stays enforced everywhere else."
+      },
+      {
+        "rule": "design-system-color",
+        "value": "*",
+        "files": [
+          "frontend/src/rankit/rankit-mobile.css"
+        ],
+        "createdAt": "2026-09-03T09:00:13.255Z",
+        "reason": "user decided RankIt is a separate design system with its own frontend/src/rankit/DESIGN.md (user: 'rankit icin ayri bir design.md yaz' / 'primaryarch'tan ayristiralim'). The detector reads only the root DESIGN.md sidecar, so every RankIt token reads as off-palette by construction. Scoped to the rankit subtree only; the root system stays enforced everywhere else."
+      },
+      {
+        "rule": "design-system-radius",
+        "value": "*",
+        "files": [
+          "frontend/src/rankit/rankit-mobile.css"
+        ],
+        "createdAt": "2026-09-03T09:00:13.364Z",
+        "reason": "user decided RankIt is a separate design system with its own frontend/src/rankit/DESIGN.md (user: 'rankit icin ayri bir design.md yaz' / 'primaryarch'tan ayristiralim'). The detector reads only the root DESIGN.md sidecar, so every RankIt token reads as off-palette by construction. Scoped to the rankit subtree only; the root system stays enforced everywhere else."
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "*",
+        "files": [
+          "frontend/src/rankit/rankit-mobile.css"
+        ],
+        "createdAt": "2026-09-03T09:00:13.474Z",
+        "reason": "user decided RankIt is a separate design system with its own frontend/src/rankit/DESIGN.md (user: 'rankit icin ayri bir design.md yaz' / 'primaryarch'tan ayristiralim'). The detector reads only the root DESIGN.md sidecar, so every RankIt token reads as off-palette by construction. Scoped to the rankit subtree only; the root system stays enforced everywhere else."
+      },
+      {
+        "rule": "design-system-color",
+        "value": "*",
+        "files": [
+          "frontend/src/rankit/rankit-motion.css"
+        ],
+        "createdAt": "2026-09-03T09:00:13.592Z",
+        "reason": "user decided RankIt is a separate design system with its own frontend/src/rankit/DESIGN.md (user: 'rankit icin ayri bir design.md yaz' / 'primaryarch'tan ayristiralim'). The detector reads only the root DESIGN.md sidecar, so every RankIt token reads as off-palette by construction. Scoped to the rankit subtree only; the root system stays enforced everywhere else."
+      },
+      {
+        "rule": "design-system-radius",
+        "value": "*",
+        "files": [
+          "frontend/src/rankit/rankit-motion.css"
+        ],
+        "createdAt": "2026-09-03T09:00:13.699Z",
+        "reason": "user decided RankIt is a separate design system with its own frontend/src/rankit/DESIGN.md (user: 'rankit icin ayri bir design.md yaz' / 'primaryarch'tan ayristiralim'). The detector reads only the root DESIGN.md sidecar, so every RankIt token reads as off-palette by construction. Scoped to the rankit subtree only; the root system stays enforced everywhere else."
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "*",
+        "files": [
+          "frontend/src/rankit/rankit-motion.css"
+        ],
+        "createdAt": "2026-09-03T09:00:13.818Z",
+        "reason": "user decided RankIt is a separate design system with its own frontend/src/rankit/DESIGN.md (user: 'rankit icin ayri bir design.md yaz' / 'primaryarch'tan ayristiralim'). The detector reads only the root DESIGN.md sidecar, so every RankIt token reads as off-palette by construction. Scoped to the rankit subtree only; the root system stays enforced everywhere else."
+      },
+      {
+        "rule": "design-system-color",
+        "value": "*",
+        "files": [
+          "frontend/src/rankit/web/rankit-web.css"
+        ],
+        "createdAt": "2026-09-03T09:00:13.926Z",
+        "reason": "user decided RankIt is a separate design system with its own frontend/src/rankit/DESIGN.md (user: 'rankit icin ayri bir design.md yaz' / 'primaryarch'tan ayristiralim'). The detector reads only the root DESIGN.md sidecar, so every RankIt token reads as off-palette by construction. Scoped to the rankit subtree only; the root system stays enforced everywhere else."
+      },
+      {
+        "rule": "design-system-radius",
+        "value": "*",
+        "files": [
+          "frontend/src/rankit/web/rankit-web.css"
+        ],
+        "createdAt": "2026-09-03T09:00:14.044Z",
+        "reason": "user decided RankIt is a separate design system with its own frontend/src/rankit/DESIGN.md (user: 'rankit icin ayri bir design.md yaz' / 'primaryarch'tan ayristiralim'). The detector reads only the root DESIGN.md sidecar, so every RankIt token reads as off-palette by construction. Scoped to the rankit subtree only; the root system stays enforced everywhere else."
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "*",
+        "files": [
+          "frontend/src/rankit/web/rankit-web.css"
+        ],
+        "createdAt": "2026-09-03T09:00:14.150Z",
+        "reason": "user decided RankIt is a separate design system with its own frontend/src/rankit/DESIGN.md (user: 'rankit icin ayri bir design.md yaz' / 'primaryarch'tan ayristiralim'). The detector reads only the root DESIGN.md sidecar, so every RankIt token reads as off-palette by construction. Scoped to the rankit subtree only; the root system stays enforced everywhere else."
+      },
+      {
+        "rule": "design-system-color",
+        "value": "*",
+        "files": [
+          "frontend/src/rankit/web/cards.jsx"
+        ],
+        "createdAt": "2026-09-03T09:00:14.258Z",
+        "reason": "user decided RankIt is a separate design system with its own frontend/src/rankit/DESIGN.md (user: 'rankit icin ayri bir design.md yaz' / 'primaryarch'tan ayristiralim'). The detector reads only the root DESIGN.md sidecar, so every RankIt token reads as off-palette by construction. Scoped to the rankit subtree only; the root system stays enforced everywhere else."
+      },
+      {
+        "rule": "design-system-radius",
+        "value": "*",
+        "files": [
+          "frontend/src/rankit/web/cards.jsx"
+        ],
+        "createdAt": "2026-09-03T09:00:14.364Z",
+        "reason": "user decided RankIt is a separate design system with its own frontend/src/rankit/DESIGN.md (user: 'rankit icin ayri bir design.md yaz' / 'primaryarch'tan ayristiralim'). The detector reads only the root DESIGN.md sidecar, so every RankIt token reads as off-palette by construction. Scoped to the rankit subtree only; the root system stays enforced everywhere else."
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "*",
+        "files": [
+          "frontend/src/rankit/web/cards.jsx"
+        ],
+        "createdAt": "2026-09-03T09:00:14.474Z",
+        "reason": "user decided RankIt is a separate design system with its own frontend/src/rankit/DESIGN.md (user: 'rankit icin ayri bir design.md yaz' / 'primaryarch'tan ayristiralim'). The detector reads only the root DESIGN.md sidecar, so every RankIt token reads as off-palette by construction. Scoped to the rankit subtree only; the root system stays enforced everywhere else."
+      },
+      {
+        "rule": "design-system-color",
+        "value": "*",
+        "files": [
+          "frontend/src/rankit/mockData.js"
+        ],
+        "createdAt": "2026-09-03T09:00:14.568Z",
+        "reason": "user decided RankIt is a separate design system with its own frontend/src/rankit/DESIGN.md (user: 'rankit icin ayri bir design.md yaz' / 'primaryarch'tan ayristiralim'). The detector reads only the root DESIGN.md sidecar, so every RankIt token reads as off-palette by construction. Scoped to the rankit subtree only; the root system stays enforced everywhere else."
+      },
+      {
+        "rule": "design-system-radius",
+        "value": "*",
+        "files": [
+          "frontend/src/rankit/mockData.js"
+        ],
+        "createdAt": "2026-09-03T09:00:14.685Z",
+        "reason": "user decided RankIt is a separate design system with its own frontend/src/rankit/DESIGN.md (user: 'rankit icin ayri bir design.md yaz' / 'primaryarch'tan ayristiralim'). The detector reads only the root DESIGN.md sidecar, so every RankIt token reads as off-palette by construction. Scoped to the rankit subtree only; the root system stays enforced everywhere else."
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "*",
+        "files": [
+          "frontend/src/rankit/mockData.js"
+        ],
+        "createdAt": "2026-09-03T09:00:14.794Z",
+        "reason": "user decided RankIt is a separate design system with its own frontend/src/rankit/DESIGN.md (user: 'rankit icin ayri bir design.md yaz' / 'primaryarch'tan ayristiralim'). The detector reads only the root DESIGN.md sidecar, so every RankIt token reads as off-palette by construction. Scoped to the rankit subtree only; the root system stays enforced everywhere else."
       }
     ]
   }

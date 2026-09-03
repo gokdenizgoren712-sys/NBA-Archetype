@@ -1,138 +1,672 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-09-03T00:00:00Z",
+  "generatedAt": "2026-09-03T08:58:59+00:00",
   "title": "Design System: Primary Arch",
   "extensions": {
     "colorMeta": {
-      "draft-card-foil": { "role": "primary", "displayName": "Draft Card Foil", "canonical": "#FFB11B" },
-      "foil-highlight": { "role": "primary", "displayName": "Foil Highlight", "canonical": "#ffe9b0" },
-      "pitch-teal": { "role": "secondary", "displayName": "Pitch Teal", "canonical": "#3FB08C" },
-      "logo-teal": { "role": "tertiary", "displayName": "Logo Teal", "canonical": "#00A3AF" },
-      "void-black": { "role": "neutral", "displayName": "Void Black", "canonical": "#0b0b0b" },
-      "card-stock": { "role": "neutral", "displayName": "Card Stock", "canonical": "#131313" },
-      "raised-panel": { "role": "neutral", "displayName": "Raised Panel", "canonical": "#1a1a1a" },
-      "hairline": { "role": "neutral", "displayName": "Hairline", "canonical": "#262626" },
-      "ink-primary": { "role": "neutral", "displayName": "Ink Primary", "canonical": "#e5e5e5" },
-      "ink-muted": { "role": "neutral", "displayName": "Ink Muted", "canonical": "#8a8a8a" },
-      "ink-faint": { "role": "neutral", "displayName": "Ink Faint", "canonical": "#3a3a3a" },
-      "nba-red": { "role": "utility", "displayName": "NBA Red", "canonical": "#c8102e" },
-      "nba-blue": { "role": "utility", "displayName": "NBA Blue", "canonical": "#1d428a" },
-      "danger": { "role": "utility", "displayName": "Danger", "canonical": "#f87171" },
-      "gleague-red": { "role": "utility", "displayName": "G-League Red", "canonical": "#A8263F" },
-      "ncaa-blue": { "role": "utility", "displayName": "NCAA Blue", "canonical": "#3D7EC9" },
-      "euroleague-orange": { "role": "utility", "displayName": "EuroLeague Orange", "canonical": "#FF6900" },
-      "arch-engine": { "role": "categorical", "displayName": "Engine", "canonical": "#fb923c" },
-      "arch-ecosystem": { "role": "categorical", "displayName": "Ecosystem", "canonical": "#4ade80" },
-      "arch-hub": { "role": "categorical", "displayName": "Hub", "canonical": "#2dd4bf" },
-      "arch-connector": { "role": "categorical", "displayName": "Connector", "canonical": "#c084fc" },
-      "arch-creator": { "role": "categorical", "displayName": "Creator", "canonical": "#fb7185" },
-      "arch-anchor": { "role": "categorical", "displayName": "Anchor", "canonical": "#60a5fa" },
-      "arch-spacer": { "role": "categorical", "displayName": "Spacer", "canonical": "#22d3ee" },
-      "arch-finisher": { "role": "categorical", "displayName": "Finisher", "canonical": "#a3e635" },
-      "arch-force": { "role": "categorical", "displayName": "Force", "canonical": "#f87171" },
-      "arch-initiator": { "role": "categorical", "displayName": "Initiator", "canonical": "#FFB11B" },
-      "arch-stopper": { "role": "categorical", "displayName": "Stopper", "canonical": "#d1d5db" },
-      "arch-rim-runner": { "role": "categorical", "displayName": "Rim Runner", "canonical": "#34d399" },
-      "phase-gk": { "role": "categorical", "displayName": "Goalkeeper", "canonical": "#F2C14E" },
-      "phase-def": { "role": "categorical", "displayName": "Defence", "canonical": "#4C9BE8" },
-      "phase-mid": { "role": "categorical", "displayName": "Midfield", "canonical": "#3FB08C" },
-      "phase-fwd": { "role": "categorical", "displayName": "Attack", "canonical": "#E8654C" }
+      "draft-card-foil": {
+        "role": "primary",
+        "displayName": "Draft Card Foil",
+        "canonical": "#FFB11B",
+        "tonalRamp": [
+          "#4c3200",
+          "#875900",
+          "#c17f00",
+          "#fba500",
+          "#ffba37",
+          "#ffce71",
+          "#ffe2ab",
+          "#fff6e5"
+        ]
+      },
+      "foil-dim": {
+        "role": "primary",
+        "displayName": "Foil Dim",
+        "canonical": "rgba(255,177,27,0.12)"
+      },
+      "foil-border": {
+        "role": "primary",
+        "displayName": "Foil Border",
+        "canonical": "rgba(255,177,27,0.32)"
+      },
+      "foil-highlight": {
+        "role": "primary",
+        "displayName": "Foil Highlight",
+        "canonical": "#ffe9b0",
+        "tonalRamp": [
+          "#4c3700",
+          "#876100",
+          "#c18b00",
+          "#fbb500",
+          "#ffc737",
+          "#ffd771",
+          "#ffe8ab",
+          "#fff8e5"
+        ]
+      },
+      "pitch-teal": {
+        "role": "secondary",
+        "displayName": "Pitch Teal",
+        "canonical": "#3FB08C",
+        "tonalRamp": [
+          "#14382d",
+          "#24634f",
+          "#338e71",
+          "#42b993",
+          "#6bcaac",
+          "#96dac4",
+          "#c1e9dc",
+          "#ecf8f4"
+        ]
+      },
+      "logo-teal": {
+        "role": "tertiary",
+        "displayName": "Logo Teal",
+        "canonical": "#00A3AF",
+        "tonalRamp": [
+          "#00474c",
+          "#007e87",
+          "#00b4c1",
+          "#00eafb",
+          "#37f1ff",
+          "#71f5ff",
+          "#abf9ff",
+          "#e5fdff"
+        ]
+      },
+      "void-black": {
+        "role": "neutral",
+        "displayName": "Void Black",
+        "canonical": "#0b0b0b",
+        "tonalRamp": [
+          "#262626",
+          "#434343",
+          "#616161",
+          "#7e7e7e",
+          "#9b9b9b",
+          "#b8b8b8",
+          "#d5d5d5",
+          "#f2f2f2"
+        ]
+      },
+      "card-stock": {
+        "role": "neutral",
+        "displayName": "Card Stock",
+        "canonical": "#131313",
+        "tonalRamp": [
+          "#262626",
+          "#434343",
+          "#616161",
+          "#7e7e7e",
+          "#9b9b9b",
+          "#b8b8b8",
+          "#d5d5d5",
+          "#f2f2f2"
+        ]
+      },
+      "raised-panel": {
+        "role": "neutral",
+        "displayName": "Raised Panel",
+        "canonical": "#1a1a1a",
+        "tonalRamp": [
+          "#262626",
+          "#434343",
+          "#616161",
+          "#7e7e7e",
+          "#9b9b9b",
+          "#b8b8b8",
+          "#d5d5d5",
+          "#f2f2f2"
+        ]
+      },
+      "hairline": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "#262626",
+        "tonalRamp": [
+          "#262626",
+          "#434343",
+          "#616161",
+          "#7e7e7e",
+          "#9b9b9b",
+          "#b8b8b8",
+          "#d5d5d5",
+          "#f2f2f2"
+        ]
+      },
+      "ink-primary": {
+        "role": "neutral",
+        "displayName": "Ink Primary",
+        "canonical": "#e5e5e5",
+        "tonalRamp": [
+          "#262626",
+          "#434343",
+          "#616161",
+          "#7e7e7e",
+          "#9b9b9b",
+          "#b8b8b8",
+          "#d5d5d5",
+          "#f2f2f2"
+        ]
+      },
+      "ink-muted": {
+        "role": "neutral",
+        "displayName": "Ink Muted",
+        "canonical": "#8a8a8a",
+        "tonalRamp": [
+          "#262626",
+          "#434343",
+          "#616161",
+          "#7e7e7e",
+          "#9b9b9b",
+          "#b8b8b8",
+          "#d5d5d5",
+          "#f2f2f2"
+        ]
+      },
+      "ink-faint": {
+        "role": "neutral",
+        "displayName": "Ink Faint",
+        "canonical": "#3a3a3a",
+        "tonalRamp": [
+          "#262626",
+          "#434343",
+          "#616161",
+          "#7e7e7e",
+          "#9b9b9b",
+          "#b8b8b8",
+          "#d5d5d5",
+          "#f2f2f2"
+        ]
+      },
+      "nba-red": {
+        "role": "brand",
+        "displayName": "Nba Red",
+        "canonical": "#c8102e",
+        "tonalRamp": [
+          "#470610",
+          "#7d0a1d",
+          "#b30e29",
+          "#e91336",
+          "#f04561",
+          "#f47b8f",
+          "#f9b1bd",
+          "#fde7eb"
+        ]
+      },
+      "nba-blue": {
+        "role": "brand",
+        "displayName": "Nba Blue",
+        "canonical": "#1d428a",
+        "tonalRamp": [
+          "#0d1e3f",
+          "#17356f",
+          "#224ca0",
+          "#2c63d0",
+          "#5986dc",
+          "#8aa9e6",
+          "#baccf0",
+          "#eaf0fb"
+        ]
+      },
+      "danger": {
+        "role": "semantic",
+        "displayName": "Danger",
+        "canonical": "#f87171",
+        "tonalRamp": [
+          "#490404",
+          "#800606",
+          "#b80909",
+          "#f00c0c",
+          "#f64040",
+          "#f87878",
+          "#fbafaf",
+          "#fee7e7"
+        ]
+      },
+      "gleague-red": {
+        "role": "brand",
+        "displayName": "Gleague Red",
+        "canonical": "#A8263F",
+        "tonalRamp": [
+          "#3e0e17",
+          "#6e1929",
+          "#9d243b",
+          "#cd2e4d",
+          "#da5c74",
+          "#e58b9c",
+          "#f0bbc5",
+          "#faeaed"
+        ]
+      },
+      "ncaa-blue": {
+        "role": "brand",
+        "displayName": "Ncaa Blue",
+        "canonical": "#3D7EC9",
+        "tonalRamp": [
+          "#11253c",
+          "#1d4169",
+          "#2a5d97",
+          "#3779c5",
+          "#6297d3",
+          "#90b5e0",
+          "#bdd3ed",
+          "#ebf2f9"
+        ]
+      },
+      "euroleague-orange": {
+        "role": "brand",
+        "displayName": "Euroleague Orange",
+        "canonical": "#FF6900",
+        "tonalRamp": [
+          "#4c1f00",
+          "#873700",
+          "#c14f00",
+          "#fb6800",
+          "#ff8937",
+          "#ffab71",
+          "#ffceab",
+          "#fff0e5"
+        ]
+      },
+      "arch-engine": {
+        "role": "extended",
+        "displayName": "Arch Engine",
+        "canonical": "#fb923c",
+        "tonalRamp": [
+          "#4b2302",
+          "#843d03",
+          "#bd5704",
+          "#f67205",
+          "#fb913b",
+          "#fcb174",
+          "#fdd1ad",
+          "#fef1e6"
+        ]
+      },
+      "arch-ecosystem": {
+        "role": "extended",
+        "displayName": "Arch Ecosystem",
+        "canonical": "#4ade80",
+        "tonalRamp": [
+          "#0c411f",
+          "#157237",
+          "#1ea34e",
+          "#27d566",
+          "#56e088",
+          "#87e9ab",
+          "#b8f2cd",
+          "#e9fbf0"
+        ]
+      },
+      "arch-hub": {
+        "role": "extended",
+        "displayName": "Arch Hub",
+        "canonical": "#2dd4bf",
+        "tonalRamp": [
+          "#0d3f39",
+          "#177065",
+          "#21a090",
+          "#2bd1bc",
+          "#59ddcc",
+          "#89e7db",
+          "#b9f1ea",
+          "#eafbf9"
+        ]
+      },
+      "arch-connector": {
+        "role": "extended",
+        "displayName": "Arch Connector",
+        "canonical": "#c084fc",
+        "tonalRamp": [
+          "#26024b",
+          "#430384",
+          "#6105bc",
+          "#7e06f5",
+          "#9b3bfa",
+          "#b874fc",
+          "#d5adfd",
+          "#f2e6fe"
+        ]
+      },
+      "arch-creator": {
+        "role": "extended",
+        "displayName": "Arch Creator",
+        "canonical": "#fb7185",
+        "tonalRamp": [
+          "#4a020d",
+          "#830416",
+          "#bc0520",
+          "#f40729",
+          "#fa3c58",
+          "#fb7588",
+          "#fdaeb9",
+          "#fee6ea"
+        ]
+      },
+      "arch-anchor": {
+        "role": "extended",
+        "displayName": "Arch Anchor",
+        "canonical": "#60a5fa",
+        "tonalRamp": [
+          "#02234a",
+          "#043d83",
+          "#0657bb",
+          "#0871f4",
+          "#3d91f9",
+          "#75b1fb",
+          "#aed1fc",
+          "#e6f1fe"
+        ]
+      },
+      "arch-spacer": {
+        "role": "extended",
+        "displayName": "Arch Spacer",
+        "canonical": "#22d3ee",
+        "tonalRamp": [
+          "#053e47",
+          "#0a6e7d",
+          "#0e9db3",
+          "#12cde9",
+          "#45daf1",
+          "#7be5f5",
+          "#b1f0f9",
+          "#e7fafd"
+        ]
+      },
+      "arch-finisher": {
+        "role": "extended",
+        "displayName": "Arch Finisher",
+        "canonical": "#a3e635",
+        "tonalRamp": [
+          "#2d4408",
+          "#50780f",
+          "#73ac15",
+          "#95e01c",
+          "#aee94d",
+          "#c5ef81",
+          "#ddf6b4",
+          "#f5fce8"
+        ]
+      },
+      "arch-force": {
+        "role": "extended",
+        "displayName": "Arch Force",
+        "canonical": "#f87171",
+        "tonalRamp": [
+          "#490404",
+          "#800606",
+          "#b80909",
+          "#f00c0c",
+          "#f64040",
+          "#f87878",
+          "#fbafaf",
+          "#fee7e7"
+        ]
+      },
+      "arch-initiator": {
+        "role": "extended",
+        "displayName": "Arch Initiator",
+        "canonical": "#FFB11B",
+        "tonalRamp": [
+          "#4c3200",
+          "#875900",
+          "#c17f00",
+          "#fba500",
+          "#ffba37",
+          "#ffce71",
+          "#ffe2ab",
+          "#fff6e5"
+        ]
+      },
+      "arch-stopper": {
+        "role": "extended",
+        "displayName": "Arch Stopper",
+        "canonical": "#d1d5db",
+        "tonalRamp": [
+          "#22252b",
+          "#3b424c",
+          "#555e6c",
+          "#6e7b8d",
+          "#8f98a7",
+          "#afb6c1",
+          "#d0d4da",
+          "#f1f2f4"
+        ]
+      },
+      "arch-rim-runner": {
+        "role": "extended",
+        "displayName": "Arch Rim Runner",
+        "canonical": "#34d399",
+        "tonalRamp": [
+          "#0e3f2d",
+          "#186f4f",
+          "#229f71",
+          "#2dcf94",
+          "#5adbac",
+          "#8ae6c4",
+          "#baf0dc",
+          "#eafaf4"
+        ]
+      },
+      "phase-gk": {
+        "role": "extended",
+        "displayName": "Phase Gk",
+        "canonical": "#F2C14E",
+        "tonalRamp": [
+          "#473405",
+          "#7e5b09",
+          "#b4820d",
+          "#eaa911",
+          "#f1be44",
+          "#f5d17b",
+          "#f9e4b1",
+          "#fdf7e7"
+        ]
+      },
+      "phase-def": {
+        "role": "extended",
+        "displayName": "Phase Def",
+        "canonical": "#4C9BE8",
+        "tonalRamp": [
+          "#092744",
+          "#0f4477",
+          "#1661ab",
+          "#1d7fdf",
+          "#4d9ce8",
+          "#81b9ef",
+          "#b5d6f5",
+          "#e8f2fc"
+        ]
+      },
+      "phase-mid": {
+        "role": "extended",
+        "displayName": "Phase Mid",
+        "canonical": "#3FB08C",
+        "tonalRamp": [
+          "#14382d",
+          "#24634f",
+          "#338e71",
+          "#42b993",
+          "#6bcaac",
+          "#96dac4",
+          "#c1e9dc",
+          "#ecf8f4"
+        ]
+      },
+      "phase-fwd": {
+        "role": "extended",
+        "displayName": "Phase Fwd",
+        "canonical": "#E8654C",
+        "tonalRamp": [
+          "#441209",
+          "#77200f",
+          "#ab2e16",
+          "#df3c1d",
+          "#e8664d",
+          "#ef9381",
+          "#f5bfb5",
+          "#fcece8"
+        ]
+      }
     },
     "typographyMeta": {
-      "display": { "displayName": "Display", "purpose": "Game module dock/hero titles only — uppercase, loudest text in the system." },
-      "label": { "displayName": "Label", "purpose": "Eyebrows, column headers, badges — always uppercase, tracked out." },
-      "body": { "displayName": "Body", "purpose": "Stat values, descriptions, list rows — the volume-read layer." },
-      "loud-moment": { "displayName": "Loud Moment", "purpose": "The score-reveal grade letter only (.g-score-grade) — one payoff moment per flow, never reused as a heading size." }
+      "display": {
+        "displayName": "Display",
+        "purpose": "Card names, section titles, the wordmark - Rajdhani at its most assertive."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Page headings. The only step above display size."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Row and card titles inside dense surfaces."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Uppercase eyebrows, badges and meta. Tracking is load-bearing at this size."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Running prose - descriptions, help text, reviews. The one Outfit role."
+      },
+      "micro": {
+        "displayName": "Micro",
+        "purpose": "Dense table and stat text where body would not fit."
+      },
+      "loud-moment": {
+        "displayName": "Loud Moment",
+        "purpose": "The game module score hero. One per screen, never on a data page."
+      }
     },
     "shadows": [
-      { "name": "card-lift", "value": "0 24px 48px -18px rgba(0,0,0,0.8)", "purpose": "Under the trading card stage only — the one element that feels physically raised." },
-      { "name": "accent-glow", "value": "0 0 16px rgba(255,177,27,0.35)", "purpose": "Active/selected/CTA state glow at the accent color. Never a resting-state shadow." },
-      { "name": "modal-lift", "value": "0 30px 70px -20px rgba(0,0,0,0.85)", "purpose": "The third legitimate resting-shadow exception — true modal/overlay surfaces only, same physical logic as card-lift." }
+      {
+        "name": "card-lift",
+        "value": "0 24px 48px -18px rgba(0,0,0,.8)",
+        "purpose": "The trading card only, when it is meant to feel physically lifted off the table."
+      },
+      {
+        "name": "accent-glow",
+        "value": "0 0 16px rgba(255,177,27,.35)",
+        "purpose": "Tight glow directly under something currently glowing - buttons, selected tiles, active slots."
+      },
+      {
+        "name": "inset-highlight",
+        "value": "0 1px 0 rgba(255,255,255,.5) inset",
+        "purpose": "One-pixel top bevel on gold surfaces; reads as light catching a raised edge."
+      }
     ],
     "motion": [
-      { "name": "ease-standard", "value": "cubic-bezier(0.2, 0.7, 0.3, 1)", "purpose": "Hover lifts, tile selection, drawer slide — the system's default motion curve." },
-      { "name": "ease-snap", "value": "cubic-bezier(0.2, 0.8, 0.3, 1)", "purpose": "Expand/collapse transitions (search box growing, bar fills)." },
-      { "name": "shine-sweep", "value": "4.5s ease-in-out infinite", "purpose": "The one ambient looping animation allowed at rest, reserved for the primary CTA and the trading card's foil. Respects prefers-reduced-motion everywhere it's used." }
+      {
+        "name": "ease-card",
+        "value": "cubic-bezier(0.2,0.7,0.3,1)",
+        "purpose": "Card lift, tilt and deal. The house easing."
+      },
+      {
+        "name": "ease-deal",
+        "value": "cubic-bezier(0.16,1,0.3,1)",
+        "purpose": "Entrance of a dealt card (.aura-deal), 0.6s with a 90ms per-index stagger."
+      },
+      {
+        "name": "duration-state",
+        "value": "0.15s",
+        "purpose": "Hover and focus state changes on controls."
+      }
     ],
     "breakpoints": [
-      { "name": "mobile", "value": "768px" }
+      {
+        "name": "card-fold",
+        "value": "620px"
+      },
+      {
+        "name": "md",
+        "value": "768px"
+      },
+      {
+        "name": "wide",
+        "value": "1080px"
+      }
     ]
   },
   "components": [
     {
-      "name": "Primary Button",
+      "name": "Primary CTA",
       "kind": "button",
       "refersTo": "button-primary",
-      "description": "The one CTA style with ambient motion — gold foil gradient, dark ink text, continuous shine sweep.",
-      "html": "<button class=\"ds-btn-primary\">Calculate Fit</button>",
-      "css": ".ds-btn-primary { position: relative; overflow: hidden; display: inline-flex; align-items: center; justify-content: center; font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 13px; color: #14110a; background: linear-gradient(100deg, #ffe9b0, #FFB11B 55%, #ffe9b0 100%); padding: 9px 18px; border-radius: 10px; border: none; cursor: pointer; box-shadow: 0 0 16px rgba(255,177,27,0.35), 0 1px 0 rgba(255,255,255,0.5) inset; transition: transform 0.15s ease, box-shadow 0.15s ease; } .ds-btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(255,177,27,0.5), 0 1px 0 rgba(255,255,255,0.5) inset; } .ds-btn-primary:focus-visible { outline: 2px solid #fff; outline-offset: 2px; } .ds-btn-primary::after { content: ''; position: absolute; top: -60%; left: -30%; width: 40%; height: 220%; background: rgba(255,255,255,0.5); transform: rotate(20deg); animation: dsShineSweep 3.2s ease-in-out infinite; } @keyframes dsShineSweep { 0%, 30% { left: -30%; } 70%, 100% { left: 130%; } } @media (prefers-reduced-motion: reduce) { .ds-btn-primary::after { animation: none; } }"
+      "description": "The one gold call to action. Gold on every sport, football included.",
+      "html": "<button class=\"ds-cta\">RATE THIS MATCH</button>",
+      "css": ".ds-cta{display:inline-flex;align-items:center;justify-content:center;font-family:Rajdhani,ui-sans-serif,sans-serif;font-weight:700;font-size:13px;color:#14110a;background:linear-gradient(100deg,#ffe9b0,#FFB11B 55%,#ffe9b0 100%);padding:9px 18px;border-radius:8px;border:none;cursor:pointer;box-shadow:0 0 16px rgba(255,177,27,.35),0 1px 0 rgba(255,255,255,.5) inset;transition:transform .15s ease,box-shadow .15s ease}.ds-cta:hover{transform:translateY(-1px);box-shadow:0 0 22px rgba(255,177,27,.45),0 1px 0 rgba(255,255,255,.5) inset}.ds-cta:focus-visible{outline:2px solid #FFB11B;outline-offset:2px}"
     },
     {
-      "name": "Ghost Button",
-      "kind": "button",
+      "name": "Ghost Pill",
+      "kind": "chip",
       "refersTo": "button-ghost",
-      "description": "No resting box — background and color only appear on hover or when holding a value (.active).",
-      "html": "<button class=\"ds-btn-ghost active\">Sort by Value</button>",
-      "css": ".ds-btn-ghost { display: inline-flex; align-items: center; gap: 6px; background: transparent; border: none; border-radius: 999px; padding: 6px 12px; font-size: 13px; color: #8a8a8a; cursor: pointer; transition: background 0.2s, color 0.2s; } .ds-btn-ghost:hover { background: rgba(255,255,255,0.06); color: #e5e5e5; } .ds-btn-ghost.active { color: #FFB11B; } .ds-btn-ghost.active:hover { background: rgba(255,177,27,0.1); } .ds-btn-ghost:focus-visible { outline: 2px solid #FFB11B; outline-offset: 2px; }"
+      "description": "Quiet filter and toggle control. Gains the accent only when active.",
+      "html": "<button class=\"ds-pill\">All</button><button class=\"ds-pill ds-pill-on\">Football</button>",
+      "css": ".ds-pill{display:inline-flex;align-items:center;gap:6px;background:transparent;border:none;border-radius:999px;padding:6px 12px;font-size:13px;color:#8a8a8a;cursor:pointer;transition:background .2s,color .2s}.ds-pill:hover{background:rgba(255,255,255,.04);color:#e5e5e5}.ds-pill-on{color:#FFB11B}.ds-pill:focus-visible{outline:2px solid #FFB11B;outline-offset:2px}"
+    },
+    {
+      "name": "Glass Panel",
+      "kind": "card",
+      "refersTo": "card-surface",
+      "description": "The flattened card face: every panel, dock and tile in the app.",
+      "html": "<div class=\"ds-panel\"><strong>Panel</strong></div>",
+      "css": ".ds-panel{background:rgba(19,19,19,.62);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.07);border-radius:17px;padding:14px 18px;color:#e5e5e5;font-family:Outfit,ui-sans-serif,sans-serif;font-size:13px}"
     },
     {
       "name": "Ghost Select",
       "kind": "input",
       "refersTo": "select-ghost",
-      "description": "Invisible until hover/focus; gold text signals a non-default value is selected.",
-      "html": "<div class=\"ds-select-wrap\"><select class=\"ds-select accent\"><option>2025-26</option></select></div>",
-      "css": ".ds-select-wrap { position: relative; display: inline-flex; align-items: center; } .ds-select-wrap::after { content: ''; position: absolute; right: 7px; top: 50%; width: 6px; height: 6px; border-right: 1.5px solid #3a3a3a; border-bottom: 1.5px solid #3a3a3a; transform: translateY(-65%) rotate(45deg); pointer-events: none; } .ds-select { appearance: none; background: transparent; border: none; outline: none; color: #e5e5e5; font-size: 13px; padding: 6px 22px 6px 8px; border-radius: 8px; cursor: pointer; transition: background 0.2s; } .ds-select:hover, .ds-select:focus { background: rgba(255,255,255,0.06); } .ds-select.accent { color: #FFB11B; font-weight: 600; }"
+      "description": "Invisible until it has something to say - the house input rule.",
+      "html": "<select class=\"ds-select\"><option>All seasons</option></select>",
+      "css": ".ds-select{appearance:none;-webkit-appearance:none;background:transparent;border:none;outline:none;color:#e5e5e5;font-size:13px;padding:6px 22px 6px 8px;border-radius:8px;cursor:pointer;transition:background .2s}.ds-select:hover{background:rgba(255,255,255,.04)}.ds-select:focus-visible{outline:2px solid #FFB11B;outline-offset:2px}"
     },
     {
       "name": "Trading Card",
-      "kind": "card",
+      "kind": "custom",
       "refersTo": "card-surface",
-      "description": "The signature component: cut-corner notch, always-on holo stripe, skewed foil rating badge. Every other surface is a quieter descendant of this.",
-      "html": "<div class=\"ds-card\"><div class=\"ds-card-holo\"></div><div class=\"ds-card-top\"><span class=\"ds-card-rank\">#12</span><span class=\"ds-card-rating\">94</span></div><div class=\"ds-card-name\">J. Tatum</div></div>",
-      "css": ".ds-card { width: 220px; position: relative; border-radius: 17px; overflow: hidden; background: linear-gradient(160deg, #17151b 0%, #0c0b0e 55%, #14100a 100%); border: 1px solid #262626; clip-path: polygon(0 0, 100% 0, 100% calc(100% - 22px), calc(100% - 22px) 100%, 0 100%); } .ds-card-holo { position: absolute; inset: 0; pointer-events: none; mix-blend-mode: color-dodge; opacity: 0.16; background: repeating-linear-gradient(72deg, transparent 0 6px, #FFB11B 6px 8px, transparent 8px 16px, #fff 16px 17px, transparent 17px 26px); } .ds-card-top { position: relative; z-index: 2; display: flex; align-items: center; justify-content: space-between; padding: 12px 14px 8px; border-bottom: 1px solid rgba(255,255,255,0.08); } .ds-card-rank { font-family: 'Rajdhani', sans-serif; font-size: 13px; font-weight: 700; color: #FFB11B; } .ds-card-rating { font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 16px; color: #14110a; background: linear-gradient(100deg, #ffe9b0, #FFB11B 55%, #ffe9b0 100%); padding: 2px 9px; border-radius: 3px; transform: skewX(-8deg); box-shadow: 0 0 10px rgba(255,177,27,0.4), 0 1px 0 rgba(255,255,255,0.5) inset; } .ds-card-name { position: relative; z-index: 2; padding: 10px 14px 14px; font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 17px; color: #e5e5e5; }"
-    },
-    {
-      "name": "Panel",
-      "kind": "card",
-      "refersTo": "card-surface",
-      "description": "The game module's base surface — same gradient/bevel language as the trading card, quieter, no notch.",
-      "html": "<div class=\"ds-panel\"><div class=\"ds-panel-label\">Draft Process</div><div class=\"ds-panel-body\">Pick nine players across any era.</div></div>",
-      "css": ".ds-panel { position: relative; border-radius: 18px; overflow: hidden; padding: 15px; background: linear-gradient(160deg, #17151b 0%, #0c0b0e 55%, #14100a 100%); border: 1px solid #262626; } .ds-panel-label { font-family: 'Rajdhani', sans-serif; font-size: 9.5px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #8b857e; display: flex; align-items: center; gap: 7px; margin-bottom: 8px; } .ds-panel-label::before { content: ''; width: 14px; height: 1px; background: #FFB11B; opacity: 0.7; } .ds-panel-body { font-family: 'Outfit', sans-serif; font-size: 13px; color: #b4afa8; line-height: 1.5; }"
+      "description": "The signature object. Cut corner, foil bevel and holo stripe belong to this and nothing else.",
+      "html": "<div class=\"ds-card\"><span class=\"ds-card-badge\">LIVE</span><div class=\"ds-card-name\">Basketball</div></div>",
+      "css": ".ds-card{position:relative;width:200px;height:150px;border-radius:17px;background:linear-gradient(160deg,#17151b 0%,#0c0b0e 55%,#14100a 100%);border:1px solid #262626;clip-path:polygon(0 0,100% 0,100% calc(100% - 22px),calc(100% - 22px) 100%,0 100%);overflow:hidden;box-shadow:0 24px 48px -18px rgba(0,0,0,.8)}.ds-card::after{content:\"\";position:absolute;inset:0;background:repeating-linear-gradient(68deg,transparent 0 8px,rgba(255,255,255,.10) 8px 9px,transparent 9px 20px);mix-blend-mode:screen;pointer-events:none}.ds-card-badge{position:absolute;top:10px;left:12px;font-family:Rajdhani,ui-sans-serif,sans-serif;font-weight:700;font-size:9.5px;letter-spacing:.14em;color:#FFB11B}.ds-card-name{position:absolute;left:14px;right:14px;bottom:16px;padding:8px 10px;text-align:center;background:rgba(0,0,0,.68);border-top:1px solid rgba(255,177,27,.32);border-bottom:1px solid rgba(255,177,27,.32);transform:rotate(-.6deg);font-family:Rajdhani,ui-sans-serif,sans-serif;font-weight:700;font-size:15px;color:#e5e5e5}"
     }
   ],
   "narrative": {
     "northStar": "The Scout's Card Binder",
-    "overview": "Primary Arch is a scout's binder of graded player cards, not a stats terminal and not an arcade. A binder has two states, and both are correct: most of the time you're flipping fast through quiet reference pages — dense rows, muted ink, no ceremony, built for a scout who reads a hundred lines a minute. Then you pull one card out to look at it properly, and it's a real object — foil, holo stripe, a bevel of light tracing the cut corner, a rating badge that catches the light. The binder metaphor is what makes both states belong to the same object instead of reading as two different apps: the card is always the same card, only the light changes.",
+    "overview": "Primary Arch is a scout's binder of graded player cards, not a stats terminal and not an arcade. A binder has two states, and both are correct: most of the time you're flipping fast through quiet reference pages — dense rows, muted ink, no ceremony, built for a scout who reads a hundred lines a minute. Then you pull one card out to look at it properly, and it's a real object — foil, holo stripe, a bevel of light tracing the cut corner, a rating badge that catches the light. The binder metaphor is what makes both states belong to the same object instead of reading as two different apps: **the card is always the same card, only the light changes.** Confirmed visual rejections: no light theme (the binder is read in a dim room, on purpose — see Elevation & Depth); no gradient-clipped text anywhere, including the game module's own headings (a generic AI-generated-UI tell, and the card foil/holo system already carries the \"shine\" job — a second gradient on the type on top of it was redundant, not additive); no purple-to-blue hero gradients, no `rounded-lg` default-Tailwind sameness, no emoji-as-icon.",
     "keyCharacteristics": [
-      "One accent color, two energy levels — see The One Root Rule.",
-      "The trading card (holo, foil, cut corner, rating badge) is the signature object; every other surface is the same card face flattened out.",
-      "Dark-committed, not dark-mode-as-default — no light variant exists.",
-      "Ghost-until-interaction inputs: visibility is a state signal, not a permanent frame."
+      "One accent color, two energy levels — see \"The One Root Rule\" below.",
+      "The trading card (holo, foil, cut corner, rating badge) is the signature object; every other surface (panel, tile, dock, row) is the same card face flattened out.",
+      "Dark-committed, not dark-mode-as-default: `color-scheme: dark` is declared globally, there is no light variant to fall back to.",
+      "Ghost-until-interaction inputs: selects, search, and text fields carry no visible box at rest. A box appearing is itself a state signal (focus, hover, has-value)."
     ],
     "rules": [
-      { "name": "The One Root Rule", "body": "There is one color system, not two. Game surfaces re-declare a brighter text scale than data surfaces because a large glass card face needs it — never brighten data to match game, or dim game to match data.", "section": "colors" },
-      { "name": "The One Voice Rule", "body": "Gold is the only color that glows, animates, or gets a shine sweep. Pitch Teal gets full parity everywhere else but never shimmers.", "section": "colors" },
-      { "name": "The Uppercase-Means-Game Rule", "body": "Loud, tracked-out uppercase Rajdhani signals the game module. Data-page headlines stay sentence case even at bold weight.", "section": "typography" },
-      { "name": "The Flat-By-Default Rule", "body": "Nothing gets a shadow just for existing. Reserved for the trading card itself and actively-glowing accent states.", "section": "elevation" },
-      { "name": "The One Notch Rule", "body": "The cut-corner silhouette belongs to the trading card alone — reusing it elsewhere blurs the one shape a user should always recognize as 'that's a player.'", "section": "shapes" },
-      { "name": "The Ghost-Until-Earned Rule", "body": "Inputs with nothing to say (empty, unfocused, default) should be nearly invisible. Visibility is a signal the user has done something.", "section": "components" },
-      { "name": "The Loud-Moment Exception", "body": "The score-reveal grade letter and its container break the normal type/shape scale on purpose — the game's single biggest payoff moment. One per flow; don't reuse the 96px step elsewhere.", "section": "typography" }
+      {
+        "name": "The One Root Rule",
+        "body": "There is one color system, not two. The game module and the data pages share every token; what changes between them is *energy*, not *palette*. Game surfaces (`.g-panel`, `.g-dock`, `.g-tile`, `.g-score-hero`) re-declare `--text-primary/muted/faint` to a brighter scale (`#f2efea` / `#b4afa8` / `#8b857e`) because on a large glass card face the data register's near-invisible `--text-faint: #3a3a3a` reads as broken, not quiet. Data pages keep the quieter original scale on purpose — a dense stat table is read in bulk, not admired. Never brighten the data register globally to match the game, and never dim the game module to match the data register: each value is correct for its own surface.",
+        "section": "colors"
+      },
+      {
+        "name": "The One Voice Rule",
+        "body": "Gold is the only color that glows, animates, or gets a shine sweep. A second accent earning the same treatment (Pitch Teal getting a shine sweep, say) dilutes the signal that gold = \"this is the important thing.\" Pitch Teal gets full parity in every other respect (its own dock accent, its own tile palette) — it just doesn't shimmer.",
+        "section": "colors"
+      }
     ],
     "dos": [
-      "Do keep the trading card's cut-corner + holo + foil vocabulary exclusive to the card itself.",
-      "Do let game surfaces run brighter/louder than data surfaces — deliberate, not drift.",
-      "Do keep inputs invisible until they have something to say.",
-      "Do use var(--accent) for sport-conditional color and var(--yamabuki) only for always-gold elements.",
-      "Do respect prefers-reduced-motion on every ambient/looping animation.",
-      "Do keep the primary CTA gold everywhere, football included — CTA color is not sport-conditional.",
-      "Do keep football's comparison/reference surfaces (FootballCompare, FootballMap) in the quiet data register, matching basketball's Compare/Glossary."
+      "Do keep the trading card's cut-corner + holo + foil vocabulary exclusive to the card itself; other surfaces borrow the edge-bevel and blob-glow, not the notch or the holo stripe.",
+      "Do let game surfaces run brighter/louder (text scale, ornament, motion) than data surfaces — that's the deliberate \"two energy levels\" the whole system is built on, not drift to fix.",
+      "Do keep inputs invisible until they have something to say (focus, hover, value).",
+      "Do use `var(--accent)` for anything sport-conditional (basketball gold / football teal) and `var(--yamabuki)` only for things that must always read gold regardless of active sport (trophies, champion UI, brand wordmark).",
+      "Do respect `prefers-reduced-motion` on every ambient/looping animation (blob drift, shine sweep, sparkle) — already the pattern everywhere; keep it that way.",
+      "Do keep the primary CTA (`.aura-rating-btn`) gold everywhere, football included — confirmed 2026-09: CTA color is not sport-conditional, only secondary/decorative accents (nav, dock, tiles) swap to Pitch Teal. No teal CTA variant exists or should be added.",
+      "Do keep football's comparison/reference surfaces (`FootballCompare.jsx`, `FootballMap.jsx`) in the quiet data register, matching basketball's `Compare.jsx`/`Glossary.jsx` — confirmed 2026-09, converted from the loud game-module chrome (`g-dock`/`g-panel`/`g-tile`) they'd drifted onto."
     ],
     "donts": [
-      "Don't use gradient-clipped text anywhere, including for signature headings.",
-      "Don't put a resting box-shadow on anything but the trading card, an actively-glowing accent state, or a true modal/overlay.",
-      "Don't give a second color the gold accent's shine-sweep/glow treatment.",
-      "Don't brighten the data register's ink-faint to match the game module's, or dim the game module's to match data.",
-      "Don't reach for rounded-lg/generic Tailwind defaults, raw palette classes, or a thick single-side accent border as a substitute for the system's own tokens."
+      "Don't use gradient-clipped text anywhere, including for \"signature\" headings. Removed 2026-09 from the game module's own dock title — the card's foil/holo system already does the \"shine\" job; a gradient on top of type read as decorative rather than earned, the classic AI-slop tell.",
+      "Don't put a resting `box-shadow` on anything that isn't the trading card itself or an actively-glowing accent state.",
+      "Don't give a second color the gold accent's shine-sweep/glow treatment — one color glows, everyone else stays flat-and-tinted.",
+      "Don't brighten the data register's `--text-faint` to match the game module's, or dim the game module's to match data — they're deliberately different values for the same semantic slot, not an inconsistency to reconcile.",
+      "Don't reach for `rounded-lg`/generic Tailwind defaults, raw palette classes (`bg-blue-700`, `text-gray-400`), or a thick single-side accent border as a substitute for the system's own tokens and edge-bevel language."
     ]
   }
 }
