@@ -155,10 +155,22 @@ async function shareMatch(match, hideScores = false) {
 function MatchCard({ match, hideScores, onOpen, onOpenCompetition, featured = false }) {
   const finished = match.status === "finished";
   const live = match.status === "live";
-  return <article className={`ri-match-card${featured ? " featured" : ""}${match.instantClassic ? " instant" : ""}`} onClick={event => {
-    if (event.target.closest("button")) return;
-    onOpen(match);
-  }} style={{ "--home": match.home.color, "--away": match.away.color }}>
+  // role/tabIndex/onKeyDown eskiden yoktu — bu kart bir <article onClick>, ve
+  // telefon Capacitor uygulaması olarak da paketlendiği için erişilebilirlik
+  // servisi kullanan biri için tamamen erişilemezdi. Web'in kendi MatchCard'ı
+  // (cards.jsx) bunu zaten doğru yapıyordu; aynı deseni buraya taşıyoruz.
+  return <article className={`ri-match-card${featured ? " featured" : ""}${match.instantClassic ? " instant" : ""}`}
+    role="button" tabIndex={0}
+    aria-label={`${match.home.name || match.home.short} versus ${match.away.name || match.away.short}`}
+    onClick={event => {
+      if (event.target.closest("button")) return;
+      onOpen(match);
+    }}
+    onKeyDown={event => {
+      if (event.target.closest("button")) return;
+      if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onOpen(match); }
+    }}
+    style={{ "--home": match.home.color, "--away": match.away.color }}>
     <div className="ri-card-holo" />
     <div className="ri-match-top">
       {match.instantClassic ? <span>INSTANT CLASSIC</span> : <button type="button" disabled={!match.competition_id}

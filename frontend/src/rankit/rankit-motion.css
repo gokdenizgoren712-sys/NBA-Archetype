@@ -6,7 +6,6 @@
 @keyframes riShimmer{from{background-position:200% 0}to{background-position:-200% 0}}
 @keyframes riBackdropIn{from{opacity:0}to{opacity:1}}
 @keyframes riSheetIn{from{opacity:.35;transform:translate3d(0,42px,0) scale(.985)}to{opacity:1;transform:translate3d(0,0,0) scale(1)}}
-@keyframes riCardEnter{from{opacity:0;transform:translate3d(14px,0,0) scale(.985)}to{opacity:1;transform:translate3d(0,0,0) scale(1)}}
 @keyframes riToastLife{0%{opacity:0;transform:translate(-50%,12px) scale(.94)}12%,78%{opacity:1;transform:translate(-50%,0) scale(1)}100%{opacity:0;transform:translate(-50%,-7px) scale(.98)}}
 @keyframes riSpin{to{transform:rotate(360deg)}}
 @keyframes riPulse{0%,100%{opacity:.42}50%{opacity:1}}
@@ -21,12 +20,9 @@
 .ri-detail-sheet.is-dismissing,.ri-rank-sheet.is-dismissing{opacity:.35}
 .ri-sheet-drag-handle{touch-action:none;cursor:grab;padding:9px 44px;margin:-9px auto 3px;background-clip:content-box}
 .ri-sheet-drag-handle:active{cursor:grabbing}
-.ri-match-card{animation:riCardEnter .38s cubic-bezier(.2,.8,.25,1) both;transition:transform .18s ease,border-color .2s ease,box-shadow .2s ease;will-change:transform}
-.ri-card-stack .ri-match-card:nth-child(2),.ri-hero-carousel .ri-match-card:nth-child(2){animation-delay:45ms}
-.ri-card-stack .ri-match-card:nth-child(3),.ri-hero-carousel .ri-match-card:nth-child(3){animation-delay:90ms}
-.ri-card-stack .ri-match-card:nth-child(n+4){animation-delay:120ms}
-.ri-match-card:active{transform:scale(.982);box-shadow:0 8px 20px rgba(0,0,0,.3)}
-.ri-match-card:active .ri-team-mark{filter:brightness(1.08)}
+/* Giriş animasyonu, kademelenme ve basma tepkisi artık rankit.css'te —
+   web de yükler, tek kaynaktan iki yüzey. Burada tekrar tanımlamak DESIGN.md'nin
+   kendi yasakladığı şey: "aynı ri-* seçicisini ikinci bir dosyada tanımlama." */
 
 .rankit-app button,.rankit-app [role="button"]{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 .rankit-app button{transition:color .16s ease,background-color .16s ease,border-color .16s ease,opacity .16s ease,transform .13s ease,box-shadow .18s ease}
@@ -63,6 +59,6 @@
 .ri-hero-carousel,.ri-sport-scroll,.ri-tag-picker,.ri-respect-grid{scroll-behavior:smooth}
 
 @media(prefers-reduced-motion:reduce){
-  .rankit-app,.ri-tab-stage,.ri-sheet-wrap,.ri-detail-sheet,.ri-rank-sheet,.ri-match-card,.ri-action-toast,.ri-entity-loading,.ri-entity-loading:before,.ri-spin,.ri-auth-card,.ri-auth-brand svg,.ri-auth-loading svg{animation-duration:.001ms!important;animation-delay:0s!important;animation-iteration-count:1!important}
+  .rankit-app,.ri-tab-stage,.ri-sheet-wrap,.ri-detail-sheet,.ri-rank-sheet,.ri-action-toast,.ri-entity-loading,.ri-entity-loading:before,.ri-spin,.ri-auth-card,.ri-auth-brand svg,.ri-auth-loading svg,.ri-match-skeleton:after{animation-duration:.001ms!important;animation-delay:0s!important;animation-iteration-count:1!important}
   .rankit-app *{scroll-behavior:auto!important;transition-duration:.001ms!important}
 }

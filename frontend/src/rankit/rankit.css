@@ -12,7 +12,7 @@
 .ri-profile-head{display:flex;gap:15px;padding:25px 2px 18px;align-items:center}.ri-profile-avatar{width:74px;height:74px;border-radius:25px;display:grid;place-items:center;background:linear-gradient(145deg,#372c16,#121315);border:1px solid rgba(255,177,27,.3);font:800 25px var(--font-logo);color:var(--ri-gold);box-shadow:0 0 25px rgba(255,177,27,.1)}.ri-profile-head>div:last-child{flex:1}.ri-profile-head small{color:var(--ri-gold);font-size:9px}.ri-profile-head h1{font:700 27px var(--font-logo);margin:0}.ri-profile-head p{font-size:10px;color:#777;line-height:1.4;margin:3px 0}.ri-profile-stats{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--ri-line);border-radius:17px;margin-bottom:27px}.ri-profile-stats div{display:flex;flex-direction:column;align-items:center;padding:13px}.ri-profile-stats div+div{border-left:1px solid var(--ri-line)}.ri-profile-stats strong{font:700 18px var(--font-logo)}.ri-profile-stats span{font-size:8px;color:#666}.ri-favourites{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}.ri-favourites div{aspect-ratio:.72;border-radius:12px;background:linear-gradient(145deg,var(--fav-a),#151618 49%,var(--fav-b));display:flex;flex-direction:column;align-items:center;justify-content:center;border:1px solid var(--ri-line);font:800 11px var(--font-logo);box-shadow:inset 0 0 25px rgba(0,0,0,.45)}.ri-favourites b{font-size:8px;color:rgba(255,255,255,.4);margin:4px}.ri-profile-log{display:flex;align-items:center;gap:10px;border-top:1px solid var(--ri-line);padding:12px 1px}.ri-profile-log>strong{font:700 12px var(--font-logo);flex:1}
 @media(min-width:700px){.rankit-app{background:radial-gradient(ellipse at 50% 110%,rgba(255,177,27,.09),transparent 45%),#090a0b}.ri-main{padding-left:calc((100vw - 520px)/2);padding-right:calc((100vw - 520px)/2)}.ri-header{padding-left:calc((100vw - 520px)/2);padding-right:calc((100vw - 520px)/2)}.ri-bottom-nav{padding-left:calc((100vw - 520px)/2);padding-right:calc((100vw - 520px)/2)}}
 @media(max-width:370px){.ri-match-art{height:130px}.ri-score-band{grid-template-columns:1fr 66px 1fr}.ri-match-foot{font-size:8px}.ri-profile-head p{display:none}}
-@media(prefers-reduced-motion:reduce){.ri-classic.active{animation:none}}
+@media(prefers-reduced-motion:reduce){.ri-classic.active{animation:none}.ri-match-card{animation-duration:.001ms!important;animation-delay:0s!important;animation-iteration-count:1!important;transition-duration:.001ms!important}}
 
 /* RankIt iteration 2 — thumb-zone search + the agreed Match/Community split. */
 .ri-main{padding-bottom:76px}
@@ -38,6 +38,34 @@
 .ri-hero-carousel{display:grid;grid-auto-flow:column;grid-auto-columns:82%;gap:13px;overflow-x:auto;scroll-snap-type:x mandatory;overscroll-behavior-inline:contain;padding:1px 16% 14px 0;scrollbar-width:none}.ri-hero-carousel::-webkit-scrollbar{display:none}.ri-hero-carousel .ri-match-card{scroll-snap-align:start;min-height:438px;display:flex;flex-direction:column}.ri-hero-carousel .ri-match-art{height:278px;flex:1;grid-template-columns:.8fr 1.45fr .8fr}.ri-hero-carousel .ri-player-silhouette{width:112px;height:205px}.ri-hero-carousel .ri-player-no{font-size:148px;top:24px}.ri-hero-carousel .ri-potm{bottom:16px}.ri-hero-carousel .ri-potm strong{font-size:15px}.ri-hero-carousel .ri-team-mark{width:48px;height:48px;border-radius:15px 15px 18px 18px}.ri-hero-carousel .ri-score-band{min-height:70px;grid-template-columns:1fr 78px 1fr;padding:13px 10px}.ri-hero-carousel .ri-score{font-size:23px}.ri-hero-carousel .ri-match-foot{min-height:42px}.ri-hero-carousel .ri-versus strong{font-size:31px}.ri-hero-carousel .ri-versus small{font-size:7px}
 .ri-carousel-dots{height:24px;display:flex;justify-content:center;align-items:center;gap:5px}.ri-carousel-dots button{width:24px;height:24px;padding:0;border:0;background:none;display:grid;place-items:center;cursor:pointer}.ri-carousel-dots button::after{content:"";width:4px;height:4px;border-radius:999px;background:#343638;transition:width .2s,background .2s}.ri-carousel-dots button.active::after{width:13px;background:var(--ri-gold);box-shadow:0 0 7px rgba(255,177,27,.4)}
 .ri-match-card{clip-path:polygon(0 0,calc(100% - 15px) 0,100% 15px,100% 100%,15px 100%,0 calc(100% - 15px));border-radius:21px 0 21px 0}.ri-match-card:before,.ri-match-card:after{content:"";position:absolute;z-index:4;width:22px;height:1px;background:rgba(255,255,255,.16);pointer-events:none}.ri-match-card:before{right:-4px;top:7px;transform:rotate(45deg)}.ri-match-card:after{left:-4px;bottom:7px;transform:rotate(45deg)}.ri-match-card.instant{border-color:rgba(255,177,27,.42);box-shadow:0 14px 34px rgba(0,0,0,.3),0 0 18px rgba(255,177,27,.08)}.ri-match-card.instant:before,.ri-match-card.instant:after{background:rgba(255,177,27,.58);box-shadow:0 0 6px rgba(255,177,27,.35)}.ri-match-card.instant .ri-match-top>span:first-child{color:var(--ri-gold);letter-spacing:.13em}.ri-match-card.instant .ri-card-holo{opacity:.14}
+/* Kart etkileşimi — BURADA, iki yüzeyin de import ettiği tek dosyada.
+   Eskiden bu (giriş animasyonu, basma tepkisi) yalnızca rankit-motion.css'te
+   (telefon-özel) tanımlıydı; web o dosyayı hiç yüklemiyor, o yüzden web'de
+   `role="button" tabIndex={0}` taşıyan bir kartın hover/basma/focus'ta HİÇBİR
+   tepkisi yoktu — tamamen cansız duruyordu. Tek kaynağa taşındı ki "aynı kart,
+   sadece ışık değişir" ilkesi hareket için de geçerli olsun. */
+@keyframes riCardEnter{from{opacity:0;transform:translate3d(14px,0,0) scale(.985)}to{opacity:1;transform:translate3d(0,0,0) scale(1)}}
+/* fill-mode BOTH değil BACKWARDS: "both" bitişten sonra da transform'u kalıcı
+   tutuyor — animasyon katmanı normal :hover kuralından her zaman üstün olduğu
+   için hover/active'in transform'u hiç görünmüyordu (box-shadow/border-color
+   etkilendi, transform etkilenmedi — ölçülerek bulundu). "backwards" yalnızca
+   gecikme sırasında ilk kareyi (opacity:0) tutar, kademeli kartların "pop"
+   yapmasını önler; bitince transform'u normal cascade'e serbest bırakır —
+   bitiş karesi zaten transform:none ile aynı göründüğü için görünür bir
+   sıçrama olmuyor. */
+.ri-match-card{animation:riCardEnter .38s cubic-bezier(.2,.8,.25,1) backwards;transition:transform .16s cubic-bezier(.2,.7,.3,1),border-color .16s ease,box-shadow .16s ease;will-change:transform}
+.ri-match-card:hover{transform:translateY(-2px);box-shadow:0 18px 40px rgba(0,0,0,.36)}
+.ri-match-card:not(.instant):hover{border-color:rgba(255,177,27,.22)}
+.ri-match-card:focus-visible{outline:2px solid var(--ri-gold);outline-offset:2px}
+.ri-match-card:active{transition-duration:.1s;transform:translateY(-1px) scale(.985);box-shadow:0 10px 24px rgba(0,0,0,.32)}
+.ri-match-card:active .ri-team-mark{filter:brightness(1.08)}
+/* Yeni bir maç grubu bağlandığında ilk üç kart hafif kademelenir (45/90/120ms),
+   sonrası aynı gecikmede — dört kartlık bir sınır, düzinelerce kartın art arda
+   akmasını değil, tek bir grubun birlikte belirdiğini hissettirir. Hem telefon
+   (.ri-card-stack/.ri-hero-carousel) hem web (.riw-wall/.riw-carousel) konteynerleri. */
+.ri-card-stack .ri-match-card:nth-child(2),.ri-hero-carousel .ri-match-card:nth-child(2),.riw-wall .ri-match-card:nth-child(2),.riw-carousel .ri-match-card:nth-child(2){animation-delay:45ms}
+.ri-card-stack .ri-match-card:nth-child(3),.ri-hero-carousel .ri-match-card:nth-child(3),.riw-wall .ri-match-card:nth-child(3),.riw-carousel .ri-match-card:nth-child(3){animation-delay:90ms}
+.ri-card-stack .ri-match-card:nth-child(n+4),.ri-hero-carousel .ri-match-card:nth-child(n+4),.riw-wall .ri-match-card:nth-child(n+4),.riw-carousel .ri-match-card:nth-child(n+4){animation-delay:120ms}
 .ri-match-foot span:last-child{font:700 8px var(--font-logo);letter-spacing:.08em;text-transform:uppercase;color:#8a8d90}.ri-match-card.instant .ri-match-foot span:last-child{color:var(--ri-gold)}.ri-brand>svg{filter:drop-shadow(0 0 8px rgba(255,177,27,.16))}
 .ri-basket-score{display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:.86;gap:5px}.ri-basket-score b{font:800 21px var(--font-logo)}.ri-basket-score.detail{gap:3px}.ri-basket-score.detail b{font-size:18px}
 .ri-review-input{width:100%;resize:none;margin-top:14px;border:1px solid var(--ri-line);border-radius:13px;background:#0d0e10;color:#ddd;padding:11px 12px;outline:none;font:11px/1.5 var(--font-sans)}.ri-review-input:focus{border-color:rgba(255,177,27,.35);box-shadow:0 0 14px rgba(255,177,27,.06)}.ri-review-input::placeholder{color:#555}.ri-api-note{margin-top:10px;padding:7px 10px;border:1px solid rgba(255,177,27,.2);border-radius:10px;color:#8c7b57;background:rgba(255,177,27,.04);font-size:9px;text-align:center}
