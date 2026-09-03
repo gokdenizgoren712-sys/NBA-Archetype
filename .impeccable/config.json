@@ -50,6 +50,15 @@
         ],
         "createdAt": "2026-09-03T08:30:20.538Z",
         "reason": "L547 .pillar-bar-fill transition:width — small isolated stat-bar-fill, not full-layout animation; negligible reflow cost. Same pattern as game.css g-bar-fill/g-progress (already suppressed there, this entry was referenced but never actually added). Reviewed 2026-09 UI consistency pass, not user-confirmed, my own risk assessment."
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "11.5px",
+        "files": [
+          "frontend/src/pages/sport-select.css"
+        ],
+        "createdAt": "2026-09-03T08:46:33.651Z",
+        "reason": "RankIt gateway card's description is 11.5px to match the two sport-card descriptions it sits directly above (SportSelect.jsx inline fontSize:11.5). Moving only this one onto the ramp would break the visual consistency the card exists to create. The undocumented 11.5px step is pre-existing in the sibling cards. My own assessment, not user-confirmed."
       }
     ]
   }

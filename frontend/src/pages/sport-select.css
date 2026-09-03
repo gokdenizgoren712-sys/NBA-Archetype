@@ -43,7 +43,9 @@
   display: flex; align-items: center; justify-content: center;
   border-right: 1px solid var(--accent-line);
 }
-.rankit-gate .mode-emblem { width: 62px; height: 62px; border-radius: 19px; }
+/* 18px keyfi değil: temel emblem 84px/24px oranında (0.286), 62px'in
+   karşılığı 17.7 — ve 18px zaten belgelenmiş yarıçap adımı. */
+.rankit-gate .mode-emblem { width: 62px; height: 62px; border-radius: 18px; }
 
 .rankit-gate .pcard-h-body {
   position: relative; z-index: 3;
