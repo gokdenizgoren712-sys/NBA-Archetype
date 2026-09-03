@@ -24,7 +24,15 @@
   max-width: 100%;
   margin-bottom: 24px;
 }
-.rankit-gate .pcard.pcard-h {
+/* .pcard-stage EK sınıf olarak eklendi: game.css'teki `.pcard-stage.mode .pcard`
+   (0,3,0) ile bu kural (öncesinde de 0,3,0) TAM specificity beraberliğindeydi —
+   berabere olunca kazanan, hangi <link>'in DOM'da SONRA durduğuna bağlı kalıyordu.
+   Kaynakta sport-select.css game.css'ten SONRA import edilse de, Vite'ın
+   production'daki chunk/link sırası bunu garanti etmiyor (2026-09: gerçekte
+   game.css sonra geliyordu, width:260px kazanıyordu, kart 544px yerine
+   260px'te sıkışıp grid kolonları çöküyordu — primaryarch.net'te canlı
+   doğrulandı). Dördüncü sınıf bu belirsizliği ortadan kaldırıyor. */
+.pcard-stage.rankit-gate .pcard.pcard-h {
   width: 100%;
   display: grid;
   grid-template-columns: 116px 1fr auto;
