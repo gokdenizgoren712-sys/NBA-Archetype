@@ -101,6 +101,31 @@ def _match_team_name(raw: str, fixture_names: list[str]) -> str | None:
     return keyed[hit[0]] if hit else None
 
 
+def _short_label(raw: str | None, fallback: str, limit: int = 16) -> str:
+    """short_name generation. A provider-supplied short label is used as-is —
+    that's their editorial call. When none exists, the old fallback was
+    `fallback[:limit]`, which cuts mid-word: "Crystal Palace" -> "Crystal
+    Pala", "FC Milsami Orhei" -> "FC Milsami O", "Real Sociedad" -> "Real
+    Socieda". None of those overflow their card column, so the CSS ellipsis
+    meant to catch long names never engages — the mangled form ships as-is
+    and reads as a data glitch, not an abbreviation (confirmed live: 5 of 10
+    sampled Discover cards had a word-mangled short_name, 0 had a CSS-level
+    overflow). Cutting on the last word boundary inside the limit means
+    whatever a card shows is always a real word or phrase; a name still too
+    long for its column is still truncated, but by the single, visible
+    ellipsis in .ri-score-band's CSS, not silently in the data.
+    """
+    raw = (raw or "").strip()
+    if raw:
+        return raw
+    full = (fallback or "").strip()
+    if len(full) <= limit:
+        return full
+    cut = full[:limit]
+    boundary = cut.rfind(" ")
+    return cut[:boundary] if boundary > limit * 0.4 else cut
+
+
 def _competition(conn, sport: str, name: str, country: str, season: str) -> int:
     conn.execute("INSERT OR IGNORE INTO rankit_competitions(sport,name,country,season) VALUES(?,?,?,?)", (sport, name, country, season))
     return conn.execute("SELECT id FROM rankit_competitions WHERE sport=? AND name=? AND season=?", (sport, name, season)).fetchone()["id"]
@@ -217,7 +242,7 @@ def sync_euroleague(season: str) -> dict:
                 if not code or not name or code in team_ids:
                     continue
                 team_ids[code] = _team(conn, "Basketball", name,
-                                       str(club.get("abbreviatedName") or code)[:12], _color(name), "Europe")
+                                       _short_label(club.get("abbreviatedName"), code), _color(name), "Europe")
                 crest = ((club.get("images") or {}).get("crest") or "").strip()
                 if crest:
                     _team_logo(conn, team_ids[code], crest, "euroleague")
@@ -407,7 +432,7 @@ def sync_football(season: str) -> dict:
                 for side in (item.get("home") or {}, item.get("away") or {}):
                     name = side.get("name")
                     if name and name not in team_ids:
-                        short = (side.get("shortName") or name)[:12]
+                        short = _short_label(side.get("shortName"), name)
                         team_ids[name] = _team(conn, "Football", name, short, _color(name), country)
                         if side.get("id"):
                             _team_logo(conn, team_ids[name], f"https://images.fotmob.com/image_resources/logo/teamlogo/{side['id']}.png", "fotmob")

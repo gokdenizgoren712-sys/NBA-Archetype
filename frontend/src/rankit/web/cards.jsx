@@ -151,7 +151,10 @@ export function MatchCard({ match, onOpen, hideScores = false }) {
         {typeof match.myRating === "number" && match.myRating > 0 ? (
           <Stars value={match.myRating} compact />
         ) : (
-          <span style={{ fontSize: 9, color: "#5f6265" }}>
+          // #5f6265 ölçüldü: kartın gerçek zeminlerinde (card/app/web) 2.8-3.2:1 —
+          // AA'nın (4.5:1) epey altında. #7f868b (rankit/DESIGN.md'nin text-faint'i)
+          // aynı zeminlerde 4.66-5.36:1, hepsini geçiyor.
+          <span style={{ fontSize: 9, color: "#7f868b" }}>
             {finished ? "Not logged" : match.date}
           </span>
         )}
