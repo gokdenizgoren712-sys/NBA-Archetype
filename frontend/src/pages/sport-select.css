@@ -1,82 +1,116 @@
-/* ── Giriş ekranındaki RankIt şeridi ─────────────────────────────────────────
-   Spor kartları dikey "koleksiyon kartı" desenini kullanıyor. RankIt onların
-   kardeşi değil — ayrı bir ürün — o yüzden bilinçli olarak farklı bir biçim:
-   yatay, alçak, tek satır. Aynı desende üçüncü bir kart olsaydı "üçüncü spor"
-   gibi okunurdu. */
+/* ── Giriş ekranı: üç kapının hizası ─────────────────────────────────────────
+   Kartların kendisi PlayerCard.css + game.css'ten geliyor (pcard + .mode).
+   Burada yalnızca SATIR davranışı var — kartın içine karışmıyoruz.
 
-.rankit-strip {
-  width: min(100%, 664px);
-  margin: 0 auto 26px;
-  display: flex;
+   Çözülen sorun: meta satırı ("NBA · G-League · …" / "Premier League · La Liga
+   · Serie A · Bundesliga · Ligue 1") bir kartta tek, diğerinde iki satıra
+   düşüyordu. Kart yükseklikleri flex sayesinde eşitti ama İÇERİK kaymıştı:
+   ölçtüğümde ENTER satırları 15px farklı yükseklikteydi. Aynı satırdaki üç
+   kartın aynı yerinde aynı şey olmalı, yoksa göz hizasızlığı "bozuk" okur. */
+
+.sport-select-row {
+  align-items: stretch;
+}
+
+/* ── RankIt kapısı: yatay koleksiyon kartı ───────────────────────────────────
+   Aynı pcard malzemesi (holo, foil, grain, kesik köşe, isim bandı, rozet),
+   yatay dizilmiş. Genişlik iki spor kartı + aradaki boşlukla BİREBİR aynı
+   (260 + 24 + 260 = 544) — kenarlar hizalansın diye sabit değil, hesaplı. */
+
+/* Seçici `.pcard-stage.mode` ile aynı özgüllükte olmalı: game.css'teki
+   `.pcard-stage.mode{width:260px}` tek sınıflı bir kuralı eziyor. */
+.pcard-stage.mode.rankit-gate {
+  width: 544px;
+  max-width: 100%;
+  margin-bottom: 24px;
+}
+.rankit-gate .pcard.pcard-h {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 116px 1fr auto;
   align-items: center;
   gap: 16px;
-  padding: 15px 18px;
-  text-align: left;
-  border-radius: 18px;
-  border: 1px solid rgba(255, 177, 27, .22);
-  background:
-    linear-gradient(115deg, rgba(255, 177, 27, .10), transparent 42%),
-    var(--bg-elevated, #151618);
-  box-shadow: 0 14px 34px rgba(0, 0, 0, .3);
-  cursor: pointer;
-  transition: border-color .22s ease, transform .22s ease, box-shadow .22s ease;
+  padding: 14px 18px 14px 0;
+  /* Kesik köşe dikeyde 28px'ti; alçak bir kartta o oran köşeyi yiyor. */
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 18px), calc(100% - 18px) 100%, 0 100%);
 }
 
-.rankit-strip:hover,
-.rankit-strip:focus-visible {
-  border-color: rgba(255, 177, 27, .5);
-  transform: translateY(-2px);
-  box-shadow: 0 18px 40px rgba(0, 0, 0, .38), 0 0 26px rgba(255, 177, 27, .1);
+/* Emblem vitrini — dikey kartın .pcard-photo alanının yatay karşılığı. */
+.rankit-gate .pcard-h-photo {
+  position: relative;
+  height: 100%;
+  min-height: 104px;
+  display: flex; align-items: center; justify-content: center;
+  border-right: 1px solid var(--accent-line);
 }
+.rankit-gate .mode-emblem { width: 62px; height: 62px; border-radius: 19px; }
 
-.rankit-strip-mark {
-  flex: 0 0 46px;
-  height: 46px;
-  display: grid;
-  place-items: center;
-  border-radius: 14px;
-  background: rgba(255, 177, 27, .08);
-  border: 1px solid rgba(255, 177, 27, .26);
-}
-
-.rankit-strip-copy {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
+.rankit-gate .pcard-h-body {
+  position: relative; z-index: 3;
   min-width: 0;
+  display: flex; flex-direction: column; gap: 9px;
+}
+/* İsim bandı yatayda ortalanmaz — metin sola yaslı okunur. Kartın kendi
+   -0.6deg eğimi korunuyor: koleksiyon kartı hissi oradan geliyor. */
+.rankit-gate .pcard-nameband {
+  margin: 0; padding: 6px 12px;
+  text-align: left;
+  align-self: flex-start;
+}
+.rankit-gate .pcard-h-desc {
+  margin: 0;
+  font-size: 11.5px; line-height: 1.45;
+  color: var(--text-muted);
 }
 
-.rankit-strip-copy strong {
-  font: 700 19px/1 var(--font-logo);
-  letter-spacing: .06em;
-  color: #fff;
+.rankit-gate .pcard-h-go {
+  position: relative; z-index: 3;
+  display: flex; flex-direction: column; align-items: flex-end; gap: 10px;
+}
+.rankit-gate .pcard-h-go .pcard-rank.top { position: static; }
+.rankit-gate .pcard-h-go .pcard-peek { margin: 0; white-space: nowrap; }
+
+/* Dar ekranda yatay kart üç sütunu taşıyamaz: emblem üstte, metin altta. */
+@media (max-width: 620px) {
+  .rankit-gate .pcard.pcard-h {
+    grid-template-columns: 1fr;
+    padding: 0 0 14px;
+    justify-items: center;
+    text-align: center;
+    gap: 12px;
+  }
+  .rankit-gate .pcard-h-photo {
+    width: 100%; min-height: 96px;
+    border-right: 0; border-bottom: 1px solid var(--accent-line);
+  }
+  .rankit-gate .pcard-h-body { padding: 0 16px; align-items: center; }
+  .rankit-gate .pcard-nameband { align-self: center; text-align: center; }
+  .rankit-gate .pcard-h-go { align-items: center; }
 }
 
-/* Kontrast: bu boyutta --text-muted AA'yı geçmiyor, bir kademe açığı. */
-.rankit-strip-copy small {
-  font-size: 12px;
-  line-height: 1.45;
-  color: #9aa0a6;
-}
-
-.rankit-strip-go {
-  margin-left: auto;
-  flex-shrink: 0;
+/* İki satırlık meta'yı taban alıp tek satırlıkları da o yüksekliğe oturtuyoruz.
+   `min-height` seçildi (sabit `height` değil): üçüncü bir satıra düşen bir
+   lig listesi gelirse kart kırpmak yerine büyür. */
+.sport-select-row .pcard-meta {
+  min-height: 32px;
   display: flex;
   align-items: center;
-  gap: 6px;
-  font: 700 11px var(--font-logo);
-  letter-spacing: .14em;
-  text-transform: uppercase;
-  color: var(--yamabuki, #FFB11B);
+  justify-content: center;
 }
 
-@media (max-width: 560px) {
-  .rankit-strip { flex-wrap: wrap; gap: 12px; }
-  .rankit-strip-go { margin-left: 0; width: 100%; justify-content: flex-end; }
+/* Açıklama metni de aynı gerekçeyle: farklı uzunluktaki üç cümle ENTER
+   satırını üç ayrı yüksekliğe itiyordu. */
+.sport-select-row .pcard-stats.flat {
+  min-height: 76px;
+  display: flex;
+  align-items: center;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .rankit-strip { transition: none; }
-  .rankit-strip:hover, .rankit-strip:focus-visible { transform: none; }
+/* Kartlar dar ekranda alt alta düştüğünde eşitleme kuralları anlamını
+   yitiriyor — orada doğal yüksekliğe bırak. */
+@media (max-width: 620px) {
+  .sport-select-row .pcard-meta,
+  .sport-select-row .pcard-stats.flat {
+    min-height: 0;
+  }
 }

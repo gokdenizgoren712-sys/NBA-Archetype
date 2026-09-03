@@ -260,6 +260,29 @@ weight and no second border colour.
 
 ## Components
 
+**The horizontal collectible card.** RankIt's card runs *wide*, not tall. This is the
+one geometry that separates RankIt from Primary Arch, and the separation is deliberate:
+Basketball and Football are the stats-and-game side of the product, RankIt is the diary
+side. They must not read as three of the same thing, but they must not read as two
+different design systems either — so the material is shared and only the geometry differs.
+
+Everything that makes the Primary Arch card a collectible object is kept: the holo sheen,
+the foil and grain layers, the cut corner, the tilted nameband, the badge, the peek row.
+What changes is the axis — emblem panel on the left behind a hairline in the accent, name
+and copy in the middle, badge and call-to-action stacked at the right edge.
+
+Two rules make it work rather than merely exist:
+
+- **Match the width of what it sits beside.** The gateway card on the Primary Arch entry
+  screen is 544px because the two sport cards below it are 260 + 24 + 260. Edges flush on
+  both sides. The first version of this card was 664px against a 544px row and read as a
+  banner bolted onto the page — the misalignment *was* the problem, not the horizontality.
+- **Scale the cut corner to the height.** The vertical card cuts 28px; at 134px tall that
+  eats the corner. The horizontal card cuts 18px.
+
+Below 620px it folds to a single column — emblem above, copy below, everything centred —
+because three columns in a phone width is a row of slivers.
+
 **Match card.** The product's unit. Composition, top to bottom: competition strip · art
 region (crests + score, or the POTM silhouette on a finished match) · score band with team
 short names · footer with ratings/reviews. Club colours tint the card gradient. The art
