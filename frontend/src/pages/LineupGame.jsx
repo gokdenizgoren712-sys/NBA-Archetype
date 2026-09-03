@@ -213,7 +213,7 @@ function ScoreReveal({ fit, lineup, primaryCount, onReset, lang, affinityMatrix,
                   {saveStatus === "saving" ? "Saving…" : "Save"}
                 </button>
               </div>
-              {saveErr && <p className="text-xs text-red-400 mt-2">{saveErr}</p>}
+              {saveErr && <p className="text-xs text-[var(--danger)] mt-2">{saveErr}</p>}
             </>
           )}
         </div>
@@ -260,16 +260,16 @@ function ScoreReveal({ fit, lineup, primaryCount, onReset, lang, affinityMatrix,
           </div>
           {leaderboard.slice(0, 10).map((entry, i) => (
             <div key={i} className="flex items-center gap-2 text-[12.5px]">
-              <span className="text-gray-700 w-5 text-right shrink-0 font-mono">{i + 1}.</span>
-              <span className="text-gray-300 flex-1 truncate">{entry.username}</span>
+              <span className="text-[var(--text-faint)] w-5 text-right shrink-0 font-mono">{i + 1}.</span>
+              <span className="text-[var(--text-primary)] flex-1 truncate">{entry.username}</span>
               {entry.season_result === "THREEPEAT" && <span className="shrink-0 text-yamabuki" title="THREEPEAT — three straight simulated titles"><CrownIcon size={13} /></span>}
               {entry.season_result === "REPEAT" && <span className="shrink-0 text-yamabuki inline-flex" title="Back-to-back simulated champion"><TrophyIcon size={12} /><TrophyIcon size={12} /></span>}
               {entry.season_result === "CHAMPION" && <span className="shrink-0 text-yamabuki" title="Won a simulated championship"><TrophyIcon size={12} /></span>}
-              {entry.wins != null && <span className="text-gray-600 shrink-0 text-[10px]">{entry.wins}W</span>}
-              <span className={`font-bold shrink-0 ${entry.pct>=85?"text-blue-400":entry.pct>=78?"text-sky-300":entry.pct>=70?"text-emerald-400":entry.pct>=62?"text-yamabuki":"text-red-400"}`}>
+              {entry.wins != null && <span className="text-[var(--text-faint)] shrink-0 text-[10px]">{entry.wins}W</span>}
+              <span className={`font-bold shrink-0 ${entry.pct>=85?"text-blue-400":entry.pct>=78?"text-sky-300":entry.pct>=70?"text-emerald-400":entry.pct>=62?"text-yamabuki":"text-[var(--danger)]"}`}>
                 {entry.pct}
               </span>
-              <span className="text-gray-600 shrink-0 w-4">{entry.grade}</span>
+              <span className="text-[var(--text-faint)] shrink-0 w-4">{entry.grade}</span>
             </div>
           ))}
         </div>
@@ -946,9 +946,9 @@ export default function LineupGame() {
           sadece rozetlerin okunması kalıyor, o da rozetlerin göründüğü
           yerden — havuz başlığındaki ⓘ'den — açılıyor. */}
       <InfoModal open={modal==="tags"} onClose={()=>setModal(null)}
-        title={<span className="inline-flex items-center gap-2"><span className="text-gray-300"><TagIcon size={16} /></span> Player Tag Effects</span>}>
+        title={<span className="inline-flex items-center gap-2"><span className="text-[var(--text-primary)]"><TagIcon size={16} /></span> Player Tag Effects</span>}>
         <div className="space-y-2 max-h-[62vh] overflow-y-auto pr-1">
-          <p className="text-[11px] text-gray-500 leading-relaxed pb-1">
+          <p className="text-[11px] text-[var(--text-muted)] leading-relaxed pb-1">
             On player rows tags show as small colored initials. Here's what each means:
           </p>
           {TAG_INFO.map(t=>(
@@ -959,11 +959,11 @@ export default function LineupGame() {
                 style={{color:t.color,background:t.color+"22",border:`1px solid ${t.color}66`}}>{t.abbr}</span>
               <div className="min-w-0">
                 <div className="text-[13px] font-bold" style={{color:t.color}}>{t.label}</div>
-                <div className="text-xs text-gray-300 leading-relaxed mt-0.5">{t.desc}</div>
+                <div className="text-xs text-[var(--text-primary)] leading-relaxed mt-0.5">{t.desc}</div>
               </div>
             </div>
           ))}
-          <p className="text-[11px] text-gray-500 italic pt-1">
+          <p className="text-[11px] text-[var(--text-muted)] italic pt-1">
             Tags come from real award history (1983+) and live archetype data.
             Click a player to see their tags full-size with effects.
           </p>
@@ -1318,7 +1318,7 @@ export default function LineupGame() {
               {/* Rozet lejantı — TAG sütunundaki baş harflerin okunacağı yer */}
               <button onClick={()=>setModal("tags")} title="What the tag badges mean"
                 className="g-tile-info"
-                style={{position:"static",width:19,height:19,flexShrink:0,"--accent":"#f87171","--accent-line":"rgba(248,113,113,.45)"}}>
+                style={{position:"static",width:19,height:19,flexShrink:0,"--accent":"var(--danger)","--accent-line":"rgba(248,113,113,.45)"}}>
                 <InfoIcon size={11} />
               </button>
             </div>
@@ -1391,7 +1391,7 @@ export default function LineupGame() {
                     return (
                       <div key={k} className="text-center">
                         <div className="text-[13px] font-bold text-white tabular-nums">{disp}</div>
-                        <div className="text-[8.5px] uppercase tracking-wide text-gray-600">{l}</div>
+                        <div className="text-[8.5px] uppercase tracking-wide text-[var(--text-faint)]">{l}</div>
                       </div>
                     );
                   })}
@@ -1405,7 +1405,7 @@ export default function LineupGame() {
                 </div>
               </div>
               <button onClick={()=>{setPickedPlayer(null);setPhase("pick_player");}}
-                className="text-gray-600 hover:text-gray-300 text-xs shrink-0">← Back</button>
+                className="text-[var(--text-faint)] hover:text-[var(--text-primary)] text-xs shrink-0">← Back</button>
             </div>
             {/* Tag'ler büyütülmüş — tam ad + etkisi (oyuncuya tıklayınca ne olduğu net) */}
             {(()=>{ const tg=getPlayerTags(pickedPlayer); return tg.length>0&&(
@@ -1417,7 +1417,7 @@ export default function LineupGame() {
                       style={{color:t.color,background:t.color+"22",border:`1px solid ${t.color}66`}}>{t.abbr}</span>
                     <div className="min-w-0">
                       <div className="text-[11.5px] font-bold leading-tight" style={{color:t.color}}>{t.label}</div>
-                      <div className="text-[10.5px] text-gray-400 leading-snug">{t.detail}</div>
+                      <div className="text-[10.5px] text-[var(--text-muted)] leading-snug">{t.detail}</div>
                     </div>
                   </div>
                 ))}
@@ -1429,7 +1429,7 @@ export default function LineupGame() {
               <span>Pick a spot on the court or bench to place <span className="font-semibold">{pickedPlayer.PLAYER_NAME?.split(" ").slice(-1)[0]}</span></span>
             </div>
             <div className="lg:hidden">
-            <div className="text-xs text-gray-500 mb-2 inline-flex items-center gap-1 flex-wrap">
+            <div className="text-xs text-[var(--text-muted)] mb-2 inline-flex items-center gap-1 flex-wrap">
               <span>Which position? (</span><StarIcon size={10} /><span>= primary → chemistry bonus · secondary −10%{isFlex(pickedPlayer)?", next-nearest −10% (VERSATILE), rest −25%":", elsewhere −25%"})</span>
             </div>
             <div className="flex gap-2 flex-wrap">
@@ -1448,7 +1448,7 @@ export default function LineupGame() {
                         ? {color:"var(--text-primary)",background:"rgba(255,255,255,.04)",border:`1px solid ${pHex}44`}
                         : {color:"var(--text-faint)",background:"transparent",border:"1px dashed rgba(255,255,255,.12)"}}>
                     <div className="inline-flex items-center gap-1 justify-center">{pos}{isPrim&&<StarIcon size={11} />}</div>
-                    {penLabel&&<div className="text-[8.5px] font-medium" style={{color:"#f87171"}}>{penLabel}</div>}
+                    {penLabel&&<div className="text-[8.5px] font-medium" style={{color:"var(--danger)"}}>{penLabel}</div>}
                     {!penLabel&&!isPrim&&isFlex(pickedPlayer)&&<div className="text-[8.5px] font-medium" style={{color:"#c084fc"}}>vers.</div>}
                   </button>
                 );
@@ -1456,7 +1456,7 @@ export default function LineupGame() {
             </div>
             {BENCH_SLOTS.some(b=>!lineup[b])&&(
               <>
-                <div className="text-xs text-gray-500 mt-3 mb-2">
+                <div className="text-xs text-[var(--text-muted)] mt-3 mb-2">
                   Or send to the bench — no position penalty, but reduced minutes (~22% of the load)
                 </div>
                 <div className="flex gap-2">

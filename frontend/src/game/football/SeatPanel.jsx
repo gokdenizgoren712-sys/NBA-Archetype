@@ -78,7 +78,7 @@ export default function SeatPanel({ seat, active, name, shape, squad, slots, poo
             const ok = canPick(p);
             return (
               <button key={p.PLAYER_ID} onClick={() => onChoose(p)} disabled={!ok}
-                className="w-full text-left flex items-center gap-2 text-xs rounded-lg px-2.5 py-1.5"
+                className="w-full text-left flex items-center gap-2 text-xs rounded-[8px] px-2.5 py-1.5"
                 style={{ opacity: ok ? 1 : 0.32, cursor: ok ? "pointer" : "not-allowed",
                   background: "rgba(255,255,255,.022)",
                   border: `1px solid ${ok ? PHASE_COLOR[p.PHASE] + "44" : "var(--border)"}` }}>

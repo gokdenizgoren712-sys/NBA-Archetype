@@ -2,8 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { api } from "../../api";
 import { SEO } from "../../hooks/useSEO";
 import PlayerSearch from "../../game/football/PlayerSearch";
-import "../../game/game.css";
-import { ACCENT, PHASE_COLOR } from "../../game/football/theme";
+import { PHASE_COLOR } from "../../game/football/theme";
 
 // ── İki oyuncuyu karşılaştır — FAZ İÇİ ───────────────────────────────────────
 // Basketbol Compare'i herhangi iki oyuncuyu yan yana koyabiliyor, çünkü orada
@@ -124,36 +123,27 @@ export default function FootballCompare() {
       <SEO title="Football — Compare Players"
         description="Two players side by side on the roles that actually apply to them."
         path="/football/compare" noindex />
-      <div className="g-smoke" />
 
-      <div className="relative max-w-4xl mx-auto p-5 space-y-3">
-        {/* ── HEADER DOCK — Map sayfasıyla aynı iskelet ── */}
-        <div className="g-dock" style={{ "--accent": ACCENT, "--accent-line": ACCENT + "55" }}>
-          <span className="aura-blob" style={{ "--slot-color": ACCENT, left: -30, top: -70, width: 240, height: 150, opacity: 0.16 }} />
-
-          <div className="g-dock-left">
-            <h1 className="g-dock-title">Compare</h1>
-            <p className="g-dock-sub">Two players · same phase only</p>
+      <div className="p-4 md:p-6 max-w-4xl mx-auto space-y-4">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <h1 className="font-semibold text-base" style={{ color: "var(--text-primary)" }}>Compare</h1>
+            <p className="text-sm mt-0.5" style={{ color: "var(--text-muted)" }}>Two players · same phase only</p>
           </div>
-
-          <div className="g-dock-center" />
-
-          <div className="g-dock-right">
-            <div className="g-seg" style={{ "--accent": ACCENT, "--accent-a": ACCENT + "22", "--accent-line": ACCENT + "66" }}>
-              {[["/football/map", "Map"], ["/football/compare", "Compare"]].map(([to, l]) => (
-                <a key={to} href={to}
-                  className={`g-seg-btn${window.location.pathname === to ? " on" : ""}`}>{l}</a>
-              ))}
-            </div>
+          <div className="flex gap-1">
+            {[["/football/map", "Map"], ["/football/compare", "Compare"]].map(([to, l]) => (
+              <a key={to} href={to}
+                className={`aura-pill-btn${window.location.pathname === to ? " active" : ""}`}>{l}</a>
+            ))}
           </div>
         </div>
 
-        <p className="text-[12px]" style={{ color: "var(--text-muted)" }}>
+        <p className="text-sm" style={{ color: "var(--text-muted)" }}>
           Both players must come from the same phase — a keeper has no score on
           the attacking roles, so putting him next to a striker would compare nothing.
         </p>
 
-        <div className="g-panel p-4 space-y-3">
+        <div className="aura-glass rounded-[18px] p-4 space-y-3">
           <div className="flex gap-3 items-end">
             <div className="aura-select-wrap" style={{ minWidth: 120 }}>
               <select value={season} onChange={e => setSeason(e.target.value)}
@@ -175,15 +165,15 @@ export default function FootballCompare() {
 
         {(detA || detB) && (
           <>
-            <div className="g-panel p-4 grid gap-4"
+            <div className="aura-glass rounded-[18px] p-4 grid gap-4"
               style={{ gridTemplateColumns: "1fr auto 1fr", alignItems: "center" }}>
               {[detA, detB].map((p, i) => (
                 <div key={i} style={{ textAlign: i ? "right" : "left" }}>
-                  <div className="text-[15px] font-bold text-white">{p?.PLAYER_NAME || "—"}</div>
+                  <div className="text-[15px] font-bold" style={{ color: "var(--text-primary)" }}>{p?.PLAYER_NAME || "—"}</div>
                   <div className="text-[11px]" style={{ color: "var(--text-faint)" }}>
                     {p ? `${p.TEAM} · ${p.POSITION} · ${Math.round(p.MINUTES_TOTAL)}′` : ""}
                   </div>
-                  <div className="text-[12px] mt-0.5"
+                  <div className="text-sm mt-0.5"
                     style={{ color: i ? "#E8654C" : accent }}>{p?.primary_arch || ""}</div>
                   <div className="text-2xl font-bold mt-1"
                     style={{ color: i ? "#E8654C" : accent }}>
@@ -196,8 +186,8 @@ export default function FootballCompare() {
             </div>
 
             {archNames.length > 0 && (
-              <div className="g-panel p-4">
-                <div className="g-label mb-2">
+              <div className="aura-glass rounded-[18px] p-4">
+                <div className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: "var(--text-faint)" }}>
                   Archetype fit — {PHASE_LABEL[phase]}
                 </div>
                 <div className="flex justify-center">
@@ -206,15 +196,15 @@ export default function FootballCompare() {
               </div>
             )}
 
-            <div className="g-panel p-4">
-              <div className="g-label mb-2">Per 90</div>
+            <div className="aura-glass rounded-[18px] p-4">
+              <div className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: "var(--text-faint)" }}>Per 90</div>
               <div className="space-y-0.5">
                 {rows.map(([k, label]) => {
                   const va = detA?.[k], vb = detB?.[k];
                   const aWin = va != null && vb != null && va > vb;
                   const bWin = va != null && vb != null && vb > va;
                   return (
-                    <div key={k} className="flex items-center text-[12px] py-0.5"
+                    <div key={k} className="flex items-center text-sm py-0.5"
                       style={{ borderBottom: "1px solid var(--border)" }}>
                       <span style={{ flex: 1, textAlign: "right",
                                      color: aWin ? accent : "var(--text-muted)",

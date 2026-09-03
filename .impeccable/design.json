@@ -5,6 +5,7 @@
   "extensions": {
     "colorMeta": {
       "draft-card-foil": { "role": "primary", "displayName": "Draft Card Foil", "canonical": "#FFB11B" },
+      "foil-highlight": { "role": "primary", "displayName": "Foil Highlight", "canonical": "#ffe9b0" },
       "pitch-teal": { "role": "secondary", "displayName": "Pitch Teal", "canonical": "#3FB08C" },
       "logo-teal": { "role": "tertiary", "displayName": "Logo Teal", "canonical": "#00A3AF" },
       "void-black": { "role": "neutral", "displayName": "Void Black", "canonical": "#0b0b0b" },
@@ -15,16 +16,38 @@
       "ink-muted": { "role": "neutral", "displayName": "Ink Muted", "canonical": "#8a8a8a" },
       "ink-faint": { "role": "neutral", "displayName": "Ink Faint", "canonical": "#3a3a3a" },
       "nba-red": { "role": "utility", "displayName": "NBA Red", "canonical": "#c8102e" },
-      "nba-blue": { "role": "utility", "displayName": "NBA Blue", "canonical": "#1d428a" }
+      "nba-blue": { "role": "utility", "displayName": "NBA Blue", "canonical": "#1d428a" },
+      "danger": { "role": "utility", "displayName": "Danger", "canonical": "#f87171" },
+      "gleague-red": { "role": "utility", "displayName": "G-League Red", "canonical": "#A8263F" },
+      "ncaa-blue": { "role": "utility", "displayName": "NCAA Blue", "canonical": "#3D7EC9" },
+      "euroleague-orange": { "role": "utility", "displayName": "EuroLeague Orange", "canonical": "#FF6900" },
+      "arch-engine": { "role": "categorical", "displayName": "Engine", "canonical": "#fb923c" },
+      "arch-ecosystem": { "role": "categorical", "displayName": "Ecosystem", "canonical": "#4ade80" },
+      "arch-hub": { "role": "categorical", "displayName": "Hub", "canonical": "#2dd4bf" },
+      "arch-connector": { "role": "categorical", "displayName": "Connector", "canonical": "#c084fc" },
+      "arch-creator": { "role": "categorical", "displayName": "Creator", "canonical": "#fb7185" },
+      "arch-anchor": { "role": "categorical", "displayName": "Anchor", "canonical": "#60a5fa" },
+      "arch-spacer": { "role": "categorical", "displayName": "Spacer", "canonical": "#22d3ee" },
+      "arch-finisher": { "role": "categorical", "displayName": "Finisher", "canonical": "#a3e635" },
+      "arch-force": { "role": "categorical", "displayName": "Force", "canonical": "#f87171" },
+      "arch-initiator": { "role": "categorical", "displayName": "Initiator", "canonical": "#FFB11B" },
+      "arch-stopper": { "role": "categorical", "displayName": "Stopper", "canonical": "#d1d5db" },
+      "arch-rim-runner": { "role": "categorical", "displayName": "Rim Runner", "canonical": "#34d399" },
+      "phase-gk": { "role": "categorical", "displayName": "Goalkeeper", "canonical": "#F2C14E" },
+      "phase-def": { "role": "categorical", "displayName": "Defence", "canonical": "#4C9BE8" },
+      "phase-mid": { "role": "categorical", "displayName": "Midfield", "canonical": "#3FB08C" },
+      "phase-fwd": { "role": "categorical", "displayName": "Attack", "canonical": "#E8654C" }
     },
     "typographyMeta": {
       "display": { "displayName": "Display", "purpose": "Game module dock/hero titles only — uppercase, loudest text in the system." },
       "label": { "displayName": "Label", "purpose": "Eyebrows, column headers, badges — always uppercase, tracked out." },
-      "body": { "displayName": "Body", "purpose": "Stat values, descriptions, list rows — the volume-read layer." }
+      "body": { "displayName": "Body", "purpose": "Stat values, descriptions, list rows — the volume-read layer." },
+      "loud-moment": { "displayName": "Loud Moment", "purpose": "The score-reveal grade letter only (.g-score-grade) — one payoff moment per flow, never reused as a heading size." }
     },
     "shadows": [
       { "name": "card-lift", "value": "0 24px 48px -18px rgba(0,0,0,0.8)", "purpose": "Under the trading card stage only — the one element that feels physically raised." },
-      { "name": "accent-glow", "value": "0 0 16px rgba(255,177,27,0.35)", "purpose": "Active/selected/CTA state glow at the accent color. Never a resting-state shadow." }
+      { "name": "accent-glow", "value": "0 0 16px rgba(255,177,27,0.35)", "purpose": "Active/selected/CTA state glow at the accent color. Never a resting-state shadow." },
+      { "name": "modal-lift", "value": "0 30px 70px -20px rgba(0,0,0,0.85)", "purpose": "The third legitimate resting-shadow exception — true modal/overlay surfaces only, same physical logic as card-lift." }
     ],
     "motion": [
       { "name": "ease-standard", "value": "cubic-bezier(0.2, 0.7, 0.3, 1)", "purpose": "Hover lifts, tile selection, drawer slide — the system's default motion curve." },
@@ -92,18 +115,21 @@
       { "name": "The Uppercase-Means-Game Rule", "body": "Loud, tracked-out uppercase Rajdhani signals the game module. Data-page headlines stay sentence case even at bold weight.", "section": "typography" },
       { "name": "The Flat-By-Default Rule", "body": "Nothing gets a shadow just for existing. Reserved for the trading card itself and actively-glowing accent states.", "section": "elevation" },
       { "name": "The One Notch Rule", "body": "The cut-corner silhouette belongs to the trading card alone — reusing it elsewhere blurs the one shape a user should always recognize as 'that's a player.'", "section": "shapes" },
-      { "name": "The Ghost-Until-Earned Rule", "body": "Inputs with nothing to say (empty, unfocused, default) should be nearly invisible. Visibility is a signal the user has done something.", "section": "components" }
+      { "name": "The Ghost-Until-Earned Rule", "body": "Inputs with nothing to say (empty, unfocused, default) should be nearly invisible. Visibility is a signal the user has done something.", "section": "components" },
+      { "name": "The Loud-Moment Exception", "body": "The score-reveal grade letter and its container break the normal type/shape scale on purpose — the game's single biggest payoff moment. One per flow; don't reuse the 96px step elsewhere.", "section": "typography" }
     ],
     "dos": [
       "Do keep the trading card's cut-corner + holo + foil vocabulary exclusive to the card itself.",
       "Do let game surfaces run brighter/louder than data surfaces — deliberate, not drift.",
       "Do keep inputs invisible until they have something to say.",
       "Do use var(--accent) for sport-conditional color and var(--yamabuki) only for always-gold elements.",
-      "Do respect prefers-reduced-motion on every ambient/looping animation."
+      "Do respect prefers-reduced-motion on every ambient/looping animation.",
+      "Do keep the primary CTA gold everywhere, football included — CTA color is not sport-conditional.",
+      "Do keep football's comparison/reference surfaces (FootballCompare, FootballMap) in the quiet data register, matching basketball's Compare/Glossary."
     ],
     "donts": [
       "Don't use gradient-clipped text anywhere, including for signature headings.",
-      "Don't put a resting box-shadow on anything but the trading card or an actively-glowing accent state.",
+      "Don't put a resting box-shadow on anything but the trading card, an actively-glowing accent state, or a true modal/overlay.",
       "Don't give a second color the gold accent's shine-sweep/glow treatment.",
       "Don't brighten the data register's ink-faint to match the game module's, or dim the game module's to match data.",
       "Don't reach for rounded-lg/generic Tailwind defaults, raw palette classes, or a thick single-side accent border as a substitute for the system's own tokens."

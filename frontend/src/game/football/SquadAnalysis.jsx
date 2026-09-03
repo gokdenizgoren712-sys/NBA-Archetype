@@ -86,18 +86,17 @@ export default function SquadAnalysis({ fit, starters = [], bench = [],
             left: "8%", top: -34, width: 190, height: 100, opacity: 0.26 }} />
           <div className="relative shrink-0">
             <div className="font-logo font-black tabular-nums leading-none"
-              style={{ fontSize: 38, color: hex(ref.score / 100),
-                       textShadow: `0 0 24px ${hex(ref.score / 100)}55` }}>
+              style={{ fontSize: 38, color: hex(ref.score / 100) }}>
               {ref.score}<span style={{ fontSize: 16 }}>{ordinal(ref.score)}</span>
             </div>
             <div className="g-mono mt-1" style={{ color: "var(--text-faint)" }}>percentile</div>
           </div>
           <div className="relative flex-1 text-[12.5px] leading-relaxed" style={{ color: "var(--text-muted)" }}>
-            Built better than <b style={{ color: "#fff" }}>{ref.score}%</b> of the{" "}
+            Built better than <b style={{ color: "var(--text-primary)" }}>{ref.score}%</b> of the{" "}
             {ref.n.toLocaleString("en-US")} real starting elevens actually fielded
             across {ref.seasons} seasons.
             {ref.slots != null && (
-              <> Role coverage alone sits at <b style={{ color: "#fff" }}>
+              <> Role coverage alone sits at <b style={{ color: "var(--text-primary)" }}>
                 {ref.slots}{ordinal(ref.slots)}</b>.</>
             )}
           </div>
@@ -116,7 +115,7 @@ export default function SquadAnalysis({ fit, starters = [], bench = [],
           <div className="g-label" style={{ "--accent": WARN, color: WARN }}>Gaps</div>
           <div style={{ fontSize: 12.5, marginTop: 3, color: "var(--text-muted)" }}>
             Nobody in this XI really covers{" "}
-            <b style={{ color: "#fff" }}>
+            <b style={{ color: "var(--text-primary)" }}>
               {gaps.map(([k]) => k.toLowerCase()).join(", ")}
             </b>. In a tight game that is where it shows.
           </div>
@@ -129,7 +128,7 @@ export default function SquadAnalysis({ fit, starters = [], bench = [],
         {/* Şekil */}
         <div className="g-panel subtle" style={{ padding: "11px 13px" }}>
           <div className="g-label">Shape</div>
-          <div style={{ fontSize: 13.5, fontWeight: 700, color: "#fff", marginTop: 2 }}>
+          <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--text-primary)", marginTop: 2 }}>
             {fit.formation || "not a standard shape"}
           </div>
           <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 2 }}>

@@ -228,6 +228,41 @@
   filter: blur(20px);
 }
 
+/* Akışkan (liquid) varyant — .aura-blob'un üstüne, sabit organik şekli
+   zamanla başka organik şekillere yumuşakça morph eder + auraDrift'in
+   konum kaymasıyla birleşince "canlı sıvı ışık" hissi verir. Sadece giriş
+   ekranlarında (SportSelect/GameModeSelect/FootballModeSelect) kullanılıyor
+   — her yerde olsa ambient katmanın kendisi dikkat çekerdi. */
+@keyframes auraLiquidMorph {
+  0%, 100% { border-radius: 72% 28% 55% 45% / 35% 65% 40% 60%; }
+  33%      { border-radius: 41% 59% 68% 32% / 52% 38% 62% 48%; }
+  66%      { border-radius: 58% 42% 35% 65% / 44% 60% 40% 56%; }
+}
+.aura-blob-liquid { animation: auraLiquidMorph 14s ease-in-out infinite, auraDrift 9s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .aura-blob-liquid { animation: none; } }
+
+/* ═══ Giriş kartı: 3D "deal" reveal + canlı tilt ══════════════════════════
+   .pcard-stage'e stagger'lı giriş (opacity/translateY/scale — rotateX
+   KULLANMIYOR, çünkü .pcard'ın kendi sürekli mouse-tilt'iyle aynı transform
+   özelliğinde çakışırdı). Tilt ayrı: .pcard-tilt, ModeCardStage.jsx'in
+   mousemove'la yazdığı --tx/--ty'yi okur, translateZ ile "öne kalkma" hissi
+   katar. İkisi FARKLI elemanlarda (stage vs. pcard) olduğu için çakışmaz. */
+@keyframes auraDeal {
+  from { opacity: 0; transform: translateY(26px) scale(0.94); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.aura-deal {
+  animation: auraDeal 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(var(--stagger, 0) * 90ms);
+}
+@media (prefers-reduced-motion: reduce) { .aura-deal { animation: none; } }
+
+.pcard-tilt {
+  transition: transform 0.3s cubic-bezier(0.2, 0.7, 0.3, 1);
+  transform: translateZ(var(--tz, 0px)) rotateX(var(--tx, 0deg)) rotateY(var(--ty, 0deg));
+  transform-style: preserve-3d;
+}
+
 /* ═══ Mobil menü (drawer) ═══════════════════════════════════════════════
    Alt nav'ın yerini aldı. Kapalıyken tamamen etkileşim dışı (visibility +
    pointer-events), açılırken panel soldan kayıyor. Satır yüksekliği 52px —

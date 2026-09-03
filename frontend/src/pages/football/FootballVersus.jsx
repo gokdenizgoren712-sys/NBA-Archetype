@@ -81,7 +81,7 @@ function TieResult({ tie, odds }) {
 
       <div style={{ marginTop: 12, padding: "10px 12px", borderRadius: 10,
         background: `${ACC}0f`, border: `1px solid ${ACC}33` }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>
           {(aWon ? tie.sides?.a?.name : tie.sides?.b?.name) || (aWon ? "A" : "B")} go through
           {" "}<span style={{ color: ACC }}>{tie.aggA}–{tie.aggB}</span> on aggregate
         </div>
@@ -93,7 +93,7 @@ function TieResult({ tie, odds }) {
       {odds && (
         <p style={{ fontSize: 11.5, color: "var(--text-muted)", marginTop: 12, lineHeight: 1.7 }}>
           Over {odds.runs} replays the first side goes through{" "}
-          <b style={{ color: "#fff" }}>{Math.round(odds.aWinPct * 100)}%</b> of the time.
+          <b style={{ color: "var(--text-primary)" }}>{Math.round(odds.aWinPct * 100)}%</b> of the time.
           Two matches decide very little in football — the single tie above is one draw
           from that spread, not a verdict. {Math.round(odds.penaltiesPct * 100)}% of
           replays reach penalties.

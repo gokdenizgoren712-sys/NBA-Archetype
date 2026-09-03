@@ -59,11 +59,11 @@ export default function ForgotPassword() {
                 type="email" required autoFocus
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg text-sm outline-none"
+                className="w-full px-3 py-2 rounded-[8px] text-sm outline-none"
                 style={{ background: "var(--bg-elevated)", color: "var(--text-primary)", border: "1px solid var(--border)" }}
               />
             </div>
-            {error && <p className="text-sm text-red-400">{error}</p>}
+            {error && <p className="text-sm" style={{ color: "var(--danger)" }}>{error}</p>}
             <button type="submit" disabled={loading}
               className="w-full py-2.5 rounded-xl font-logo font-bold text-sm uppercase tracking-wide transition-colors bg-yamabuki text-darkBg hover:bg-white disabled:opacity-50">
               {loading ? "Sending…" : "Send Reset Link"}

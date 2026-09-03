@@ -139,7 +139,7 @@ function UserButton() {
   const navigate = useNavigate();
   if (!isLoggedIn) return (
     <button onClick={() => navigate("/login")}
-      className="aura-shine-hover px-3 py-1 rounded-lg text-xs font-medium bg-yamabuki text-darkBg hover:bg-white transition-colors">
+      className="aura-shine-hover px-3 py-1 rounded-[8px] text-xs font-medium bg-yamabuki text-darkBg hover:bg-white transition-colors">
       Log In
     </button>
   );
@@ -232,7 +232,7 @@ function SideNav() {
         return (
           <NavLink key={n.to} to={n.to} title={n.label}
             className={`group relative flex flex-col items-center justify-center h-14 gap-1 transition-colors
-              ${active ? "text-white" : "text-gray-400 hover:text-white"}`}
+              ${active ? "text-white" : "text-[var(--text-muted)] hover:text-white"}`}
           >
             {active && (
               <>

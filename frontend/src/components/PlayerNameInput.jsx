@@ -50,7 +50,7 @@ export default function PlayerNameInput({ value, onChange, placeholder, allNames
     <div ref={wrapRef} className="relative">
       <div className="flex items-center gap-1.5">
         {slotLabel && (
-          <span className="text-[10px] text-gray-600 w-4 shrink-0 font-mono">{slotLabel}</span>
+          <span className="text-[10px] w-4 shrink-0 font-mono" style={{ color: "var(--text-faint)" }}>{slotLabel}</span>
         )}
         <div className="relative flex-1">
           <input
@@ -60,19 +60,18 @@ export default function PlayerNameInput({ value, onChange, placeholder, allNames
             onFocus={() => { setFocused(true); if (query.length >= 2) setOpen(true); }}
             onBlur={() => setFocused(false)}
             placeholder={placeholder}
-            className={`w-full bg-surfaceCard border rounded-lg px-3 py-2 text-sm text-white placeholder:text-gray-600 focus:outline-none transition-colors ${
+            className={`w-full border rounded-[8px] px-3 py-2 text-sm placeholder:text-[var(--text-faint)] focus:outline-none transition-colors ${
               isValid
                 ? "border-emerald-600/60 focus:border-emerald-500"
-                : query.length > 0
-                ? "border-gray-600 focus:border-blue-500"
-                : "border-gray-700 focus:border-blue-500"
+                : "focus:border-[var(--accent)]"
             }`}
+            style={{ background: "var(--bg-elevated)", color: "var(--text-primary)",
+              borderColor: isValid ? undefined : "var(--border)" }}
           />
           {/* Validation indicator */}
           {query.length > 0 && (
-            <span className={`absolute right-2.5 top-1/2 -translate-y-1/2 text-xs ${
-              isValid ? "text-emerald-500" : "text-gray-600"
-            }`}>
+            <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs"
+              style={{ color: isValid ? "#10b981" : "var(--text-faint)" }}>
               {isValid ? "✓" : "?"}
             </span>
           )}
@@ -81,7 +80,8 @@ export default function PlayerNameInput({ value, onChange, placeholder, allNames
 
       {/* Dropdown */}
       {showDrop && (
-        <div className="absolute z-50 left-6 right-0 mt-1 bg-surfaceCard border border-gray-700 rounded-lg shadow-xl overflow-hidden">
+        <div className="absolute z-50 left-6 right-0 mt-1 rounded-[8px] shadow-xl overflow-hidden"
+          style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
           {suggestions.map((name) => {
             // Eşleşen kısmı bold yap
             const idx = name.toLowerCase().indexOf(q.split(" ")[0]);
@@ -89,9 +89,12 @@ export default function PlayerNameInput({ value, onChange, placeholder, allNames
               <button
                 key={name}
                 onMouseDown={(e) => { e.preventDefault(); select(name); }}
-                className="w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-surfaceCard hover:text-white transition-colors flex items-center gap-2"
+                className="w-full text-left px-3 py-2 text-sm transition-colors flex items-center gap-2"
+                style={{ color: "var(--text-muted)" }}
+                onMouseEnter={e => { e.currentTarget.style.background = "var(--bg-surface)"; e.currentTarget.style.color = "var(--text-primary)"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text-muted)"; }}
               >
-                <span className="text-[10px] text-gray-500 font-mono w-4">→</span>
+                <span className="text-[10px] font-mono w-4" style={{ color: "var(--text-faint)" }}>→</span>
                 {name}
               </button>
             );

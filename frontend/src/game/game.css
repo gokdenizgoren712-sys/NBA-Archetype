@@ -154,7 +154,7 @@
   color: var(--text-primary); line-height: 1.15;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.g-row-arch { font-size: 10px; font-weight: 600; color: var(--accent, #9ca3af); }
+.g-row-arch { font-size: 10px; font-weight: 600; color: var(--accent, #FFB11B); }
 .g-row-stat { width: 34px; text-align: right; flex-shrink: 0; font-size: 11.5px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 .g-row-stat.hi { color: var(--yamabuki, #FFB11B); font-weight: 700; }
 /* Tag sayısı ve sözleşme hücreleri — başlıklarıyla AYNI genişlikte olmalı,
@@ -201,7 +201,7 @@
 .g-slot > *:not(.aura-blob) { position: relative; z-index: 2; }
 .g-slot-pos {
   font-family: var(--font-logo); font-size: 8px; font-weight: 700;
-  letter-spacing: 0.1em; color: var(--accent, #6f6a66);
+  letter-spacing: 0.1em; color: var(--accent, #FFB11B);
 }
 .g-slot-name { font-size: 10.5px; font-weight: 700; color: var(--text-primary); margin-top: 2px; line-height: 1.2;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -344,7 +344,7 @@
 }
 .g-rr-name { font-size: 13px; font-weight: 600; color: var(--text-primary); line-height: 1.2; }
 .g-rr-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 3px; }
-.g-rr-arch { font-size: 10.5px; font-weight: 600; color: #60a5fa; }
+.g-rr-arch { font-size: 10.5px; font-weight: 600; color: var(--accent, #FFB11B); }
 .g-rr-chip {
   font-size: 9px; font-weight: 700; line-height: 1.5; padding: 1px 6px;
   border-radius: 999px; white-space: nowrap;
@@ -445,10 +445,13 @@
    holo/foil/grain, isim bandı, peek satırı. PlayerCard.css'ten geliyor;
    burada sadece "fotoğraf" alanını ikonla dolduran farklar var. */
 .pcard-stage.mode { width: 260px; }
-.pcard-stage.mode .pcard { width: 260px; transition: transform 0.3s cubic-bezier(0.2,0.7,0.3,1); }
-.pcard-stage.mode .pcard:hover { transform: translateY(-6px); }
+.pcard-stage.mode .pcard { width: 260px; }
+/* .pcard-tilt (aura.css) sürekli bir transform kuralı taşıyor — mouse
+   hareketsizken --tx/--ty/--tz tanımsız (0'a düşer) olduğu için ekstra bir
+   :hover kuralına gerek yok, ModeCardStage'in mousemove'u zaten "hover"ı
+   temsil ediyor. */
 .pcard-stage.mode.soon .pcard { cursor: not-allowed; }
-.pcard-stage.mode.soon .pcard:hover { transform: none; }
+.pcard-stage.mode.soon .pcard.pcard-tilt { transform: none; }
 .pcard-stage.mode.soon { opacity: 0.6; }
 .pcard-stage.mode .pcard-photo { height: 168px; display: flex; align-items: center; justify-content: center; }
 
@@ -576,7 +579,7 @@
 .g-dock-title {
   font-family: var(--font-logo); font-size: 23px; font-weight: 800;
   letter-spacing: 0.06em; text-transform: uppercase; line-height: 1;
-  color: var(--yamabuki, #FFB11B);
+  color: var(--accent, var(--yamabuki));
 }
 .g-dock-sub { font-size: 11px; color: var(--text-faint); margin-top: 5px; letter-spacing: 0.02em; }
 
@@ -665,9 +668,12 @@
    header make it read as an instrument, not a picture frame. */
 .g-court-panel {
   position: relative; overflow: hidden; border-radius: 18px; padding: 16px;
-  background: rgba(17, 15, 20, 0.5); backdrop-filter: blur(14px);
+  /* Vinyet artık resting box-shadow değil (Flat-By-Default kuralı) — aynı
+     görsel etki, radial-gradient katmanı olarak taşındı. */
+  background: radial-gradient(ellipse at center, transparent 55%, rgba(0, 0, 0, 0.55) 140%),
+              rgba(17, 15, 20, 0.5);
+  backdrop-filter: blur(14px);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.75);
 }
 .g-court-panel > *:not(.g-dotgrid):not(.aura-blob) { position: relative; z-index: 3; }
 .g-dotgrid {
@@ -724,7 +730,7 @@
   background: rgba(255, 255, 255, 0.07); }
 .g-progress > div {
   height: 100%; border-radius: 3px;
-  background: linear-gradient(90deg, var(--yamabuki, #FFB11B), #ffe19c);
+  background: linear-gradient(90deg, var(--yamabuki, #FFB11B), #ffe9b0);
   box-shadow: 0 0 10px rgba(255, 177, 27, 0.5);
   transition: width 0.5s cubic-bezier(0.2, 0.8, 0.3, 1);
 }

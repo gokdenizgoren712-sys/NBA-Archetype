@@ -85,12 +85,12 @@ export default function Profile() {
           <div className="flex gap-2">
             {data.user?.role === "admin" && (
               <Link to="/admin/articles"
-                className="px-3 py-1.5 rounded-lg font-logo text-sm font-bold uppercase tracking-wide bg-yamabuki text-darkBg hover:bg-white transition-colors">
+                className="px-3 py-1.5 rounded-[8px] font-logo text-sm font-bold uppercase tracking-wide bg-yamabuki text-darkBg hover:bg-white transition-colors">
                 Admin Panel
               </Link>
             )}
             <button onClick={logout}
-              className="px-3 py-1.5 rounded-lg text-sm"
+              className="px-3 py-1.5 rounded-[8px] text-sm"
               style={{ background: "var(--bg-elevated)", color: "var(--text-muted)", border: "1px solid var(--border)" }}>
               Sign out
             </button>
@@ -107,17 +107,17 @@ export default function Profile() {
                 value={promoteCode}
                 onChange={e => setPromoteCode(e.target.value)}
                 placeholder="Admin invite code"
-                className="flex-1 px-3 py-1.5 rounded-lg text-sm outline-none"
+                className="flex-1 px-3 py-1.5 rounded-[8px] text-sm outline-none"
                 style={{ background: "var(--bg-surface)", color: "var(--text-primary)", border: "1px solid var(--border)" }}
               />
               <button
                 onClick={promoteToAdmin}
                 disabled={!promoteCode}
-                className="px-3 py-1.5 rounded-lg font-logo text-sm font-bold uppercase tracking-wide bg-yamabuki text-darkBg hover:bg-white transition-colors disabled:opacity-50">
+                className="px-3 py-1.5 rounded-[8px] font-logo text-sm font-bold uppercase tracking-wide bg-yamabuki text-darkBg hover:bg-white transition-colors disabled:opacity-50">
                 Upgrade
               </button>
             </div>
-            {promoteErr && <p className="text-xs text-red-400 mt-1">{promoteErr}</p>}
+            {promoteErr && <p className="text-xs mt-1" style={{ color: "var(--danger)" }}>{promoteErr}</p>}
           </div>
         )}
 
@@ -144,7 +144,7 @@ export default function Profile() {
                 No saved players yet. Open a player card and click the bookmark icon to save.
               </p>
             ) : data.saved_players.map(p => (
-              <div key={p.id} className="flex items-center justify-between p-3 rounded-lg"
+              <div key={p.id} className="flex items-center justify-between p-3 rounded-[8px]"
                 style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
                 <div>
                   <Link to={`/basketball/players?q=${encodeURIComponent(p.player_name)}`}
@@ -154,7 +154,7 @@ export default function Profile() {
                   </Link>
                   <span className="text-xs ml-2" style={{ color: "var(--text-muted)" }}>{p.season}</span>
                 </div>
-                <button onClick={() => removePlayer(p.id)} className="text-xs text-red-400 hover:text-red-300">✕</button>
+                <button onClick={() => removePlayer(p.id)} className="text-xs" style={{ color: "var(--danger)" }}>✕</button>
               </div>
             ))}
           </div>
@@ -169,7 +169,7 @@ export default function Profile() {
                 No saved rosters yet. Draft a lineup in the game and hit "Save this roster" on the result screen.
               </p>
             ) : data.saved_rosters.map(r => (
-              <div key={r.id} className="p-3 rounded-lg"
+              <div key={r.id} className="p-3 rounded-[8px]"
                 style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
                 <div className="flex items-center justify-between mb-1">
                   <span className="font-logo font-medium text-sm" style={{ color: "var(--text-primary)" }}>{r.name}</span>
@@ -178,7 +178,7 @@ export default function Profile() {
                     <span className="text-xs" style={{ color: "var(--text-muted)" }}>
                       {new Date(r.created_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
                     </span>
-                    <button onClick={() => removeRoster(r.id)} className="text-xs text-red-400 hover:text-red-300">✕</button>
+                    <button onClick={() => removeRoster(r.id)} className="text-xs" style={{ color: "var(--danger)" }}>✕</button>
                   </div>
                 </div>
                 <p className="text-xs mb-2" style={{ color: "var(--text-muted)" }}>
@@ -206,7 +206,7 @@ export default function Profile() {
                 No saved lineups yet. Build a custom lineup on the Lineups page and save it.
               </p>
             ) : data.saved_lineups.map(l => (
-              <div key={l.id} className="p-3 rounded-lg"
+              <div key={l.id} className="p-3 rounded-[8px]"
                 style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
                 <div className="flex items-center justify-between mb-1">
                   <span className="font-logo font-bold text-lg" style={{ color: "var(--accent)" }}>{l.grade}</span>
@@ -214,7 +214,7 @@ export default function Profile() {
                     <span className="text-xs" style={{ color: "var(--text-muted)" }}>
                       {new Date(l.created_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
                     </span>
-                    <button onClick={() => removeLineup(l.id)} className="text-xs text-red-400 hover:text-red-300">✕</button>
+                    <button onClick={() => removeLineup(l.id)} className="text-xs" style={{ color: "var(--danger)" }}>✕</button>
                   </div>
                 </div>
                 <p className="text-xs mb-2" style={{ color: "var(--text-muted)" }}>
@@ -241,7 +241,7 @@ export default function Profile() {
                 No comments yet.
               </p>
             ) : data.comments.map(c => (
-              <div key={c.id} className="p-3 rounded-lg"
+              <div key={c.id} className="p-3 rounded-[8px]"
                 style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
                 <Link to={`/blog/${c.article_slug}`}
                   className="text-xs font-medium hover:underline"

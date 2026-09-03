@@ -49,7 +49,7 @@ function PhaseCard({ p }) {
     <div className="g-panel p-3" style={{ "--accent": c, "--accent-line": c + "44", cursor: "pointer" }}
       onClick={() => setOpen(o => !o)}>
       <div className="flex items-baseline gap-2">
-        <span style={{ fontSize: 13.5, fontWeight: 700, color: "#fff" }}>{p.label}</span>
+        <span style={{ fontSize: 13.5, fontWeight: 700, color: "var(--text-primary)" }}>{p.label}</span>
         <span style={{ fontSize: 11, color: c }}>{p.archs.length} roles</span>
         <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--text-faint)" }}>
           {open ? "−" : "+"}
@@ -62,7 +62,7 @@ function PhaseCard({ p }) {
         <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 9 }}>
           {p.archs.map(a => (
             <span key={a} style={{ fontSize: 11, padding: "3px 8px", borderRadius: 20,
-              background: c + "18", border: `1px solid ${c}44`, color: "#fff" }}>{a}</span>
+              background: c + "18", border: `1px solid ${c}44`, color: "var(--text-primary)" }}>{a}</span>
           ))}
         </div>
       )}
@@ -82,7 +82,7 @@ export default function FootballAbout() {
         <h1 className="font-logo text-3xl font-bold text-white tracking-wide shrink-0">Football</h1>
         <p className="shrink-0" style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 6, lineHeight: 1.6 }}>
           A separate dictionary from the basketball side, with its own language. A player
-          is not described by his position but by the <b style={{ color: "#fff" }}>job he
+          is not described by his position but by the <b style={{ color: "var(--text-primary)" }}>job he
           does</b> in one phase of the game — and a player who does two jobs gets two rows.
         </p>
 
@@ -123,13 +123,13 @@ export default function FootballAbout() {
         <SectionLabel>What chemistry measures — and what it does not</SectionLabel>
         <div className="g-panel p-4" style={{ "--accent": ACC, "--accent-line": ACC + "44" }}>
           <p style={{ fontSize: 12.5, color: "var(--text-muted)", lineHeight: 1.7 }}>
-            A squad's chemistry score asks one question: <b style={{ color: "#fff" }}>does
+            A squad's chemistry score asks one question: <b style={{ color: "var(--text-primary)" }}>does
             this eleven cover the eight jobs a team needs done, without doing any of them
             three times over?</b> It is reported as a percentile against the 28,388
             starting elevens clubs actually fielded across ten seasons.
           </p>
           <p style={{ fontSize: 12.5, color: "var(--text-muted)", lineHeight: 1.7, marginTop: 10 }}>
-            It is <b style={{ color: "#fff" }}>not</b> a prediction of results. We tested
+            It is <b style={{ color: "var(--text-primary)" }}>not</b> a prediction of results. We tested
             that. Holding the club and the season fixed, the best-built 30% of real elevens
             outscore the worst-built 30% by about 0.04 expected goals a match — real, but
             small, and impossible to separate cleanly from squad quality. Pair affinity, the
@@ -148,7 +148,7 @@ export default function FootballAbout() {
           When you drop an eleven into a league, the goal model is not invented. It comes
           from a regression on real matches: squad quality, chemistry and the opponent's
           quality, fitted against the goals that actually followed. Home advantage falls
-          out at <b style={{ color: "#fff" }}>+0.31 goals</b>, which is what the football
+          out at <b style={{ color: "var(--text-primary)" }}>+0.31 goals</b>, which is what the football
           literature finds. Goals are Poisson because the observed distribution is
           Poisson — that was checked, not assumed.
         </p>
@@ -163,7 +163,7 @@ export default function FootballAbout() {
           paddingLeft: 18, listStyle: "disc" }}>
           <li>Match data is FotMob's, gathered per match and cached. Every listed player
               meets a minutes threshold set from the season's own length.</li>
-          <li><b style={{ color: "#fff" }}>Expected goals only exist from 2020/21.</b> Earlier
+          <li><b style={{ color: "var(--text-primary)" }}>Expected goals only exist from 2020/21.</b> Earlier
               seasons have none, which is why the card's quick stats show goals, assists,
               clean sheets and saves — the set that is complete across the whole archive.</li>
           <li>Distance covered and sprint counts are recorded for about 3% of players, so

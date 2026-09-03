@@ -116,7 +116,7 @@ export default function FootballFeedbackModal({ onClose }) {
                 {PHASES.map(p => (
                   <button key={p.key}
                     onClick={() => { setPhase(p.key); setArchetype(""); }}
-                    className="py-1.5 rounded-lg text-[11px] font-semibold transition-colors"
+                    className="py-1.5 rounded-[8px] text-[11px] font-semibold transition-colors"
                     style={{
                       background: phase === p.key ? ACCENT + "24" : "var(--bg-surface)",
                       color: phase === p.key ? ACCENT : "var(--text-muted)",
@@ -133,7 +133,7 @@ export default function FootballFeedbackModal({ onClose }) {
               <div className="grid grid-cols-3 gap-1.5">
                 {KINDS.map(k => (
                   <button key={k.key} onClick={() => setKind(k.key)} title={k.hint}
-                    className="py-1.5 px-2 rounded-lg text-[11px] font-semibold transition-colors"
+                    className="py-1.5 px-2 rounded-[8px] text-[11px] font-semibold transition-colors"
                     style={{
                       background: kind === k.key ? ACCENT + "24" : "var(--bg-surface)",
                       color: kind === k.key ? ACCENT : "var(--text-muted)",

@@ -18,19 +18,15 @@ const ROLE_SHORT = {
   "Transition":           "TRN",
 };
 
-const corrColor = (v) => {
-  if (v >= 0.60) return "bg-blue-500";
-  if (v >= 0.40) return "bg-sky-500";
-  if (v >= 0.25) return "bg-emerald-500";
-  if (v >= 0.10) return "bg-gray-600";
-  return "bg-surfaceCard";
-};
-
-const corrText = (v) => {
-  if (v >= 0.60) return "text-blue-400";
-  if (v >= 0.40) return "text-sky-400";
-  if (v >= 0.25) return "text-emerald-400";
-  return "text-gray-500";
+// Kazanma-korelasyonu şiddeti için dar, tematik bir sekans skalası — site
+// genelindeki nötr/faint gri hiyerarşisiyle örtüşmüyor, GRADE_HEX/VAL_HEX gibi
+// bu bileşene özgü küçük bir palet (bkz. DESIGN.md "one-off scale" prensibi).
+const corrHex = (v) => {
+  if (v >= 0.60) return "#3b82f6";
+  if (v >= 0.40) return "#0ea5e9";
+  if (v >= 0.25) return "#10b981";
+  if (v >= 0.10) return "#4b5563";
+  return "var(--text-faint)";
 };
 
 export default function RoleImpactChart() {
@@ -56,43 +52,46 @@ export default function RoleImpactChart() {
   const maxCorr = Math.max(...roles.map(r => r.net_corr));
 
   return (
-    <div className="bg-surfaceBg border border-gray-800 rounded-2xl overflow-hidden mb-6">
+    <div className="rounded-2xl overflow-hidden mb-6" style={{ background: "var(--bg-surface)", border: "1px solid var(--border)" }}>
       {/* Header — tıklanınca genişler */}
       <button
         onClick={() => setOpen(o => !o)}
-        className="w-full p-4 flex items-center justify-between hover:bg-surfaceCard/50 transition-colors"
+        className="w-full p-4 flex items-center justify-between transition-colors"
+        style={{ "--hover-bg": "var(--bg-elevated)" }}
+        onMouseEnter={e => e.currentTarget.style.background = "var(--bg-elevated)"}
+        onMouseLeave={e => e.currentTarget.style.background = "transparent"}
       >
         <div className="flex items-center gap-3">
-          <span className="text-white font-semibold text-sm">Season Role Impact</span>
-          <span className="text-xs text-gray-500">{data.season} · {data.n_qualified} players</span>
+          <span className="font-semibold text-sm" style={{ color: "var(--text-primary)" }}>Season Role Impact</span>
+          <span className="text-xs" style={{ color: "var(--text-muted)" }}>{data.season} · {data.n_qualified} players</span>
           {/* Mini preview — top 3 rolls */}
           {!open && (
             <div className="flex gap-1.5 ml-2">
-              {data.by_impact.slice(0, 3).map((slot, i) => (
-                <span key={slot} className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${
-                  i === 0 ? "bg-blue-900/60 text-blue-300" :
-                  i === 1 ? "bg-sky-900/60 text-sky-300" :
-                           "bg-emerald-900/60 text-emerald-300"
-                }`}>
-                  {ROLE_SHORT[slot] || slot}
-                </span>
-              ))}
-              <span className="text-gray-600 text-[10px] self-center">→ wins</span>
+              {data.by_impact.slice(0, 3).map((slot, i) => {
+                const hex = i === 0 ? "#3b82f6" : i === 1 ? "#0ea5e9" : "#10b981";
+                return (
+                  <span key={slot} className="text-[10px] px-1.5 py-0.5 rounded font-mono"
+                    style={{ background: hex + "26", color: hex }}>
+                    {ROLE_SHORT[slot] || slot}
+                  </span>
+                );
+              })}
+              <span className="text-[10px] self-center" style={{ color: "var(--text-faint)" }}>→ wins</span>
             </div>
           )}
         </div>
-        <span className="text-gray-500 text-sm">{open ? "−" : "+"}</span>
+        <span className="text-sm" style={{ color: "var(--text-muted)" }}>{open ? "−" : "+"}</span>
       </button>
 
       {open && (
         <div className="px-4 pb-4">
           {/* Insight text */}
-          <div className="text-xs text-gray-400 bg-surfaceCard/60 rounded-lg p-3 mb-4 leading-relaxed">
-            <span className="text-blue-300 font-medium">This season's winning formula: </span>
+          <div className="text-xs rounded-[8px] p-3 mb-4 leading-relaxed" style={{ color: "var(--text-muted)", background: "var(--bg-elevated)" }}>
+            <span className="font-medium" style={{ color: "#60a5fa" }}>This season's winning formula: </span>
             {data.by_impact[0]} (r={roles.find(r=>r.slot===data.by_impact[0])?.net_corr.toFixed(2)}) and{" "}
             {data.by_impact[1]} (r={roles.find(r=>r.slot===data.by_impact[1])?.net_corr.toFixed(2)})
             {" "}are the roles most strongly correlated with winning.{" "}
-            <span className="text-gray-300">Floor Spacing</span>, meanwhile, is only present in{" "}
+            <span style={{ color: "var(--text-primary)" }}>Floor Spacing</span>, meanwhile, is only present in{" "}
             <span className="text-yamabuki">
               {(data.roles.find(r=>r.slot==="Floor Spacing")?.coverage_rate * 100).toFixed(0)}%
             </span> of the league — which is why even the best theoretical lineups show a red spacing slot.
@@ -127,24 +126,24 @@ export default function RoleImpactChart() {
 
               return (
                 <div key={r.slot} className="flex items-center gap-2">
-                  <span className="w-6 text-[9px] text-gray-600 font-mono shrink-0">
+                  <span className="w-6 text-[9px] font-mono shrink-0" style={{ color: "var(--text-faint)" }}>
                     {ROLE_SHORT[r.slot]}
                   </span>
-                  <span className="w-32 text-[10px] text-gray-400 shrink-0 truncate">{r.slot}</span>
-                  <div className="flex-1 h-3 bg-surfaceCard rounded-full overflow-hidden">
+                  <span className="w-32 text-[10px] shrink-0 truncate" style={{ color: "var(--text-muted)" }}>{r.slot}</span>
+                  <div className="flex-1 h-3 rounded-full overflow-hidden" style={{ background: "var(--bg-elevated)" }}>
                     <div
-                      className={`h-full ${corrColor(r.net_corr)} rounded-full transition-all`}
-                      style={{ width: `${Math.max(barW, 2)}%` }}
+                      className="h-full rounded-full transition-all"
+                      style={{ width: `${Math.max(barW, 2)}%`, background: corrHex(r.net_corr) }}
                     />
                   </div>
-                  <span className={`w-10 text-right text-[10px] font-mono shrink-0 ${corrText(r.net_corr)}`}>
+                  <span className="w-10 text-right text-[10px] font-mono shrink-0" style={{ color: corrHex(r.net_corr) }}>
                     {sort === "impact"
                       ? `+${r.net_corr.toFixed(2)}`
                       : sort === "coverage"
                       ? `${(r.coverage_rate*100).toFixed(0)}%`
                       : (r.avg_score*100).toFixed(0)}
                   </span>
-                  <span className="w-28 text-[9px] text-gray-600 shrink-0">{secondary}</span>
+                  <span className="w-28 text-[9px] shrink-0" style={{ color: "var(--text-faint)" }}>{secondary}</span>
                 </div>
               );
             })}

@@ -4,21 +4,7 @@ import { useLang } from "../contexts/LanguageContext";
 import ScoreBar from "../components/ScoreBar";
 import SplitPane from "../components/SplitPane";
 import { Logo } from "../components/BrandIcons";
-
-const ARCH_COLORS = {
-  Engine:       "#fb923c",
-  Ecosystem:    "#d97706",
-  Hub:          "#34d399",
-  Connector:    "#38bdf8",
-  Creator:      "#a78bfa",
-  Anchor:       "#60a5fa",
-  Spacer:       "#6ee7b7",
-  Finisher:     "#f472b6",
-  Force:        "#ef4444",
-  Initiator:    "#facc15",
-  Stopper:      "#9ca3af",
-  "Rim Runner": "#4ade80",
-};
+import { ARCHETYPE_COLOR as ARCH_COLORS } from "../constants/archetypeColors";
 
 const CORE = ["Engine","Ecosystem","Hub","Connector","Creator","Anchor","Spacer",
               "Finisher","Force","Initiator","Stopper","Rim Runner"];

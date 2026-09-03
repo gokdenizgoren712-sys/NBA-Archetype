@@ -698,8 +698,8 @@ function PlayerSeatPanel({
       {/* Salary Cap bütçe barı */}
       <div className="g-panel subtle px-2 py-1.5">
         <div className="flex items-center justify-between text-[10px]">
-          <span className="text-gray-500 uppercase tracking-wider flex items-center gap-1"><CapIcon size={11} /> Cap</span>
-          <span className={`font-black tabular-nums ${budgetLeft <= 15 ? "text-red-400" : budgetLeft <= 35 ? "text-yamabuki" : "text-emerald-300"}`}>{budgetLeft}%</span>
+          <span className="text-[var(--text-muted)] uppercase tracking-wider flex items-center gap-1"><CapIcon size={11} /> Cap</span>
+          <span className={`font-black tabular-nums ${budgetLeft <= 15 ? "text-[var(--danger)]" : budgetLeft <= 35 ? "text-yamabuki" : "text-emerald-300"}`}>{budgetLeft}%</span>
         </div>
         <div className="g-bar-track mt-1" style={{height:6}}>
           <div className="g-bar-fill" style={{ width: `${budgetLeft}%`, "--fill": budgetLeft <= 15 ? "#f87171" : budgetLeft <= 35 ? "#FFB11B" : "#4ade80", "--fill-a": (budgetLeft <= 15 ? "#f87171" : budgetLeft <= 35 ? "#FFB11B" : "#4ade80") + "66" }} />
@@ -728,7 +728,7 @@ function PlayerSeatPanel({
         <JokerBtn Icon={SearchIcon} label="Discover" available={isActive && jokers.discover && !discoverActive && gamePhase === "drafting"} onClick={() => onUseJoker("discover")} />
       </div>
       {isActive && showBanEffective && (
-        <div className="text-[10.5px] text-red-400 flex items-center gap-1"><WarnIcon size={11} /> {bannedName} is BANNED this pick — use any joker to counter it.</div>
+        <div className="text-[10.5px] text-[var(--danger)] flex items-center gap-1"><WarnIcon size={11} /> {bannedName} is BANNED this pick — use any joker to counter it.</div>
       )}
 
       {/* Karşı-joker pop-up'ı — bekleyen tarafın kendi paneli, aktif tarafın
@@ -746,7 +746,7 @@ function PlayerSeatPanel({
         <div className="rounded-xl border border-yamabuki/40 bg-yamabuki/5 p-2 space-y-2">
           <div className="flex items-start justify-between gap-2">
             <div className="text-white text-sm font-semibold">{pickedPlayer.PLAYER_NAME} <span className="text-[11px] text-blue-400 ml-1">{pickedPlayer.primary_arch || "—"}</span></div>
-            <button onClick={onCancelPick} className="text-gray-500 hover:text-gray-300 text-[11px] shrink-0">← Back</button>
+            <button onClick={onCancelPick} className="text-[var(--text-muted)] hover:text-gray-300 text-[11px] shrink-0">← Back</button>
           </div>
           <div className="flex gap-1 flex-wrap items-center">
             {eligible.map(p => (
@@ -766,7 +766,7 @@ function PlayerSeatPanel({
                   className={`flex-1 min-w-[3rem] py-1.5 border rounded-lg font-bold text-xs transition-all
                     ${isPrim ? "bg-yamabuki/25 border-yamabuki text-yamabuki shadow-[0_0_16px_-5px_#FFB11B]" : isElig ? "bg-white/[.04] border-white/20 text-white" : "border-dashed border-white/12 text-[var(--text-faint)]"}`}>
                   <div className="inline-flex items-center gap-0.5 justify-center">{pos}{isPrim && <StarIcon size={9} />}</div>
-                  {penLabel && <div className="text-[8px] font-medium text-red-400/90 leading-tight">{penLabel}</div>}
+                  {penLabel && <div className="text-[8px] font-medium leading-tight" style={{ color: "var(--danger)", opacity: 0.9 }}>{penLabel}</div>}
                   {!penLabel && !isPrim && isFlex(pickedPlayer) && <div className="text-[8px] font-medium text-violet-400 leading-tight">vers.</div>}
                 </button>
               );
@@ -787,22 +787,22 @@ function PlayerSeatPanel({
       {gamePhase === "drafting" && (isActive || (isWaiting && banPicking)) && (
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-[10px] font-mono tracking-widest text-gray-500 uppercase">{chosenTeam} · {chosenSeason}</span>
+            <span className="text-[10px] font-mono tracking-widest text-[var(--text-muted)] uppercase">{chosenTeam} · {chosenSeason}</span>
             <span className="ml-auto flex items-center border rounded overflow-hidden" style={{ borderColor: "#262626" }}>
               {["G", "F", "C"].map(g => (
                 <button key={g} onClick={() => setPosFilter(f => f === g ? "" : g)}
-                  className={`px-2 py-0.5 font-logo text-[10px] font-bold border-r last:border-r-0 ${posFilter === g ? "bg-yamabuki text-darkBg" : "text-gray-400"}`}
+                  className={`px-2 py-0.5 font-logo text-[10px] font-bold border-r last:border-r-0 ${posFilter === g ? "bg-yamabuki text-darkBg" : "text-[var(--text-muted)]"}`}
                   style={{ borderColor: "#262626" }}>{g}</button>
               ))}
             </span>
           </div>
           {isActive && (
             <div className="flex items-center gap-1 mb-1 flex-wrap">
-              <span className="font-logo text-[9px] tracking-widest text-gray-500 uppercase mr-1">Sort</span>
+              <span className="font-logo text-[9px] tracking-widest text-[var(--text-muted)] uppercase mr-1">Sort</span>
               {SORT_KEYS.map(([field, label]) => (
                 <button key={field} onClick={() => setSortKey(field)}
                   className={`px-1.5 py-0.5 rounded font-logo text-[9px] font-semibold tracking-wider transition-colors
-                    ${sortKey === field ? "bg-yamabuki text-darkBg" : "text-gray-500 hover:text-white"}`}>
+                    ${sortKey === field ? "bg-yamabuki text-darkBg" : "text-[var(--text-muted)] hover:text-white"}`}>
                   {label}
                 </button>
               ))}
@@ -821,7 +821,7 @@ function PlayerSeatPanel({
                   highlightStat={sortKey === "TAGGED" ? "PTS" : sortKey} />
               );
             })}
-            {list.length === 0 && <div className="py-6 text-center text-xs text-gray-600">No players in this group.</div>}
+            {list.length === 0 && <div className="py-6 text-center text-xs text-[var(--text-faint)]">No players in this group.</div>}
           </div>
         </div>
       )}
@@ -842,7 +842,7 @@ function RosterReview({ lineups, simEra, moveSrc, canRearrange, onSlotTap, onCon
     <div className="space-y-4">
       <div className="text-center">
         <div className="font-logo text-lg font-bold text-white">Rosters Complete</div>
-        <p className="text-xs text-gray-500 mt-0.5">Review both teams before hiring your coaches. Tap a slot on the court to rearrange one last time.</p>
+        <p className="text-xs text-[var(--text-muted)] mt-0.5">Review both teams before hiring your coaches. Tap a slot on the court to rearrange one last time.</p>
       </div>
 
       {/* İki kadro TEK sahada — 1v1 yapısı burada tam görünür. Yerleşim
@@ -902,14 +902,14 @@ function TeamPreviewCard({ seat, lineup, simEra, moveSrc, canRearrange, onSlotTa
           </div>
           <span className="text-[10px] text-blue-400">{p.primary_arch || "—"}</span>
         </div>
-        <span className="text-[9.5px] text-gray-500 tabular-nums shrink-0 w-9 text-right">ovr {base}</span>
+        <span className="text-[9.5px] text-[var(--text-muted)] tabular-nums shrink-0 w-9 text-right">ovr {base}</span>
         <div className="g-bar-track w-12 shrink-0" style={{height:6}}>
           <div className="h-full rounded-full" style={{ width: `${qPct}%`, background: qPct >= 75 ? "#1D428A" : qPct >= 55 ? "#2a3d6b" : "#7f1d1d" }} />
         </div>
-        <span className={`text-[11px] font-bold w-6 text-right shrink-0 ${qPct >= 75 ? "text-blue-300" : qPct >= 55 ? "text-gray-200" : "text-red-400"}`}>{qPct}</span>
+        <span className={`text-[11px] font-bold w-6 text-right shrink-0 ${qPct >= 75 ? "text-blue-300" : qPct >= 55 ? "text-gray-200" : "text-[var(--danger)]"}`}>{qPct}</span>
         {onPlayerInfo && (
           <span onClick={e => { e.stopPropagation(); onPlayerInfo(p); }}
-            className="text-gray-600 hover:text-yamabuki transition-colors shrink-0" title="Player details">
+            className="text-[var(--text-faint)] hover:text-yamabuki transition-colors shrink-0" title="Player details">
             <EyeIcon size={12} />
           </span>
         )}
@@ -922,7 +922,7 @@ function TeamPreviewCard({ seat, lineup, simEra, moveSrc, canRearrange, onSlotTa
       <div className="flex items-center justify-between">
         <span className="font-logo text-sm font-bold text-white">Player {seat}</span>
         <div className="flex items-center gap-1.5">
-          <span className="text-[9.5px] text-gray-500 uppercase tracking-widest">Team Score</span>
+          <span className="text-[9.5px] text-[var(--text-muted)] uppercase tracking-widest">Team Score</span>
           <span className={`font-logo text-xl font-black tabular-nums ${pct >= 78 ? "text-blue-300" : pct >= 62 ? "text-sky-300" : "text-gray-300"}`}>{pct}</span>
         </div>
       </div>
@@ -964,11 +964,11 @@ function SeriesPanel({ matchup, games, seriesW, seriesOver, onNextGame, onSeeRes
 
       <div className="max-w-3xl mx-auto space-y-4">
       <div className="text-center">
-        <div className="font-logo text-[11px] uppercase tracking-widest text-gray-500 mb-1">Best-of-7 Series</div>
+        <div className="font-logo text-[11px] uppercase tracking-widest text-[var(--text-muted)] mb-1">Best-of-7 Series</div>
         <div className="font-logo text-4xl font-black text-white tabular-nums">
-          {seriesW[1]}<span className="text-gray-600 mx-2">–</span>{seriesW[2]}
+          {seriesW[1]}<span className="text-[var(--text-faint)] mx-2">–</span>{seriesW[2]}
         </div>
-        <div className="text-xs text-gray-500 mt-1">
+        <div className="text-xs text-[var(--text-muted)] mt-1">
           {seriesOver
             ? `Player ${leaderSeat} wins the series ${Math.max(seriesW[1], seriesW[2])}-${Math.min(seriesW[1], seriesW[2])}`
             : leaderSeat === 0 ? "Series tied" : `Player ${leaderSeat} leads`}
@@ -1012,9 +1012,9 @@ function SameScreenResult({ lineups, coaches, seriesW, seriesGames, onReset }) {
           {winner === 0 ? "It's a tie!" : `Player ${winner} wins the series!`}
         </div>
         <div className="font-logo text-3xl font-black text-white mt-1 tabular-nums">
-          {seriesW[1]}<span className="text-gray-600 mx-2">–</span>{seriesW[2]}
+          {seriesW[1]}<span className="text-[var(--text-faint)] mx-2">–</span>{seriesW[2]}
         </div>
-        <div className="text-[11px] text-gray-500 mt-1">{seriesGames.length} game{seriesGames.length !== 1 ? "s" : ""} played</div>
+        <div className="text-[11px] text-[var(--text-muted)] mt-1">{seriesGames.length} game{seriesGames.length !== 1 ? "s" : ""} played</div>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {[1, 2].map(seat => (
@@ -1024,7 +1024,7 @@ function SameScreenResult({ lineups, coaches, seriesW, seriesGames, onReset }) {
               <span className="text-3xl font-black tabular-nums" style={{ color: winner === seat ? "var(--accent)" : "#e5e7eb" }}>{seriesW[seat]}</span>
             </div>
             {coaches[seat] && (
-              <div className="text-[11px] text-gray-400 flex items-center gap-1"><CoachIcon size={12} /> {coaches[seat].name}</div>
+              <div className="text-[11px] text-[var(--text-muted)] flex items-center gap-1"><CoachIcon size={12} /> {coaches[seat].name}</div>
             )}
             <div className="flex flex-wrap gap-1">
               {POSITIONS.concat(BENCH_SLOTS).map(pos => lineups[seat][pos] && (

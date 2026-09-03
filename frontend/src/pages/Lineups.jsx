@@ -9,6 +9,7 @@ import { Search } from "lucide-react";
 import { SEO } from "../hooks/useSEO";
 import { computeLineupFit, GRADE_COLOR, PILLAR_LABELS, getEra } from "../utils/lineupScoring";
 import "../components/PlayerCard.css";
+import { ARCHETYPE_COLOR as ARCH_HEX } from "../constants/archetypeColors";
 
 const SCORE_COLOR = (v) =>
   v >= 0.80 ? "var(--accent)" :
@@ -22,13 +23,6 @@ const FIT_HEX = (v) =>
 
 const POS_COLOR = {
   PG: "#a78bfa", SG: "#60a5fa", SF: "#34d399", PF: "#fb923c", C: "#f87171",
-};
-
-// Arketip → renk (Glossary'nin CORE_HEX'iyle aynı palet — site genelinde tutarlı).
-const ARCH_HEX = {
-  Engine: "#fb923c", Ecosystem: "#4ade80", Hub: "#2dd4bf", Connector: "#c084fc",
-  Creator: "#fb7185", Anchor: "#60a5fa", Spacer: "#22d3ee", Finisher: "#a3e635",
-  Force: "#f87171", Initiator: "#FFB11B", Stopper: "#d1d5db", "Rim Runner": "#34d399",
 };
 
 // ── İki aşamalı skor (2025-26 custom lineup için) ────────────────────────────
@@ -513,7 +507,7 @@ export default function Lineups() {
 
         <div className="shrink-0 lg:min-h-0 lg:overflow-y-auto lg:pr-1 space-y-4">
         {/* Custom lineup — the hero moment of this page, gets the card's punch */}
-        <div className="relative aura-glass rounded-2xl p-5 overflow-hidden">
+        <div className="relative aura-glass rounded-[18px] p-5 overflow-hidden">
           <span className="aura-glow"
             style={{ "--aura-color": customResult ? (GRADE_COLOR[customResult?.players_data ? computeLineupFit(customResult.players_data).grade : ""] || "#FFB11B") : "#FFB11B",
               width: 260, height: 260, left: "50%", top: -80, marginLeft: -130 }} />

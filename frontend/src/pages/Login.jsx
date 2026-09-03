@@ -47,7 +47,7 @@ export default function Login() {
         </h1>
 
         {expired && (
-          <p className="text-sm text-center mb-4 px-3 py-2 rounded-lg"
+          <p className="text-sm text-center mb-4 px-3 py-2 rounded-[8px]"
             style={{ color: "var(--yamabuki)", background: "rgba(255,177,27,.1)", border: "1px solid rgba(255,177,27,.3)" }}>
             Your session expired — log back in to keep going.
           </p>
@@ -60,7 +60,7 @@ export default function Login() {
               type="email" required autoFocus
               value={form.email}
               onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
-              className="w-full px-3 py-2 rounded-lg text-sm outline-none"
+              className="w-full px-3 py-2 rounded-[8px] text-sm outline-none"
               style={{ background: "var(--bg-elevated)", color: "var(--text-primary)", border: "1px solid var(--border)" }}
             />
           </div>
@@ -75,12 +75,12 @@ export default function Login() {
               type="password" required
               value={form.password}
               onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
-              className="w-full px-3 py-2 rounded-lg text-sm outline-none"
+              className="w-full px-3 py-2 rounded-[8px] text-sm outline-none"
               style={{ background: "var(--bg-elevated)", color: "var(--text-primary)", border: "1px solid var(--border)" }}
             />
           </div>
 
-          {error && <p className="text-sm text-red-400">{error}</p>}
+          {error && <p className="text-sm" style={{ color: "var(--danger)" }}>{error}</p>}
 
           <button
             type="submit" disabled={loading}

@@ -4,12 +4,7 @@ import { ERAS as GAME_ERAS } from "../game/eras";
 import { useLang } from "../contexts/LanguageContext";
 import { api } from "../api";
 import "../components/PlayerCard.css";
-
-const CORE_HEX = {
-  Engine: "#fb923c", Ecosystem: "#4ade80", Hub: "#2dd4bf", Connector: "#c084fc",
-  Creator: "#fb7185", Anchor: "#60a5fa", Spacer: "#22d3ee", Finisher: "#a3e635",
-  Force: "#f87171", Initiator: "#FFB11B", Stopper: "#d1d5db", "Rim Runner": "#34d399",
-};
+import { ARCHETYPE_COLOR as CORE_HEX } from "../constants/archetypeColors";
 const ARCH_SLUG = {
   Engine: "engine", Ecosystem: "ecosystem", Hub: "hub", Connector: "connector",
   Creator: "creator", Anchor: "anchor", Spacer: "spacer", Finisher: "finisher",

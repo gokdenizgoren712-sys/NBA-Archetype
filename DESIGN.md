@@ -5,6 +5,7 @@ colors:
   draft-card-foil: "#FFB11B"
   foil-dim: "rgba(255,177,27,0.12)"
   foil-border: "rgba(255,177,27,0.32)"
+  foil-highlight: "#ffe9b0"
   pitch-teal: "#3FB08C"
   logo-teal: "#00A3AF"
   void-black: "#0b0b0b"
@@ -16,11 +17,40 @@ colors:
   ink-faint: "#3a3a3a"
   nba-red: "#c8102e"
   nba-blue: "#1d428a"
+  danger: "#f87171"
+  gleague-red: "#A8263F"
+  ncaa-blue: "#3D7EC9"
+  euroleague-orange: "#FF6900"
+  arch-engine: "#fb923c"
+  arch-ecosystem: "#4ade80"
+  arch-hub: "#2dd4bf"
+  arch-connector: "#c084fc"
+  arch-creator: "#fb7185"
+  arch-anchor: "#60a5fa"
+  arch-spacer: "#22d3ee"
+  arch-finisher: "#a3e635"
+  arch-force: "#f87171"
+  arch-initiator: "#FFB11B"
+  arch-stopper: "#d1d5db"
+  arch-rim-runner: "#34d399"
+  phase-gk: "#F2C14E"
+  phase-def: "#4C9BE8"
+  phase-mid: "#3FB08C"
+  phase-fwd: "#E8654C"
 typography:
   display:
     fontFamily: "Rajdhani, ui-sans-serif, sans-serif"
+    fontWeight: 800
+    fontSize: "23px"
+    letterSpacing: "0.06em"
+  headline:
+    fontFamily: "Rajdhani, ui-sans-serif, sans-serif"
     fontWeight: 700
-    letterSpacing: "0.02em"
+    fontSize: "28px"
+  title:
+    fontFamily: "Rajdhani, ui-sans-serif, sans-serif"
+    fontWeight: 700
+    fontSize: "15px"
   label:
     fontFamily: "Rajdhani, ui-sans-serif, sans-serif"
     fontWeight: 700
@@ -29,14 +59,27 @@ typography:
   body:
     fontFamily: "Outfit, ui-sans-serif, sans-serif"
     fontWeight: 400
+    fontSize: "13px"
+  micro:
+    fontFamily: "Rajdhani, ui-sans-serif, sans-serif"
+    fontWeight: 700
+    fontSize: "10.5px"
+  loud-moment:
+    fontFamily: "Rajdhani, ui-sans-serif, sans-serif"
+    fontWeight: 800
+    fontSize: "96px"
+    letterSpacing: "-0.03em"
 rounded:
   pill: "999px"
   card: "17px"
   panel: "18px"
+  loud-moment: "22px"
   tile: "15px"
   slot: "12px"
   chip: "8px"
+  chip-sm: "6px"
   micro: "3px"
+  micro-sm: "2px"
 spacing:
   xs: "6px"
   sm: "8px"
@@ -109,7 +152,9 @@ itself — gold is the only color allowed to glow.
   `var(--accent)` in most component contexts and `var(--yamabuki)` specifically where
   a color must stay gold regardless of active sport (trophies, champion UI). Two
   supporting tones ride with it: **Foil Dim** (`rgba(255,177,27,0.12)`, tinted
-  backgrounds) and **Foil Border** (`rgba(255,177,27,0.32)`, accent-colored hairlines).
+  backgrounds), **Foil Border** (`rgba(255,177,27,0.32)`, accent-colored hairlines), and
+  **Foil Highlight** (`#ffe9b0`, the light end of the gold gradient used on the primary
+  button and progress fills — always paired with the accent, never standalone).
 
 ### Secondary
 - **Pitch Teal** (`#3FB08C`): the football side's sport-conditional accent. Swaps in
@@ -134,6 +179,26 @@ itself — gold is the only color allowed to glow.
 ### Utility
 - **NBA Red** (`#c8102e`) / **NBA Blue** (`#1d428a`): league-identity colors, used only
   where the content is literally referencing the NBA brand (not a general UI accent).
+- **G-League Red** (`#A8263F`), **NCAA Blue** (`#3D7EC9`), **EuroLeague Orange**
+  (`#FF6900`): one consistent brand hex per non-NBA league, used only in that league's
+  own nav badge/page identity — same rule as NBA Red/Blue, not general UI accents.
+- **Danger** (`#f87171`): the site's one error/destructive-state color — form errors,
+  delete actions, admin moderation flags. Previously an unformalized `text-red-400`
+  used consistently but never named; now a real token.
+
+### Categorical — Archetype & Phase palettes
+Two small, deliberately-not-neutral palettes used for data-visualization categories
+(not UI chrome) — each label always resolves to the same color everywhere it appears.
+- **Archetype colors** (12 core archetypes — Engine `#fb923c`, Ecosystem `#4ade80`, Hub
+  `#2dd4bf`, Connector `#c084fc`, Creator `#fb7185`, Anchor `#60a5fa`, Spacer `#22d3ee`,
+  Finisher `#a3e635`, Force `#f87171`, Initiator `#FFB11B`, Stopper `#d1d5db`, Rim
+  Runner `#34d399`): single source of truth at
+  `frontend/src/constants/archetypeColors.js`. Previously redefined independently in 5
+  files with 3 different value sets — the same archetype rendered a different color
+  depending which page you were on (fixed 2026-09).
+- **Phase / Role colors** (football's 4 on-pitch roles — Goalkeeper `#F2C14E`, Defence
+  `#4C9BE8`, Midfield `#3FB08C`, Attack `#E8654C`): single source of truth at
+  `frontend/src/game/football/theme.js`.
 
 ### Named Rules
 
@@ -177,8 +242,19 @@ somewhere to rest between Rajdhani's louder moments.
   a short leading rule (`.g-label::before`) in game contexts, bare in data contexts.
 - **Body** (400, 13px, Outfit): everything a scout actually reads at volume — stat
   values, descriptions, list rows.
+- **Micro** (700, a tight cluster of sub-steps between Label and Body —
+  7.5/8/8.5/10.5/11/11.5/12.5px, `font-logo`): the game module's chip/stat/sub-label
+  scale — column headers, slot positions, joker labels, roster row stats. Not
+  arbitrary: each step is reused consistently across `game.css`, just never enumerated
+  here before. Data pages don't need this scale; they stay on Label/Body.
 
 ### Named Rules
+
+**The Loud-Moment Exception.** The score-reveal grade letter (`.g-score-grade`, 96px/
+800/-0.03em) and its container (`.g-score-hero`, 22px radius) break the normal type/
+shape scale on purpose — this is the game's single biggest payoff moment (draft
+result), and it's meant to read as an event, not a heading. One such moment per flow;
+don't reuse the 96px step anywhere else or it stops meaning "this is the reveal."
 
 **The Uppercase-Means-Game Rule.** Uppercase, tracked-out Rajdhani at loud weight
 (800) signals "you are in the game module." A data-page heading stays sentence case
@@ -217,6 +293,19 @@ selected tiles, active slots — `0 0 16-22px` at the accent color).
 - **Accent glow** (`box-shadow: 0 0 16-22px [accent]`, often paired with an inset
   highlight `0 1px 0 rgba(255,255,255,.5) inset`): active/selected/CTA state, never
   resting state.
+- **Modal lift** (`box-shadow: 0 30px 70px -20px rgba(0,0,0,.85)`): the third and
+  final legitimate exception — a modal genuinely floats over a backdrop, same
+  physical logic as the trading card's own lift. Reserved for true modal/overlay
+  surfaces, not a general excuse to add resting shadows elsewhere.
+
+White and black alpha overlays (`rgba(255,255,255,.04-.28)`, `rgba(0,0,0,.35-.85)`) are
+the system's general-purpose glass/hover/vignette wash tool — texture and depth cues
+layered on top of the real palette, not brand colors themselves. They're a continuous
+opacity space by nature (each surface tunes its own wash to what reads right against
+its own background), not a discrete set to enumerate as named tokens — a scanner
+flagging an individual `rgba(0,0,0,.55)` here is expected and not itself a drift signal;
+what would be real drift is a wash using a *hue* other than pure white/black, or a wash
+strong enough to read as a real background color rather than a texture.
 
 ### Named Rules
 
@@ -310,6 +399,14 @@ a quieter descendant of it.
   regardless of active sport (trophies, champion UI, brand wordmark).
 - **Do** respect `prefers-reduced-motion` on every ambient/looping animation (blob
   drift, shine sweep, sparkle) — already the pattern everywhere; keep it that way.
+- **Do** keep the primary CTA (`.aura-rating-btn`) gold everywhere, football included
+  — confirmed 2026-09: CTA color is not sport-conditional, only secondary/decorative
+  accents (nav, dock, tiles) swap to Pitch Teal. No teal CTA variant exists or should
+  be added.
+- **Do** keep football's comparison/reference surfaces (`FootballCompare.jsx`,
+  `FootballMap.jsx`) in the quiet data register, matching basketball's
+  `Compare.jsx`/`Glossary.jsx` — confirmed 2026-09, converted from the loud game-module
+  chrome (`g-dock`/`g-panel`/`g-tile`) they'd drifted onto.
 
 ### Don't:
 - **Don't** use gradient-clipped text anywhere, including for "signature" headings.

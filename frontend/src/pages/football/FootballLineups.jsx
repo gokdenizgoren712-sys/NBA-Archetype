@@ -213,7 +213,7 @@ export default function FootballLineups() {
                   <span className="aura-blob" style={{ "--slot-color": ACCENT, right: "12%", top: -42, width: 190, height: 105, opacity: 0.18 }} />
                   <div className="g-label">Chemistry</div>
                   <div className="font-logo font-black tabular-nums leading-none"
-                    style={{ fontSize: 44, color: ACCENT, textShadow: `0 0 26px ${ACCENT}55` }}>
+                    style={{ fontSize: 44, color: ACCENT }}>
                     {Math.round((fit?.score ?? 0) * 100)}
                     <span style={{ fontSize: 15, color: "var(--text-faint)" }}> / 100</span>
                   </div>

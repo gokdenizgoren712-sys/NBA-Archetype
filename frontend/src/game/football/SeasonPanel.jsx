@@ -201,10 +201,10 @@ export default function SeasonPanel({ starters, chemistry, positionPenalty = 0,
 
       {mode === "rewrite" && rhData && (
         <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginTop: 8, lineHeight: 1.6 }}>
-          {rhData.team} played <b style={{ color: "#fff" }}>{rhData.matches}</b> matches we
-          have lineups for, finishing <b style={{ color: "#fff" }}>
+          {rhData.team} played <b style={{ color: "var(--text-primary)" }}>{rhData.matches}</b> matches we
+          have lineups for, finishing <b style={{ color: "var(--text-primary)" }}>
           {rhData.real.w}-{rhData.real.d}-{rhData.real.l}</b> on{" "}
-          <b style={{ color: "#fff" }}>{rhData.real.pts}</b> points
+          <b style={{ color: "var(--text-primary)" }}>{rhData.real.pts}</b> points
           ({rhData.real.gf}:{rhData.real.ga}). Your eleven plays the same fixtures.
         </div>
       )}
@@ -401,7 +401,7 @@ function Awards({ a }) {
           "--accent": ACC, "--accent-a": `${ACC}1a`, "--accent-line": `${ACC}44`, cursor: "default" }}>
           <span className="aura-blob" style={{ "--slot-color": ACC, right: -18, top: -20, width: 100, height: 62, opacity: 0.18 }} />
           <div className="g-label">{label}</div>
-          <div style={{ fontSize: 13.5, fontWeight: 700, color: "#fff", marginTop: 2,
+          <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--text-primary)", marginTop: 2,
             whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{name}</div>
           <div style={{ fontSize: 11, color: ACC }}>{sub}</div>
         </div>
@@ -431,7 +431,7 @@ function SquadStats({ players }) {
           </div>
           <span style={{ fontVariantNumeric: "tabular-nums", minWidth: 62,
             textAlign: "right", color: "var(--text-muted)" }}>
-            <b style={{ color: "#fff" }}>{p.goals}</b>G <b style={{ color: "#fff" }}>{p.assists}</b>A
+            <b style={{ color: "var(--text-primary)" }}>{p.goals}</b>G <b style={{ color: "var(--text-primary)" }}>{p.assists}</b>A
           </span>
         </div>
       ))}

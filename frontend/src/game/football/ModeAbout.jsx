@@ -208,7 +208,7 @@ export default function ModeAbout({ mode, onClose }) {
         style={{ "--accent": ACC, "--accent-line": `${ACC}55`, maxWidth: 560 }}>
         <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
           <div style={{ flex: 1 }}>
-            <h2 style={{ margin: 0, fontSize: 19, fontWeight: 800, color: "#fff" }}>
+            <h2 style={{ margin: 0, fontSize: 19, fontWeight: 800, color: "var(--text-primary)" }}>
               {m.title}
             </h2>
             <div style={{ fontSize: 11.5, color: ACC, marginTop: 2 }}>{m.tagline}</div>
@@ -227,7 +227,7 @@ export default function ModeAbout({ mode, onClose }) {
                 <Icon width={14} height={14} />
               </span>
               <div>
-                <div style={{ fontSize: 12.5, fontWeight: 700, color: "#fff" }}>{title}</div>
+                <div style={{ fontSize: 12.5, fontWeight: 700, color: "var(--text-primary)" }}>{title}</div>
                 <div style={{ fontSize: 11.5, color: "var(--text-muted)",
                   lineHeight: 1.6 }}>{desc}</div>
               </div>

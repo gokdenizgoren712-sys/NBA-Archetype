@@ -6,6 +6,7 @@ import AuraSearch from "../../components/AuraSearch";
 import FootballPlayerCard from "../../components/FootballPlayerCard";
 import FootballFeedbackModal from "./FootballFeedbackModal";
 import { LEAGUE_LABEL } from "../../game/football/leagues";
+import { ACCENT } from "../../game/football/theme";
 
 // ── Futbol oyuncular sayfası ─────────────────────────────────────────────────
 // Düzen NBA Players sayfasıyla aynı prensipte: ince üst bar + soldan açılan
@@ -187,7 +188,7 @@ export default function FootballPlayers() {
           style={{ boxShadow: "18px 0 44px -16px rgba(0,0,0,.75)" }}>
           <div className="flex items-center justify-between px-4 py-3.5 shrink-0">
             <span className="font-logo text-sm font-bold uppercase tracking-wider"
-              style={{ color: "#3FB08C" }}>Filters</span>
+              style={{ color: ACCENT }}>Filters</span>
             <button onClick={() => setFilterOpen(false)}
               className="w-7 h-7 flex items-center justify-center rounded-full"
               style={{ color: "var(--text-muted)" }}>

@@ -488,11 +488,11 @@ export default function FootballGame() {
                     <button key={s.id} onClick={() => onSlotClick(s)}
                       className="g-slot"
                       style={{ "--accent": p ? PHASE_COLOR[p.PHASE] : "#8b857e",
-                               "--accent-line": moveSrc === s.id ? "#fff"
+                               "--accent-line": moveSrc === s.id ? "var(--text-primary)"
                                  : p ? PHASE_COLOR[p.PHASE] + "55" : "rgba(255,255,255,.12)",
                                padding: "5px 7px", textAlign: "left" }}>
                       <div className="text-[10px] truncate"
-                        style={{ color: p ? "#fff" : "var(--text-faint)" }}>
+                        style={{ color: p ? "var(--text-primary)" : "var(--text-faint)" }}>
                         {p ? p.PLAYER_NAME.split(" ").slice(-1)[0] : s.id}
                       </div>
                       {p && (

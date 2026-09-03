@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { SEO } from "../../hooks/useSEO";
 import { FOOTBALL_ARCHETYPES } from "../../data/footballGlossary";
+import { PHASE_COLOR } from "../../game/football/theme";
 
 // ── Futbol sözlüğü ───────────────────────────────────────────────────────────
 // Basketbolda About ve Glossary ayrı iki sayfa: biri "bu proje ne yapıyor",
@@ -14,10 +15,10 @@ import { FOOTBALL_ARCHETYPES } from "../../data/footballGlossary";
 
 const PHASES = [
   { key: "all", label: "All", hex: "#9ca3af" },
-  { key: "gk", label: "Goalkeeper", hex: "#F2C14E" },
-  { key: "def", label: "Defence", hex: "#4C9BE8" },
-  { key: "mid", label: "Midfield", hex: "#3FB08C" },
-  { key: "fwd", label: "Attack", hex: "#E8654C" },
+  { key: "gk", label: "Goalkeeper", hex: PHASE_COLOR.gk },
+  { key: "def", label: "Defence", hex: PHASE_COLOR.def },
+  { key: "mid", label: "Midfield", hex: PHASE_COLOR.mid },
+  { key: "fwd", label: "Attack", hex: PHASE_COLOR.fwd },
 ];
 
 function MetricRow({ m, max }) {
@@ -55,7 +56,7 @@ function ArchCard({ a }) {
     <div className="g-panel p-3" style={{ "--accent": a.color, "--accent-line": a.color + "44",
       color: a.color, cursor: "pointer" }} onClick={() => setOpen(o => !o)}>
       <div className="flex items-baseline gap-2">
-        <span style={{ fontSize: 13.5, fontWeight: 700, color: "#fff" }}>{a.name}</span>
+        <span style={{ fontSize: 13.5, fontWeight: 700, color: "var(--text-primary)" }}>{a.name}</span>
         <span style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: ".07em" }}>
           {a.phaseLabel}
         </span>

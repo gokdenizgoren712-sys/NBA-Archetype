@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { SEO } from "../hooks/useSEO";
 import { PlayIcon, UsersIcon, GlobeIcon, ScreenIcon, InfoIcon } from "../game/GameIcons";
 import ModeAboutModal from "../game/ModeAboutModal";
+import ModeCardStage from "../components/ModeCardStage";
 import "../components/PlayerCard.css";
 import "../game/game.css";
 
@@ -71,12 +72,14 @@ export default function GameModeSelect() {
           <p className="text-sm mt-2.5" style={{ color: "var(--text-muted)" }}>Pick a mode to start drafting</p>
         </div>
 
-        <div className="flex flex-wrap gap-6 justify-center">
-          {MODES.map(mode => {
+        <div className="flex flex-wrap gap-6 justify-center" style={{ position: "relative" }}>
+          <span className="aura-blob aura-blob-liquid" style={{ "--slot-color": "#FFB11B", left: "-4%", top: "-14%", width: 320, height: 220, opacity: 0.14 }} />
+          <span className="aura-blob aura-blob-liquid" style={{ "--slot-color": "#4ade80", right: "-2%", bottom: "-18%", width: 280, height: 200, opacity: 0.1, animationDelay: "-4s, -3s" }} />
+          {MODES.map((mode, i) => {
             const { key, Icon, title, meta, desc, path, live, accent } = mode;
             return (
-              <div key={key} className={`pcard-stage mode${live ? "" : " soon"}`}>
-                <div className="pcard"
+              <ModeCardStage key={key} index={i} className={live ? "" : "soon"}>
+                <div className="pcard pcard-tilt"
                   onClick={() => live && navigate(path)}
                   style={{ "--accent": accent, "--accent-a": accent + "48", "--accent-b": accent + "30", "--accent-line": accent + "66" }}>
                   <div className="pcard-holo" /><div className="pcard-foil" /><div className="pcard-grain" />
@@ -110,7 +113,7 @@ export default function GameModeSelect() {
                     {live && <span className="pcard-chev" style={{ transform: "rotate(-90deg)" }}>▾</span>}
                   </div>
                 </div>
-              </div>
+              </ModeCardStage>
             );
           })}
         </div>

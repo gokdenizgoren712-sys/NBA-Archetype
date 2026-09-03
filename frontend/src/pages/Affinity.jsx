@@ -3,6 +3,7 @@ import { api } from "../api";
 import { useLang } from "../contexts/LanguageContext";
 import SplitPane from "../components/SplitPane";
 import PlayerCard from "../components/PlayerCard";
+import { ARCHETYPE_COLOR as ARCH_COLOR } from "../constants/archetypeColors";
 
 function cellStyle(value) {
   if (value === "" || value === null || value === undefined)
@@ -17,21 +18,6 @@ function cellStyle(value) {
   :              "rgba(185,28,28,0.25)";
   return { bg, label: Math.round(v * 100) };
 }
-
-const ARCH_COLOR = {
-  Engine:       "#fb923c",
-  Ecosystem:    "#4ade80",
-  Hub:          "#2dd4bf",
-  Connector:    "#c084fc",
-  Creator:      "#f87171",
-  Anchor:       "#60a5fa",
-  Spacer:       "#67e8f9",
-  Finisher:     "#f9a8d4",
-  Force:        "#ef4444",
-  Initiator:    "#facc15",
-  Stopper:      "#9ca3af",
-  "Rim Runner": "#34d399",
-};
 
 function Dot({ arch, size = 8 }) {
   return (

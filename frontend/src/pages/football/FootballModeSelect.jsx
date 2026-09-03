@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { SEO } from "../../hooks/useSEO";
 import { PlayIcon, UsersIcon, GlobeIcon, ScreenIcon, InfoIcon } from "../../game/GameIcons";
 import ModeAbout from "../../game/football/ModeAbout";
+import ModeCardStage from "../../components/ModeCardStage";
 import "../../components/PlayerCard.css";
 import "../../game/game.css";
 import { ACCENT, PHASE_COLOR } from "../../game/football/theme";
@@ -83,12 +84,14 @@ export default function FootballModeSelect() {
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-6 justify-center">
-          {MODES.map((mode) => {
+        <div className="flex flex-wrap gap-6 justify-center" style={{ position: "relative" }}>
+          <span className="aura-blob aura-blob-liquid" style={{ "--slot-color": ACCENT, left: "-4%", top: "-14%", width: 320, height: 220, opacity: 0.14 }} />
+          <span className="aura-blob aura-blob-liquid" style={{ "--slot-color": PHASE_COLOR.fwd, right: "-2%", bottom: "-18%", width: 280, height: 200, opacity: 0.1, animationDelay: "-4s, -3s" }} />
+          {MODES.map((mode, i) => {
             const { key, Icon, title, meta, desc, path, live, accent } = mode;
             return (
-              <div key={key} className={`pcard-stage mode${live ? "" : " soon"}`}>
-                <div className="pcard"
+              <ModeCardStage key={key} index={i} className={live ? "" : "soon"}>
+                <div className="pcard pcard-tilt"
                   onClick={() => live && navigate(path)}
                   style={{ "--accent": accent, "--accent-a": accent + "48",
                            "--accent-b": accent + "30", "--accent-line": accent + "66" }}>
@@ -126,7 +129,7 @@ export default function FootballModeSelect() {
                       style={{ transform: "rotate(-90deg)" }}>▾</span>}
                   </div>
                 </div>
-              </div>
+              </ModeCardStage>
             );
           })}
         </div>

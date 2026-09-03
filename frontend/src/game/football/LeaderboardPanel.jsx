@@ -82,7 +82,7 @@ export default function FootballLeaderboard({ limit = 25 }) {
                 <span style={{ width: 22, textAlign: "right", fontVariantNumeric: "tabular-nums",
                   color: "var(--text-faint)", fontSize: 12 }}>{i + 1}</span>
                 <div style={{ flex: "1 1 150px", minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: "#fff",
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)",
                     whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                     {e.name}
                   </div>

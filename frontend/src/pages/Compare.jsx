@@ -5,15 +5,9 @@ import { api } from "../api";
 import RadarProfile from "../components/RadarProfile";
 import PlayerCard from "../components/PlayerCard";
 import { useLang } from "../contexts/LanguageContext";
+import { ARCHETYPE_COLOR as ARCH_COLOR } from "../constants/archetypeColors";
 
 const CORE = ["Engine","Ecosystem","Hub","Connector","Creator","Anchor","Spacer","Finisher","Force","Initiator","Stopper","Rim Runner"];
-
-const ARCH_COLOR = {
-  Engine: "#fb923c", Ecosystem: "#d97706", Hub: "#34d399",
-  Connector: "#38bdf8", Creator: "#a78bfa", Anchor: "#60a5fa",
-  Spacer: "#6ee7b7", Finisher: "#f472b6", Force: "#ef4444",
-  Initiator: "#facc15", Stopper: "#9ca3af", "Rim Runner": "#4ade80",
-};
 
 const A_COLOR = "#FFB11B";
 const B_COLOR = "#60a5fa";

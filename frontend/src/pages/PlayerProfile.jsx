@@ -162,7 +162,7 @@ export default function PlayerProfile() {
               </div>
             )}
             {flagStatus === "err" && (
-              <div className="text-xs text-center py-1" style={{ color: "#f87171" }}>
+              <div className="text-xs text-center py-1" style={{ color: "var(--danger)" }}>
                 Failed to submit. Please try again.
               </div>
             )}

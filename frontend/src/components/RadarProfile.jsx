@@ -40,8 +40,8 @@ function CustomTooltip({ active, payload }) {
   if (!active || !payload?.length) return null;
   const d = payload[0].payload;
   return (
-    <div className="bg-surfaceBg border border-gray-700 rounded-lg px-3 py-2 text-xs">
-      <div className="font-semibold text-white">{d.comp}</div>
+    <div className="rounded-[8px] px-3 py-2 text-xs" style={{ background: "var(--bg-surface)", border: "1px solid var(--border)" }}>
+      <div className="font-semibold" style={{ color: "var(--text-primary)" }}>{d.comp}</div>
       {payload.map((p, i) => (
         <div key={i} style={{ color: p.color }}>
           {p.name}: {Math.round(p.value * 100)}

@@ -1,4 +1,7 @@
 {
+  "projectRoots": [
+    "frontend"
+  ],
   "detector": {
     "ignoreRules": [],
     "ignoreFiles": [],
@@ -38,6 +41,15 @@
         ],
         "createdAt": "2026-09-02T21:01:43.425Z",
         "reason": "reviewed during 2026-09 UI consistency pass (L327/424/730): all three are small isolated progress/stat-bar-fill or accent-rail elements (g-rr rail height, g-bar-fill/g-progress width), not full-layout animation — negligible reflow cost, consistent with the same pattern already used at PlayerCard.css:547. Converting to transform:scaleX would need transform-origin/border-radius rework for marginal gain; judged not worth the risk. Not user-confirmed, my own risk assessment."
+      },
+      {
+        "rule": "layout-transition",
+        "value": "*",
+        "files": [
+          "frontend/src/components/PlayerCard.css"
+        ],
+        "createdAt": "2026-09-03T08:30:20.538Z",
+        "reason": "L547 .pillar-bar-fill transition:width — small isolated stat-bar-fill, not full-layout animation; negligible reflow cost. Same pattern as game.css g-bar-fill/g-progress (already suppressed there, this entry was referenced but never actually added). Reviewed 2026-09 UI consistency pass, not user-confirmed, my own risk assessment."
       }
     ]
   }

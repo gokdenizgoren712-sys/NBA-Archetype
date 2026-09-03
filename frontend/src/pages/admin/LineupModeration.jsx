@@ -58,17 +58,17 @@ export default function LineupModeration() {
           </h1>
           <div className="flex gap-2">
             <Link to="/admin/articles"
-              className="px-3 py-1.5 rounded-lg text-sm"
+              className="px-3 py-1.5 rounded-[8px] text-sm"
               style={{ background: "var(--bg-elevated)", color: "var(--text-muted)", border: "1px solid var(--border)" }}>
               Articles
             </Link>
             <Link to="/admin/users"
-              className="px-3 py-1.5 rounded-lg text-sm"
+              className="px-3 py-1.5 rounded-[8px] text-sm"
               style={{ background: "var(--bg-elevated)", color: "var(--text-muted)", border: "1px solid var(--border)" }}>
               Users
             </Link>
             <Link to="/admin/corrections"
-              className="px-3 py-1.5 rounded-lg text-sm"
+              className="px-3 py-1.5 rounded-[8px] text-sm"
               style={{ background: "var(--bg-elevated)", color: "var(--text-muted)", border: "1px solid var(--border)" }}>
               Corrections
             </Link>
@@ -79,7 +79,7 @@ export default function LineupModeration() {
         <div className="flex gap-2 mb-4">
           {[["all", "All"], ["classic", "Classic"], ["salarycap", "Salary Cap"]].map(([key, label]) => (
             <button key={key} onClick={() => setModeFilter(key)}
-              className="px-3 py-1.5 rounded-lg text-xs font-medium"
+              className="px-3 py-1.5 rounded-[8px] text-xs font-medium"
               style={{
                 background: modeFilter === key ? "var(--accent)" : "var(--bg-elevated)",
                 color: modeFilter === key ? "#000" : "var(--text-muted)",
@@ -95,7 +95,7 @@ export default function LineupModeration() {
         ) : shown.length === 0 ? (
           <p style={{ color: "var(--text-muted)" }}>No lineups yet.</p>
         ) : (
-          <div className="rounded-lg overflow-hidden border mb-6" style={{ borderColor: "var(--border)" }}>
+          <div className="rounded-[8px] overflow-hidden border mb-6" style={{ borderColor: "var(--border)" }}>
             <table className="w-full text-sm">
               <thead style={{ background: "var(--bg-elevated)" }}>
                 <tr>
@@ -111,7 +111,7 @@ export default function LineupModeration() {
                     <td className="px-4 py-3 text-xs font-mono" style={{ color: "var(--text-muted)" }}>{e.id}</td>
                     <td className="px-4 py-3 font-medium" style={{ color: "var(--text-primary)" }}>{e.username || "—"}</td>
                     <td className="px-4 py-3">
-                      <span className="px-2 py-0.5 rounded-lg text-xs font-medium"
+                      <span className="px-2 py-0.5 rounded-[8px] text-xs font-medium"
                         style={{
                           background: e.mode === "salarycap" ? "rgba(255,177,27,.15)" : "rgba(156,163,175,.15)",
                           color: e.mode === "salarycap" ? "var(--accent)" : "var(--text-muted)",
@@ -124,10 +124,10 @@ export default function LineupModeration() {
                       {e.wins != null ? `${e.wins}W${e.season_result ? ` · ${e.season_result}` : ""}` : "—"}
                     </td>
                     <td className="px-4 py-3">
-                      <span className="px-2 py-0.5 rounded-lg text-xs font-medium"
+                      <span className="px-2 py-0.5 rounded-[8px] text-xs font-medium"
                         style={{
                           background: e.has_roster ? "rgba(34,197,94,.15)" : "rgba(239,68,68,.15)",
-                          color: e.has_roster ? "#4ade80" : "#f87171",
+                          color: e.has_roster ? "#4ade80" : "var(--danger)",
                         }}>
                         {e.has_roster ? "Board-eligible" : "Missing"}
                       </span>
@@ -137,8 +137,8 @@ export default function LineupModeration() {
                     </td>
                     <td className="px-4 py-3">
                       <button onClick={() => deleteOne(e.id)}
-                        className="px-2 py-1 rounded-lg text-xs text-red-400 hover:text-red-300"
-                        style={{ border: "1px solid rgba(248,113,113,.3)" }}>
+                        className="px-2 py-1 rounded-[8px] text-xs"
+                        style={{ color: "var(--danger)", border: "1px solid rgba(248,113,113,.3)" }}>
                         Delete
                       </button>
                     </td>
@@ -150,24 +150,24 @@ export default function LineupModeration() {
         )}
 
         {/* Danger zone */}
-        <div className="rounded-lg p-4" style={{ border: "1px solid rgba(248,113,113,.3)", background: "rgba(248,113,113,.04)" }}>
-          <h2 className="text-sm font-bold mb-1" style={{ color: "#f87171" }}>Danger Zone</h2>
+        <div className="rounded-[8px] p-4" style={{ border: "1px solid rgba(248,113,113,.3)", background: "rgba(248,113,113,.04)" }}>
+          <h2 className="text-sm font-bold mb-1" style={{ color: "var(--danger)" }}>Danger Zone</h2>
           <p className="text-xs mb-3" style={{ color: "var(--text-muted)" }}>
             Bulk-delete lineups. This removes them from every leaderboard (Classic list, Salary Cap list, and Board Challenge) — cannot be undone.
           </p>
           <div className="flex gap-2 flex-wrap">
             <button onClick={() => reset("classic", "all Classic lineups")}
-              className="px-3 py-1.5 rounded-lg text-sm font-medium"
-              style={{ color: "#f87171", border: "1px solid rgba(248,113,113,.3)" }}>
+              className="px-3 py-1.5 rounded-[8px] text-sm font-medium"
+              style={{ color: "var(--danger)", border: "1px solid rgba(248,113,113,.3)" }}>
               Reset Classic
             </button>
             <button onClick={() => reset("salarycap", "all Salary Cap lineups")}
-              className="px-3 py-1.5 rounded-lg text-sm font-medium"
-              style={{ color: "#f87171", border: "1px solid rgba(248,113,113,.3)" }}>
+              className="px-3 py-1.5 rounded-[8px] text-sm font-medium"
+              style={{ color: "var(--danger)", border: "1px solid rgba(248,113,113,.3)" }}>
               Reset Salary Cap
             </button>
             <button onClick={() => reset("both", "EVERYTHING — both leaderboards")}
-              className="px-3 py-1.5 rounded-lg text-sm font-bold"
+              className="px-3 py-1.5 rounded-[8px] text-sm font-bold"
               style={{ color: "#fff", background: "#dc2626" }}>
               Reset Both
             </button>

@@ -2,9 +2,7 @@ import { useState, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { api } from "../../api";
 import { SEO } from "../../hooks/useSEO";
 import { MAP_ANCHORS, placeOnMap } from "../../game/football/mapAnchors";
-import "../../game/game.css";
 import { LEAGUE_LABEL } from "../../game/football/leagues";
-import { ACCENT } from "../../game/football/theme";
 
 // ── Arketip haritası — FAZ BAŞINA ────────────────────────────────────────────
 // Basketbolun Explore haritası tek düzlem, çünkü orada bütün oyuncular aynı 12
@@ -95,43 +93,31 @@ export default function FootballMap() {
       <SEO title="Football — Archetype Map"
         description="Every player placed by role. Nearby players play the same way."
         path="/football/map" noindex />
-      <div className="g-smoke" />
 
-      <div className="relative max-w-5xl w-full mx-auto p-5 flex-1 flex flex-col min-h-0 gap-3">
-        {/* ── HEADER DOCK — sol kimlik, orta sezon, sag Explore sekmeleri ── */}
-        <div className="g-dock shrink-0" style={{ "--accent": ACCENT, "--accent-line": ACCENT + "55" }}>
-          <span className="aura-blob" style={{ "--slot-color": ACCENT, left: -30, top: -70, width: 240, height: 150, opacity: 0.16 }} />
-
-          <div className="g-dock-left">
-            <h1 className="g-dock-title">Archetype Map</h1>
-            <p className="g-dock-sub">One map per phase · nearby dots play alike</p>
+      <div className="relative max-w-5xl w-full mx-auto p-4 md:p-6 flex-1 flex flex-col min-h-0 gap-3">
+        <div className="flex items-center justify-between flex-wrap gap-3 shrink-0">
+          <div>
+            <h1 className="font-semibold text-base" style={{ color: "var(--text-primary)" }}>Archetype Map</h1>
+            <p className="text-sm mt-0.5" style={{ color: "var(--text-muted)" }}>One map per phase · nearby dots play alike</p>
           </div>
-
-          <div className="g-dock-center">
+          <div className="flex items-center gap-2">
             <div className="aura-select-wrap">
               <select value={season} onChange={e => setSeason(e.target.value)}
                 className="aura-select accent">
                 {(meta?.seasons || []).map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
-          </div>
-
-          <div className="g-dock-right">
-            {/* Explore alt sekmeleri — basketboldaki ExploreHub'ın karşılığı,
-                oyun modundaki segmented switcher diliyle. */}
-            <div className="g-seg" style={{ "--accent": ACCENT, "--accent-a": ACCENT + "22", "--accent-line": ACCENT + "66" }}>
+            <div className="flex gap-1">
               {[["/football/map", "Map"], ["/football/compare", "Compare"]].map(([to, l]) => (
                 <a key={to} href={to}
-                  className={`g-seg-btn${window.location.pathname === to ? " on" : ""}`}>{l}</a>
+                  className={`aura-pill-btn${window.location.pathname === to ? " active" : ""}`}>{l}</a>
               ))}
             </div>
           </div>
         </div>
 
-        <div className="g-panel p-3 shrink-0 flex flex-wrap gap-2 items-center"
-          style={{ "--accent": ACCENT, "--accent-line": ACCENT + "3d" }}>
-          <span className="aura-blob" style={{ "--slot-color": ACCENT, left: "8%", top: -38, width: 180, height: 96, opacity: 0.12 }} />
-          <span className="g-label shrink-0">Phase</span>
+        <div className="shrink-0 flex flex-wrap gap-2 items-center py-1">
+          <span className="text-xs shrink-0" style={{ color: "var(--text-faint)" }}>Phase</span>
           {PHASES.map(p => (
             <button key={p.key} onClick={() => setPhase(p.key)}
               className={`aura-pill-btn${phase === p.key ? " active" : ""}`}>
@@ -141,7 +127,7 @@ export default function FootballMap() {
           {/* Arketip filtresi — seçilince harita o role geçiyor: yalnızca o
               roldeki oyuncular renkli kalıyor, çapası referans olarak
               beliriyor ve eksen etiketleri aynı kalıyor (aynı düzlem). */}
-          <span className="g-label shrink-0" style={{ marginLeft: 8 }}>Archetype</span>
+          <span className="text-xs shrink-0" style={{ color: "var(--text-faint)", marginLeft: 8 }}>Archetype</span>
           <div className="aura-select-wrap">
             <select value={arch} onChange={e => setArch(e.target.value)}
               className={`aura-select${arch ? " accent" : ""}`}>
@@ -169,8 +155,8 @@ export default function FootballMap() {
           )}
         </div>
 
-        <div ref={wrapRef} className="g-panel p-2 flex-1 min-h-0"
-          style={{ position: "relative", minHeight: 260 }}>
+        <div ref={wrapRef} className="flex-1 min-h-0 overflow-hidden relative"
+          style={{ minHeight: 260, border: "1px solid var(--border)", borderRadius: 18 }}>
           {loading ? (
             <div className="h-full grid place-items-center text-sm" style={{ color: "var(--text-muted)" }}>
               Loading…
@@ -235,15 +221,13 @@ export default function FootballMap() {
           )}
 
           {(hover || sel) && (
-            <div className="g-panel absolute px-3 py-2.5"
-              style={{ right: 12, top: 12, minWidth: 190, pointerEvents: "none",
-                       "--accent": accent, "--accent-line": accent + "80" }}>
-              <span className="aura-blob" style={{ "--slot-color": accent, right: -18, top: -20, width: 110, height: 66, opacity: 0.22 }} />
+            <div className="aura-glass absolute px-3 py-2.5 rounded-[8px]"
+              style={{ right: 12, top: 12, minWidth: 190, pointerEvents: "none" }}>
               {(() => {
                 const p = hover || sel;
                 return (
                   <>
-                    <div className="text-[12.5px] font-bold text-white">{p.PLAYER_NAME}</div>
+                    <div className="text-[12.5px] font-bold" style={{ color: "var(--text-primary)" }}>{p.PLAYER_NAME}</div>
                     <div className="text-[10.5px]" style={{ color: "var(--text-faint)" }}>
                       {p.TEAM} · {p.POSITION}
                     </div>

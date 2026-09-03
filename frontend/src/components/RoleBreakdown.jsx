@@ -17,9 +17,9 @@ const SLOTS = [
 ];
 
 const slotColor = (v) => {
-  if (v >= 0.70) return { bar: "bg-emerald-500", text: "text-emerald-400" };
-  if (v >= 0.55) return { bar: "bg-yamabuki",   text: "text-yamabuki" };
-  return          { bar: "bg-rose-600",            text: "text-rose-400" };
+  if (v >= 0.70) return "#10b981";
+  if (v >= 0.55) return "var(--accent)";
+  return "#e11d48";
 };
 
 export default function RoleBreakdown({ roleScores = {}, compact = false }) {
@@ -30,15 +30,14 @@ export default function RoleBreakdown({ roleScores = {}, compact = false }) {
       <div className="flex gap-0.5 flex-wrap">
         {SLOTS.map(({ key, short }) => {
           const v = roleScores[key] ?? 0;
-          const { bar } = slotColor(v);
+          const hex = slotColor(v);
           return (
             <div key={key} title={`${key}: ${Math.round(v * 100)}`}
               className="flex flex-col items-center gap-0.5">
-              <div className="w-5 h-10 bg-surfaceCard rounded-sm overflow-hidden flex flex-col-reverse">
-                <div className={`${bar} w-full transition-all`}
-                  style={{ height: `${Math.round(v * 100)}%` }} />
+              <div className="w-5 h-10 rounded-sm overflow-hidden flex flex-col-reverse" style={{ background: "var(--bg-elevated)" }}>
+                <div className="w-full transition-all" style={{ height: `${Math.round(v * 100)}%`, background: hex }} />
               </div>
-              <span className="text-[8px] text-gray-600 font-mono">{short}</span>
+              <span className="text-[8px] font-mono" style={{ color: "var(--text-faint)" }}>{short}</span>
             </div>
           );
         })}
@@ -51,15 +50,14 @@ export default function RoleBreakdown({ roleScores = {}, compact = false }) {
       {SLOTS.map(({ key, label }) => {
         const v = roleScores[key] ?? 0;
         const pct = Math.round(v * 100);
-        const { bar, text } = slotColor(v);
+        const hex = slotColor(v);
         return (
           <div key={key} className="flex items-center gap-2">
-            <span className="w-28 text-[10px] text-gray-500 shrink-0 text-right">{label}</span>
-            <div className="flex-1 h-2 bg-surfaceCard rounded-full overflow-hidden">
-              <div className={`h-full ${bar} rounded-full transition-all`}
-                style={{ width: `${pct}%` }} />
+            <span className="w-28 text-[10px] shrink-0 text-right" style={{ color: "var(--text-muted)" }}>{label}</span>
+            <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: "var(--bg-elevated)" }}>
+              <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: hex }} />
             </div>
-            <span className={`w-6 text-[10px] font-mono ${text}`}>{pct}</span>
+            <span className="w-6 text-[10px] font-mono" style={{ color: hex }}>{pct}</span>
           </div>
         );
       })}

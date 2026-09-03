@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { api } from "../../api";
+import { ACCENT } from "../../game/football/theme";
 
 // ── Real XI ──────────────────────────────────────────────────────────────────
 // Basketboldaki "Real lineups" sekmesinin karşılığı ama daha zengin: orada
@@ -49,7 +50,7 @@ export default function FootballRealXI({ season }) {
                 <div className="text-[10.5px]" style={{ color: "var(--text-muted)" }}>{l}</div>
                 <div className="text-lg font-bold" style={{
                   color: i === 2
-                    ? (Math.abs(x) >= 0.15 ? "#3FB08C" : "#E8654C")
+                    ? (Math.abs(x) >= 0.15 ? ACCENT : "#E8654C")
                     : "var(--text-primary)",
                 }}>
                   {x > 0 ? "+" : ""}{Number(x).toFixed(3)}
@@ -104,7 +105,7 @@ export default function FootballRealXI({ season }) {
                 className="g-rr w-full"
                 style={{ "--accent": "#3FB08C", "--accent-a": "#3FB08C1f", "--accent-line": "#3FB08C4d" }}>
                 <b className="text-[13px] tabular-nums"
-                  style={{ color: "#3FB08C", minWidth: 30 }}>
+                  style={{ color: ACCENT, minWidth: 30 }}>
                   {Math.round(l.chemistry * 100)}
                 </b>
                 <span className="text-[12px] text-white truncate" style={{ flex: 1 }}>
@@ -114,7 +115,7 @@ export default function FootballRealXI({ season }) {
                   {l.formation}
                 </span>
                 <span className="text-[11.5px] tabular-nums" style={{
-                  color: l.result === "W" ? "#3FB08C"
+                  color: l.result === "W" ? ACCENT
                     : l.result === "L" ? "#E8654C" : "var(--text-muted)",
                   minWidth: 48, textAlign: "right",
                 }}>

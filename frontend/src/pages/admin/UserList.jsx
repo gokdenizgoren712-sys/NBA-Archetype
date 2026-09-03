@@ -58,23 +58,23 @@ export default function UserList() {
           </h1>
           <div className="flex gap-2">
             <Link to="/admin/articles"
-              className="px-3 py-1.5 rounded-lg text-sm"
+              className="px-3 py-1.5 rounded-[8px] text-sm"
               style={{ background: "var(--bg-elevated)", color: "var(--text-muted)", border: "1px solid var(--border)" }}>
               Articles
             </Link>
             <Link to="/admin/corrections"
-              className="px-3 py-1.5 rounded-lg text-sm"
+              className="px-3 py-1.5 rounded-[8px] text-sm"
               style={{ background: "var(--bg-elevated)", color: "var(--text-muted)", border: "1px solid var(--border)" }}>
               Corrections
             </Link>
             <Link to="/admin/lineups"
-              className="px-3 py-1.5 rounded-lg text-sm"
+              className="px-3 py-1.5 rounded-[8px] text-sm"
               style={{ background: "var(--bg-elevated)", color: "var(--text-muted)", border: "1px solid var(--border)" }}>
               Leaderboards
             </Link>
             <button onClick={deleteAll}
-              className="px-3 py-1.5 rounded-lg text-sm font-medium"
-              style={{ color: "#f87171", border: "1px solid rgba(248,113,113,.3)" }}>
+              className="px-3 py-1.5 rounded-[8px] text-sm font-medium"
+              style={{ color: "var(--danger)", border: "1px solid rgba(248,113,113,.3)" }}>
               Delete All
             </button>
           </div>
@@ -85,7 +85,7 @@ export default function UserList() {
         ) : users.length === 0 ? (
           <p style={{ color: "var(--text-muted)" }}>No users yet.</p>
         ) : (
-          <div className="rounded-lg overflow-hidden border" style={{ borderColor: "var(--border)" }}>
+          <div className="rounded-[8px] overflow-hidden border" style={{ borderColor: "var(--border)" }}>
             <table className="w-full text-sm">
               <thead style={{ background: "var(--bg-elevated)" }}>
                 <tr>
@@ -102,7 +102,7 @@ export default function UserList() {
                     <td className="px-4 py-3 font-medium" style={{ color: "var(--text-primary)" }}>{u.username}</td>
                     <td className="px-4 py-3 text-xs" style={{ color: "var(--text-muted)" }}>{u.email}</td>
                     <td className="px-4 py-3">
-                      <span className="px-2 py-0.5 rounded-lg text-xs font-medium"
+                      <span className="px-2 py-0.5 rounded-[8px] text-xs font-medium"
                         style={{
                           background: u.role === "admin" ? "rgba(255,177,27,.15)" : "rgba(156,163,175,.15)",
                           color: u.role === "admin" ? "var(--accent)" : "var(--text-muted)",
@@ -111,10 +111,10 @@ export default function UserList() {
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="px-2 py-0.5 rounded-lg text-xs font-medium"
+                      <span className="px-2 py-0.5 rounded-[8px] text-xs font-medium"
                         style={{
                           background: u.is_banned ? "rgba(239,68,68,.15)" : "rgba(34,197,94,.15)",
-                          color: u.is_banned ? "#f87171" : "#4ade80",
+                          color: u.is_banned ? "var(--danger)" : "#4ade80",
                         }}>
                         {u.is_banned ? "Banned" : "Active"}
                       </span>
@@ -125,7 +125,7 @@ export default function UserList() {
                     <td className="px-4 py-3">
                       <div className="flex gap-2">
                         <button onClick={() => toggleBan(u)}
-                          className="px-2 py-1 rounded-lg text-xs transition-colors"
+                          className="px-2 py-1 rounded-[8px] text-xs transition-colors"
                           style={{
                             background: "var(--bg-elevated)",
                             color: u.is_banned ? "#4ade80" : "#f97316",
@@ -134,8 +134,8 @@ export default function UserList() {
                           {u.is_banned ? "Unban" : "Ban"}
                         </button>
                         <button onClick={() => deleteUser(u.id)}
-                          className="px-2 py-1 rounded-lg text-xs text-red-400 hover:text-red-300"
-                          style={{ border: "1px solid rgba(248,113,113,.3)" }}>
+                          className="px-2 py-1 rounded-[8px] text-xs"
+                          style={{ color: "var(--danger)", border: "1px solid rgba(248,113,113,.3)" }}>
                           Delete
                         </button>
                       </div>
