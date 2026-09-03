@@ -302,6 +302,42 @@
         ],
         "createdAt": "2026-09-03T09:00:14.794Z",
         "reason": "user decided RankIt is a separate design system with its own frontend/src/rankit/DESIGN.md (user: 'rankit icin ayri bir design.md yaz' / 'primaryarch'tan ayristiralim'). The detector reads only the root DESIGN.md sidecar, so every RankIt token reads as off-palette by construction. Scoped to the rankit subtree only; the root system stays enforced everywhere else."
+      },
+      {
+        "rule": "layout-transition",
+        "value": "*",
+        "files": [
+          "frontend/src/rankit/rankit.css"
+        ],
+        "createdAt": "2026-09-03T09:07:01.288Z",
+        "reason": "expanding-pill motion where width IS the effect: the floating search grows from a 48px circle into a full-width bar (rankit.css:28/33), the carousel dot grows from a 4px circle into a 13px capsule (rankit.css:39, rankit-web.css:445), and the header collapse pushes content with margin (rankit-next.css:9). scaleX on a border-radius:999px capsule yields an ellipse, not a capsule, and distorts the search icon and placeholder; grid-template-rows does not apply to margin. Six tiny pseudo-elements, isolated, negligible reflow. Same class of case already suppressed for game.css and PlayerCard.css in this project. My own assessment, not user-confirmed."
+      },
+      {
+        "rule": "layout-transition",
+        "value": "*",
+        "files": [
+          "frontend/src/rankit/rankit-next.css"
+        ],
+        "createdAt": "2026-09-03T09:07:01.414Z",
+        "reason": "expanding-pill motion where width IS the effect: the floating search grows from a 48px circle into a full-width bar (rankit.css:28/33), the carousel dot grows from a 4px circle into a 13px capsule (rankit.css:39, rankit-web.css:445), and the header collapse pushes content with margin (rankit-next.css:9). scaleX on a border-radius:999px capsule yields an ellipse, not a capsule, and distorts the search icon and placeholder; grid-template-rows does not apply to margin. Six tiny pseudo-elements, isolated, negligible reflow. Same class of case already suppressed for game.css and PlayerCard.css in this project. My own assessment, not user-confirmed."
+      },
+      {
+        "rule": "layout-transition",
+        "value": "*",
+        "files": [
+          "frontend/src/rankit/web/rankit-web.css"
+        ],
+        "createdAt": "2026-09-03T09:07:01.525Z",
+        "reason": "expanding-pill motion where width IS the effect: the floating search grows from a 48px circle into a full-width bar (rankit.css:28/33), the carousel dot grows from a 4px circle into a 13px capsule (rankit.css:39, rankit-web.css:445), and the header collapse pushes content with margin (rankit-next.css:9). scaleX on a border-radius:999px capsule yields an ellipse, not a capsule, and distorts the search icon and placeholder; grid-template-rows does not apply to margin. Six tiny pseudo-elements, isolated, negligible reflow. Same class of case already suppressed for game.css and PlayerCard.css in this project. My own assessment, not user-confirmed."
+      },
+      {
+        "rule": "design-system-color",
+        "value": "rgba(0, 0, 0, 0.85)",
+        "files": [
+          "frontend/src/game/game.css"
+        ],
+        "createdAt": "2026-09-03T09:07:28.763Z",
+        "reason": "L436 .g-modal resting box-shadow — the third documented Shadow Vocabulary exception in DESIGN.md (card-lift, accent-glow, modal-lift), added during the 2026-09 DESIGN.md pass. Shadow values live in design.json's shadows[] extension, not the colors frontmatter, so the scanner can't see it's already sanctioned. Not a code drift."
       }
     ]
   }
