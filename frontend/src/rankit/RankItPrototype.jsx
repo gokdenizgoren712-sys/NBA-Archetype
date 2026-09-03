@@ -564,9 +564,54 @@ function MatchCardSkeleton({ featured = false }) {
   return <div className={`ri-match-skeleton${featured ? " featured" : ""}`} aria-hidden="true"><i/><div><span/><span/></div><b/><footer><span/><span/></footer></div>;
 }
 
+/* Kaydırılan bir şeridin AKTİF kartını izler ve o karta götürür.
+   Noktalar eskiden `index===0`'a sabitti: üç kart arasında kaydırsan da ilk
+   nokta yanık kalıyordu, yani gösterge yalan söylüyordu — ve tıklanamıyordu.
+   Kaydırma pozisyonundan hesaplamak tek doğru kaynak: dokunmatik kaydırma,
+   nokta tıklaması ve klavye aynı değeri üretiyor. */
+function useCarousel(count) {
+  const ref = useRef(null);
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || count < 1) return;
+    let frame = 0;
+    const read = () => {
+      frame = 0;
+      const child = el.children[0];
+      if (!child) return;
+      // Adım = kart genişliği + aralık. Yüzde tabanlı sütunlarda sabit bir
+      // sayı varsaymak yanlış olur, ölçerek alıyoruz.
+      const step = child.getBoundingClientRect().width + parseFloat(getComputedStyle(el).columnGap || 0);
+      if (step <= 0) return;
+      setIndex(Math.max(0, Math.min(count - 1, Math.round(el.scrollLeft / step))));
+    };
+    const onScroll = () => { if (!frame) frame = requestAnimationFrame(read); };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    read();
+    return () => { el.removeEventListener("scroll", onScroll); if (frame) cancelAnimationFrame(frame); };
+  }, [count]);
+
+  const goTo = i => {
+    const el = ref.current;
+    const child = el?.children[i];
+    if (!el || !child) return;
+    // Gösterge hemen ilerlesin: yumuşak kaydırmanın bitmesini beklemek noktayı
+    // dokunuşun gerisinde bırakıyor, ve dinleyici rAF'a bağlı (arka plandayken
+    // durur). Elle kaydırmada dinleyici bu değeri düzeltiyor.
+    setIndex(i);
+    el.scrollTo({ left: child.offsetLeft - el.offsetLeft, behavior: "smooth" });
+  };
+
+  return { ref, index, goTo };
+}
+
 function HomeView({ sport, setSport, hideScores, setHideScores, onOpen, onOpenCompetition, onNavigate, catalog = matches, feed = activity, loading = false }) {
   const shown = useMemo(() => catalog.filter(m => sport === "All" || m.sport === sport), [sport, catalog]);
+  const heroes = useMemo(() => shown.slice(0, 3), [shown]);
   const day = rankitDayContext();
+  const carousel = useCarousel(loading ? 3 : heroes.length);
   return <>
     <div className="ri-home-controls">
       <div className="ri-sport-scroll">
@@ -578,8 +623,14 @@ function HomeView({ sport, setSport, hideScores, setHideScores, onOpen, onOpenCo
     </div>
     <section className="ri-section">
       <div className="ri-section-head"><div><small>{day.eyebrow}</small><h2>{day.title}</h2></div><button onClick={() => onNavigate("Discover")}>See all</button></div>
-      <div className="ri-hero-carousel">{loading ? [0,1,2].map(i=><MatchCardSkeleton key={i} featured/>) : shown.length ? shown.slice(0, 3).map(m => <MatchCard key={m.id} match={m} hideScores={hideScores} onOpen={onOpen} onOpenCompetition={onOpenCompetition} featured />) : <div className="ri-day-empty"><CalendarDays size={20}/><strong>No {sport === "All" ? "matches" : sport.toLowerCase()} in this RankIt day</strong><span>11:00 today → 11:00 tomorrow</span></div>}</div>
-      {shown.length > 0 && <div className="ri-carousel-dots">{shown.slice(0,3).map((match,index)=><i key={match.id} className={index===0?"active":""}/>)}</div>}
+      <div className="ri-hero-carousel" ref={carousel.ref}>{loading ? [0,1,2].map(i=><MatchCardSkeleton key={i} featured/>) : heroes.length ? heroes.map(m => <MatchCard key={m.id} match={m} hideScores={hideScores} onOpen={onOpen} onOpenCompetition={onOpenCompetition} featured />) : <div className="ri-day-empty"><CalendarDays size={20}/><strong>No {sport === "All" ? "matches" : sport.toLowerCase()} in this RankIt day</strong><span>11:00 today → 11:00 tomorrow</span></div>}</div>
+      {heroes.length > 1 && <div className="ri-carousel-dots" role="tablist" aria-label="Tonight's matches">
+        {heroes.map((match, index) => <button key={match.id} type="button" role="tab"
+          aria-selected={carousel.index === index}
+          aria-label={`Match ${index + 1} of ${heroes.length}`}
+          className={carousel.index === index ? "active" : ""}
+          onClick={() => carousel.goTo(index)} />)}
+      </div>}
     </section>
     <section className="ri-section ri-friends-preview">
       <div className="ri-section-head"><div><small>POPULAR ACROSS RANKIT</small><h2>Community reviews</h2></div><button onClick={() => onNavigate("Activity")}>Activity</button></div>

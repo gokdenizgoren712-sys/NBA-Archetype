@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, NavLink, useParams, useNavigate } from "react-router-dom";
 import {
   Home, Compass, Activity as ActivityIcon, List as ListIcon, CircleUserRound,
-  Smartphone, Star, X, ChevronRight, FileText, Plus, Search,
+  Smartphone, Star, X, ChevronLeft, ChevronRight, FileText, Plus, Search,
   SlidersHorizontal, MessageSquare, Award, Eye, EyeOff,
 } from "lucide-react";
 import { SEO } from "../../hooks/useSEO";
@@ -165,6 +165,83 @@ function Empty({ icon: Icon, title, note }) {
   );
 }
 
+/* ── Carousel ─────────────────────────────────────────────────────────────────
+   Telefonun hero şeridinin masaüstü karşılığı. Aynı mekanik (scroll-snap +
+   kaydırma pozisyonundan hesaplanan aktif kart), masaüstünün ek verdiği tek
+   şey: fare için ok düğmeleri. Aktif kart HER ZAMAN kaydırma pozisyonundan
+   okunuyor — ok, nokta ve doğrudan kaydırma tek bir doğruyu paylaşsın. */
+function useCarousel(count) {
+  const ref = useRef(null);
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || count < 1) return;
+    let frame = 0;
+    const read = () => {
+      frame = 0;
+      const child = el.children[0];
+      if (!child) return;
+      const step = child.getBoundingClientRect().width + parseFloat(getComputedStyle(el).columnGap || 0);
+      if (step <= 0) return;
+      setIndex(Math.max(0, Math.min(count - 1, Math.round(el.scrollLeft / step))));
+    };
+    const onScroll = () => { if (!frame) frame = requestAnimationFrame(read); };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    read();
+    return () => { el.removeEventListener("scroll", onScroll); if (frame) cancelAnimationFrame(frame); };
+  }, [count]);
+
+  const goTo = (i) => {
+    const el = ref.current;
+    const target = Math.max(0, Math.min(count - 1, i));
+    const child = el?.children[target];
+    if (!el || !child) return;
+    // İndeksi hemen ilerlet: yumuşak kaydırma bitene kadar beklemek noktayı
+    // tıklamanın gerisinde bırakıyor, ve kaydırma dinleyicisi rAF'a bağlı —
+    // sekme arka plandayken rAF durur, gösterge donardı. Dinleyici yine
+    // çalışıyor ve elle kaydırmada bu değeri düzeltiyor.
+    setIndex(target);
+    el.scrollTo({ left: child.offsetLeft - el.offsetLeft, behavior: "smooth" });
+  };
+
+  return { ref, index, goTo, atStart: index <= 0, atEnd: index >= count - 1 };
+}
+
+function Carousel({ items, hideScores, onOpen }) {
+  const { ref, index, goTo, atStart, atEnd } = useCarousel(items.length);
+  return (
+    <div className="riw-carousel-wrap">
+      <div className="riw-carousel" ref={ref}
+        onKeyDown={(e) => {
+          if (e.key === "ArrowRight") { e.preventDefault(); goTo(index + 1); }
+          if (e.key === "ArrowLeft") { e.preventDefault(); goTo(index - 1); }
+        }}>
+        {items.map((m) => (
+          <MatchCard key={m.id} match={m} hideScores={hideScores} onOpen={onOpen} />
+        ))}
+      </div>
+
+      {items.length > 1 && (
+        <>
+          <button className="riw-carousel-arrow prev" onClick={() => goTo(index - 1)}
+            disabled={atStart} aria-label="Previous match"><ChevronLeft size={18} /></button>
+          <button className="riw-carousel-arrow next" onClick={() => goTo(index + 1)}
+            disabled={atEnd} aria-label="Next match"><ChevronRight size={18} /></button>
+
+          <div className="riw-carousel-dots" role="tablist" aria-label="Tonight's matches">
+            {items.map((m, i) => (
+              <button key={m.id} type="button" role="tab" aria-selected={index === i}
+                aria-label={`Match ${i + 1} of ${items.length}`}
+                className={index === i ? "active" : undefined} onClick={() => goTo(i)} />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 /* Topluluk yorumu satırı — /home ve Activity aynı şekli paylaşıyor. */
 function ReviewRow({ row, onOpen }) {
   const initial = (row.username || "?").slice(0, 1).toUpperCase();
@@ -240,11 +317,9 @@ function HomeView({ onOpenMatch }) {
 
         {data && (
           <>
-            <div className="riw-wall">
-              {hero.map((m) => (
-                <MatchCard key={m.id} match={m} hideScores={hideScores} onOpen={(x) => onOpenMatch(x.id)} />
-              ))}
-            </div>
+            {!!hero.length && (
+              <Carousel items={hero} hideScores={hideScores} onOpen={(x) => onOpenMatch(x.id)} />
+            )}
             {!hero.length && (
               <Empty icon={Compass} title="No matches in this window"
                 note="Try another sport, or open Discover for the full catalog." />
