@@ -3,7 +3,7 @@ import { Link, NavLink, useParams, useNavigate } from "react-router-dom";
 import {
   Home, Compass, Activity as ActivityIcon, List as ListIcon, CircleUserRound,
   Smartphone, Star, X, Minus, ChevronLeft, ChevronRight, FileText, Plus, Search,
-  SlidersHorizontal, MessageSquare, Award, Eye, EyeOff, Radio, Send,
+  SlidersHorizontal, MessageSquare, Award, Eye, EyeOff, Radio, Send, Bookmark, Heart, Trophy, ThumbsUp,
 } from "lucide-react";
 import { SEO } from "../../hooks/useSEO";
 import { useAuth } from "../../contexts/AuthContext";
@@ -364,6 +364,14 @@ function Inspector({ id, minimized, onClose, onMinimize, onRestore, onLogged }) 
   const [state, setState] = useState("idle");
   // Telefonla aynı varsayılan: bitmiş maçta önce topluluk, oynanmamışta künye.
   const [tab, setTab] = useState("Match");
+  // Telefonda olup webde olmayan yetenekler (bkz. PRODUCT.md parite sözleşmesi).
+  const [watchlisted, setWatchlisted] = useState(false);
+  const [favorited, setFavorited] = useState(false);
+  const [potmId, setPotmId] = useState(null);
+  const [respect, setRespect] = useState([]);
+  const [broadcast, setBroadcast] = useState(null);
+  const [busy, setBusy] = useState("");
+  const [notice, setNotice] = useState(null);
 
   useEffect(() => {
     let alive = true;
@@ -371,9 +379,21 @@ function Inspector({ id, minimized, onClose, onMinimize, onRestore, onLogged }) 
       .then((d) => {
         if (!alive) return;
         setDetail(d); setRating(d.my_rating || 0); setReview(d.my_review || "");
+        setWatchlisted(!!d.watchlisted); setFavorited(!!d.favorited);
+        setPotmId(d.my_potm_id || null); setRespect(d.my_respect_ids || []);
         setTab(d.status === "finished" ? "Community" : "Match");
       })
       .catch((e) => alive && setErr(String(e.message || e)));
+    return () => { alive = false; };
+  }, [id]);
+
+  // Yayın bilgisi ayrı uçtan gelir: kural tablosu turnuva+ülke başına çözülür,
+  // maç satırında yalnızca serbest metin `broadcaster` var.
+  useEffect(() => {
+    let alive = true;
+    rankitApi.broadcasts(id, "TR")
+      .then((b) => alive && setBroadcast(b))
+      .catch(() => alive && setBroadcast(null));
     return () => { alive = false; };
   }, [id]);
 
@@ -389,6 +409,59 @@ function Inspector({ id, minimized, onClose, onMinimize, onRestore, onLogged }) 
   // Kaydettikten sonra puanı değiştirince buton "Saved" olarak kalıyordu:
   // kullanıcı kaydedilmemiş bir değişikliği kaydedilmiş sanıp kapatıyordu.
   useEffect(() => { setState((s) => (s === "saved" ? "idle" : s)); }, [rating, review]);
+
+  // İyimser güncelleme + hata halinde geri alma: telefondaki davranışın aynısı.
+  // id yalnızca React key'i: değişince toast animasyonu baştan oynar. Date.now()
+  // yerine sayaç — saf, ve arka arkaya iki aynı mesajda da farklı key üretiyor.
+  const flash = (message, tone = "success") =>
+    setNotice((n) => ({ message, tone, id: (n?.id || 0) + 1 }));
+
+  const toggleWatchlist = async () => {
+    if (busy) return;
+    const previous = watchlisted;
+    setWatchlisted(!previous); setBusy("watchlist");
+    try {
+      const r = await rankitApi.toggleWatchlist(id);
+      setWatchlisted(r.watchlisted);
+      flash(r.watchlisted ? "Added to your watchlist" : "Removed from your watchlist");
+    } catch {
+      setWatchlisted(previous); flash("Watchlist could not be updated", "error");
+    } finally { setBusy(""); }
+  };
+
+  const toggleFavorite = async () => {
+    if (busy) return;
+    const previous = favorited;
+    setFavorited(!previous); setBusy("favorite");
+    try {
+      const r = await rankitApi.favorite({ target_type: "match", target_id: id });
+      setFavorited(r.favorited);
+      flash(r.favorited ? "Added to your favourites" : "Removed from your favourites");
+    } catch {
+      setFavorited(previous); flash("Favourite could not be updated", "error");
+    } finally { setBusy(""); }
+  };
+
+  const choosePotm = async (playerId) => {
+    const previous = potmId;
+    setPotmId(playerId);
+    // POTM ve Respect aynı oyuncuyu iki kez saymamalı — telefondaki kural.
+    setRespect((v) => v.filter((x) => x !== playerId));
+    try { await rankitApi.potm(id, playerId); flash("Player of the Match saved"); }
+    catch { setPotmId(previous); flash("Vote could not be saved", "error"); }
+  };
+
+  const toggleRespect = async (playerId) => {
+    if (playerId === potmId) return;
+    const previous = respect;
+    const next = respect.includes(playerId)
+      ? respect.filter((x) => x !== playerId)
+      : respect.length < 2 ? [...respect, playerId] : respect;
+    if (next === respect) return;
+    setRespect(next);
+    try { await rankitApi.respect(id, next); }
+    catch { setRespect(previous); flash("Vote could not be saved", "error"); }
+  };
 
   const save = () => {
     setState("saving");
@@ -490,7 +563,22 @@ function Inspector({ id, minimized, onClose, onMinimize, onRestore, onLogged }) 
                       göremiyoruz" şikayeti, çünkü çoğu maçta broadcaster boş
                       ve özellik hiç KEŞFEDİLEMİYORDU. Telefon boşken bile
                       "pending" yazıyor; web artık aynısını yapıyor. */}
-                  <div><span>BROADCAST</span><strong>{detail.broadcaster || "Details pending"}</strong></div>
+                  <div>
+                    <span>BROADCAST{broadcast?.country ? ` · ${broadcast.country}` : ""}</span>
+                    <strong>
+                      {broadcast?.channels?.length
+                        ? broadcast.channels.map((c) => c.name).join(" · ")
+                        : detail.broadcaster || "Details pending"}
+                    </strong>
+                    {/* Kuraldan mı gelmiş yoksa maça özel doğrulanmış mı — bu
+                        ayrım kullanıcı için önemli: yayın hakları sezon içinde
+                        değişiyor ve tarihsiz bir kayıt bir süre sonra yalan olur. */}
+                    {broadcast?.confidence === "typical" && (
+                      <em style={{ fontSize: 10, color: "#8d9093", fontStyle: "normal" }}>
+                        Typical coverage — check before kick-off
+                      </em>
+                    )}
+                  </div>
                   {detail.potm && (
                     <div><span>COMMUNITY POTM</span><strong>{detail.potm.name}</strong></div>
                   )}
@@ -522,6 +610,28 @@ function Inspector({ id, minimized, onClose, onMinimize, onRestore, onLogged }) 
                       ))}
                     </div>
                   </div>
+                )}
+
+                {isLoggedIn ? (
+                  <div className="ri-detail-actions">
+                    {!finished && (
+                      <button className={`ri-review-cta${watchlisted ? " saved" : ""}`}
+                        disabled={busy === "watchlist"} onClick={toggleWatchlist}>
+                        <Bookmark size={16} fill={watchlisted ? "currentColor" : "none"} />
+                        {watchlisted ? "In your watchlist" : "Add to watchlist"}
+                      </button>
+                    )}
+                    <button className={`ri-review-cta secondary${favorited ? " saved" : ""}`}
+                      disabled={busy === "favorite"} onClick={toggleFavorite}>
+                      <Heart size={16} fill={favorited ? "currentColor" : "none"} />
+                      {favorited ? "Favourite" : "Add to favourites"}
+                    </button>
+                  </div>
+                ) : (
+                  <p className="riw-quiet">
+                    <Link to="/login?next=/rankit" style={{ color: "var(--ri-gold, #FFB11B)" }}>Sign in</Link>{" "}
+                    to keep this match in your watchlist.
+                  </p>
                 )}
               </>
             ) : (
@@ -559,6 +669,37 @@ function Inspector({ id, minimized, onClose, onMinimize, onRestore, onLogged }) 
                         <small>YOUR RATING</small>
                         <Stars value={rating} onChange={setRating} />
                       </div>
+                      {/* POTM + Respect: telefonda vardı, webde yoktu. Aynı kural —
+                          bir oyuncu ikisinde birden olamaz, respect en fazla iki kişi. */}
+                      {!!detail.players?.length && (
+                        <div className="ri-vote-block">
+                          <div className="ri-chip-title">
+                            YOUR PLAYER OF THE MATCH
+                            <span>{potmId ? "1" : "0"}/1</span>
+                          </div>
+                          <div className="ri-respect-grid">
+                            {detail.players.map((p) => (
+                              <button key={`potm-${p.id}`} type="button"
+                                className={potmId === p.id ? "active" : undefined}
+                                onClick={() => choosePotm(p.id)}>
+                                <Trophy size={12} /><span>{p.name}</span>
+                              </button>
+                            ))}
+                          </div>
+                          <div className="ri-chip-title">
+                            RESPECT <span>{respect.length}/2</span>
+                          </div>
+                          <div className="ri-respect-grid">
+                            {detail.players.filter((p) => p.id !== potmId).map((p) => (
+                              <button key={`respect-${p.id}`} type="button"
+                                className={respect.includes(p.id) ? "active" : undefined}
+                                onClick={() => toggleRespect(p.id)}>
+                                <ThumbsUp size={12} /><span>{p.name}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                       <textarea className="ri-review-input" rows="3" maxLength={4000}
                         aria-label="Your review"
                         value={review} onChange={(e) => setReview(e.target.value)}
@@ -602,6 +743,10 @@ function Inspector({ id, minimized, onClose, onMinimize, onRestore, onLogged }) 
               </>
             )}
           </>
+        )}
+        {notice && (
+          <div key={notice.id} role="status" className={`ri-action-toast ${notice.tone}`}
+            onAnimationEnd={() => setNotice(null)}>{notice.message}</div>
         )}
       </section>
     </div>
