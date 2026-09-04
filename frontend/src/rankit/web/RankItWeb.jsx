@@ -3,11 +3,11 @@ import { Link, NavLink, useParams, useNavigate } from "react-router-dom";
 import {
   Home, Compass, Activity as ActivityIcon, List as ListIcon, CircleUserRound,
   Smartphone, Star, X, Minus, ChevronLeft, ChevronRight, FileText, Plus, Search,
-  SlidersHorizontal, MessageSquare, Award, Eye, EyeOff,
+  SlidersHorizontal, MessageSquare, Award, Eye, EyeOff, Radio, Send,
 } from "lucide-react";
 import { SEO } from "../../hooks/useSEO";
 import { useAuth } from "../../contexts/AuthContext";
-import { rankitApi } from "../rankitApi";
+import { rankitApi, rankitSocketUrl } from "../rankitApi";
 import { MatchCard, Stars, RankItMark, TeamMark, formatWhen } from "./cards";
 import "../rankit.css";
 import "./rankit-web.css";
@@ -471,14 +471,16 @@ function Inspector({ id, minimized, onClose, onMinimize, onRestore, onLogged }) 
 
             {/* Telefondaki Match/Community ayrımı — webde hiç yoktu. */}
             <div className="ri-detail-tabs" role="tablist" aria-label="Match">
-              {["Match", "Community"].map((name) => (
+              {["Match", "Community", "Watchalong"].map((name) => (
                 <button key={name} role="tab" aria-selected={tab === name}
                   className={tab === name ? "active" : undefined}
                   onClick={() => setTab(name)}>{name}</button>
               ))}
             </div>
 
-            {tab === "Match" ? (
+            {tab === "Watchalong" ? (
+              <WatchalongPanel matchId={detail.id} isLoggedIn={isLoggedIn} />
+            ) : tab === "Match" ? (
               <>
                 {detail.summary && <p className="ri-summary">{detail.summary}</p>}
                 <div className="riw-facts">
@@ -602,6 +604,94 @@ function Inspector({ id, minimized, onClose, onMinimize, onRestore, onLogged }) 
           </>
         )}
       </section>
+    </div>
+  );
+}
+
+
+/* ── Watchalong: maç sırasında canlı sohbet ───────────────────────────────────
+   Backend'de baştan beri vardı (REST geçmiş + /ws/watchalong soketi) ve
+   telefonda da vardı; web'de HİÇ yoktu. Telefondaki panelin aynısı, aynı
+   .ri-watchalong-* sınıflarıyla (bunlar rankit.css'te, yani web zaten
+   yüklüyor). Fark: web'de oturum açmamış ziyaretçi de odayı OKUYABİLİR,
+   sadece yazamaz — telefondan farklı olarak burada girişsiz gezinme normal. */
+function WatchalongPanel({ matchId, isLoggedIn }) {
+  const [messages, setMessages] = useState([]);
+  const [draft, setDraft] = useState("");
+  const [connected, setConnected] = useState(false);
+  const socketRef = useRef(null);
+  const logRef = useRef(null);
+  useEffect(() => {
+    let alive = true;
+    rankitApi.watchalong(matchId).then((d) => { if (alive) setMessages(d.messages || []); }).catch(() => {});
+    // Soket girişsiz kullanıcıyı 4401 ile kapatıyor (api/rankit.py). Bağlantıyı
+    // hiç açmamak, her anonim ziyarette başarısız olacak bir el sıkışma
+    // denemesinden ve sonsuza dek "Connecting…" yazan yanıltıcı bir durumdan
+    // daha dürüst — geçmiş yine de REST'ten okunuyor, oda okunabilir kalıyor.
+    if (!isLoggedIn) return () => { alive = false; };
+    const token = localStorage.getItem("nba_arch_token") || "";
+    let ws;
+    try {
+      ws = new WebSocket(rankitSocketUrl(`/api/rankit/ws/watchalong/${matchId}?token=${encodeURIComponent(token)}`));
+    } catch { return () => { alive = false; }; }
+    socketRef.current = ws;
+    ws.onopen = () => setConnected(true);
+    ws.onclose = () => setConnected(false);
+    ws.onerror = () => setConnected(false);
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.message) setMessages((v) => [...v, data.message]);
+      } catch { /* bicimsiz kare yok sayilir */ }
+    };
+    return () => { alive = false; ws.close(); };
+  }, [matchId, isLoggedIn]);
+  // Yeni mesaj gelince en alta kaydir; sohbet yukarida takili kalmasin.
+  useEffect(() => {
+    const el = logRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [messages]);
+  const send = () => {
+    const text = draft.trim();
+    if (!text || socketRef.current?.readyState !== WebSocket.OPEN) return;
+    socketRef.current.send(JSON.stringify({ content: text }));
+    setDraft("");
+  };
+  return (
+    <div className="ri-watchalong-live">
+      <div className="ri-watchalong-card">
+        <Radio size={22} />
+        <div>
+          <small>LIVE WATCHALONG</small>
+          <strong>{!isLoggedIn ? "Read-only — sign in to post" : connected ? "Community room connected" : "Connecting…"}</strong>
+          <span>React together without turning RankIt into a score app.</span>
+        </div>
+      </div>
+      <div className="ri-chat-log" ref={logRef}>
+        {messages.map((m) => (
+          <p key={m.id}><strong>@{m.username}</strong><span>{m.content}</span></p>
+        ))}
+        {!messages.length && (
+          <Empty icon={Radio} title="Nobody has said anything yet"
+            note="Be the first — messages show up live for everyone watching." />
+        )}
+      </div>
+      {isLoggedIn ? (
+        <div className="ri-chat-compose">
+          <input value={draft} onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && send()}
+            aria-label="Message the watchalong room"
+            placeholder="Say something about the match" />
+          <button onClick={send} disabled={!connected || !draft.trim()} aria-label="Send message">
+            <Send size={15} />
+          </button>
+        </div>
+      ) : (
+        <p className="riw-quiet">
+          <Link to="/login?next=/rankit" style={{ color: "var(--ri-gold, #FFB11B)" }}>Sign in</Link>{" "}
+          to join the conversation.
+        </p>
+      )}
     </div>
   );
 }
