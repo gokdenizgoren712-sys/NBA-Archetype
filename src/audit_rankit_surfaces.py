@@ -74,4 +74,31 @@ report = {
     "unfallbackedTokenUses": len(unfallbacked(ALL_CSS)),
     "sharedClasses": len(web_used & phone_used),
 }
+
+# -- Ozellik paritesi -------------------------------------------------------
+# DIKKAT: `rankitApi.x(` DEGIL `rankitApi.x` araniyor. Kod bazi uclari
+# FONKSIYON DEGERI olarak geciriyor (openEntity'deki loader secimi gibi),
+# parantezsiz. Cagri arayan ilk surum bu yuzden dort ucu yanlislikla "olu"
+# raporladi ve web kapsamini oldugundan iyi gosterdi.
+def parity():
+    api = read("rankitApi.js")
+    methods = sorted(set(re.findall(r"^\s{2}([a-zA-Z][a-zA-Z0-9_]*)\s*:", api, re.M)))
+
+    def refs(files):
+        txt = "".join(read(f) for f in files)
+        return {m for m in methods if re.search(r"rankitApi\." + m + r"\b", txt)}
+
+    phone = refs(["RankItPrototype.jsx"])
+    web = refs(["web/RankItWeb.jsx", "web/cards.jsx"])
+    return {
+        "capabilities": len(methods),
+        "both": sorted(phone & web),
+        "onlyPhone": sorted(phone - web),
+        "onlyWeb": sorted(web - phone),
+        "calledByNeither": sorted(set(methods) - phone - web),
+        "webCoveragePct": round(100 * len(phone & web) / max(1, len(phone))),
+    }
+
+
+report["parity"] = parity()
 print(json.dumps(report, indent=2, ensure_ascii=False))

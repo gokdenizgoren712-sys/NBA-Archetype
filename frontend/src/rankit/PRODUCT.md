@@ -53,19 +53,28 @@ are two front ends over one backend, not two products.
 |---|---|
 | `rankitApi` capabilities | 27 |
 | On both surfaces | 10 |
-| Phone only | 12 |
+| Phone only | 16 |
 | Web only | 0 |
-| Called by neither | 5 |
-| **Web coverage of the phone** | **45%** |
+| Called by neither | 1 |
+| **Web coverage of the phone** | **38%** |
 
-Web is the lagging surface, and it lags in one direction only. The twelve it is
+Web is the lagging surface, and it lags in one direction only. The sixteen it is
 missing: `addComment`, `broadcasts`, `comments`, `competition`, `createList`,
-`favorite`, `follow`, `likeReview`, `potm`, `respect`, `toggleWatchlist`,
-`watchlist`.
+`favorite`, `follow`, `likeReview`, `list`, `member`, `player`, `potm`,
+`respect`, `team`, `toggleWatchlist`, `watchlist`.
 
-Five capabilities — `addListItem`, `list`, `member`, `player`, `team` — are
-called by neither surface. Either wire them up or delete them; an endpoint no
-client calls is a maintenance cost with no user.
+**An earlier version of this table was wrong** — it said twelve phone-only, five
+dead, and 45% coverage. The audit matched `rankitApi.x(` and so missed every
+capability passed as a *function value* rather than called, which is how
+`openEntity` picks its loader (`RankItPrototype.jsx:931`). Four endpoints were
+reported dead while the phone was using them. The audit now matches references,
+not calls.
+
+Only **`addListItem`** is genuinely called by nothing, and it is not dead code:
+`POST /lists/{id}/items` adds a match to an *existing* list, and neither surface
+has that flow — both can only create a list from a preselected set. The endpoint
+was built ahead of its UI. "Add this match to a list" is a real gap on both
+surfaces, not an endpoint to delete.
 
 **Rule going forward: a feature is not done until it exists on both surfaces, or
 until the surface gap is written down here with a reason.** Two reasons are

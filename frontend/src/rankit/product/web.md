@@ -34,7 +34,7 @@ is the single most common way this surface breaks.
 | Shared with the phone | **35 of 37** |
 | Styled only by stylesheets this surface does not load | **0** (was 1: `.ri-live-tag`) |
 | `rankitApi` capabilities called | 10 of 27 |
-| Coverage of the phone | **45%** |
+| Coverage of the phone | **38%** |
 
 ### The audit
 
@@ -73,7 +73,7 @@ Empty means every borrowed rule using that token is silently broken.
 
 ## Backlog, in order
 
-1. **The twelve missing capabilities** (see the parent's parity contract).
+1. **The sixteen missing capabilities** (see the parent's parity contract).
    Watchlist and favourite first — they are one button each and they are the two
    a signed-out visitor is most likely to want after reading a review.
 2. **Squads are on the Match tab only.** Reported as missing by a user who was
