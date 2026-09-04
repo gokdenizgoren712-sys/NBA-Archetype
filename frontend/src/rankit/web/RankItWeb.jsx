@@ -574,9 +574,7 @@ function Inspector({ id, minimized, onClose, onMinimize, onRestore, onLogged }) 
                         ayrım kullanıcı için önemli: yayın hakları sezon içinde
                         değişiyor ve tarihsiz bir kayıt bir süre sonra yalan olur. */}
                     {broadcast?.confidence === "typical" && (
-                      <em style={{ fontSize: 10, color: "#8d9093", fontStyle: "normal" }}>
-                        Typical coverage — check before kick-off
-                      </em>
+                      <em>Typical coverage — check before kick-off</em>
                     )}
                   </div>
                   {detail.potm && (
