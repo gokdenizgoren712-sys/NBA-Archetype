@@ -26,6 +26,10 @@ api_out.txt
 # Data — tüm ara cache dosyaları hariç, sadece kritik runtime dosyaları dahil
 # NOT: data/* kullanılır (data/ değil) — böylece dosya bazlı istisnalar çalışır
 data/*
+# ...ama data/broadcast/ uretilmis onbellek DEGIL: elle kuratorlugu yapilan
+# kaynak veri (yayin haklari). Surum kontrolunde durmali ki duzenlenip
+# yeniden ice aktarilabilsin. app.db ve parquet'ler yukaridaki kuralda kalir.
+!data/broadcast/
 
 # ── Kritik runtime dosyaları (API için zorunlu) ──────────────────────────────
 !data/2025-26__player_scores.parquet
