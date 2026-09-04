@@ -31,9 +31,11 @@ function fromApiMatch(m) {
   }).format(when);
   return {
     ...m,
+    // `date` tam dize olarak KALIYOR: fikstür listesi ve bildirimlerde tek
+    // zaman referansı o. Kart ve maç sayfası ise parçaları ayrı kullanır,
+    // yoksa aynı kartta saat iki, maç sayfasında tarih iki kez yazılıyordu.
     date: `${fullDate}${time ? ` · ${time}` : ""}`,
-    // Saat AYRI da lazım: kartın üst şeridi tam tarihi zaten yazıyor, ortadaki
-    // VS bloğu aynı dizeyi bir daha yazınca tarih iki kez görünüyordu.
+    dateOnly: fullDate,
     time,
     communityRating: m.community_rating,
     ratings: m.rating_count || 0,
@@ -132,7 +134,18 @@ function ClassicStamp({ active, onClick, small = false }) {
 }
 
 function TeamMark({ team }) {
-  return <div className={`ri-team-mark${team.crest_url ? " has-logo" : ""}`} style={{ "--team": team.color }}>{team.crest_url ? <img src={team.crest_url} alt={`${team.name || team.short} logo`} loading="lazy"/> : <span>{team.short}</span>}</div>;
+  // Arma URL'i 404 verirse kalkan bomboş kalıyordu — kulüp kimliği tamamen
+  // kayboluyor. Hata durumunda kısa ada (monogram) düşülür.
+  // Boolean + "prop degisince sifirla" effect'i yerine BASARISIZ URL tutuluyor:
+  // arma adresi degistiginde karsilastirma kendiliginden yeniden dogru oluyor,
+  // efekt gerekmiyor (react-hooks/set-state-in-effect de bundan sikayetciydi).
+  const [failedCrest, setFailedCrest] = useState(null);
+  const showCrest = !!team.crest_url && failedCrest !== team.crest_url;
+  return <div className={`ri-team-mark${showCrest ? " has-logo" : ""}`} style={{ "--team": team.color }}>
+    {showCrest
+      ? <img src={team.crest_url} alt={`${team.name || team.short} logo`} loading="lazy" onError={() => setFailedCrest(team.crest_url)}/>
+      : <span>{team.short}</span>}
+  </div>;
 }
 
 function ScoreValue({ match, detail = false }) {
@@ -178,7 +191,7 @@ function MatchCard({ match, hideScores, onOpen, onOpenCompetition, featured = fa
     <div className="ri-match-top">
       {match.instantClassic ? <span>INSTANT CLASSIC</span> : <button type="button" disabled={!match.competition_id}
         onClick={event=>{event.stopPropagation();onOpenCompetition?.(match.competition_id)}}>{match.competition}</button>}
-      {finished ? <span className="ri-community-rating"><Star size={11} fill="currentColor" /> {match.communityRating}</span> : live ? <span className="ri-live-tag">LIVE</span> : <span className="ri-live-date">{match.date}</span>}
+      {finished ? <span className="ri-community-rating"><Star size={11} fill="currentColor" /> {match.communityRating}</span> : live ? <span className="ri-live-tag">LIVE</span> : <span className="ri-live-date">{match.dateOnly || match.date}</span>}
     </div>
 
     <div className="ri-match-art">
@@ -357,7 +370,7 @@ function MatchDetail({ match, hideScores, onClose, onSave, onToggleWatchlist, on
         <div className={`ri-detail-kicker ${match.status}`}><span>{match.competition}{match.stage ? ` · ${match.stage}` : ""}</span><b>{match.status === "finished" ? "FULL TIME" : match.status === "live" ? "LIVE" : "UPCOMING"}</b></div>
         <div className="ri-detail-teams">
           <div className="ri-v03-team"><TeamMark team={match.home}/><strong>{match.home.short}</strong>{match.home.name !== match.home.short && <small>{match.home.name}</small>}</div>
-          <div className="ri-v03-score"><small>{match.date}</small><strong className={hideScores && match.status === "finished" ? "ri-blur" : ""}><ScoreValue match={match} detail/></strong><span>{match.season}</span></div>
+          <div className="ri-v03-score"><small>{match.dateOnly || match.date}</small><strong className={hideScores && match.status === "finished" ? "ri-blur" : ""}><ScoreValue match={match} detail/></strong><span>{match.season}</span></div>
           <div className="ri-v03-team"><TeamMark team={match.away}/><strong>{match.away.short}</strong>{match.away.name !== match.away.short && <small>{match.away.name}</small>}</div>
         </div>
       </div>
@@ -365,7 +378,7 @@ function MatchDetail({ match, hideScores, onClose, onSave, onToggleWatchlist, on
       {section === "Match" ? <>
         {match.summary && <p className="ri-summary">{match.summary}</p>}
         <div className="ri-broadcast"><small>WATCH IN TÜRKİYE</small><strong>{broadcastInfo?.channels?.map(channel=>channel.name).join(" · ") || match.broadcaster || "To be announced"}</strong><span>{broadcastInfo?.confidence === "confirmed" ? "Confirmed broadcaster" : broadcastInfo?.confidence === "typical" ? "Typical competition coverage · check before the match" : match.status === "finished" ? "Broadcast information unavailable" : "Coverage has not been confirmed yet"}</span></div>
-        <div className="ri-timeline"><small>MATCH</small><div><span>{match.status === "finished" ? "FT" : match.date}</span><strong>{match.status === "finished" ? "Full time" : "Scheduled"}</strong></div><button onClick={() => setSection("Community")}>Community <ChevronRight size={14}/></button></div>
+        <div className="ri-timeline"><small>MATCH</small><div><span>{match.status === "finished" ? "FT" : match.time || match.dateOnly}</span><strong>{match.status === "finished" ? "Full time" : "Scheduled"}</strong></div><button onClick={() => setSection("Community")}>Community <ChevronRight size={14}/></button></div>
         {playerOptions.length > 0 && <div className="ri-squad-preview"><div className="ri-chip-title">SEASON SQUADS <span>{playerOptions.length}</span></div><div>{[match.home,match.away].map(team=><section key={team.id}><header><TeamMark team={team}/><strong>{team.name}</strong></header><div>{playerOptions.filter(p=>p.team===team.short).map(p=><span key={p.id}>{p.shirt_no&&<b>{p.shirt_no}</b>}{p.name}</span>)}</div></section>)}</div></div>}
         <div className="ri-detail-actions">
           {match.status === "upcoming" && <button disabled={watchlistBusy} aria-busy={watchlistBusy} className={`ri-review-cta${watchlist ? " saved" : ""}${watchlistBusy ? " is-busy" : ""}`} onClick={toggleWatchlist}>{watchlistBusy ? <LoaderCircle className="ri-spin" size={17}/> : <Bookmark size={17} fill={watchlist ? "currentColor" : "none"} />} {watchlist ? "In your watchlist" : "Add to watchlist"}</button>}
