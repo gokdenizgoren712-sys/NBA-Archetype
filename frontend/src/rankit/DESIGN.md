@@ -351,3 +351,28 @@ Recorded so the next reader knows what is *described* here versus what is *shipp
 
 This file is prescriptive where the code has drifted. Where the two disagree, the file is
 the target and the code is the backlog.
+
+### Closed in 0.5.2 (phone)
+
+Measured in the browser, not eyeballed — the numbers are why each one mattered:
+
+| Was | Now |
+|---|---|
+| Crest shield clipped by the card: **11.7px** cut per side on the hero, **9.8px** in the Discover grid | Column maths rebuilt around the shield's *rotated* footprint (`size x 1.414`); 0 of 60 rendered cards clip |
+| League name at **7px** | 10px / 700 — it is the card's category label, not a footnote |
+| Hero card **76% empty air**, 431px tall | Art region sized to its content; 317px, 59% |
+| League tap target **36x13px** — under WCAG 2.5.8's 24px floor | Fills the 37px strip: 36x36 |
+| Nav labels at **7.2px** (`<small>` shrinks to 0.8em under a 9px parent) | 9.5px explicit |
+| Filter pills 8.5px / 31px tall | 10px / 38px |
+| Team names overflowed the card — grid items default to `min-width:auto`, so `text-overflow:ellipsis` never engaged | `min-width:0`; ellipsis works |
+| Share button covered the stage label by **23px** | Footer reserves its width |
+| A 404'd crest left the shield blank | Falls back to the club monogram |
+
+**The shield stayed.** It is the card language recorded above, and the defect was the
+geometry around it, not the shape itself. A ghosted giant "VS" behind the crests was tried
+to fill the emptiness — mirroring the `.ri-player-no` motif on finished cards — and
+**removed**: with no silhouette to anchor it, it collided with the crests and read as a
+rendering artifact. The emptiness was a proportion problem, and proportion is what fixed it.
+
+Still open: the 98 sub-AA colour pairs above, and the phone sheets have no `role="dialog"`,
+Escape handler, or focus trap.
