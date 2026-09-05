@@ -83,6 +83,12 @@ A ghosted giant "VS" was built to fill the empty art region — mirroring the
 `.ri-player-no` motif — and **removed**: with no silhouette to anchor it, it
 collided with the crests. The emptiness was a proportion problem.
 
+## Screen inventory
+
+[mobile-screens.md](mobile-screens.md) lists every screen, overlay and state
+on this surface, with the design constraints a redesign must respect. Written
+to be handed to a designer (or a design tool) without further context.
+
 ## Releases are cut on request, not per feature
 
 The user calls the release. Work accumulates on both surfaces, and when they say
