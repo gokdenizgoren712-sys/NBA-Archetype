@@ -52,35 +52,31 @@ are two front ends over one backend, not two products.
 | | |
 |---|---|
 | `rankitApi` capabilities | 27 |
-| On both surfaces | 10 |
-| Phone only | 16 |
+| On both surfaces | **27** |
+| Phone only | 0 |
 | Web only | 0 |
-| Called by neither | 1 |
-| **Web coverage of the phone** | **38%** |
+| Called by neither | 0 |
+| **Web coverage of the phone** | **100%** |
 
-Web is the lagging surface, and it lags in one direction only. The sixteen it is
-missing: `addComment`, `broadcasts`, `comments`, `competition`, `createList`,
-`favorite`, `follow`, `likeReview`, `list`, `member`, `player`, `potm`,
-`respect`, `team`, `toggleWatchlist`, `watchlist`.
+Both surfaces now reach every capability. Reaching parity took two rounds and
+one correction worth keeping on the record.
 
-**An earlier version of this table was wrong** — it said twelve phone-only, five
-dead, and 45% coverage. The audit matched `rankitApi.x(` and so missed every
-capability passed as a *function value* rather than called, which is how
-`openEntity` picks its loader (`RankItPrototype.jsx:931`). Four endpoints were
-reported dead while the phone was using them. The audit now matches references,
-not calls.
+The first measurement matched `rankitApi.x(` and so counted only capabilities
+that were *called*. Four are passed as function values instead — `openEntity`
+picks its loader that way at `RankItPrototype.jsx:931` — so `list`, `member`,
+`player` and `team` were reported as dead code while the phone was using them.
+Matching references rather than calls moved the real figures from "12 phone-only,
+5 dead, 45% coverage" to "16 phone-only, 1 dead, 38%". The gap was wider than
+first reported, and the endpoints were not dead.
 
-Only **`addListItem`** is genuinely called by nothing, and it is not dead code:
-`POST /lists/{id}/items` adds a match to an *existing* list, and neither surface
-has that flow — both can only create a list from a preselected set. The endpoint
-was built ahead of its UI. "Add this match to a list" is a real gap on both
-surfaces, not an endpoint to delete.
+The one genuinely uncalled capability was `addListItem` — `POST /lists/{id}/items`,
+which adds a match to an *existing* list. Neither surface had that flow; both
+could only create a list from a preselected set. It was an endpoint built ahead
+of its UI, not dead code, and it now exists on both.
 
-**Rule going forward: a feature is not done until it exists on both surfaces, or
-until the surface gap is written down here with a reason.** Two reasons are
-legitimate — the capability is meaningless on that surface (haptics), or the
-surfaces genuinely differ (a signed-out web visitor can read a watchalong room;
-signed-out is not a normal app state).
+**Parity is bidirectional.** Adding "add to list" to the web first put the web
+one capability *ahead*, which is the same defect in the other direction. The
+phone got it in the same pass.
 
 ### Why parity breaks silently
 

@@ -32,9 +32,9 @@ is the single most common way this surface breaks.
 |---|---|
 | `.ri-*` classes used | 37 |
 | Shared with the phone | **35 of 37** |
-| Styled only by stylesheets this surface does not load | **0** (was 1: `.ri-live-tag`) |
-| `rankitApi` capabilities called | 10 of 27 |
-| Coverage of the phone | **38%** |
+| Styled only by stylesheets this surface does not load | **0** (caught 2: `.ri-live-tag`, `.ri-action-toast`) |
+| `rankitApi` capabilities called | **27 of 27** |
+| Coverage of the phone | **100%** |
 
 ### The audit
 
@@ -73,12 +73,19 @@ Empty means every borrowed rule using that token is silently broken.
 
 ## Backlog, in order
 
-1. **The sixteen missing capabilities** (see the parent's parity contract).
+1. **Broadcast country is hardcoded to `TR`.** The lookup matches the phone, but
+   a UK visitor reading a Premier League page is shown Turkish coverage or,
+   today, nothing. Needs a picker or geo. This is the largest remaining
+   correctness gap on this surface.
+2. **The sixteen missing capabilities are closed** — kept here as the record of
+   what was added: watchlist, favourite, POTM, respect, broadcasts, review likes,
+   review comments, follow, competition, list, player, team, member, createList,
+   addListItem.
    Watchlist and favourite first — they are one button each and they are the two
    a signed-out visitor is most likely to want after reading a review.
-2. **Squads are on the Match tab only.** Reported as missing by a user who was
+3. **Squads are on the Match tab only.** Reported as missing by a user who was
    on the Community tab. Consider surfacing a count on the tab itself.
-3. **Signed-out story is thin.** Sign-in prompts are plain text where the value
+4. **Signed-out story is thin.** Sign-in prompts are plain text where the value
    of an account is never stated.
-4. **`ri-diary` has no rule anywhere** — a bare wrapper. Harmless, but delete it
+5. **`ri-diary` has no rule anywhere** — a bare wrapper. Harmless, but delete it
    or style it.
