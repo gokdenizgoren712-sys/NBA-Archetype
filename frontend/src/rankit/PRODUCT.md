@@ -130,15 +130,20 @@ a rule between stylesheets.**
 ## State of the product
 
 Shipped and working on both: match discovery, rating, review, diary, activity
-feed, profile, search, minimisable match drawer.
+feed, profile, search, minimisable match drawer, watchlist, favourites, follow,
+POTM and respect voting, review likes and comments, lists, entity pages
+(competition / player / team / member / list), watchalong, broadcast rows, and
+confirmed lineups with formation and manager.
 
-Shipped on mobile only: the twelve above.
-
-Backend built, no client on web until 2026-09: watchalong (live match chat).
-Now on both.
+Shipped on mobile only: nothing. Parity is 27 of 27.
 
 Not built: reporting/moderation, per-endpoint rate limiting, notification
-delivery outside the app, real verified lineups.
+delivery outside the app.
+
+**Confirmed lineups are football-only.** FotMob supplies formation, the eleven,
+the bench and the coach; the NBA and EuroLeague providers are not wired for it,
+so basketball still falls back to the season squad. A match with no announced
+lineup returns an empty list rather than a season squad presented as one.
 
 ## Known risks before beta
 
@@ -148,5 +153,6 @@ delivery outside the app, real verified lineups.
 | Contrast | 98 of 175 colour pairs are below AA (see DESIGN.md). |
 | Sheets are not dialogs | Phone sheets have no `role="dialog"`, no Escape handler, no focus trap. |
 | Broadcast coverage | 24 competition rules loaded, **76 held pending verification**. Turkey has one row. |
+| Broadcast country | Hardcoded to `TR` on both surfaces. A UK reader is asked the wrong country and shown nothing. Fix: default from `navigator.language`, an explicit picker that is remembered, and an honest "no coverage data for X" when the country is outside US/GB/TR. |
 | Cascade depth | Mobile loads five stylesheets that override each other. Three of the defects fixed in 0.5.2 came from that layering. |
 | Name matching | No accent normalisation in the live query layer (a Primary Arch constraint that RankIt inherits). |
