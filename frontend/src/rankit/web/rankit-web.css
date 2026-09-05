@@ -766,3 +766,38 @@
 .ri-list-stack article[role="button"] { cursor: pointer; }
 .ri-list-stack article[role="button"]:hover { border-color: rgba(255, 177, 27, .28); }
 .ri-list-stack article[role="button"]:focus-visible { outline: 2px solid var(--ri-gold); outline-offset: 2px; }
+
+/* ── Turnuva: puan tablosu ───────────────────────────────────────────────────
+   Renkler DESIGN.md metin token'ları: #eceded / #c9cccd / #9aa0a6 / #7f868b.
+   Rakamlar tabular-nums ile hizalı — bir puan tablosunda sütunların kayması
+   tablonun okunma sebebini yok eder. */
+.riw-table-wrap { overflow-x: auto; margin-top: 4px; }
+.riw-table { width: 100%; border-collapse: collapse; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.riw-table th { position: sticky; top: 0; background: #0f1012; text-align: left; font: 700 8.5px var(--font-logo); letter-spacing: .13em; color: #7f868b; padding: 8px 6px; border-bottom: 1px solid var(--ri-line); }
+.riw-table td { padding: 9px 6px; border-bottom: 1px solid var(--ri-line); color: #c9cccd; }
+.riw-table th.num, .riw-table td.num { text-align: right; width: 1%; white-space: nowrap; }
+.riw-table td.rank { color: #7f868b; font: 700 11px var(--font-logo); }
+.riw-table td.pts, .riw-table th.pts { color: #eceded; font-weight: 700; padding-right: 2px; }
+.riw-table tbody tr:hover td { background: rgba(255, 255, 255, .025); }
+
+/* Oyuncu satırı: isim + takım + NEDEN listede olduğu. Sadece isim basmak
+   "popular" kelimesini desteklemiyordu. */
+.riw-player-rows { display: flex; flex-direction: column; margin-top: 4px; }
+.riw-player-row { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 10px; width: 100%; padding: 10px 4px; border: 0; border-bottom: 1px solid var(--ri-line); background: none; text-align: left; cursor: pointer; }
+.riw-player-row:hover { background: rgba(255, 255, 255, .025); }
+.riw-player-row:focus-visible { outline: 2px solid var(--ri-gold); outline-offset: -2px; }
+.riw-player-name { color: #eceded; font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.riw-player-team { color: #9aa0a6; font-size: 11px; white-space: nowrap; }
+.riw-player-stat { color: var(--ri-gold); font: 700 9px var(--font-logo); letter-spacing: .06em; white-space: nowrap; }
+
+/* Hafta şeridi: 38 hafta dikey liste olamaz, yatay kaydırılan rakamlar. */
+.riw-weeks { display: flex; gap: 5px; overflow-x: auto; padding: 4px 0 12px; scrollbar-width: thin; }
+.riw-weeks button { flex: 0 0 auto; min-width: 34px; min-height: 34px; padding: 0 8px; border: 1px solid var(--ri-line); border-radius: 9px; background: transparent; color: #9aa0a6; font: 700 11px var(--font-logo); font-variant-numeric: tabular-nums; cursor: pointer; }
+.riw-weeks button:hover { color: #eceded; border-color: rgba(255, 255, 255, .2); }
+.riw-weeks button.on { color: #15100a; background: var(--ri-gold); border-color: var(--ri-gold); }
+.riw-weeks button:focus-visible { outline: 2px solid var(--ri-gold); outline-offset: 2px; }
+
+/* Oylama listesi takıma göre gruplu: alfabetik tek duvarda kimin hangi takımda
+   olduğu görünmüyordu. */
+.riw-vote-team + .riw-vote-team { margin-top: 10px; }
+.riw-vote-team > small { display: block; font: 700 8.5px var(--font-logo); letter-spacing: .13em; color: #7f868b; margin-bottom: 6px; }

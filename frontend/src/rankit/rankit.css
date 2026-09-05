@@ -33,7 +33,7 @@
 /* RankIt iteration 2 — thumb-zone search + the agreed Match/Community split. */
 .ri-main{padding-bottom:76px}
 .ri-floating-search{position:fixed;z-index:8;left:50%;bottom:84px;transform:translateX(-50%);width:min(calc(100% - 92px),420px);height:43px;border-radius:999px;border:1px solid rgba(255,177,27,.25);background:rgba(24,25,27,.91);backdrop-filter:blur(18px);color:#888;box-shadow:0 12px 36px rgba(0,0,0,.55),0 0 22px rgba(255,177,27,.07);display:flex;align-items:center;gap:9px;padding:0 16px;text-align:left}.ri-floating-search svg{color:var(--ri-gold);filter:drop-shadow(0 0 6px rgba(255,177,27,.38))}.ri-floating-search span{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ri-detail-tabs{display:grid;grid-template-columns:1fr 1fr;margin:17px 0 15px;border-bottom:1px solid var(--ri-line)}.ri-detail-tabs button{position:relative;border:0;background:none;color:#666;padding:10px;font-size:12px}.ri-detail-tabs button.active{color:#eee;font-weight:700}.ri-detail-tabs button.active:after{content:"";position:absolute;bottom:-1px;left:27%;right:27%;height:2px;background:var(--ri-gold);box-shadow:0 0 8px var(--ri-gold)}
+.ri-detail-tabs{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;margin:17px 0 15px;border-bottom:1px solid var(--ri-line)}.ri-detail-tabs button{position:relative;border:0;background:none;color:#9aa0a6;padding:10px;font-size:12px}.ri-detail-tabs button.active{color:#eee;font-weight:700}.ri-detail-tabs button.active:after{content:"";position:absolute;bottom:-1px;left:27%;right:27%;height:2px;background:var(--ri-gold);box-shadow:0 0 8px var(--ri-gold)}
 .ri-timeline{margin-top:13px;border-top:1px solid var(--ri-line);padding:13px 2px;display:grid;grid-template-columns:48px 1fr auto;align-items:center}.ri-timeline>small{font:700 8px var(--font-logo);letter-spacing:.13em;color:#666}.ri-timeline>div{display:flex;flex-direction:column}.ri-timeline>div span{font-size:8px;color:var(--ri-gold)}.ri-timeline>div strong{font:700 12px var(--font-logo)}.ri-timeline button{border:0;background:none;color:#777;display:flex;align-items:center;font-size:10px}
 .ri-chip-title{margin:17px 2px 8px;font:700 8px var(--font-logo);letter-spacing:.14em;color:#777;display:flex;justify-content:space-between}.ri-chip-title span{color:var(--ri-gold)}.ri-tag-picker{display:flex;gap:6px;overflow-x:auto;padding:0 1px 12px;scrollbar-width:none}.ri-tag-picker button{flex:none;border:1px solid var(--ri-line);border-radius:999px;background:#111214;color:#777;padding:7px 10px;font-size:9px}.ri-tag-picker button.active{color:var(--ri-gold);border-color:rgba(255,177,27,.38);background:rgba(255,177,27,.08)}
 .ri-vote-block{margin-top:13px;border:1px solid var(--ri-line);border-radius:16px;padding:12px;background:rgba(255,255,255,.018)}.ri-vote-block>div:first-child{display:flex;align-items:center;gap:9px}.ri-vote-block>div:first-child svg{color:var(--ri-gold)}.ri-vote-block>div:first-child span{display:flex;flex:1;flex-direction:column}.ri-vote-block>div:first-child small{font:700 7px var(--font-logo);letter-spacing:.13em;color:#666}.ri-vote-block>div:first-child strong{font:700 12px var(--font-logo)}.ri-vote-block>div:first-child b{font:700 7px var(--font-logo);color:var(--ri-green);border:1px solid rgba(63,176,140,.28);padding:4px 6px;border-radius:999px}.ri-vote-block p{font-size:9px;color:#666;line-height:1.4;margin:11px 0 8px}.ri-respect-grid{display:flex;gap:6px;overflow-x:auto}.ri-respect-grid button{flex:none;border:1px solid var(--ri-line);background:#111214;color:#777;border-radius:9px;padding:6px 8px;display:flex;align-items:center;gap:5px;font-size:8px}.ri-respect-grid button.active{color:var(--ri-green);border-color:rgba(63,176,140,.38);background:rgba(63,176,140,.07)}
@@ -166,3 +166,26 @@
 .ri-lineup-bench .ri-lineup-list span{font-size:10px;color:#9aa0a6}
 .ri-lineup-bench .ri-lineup-list span b{color:#7f868b}
 @media(max-width:370px){.ri-lineup-grid{gap:6px}.ri-lineup-side{padding:9px}.ri-lineup-list span{font-size:10px}}
+
+/* Sekme sayisi ARTIK SABIT DEGIL: Watchalong eklenince 1fr 1fr duzeni
+   ucuncuyu alt satira atiyordu (kullanici ekran goruntusunde yakaladi).
+   grid-auto-flow ile kac sekme olursa olsun tek satirda esit bolunuyor.
+   Pasif sekme rengi #666'ydi - DESIGN.md onu metin icin yasakliyor (3.45:1),
+   text-muted 7.5:1. */
+
+/* Hafta seridi (turnuva > Matches). Iki yuzey de kullaniyor -> paylasilan dosya.
+   38 hafta dikey liste olamaz; yatay kaydirilan rakamlar. */
+.ri-week-strip{display:flex;gap:5px;overflow-x:auto;padding:2px 0 12px;scrollbar-width:none}
+.ri-week-strip::-webkit-scrollbar{display:none}
+.ri-week-strip button{flex:0 0 auto;min-width:34px;min-height:34px;padding:0 8px;border:1px solid var(--ri-line);border-radius:9px;background:transparent;color:#9aa0a6;font:700 11px var(--font-logo);font-variant-numeric:tabular-nums}
+.ri-week-strip button.on{color:#15100a;background:var(--ri-gold);border-color:var(--ri-gold)}
+.ri-week-strip button:focus-visible{outline:2px solid var(--ri-gold);outline-offset:2px}
+
+/* Ayar satiri (Profil > Settings). Iki yuzeyin de kullandigi yapi degil ama
+   telefon tarafinda karsiligi yoktu; renkler DESIGN.md metin token'lari. */
+.ri-set-row{display:flex;align-items:center;gap:12px;min-height:56px;padding:11px 2px;border-bottom:1px solid var(--ri-line);color:inherit;text-decoration:none}
+.ri-set-row>div{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.ri-set-row strong{font-size:13px;color:#eceded;font-weight:600}
+.ri-set-row small{font-size:10.5px;color:#9aa0a6;line-height:1.4}
+.ri-set-row select{flex:0 0 auto;height:34px;border:1px solid var(--ri-line);border-radius:9px;background:#0c0d0f;color:#eceded;font-size:12px;padding:0 8px}
+.ri-set-row input[type=checkbox]{flex:0 0 auto;width:20px;height:20px;accent-color:var(--ri-gold)}

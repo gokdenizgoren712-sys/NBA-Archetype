@@ -8,6 +8,7 @@ import {
 import { SEO } from "../../hooks/useSEO";
 import { useAuth } from "../../contexts/AuthContext";
 import { rankitApi, rankitSocketUrl } from "../rankitApi";
+import { BROADCAST_COUNTRIES, readPrefs, writePrefs, resolveBroadcastCountry, localeCountry } from "../rankitPrefs";
 import { MatchCard, Stars, RankItMark, TeamMark, formatWhen } from "./cards";
 import "../rankit.css";
 import "./rankit-web.css";
@@ -371,6 +372,10 @@ function Inspector({ id, minimized, onClose, onMinimize, onRestore, onLogged, on
   const [err, setErr] = useState("");
   const [rating, setRating] = useState(0);
   const [review, setReview] = useState("");
+  // Classic damgası webde HİÇ yoktu: telefonda puanlamanın yanındaki en
+  // belirgin hareket, webde puan kaydedilebiliyor ama "bu bir klasikti"
+  // denemiyordu.
+  const [classic, setClassic] = useState(false);
   const [state, setState] = useState("idle");
   // Telefonla aynı varsayılan: bitmiş maçta önce topluluk, oynanmamışta künye.
   const [tab, setTab] = useState("Match");
@@ -394,6 +399,7 @@ function Inspector({ id, minimized, onClose, onMinimize, onRestore, onLogged, on
       .then((d) => {
         if (!alive) return;
         setDetail(d); setRating(d.my_rating || 0); setReview(d.my_review || "");
+        setClassic(!!d.my_classic);
         setWatchlisted(!!d.watchlisted); setFavorited(!!d.favorited);
         setPotmId(d.my_potm_id || null); setRespect(d.my_respect_ids || []);
         setTab(d.status === "finished" ? "Community" : "Match");
@@ -404,13 +410,20 @@ function Inspector({ id, minimized, onClose, onMinimize, onRestore, onLogged, on
 
   // Yayın bilgisi ayrı uçtan gelir: kural tablosu turnuva+ülke başına çözülür,
   // maç satırında yalnızca serbest metin `broadcaster` var.
+  // Ülke artık sabit "TR" değil: tercihten, yoksa tarayıcı dilinden. Kapsam
+  // dışı bir ülkede hiç sormuyoruz — başka bir ülkenin yayıncısını göstermek
+  // "veri yok" demekten daha kötü.
+  const country = useMemo(() => resolveBroadcastCountry(), []);
   useEffect(() => {
+    // Kapsam dışıysa istek atmıyoruz; "veri yok" durumu state'ten değil
+    // country.supported'dan türetiliyor, yoksa efekt içinde setState gerekirdi.
+    if (!country.supported) return undefined;
     let alive = true;
-    rankitApi.broadcasts(id, "TR")
+    rankitApi.broadcasts(id, country.code)
       .then((b) => alive && setBroadcast(b))
       .catch(() => alive && setBroadcast(null));
     return () => { alive = false; };
-  }, [id]);
+  }, [id, country]);
 
   useEffect(() => {
     // Küçükken Escape'in kapatacak "aktif" bir diyalog yok — chip modal değil,
@@ -423,7 +436,7 @@ function Inspector({ id, minimized, onClose, onMinimize, onRestore, onLogged, on
 
   // Kaydettikten sonra puanı değiştirince buton "Saved" olarak kalıyordu:
   // kullanıcı kaydedilmemiş bir değişikliği kaydedilmiş sanıp kapatıyordu.
-  useEffect(() => { setState((s) => (s === "saved" ? "idle" : s)); }, [rating, review]);
+  useEffect(() => { setState((s) => (s === "saved" ? "idle" : s)); }, [rating, review, classic]);
 
   // İyimser güncelleme + hata halinde geri alma: telefondaki davranışın aynısı.
   // id yalnızca React key'i: değişince toast animasyonu baştan oynar. Date.now()
@@ -497,13 +510,24 @@ function Inspector({ id, minimized, onClose, onMinimize, onRestore, onLogged, on
 
   const save = () => {
     setState("saving");
-    rankitApi.log({ match_id: id, rating: rating || null, review })
+    rankitApi.log({ match_id: id, rating: rating || null, review, classic })
       .then(() => { setState("saved"); onLogged?.(); })
       .catch((e) => { setState("error"); setErr(String(e.message || e)); });
   };
 
   const finished = detail?.status === "finished";
   const when = formatWhen(detail?.starts_at);
+  // Oylama listesi alfabetik tek bir duvardı: "Adam Smith" hangi takımda
+  // belli olmuyordu ve aynı 30 isim POTM ve Respect için arka arkaya iki kez
+  // basılıyordu. Telefon takıma göre grupluyor, web gruplamıyordu.
+  const playersByTeam = useMemo(() => {
+    const groups = new Map();
+    for (const p of detail?.players || []) {
+      if (!groups.has(p.team)) groups.set(p.team, []);
+      groups.get(p.team).push(p);
+    }
+    return [...groups.entries()];
+  }, [detail?.players]);
 
   // Küçültülmüşken tam çekmece hiç DOM'da değil — sadece köşedeki taslak
   // çipi. Bileşenin kendisi (ve içindeki rating/review state'i) mount'ta
@@ -604,18 +628,22 @@ function Inspector({ id, minimized, onClose, onMinimize, onRestore, onLogged, on
                       ve özellik hiç KEŞFEDİLEMİYORDU. Telefon boşken bile
                       "pending" yazıyor; web artık aynısını yapıyor. */}
                   <div>
-                    <span>BROADCAST{broadcast?.country ? ` · ${broadcast.country}` : ""}</span>
+                    <span>BROADCAST{country.supported && country.code ? ` · ${country.code}` : ""}</span>
                     <strong>
-                      {broadcast?.channels?.length
+                      {country.supported && broadcast?.channels?.length
                         ? broadcast.channels.map((c) => c.name).join(" · ")
+                        : !country.supported
+                        ? "Not covered in your region yet"
                         : detail.broadcaster || "Details pending"}
                     </strong>
                     {/* Kuraldan mı gelmiş yoksa maça özel doğrulanmış mı — bu
                         ayrım kullanıcı için önemli: yayın hakları sezon içinde
                         değişiyor ve tarihsiz bir kayıt bir süre sonra yalan olur. */}
-                    {broadcast?.confidence === "typical" && (
+                    {!country.supported ? (
+                      <em>Pick a country under Profile &rsaquo; Settings</em>
+                    ) : broadcast?.confidence === "typical" ? (
                       <em>Typical coverage — check before kick-off</em>
-                    )}
+                    ) : null}
                   </div>
                   {detail.potm && (
                     <div><span>COMMUNITY POTM</span><strong>{detail.potm.name}</strong></div>
@@ -785,6 +813,11 @@ function Inspector({ id, minimized, onClose, onMinimize, onRestore, onLogged, on
                       <div className="ri-rating-panel">
                         <small>YOUR RATING</small>
                         <Stars value={rating} onChange={setRating} />
+                        <button type="button" onClick={() => setClassic((v) => !v)}
+                          aria-pressed={classic}
+                          className={`ri-classic${classic ? " active" : ""}`}>
+                          <span>CLASSIC</span><small>RANKIT SELECT</small>
+                        </button>
                       </div>
                       {/* POTM + Respect: telefonda vardı, webde yoktu. Aynı kural —
                           bir oyuncu ikisinde birden olamaz, respect en fazla iki kişi. */}
@@ -794,27 +827,37 @@ function Inspector({ id, minimized, onClose, onMinimize, onRestore, onLogged, on
                             YOUR PLAYER OF THE MATCH
                             <span>{potmId ? "1" : "0"}/1</span>
                           </div>
-                          <div className="ri-respect-grid">
-                            {detail.players.map((p) => (
-                              <button key={`potm-${p.id}`} type="button"
-                                className={potmId === p.id ? "active" : undefined}
-                                onClick={() => choosePotm(p.id)}>
-                                <Trophy size={12} /><span>{p.name}</span>
-                              </button>
-                            ))}
-                          </div>
+                          {playersByTeam.map(([team, list]) => (
+                            <section key={`potm-${team}`} className="riw-vote-team">
+                              <small>{team}</small>
+                              <div className="ri-respect-grid">
+                                {list.map((p) => (
+                                  <button key={`potm-${p.id}`} type="button"
+                                    className={potmId === p.id ? "active" : undefined}
+                                    onClick={() => choosePotm(p.id)}>
+                                    <Trophy size={12} /><span>{p.name}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            </section>
+                          ))}
                           <div className="ri-chip-title">
                             RESPECT <span>{respect.length}/2</span>
                           </div>
-                          <div className="ri-respect-grid">
-                            {detail.players.filter((p) => p.id !== potmId).map((p) => (
-                              <button key={`respect-${p.id}`} type="button"
-                                className={respect.includes(p.id) ? "active" : undefined}
-                                onClick={() => toggleRespect(p.id)}>
-                                <ThumbsUp size={12} /><span>{p.name}</span>
-                              </button>
-                            ))}
-                          </div>
+                          {playersByTeam.map(([team, list]) => (
+                            <section key={`respect-${team}`} className="riw-vote-team">
+                              <small>{team}</small>
+                              <div className="ri-respect-grid">
+                                {list.filter((p) => p.id !== potmId).map((p) => (
+                                  <button key={`respect-${p.id}`} type="button"
+                                    className={respect.includes(p.id) ? "active" : undefined}
+                                    onClick={() => toggleRespect(p.id)}>
+                                    <ThumbsUp size={12} /><span>{p.name}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            </section>
+                          ))}
                         </div>
                       )}
                       <textarea className="ri-review-input" rows="3" maxLength={4000}
@@ -881,6 +924,150 @@ const ENTITY_LOADER = {
   member: rankitApi.member,
   list: rankitApi.list,
 };
+
+/* Turnuva gövdesi: Table / Players / Matches.
+   Önceki hali 30 ismi alfabetik bir duvar olarak basıyordu — ne takım ne
+   istatistik, yani "popular" kelimesini destekleyen hiçbir şey ekranda yoktu.
+   Veri zaten geliyordu (team_name, appearances, potm_votes), gösterilmiyordu. */
+function CompetitionBody({ id, data, onOpenMatch, onOpenEntity }) {
+  const [tab, setTab] = useState("table");
+  const [week, setWeek] = useState(null);
+  // Yüklenen haftayı ADIYLA BİRLİKTE tutuyoruz: "hangi hafta yükleniyor"
+  // bilgisi böyle türetilebiliyor ve efektin başında state sıfırlamak
+  // gerekmiyor (react-hooks/set-state-in-effect).
+  const [loaded, setLoaded] = useState({ stage: null, matches: [] });
+  // `data.matchweeks || []` her render'da YENİ bir dizi üretiyordu ve aşağıdaki
+  // useMemo'yu her seferinde yeniden çalıştırıyordu; referans burada sabitleniyor.
+  const weeks = useMemo(() => data.matchweeks || [], [data.matchweeks]);
+
+  // Açılışta oynanmakta olan haftayı seç: tamamlanmamış ilk hafta, yoksa sonuncu.
+  const currentWeek = useMemo(() => {
+    const live = weeks.find((w) => w.finished < w.matches);
+    return (live || weeks[weeks.length - 1] || null)?.stage || null;
+  }, [weeks]);
+
+  const activeWeek = week || currentWeek;
+
+  useEffect(() => {
+    if (tab !== "matches" || !activeWeek) return undefined;
+    let alive = true;
+    rankitApi.competitionMatches(id, activeWeek)
+      .then((d) => alive && setLoaded({ stage: activeWeek, matches: (d.matches || []).map(toCard) }))
+      .catch(() => alive && setLoaded({ stage: activeWeek, matches: [] }));
+    return () => { alive = false; };
+  }, [id, tab, activeWeek]);
+
+  // null => hâlâ yükleniyor (ya da başka bir haftanın sonucu duruyor).
+  const weekMatches = loaded.stage === activeWeek ? loaded.matches : null;
+
+  const players = useMemo(() => {
+    // "Popular" bir sıraya dayanmalı: önce topluluk oyları, sonra maç sayısı.
+    return [...(data.popular_players || [])].sort((a, b) =>
+      (b.potm_votes + b.respect_votes) - (a.potm_votes + a.respect_votes) ||
+      b.appearances - a.appearances);
+  }, [data.popular_players]);
+
+  const standings = data.standings || [];
+
+  return (
+    <>
+      <div className="ri-detail-tabs" role="tablist" aria-label="Competition">
+        {[["table", "Table"], ["players", "Players"], ["matches", "Matches"]].map(([key, label]) => (
+          <button key={key} role="tab" aria-selected={tab === key}
+            className={tab === key ? "active" : undefined}
+            onClick={() => setTab(key)}>{label}</button>
+        ))}
+      </div>
+
+      {tab === "table" && (
+        standings.length ? (
+          <div className="riw-table-wrap">
+            <table className="riw-table">
+              <thead>
+                <tr>
+                  <th className="num">#</th><th>Team</th>
+                  <th className="num">P</th><th className="num">W</th>
+                  <th className="num">D</th><th className="num">L</th>
+                  <th className="num">GD</th><th className="num pts">Pts</th>
+                </tr>
+              </thead>
+              <tbody>
+                {standings.map((row, i) => (
+                  <tr key={row.team_id}>
+                    <td className="num rank">{i + 1}</td>
+                    <td>
+                      <button type="button" className="riw-linkish"
+                        onClick={() => onOpenEntity?.("team", row.team_id)}>
+                        {row.short_name || row.name}
+                      </button>
+                    </td>
+                    <td className="num">{row.played}</td>
+                    <td className="num">{row.won}</td>
+                    <td className="num">{row.drawn}</td>
+                    <td className="num">{row.lost}</td>
+                    <td className="num">{row.gd > 0 ? `+${row.gd}` : row.gd}</td>
+                    <td className="num pts">{row.points}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : <Empty icon={ListIcon} title="No table yet"
+              note="Standings appear once results are in for this season." />
+      )}
+
+      {tab === "players" && (
+        players.length ? (
+          <div className="riw-player-rows">
+            {players.map((p) => {
+              const votes = (p.potm_votes || 0) + (p.respect_votes || 0);
+              return (
+                <button key={p.id} type="button" className="riw-player-row"
+                  onClick={() => onOpenEntity?.("player", p.id)}>
+                  <span className="riw-player-name">{p.name}</span>
+                  <span className="riw-player-team">{p.team_short || p.team_name}</span>
+                  <span className="riw-player-stat">
+                    {votes ? `${votes} votes` : `${p.appearances} apps`}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        ) : <Empty icon={CircleUserRound} title="No players yet"
+              note="Players appear once squads are loaded for this competition." />
+      )}
+
+      {tab === "matches" && (
+        <>
+          <div className="riw-weeks" role="tablist" aria-label="Matchweek">
+            {weeks.map((w) => (
+              <button key={w.stage} role="tab" aria-selected={activeWeek === w.stage}
+                className={activeWeek === w.stage ? "on" : undefined}
+                onClick={() => setWeek(w.stage)}
+                title={`${w.matches} matches, ${w.finished} played`}>
+                {/* Uzun etiket dar bir şeritte okunmaz: "Matchday 12" -> "12" */}
+                {(w.stage.match(/\d+/) || [w.stage])[0]}
+              </button>
+            ))}
+          </div>
+          {!weeks.length && (
+            <Empty icon={ListIcon} title="No matchweeks"
+              note="This competition does not publish rounds." />
+          )}
+          {!!weeks.length && (
+            <>
+              <div className="ri-chip-title">{activeWeek}</div>
+              <Wall matches={weekMatches || []} loading={weekMatches === null} error=""
+                onOpen={(m) => onOpenMatch(m.id)}
+                empty={<Empty icon={ListIcon} title="No matches in this round" note="" />} />
+            </>
+          )}
+        </>
+      )}
+    </>
+  );
+}
+
 
 function EntityDrawer({ kind, id, onClose, onOpenMatch, onOpenEntity }) {
   const { isLoggedIn } = useAuth();
@@ -999,6 +1186,11 @@ function EntityDrawer({ kind, id, onClose, onOpenMatch, onOpenEntity }) {
               )
             )}
 
+            {kind === "competition" && (
+              <CompetitionBody id={id} data={data}
+                onOpenMatch={onOpenMatch} onOpenEntity={onOpenEntity} />
+            )}
+
             {/* Takım kadrosu: oyuncuya geçiş buradan. */}
             {kind === "team" && !!data.players?.length && (
               <div className="ri-squad-preview">
@@ -1013,17 +1205,6 @@ function EntityDrawer({ kind, id, onClose, onOpenMatch, onOpenEntity }) {
               </div>
             )}
 
-            {kind === "competition" && !!data.popular_players?.length && (
-              <div className="ri-squad-preview">
-                <div className="ri-chip-title">POPULAR PLAYERS <span>{data.popular_players.length}</span></div>
-                <div className="riw-entity-chips">
-                  {data.popular_players.map((pl) => (
-                    <button key={pl.id} type="button" onClick={() => onOpenEntity("player", pl.id)}>{pl.name}</button>
-                  ))}
-                </div>
-              </div>
-            )}
-
             {kind === "member" && !!data.entries?.length && (
               <div className="riw-review-list">
                 {data.entries.slice(0, 8).map((e) => (
@@ -1032,7 +1213,7 @@ function EntityDrawer({ kind, id, onClose, onOpenMatch, onOpenEntity }) {
               </div>
             )}
 
-            {!!matches.length && (
+            {kind !== "competition" && !!matches.length && (
               <>
                 <div className="ri-chip-title" style={{ marginTop: 16 }}>
                   {kind === "competition" ? "FIXTURES" : "MATCHES"} <span>{matches.length}</span>
@@ -1629,6 +1810,9 @@ function Lists({ tabs, onOpenEntity }) {
 
 function Profile() {
   const { isLoggedIn, user } = useAuth();
+  const [tab, setTab] = useState("overview");
+  const [prefs, setPrefs] = useState(readPrefs);
+  const setPref = (patch) => setPrefs(writePrefs(patch));
   const [data, setData] = useState(null);
   const [build, setBuild] = useState(undefined);   // undefined = yükleniyor
 
@@ -1650,9 +1834,15 @@ function Profile() {
         <h1>{isLoggedIn ? `@${user?.username}` : "Profile"}</h1>
         <p>{isLoggedIn ? "Your record across both sports." : "Sign in to keep a diary."}</p>
       </header>
+      <div className="riw-tabs" role="tablist" aria-label="Profile">
+        {[["overview", "Overview"], ["settings", "Settings"]].map(([key, label]) => (
+          <button key={key} role="tab" aria-selected={tab === key}
+            className={tab === key ? "on" : undefined} onClick={() => setTab(key)}>{label}</button>
+        ))}
+      </div>
 
       <div className="riw-main solo">
-        {isLoggedIn ? (
+        {tab === "overview" && (isLoggedIn ? (
           <div className="ri-entity-stats">
             <div><strong>{s.matches ?? 0}</strong><span>matches</span></div>
             <div><strong>{s.classics ?? 0}</strong><span>classics</span></div>
@@ -1664,10 +1854,54 @@ function Profile() {
         ) : (
           <Empty icon={CircleUserRound} title="Not signed in"
             note="RankIt uses your Primary Arch account — the same one that owns your squads and lineups." />
-        )}
+        ))}
 
+        {tab === "settings" && (
         <section className="riw-settings">
-          <h2>Settings</h2>
+          <div className="riw-set-group">
+            <span>PERSONALISATION</span>
+
+            <label className="riw-set-row" htmlFor="riw-country">
+              <Radio size={16} />
+              <div>
+                <strong>Broadcast country</strong>
+                <small>
+                  {prefs.broadcastCountry === "auto"
+                    ? (localeCountry()
+                        ? `Following your browser — ${localeCountry()}`
+                        : "Your browser's region has no coverage data yet")
+                    : "Which country's listings to show on a match"}
+                </small>
+              </div>
+              <select id="riw-country" value={prefs.broadcastCountry}
+                onChange={(e) => setPref({ broadcastCountry: e.target.value })}>
+                <option value="auto">Auto</option>
+                {BROADCAST_COUNTRIES.map((c) => (
+                  <option key={c.code} value={c.code}>{c.label}</option>
+                ))}
+              </select>
+            </label>
+
+            <label className="riw-set-row" htmlFor="riw-hide">
+              <EyeOff size={16} />
+              <div>
+                <strong>Hide scores by default</strong>
+                <small>Cards and drawers open blurred until you choose to look.</small>
+              </div>
+              <input id="riw-hide" type="checkbox" checked={prefs.hideScores}
+                onChange={(e) => setPref({ hideScores: e.target.checked })} />
+            </label>
+
+            <label className="riw-set-row" htmlFor="riw-motion">
+              <SlidersHorizontal size={16} />
+              <div>
+                <strong>Reduce motion</strong>
+                <small>Turns off card entrance animations without changing your OS setting.</small>
+              </div>
+              <input id="riw-motion" type="checkbox" checked={prefs.reduceMotion}
+                onChange={(e) => setPref({ reduceMotion: e.target.checked })} />
+            </label>
+          </div>
 
           <div className="riw-set-group">
             <span>ANDROID APP</span>
@@ -1699,6 +1933,7 @@ function Profile() {
             ))}
           </div>
         </section>
+        )}
       </div>
     </>
   );

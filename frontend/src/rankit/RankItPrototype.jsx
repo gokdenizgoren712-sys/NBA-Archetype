@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { activity, lists, matches } from "./mockData";
 import { rankitApi, rankitSocketUrl } from "./rankitApi";
+import { BROADCAST_COUNTRIES, readPrefs, writePrefs, resolveBroadcastCountry, localeCountry } from "./rankitPrefs";
 import { rankitHaptics } from "./rankitHaptics";
 import "./rankit.css";
 import "./rankit-motion.css";
@@ -236,17 +237,46 @@ function MatchCard({ match, hideScores, onOpen, onOpenCompetition, featured = fa
 }
 
 function CompetitionDetail({ detail, onClose, onOpenMatch, onOpenPlayer }) {
-  const [section, setSection] = useState("Upcoming");
+  // Sekmeler weble AYNI: Table / Players / Matches. Matches artık "sıradaki
+  // 60 maç" değil, hafta hafta gezilebiliyor — bir sezon 38 hafta ve
+  // kullanıcının aradığı şey genelde belirli bir hafta.
+  const [section, setSection] = useState("Table");
+  const [week, setWeek] = useState(null);
+  const [loaded, setLoaded] = useState({ stage: null, matches: [] });
+  const weeks = useMemo(() => detail?.matchweeks || [], [detail?.matchweeks]);
+  const currentWeek = useMemo(() => {
+    const live = weeks.find(w => w.finished < w.matches);
+    return (live || weeks[weeks.length - 1] || null)?.stage || null;
+  }, [weeks]);
+  const activeWeek = week || currentWeek;
+  const competitionId = detail?.competition?.id;
+  useEffect(() => {
+    if (section !== "Matches" || !activeWeek || !competitionId) return undefined;
+    let alive = true;
+    rankitApi.competitionMatches(competitionId, activeWeek)
+      .then(d => alive && setLoaded({ stage: activeWeek, matches: (d.matches || []).map(fromApiMatch) }))
+      .catch(() => alive && setLoaded({ stage: activeWeek, matches: [] }));
+    return () => { alive = false; };
+  }, [competitionId, section, activeWeek]);
+  const weekMatches = loaded.stage === activeWeek ? loaded.matches : null;
   if (!detail) return <div className="ri-sheet-wrap" onClick={onClose}><section className="ri-detail-sheet ri-competition-sheet" onClick={event=>event.stopPropagation()}><SheetHandle onClose={onClose}/><div className="ri-entity-loading">Loading competition…</div></section></div>;
   const competition = detail.competition;
   const fixtures = (detail.fixtures || []).map(fromApiMatch);
   return <div className="ri-sheet-wrap" onClick={onClose}><section className="ri-detail-sheet ri-competition-sheet" onClick={event=>event.stopPropagation()}>
     <SheetHandle onClose={onClose}/><button className="ri-sheet-close" onClick={onClose}><X size={19}/></button>
     <header className="ri-competition-head"><small>{competition.country || "Competition"} · {competition.season}</small><h2>{competition.name}</h2><span>{competition.sport}</span></header>
-    <div className="ri-detail-tabs ri-competition-tabs">{["Upcoming","Standings","Popular Players"].map(name=><button key={name} className={section===name?"active":""} onClick={()=>setSection(name)}>{name}</button>)}</div>
-    {section === "Upcoming" && <div className="ri-competition-fixtures">{fixtures.map(match=><button key={match.id} onClick={()=>{onClose();onOpenMatch(match)}}><span><small>{match.stage || "Upcoming fixture"}</small><strong>{match.home.short} <b>vs</b> {match.away.short}</strong></span><time>{match.status === "live" ? "LIVE" : match.date}</time><ChevronRight size={15}/></button>)}{!fixtures.length&&<div className="ri-empty-state"><CalendarDays size={22}/><strong>No upcoming fixtures</strong><span>The next scheduled matches will appear here.</span></div>}</div>}
-    {section === "Standings" && <div className="ri-competition-table"><header><span>#</span><strong>Team</strong><span>P</span><span>{competition.sport === "Basketball" ? "+/-" : "GD"}</span><span>{competition.sport === "Basketball" ? "W" : "PTS"}</span></header>{(detail.standings||[]).map((row,index)=><div key={row.team_id}><span>{index+1}</span><strong><TeamMark team={{name:row.name,short:row.short_name,color:row.color,crest_url:row.crest_url}}/><b>{row.short_name}</b></strong><span>{row.played}</span><span>{row.gd>0?`+${row.gd}`:row.gd}</span><span>{row.points}</span></div>)}{!detail.standings?.length&&<div className="ri-empty-state"><List size={22}/><strong>No league table for this stage</strong><span>Qualifying and knockout ties are shown under fixtures.</span></div>}</div>}
-    {section === "Popular Players" && <div className="ri-popular-players">{(detail.popular_players||[]).map((player,index)=><button key={player.id} onClick={()=>{onClose();onOpenPlayer(player.id)}}><b>{index+1}</b>{player.image_url?<img src={player.image_url} alt=""/>:<span>{player.name.slice(0,2).toUpperCase()}</span>}<div><strong>{player.name}</strong><small>{player.team_name || "Competition player"}</small></div><em>{player.potm_votes} POTM · {player.respect_votes} Respect</em></button>)}{!detail.popular_players?.length&&<div className="ri-empty-state"><Trophy size={22}/><strong>Popular players will appear here</strong><span>Community POTM and Respect votes shape this list.</span></div>}</div>}
+    <div className="ri-detail-tabs ri-competition-tabs">{["Table","Players","Matches"].map(name=><button key={name} className={section===name?"active":""} onClick={()=>setSection(name)}>{name}</button>)}</div>
+    {section === "Matches" && <>
+      {weeks.length > 0 && <div className="ri-week-strip">{weeks.map(w=><button key={w.stage} className={activeWeek===w.stage?"on":""} onClick={()=>setWeek(w.stage)} title={`${w.matches} matches, ${w.finished} played`}>{(w.stage.match(/\d+/)||[w.stage])[0]}</button>)}</div>}
+      <div className="ri-competition-fixtures">
+        {(weekMatches ?? fixtures).map(match=><button key={match.id} onClick={()=>{onClose();onOpenMatch(match)}}><span><small>{match.stage || "Fixture"}</small><strong>{match.home.short} <b>vs</b> {match.away.short}</strong></span><time>{match.status === "live" ? "LIVE" : match.status === "finished" ? match.score : match.date}</time><ChevronRight size={15}/></button>)}
+        {weekMatches === null && weeks.length > 0 && <div className="ri-entity-loading">Loading…</div>}
+        {weekMatches?.length === 0 && <div className="ri-empty-state"><CalendarDays size={22}/><strong>No matches in this round</strong><span>Pick another matchweek above.</span></div>}
+        {!weeks.length && !fixtures.length && <div className="ri-empty-state"><CalendarDays size={22}/><strong>No fixtures</strong><span>The next scheduled matches will appear here.</span></div>}
+      </div>
+    </>}
+    {section === "Table" && <div className="ri-competition-table"><header><span>#</span><strong>Team</strong><span>P</span><span>{competition.sport === "Basketball" ? "+/-" : "GD"}</span><span>{competition.sport === "Basketball" ? "W" : "PTS"}</span></header>{(detail.standings||[]).map((row,index)=><div key={row.team_id}><span>{index+1}</span><strong><TeamMark team={{name:row.name,short:row.short_name,color:row.color,crest_url:row.crest_url}}/><b>{row.short_name}</b></strong><span>{row.played}</span><span>{row.gd>0?`+${row.gd}`:row.gd}</span><span>{row.points}</span></div>)}{!detail.standings?.length&&<div className="ri-empty-state"><List size={22}/><strong>No league table for this stage</strong><span>Qualifying and knockout ties are shown under fixtures.</span></div>}</div>}
+    {section === "Players" && <div className="ri-popular-players">{(detail.popular_players||[]).map((player,index)=><button key={player.id} onClick={()=>{onClose();onOpenPlayer(player.id)}}><b>{index+1}</b>{player.image_url?<img src={player.image_url} alt=""/>:<span>{player.name.slice(0,2).toUpperCase()}</span>}<div><strong>{player.name}</strong><small>{player.team_name || "Competition player"}</small></div><em>{player.potm_votes} POTM · {player.respect_votes} Respect</em></button>)}{!detail.popular_players?.length&&<div className="ri-empty-state"><Trophy size={22}/><strong>Popular players will appear here</strong><span>Community POTM and Respect votes shape this list.</span></div>}</div>}
   </section></div>;
 }
 
@@ -301,7 +331,14 @@ function MatchDetail({ match, hideScores, onClose, onSave, onToggleWatchlist, on
     } catch { /* bozuk taslak yok sayılır */ }
     draftReady.current = true;
   }, [match.id, match.my_watched_date]);
-  useEffect(() => { rankitApi.broadcasts(match.id, "TR").then(setBroadcastInfo).catch(()=>setBroadcastInfo(null)); }, [match.id]);
+  // Ülke artık sabit değil: tercihten, yoksa cihaz dilinden. Kapsam dışıysa
+  // hiç sormuyoruz — başka bir ülkenin yayıncısını göstermek yanlış bilgi.
+  const country = useMemo(() => resolveBroadcastCountry(), []);
+  useEffect(() => {
+    if (!country.supported) return undefined;
+    rankitApi.broadcasts(match.id, country.code).then(setBroadcastInfo).catch(()=>setBroadcastInfo(null));
+    return undefined;
+  }, [match.id, country]);
   useEffect(() => {
     if (!draftReady.current) return undefined;
     const timer = setTimeout(() => {
@@ -402,7 +439,7 @@ function MatchDetail({ match, hideScores, onClose, onSave, onToggleWatchlist, on
       <div className="ri-detail-tabs"><button className={section === "Match" ? "active" : ""} onClick={() => setSection("Match")}>Match</button><button className={section === "Community" ? "active" : ""} onClick={() => setSection("Community")}>Community</button></div>
       {section === "Match" ? <>
         {match.summary && <p className="ri-summary">{match.summary}</p>}
-        <div className="ri-broadcast"><small>WATCH IN TÜRKİYE</small><strong>{broadcastInfo?.channels?.map(channel=>channel.name).join(" · ") || match.broadcaster || "To be announced"}</strong><span>{broadcastInfo?.confidence === "confirmed" ? "Confirmed broadcaster" : broadcastInfo?.confidence === "typical" ? "Typical competition coverage · check before the match" : match.status === "finished" ? "Broadcast information unavailable" : "Coverage has not been confirmed yet"}</span></div>
+        <div className="ri-broadcast"><small>{country.supported ? `WATCH IN ${country.code}` : "BROADCAST"}</small><strong>{!country.supported ? "Not covered in your region yet" : (broadcastInfo?.channels?.map(channel=>channel.name).join(" · ") || match.broadcaster || "To be announced")}</strong><span>{broadcastInfo?.confidence === "confirmed" ? "Confirmed broadcaster" : broadcastInfo?.confidence === "typical" ? "Typical competition coverage · check before the match" : match.status === "finished" ? "Broadcast information unavailable" : "Coverage has not been confirmed yet"}</span></div>
         <div className="ri-timeline"><small>MATCH</small><div><span>{match.status === "finished" ? "FT" : match.time || match.dateOnly}</span><strong>{match.status === "finished" ? "Full time" : "Scheduled"}</strong></div><button onClick={() => setSection("Community")}>Community <ChevronRight size={14}/></button></div>
         {/* Doğrulanmış kadro: sağlayıcının o maça özel açıkladığı 11, yedekler,
             diziliş ve teknik direktör. Sezon kadrosundan AYRI alan (`lineups`
@@ -838,13 +875,42 @@ function ActivityView({ diaryEntries = [], watchlist = [], listCatalog = [], fri
 }
 
 function ProfileView({ profileData, diaryEntries = [], onOpen }) {
+  // Ayarlar telefonda HİÇ yoktu (web'de vardı) — parite tek yönlü değil.
+  const [tab, setTab] = useState("Overview");
+  const [prefs, setPrefs] = useState(readPrefs);
+  const setPref = patch => setPrefs(writePrefs(patch));
   const stats = profileData?.stats || {};
   const username = profileData?.user?.username || "gokdeniz";
   const initials = username.slice(0, 2).toUpperCase();
   const favourites = (profileData?.favorite_matches || []).map(fromApiMatch);
   const sports=[...new Set(diaryEntries.map(entry=>entry.sport))].filter(Boolean);
   const recentClassics=diaryEntries.filter(entry=>entry.classic).slice(0,3);
+  if (tab === "Settings") return <>
+    <div className="ri-profile-head"><div className="ri-profile-avatar">{initials}</div><div><small>@{username}</small><h1>Settings</h1><p>How RankIt behaves on this device.</p></div></div>
+    <div className="ri-detail-tabs">{["Overview","Settings"].map(name=><button key={name} className={tab===name?"active":""} onClick={()=>setTab(name)}>{name}</button>)}</div>
+    <div className="ri-chip-title">PERSONALISATION</div>
+    <label className="ri-set-row" htmlFor="ri-country">
+      <div><strong>Broadcast country</strong><small>{prefs.broadcastCountry==="auto" ? (localeCountry() ? `Following your device — ${localeCountry()}` : "Your region has no coverage data yet") : "Which country's listings to show on a match"}</small></div>
+      <select id="ri-country" value={prefs.broadcastCountry} onChange={e=>setPref({broadcastCountry:e.target.value})}>
+        <option value="auto">Auto</option>
+        {BROADCAST_COUNTRIES.map(c=><option key={c.code} value={c.code}>{c.label}</option>)}
+      </select>
+    </label>
+    <label className="ri-set-row" htmlFor="ri-hide">
+      <div><strong>Hide scores by default</strong><small>Cards open blurred until you choose to look.</small></div>
+      <input id="ri-hide" type="checkbox" checked={prefs.hideScores} onChange={e=>setPref({hideScores:e.target.checked})}/>
+    </label>
+    <label className="ri-set-row" htmlFor="ri-motion">
+      <div><strong>Reduce motion</strong><small>Turns off card entrance animations without changing your OS setting.</small></div>
+      <input id="ri-motion" type="checkbox" checked={prefs.reduceMotion} onChange={e=>setPref({reduceMotion:e.target.checked})}/>
+    </label>
+    <div className="ri-chip-title">LEGAL</div>
+    {[["/privacy-policy","Privacy policy"],["/terms-of-service","Terms of service"],["/rankit/download","Update RankIt"]].map(([href,label])=>
+      <a key={href} className="ri-set-row" href={href}><div><strong>{label}</strong></div><ChevronRight size={15}/></a>)}
+  </>;
+
   return <><div className="ri-profile-head"><div className="ri-profile-avatar">{initials}</div><div><small>@{username}</small><h1>{username}</h1><p>Basketball nights, European football and the occasional instant classic.</p></div></div>
+    <div className="ri-detail-tabs">{["Overview","Settings"].map(name=><button key={name} className={tab===name?"active":""} onClick={()=>setTab(name)}>{name}</button>)}</div>
     <div className="ri-profile-taste">{sports.map(sport=><span key={sport}>{sport}</span>)}{recentClassics.map(entry=><b key={entry.id}>CLASSIC · {entry.home_short}–{entry.away_short}</b>)}</div>
     <div className="ri-profile-stats"><div><strong>{stats.matches ?? 0}</strong><span>matches</span></div><div><strong>{stats.classics ?? 0}</strong><span>classics</span></div><div><strong>{stats.diary_count ?? 0}</strong><span>diary entries</span></div><div><strong>{stats.watchlist ?? 0}</strong><span>watchlist</span></div><div><strong>{stats.favorites ?? 0}</strong><span>favourites</span></div><div><strong>{stats.lists ?? 0}</strong><span>lists</span></div></div>
     <section className="ri-section"><div className="ri-section-head"><div><small>TASTE ON DISPLAY</small><h2>Four favourites</h2></div></div>{favourites.length ? <div className="ri-favourites">{favourites.map(m=><div key={m.id} onClick={()=>onOpen(m)} style={{"--fav-a":m.home.color,"--fav-b":m.away.color}}><span>{m.home.short}</span><b>VS</b><span>{m.away.short}</span></div>)}</div> : <div className="ri-empty-state"><Heart size={22}/><strong>No favourites yet</strong><span>Favourite a match to display your taste.</span></div>}</section>
