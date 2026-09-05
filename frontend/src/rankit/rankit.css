@@ -121,3 +121,13 @@
    tamamen stilsiz, duz yazi olarak cikiyordu. Iki yuzeyin de kullandigi
    sinif, iki yuzeyin de yukledigi dosyada durmali. */
 .ri-live-tag{color:#ff5b63;border:1px solid rgba(255,65,78,.48);background:rgba(255,65,78,.1);border-radius:999px;padding:4px 7px;font:800 7px var(--font-logo);letter-spacing:.14em;box-shadow:0 0 12px rgba(255,65,78,.16)}
+
+/* Eylem toast'i iki yuzeyde de kullaniliyor (telefonda watchlist/favourite,
+   webde ayni akislar) ama kurali yalnizca rankit-motion.css'teydi ve web
+   o dosyayi yuklemiyor — yani webde toast tamamen stilsiz cikiyordu.
+   .ri-live-tag ile ayni hata; paylasilan sinif paylasilan dosyada durur.
+   Hareketi kisma kurali motion.css'te KALDI: orada zaten bu sinifi de
+   iceren toplu bir prefers-reduced-motion bloku var. */
+.ri-action-toast{position:fixed;z-index:40;left:50%;bottom:calc(88px + env(safe-area-inset-bottom));max-width:calc(100vw - 40px);padding:10px 14px;border:1px solid rgba(63,176,140,.28);border-radius:999px;background:rgba(18,25,22,.96);color:#8ed6ba;box-shadow:0 12px 34px rgba(0,0,0,.5),0 0 18px rgba(63,176,140,.08);backdrop-filter:blur(16px);font:700 10px var(--font-logo);letter-spacing:.03em;white-space:nowrap;animation:riToastLife 2.25s ease both;pointer-events:none}
+.ri-action-toast.error{border-color:rgba(227,107,118,.35);background:rgba(31,18,21,.96);color:#ef9aa3}
+@keyframes riToastLife{0%{opacity:0;transform:translate(-50%,12px) scale(.94)}12%,78%{opacity:1;transform:translate(-50%,0) scale(1)}100%{opacity:0;transform:translate(-50%,-7px) scale(.98)}}

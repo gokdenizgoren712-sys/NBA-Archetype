@@ -6,7 +6,7 @@
 @keyframes riShimmer{from{background-position:200% 0}to{background-position:-200% 0}}
 @keyframes riBackdropIn{from{opacity:0}to{opacity:1}}
 @keyframes riSheetIn{from{opacity:.35;transform:translate3d(0,42px,0) scale(.985)}to{opacity:1;transform:translate3d(0,0,0) scale(1)}}
-@keyframes riToastLife{0%{opacity:0;transform:translate(-50%,12px) scale(.94)}12%,78%{opacity:1;transform:translate(-50%,0) scale(1)}100%{opacity:0;transform:translate(-50%,-7px) scale(.98)}}
+
 @keyframes riSpin{to{transform:rotate(360deg)}}
 @keyframes riPulse{0%,100%{opacity:.42}50%{opacity:1}}
 
@@ -46,8 +46,8 @@
 .ri-match-skeleton>i{width:35%;height:8px;border-radius:5px;background:#202124}.ri-match-skeleton>div{flex:1;display:flex;align-items:center;justify-content:space-between}.ri-match-skeleton>div span{width:66px;height:66px;border-radius:24px;background:#1b1c1f}.ri-match-skeleton>b{height:47px;border-radius:11px;background:#191a1c}.ri-match-skeleton>footer{display:flex;justify-content:space-between}.ri-match-skeleton>footer span{width:30%;height:7px;border-radius:5px;background:#1d1e20}
 .ri-network-note{position:sticky;top:4px;z-index:8;margin:6px 0 10px;padding:8px 11px;border:1px solid rgba(255,177,27,.22);border-radius:11px;background:rgba(24,20,13,.94);color:#b79a60;backdrop-filter:blur(14px);font-size:9px;text-align:center}.ri-network-note i{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--ri-gold);margin-right:6px}.ri-network-note.reconnecting i{animation:riPulse .8s ease-in-out infinite}
 
-.ri-action-toast{position:fixed;z-index:40;left:50%;bottom:calc(88px + env(safe-area-inset-bottom));max-width:calc(100vw - 40px);padding:10px 14px;border:1px solid rgba(63,176,140,.28);border-radius:999px;background:rgba(18,25,22,.96);color:#8ed6ba;box-shadow:0 12px 34px rgba(0,0,0,.5),0 0 18px rgba(63,176,140,.08);backdrop-filter:blur(16px);font:700 10px var(--font-logo);letter-spacing:.03em;white-space:nowrap;animation:riToastLife 2.25s ease both;pointer-events:none}
-.ri-action-toast.error{border-color:rgba(227,107,118,.35);background:rgba(31,18,21,.96);color:#ef9aa3}
+
+
 
 .ri-auth-card{animation:riSheetIn .46s cubic-bezier(.18,.86,.22,1) both;transform-origin:50% 70%}
 .ri-auth-brand svg{animation:riAppEnter .55s ease-out both}

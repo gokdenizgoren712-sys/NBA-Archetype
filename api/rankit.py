@@ -417,7 +417,7 @@ def rankit_home(
         sql += NEAREST_MATCH_ORDER + " LIMIT 12"
         rows = conn.execute(sql, args).fetchall()
         cards = [_match_dict(conn, r, uid) for r in rows]
-        activity_rows = conn.execute("""SELECT e.id,e.review,e.rating,e.created_at,u.username,m.id match_id,
+        activity_rows = conn.execute("""SELECT e.id,e.review,e.rating,e.created_at,u.username,u.id user_id,m.id match_id,
             h.short_name home_short,h.name home_name,a.short_name away_short,a.name away_name
             FROM rankit_diary_entries e JOIN users u ON u.id=e.user_id
             JOIN rankit_matches m ON m.id=e.match_id JOIN rankit_teams h ON h.id=m.home_team_id

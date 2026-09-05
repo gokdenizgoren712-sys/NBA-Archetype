@@ -719,3 +719,50 @@
 .riw-set-row strong { display: block; font: 600 12.5px var(--font-sans); color: inherit; }
 .riw-set-row small { display: block; margin-top: 2px; font-size: 10.5px; color: #6f7376; }
 .riw-set-row > svg:last-child { flex: none; color: #4e5155; }
+
+/* ── İnceleme etkileşimleri (beğeni / yorum / spoiler) ───────────────────────
+   Renkler bu dosyanın yerleşik değerlerinden: #9aa0a6 ikincil etiket,
+   --ri-gold birincil vurgu. Yeni palet değeri eklenmedi. */
+.riw-review-actions { display: flex; gap: 6px; margin-top: 8px; }
+.riw-review-actions button { display: inline-flex; align-items: center; gap: 5px; min-height: 28px; padding: 4px 9px; border: 1px solid var(--ri-line); border-radius: 999px; background: transparent; color: #9aa0a6; font: 600 10px var(--font-logo); letter-spacing: .04em; cursor: pointer; transition: color .15s ease, border-color .15s ease; }
+.riw-review-actions button:hover:not(:disabled) { color: #dcdedf; border-color: rgba(255, 255, 255, .18); }
+.riw-review-actions button.on { color: var(--ri-gold); border-color: rgba(255, 177, 27, .34); }
+.riw-review-actions button:disabled { opacity: .5; cursor: default; }
+.riw-review-actions button:focus-visible { outline: 2px solid var(--ri-gold); outline-offset: 2px; }
+
+/* Spoiler: sunucu metni zaten gönderiyor, okuyucu kendi kararını versin. */
+.riw-spoiler { border: 1px dashed rgba(255, 255, 255, .22); border-radius: 8px; background: transparent; color: #9aa0a6; font: inherit; padding: 7px 10px; cursor: pointer; width: 100%; text-align: left; }
+.riw-spoiler:hover { color: #dcdedf; border-color: rgba(255, 255, 255, .34); }
+
+.riw-comments { margin-top: 9px; padding-top: 9px; border-top: 1px solid var(--ri-line); display: flex; flex-direction: column; gap: 7px; }
+.riw-comments p { display: flex; gap: 7px; margin: 0; font-size: 11.5px; line-height: 1.5; }
+.riw-comments p strong { flex: 0 0 auto; color: var(--ri-gold); font: 700 10px var(--font-logo); padding-top: 1px; }
+.riw-comments p span { color: #c8ccd0; min-width: 0; }
+
+/* Metin içinde bir varlığa geçiş: bağlantı gibi davranır ama <button>, çünkü
+   sayfa değiştirmiyor — üstüne bir çekmece açıyor. Kendi rengini getirmiyor. */
+.riw-linkish { border: 0; background: none; padding: 0; font: inherit; color: inherit; cursor: pointer; text-decoration: underline; text-decoration-color: rgba(255, 177, 27, .34); text-underline-offset: 3px; }
+.riw-linkish:hover { text-decoration-color: var(--ri-gold); }
+.riw-linkish:focus-visible { outline: 2px solid var(--ri-gold); outline-offset: 2px; border-radius: 3px; }
+
+/* Kadro / popüler oyuncu çipleri (varlık çekmecesi) */
+.riw-entity-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
+.riw-entity-chips button { display: inline-flex; align-items: center; gap: 5px; min-height: 30px; padding: 5px 10px; border: 1px solid var(--ri-line); border-radius: 999px; background: transparent; color: #c8ccd0; font-size: 11px; cursor: pointer; }
+.riw-entity-chips button:hover { border-color: rgba(255, 177, 27, .3); color: #fff; }
+.riw-entity-chips button:focus-visible { outline: 2px solid var(--ri-gold); outline-offset: 2px; }
+.riw-entity-chips button b { color: var(--ri-gold); font: 700 9px var(--font-logo); }
+
+/* Yeni liste kurma satırı (Discover › Lists) */
+.riw-list-new { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; padding: 12px 14px; border: 1px solid var(--ri-line); border-radius: 14px; background: rgba(255, 255, 255, .02); }
+.riw-list-new input[type="text"], .riw-list-new > input { flex: 1 1 220px; min-width: 0; height: 38px; padding: 0 12px; border: 1px solid var(--ri-line); border-radius: 10px; background: #0c0d0f; color: #e8e9ea; font-size: 13px; }
+.riw-list-new > input::placeholder { color: #6d7276; }
+.riw-list-new > input:focus-visible { outline: 2px solid var(--ri-gold); outline-offset: 1px; }
+.riw-list-new label { display: inline-flex; align-items: center; gap: 6px; color: #9aa0a6; font-size: 12px; white-space: nowrap; }
+.riw-list-new button { display: inline-flex; align-items: center; gap: 6px; min-height: 38px; padding: 0 16px; border: 0; border-radius: 10px; background: var(--ri-gold); color: #15100a; font: 700 12px var(--font-logo); letter-spacing: .04em; cursor: pointer; }
+.riw-list-new button:disabled { opacity: .45; cursor: default; }
+.riw-list-new button:focus-visible { outline: 2px solid var(--ri-gold); outline-offset: 2px; }
+
+/* Liste kartları artık tıklanabilir */
+.ri-list-stack article[role="button"] { cursor: pointer; }
+.ri-list-stack article[role="button"]:hover { border-color: rgba(255, 177, 27, .28); }
+.ri-list-stack article[role="button"]:focus-visible { outline: 2px solid var(--ri-gold); outline-offset: 2px; }
