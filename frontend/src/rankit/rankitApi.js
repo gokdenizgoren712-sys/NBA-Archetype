@@ -45,6 +45,9 @@ export const rankitApi = {
   catalog: ({ sport = "All", competition = "All", season = "All", status = "All", limit = 60, offset = 0 } = {}) => request(`/catalog?sport=${encodeURIComponent(sport)}&competition=${encodeURIComponent(competition)}&season=${encodeURIComponent(season)}&status=${encodeURIComponent(status)}&limit=${limit}&offset=${offset}`),
   meta: () => request("/meta"),
   competition: id => request(`/competitions/${id}`),
+  // Bir turnuvanin TEK haftasi: sezon 380 mac olabiliyor, hepsi
+  // turnuva detayina sigmaz. Detay yalnizca hafta ozetini tasir.
+  competitionMatches: (id, stage) => request(`/competitions/${id}/matches?stage=${encodeURIComponent(stage || "")}`),
   match: id => request(`/matches/${id}`),
   broadcasts: (id, country = "TR") => request(`/matches/${id}/broadcasts?country=${encodeURIComponent(country)}`),
   player: id => request(`/players/${id}`),

@@ -730,9 +730,52 @@ def rankit_competition_detail(competition_id: int, user=Depends(get_optional_use
             ORDER BY (COUNT(DISTINCT pv.user_id || '-' || pv.match_id)*3 +
                       COUNT(DISTINCT rv.user_id || '-' || rv.match_id)) DESC,
                      appearances DESC,p.name LIMIT 30""", (competition_id,)).fetchall()]
+        # Hafta ozeti: 380 macin tamamini gondermek yerine hangi haftalar var,
+        # her birinde kac mac ve durumu ne. Bir haftanin maclari ayri uctan
+        # istenir (/competitions/{id}/matches?stage=...).
+        week_rows = conn.execute(
+            """SELECT m.stage, COUNT(*) n,
+                      SUM(m.status='finished') finished,
+                      MIN(m.starts_at) first_at, MAX(m.starts_at) last_at
+               FROM rankit_matches m
+               WHERE m.competition_id=? AND m.stage IS NOT NULL AND m.stage<>''
+               GROUP BY m.stage""", (competition_id,)).fetchall()
+
+        def week_order(row):
+            # "Matchday 10" string olarak "Matchday 2"den once gelir; sayiyi
+            # cikarip dogal siraya sokuyoruz, sayi yoksa tarihe duseriz.
+            digits = "".join(c for c in (row["stage"] or "") if c.isdigit())
+            return (0, int(digits)) if digits else (1, row["first_at"] or "")
+
+        matchweeks = [{
+            "stage": row["stage"], "matches": row["n"],
+            "finished": row["finished"] or 0,
+            "first_at": row["first_at"], "last_at": row["last_at"],
+        } for row in sorted(week_rows, key=week_order)]
+
         return {"competition": dict(competition),
                 "fixtures": [_match_dict(conn, row, uid) for row in fixture_rows],
-                "standings": standings, "popular_players": popular}
+                "standings": standings, "popular_players": popular,
+                "matchweeks": matchweeks}
+
+
+@router.get("/competitions/{competition_id}/matches")
+def rankit_competition_matches(competition_id: int, stage: str = Query(default="", max_length=80),
+                               user=Depends(get_optional_user)):
+    """Bir turnuvanin TEK bir haftasindaki maclar.
+
+    Turnuva detayi yalnizca hafta ozetini tasiyor; bir sezon 380 mac olabiliyor
+    ve hepsini pesinen gondermek hem yavas hem gereksiz.
+    """
+    with get_conn() as conn:
+        uid = int(user["sub"]) if user else (None if IS_PROD else _demo_user_id(conn))
+        if stage:
+            rows = conn.execute(MATCH_SELECT + """ WHERE m.competition_id=? AND m.stage=?
+                ORDER BY m.starts_at LIMIT 200""", (competition_id, stage)).fetchall()
+        else:
+            rows = conn.execute(MATCH_SELECT + """ WHERE m.competition_id=?
+                ORDER BY m.starts_at LIMIT 200""", (competition_id,)).fetchall()
+        return {"stage": stage, "matches": [_match_dict(conn, row, uid) for row in rows]}
 
 
 @router.get("/matches/{match_id}")
