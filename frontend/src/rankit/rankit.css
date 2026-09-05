@@ -137,3 +137,32 @@
    DESIGN.md #777'yi metin icin acikca yasakliyor (4.42:1, AA alti) —
    text-muted kullaniliyor: ayni yerde 7.5:1. */
 .ri-tag-picker>span{flex:none;align-self:center;color:#9aa0a6;font-size:11px;line-height:1.4}
+
+/* ── Doğrulanmış maç kadrosu ──────────────────────────────────────────────────
+   İKİ yüzey de kullanıyor, o yüzden paylaşılan dosyada (.ri-live-tag ve
+   .ri-action-toast aynı hatayı bir kez yaptırdı: web rankit-next/v030/motion
+   dosyalarını YÜKLEMİYOR).
+
+   Renkler DESIGN.md'nin adlandırılmış metin token'ları: #eceded primary,
+   #c9cccd secondary, #9aa0a6 muted, #7f868b faint. #555/#666/#777 yok. */
+.ri-lineup{margin-top:18px}
+.ri-lineup-title{display:flex;align-items:baseline;justify-content:space-between;gap:10px;font:700 9px var(--font-logo);letter-spacing:.14em;color:var(--ri-gold);margin-bottom:10px}
+.ri-lineup-title em{font-style:normal;font-weight:600;letter-spacing:.04em;color:#7f868b;font-size:9px;white-space:nowrap}
+.ri-lineup-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.ri-lineup-side{min-width:0;border:1px solid var(--ri-line);border-radius:14px;background:#101113;padding:11px}
+.ri-lineup-head{border-bottom:1px solid var(--ri-line);padding-bottom:9px;margin-bottom:9px;display:flex;flex-direction:column;gap:3px;min-width:0}
+.ri-lineup-head strong{font:700 12px var(--font-logo);color:#eceded;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* Diziliş: kartın en çok sorulan tek bilgisi, o yüzden rozet gibi duruyor. */
+.ri-lineup-formation{align-self:flex-start;font:800 11px var(--font-logo);letter-spacing:.08em;color:#0d0f10;background:var(--ri-gold);border-radius:5px;padding:2px 7px}
+.ri-lineup-coach{font-size:10px;color:#9aa0a6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ri-lineup-coach b{font-weight:600;color:#7f868b;letter-spacing:.06em;font-size:8px;text-transform:uppercase;margin-right:4px}
+.ri-lineup-list{display:flex;flex-direction:column;gap:5px}
+.ri-lineup-list span{display:flex;align-items:baseline;gap:6px;font-size:11px;color:#c9cccd;min-width:0}
+.ri-lineup-list span b{flex:0 0 18px;text-align:right;font:700 9px var(--font-logo);color:var(--ri-gold)}
+.ri-lineup-list span i{font-style:normal;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ri-lineup-bench{margin-top:10px;padding-top:9px;border-top:1px solid var(--ri-line)}
+.ri-lineup-bench small{display:block;font:700 8px var(--font-logo);letter-spacing:.13em;color:#7f868b;margin-bottom:6px}
+/* Yedekler ikincil: aynı yapı, daha sönük ve daha sıkı. */
+.ri-lineup-bench .ri-lineup-list span{font-size:10px;color:#9aa0a6}
+.ri-lineup-bench .ri-lineup-list span b{color:#7f868b}
+@media(max-width:370px){.ri-lineup-grid{gap:6px}.ri-lineup-side{padding:9px}.ri-lineup-list span{font-size:10px}}

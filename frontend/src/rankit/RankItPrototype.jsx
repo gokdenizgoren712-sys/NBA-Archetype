@@ -404,7 +404,27 @@ function MatchDetail({ match, hideScores, onClose, onSave, onToggleWatchlist, on
         {match.summary && <p className="ri-summary">{match.summary}</p>}
         <div className="ri-broadcast"><small>WATCH IN TÜRKİYE</small><strong>{broadcastInfo?.channels?.map(channel=>channel.name).join(" · ") || match.broadcaster || "To be announced"}</strong><span>{broadcastInfo?.confidence === "confirmed" ? "Confirmed broadcaster" : broadcastInfo?.confidence === "typical" ? "Typical competition coverage · check before the match" : match.status === "finished" ? "Broadcast information unavailable" : "Coverage has not been confirmed yet"}</span></div>
         <div className="ri-timeline"><small>MATCH</small><div><span>{match.status === "finished" ? "FT" : match.time || match.dateOnly}</span><strong>{match.status === "finished" ? "Full time" : "Scheduled"}</strong></div><button onClick={() => setSection("Community")}>Community <ChevronRight size={14}/></button></div>
-        {playerOptions.length > 0 && <div className="ri-squad-preview"><div className="ri-chip-title">SEASON SQUADS <span>{playerOptions.length}</span></div><div>{[match.home,match.away].map(team=><section key={team.id}><header><TeamMark team={team}/><strong>{team.name}</strong></header><div>{playerOptions.filter(p=>p.team===team.short).map(p=><span key={p.id}>{p.shirt_no&&<b>{p.shirt_no}</b>}{p.name}</span>)}</div></section>)}</div></div>}
+        {/* Doğrulanmış kadro: sağlayıcının o maça özel açıkladığı 11, yedekler,
+            diziliş ve teknik direktör. Sezon kadrosundan AYRI alan (`lineups`
+            vs `players`) — "gerçek ilk 11 mi bilmiyoruz" sorusunun cevabı bu
+            ayrım. Elde yoksa hiç basılmıyor, sezon kadrosu 11'miş gibi
+            sunulmuyor. */}
+        {match.lineups?.length > 0 && <div className="ri-lineup">
+          <div className="ri-lineup-title"><span>CONFIRMED LINEUP</span><em>Can change until kick-off</em></div>
+          <div className="ri-lineup-grid">{match.lineups.map(side => <section key={side.team_id} className="ri-lineup-side">
+            <div className="ri-lineup-head">
+              <strong>{side.team}</strong>
+              {side.formation && <span className="ri-lineup-formation">{side.formation}</span>}
+              {side.coach && <span className="ri-lineup-coach"><b>Manager</b>{side.coach}</span>}
+            </div>
+            <div className="ri-lineup-list">{side.starters.map((p,i)=><span key={`s-${i}`}><b>{p.shirt_no ?? ""}</b><i>{p.name}</i></span>)}</div>
+            {side.bench?.length > 0 && <div className="ri-lineup-bench">
+              <small>BENCH · {side.bench.length}</small>
+              <div className="ri-lineup-list">{side.bench.map((p,i)=><span key={`b-${i}`}><b>{p.shirt_no ?? ""}</b><i>{p.name}</i></span>)}</div>
+            </div>}
+          </section>)}</div>
+        </div>}
+        {!match.lineups?.length && playerOptions.length > 0 && <div className="ri-squad-preview"><div className="ri-chip-title">SEASON SQUADS <span>{playerOptions.length}</span></div><div>{[match.home,match.away].map(team=><section key={team.id}><header><TeamMark team={team}/><strong>{team.name}</strong></header><div>{playerOptions.filter(p=>p.team===team.short).map(p=><span key={p.id}>{p.shirt_no&&<b>{p.shirt_no}</b>}{p.name}</span>)}</div></section>)}</div></div>}
         <div className="ri-detail-actions">
           {match.status === "upcoming" && <button disabled={watchlistBusy} aria-busy={watchlistBusy} className={`ri-review-cta${watchlist ? " saved" : ""}${watchlistBusy ? " is-busy" : ""}`} onClick={toggleWatchlist}>{watchlistBusy ? <LoaderCircle className="ri-spin" size={17}/> : <Bookmark size={17} fill={watchlist ? "currentColor" : "none"} />} {watchlist ? "In your watchlist" : "Add to watchlist"}</button>}
           <button disabled={favoriteBusy} aria-busy={favoriteBusy} className={`ri-review-cta secondary${favorited ? " saved" : ""}${favoriteBusy ? " is-busy" : ""}`} onClick={toggleFavorite}>{favoriteBusy ? <LoaderCircle className="ri-spin" size={17}/> : <Heart size={17} fill={favorited ? "currentColor" : "none"}/>} {favorited ? "Favourite" : "Add to favourites"}</button>

@@ -625,12 +625,61 @@ function Inspector({ id, minimized, onClose, onMinimize, onRestore, onLogged, on
                   <p className="riw-quiet">This match has not been played yet.</p>
                 )}
 
+                {/* Doğrulanmış kadro: sağlayıcının o maça özel açıkladığı 11,
+                    yedekler, diziliş ve teknik direktör. Sezon kadrosundan AYRI
+                    alan (`lineups` vs `players`) — "gerçek ilk 11 mi bilmiyoruz"
+                    şikayetinin cevabı bu ayrım. Yoksa hiç gösterilmiyor. */}
+                {!!detail.lineups?.length && (
+                  <div className="ri-lineup">
+                    <div className="ri-lineup-title">
+                      <span>CONFIRMED LINEUP</span>
+                      {detail.lineups[0].confirmed_at && (
+                        <em>Lineups can change until kick-off</em>
+                      )}
+                    </div>
+                    <div className="ri-lineup-grid">
+                      {detail.lineups.map((side) => (
+                        <section key={side.team_id} className="ri-lineup-side">
+                          <div className="ri-lineup-head">
+                            <strong>{side.team}</strong>
+                            {side.formation && (
+                              <span className="ri-lineup-formation">{side.formation}</span>
+                            )}
+                            {side.coach && (
+                              <span className="ri-lineup-coach"><b>Manager</b>{side.coach}</span>
+                            )}
+                          </div>
+                          <div className="ri-lineup-list">
+                            {side.starters.map((p, i) => (
+                              <span key={`s-${i}`}>
+                                <b>{p.shirt_no ?? ""}</b><i>{p.name}</i>
+                              </span>
+                            ))}
+                          </div>
+                          {!!side.bench?.length && (
+                            <div className="ri-lineup-bench">
+                              <small>BENCH · {side.bench.length}</small>
+                              <div className="ri-lineup-list">
+                                {side.bench.map((p, i) => (
+                                  <span key={`b-${i}`}>
+                                    <b>{p.shirt_no ?? ""}</b><i>{p.name}</i>
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </section>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* "Gerçek ilk 11 mi bilmiyoruz" — haklı: bu SEZON KADROSU,
                     doğrulanmış maç kadrosu değil (CLAUDE.md'de kayıtlı bir
                     kısıt). Telefon bunu hiç gizlemiyor, adı zaten "SEASON
                     SQUADS" — burada da "Starting XI" YAZMIYORUZ, aynı dürüst
                     etiket. */}
-                {!!detail.players?.length && (
+                {!detail.lineups?.length && !!detail.players?.length && (
                   <div className="ri-squad-preview">
                     <div className="ri-chip-title">SEASON SQUAD <span>{detail.players.length}</span></div>
                     <div>
