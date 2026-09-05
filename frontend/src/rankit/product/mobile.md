@@ -83,6 +83,30 @@ A ghosted giant "VS" was built to fill the empty art region — mirroring the
 `.ri-player-no` motif — and **removed**: with no silhouette to anchor it, it
 collided with the crests. The emptiness was a proportion problem.
 
+## Releases are cut on request, not per feature
+
+The user calls the release. Work accumulates on both surfaces, and when they say
+to build the update, the APK carries **everything** added since the last one —
+not the most recent piece. Do not build or propose one before then. See the
+working agreement in [../PRODUCT.md](../PRODUCT.md).
+
+Mechanics: bump `versionCode` and `versionName` in
+`frontend/android/app/build.gradle`, then
+
+```bash
+npm --prefix frontend run build:rankit-mobile && npx --prefix frontend cap sync android
+```
+
+then `gradlew.bat assembleDebug` from `frontend/android` (PowerShell — it is not
+reachable from Git Bash). Verify the built APK with `aapt dump badging` and
+`apksigner verify --print-certs` before handing it over. Builds are signed with
+the debug keystore (`CN=Android Debug`, v2 scheme); the key must stay the same
+across alphas or the update will not install over the previous one.
+
+The user uploads it at `primaryarch.net/admin/rankit-builds` — that step needs an
+admin session and is theirs, not ours. Give them the version name, version code,
+channel, release notes and the SHA-256 to check against.
+
 ## Backlog, in order
 
 1. **Sheets are not dialogs.** No `role="dialog"`, no Escape, no focus trap.

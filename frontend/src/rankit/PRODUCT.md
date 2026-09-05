@@ -42,6 +42,39 @@ them to predict anything.
 5. **Every list has an empty state.** A new account sees an empty diary, empty
    watchlist, empty lists, and an empty watchalong room on their first session.
 
+## Working agreement — how features ship
+
+**Set by the user on 2026-09-05. This is not a guideline; it is the process.**
+
+### 1. Every feature lands on both surfaces, in the same pass
+
+Anything asked for from here on is built for **web and mobile together**. Not
+web-then-mobile, not mobile-with-web-to-follow. A feature that exists on one
+surface is not finished, and the parity table below is how that is checked —
+`onlyPhone` and `onlyWeb` must both stay empty.
+
+This is bidirectional. Shipping to the web first and leaving the phone behind is
+the same defect as the reverse, and it has already happened once: `addListItem`
+briefly made the web the *ahead* surface.
+
+The check is one command, so there is no excuse for guessing:
+
+```bash
+python src/audit_rankit_surfaces.py
+```
+
+### 2. The next APK is cut on the user's word, and carries everything
+
+There is **no APK per feature**. Work accumulates on both surfaces, and when the
+user says to build the update, the next Android release is cut containing every
+feature added since the last one. Do not build or propose an APK before then —
+and when the moment comes, the release must include *all* accumulated work, not
+the most recent piece.
+
+Release mechanics — version bump, build chain, signing, the release notes and the
+upload the user performs at `primaryarch.net/admin/rankit-builds` — are in
+[product/mobile.md](product/mobile.md).
+
 ## The parity contract
 
 Web and mobile share `rankitApi`, `rankit.css`, and most `.ri-*` classes. They

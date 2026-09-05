@@ -71,6 +71,18 @@ Empty means every borrowed rule using that token is silently broken.
   tab. Signed-out visitors read the room; the socket is not opened at all when
   signed out, because it closes anonymous connections with 4401.
 
+## Every feature ships here too
+
+Web is no longer the lagging surface and must not become one again. Anything
+added to the phone is added here in the same pass, and the reverse holds: this
+surface being *ahead* is the same defect inverted. See the working agreement in
+[../PRODUCT.md](../PRODUCT.md), and check it with
+`python src/audit_rankit_surfaces.py` before calling anything done.
+
+Unlike mobile, the web has no release step — a merge to `main` deploys it. That
+asymmetry is why the phone can fall behind without anyone noticing: the web
+change is live the moment it lands, the phone change waits for an APK.
+
 ## Backlog, in order
 
 1. **Broadcast country is hardcoded to `TR`.** The lookup matches the phone, but
