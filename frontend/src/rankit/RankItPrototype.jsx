@@ -410,9 +410,9 @@ function MatchDetail({ match, hideScores, onClose, onSave, onToggleWatchlist, on
           <button disabled={favoriteBusy} aria-busy={favoriteBusy} className={`ri-review-cta secondary${favorited ? " saved" : ""}${favoriteBusy ? " is-busy" : ""}`} onClick={toggleFavorite}>{favoriteBusy ? <LoaderCircle className="ri-spin" size={17}/> : <Heart size={17} fill={favorited ? "currentColor" : "none"}/>} {favorited ? "Favourite" : "Add to favourites"}</button>
           <button className="ri-review-cta secondary" aria-expanded={listOpen} onClick={openLists}><ListPlus size={17}/> Add to list</button>
           {listOpen && <div className="ri-tag-picker">
-            {myLists === null && <span style={{fontSize:11,color:"#777"}}>Loading…</span>}
+            {myLists === null && <span>Loading…</span>}
             {myLists?.map(l => <button key={l.id} onClick={()=>addToList(l.id,l.title)}>{l.title}</button>)}
-            {myLists?.length === 0 && <span style={{fontSize:11,color:"#777"}}>No lists yet — make one from the Rank sheet.</span>}
+            {myLists?.length === 0 && <span>No lists yet — make one from the Rank sheet.</span>}
           </div>}
         </div>
       </> : match.status === "finished" ? <>
