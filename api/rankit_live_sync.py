@@ -160,6 +160,101 @@ def _refresh_nba(season: str) -> int:
     return updated
 
 
+# Kadro maç saatine kadar değişir, o yüzden pencere iki yönlü: başlamamış
+# maçlarda her turda yeniden sorulur, bitmiş maçta bir kez alınıp bırakılır.
+LINEUP_LOOKAHEAD_HOURS = 3
+LINEUP_LOOKBACK_HOURS = 4
+LINEUP_BATCH = 30
+
+
+def _lineup_targets(conn):
+    return conn.execute(
+        f"""SELECT m.id, m.provider_match_id, m.home_team_id, m.away_team_id
+            FROM rankit_matches m
+            WHERE m.provider='fotmob' AND m.provider_match_id IS NOT NULL
+              AND datetime(m.starts_at) BETWEEN
+                  datetime('now','-{LINEUP_LOOKBACK_HOURS} hours') AND
+                  datetime('now','+{LINEUP_LOOKAHEAD_HOURS} hours')
+              -- Bitmiş maçta kadro bir daha değişmez: bir kez alındıysa
+              -- sağlayıcıyı boşuna yorma.
+              AND NOT (m.status='finished'
+                       AND EXISTS(SELECT 1 FROM rankit_match_lineups l
+                                  WHERE l.match_id=m.id))
+            ORDER BY m.starts_at
+            LIMIT {LINEUP_BATCH}"""
+    ).fetchall()
+
+
+def _store_lineup(conn, match_id: int, team_id: int, side: str, block: dict) -> None:
+    """Bir takımın 11'ini, yedeklerini, dizilişini ve teknik direktörünü yazar."""
+    starters = block.get("starters") or []
+    subs = block.get("subs") or []
+    if not starters:
+        return
+    conn.execute(
+        """INSERT INTO rankit_match_lineups
+             (match_id,team_id,side,formation,coach_name,confirmed_at)
+           VALUES(?,?,?,?,?,datetime('now'))
+           ON CONFLICT(match_id,team_id) DO UPDATE SET
+             formation=excluded.formation, coach_name=excluded.coach_name,
+             side=excluded.side, confirmed_at=datetime('now')""",
+        (match_id, team_id, side, block.get("formation"),
+         ((block.get("coach") or {}).get("name") or None)),
+    )
+    # Tam değiştir: kadro değiştiyse eski satırların kalması yanlış bilgi olur.
+    conn.execute("DELETE FROM rankit_match_lineup_players WHERE match_id=? AND team_id=?",
+                 (match_id, team_id))
+    rows = [("start", i, p) for i, p in enumerate(starters)]
+    rows += [("bench", i, p) for i, p in enumerate(subs)]
+    conn.executemany(
+        """INSERT OR IGNORE INTO rankit_match_lineup_players
+             (match_id,team_id,provider_player_id,name,shirt_no,role,ord)
+           VALUES(?,?,?,?,?,?,?)""",
+        [(match_id, team_id, p.get("id"), p.get("name") or "",
+          p.get("shirtNumber"), role, order)
+         for role, order, p in rows if (p.get("name") or "").strip()],
+    )
+
+
+def refresh_lineups() -> dict:
+    """Doğrulanmış 11 + yedek + diziliş + teknik direktör.
+
+    Sezon kadrosundan (rankit_match_players) AYRI tutuluyor: arayüz
+    "bu gerçek 11 mi" sorusunu ancak ikisi ayrıysa dürüstçe cevaplayabilir.
+    """
+    from curl_cffi import requests
+
+    with get_conn() as conn:
+        targets = [dict(r) for r in _lineup_targets(conn)]
+    if not targets:
+        return {"checked": 0, "stored": 0}
+
+    stored = 0
+    for target in targets:
+        try:
+            response = requests.get(
+                "https://www.fotmob.com/api/data/matchDetails",
+                params={"matchId": target["provider_match_id"]},
+                impersonate="chrome124", timeout=25,
+            )
+            if response.status_code != 200:
+                continue
+            lineup = ((response.json().get("content") or {}).get("lineup") or {})
+        except Exception:
+            continue
+        pairs = (("home", "homeTeam", target["home_team_id"]),
+                 ("away", "awayTeam", target["away_team_id"]))
+        with get_conn() as conn:
+            for side, key, team_id in pairs:
+                block = lineup.get(key) or {}
+                if not team_id or not block.get("starters"):
+                    continue
+                _store_lineup(conn, target["id"], team_id, side, block)
+                stored += 1
+        time.sleep(0.4)  # sağlayıcıya nazik ol
+    return {"checked": len(targets), "stored": stored}
+
+
 def refresh_live_scores() -> dict:
     scopes = _active_scopes()
     updated = 0
@@ -174,12 +269,20 @@ def refresh_live_scores() -> dict:
                 updated += _refresh_euroleague(scope["season"])
         except Exception as exc:
             errors.append(f"{scope['competition']} {scope['season']}: {exc}")
+    # Kadrolar aynı 15 dakikalık turda: ayrı bir zamanlayıcı açmak yerine
+    # zaten var olan claim'in içinde. Hatası skor güncellemesini düşürmemeli.
+    try:
+        lineups = refresh_lineups()
+    except Exception as exc:
+        lineups = {"error": str(exc)}
+        errors.append(f"lineups: {exc}")
+
     with get_conn() as conn:
         conn.execute("""UPDATE rankit_sync_state SET
             last_success=CASE WHEN ?='' THEN datetime('now') ELSE last_success END,
             last_error=?,updated_matches=? WHERE job_name=?""",
             ("; ".join(errors), "; ".join(errors)[:1000], updated, JOB_NAME))
-    return {"scopes": len(scopes), "updated": updated, "errors": errors}
+    return {"scopes": len(scopes), "updated": updated, "lineups": lineups, "errors": errors}
 
 
 def _worker() -> None:

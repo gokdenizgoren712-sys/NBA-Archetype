@@ -492,12 +492,45 @@ def init_db():
             ON rankit_matches(provider,status,starts_at);
         CREATE INDEX IF NOT EXISTS idx_rankit_diary_user ON rankit_diary_entries(user_id, watched_date DESC);
         CREATE INDEX IF NOT EXISTS idx_rankit_diary_match ON rankit_diary_entries(match_id);
+        -- ── Doğrulanmış maç kadrosu ──────────────────────────────────────────
+        -- rankit_match_players SEZON kadrosunu tutuyor (243k satırın hepsinde
+        -- starter=1, yani o bayrak anlamsız). Bunlar AYRI: sağlayıcının o maça
+        -- özel açıkladığı 11 + yedekler, diziliş ve teknik direktörle birlikte.
+        -- Ayrı durmalarının sebebi arayüzün "sezon kadrosu mu, gerçek 11 mi"
+        -- sorusunu dürüstçe cevaplayabilmesi — kullanıcının şikayeti buydu.
+        CREATE TABLE IF NOT EXISTS rankit_match_lineups (
+            match_id     INTEGER NOT NULL REFERENCES rankit_matches(id) ON DELETE CASCADE,
+            team_id      INTEGER NOT NULL REFERENCES rankit_teams(id) ON DELETE CASCADE,
+            side         TEXT NOT NULL CHECK(side IN ('home','away')),
+            formation    TEXT,                 -- "4-2-3-1"
+            coach_name   TEXT,
+            source       TEXT NOT NULL DEFAULT 'provider',
+            confirmed_at TEXT,                 -- ne zaman doğrulandı: kadro maç
+                                               -- saatine kadar değişebilir
+            PRIMARY KEY (match_id, team_id)
+        );
+
+        CREATE TABLE IF NOT EXISTS rankit_match_lineup_players (
+            id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+            match_id           INTEGER NOT NULL REFERENCES rankit_matches(id) ON DELETE CASCADE,
+            team_id            INTEGER NOT NULL REFERENCES rankit_teams(id) ON DELETE CASCADE,
+            provider_player_id INTEGER,
+            name               TEXT NOT NULL,
+            shirt_no           INTEGER,
+            role               TEXT NOT NULL CHECK(role IN ('start','bench')),
+            -- Diziliş sırası: FotMob 11'i formasyon düzeninde veriyor (0=kaleci),
+            -- yani sıra bilgi taşıyor, korunuyor.
+            ord                INTEGER NOT NULL DEFAULT 0,
+            UNIQUE(match_id, team_id, role, ord)
+        );
+
         CREATE INDEX IF NOT EXISTS idx_rankit_comments_entry ON rankit_review_comments(entry_id, created_at);
         CREATE INDEX IF NOT EXISTS idx_rankit_watchalong_match ON rankit_watchalong_messages(match_id, room, id);
         CREATE INDEX IF NOT EXISTS idx_mobile_auth_code ON mobile_auth_codes(code_hash, expires_at);
         CREATE INDEX IF NOT EXISTS idx_rankit_release_code ON rankit_app_releases(version_code DESC);
         CREATE INDEX IF NOT EXISTS idx_rankit_bcast_match ON rankit_broadcasts(match_id, country);
         CREATE INDEX IF NOT EXISTS idx_rankit_bcast_rule ON rankit_broadcast_rules(competition_id, country);
+        CREATE INDEX IF NOT EXISTS idx_rankit_lineup_match ON rankit_match_lineup_players(match_id, team_id, role, ord);
         CREATE INDEX IF NOT EXISTS idx_rankit_team_logo ON rankit_team_logos(team_id);
         """)
         # RankIt katalog senkronizasyonu: dis veri kaynagindaki mac kimligi

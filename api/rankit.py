@@ -746,6 +746,35 @@ def rankit_match(match_id: int, user=Depends(get_optional_user)):
         result["players"] = [dict(r) for r in conn.execute("""SELECT p.id,p.name,p.shirt_no,p.image_url,t.short_name team
             FROM rankit_match_players mp JOIN rankit_players p ON p.id=mp.player_id
             JOIN rankit_teams t ON t.id=mp.team_id WHERE mp.match_id=? ORDER BY t.short_name,p.name""", (match_id,)).fetchall()]
+        # Doğrulanmış maç kadrosu: sezon kadrosundan (yukarıdaki "players")
+        # AYRI bir alan. İkisi ayrı durmasa arayüz "bu gerçek 11 mi" sorusunu
+        # dürüstçe cevaplayamıyordu — kullanıcının şikayeti tam olarak buydu.
+        # Yoksa alan BOŞ kalır; sezon kadrosunu 11'miş gibi sunmuyoruz.
+        lineup_rows = conn.execute(
+            """SELECT l.team_id,l.side,l.formation,l.coach_name,l.confirmed_at,
+                      t.name team_name,t.short_name team_short
+               FROM rankit_match_lineups l JOIN rankit_teams t ON t.id=l.team_id
+               WHERE l.match_id=? ORDER BY CASE l.side WHEN 'home' THEN 0 ELSE 1 END""",
+            (match_id,)).fetchall()
+        if lineup_rows:
+            people = conn.execute(
+                """SELECT team_id,name,shirt_no,role,ord FROM rankit_match_lineup_players
+                   WHERE match_id=? ORDER BY team_id,role,ord""", (match_id,)).fetchall()
+            by_team: dict[int, dict] = {}
+            for person in people:
+                slot = by_team.setdefault(person["team_id"], {"start": [], "bench": []})
+                slot[person["role"]].append(
+                    {"name": person["name"], "shirt_no": person["shirt_no"]})
+            result["lineups"] = [{
+                "side": row["side"], "team_id": row["team_id"],
+                "team": row["team_short"] or row["team_name"],
+                "formation": row["formation"], "coach": row["coach_name"],
+                "confirmed_at": row["confirmed_at"],
+                "starters": by_team.get(row["team_id"], {}).get("start", []),
+                "bench": by_team.get(row["team_id"], {}).get("bench", []),
+            } for row in lineup_rows]
+        else:
+            result["lineups"] = []
         result["reviews"] = [dict(r) for r in conn.execute("""SELECT e.id,e.rating,e.review,e.watched_date,e.classic,e.spoiler,u.username,
             (SELECT COUNT(*) FROM rankit_review_likes l WHERE l.entry_id=e.id) likes,
             EXISTS(SELECT 1 FROM rankit_review_likes l WHERE l.entry_id=e.id AND l.user_id=?) liked,
