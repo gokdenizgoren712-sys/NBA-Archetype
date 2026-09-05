@@ -272,6 +272,11 @@ function MatchDetail({ match, hideScores, onClose, onSave, onToggleWatchlist, on
   const [showPotmPicker, setShowPotmPicker] = useState(false);
   const [showRespectPicker, setShowRespectPicker] = useState(false);
   const [broadcastInfo, setBroadcastInfo] = useState(null);
+  // "Bu maçı listeme ekle": addListItem ucu vardı ama iki yüzey de
+  // çağırmıyordu. Web'e eklenirken telefon geride kalmasın — parite
+  // sözleşmesi tek yönlü değil (bkz. rankit/PRODUCT.md).
+  const [myLists, setMyLists] = useState(null);
+  const [listOpen, setListOpen] = useState(false);
   const tagOptions = match.sport === "Football"
     ? ["Nail-biter", "Great Atmosphere", "Comeback", "Penalty Drama", "Goal Fest", "Tactical Battle", "Upset", "Late Winner", "Derby Energy"]
     : ["Nail-biter", "Great Atmosphere", "Comeback", "Overtime", "Clutch Performance", "Shootout", "Defensive Masterclass", "Upset", "Buzzer Beater"];
@@ -326,8 +331,28 @@ function MatchDetail({ match, hideScores, onClose, onSave, onToggleWatchlist, on
     } catch { setSaveState("error"); }
   };
   const showNotice = (message, tone = "success") => {
-    setActionNotice({ message, tone, id: Date.now() });
+    // id yalnızca React key'i: değişince toast animasyonu baştan oynar.
+    // Date.now() saf olmayan bir çağrı; sayaç aynı işi görüyor ve arka arkaya
+    // gelen iki aynı mesajda da farklı key üretiyor. (Web tarafında da böyle.)
+    setActionNotice((n) => ({ message, tone, id: (n?.id || 0) + 1 }));
   };
+  const openLists = async () => {
+    const next = !listOpen;
+    setListOpen(next);
+    if (next && myLists === null) {
+      try { setMyLists((await rankitApi.lists()).lists || []); }
+      catch { setMyLists([]); }
+    }
+  };
+  const addToList = async (listId, listTitle) => {
+    setListOpen(false);
+    try {
+      await rankitApi.addListItem(listId, { match_id: match.id });
+      rankitHaptics.success();
+      showNotice(`Added to ${listTitle}`);
+    } catch { showNotice("Could not add to that list", "error"); }
+  };
+
   const toggleWatchlist = async () => {
     if (watchlistBusy) return;
     const previous = watchlist;
@@ -383,6 +408,12 @@ function MatchDetail({ match, hideScores, onClose, onSave, onToggleWatchlist, on
         <div className="ri-detail-actions">
           {match.status === "upcoming" && <button disabled={watchlistBusy} aria-busy={watchlistBusy} className={`ri-review-cta${watchlist ? " saved" : ""}${watchlistBusy ? " is-busy" : ""}`} onClick={toggleWatchlist}>{watchlistBusy ? <LoaderCircle className="ri-spin" size={17}/> : <Bookmark size={17} fill={watchlist ? "currentColor" : "none"} />} {watchlist ? "In your watchlist" : "Add to watchlist"}</button>}
           <button disabled={favoriteBusy} aria-busy={favoriteBusy} className={`ri-review-cta secondary${favorited ? " saved" : ""}${favoriteBusy ? " is-busy" : ""}`} onClick={toggleFavorite}>{favoriteBusy ? <LoaderCircle className="ri-spin" size={17}/> : <Heart size={17} fill={favorited ? "currentColor" : "none"}/>} {favorited ? "Favourite" : "Add to favourites"}</button>
+          <button className="ri-review-cta secondary" aria-expanded={listOpen} onClick={openLists}><ListPlus size={17}/> Add to list</button>
+          {listOpen && <div className="ri-tag-picker">
+            {myLists === null && <span style={{fontSize:11,color:"#777"}}>Loading…</span>}
+            {myLists?.map(l => <button key={l.id} onClick={()=>addToList(l.id,l.title)}>{l.title}</button>)}
+            {myLists?.length === 0 && <span style={{fontSize:11,color:"#777"}}>No lists yet — make one from the Rank sheet.</span>}
+          </div>}
         </div>
       </> : match.status === "finished" ? <>
         <div className="ri-v03-community-stats">

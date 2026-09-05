@@ -251,7 +251,7 @@ function Carousel({ items, hideScores, onOpen }) {
 }
 
 /* Topluluk yorumu satırı — /home ve Activity aynı şekli paylaşıyor. */
-function ReviewRow({ row, onOpen }) {
+function ReviewRow({ row, onOpen, onOpenEntity }) {
   const initial = (row.username || "?").slice(0, 1).toUpperCase();
   const teams = `${row.home_short || row.home_name} v ${row.away_short || row.away_name}`;
   return (
@@ -260,7 +260,17 @@ function ReviewRow({ row, onOpen }) {
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen?.(row.match_id); } }}>
       <span className="riw-avatar">{initial}</span>
       <div>
-        <p><strong>@{row.username}</strong> rated <b>{teams}</b></p>
+        <p>
+          {/* Satırın kendisi maçı açıyor; kullanıcı adı üyeyi açar, o yüzden
+              tıklama yukarı kabarmamalı. */}
+          {row.user_id && onOpenEntity ? (
+            <strong><button type="button" className="riw-linkish"
+              onClick={(e) => { e.stopPropagation(); onOpenEntity("member", row.user_id); }}>
+              @{row.username}
+            </button></strong>
+          ) : <strong>@{row.username}</strong>}
+          {" "}rated <b>{teams}</b>
+        </p>
         {typeof row.rating === "number" && row.rating > 0 && <Stars value={row.rating} compact />}
         {row.review && <blockquote>{row.review}</blockquote>}
       </div>
@@ -355,7 +365,7 @@ function HomeView({ onOpenMatch }) {
 
 /* ── Denetçi ──────────────────────────────────────────────────────────────── */
 
-function Inspector({ id, minimized, onClose, onMinimize, onRestore, onLogged }) {
+function Inspector({ id, minimized, onClose, onMinimize, onRestore, onLogged, onOpenEntity }) {
   const { isLoggedIn } = useAuth();
   const [detail, setDetail] = useState(null);
   const [err, setErr] = useState("");
@@ -372,6 +382,11 @@ function Inspector({ id, minimized, onClose, onMinimize, onRestore, onLogged }) 
   const [broadcast, setBroadcast] = useState(null);
   const [busy, setBusy] = useState("");
   const [notice, setNotice] = useState(null);
+  // "Bu maçı listeme ekle" — addListItem ucu arka uçta vardı ama HİÇBİR yüzey
+  // çağırmıyordu: iki yüzey de yalnızca önceden seçilmiş maçlarla liste
+  // kurabiliyordu. Listeler tembel yükleniyor, açılınca.
+  const [myLists, setMyLists] = useState(null);
+  const [listOpen, setListOpen] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -461,6 +476,23 @@ function Inspector({ id, minimized, onClose, onMinimize, onRestore, onLogged }) 
     setRespect(next);
     try { await rankitApi.respect(id, next); }
     catch { setRespect(previous); flash("Vote could not be saved", "error"); }
+  };
+
+  const openLists = async () => {
+    const next = !listOpen;
+    setListOpen(next);
+    if (next && myLists === null) {
+      try { setMyLists((await rankitApi.lists()).lists || []); }
+      catch { setMyLists([]); }
+    }
+  };
+
+  const addToList = async (listId, listTitle) => {
+    setListOpen(false);
+    try {
+      await rankitApi.addListItem(listId, { match_id: id });
+      flash(`Added to ${listTitle}`);
+    } catch { flash("Could not add to that list", "error"); }
   };
 
   const save = () => {
@@ -558,7 +590,15 @@ function Inspector({ id, minimized, onClose, onMinimize, onRestore, onLogged }) 
                 {detail.summary && <p className="ri-summary">{detail.summary}</p>}
                 <div className="riw-facts">
                   <div><span>KICK-OFF</span><strong>{when.full || "—"}</strong></div>
-                  <div><span>COMPETITION</span><strong>{detail.competition || "—"}</strong></div>
+                  <div>
+                    <span>COMPETITION</span>
+                    {detail.competition_id ? (
+                      <strong><button type="button" className="riw-linkish"
+                        onClick={() => onOpenEntity?.("competition", detail.competition_id)}>
+                        {detail.competition || "—"}
+                      </button></strong>
+                    ) : <strong>{detail.competition || "—"}</strong>}
+                  </div>
                   {/* Eskiden veri yoksa satır hiç basılmıyordu — sonuç: "yayın
                       göremiyoruz" şikayeti, çünkü çoğu maçta broadcaster boş
                       ve özellik hiç KEŞFEDİLEMİYORDU. Telefon boşken bile
@@ -596,12 +636,24 @@ function Inspector({ id, minimized, onClose, onMinimize, onRestore, onLogged }) 
                     <div>
                       {[detail.home, detail.away].map((team) => (
                         <section key={team?.short || team?.name}>
-                          <header><TeamMark team={team} /><strong>{team?.short || team?.name}</strong></header>
+                          <header>
+                            <TeamMark team={team} />
+                            {team?.id ? (
+                              <strong><button type="button" className="riw-linkish"
+                                onClick={() => onOpenEntity?.("team", team.id)}>
+                                {team?.short || team?.name}
+                              </button></strong>
+                            ) : <strong>{team?.short || team?.name}</strong>}
+                          </header>
                           <div>
                             {detail.players
                               .filter((p) => p.team === (team?.short || team?.name))
                               .map((p) => (
-                                <span key={p.id}>{p.shirt_no && <b>{p.shirt_no}</b>}{p.name}</span>
+                                <span key={p.id}>
+                                  {p.shirt_no && <b>{p.shirt_no}</b>}
+                                  <button type="button" className="riw-linkish"
+                                    onClick={() => onOpenEntity?.("player", p.id)}>{p.name}</button>
+                                </span>
                               ))}
                           </div>
                         </section>
@@ -624,12 +676,30 @@ function Inspector({ id, minimized, onClose, onMinimize, onRestore, onLogged }) 
                       <Heart size={16} fill={favorited ? "currentColor" : "none"} />
                       {favorited ? "Favourite" : "Add to favourites"}
                     </button>
+                    <button className="ri-review-cta secondary" onClick={openLists}
+                      aria-expanded={listOpen}>
+                      <ListIcon size={16} /> Add to list
+                    </button>
                   </div>
                 ) : (
                   <p className="riw-quiet">
                     <Link to="/login?next=/rankit" style={{ color: "var(--ri-gold, #FFB11B)" }}>Sign in</Link>{" "}
                     to keep this match in your watchlist.
                   </p>
+                )}
+
+                {listOpen && (
+                  <div className="riw-entity-chips">
+                    {myLists === null && <span className="riw-quiet">Loading…</span>}
+                    {myLists?.map((l) => (
+                      <button key={l.id} type="button" onClick={() => addToList(l.id, l.title)}>
+                        <ListIcon size={12} />{l.title}
+                      </button>
+                    ))}
+                    {myLists?.length === 0 && (
+                      <span className="riw-quiet">No lists yet — make one under Discover &rsaquo; Lists.</span>
+                    )}
+                  </div>
                 )}
               </>
             ) : (
@@ -725,13 +795,7 @@ function Inspector({ id, minimized, onClose, onMinimize, onRestore, onLogged }) 
 
                 <div className="ri-review-feed">
                   {detail.reviews?.slice(0, 8).map((r) => (
-                    <article key={r.id}>
-                      <div>
-                        <strong style={{ font: "700 11px var(--font-logo)" }}>@{r.username}</strong>
-                        <Stars value={r.rating || 0} compact />
-                      </div>
-                      {r.review && <p>{r.spoiler ? "Contains spoilers — open in the app." : r.review}</p>}
-                    </article>
+                    <ReviewArticle key={r.id} row={r} isLoggedIn={isLoggedIn} />
                   ))}
                   {!detail.reviews?.length && (
                     <Empty icon={MessageSquare} title="No reviews yet"
@@ -748,6 +812,290 @@ function Inspector({ id, minimized, onClose, onMinimize, onRestore, onLogged }) 
         )}
       </section>
     </div>
+  );
+}
+
+
+/* ── Varlık çekmecesi: turnuva / oyuncu / takım / üye / liste ─────────────────
+   Beş uç da arka uçta vardı ve telefon hepsini kullanıyordu; web hiçbirini
+   çağırmıyordu. Telefonun EntityDetail'inin karşılığı, aynı .ri-entity-*
+   sınıflarıyla (bunlar rankit.css'te — web onu yüklüyor).
+
+   DİKKAT: telefonun fikstür listesi, yalnızca rankit-v030.css'te tanımlı
+   olan kendi sınıfını kullanıyor ve web o dosyayı YÜKLEMİYOR. Burada
+   webin kendi Wall'u kullanılıyor — hem stilsiz kalmıyor hem geniş ekranda
+   zaten daha doğru. (Aynı tuzağa .ri-live-tag'de düşülmüştü.) */
+const ENTITY_LOADER = {
+  competition: rankitApi.competition,
+  player: rankitApi.player,
+  team: rankitApi.team,
+  member: rankitApi.member,
+  list: rankitApi.list,
+};
+
+function EntityDrawer({ kind, id, onClose, onOpenMatch, onOpenEntity }) {
+  const { isLoggedIn } = useAuth();
+  const [data, setData] = useState(null);
+  const [err, setErr] = useState("");
+  const [following, setFollowing] = useState(false);
+  const [favorited, setFavorited] = useState(false);
+
+  // Not: kind/id değişince state'i burada SIFIRLAMIYORUZ — çağrı yerinde
+  // key veriliyor, React bileşeni baştan kuruyor. Efekt içinde setState ile
+  // sıfırlamak fazladan bir render turu ve React'in önerdiği yol değil.
+  // Bilinmeyen tür bir YÜKLEME hatası değil, programlama hatası — efekt içinde
+  // state'e yazmak yerine doğrudan render'da gösteriliyor.
+  const load = ENTITY_LOADER[kind];
+  useEffect(() => {
+    let alive = true;
+    if (!load) return undefined;
+    load(id)
+      .then((d) => {
+        if (!alive) return;
+        setData(d); setFollowing(!!d.following); setFavorited(!!d.favorited);
+      })
+      .catch((e) => alive && setErr(String(e.message || e)));
+    return () => { alive = false; };
+  }, [load, id]);
+
+  useEffect(() => {
+    const onKey = (e) => e.key === "Escape" && onClose();
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  const entity = data && (data[kind] || null);
+  const matches = useMemo(() => {
+    if (!data) return [];
+    // Her uç ilişkili maçları FARKLI adla döndürüyor.
+    return (data.matches || data.fixtures || []).map(toCard);
+  }, [data]);
+
+  const subtitle = !entity ? "" :
+    kind === "player" ? `${entity.sport || ""} · ${entity.team_name || "Free agent"}`.trim()
+    : kind === "team" ? `${entity.sport || ""} · ${entity.country || "Global"}`.trim()
+    : kind === "member" ? "RankIt member"
+    : kind === "list" ? `${entity.match_count ?? matches.length} matches · ${entity.ranked ? "Ranked" : "Unranked"}`
+    : `${entity.country || ""} · ${entity.season || ""}`.replace(/^ · | · $/, "");
+
+  const title = entity?.name || entity?.username || entity?.title || "";
+  // follow hedef türü üyede 'user', diğerlerinde kendi türü.
+  const followTarget = kind === "member" ? "user" : kind;
+
+  const toggleFollow = async () => {
+    if (!isLoggedIn) return;
+    const before = following;
+    setFollowing(!before);
+    try {
+      const r = await rankitApi.follow({ target_type: followTarget, target_id: id, notify: false });
+      setFollowing(r.following);
+    } catch { setFollowing(before); }
+  };
+
+  const toggleFav = async () => {
+    if (!isLoggedIn) return;
+    const before = favorited;
+    setFavorited(!before);
+    try {
+      const r = await rankitApi.favorite({ target_type: kind, target_id: id });
+      setFavorited(r.favorited);
+    } catch { setFavorited(before); }
+  };
+
+  return (
+    <div className="riw-inspect-wrap" onClick={onClose}>
+      <section className="riw-inspect" onClick={(e) => e.stopPropagation()}
+        role="dialog" aria-modal="true" aria-label={title || kind}>
+        <div className="ri-sheet-grab" aria-hidden="true" />
+        <div className="riw-sheet-actions">
+          <button onClick={onClose} className="ri-sheet-close" aria-label="Close"><X size={16} /></button>
+        </div>
+
+        {!load && <div className="riw-note">Unknown entity type: {kind}</div>}
+        {err && <div className="riw-note">{err}</div>}
+        {load && !data && !err && <p className="ri-entity-loading">Loading…</p>}
+
+        {entity && (
+          <>
+            <div className="ri-entity-hero"
+              style={{ "--entity-color": entity.color || entity.team_color || "#FFB11B" }}>
+              <div className="ri-entity-mark">
+                {kind === "team" ? (entity.short_name || title.slice(0, 2)) : title.slice(0, 2).toUpperCase()}
+              </div>
+              <div>
+                <small>{kind.toUpperCase()}</small>
+                <h2>{title}</h2>
+                <p>{subtitle}</p>
+              </div>
+            </div>
+
+            {kind !== "list" && (
+              isLoggedIn ? (
+                <div className="ri-entity-actions">
+                  <button className={following ? "active" : undefined} onClick={toggleFollow}>
+                    {following ? "Following" : "Follow"}
+                  </button>
+                  {kind !== "member" && (
+                    <button className={favorited ? "active favourite" : undefined} onClick={toggleFav}>
+                      <Heart size={14} fill={favorited ? "currentColor" : "none"} />
+                      {favorited ? "Favourite" : "Add favourite"}
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <p className="riw-quiet">
+                  <Link to="/login?next=/rankit" style={{ color: "var(--ri-gold, #FFB11B)" }}>Sign in</Link>{" "}
+                  to follow and keep favourites.
+                </p>
+              )
+            )}
+
+            {/* Takım kadrosu: oyuncuya geçiş buradan. */}
+            {kind === "team" && !!data.players?.length && (
+              <div className="ri-squad-preview">
+                <div className="ri-chip-title">SQUAD <span>{data.players.length}</span></div>
+                <div className="riw-entity-chips">
+                  {data.players.map((pl) => (
+                    <button key={pl.id} type="button" onClick={() => onOpenEntity("player", pl.id)}>
+                      {pl.shirt_no && <b>{pl.shirt_no}</b>}{pl.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {kind === "competition" && !!data.popular_players?.length && (
+              <div className="ri-squad-preview">
+                <div className="ri-chip-title">POPULAR PLAYERS <span>{data.popular_players.length}</span></div>
+                <div className="riw-entity-chips">
+                  {data.popular_players.map((pl) => (
+                    <button key={pl.id} type="button" onClick={() => onOpenEntity("player", pl.id)}>{pl.name}</button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {kind === "member" && !!data.entries?.length && (
+              <div className="riw-review-list">
+                {data.entries.slice(0, 8).map((e) => (
+                  <ReviewRow key={e.id} row={e} onOpen={onOpenMatch} />
+                ))}
+              </div>
+            )}
+
+            {!!matches.length && (
+              <>
+                <div className="ri-chip-title" style={{ marginTop: 16 }}>
+                  {kind === "competition" ? "FIXTURES" : "MATCHES"} <span>{matches.length}</span>
+                </div>
+                <Wall matches={matches} loading={false} error=""
+                  onOpen={(m) => onOpenMatch(m.id)} empty={null} />
+              </>
+            )}
+          </>
+        )}
+      </section>
+    </div>
+  );
+}
+
+
+/* ── İnceleme satırı: beğeni + yorumlar ───────────────────────────────────────
+   Üçü de telefonda vardı, webde yoktu (likeReview / comments / addComment).
+   Yorumlar TEMBEL yükleniyor: bir maçta sekiz inceleme var ve hiçbirine
+   bakılmadan sekiz istek atmanın anlamı yok. */
+function ReviewArticle({ row, isLoggedIn }) {
+  const [liked, setLiked] = useState(!!row.liked);
+  const [likes, setLikes] = useState(row.likes || 0);
+  const [open, setOpen] = useState(false);
+  const [comments, setComments] = useState(null);
+  const [draft, setDraft] = useState("");
+  const [sending, setSending] = useState(false);
+  // Spoiler webde "uygulamada aç" diyordu, oysa sunucu metni zaten gönderiyor:
+  // okuyucuyu sahip olduğumuz içerik için başka bir yüzeye göndermek yerine
+  // kendi kararını vermesine izin veriyoruz.
+  const [spoilerShown, setSpoilerShown] = useState(false);
+
+  const toggleLike = async () => {
+    if (!isLoggedIn) return;
+    const before = { liked, likes };
+    setLiked(!liked); setLikes(likes + (liked ? -1 : 1));
+    try {
+      const r = await rankitApi.likeReview(row.id);
+      setLiked(r.liked); setLikes(r.likes);
+    } catch { setLiked(before.liked); setLikes(before.likes); }
+  };
+
+  const openComments = async () => {
+    const next = !open;
+    setOpen(next);
+    if (next && comments === null) {
+      try { setComments((await rankitApi.comments(row.id)).comments || []); }
+      catch { setComments([]); }
+    }
+  };
+
+  const send = async () => {
+    const text = draft.trim();
+    if (!text || sending) return;
+    setSending(true);
+    try {
+      await rankitApi.addComment(row.id, text);
+      setComments((await rankitApi.comments(row.id)).comments || []);
+      setDraft("");
+    } catch { /* gönderilemedi: taslak duruyor, kullanıcı tekrar deneyebilir */ }
+    finally { setSending(false); }
+  };
+
+  return (
+    <article>
+      <div>
+        <strong style={{ font: "700 11px var(--font-logo)" }}>@{row.username}</strong>
+        <Stars value={row.rating || 0} compact />
+      </div>
+      {row.review && (
+        row.spoiler && !spoilerShown ? (
+          <p>
+            <button type="button" className="riw-spoiler" onClick={() => setSpoilerShown(true)}>
+              Contains spoilers — tap to read
+            </button>
+          </p>
+        ) : <p>{row.review}</p>
+      )}
+      <div className="riw-review-actions">
+        <button type="button" className={liked ? "on" : undefined} onClick={toggleLike}
+          disabled={!isLoggedIn} aria-pressed={liked}
+          aria-label={liked ? "Remove your like" : "Like this review"}>
+          <Heart size={13} fill={liked ? "currentColor" : "none"} /> {likes || ""}
+        </button>
+        <button type="button" onClick={openComments} aria-expanded={open}>
+          <MessageSquare size={13} /> {row.comments || ""}
+        </button>
+      </div>
+      {open && (
+        <div className="riw-comments">
+          {comments === null && <span className="riw-quiet">Loading…</span>}
+          {comments?.map((c) => (
+            <p key={c.id}><strong>@{c.username}</strong><span>{c.content}</span></p>
+          ))}
+          {comments?.length === 0 && <span className="riw-quiet">No replies yet.</span>}
+          {isLoggedIn ? (
+            <div className="ri-chat-compose">
+              <input value={draft} onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && send()}
+                aria-label="Reply to this review" placeholder="Write a reply" />
+              <button onClick={send} disabled={sending || !draft.trim()} aria-label="Send reply">
+                <Send size={14} />
+              </button>
+            </div>
+          ) : (
+            <span className="riw-quiet">
+              <Link to="/login?next=/rankit" style={{ color: "var(--ri-gold, #FFB11B)" }}>Sign in</Link> to reply.
+            </span>
+          )}
+        </div>
+      )}
+    </article>
   );
 }
 
@@ -1062,7 +1410,7 @@ function Catalog({ title, note, meta, tabs, onOpenMatch }) {
    TOPLULUK (başkalarının kayıtları ve yorumları) ve SENİN GÜNLÜĞÜN. Sayfanın
    adı "Activity" olmasına rağmen tek gösterdiği kendi kayıtlarındı; başka
    kimsenin yorumu web'de hiçbir yerde görünmüyordu. */
-function ActivityView({ onOpenMatch, refreshToken }) {
+function ActivityView({ onOpenMatch, refreshToken, onOpenEntity }) {
   const { isLoggedIn } = useAuth();
   const [tab, setTab] = useState("community");
   const [rows, setRows] = useState(null);
@@ -1088,9 +1436,24 @@ function ActivityView({ onOpenMatch, refreshToken }) {
     return () => { alive = false; };
   }, []);
 
+  // Watchlist telefonda vardı, webde yoktu. refreshToken'a bağlı: denetçiden
+  // bir maç izleme listesine eklenince bu sekme bayat kalmasın.
+  const [watch, setWatch] = useState(null);
+  useEffect(() => {
+    if (!isLoggedIn) return undefined;
+    let alive = true;
+    rankitApi.watchlist()
+      .then((d) => alive && setWatch((d.matches || []).map(toCard)))
+      .catch(() => alive && setWatch([]));
+    return () => { alive = false; };
+  }, [isLoggedIn, refreshToken]);
+  // Girişsizken istek atmıyoruz; "boş liste" durumu state'ten değil buradan
+  // türetiliyor, yoksa efekt içinde setState gerekirdi.
+  const watchRows = isLoggedIn ? watch : [];
+
   const tabs = (
     <div className="riw-tabs" role="tablist" aria-label="Activity">
-      {[["community", "Community"], ["diary", "Your diary"]].map(([key, label]) => (
+      {[["community", "Community"], ["diary", "Your diary"], ["watchlist", "Watchlist"]].map(([key, label]) => (
         <button key={key} role="tab" aria-selected={tab === key}
           className={tab === key ? "on" : undefined} onClick={() => setTab(key)}>{label}</button>
       ))}
@@ -1103,6 +1466,8 @@ function ActivityView({ onOpenMatch, refreshToken }) {
         <h1>Activity</h1>
         <p>{tab === "community"
           ? "What other members are watching and writing."
+          : tab === "watchlist"
+          ? "Matches you marked to watch. They stay here until you log them."
           : "Everything you have logged, newest first."}</p>
         {tab === "diary" && rows && <span className="riw-count">{rows.length} entries</span>}
       </header>
@@ -1112,12 +1477,18 @@ function ActivityView({ onOpenMatch, refreshToken }) {
         {tab === "community" ? (
           <div className="riw-review-list">
             {feed === null && <p className="ri-entity-loading">Loading…</p>}
-            {feed?.map((r) => <ReviewRow key={r.id} row={r} onOpen={onOpenMatch} />)}
+            {feed?.map((r) => <ReviewRow key={r.id} row={r} onOpen={onOpenMatch} onOpenEntity={onOpenEntity} />)}
             {feed && !feed.length && (
               <Empty icon={MessageSquare} title="No public reviews yet"
                 note="Reviews members choose to make public show up here." />
             )}
           </div>
+        ) : tab === "watchlist" ? (
+          <Wall matches={watchRows || []} loading={isLoggedIn && watch === null} error=""
+            onOpen={(m) => onOpenMatch(m.id)}
+            empty={<Empty icon={Bookmark}
+              title={isLoggedIn ? "Nothing on the watchlist" : "Sign in to keep a watchlist"}
+              note="Open any upcoming match and add it — it waits here until kick-off." />} />
         ) : (
           <Wall matches={rows || []} loading={rows === null} error={err}
             onOpen={(m) => onOpenMatch(m.id)}
@@ -1132,13 +1503,31 @@ function ActivityView({ onOpenMatch, refreshToken }) {
   );
 }
 
-function Lists({ tabs }) {
+function Lists({ tabs, onOpenEntity }) {
   const { isLoggedIn } = useAuth();
   const [lists, setLists] = useState(null);
+  // Liste OLUŞTURMA telefonda vardı, webde yoktu. Maç seçmeden boş bir liste
+  // açılıyor; maçlar sonradan denetçideki "Add to list" ile ekleniyor, çünkü
+  // web'de bir listeyi doldurmanın doğal yeri maçın kendisi.
+  const [title, setTitle] = useState("");
+  const [ranked, setRanked] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [version, setVersion] = useState(0);
+
+  const create = async () => {
+    const t = title.trim();
+    if (!t || creating) return;
+    setCreating(true);
+    try {
+      await rankitApi.createList({ title: t, ranked, match_ids: [] });
+      setTitle(""); setRanked(false); setVersion((v) => v + 1);
+    } catch { /* hata: başlık duruyor, tekrar denenebilir */ }
+    finally { setCreating(false); }
+  };
   useEffect(() => {
     if (!isLoggedIn) { setLists([]); return; }
     rankitApi.lists().then((d) => setLists(d.lists || [])).catch(() => setLists([]));
-  }, [isLoggedIn]);
+  }, [isLoggedIn, version]);
 
   return (
     <>
@@ -1149,9 +1538,28 @@ function Lists({ tabs }) {
       </header>
       {tabs}
       <div className="riw-main solo">
+        {isLoggedIn && (
+          <div className="riw-list-new">
+            <input value={title} onChange={(e) => setTitle(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && create()}
+              maxLength={100} aria-label="New list title" placeholder="Name a new list" />
+            <label>
+              <input type="checkbox" checked={ranked} onChange={(e) => setRanked(e.target.checked)} />
+              Ranked
+            </label>
+            <button onClick={create} disabled={creating || !title.trim()}>
+              <Plus size={14} /> {creating ? "Creating…" : "Create"}
+            </button>
+          </div>
+        )}
         <div className="ri-list-stack">
           {(lists || []).map((l) => (
-            <article key={l.id}>
+            <article key={l.id} role="button" tabIndex={0}
+              onClick={() => onOpenEntity?.("list", l.id)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpenEntity?.("list", l.id); }
+              }}
+              aria-label={`Open list ${l.title}`}>
               <ListIcon size={18} />
               <div>
                 <strong>{l.title}</strong>
@@ -1267,6 +1675,13 @@ export default function RankItWeb({ section = "home" }) {
   // abone: hangi sekmede olursa olsun, artan sayaç yeniden çekmeyi tetikler.
   const [logVersion, setLogVersion] = useState(0);
 
+  // Varlık çekmecesi (turnuva/oyuncu/takım/üye/liste). Maç denetçisinden AYRI
+  // bir katman: bir maçtan oyuncuya, oyuncudan takımına geçilebilsin ve geri
+  // dönüldüğünde maç taslağı hâlâ yerinde dursun.
+  const [entity, setEntity] = useState(null);
+  const openEntity = useCallback((kind, id) => setEntity({ kind, id }), []);
+  const closeEntity = useCallback(() => setEntity(null), []);
+
   const openMatch = useCallback((id) => { setInspectId(id); setInspectMinimized(false); }, []);
   const closeMatch = useCallback(() => { setInspectId(null); setInspectMinimized(false); }, []);
   const minimizeMatch = useCallback(() => setInspectMinimized(true), []);
@@ -1296,7 +1711,7 @@ export default function RankItWeb({ section = "home" }) {
   );
 
   const discover = discoverTab === "lists"
-    ? <Lists tabs={discoverTabs} />
+    ? <Lists tabs={discoverTabs} onOpenEntity={openEntity} />
     : <Catalog meta={meta} title="Discover" tabs={discoverTabs} onOpenMatch={openMatch}
         note="Filter down to a competition, a season or a state of play." />;
 
@@ -1304,7 +1719,7 @@ export default function RankItWeb({ section = "home" }) {
     home: <HomeView onOpenMatch={openMatch} />,
     discover,
     lists: discover,
-    activity: <ActivityView onOpenMatch={openMatch} refreshToken={logVersion} />,
+    activity: <ActivityView onOpenMatch={openMatch} refreshToken={logVersion} onOpenEntity={openEntity} />,
     profile: <Profile />,
   }[section];
 
@@ -1323,7 +1738,12 @@ export default function RankItWeb({ section = "home" }) {
       {inspectId && (
         <Inspector id={inspectId} minimized={inspectMinimized}
           onClose={closeMatch} onMinimize={minimizeMatch} onRestore={restoreMatch}
+          onOpenEntity={openEntity}
           onLogged={() => setLogVersion((v) => v + 1)} />
+      )}
+      {entity && (
+        <EntityDrawer key={`${entity.kind}-${entity.id}`} kind={entity.kind} id={entity.id}
+          onClose={closeEntity} onOpenMatch={openMatch} onOpenEntity={openEntity} />
       )}
     </div>
   );
