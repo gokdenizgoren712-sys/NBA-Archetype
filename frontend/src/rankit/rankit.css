@@ -189,3 +189,16 @@
 .ri-set-row small{font-size:10.5px;color:#9aa0a6;line-height:1.4}
 .ri-set-row select{flex:0 0 auto;height:34px;border:1px solid var(--ri-line);border-radius:9px;background:#0c0d0f;color:#eceded;font-size:12px;padding:0 8px}
 .ri-set-row input[type=checkbox]{flex:0 0 auto;width:20px;height:20px;accent-color:var(--ri-gold)}
+
+/* Faz 2 — redesign hero seridi. Ekran 2a kart genisligini 323 veriyor ve
+   §2.5 preset'i (art 150 / crest 62 / skor 52) o genislik icin ayarlanmis;
+   eski %82'lik parca 375px telefonda 236px uretiyordu, yani oranlar kayiyordu.
+   min() ile dar cihazda tasmiyor. Header/nav yukseklikleri zaten 64/73. */
+.ri-hero-carousel.is-redesign{grid-auto-columns:min(323px,calc(100vw - 52px));padding-right:24px}
+.ri-hero-slot{min-width:0;cursor:pointer}
+.ri-hero-slot:focus-visible{outline:2px solid var(--ri-gold);outline-offset:3px;border-radius:22px}
+/* Ekran 2a — baslik araclari: seri halkasi + spoiler kalkani, bildirimin solunda. */
+.ri-header-tools{display:flex;align-items:center;gap:10px;flex:none}
+.ri-shield{width:44px;height:44px;border:0;background:none;color:#9aa0a6;display:grid;place-items:center;border-radius:12px}
+.ri-shield.on{color:var(--ri-gold)}
+.ri-shield:focus-visible{outline:2px solid var(--ri-gold);outline-offset:2px}

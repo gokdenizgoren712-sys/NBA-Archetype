@@ -4,11 +4,16 @@ import {
   Award, Bell, Bookmark, CalendarDays, ChevronLeft, ChevronRight, CircleUserRound,
   Compass, Eye, EyeOff, Home, LayoutGrid, List, ListPlus, MessageCircle, Plus, Search,
   ChevronDown, Heart, LoaderCircle, Radio, RotateCcw, Send, Share2, SlidersHorizontal,
-  Star, ThumbsUp, Trophy, Users, X,
-} from "lucide-react";
+  Star, ThumbsUp, Trophy, Users, X, Shield} from "lucide-react";
 import { activity, lists, matches } from "./mockData";
 import { rankitApi, rankitSocketUrl } from "./rankitApi";
 import { BROADCAST_COUNTRIES, readPrefs, writePrefs, resolveBroadcastCountry, localeCountry } from "./rankitPrefs";
+// Faz 2 — redesign kartı bayrak arkasında; kapalıyken hiçbir şey değişmiyor.
+import { RANKIT_NEW_CARD } from "./redesign/flags";
+import RedesignMatchCard from "./redesign/MatchCard";
+import { toMatchCardProps } from "./redesign/toMatchCardProps";
+import StreakRing from "./redesign/StreakRing";
+import { computeStreak } from "./redesign/streak";
 import { rankitHaptics } from "./rankitHaptics";
 import "./rankit.css";
 import "./rankit-motion.css";
@@ -748,7 +753,14 @@ function HomeView({ sport, setSport, hideScores, setHideScores, onOpen, onOpenCo
     </div>
     <section className="ri-section">
       <div className="ri-section-head"><div><small>{day.eyebrow}</small><h2>{day.title}</h2></div><button onClick={() => onNavigate("Discover")}>See all</button></div>
-      <div className="ri-hero-carousel" ref={carousel.ref}>{loading ? [0,1,2].map(i=><MatchCardSkeleton key={i} featured/>) : heroes.length ? heroes.map(m => <MatchCard key={m.id} match={m} hideScores={hideScores} onOpen={onOpen} onOpenCompetition={onOpenCompetition} featured />) : <div className="ri-day-empty"><CalendarDays size={20}/><strong>No {sport === "All" ? "matches" : sport.toLowerCase()} in this RankIt day</strong><span>11:00 today → 11:00 tomorrow</span></div>}</div>
+      <div className={`ri-hero-carousel${RANKIT_NEW_CARD ? " is-redesign" : ""}`} ref={carousel.ref}>{loading ? [0,1,2].map(i=><MatchCardSkeleton key={i} featured/>) : heroes.length ? heroes.map(m => RANKIT_NEW_CARD
+        // Ekran 2a: hero kartı 323 genişlik / 150 sanat / 62 crest / 52 skor (§2.5).
+        ? <div key={m.id} className="ri-hero-slot" role="button" tabIndex={0} onClick={()=>onOpen(m)}
+            onKeyDown={e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();onOpen(m)}}}
+            aria-label={`${m.home.short} vs ${m.away.short}`}>
+            <RedesignMatchCard {...toMatchCardProps(m,{hideScores,scoreSize:52,cardWidth:323,crestSize:62})} artHeight={150} crestSize={62} cut={22}/>
+          </div>
+        : <MatchCard key={m.id} match={m} hideScores={hideScores} onOpen={onOpen} onOpenCompetition={onOpenCompetition} featured />) : <div className="ri-day-empty"><CalendarDays size={20}/><strong>No {sport === "All" ? "matches" : sport.toLowerCase()} in this RankIt day</strong><span>11:00 today → 11:00 tomorrow</span></div>}</div>
       {heroes.length > 1 && <div className="ri-carousel-dots" role="tablist" aria-label="Tonight's matches">
         {heroes.map((match, index) => <button key={match.id} type="button" role="tab"
           aria-selected={carousel.index === index}
@@ -938,6 +950,9 @@ export default function RankItPrototype({ nativeBack = false }) {
   const [networkState, setNetworkState] = useState(() => navigator.onLine ? "online" : "offline");
   const [tabDirection, setTabDirection] = useState(1);
   const [diaryEntries, setDiaryEntries] = useState([]);
+  // §7.2 — seri, günlükten türetiliyor. Arka uçta streak alanı YOK; burada
+  // yalnızca "oynandığı gün puanlandı mı" kuralı hesaplanabiliyor.
+  const streakNights = useMemo(() => computeStreak(diaryEntries), [diaryEntries]);
   const [profileData, setProfileData] = useState(null);
   const [listCatalog, setListCatalog] = useState([]);
   const [watchlist, setWatchlist] = useState([]);
@@ -1085,7 +1100,15 @@ export default function RankItPrototype({ nativeBack = false }) {
     lastScrollRef.current = next;
   };
   return <div className={`rankit-app${headerHidden ? " header-hidden" : ""}`}>
-    <header className="ri-header"><div className="ri-brand"><RankItMark size={29}/><div><strong>RANKIT</strong><small>BY PRIMARY ARCH</small></div></div><button aria-label="Open notifications" onClick={()=>setNotificationOpen(true)}><Bell size={19}/><i/></button></header>
+    <header className="ri-header"><div className="ri-brand"><RankItMark size={29}/><div><strong>RANKIT</strong><small>BY PRIMARY ARCH</small></div></div>
+      <div className="ri-header-tools">
+        {/* Ekran 2a: seri halkası ve spoiler kalkanı başlıkta, bildirimin solunda. */}
+        {RANKIT_NEW_CARD && <StreakRing nights={streakNights}/>}
+        {RANKIT_NEW_CARD && <button className={`ri-shield${hideScores?" on":""}`} aria-pressed={hideScores}
+          aria-label={hideScores?"Show scores":"Hide scores"} onClick={()=>setHideScores(v=>!v)}>
+          <Shield size={17} fill={hideScores?"currentColor":"none"}/></button>}
+        <button aria-label="Open notifications" onClick={()=>setNotificationOpen(true)}><Bell size={19}/><i/></button>
+      </div></header>
     <main className="ri-main" onScroll={handleMainScroll}>
       {networkState !== "online" && <div className={`ri-network-note ${networkState}`}><i/>{networkState === "reconnecting" ? "Reconnecting…" : "Offline · showing your latest saved content"}</div>}
       {apiError && networkState === "online" && <div className="ri-api-note">Could not refresh · {apiError}</div>}
