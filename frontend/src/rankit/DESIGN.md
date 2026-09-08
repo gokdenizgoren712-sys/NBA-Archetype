@@ -352,6 +352,13 @@ Recorded so the next reader knows what is *described* here versus what is *shipp
 This file is prescriptive where the code has drifted. Where the two disagree, the file is
 the target and the code is the backlog.
 
+**Exception, set by the owner on 2026-09-08:** during the redesign in
+`Primary Arch UI Redesign/`, where this file and the Claude Design output disagree,
+**Claude Design wins and this file is updated to match.** The redesign deliberately
+bends four rules recorded here — the heat palette is a third palette, the skin set,
+the gold budget, and the 9px type floor — and those bends are approved, not drift.
+Do not "fix" them back mid-build.
+
 ### Closed in 0.5.2 (phone)
 
 Measured in the browser, not eyeballed — the numbers are why each one mattered:

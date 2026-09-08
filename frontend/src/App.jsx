@@ -48,6 +48,9 @@ const FootballGlossary = lazy(() => import("./pages/football/FootballGlossary"))
 const FootballVersus  = lazy(() => import("./pages/football/FootballVersus"));
 const FootballModeSelect = lazy(() => import("./pages/football/FootballModeSelect"));
 const RankItPrototype = lazy(() => import("./rankit/RankItPrototype"));
+// Faz 1 tezgahi: MatchCard izole onizlemesi. Urun ekrani DEGIL, hicbir
+// mevcut ekran buna bakmiyor; yalnizca preset dogrulamasi icin bir rota.
+const MatchCardPreview = lazy(() => import("./rankit/redesign/MatchCardPreview"));
 const RankItWeb = lazy(() => import("./rankit/web/RankItWeb"));
 const RankItMobileAuth = lazy(() => import("./pages/RankItMobileAuth"));
 const PrivacyPolicy      = lazy(() => import("./pages/legal/PrivacyPolicy"));
@@ -346,6 +349,7 @@ function AppInner() {
               <Route path="/rankit/profile"           element={<RankItWeb section="profile" />} />
               {/* Telefon arayüzü: APK bunu paketliyor, web'de de açılabilir kalsın. */}
               <Route path="/rankit/app"               element={<RankItPrototype />} />
+              <Route path="/rankit/_preview/match-card" element={<MatchCardPreview />} />
 
               {/* ── Basketbol (mevcut ürünün tamamı) ── */}
               <Route path="/basketball"                     element={<Navigate to="/basketball/game" replace />} />
