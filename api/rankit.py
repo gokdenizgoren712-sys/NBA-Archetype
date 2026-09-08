@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field
 
 from .auth import get_optional_user, require_admin, _decode, _is_banned
 from .db import get_conn
+from . import rankit_rank
 
 router = APIRouter(prefix="/api/rankit", tags=["RankIt"])
 IS_PROD = bool(os.environ.get("RAILWAY_ENVIRONMENT") or os.environ.get("RENDER") == "true" or os.environ.get("IS_PROD") == "true")
@@ -127,6 +128,10 @@ class DiaryIn(BaseModel):
     adımıydı ve geri alınamıyordu (silme/undo yok). Artık None = "dokunma".
     """
     match_id: int
+    # §7.2 "kendi saat diliminde": sunucunun UTC'si tek basina RankIt
+    # gununu belirleyemez. Istemci dakika cinsinden ofset gonderir
+    # (JS getTimezoneOffset'in isareti ters, istemci duzeltir).
+    tz_offset: int = 0
     watched_date: Optional[date] = None
     rating: Optional[float] = None
     review: Optional[str] = Field(default=None, max_length=4000)
@@ -984,7 +989,12 @@ def rankit_log(body: DiaryIn, user=Depends(get_optional_user)):
             entry_id, updated = cur.lastrowid, False
         for tag in dict.fromkeys(t.strip() for t in (body.tags or []) if t.strip()):
             conn.execute("INSERT INTO rankit_entry_tags(entry_id,tag) VALUES(?,?)", (entry_id, tag[:40]))
-        return {"ok": True, "entry_id": entry_id, "updated": updated}
+        # §7.1 — puanlama odulu. Idempotensi rankit_points'teki UNIQUE'ten
+        # geliyor, yani duzenleme yeniden odemez; burada tekrar cagirmak
+        # zararsiz ve "ilk kayit miydi" sorusunu uygulama koduna tasimiyor.
+        award = rankit_rank.award_for_rating(conn, uid, body.match_id, body.tz_offset)
+        return {"ok": True, "entry_id": entry_id, "updated": updated,
+                "points_awarded": award["points"], "award_kind": award["kind"]}
 
 
 def _require_watched(conn, uid: int, match_id: int):
@@ -1123,6 +1133,25 @@ def toggle_review_like(entry_id: int, user=Depends(get_optional_user)):
         else:
             conn.execute("INSERT INTO rankit_review_likes(user_id,entry_id) VALUES(?,?)", (uid, entry_id))
         likes = conn.execute("SELECT COUNT(*) n FROM rankit_review_likes WHERE entry_id=?", (entry_id,)).fetchone()["n"]
+        # §7.1 — respect, incelemenin YAZARINA puan kazandirir (respect veren
+        # kisiye degil). Tavan inceleme basina 50 puan: tek bir viral yorumun
+        # kademe satin almasini engelliyor.
+        author = conn.execute("SELECT user_id FROM rankit_diary_entries WHERE id=?", (entry_id,)).fetchone()
+        if author and int(author["user_id"]) != uid:
+            earned = conn.execute(
+                """SELECT COALESCE(SUM(points),0) n FROM rankit_points
+                   WHERE user_id=? AND kind='respect' AND subject_type='review' AND subject_id=?""",
+                (author["user_id"], entry_id)).fetchone()["n"]
+            if earned < rankit_rank.RESPECT_CAP_PER_REVIEW:
+                # Defter satiri inceleme basina TEK; puani her respect'te
+                # buyutuyoruz ki tavan denetlenebilir kalsin.
+                points, variant = rankit_rank.points_for(conn, "respect", int(author["user_id"]))
+                conn.execute(
+                    """INSERT INTO rankit_points(user_id,kind,points,subject_type,subject_id,variant)
+                       VALUES(?,'respect',?, 'review',?,?)
+                       ON CONFLICT(user_id,kind,subject_type,subject_id) DO UPDATE SET
+                         points=MIN(points+excluded.points, ?)""",
+                    (author["user_id"], points, entry_id, variant, rankit_rank.RESPECT_CAP_PER_REVIEW))
         return {"liked": not bool(exists), "likes": likes}
 
 
@@ -1211,6 +1240,66 @@ async def rankit_watchalong_socket(ws: WebSocket, match_id: int, room: str = "co
     finally:
         if ws in WATCHALONG_CONNECTIONS.get(key, []):
             WATCHALONG_CONNECTIONS[key].remove(ws)
+
+
+class PresenceIn(BaseModel):
+    """Companion'da gecirilen sure. Istemci periyodik olarak EK sure gonderir.
+
+    Neden toplam degil de ek: sekme kapanip acilirsa toplam sifirlanir ve
+    kullanici kazandigi sureyi kaybeder; ek gondermek her parcayi kalici kilar.
+    """
+    seconds: int = Field(ge=0, le=1800)   # tek raporda en fazla 30 dk
+
+
+@router.get("/rank")
+def rankit_rank_view(user=Depends(get_optional_user)):
+    """Kademe, puan ve seri. §7.3 ikisini AYRI tutuyor — ayni bilesende yan
+    yana gosterilirlerse tek bir skor gibi okunuyorlar."""
+    tz = 0
+    with get_conn() as conn:
+        uid = _actor_id(user, conn)
+        points = rankit_rank.total_points(conn, uid)
+        return {
+            "rank": rankit_rank.tier_for(points),
+            "streak": rankit_rank.streak_for(conn, uid, tz),
+            "ledger": [dict(r) for r in conn.execute(
+                """SELECT kind,points,subject_type,subject_id,created_at
+                   FROM rankit_points WHERE user_id=? ORDER BY id DESC LIMIT 50""", (uid,))],
+        }
+
+
+@router.post("/matches/{match_id}/presence")
+def rankit_presence(match_id: int, body: PresenceIn, user=Depends(get_optional_user)):
+    """Companion'da oturma suresini biriktirir ve esik gecilince oder.
+
+    Sahibin kurali: futbolda 45 dakika, baskette iki ceyrek. Bu §7.1'in en
+    yuksek tek odulu (20 puan) ve "maç sirasinda orada olmak taklit edilmesi
+    en zor sey" gerekcesiyle veriliyor — o yuzden esik gercek sureye bakiyor,
+    odaya girip cikmaya degil.
+    """
+    with get_conn() as conn:
+        uid = _actor_id(user, conn)
+        row = conn.execute("SELECT sport,status FROM rankit_matches WHERE id=?", (match_id,)).fetchone()
+        if not row:
+            raise HTTPException(404, "Match not found")
+        conn.execute(
+            """INSERT INTO rankit_companion_presence(user_id,match_id,seconds,updated_at)
+               VALUES(?,?,?,datetime('now'))
+               ON CONFLICT(user_id,match_id) DO UPDATE SET
+                 seconds=seconds+excluded.seconds, updated_at=datetime('now')""",
+            (uid, match_id, int(body.seconds)))
+        total = conn.execute(
+            "SELECT seconds,awarded_at FROM rankit_companion_presence WHERE user_id=? AND match_id=?",
+            (uid, match_id)).fetchone()
+        need = rankit_rank.PRESENCE_SECONDS.get(row["sport"], rankit_rank.PRESENCE_DEFAULT)
+        gained = 0
+        if total["seconds"] >= need and not total["awarded_at"]:
+            gained = rankit_rank.award(conn, uid, "companion", "match", match_id)
+            conn.execute(
+                "UPDATE rankit_companion_presence SET awarded_at=datetime('now') WHERE user_id=? AND match_id=?",
+                (uid, match_id))
+        return {"seconds": total["seconds"], "required": need,
+                "qualified": total["seconds"] >= need, "points_awarded": gained}
 
 
 @router.get("/profile")

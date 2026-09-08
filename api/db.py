@@ -524,6 +524,50 @@ def init_db():
             UNIQUE(match_id, team_id, role, ord)
         );
 
+        -- ── Rank: kazanilmis konum (HANDOFF §7.1) ────────────────────────────
+        -- DEFTER, toplam degil. Her odul bir satir; kullanicinin puani her zaman
+        -- SUM() ile turetilir. Sebep: §7.1 "puan mac basina BIR KEZ odenir,
+        -- kayit silinirse geri alinir" diyor. Tek bir toplam sutunu bunu
+        -- denetlenebilir kilmiyor -- yanlis giden bir odulu geri almak icin
+        -- hangi odulun ne zaman verildigini bilmek gerekiyor.
+        --
+        -- UNIQUE(user, kind, subject) idempotensi ZORLAR: puani duzenlemek
+        -- ikinci kez odeme yapamaz, cunku ayni satir iki kez yazilamaz.
+        CREATE TABLE IF NOT EXISTS rankit_points (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            kind         TEXT NOT NULL,
+            points       INTEGER NOT NULL,
+            subject_type TEXT NOT NULL,
+            subject_id   INTEGER NOT NULL,
+            variant      TEXT NOT NULL DEFAULT 'A',
+            created_at   TEXT DEFAULT (datetime('now')),
+            UNIQUE(user_id, kind, subject_type, subject_id)
+        );
+
+        -- Puan degerleri KODDA SABIT DEGIL: sahibi "uygun puani A/B testing ile
+        -- belirleriz" dedi. Kol basina bir satir; kullanici id'sinden deterministik
+        -- olarak kola atanir, yani ayni kullanici hep ayni kolu gorur.
+        CREATE TABLE IF NOT EXISTS rankit_point_rules (
+            kind    TEXT NOT NULL,
+            variant TEXT NOT NULL DEFAULT 'A',
+            points  INTEGER NOT NULL,
+            note    TEXT,
+            PRIMARY KEY (kind, variant)
+        );
+
+        -- Companion varliği (§7.1'in en yuksek tek odulu, o yuzden istismara
+        -- en acik olani). Sahibin kurali: futbolda 45 dakika, baskette iki
+        -- ceyrek. Sure BIRIKIR; esik gecilince bir kez odenir.
+        CREATE TABLE IF NOT EXISTS rankit_companion_presence (
+            user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            match_id   INTEGER NOT NULL REFERENCES rankit_matches(id) ON DELETE CASCADE,
+            seconds    INTEGER NOT NULL DEFAULT 0,
+            awarded_at TEXT,
+            updated_at TEXT DEFAULT (datetime('now')),
+            PRIMARY KEY (user_id, match_id)
+        );
+
         CREATE INDEX IF NOT EXISTS idx_rankit_comments_entry ON rankit_review_comments(entry_id, created_at);
         CREATE INDEX IF NOT EXISTS idx_rankit_watchalong_match ON rankit_watchalong_messages(match_id, room, id);
         CREATE INDEX IF NOT EXISTS idx_mobile_auth_code ON mobile_auth_codes(code_hash, expires_at);
@@ -531,8 +575,13 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_rankit_bcast_match ON rankit_broadcasts(match_id, country);
         CREATE INDEX IF NOT EXISTS idx_rankit_bcast_rule ON rankit_broadcast_rules(competition_id, country);
         CREATE INDEX IF NOT EXISTS idx_rankit_lineup_match ON rankit_match_lineup_players(match_id, team_id, role, ord);
+        CREATE INDEX IF NOT EXISTS idx_rankit_points_user ON rankit_points(user_id, created_at);
         CREATE INDEX IF NOT EXISTS idx_rankit_team_logo ON rankit_team_logos(team_id);
         """)
+        # Puan kollarini tohumla. INSERT OR IGNORE, yani A/B testi sirasinda
+        # elle degistirilmis bir deger her acilista geri alinmaz.
+        from .rankit_rank import seed_rules
+        seed_rules(conn)
         # RankIt katalog senkronizasyonu: dis veri kaynagindaki mac kimligi
         # tekrar calistirmalarda ayni maci gunceller, kopya uretmez.
         for col, dfn in [("provider", "TEXT"), ("provider_match_id", "TEXT")]:
