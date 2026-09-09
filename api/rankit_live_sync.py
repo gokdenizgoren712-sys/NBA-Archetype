@@ -431,13 +431,220 @@ def refresh_live_scores() -> dict:
     except Exception as exc:
         lineups = {"error": str(exc)}
         errors.append(f"lineups: {exc}")
+    # Sezon cetvelleri ayni thread'de ama KENDI claim'iyle: bir mac bitmeden
+    # gol kralligi degismez, alti saat fazlasiyla taze.
+    stats = None
+    if _claim_stats():
+        try:
+            stats = refresh_player_stats()
+        except Exception as exc:
+            stats = {"error": str(exc)}
+            errors.append(f"player-stats: {exc}")
 
     with get_conn() as conn:
         conn.execute("""UPDATE rankit_sync_state SET
             last_success=CASE WHEN ?='' THEN datetime('now') ELSE last_success END,
             last_error=?,updated_matches=? WHERE job_name=?""",
             ("; ".join(errors), "; ".join(errors)[:1000], updated, JOB_NAME))
-    return {"scopes": len(scopes), "updated": updated, "lineups": lineups, "errors": errors}
+    return {"scopes": len(scopes), "updated": updated, "lineups": lineups,
+            "player_stats": stats, "errors": errors}
+
+
+# -- Sezon siralamalari (ekran 3d) -------------------------------------------
+# Tasarim uc cetvel istiyor: Goals / Assists / Minutes. Bunlarin hicbiri
+# bizde yok - rankit_match_players SEZON KADROSU, rankit_moments'taki gol ise
+# yalnizca olay yoklamasi yapilmis maclardan ve oyuncuya isimle bagli.
+# O yuzden cetvel dogrudan saglayicidan aliniyor.
+#
+# Butce: turnuva basina 1 (lig) + 3 (cetvel) istek, alti saatte bir. 13
+# turnuva => gunde ~200 istek. Ayni saglayiciyi canli olaylar icin zaten
+# 45 saniyede bir yokluyoruz; bu onun yaninda gurultu bile degil.
+STATS_JOB = "rankit_player_stats"
+STATS_INTERVAL_HOURS = 6
+STATS_LIMIT = 40
+# Tasarimin sordugu uc sutun -> saglayicinin anahtarlari.
+STATS_WANTED = (("goals", "goals"), ("assists", "goal_assist"), ("minutes", "mins_played"))
+
+# FotMob mevkiyi SAYIYLA veriyor, etiketle degil. Asagidaki tablo tahmin
+# degil: her kodun etiketi playerData'dan (positionDescription.positions[])
+# tek tek okunarak cikarildi (2026-09, Premier League cetvelindeki 38 kod).
+# Ekran 3d "Arsenal - Winger" yaziyor - yani KABA etiket isteniyor, "Right
+# Wing-Back" degil; olculen ince etiket burada kaba olana indirgeniyor.
+POSITION_CODES = {
+    11: "Keeper",
+    32: "Defender", 33: "Defender", 34: "Defender", 36: "Defender",
+    37: "Defender", 38: "Defender", 51: "Defender", 59: "Defender",
+    68: "Defender",
+    64: "Midfielder", 66: "Midfielder", 71: "Midfielder", 72: "Midfielder",
+    73: "Midfielder", 74: "Midfielder", 76: "Midfielder", 77: "Midfielder",
+    78: "Midfielder",
+    # 84 ve 85 "Attacking Midfielder" olarak olculdu; 86 ayni ucun ortasi,
+    # iki yanindaki olculmus komsusuyla ayni satirda.
+    84: "Midfielder", 85: "Midfielder", 86: "Midfielder",
+    82: "Winger", 83: "Winger", 87: "Winger", 88: "Winger",
+    103: "Winger", 107: "Winger",
+    104: "Striker", 115: "Striker",
+}
+
+
+def _position_label(codes) -> str:
+    """Kodlardan tek bir kaba mevki. Ilk kod ana mevki (saglayici boyle siraliyor)."""
+    for code in codes or ():
+        try:
+            code = int(code)
+        except (TypeError, ValueError):
+            continue
+        if code in POSITION_CODES:
+            return POSITION_CODES[code]
+        # Olculmemis bir kod: saglayici sahayi bantlar halinde numaralandiriyor
+        # ve olculen 29 kodun hepsi asagidaki bantlara uyuyor.
+        if code < 32:
+            return "Keeper"
+        if code < 60:
+            return "Defender"
+        if code < 100:
+            return "Midfielder"
+        return "Striker"
+    return ""
+
+
+def _claim_stats() -> bool:
+    with get_conn() as conn:
+        cur = conn.execute(
+            f"""INSERT INTO rankit_sync_state(job_name,last_attempt)
+                VALUES(?,datetime('now'))
+                ON CONFLICT(job_name) DO UPDATE SET last_attempt=datetime('now')
+                WHERE last_attempt IS NULL
+                   OR last_attempt < datetime('now','-{STATS_INTERVAL_HOURS} hours')""",
+            (STATS_JOB,))
+        return cur.rowcount > 0
+
+
+def _stat_scopes() -> list[dict]:
+    """Cetveli olan turnuvalar: FotMob lig kimligi bilinen futbol turnuvalari."""
+    with get_conn() as conn:
+        rows = conn.execute(
+            """SELECT c.id, c.name, m.season FROM rankit_competitions c
+               JOIN rankit_matches m ON m.competition_id=c.id
+               WHERE c.sport='Football' AND m.provider='fotmob'
+               GROUP BY c.id, m.season
+               ORDER BY MAX(m.starts_at) DESC""").fetchall()
+    return [dict(r) for r in rows if r["name"] in FOTMOB_LEAGUES]
+
+
+# Kulup adindaki hukuki/tarihi gurultu. Saglayici tam adi yaziyor
+# ("1. FSV Mainz 05"), biz kisa adi ("Mainz 05"); ayni kulup.
+_NAME_NOISE = {
+    "fc", "cf", "sc", "sv", "ss", "ssc", "as", "ac", "afc", "us", "ud", "cd",
+    "rc", "rcd", "sd", "bsc", "vfl", "vfb", "tsg", "tsv", "fsv", "pfk", "spvgg",
+    "de", "del", "la", "le", "club", "sport", "calcio", "futbol", "football",
+}
+
+
+def _norm_team(name: str) -> str:
+    """Kulup adini karsilastirilabilir bir anahtara indirger.
+
+    Aksan temizlenir, noktalama atilir, kurulus yili ve hukuki kisaltma
+    dusulur: "Bayer 04 Leverkusen" ve "Bayer Leverkusen" ayni anahtari verir.
+    (CLAUDE.md'de not dusulmus genel bir eksik: isim normalizasyonu tek
+    noktada standart degil. Bu, RankIt tarafindaki ilk hali.)
+    """
+    import unicodedata
+
+    flat = unicodedata.normalize("NFKD", str(name or ""))
+    flat = "".join(ch for ch in flat if not unicodedata.combining(ch)).lower()
+    tokens = []
+    for raw in "".join(ch if ch.isalnum() else " " for ch in flat).split():
+        if raw in _NAME_NOISE:
+            continue
+        if raw.isdigit():          # "04", "1899", "05" -> kurulus yili
+            continue
+        tokens.append(raw)
+    return "".join(tokens)
+
+
+def _team_index(conn, sport: str) -> dict:
+    """Saglayicinin takim adi -> bizim takim satirimiz. Cetvelde armanin
+    gelmesi buna bagli; eslesmezse satir armasiz ama dogru kalir."""
+    index: dict = {}
+    for row in conn.execute("SELECT id,name,short_name FROM rankit_teams WHERE sport=?", (sport,)):
+        for key in (row["name"], row["short_name"]):
+            if key:
+                index.setdefault(_norm_team(key), row["id"])
+    index.pop("", None)
+    return index
+
+
+def _match_team(index: dict, name: str):
+    """Once tam anahtar, sonra TEK ADAYLI kapsama.
+
+    Kapsama yalnizca tek aday varken kabul ediliyor: "Internazionale" icin
+    "inter" tek adaydir ("interturku" onun onekine uymaz), ama iki kulup ayni
+    onegi paylassaydi yanlis armayi basmaktansa armasiz birakmak dogru.
+    Kisa anahtarlar ("az") disarida: bes harften kisa bir parca cok kulube uyar.
+    """
+    key = _norm_team(name)
+    if not key:
+        return None
+    if key in index:
+        return index[key]
+    hits = set()
+    for ours, tid in index.items():
+        short, long = sorted((ours, key), key=len)
+        if len(short) >= 5 and (long.startswith(short) or long.endswith(short)):
+            hits.add(tid)
+    return hits.pop() if len(hits) == 1 else None
+
+
+def refresh_player_stats() -> dict:
+    from curl_cffi import requests
+
+    stored = 0
+    scopes = _stat_scopes()
+    for scope in scopes:
+        league_id = FOTMOB_LEAGUES[scope["name"]][0][0]
+        start = str(scope["season"]).split("-")[0]
+        try:
+            payload = requests.get(
+                "https://www.fotmob.com/api/data/leagues",
+                params={"id": league_id, "season": f"{start}/{int(start) + 1}"},
+                impersonate="chrome124", timeout=25).json()
+        except Exception:
+            continue
+        # fetchAllUrl tam cetveli veriyor; ozet yalnizca ilk uc oyuncu.
+        sources = {entry.get("name"): entry.get("fetchAllUrl")
+                   for entry in ((payload.get("stats") or {}).get("players") or [])}
+        for ours, theirs in STATS_WANTED:
+            url = sources.get(theirs)
+            if not url:
+                continue
+            try:
+                lists = requests.get(url, impersonate="chrome124", timeout=25).json()
+                rows = ((lists.get("TopLists") or [{}])[0].get("StatList") or [])[:STATS_LIMIT]
+            except Exception:
+                continue
+            if not rows:
+                continue
+            with get_conn() as conn:
+                teams = _team_index(conn, "Football")
+                # SIL-VE-YAZ: cetvelden dusen oyuncu listede kalmamali.
+                conn.execute("""DELETE FROM rankit_player_stats
+                                WHERE competition_id=? AND season=? AND stat=?""",
+                             (scope["id"], scope["season"], ours))
+                conn.executemany(
+                    """INSERT OR REPLACE INTO rankit_player_stats
+                       (competition_id,season,stat,rank,name,provider_player_id,
+                        team_name,team_id,position,value,matches,minutes,updated_at)
+                       VALUES(?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))""",
+                    [(scope["id"], scope["season"], ours, int(r.get("Rank") or i + 1),
+                      r.get("ParticipantName") or "", r.get("ParticiantId"),
+                      r.get("TeamName"), _match_team(teams, r.get("TeamName")),
+                      _position_label(r.get("Positions")), float(r.get("StatValue") or 0),
+                      r.get("MatchesPlayed"), r.get("MinutesPlayed"))
+                     for i, r in enumerate(rows) if r.get("ParticipantName")])
+                stored += len(rows)
+        time.sleep(0.5)  # saglayiciya nazik ol
+    return {"competitions": len(scopes), "rows": stored}
 
 
 def _worker() -> None:

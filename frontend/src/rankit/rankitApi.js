@@ -48,6 +48,9 @@ export const rankitApi = {
   // Bir turnuvanin TEK haftasi: sezon 380 mac olabiliyor, hepsi
   // turnuva detayina sigmaz. Detay yalnizca hafta ozetini tasir.
   competitionMatches: (id, stage) => request(`/competitions/${id}/matches?stage=${encodeURIComponent(stage || "")}`),
+  // Ekran 3d — sezon cetveli (goals | assists | minutes). Topluluk oylari
+  // DEGIL, saglayicinin siralamasi.
+  competitionPlayers: (id, stat) => request(`/competitions/${id}/players?stat=${encodeURIComponent(stat || "goals")}`),
   match: id => request(`/matches/${id}`),
   broadcasts: (id, country = "TR") => request(`/matches/${id}/broadcasts?country=${encodeURIComponent(country)}`),
   player: id => request(`/players/${id}`),

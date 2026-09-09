@@ -10,6 +10,8 @@ import { useAuth } from "../../contexts/AuthContext";
 import { rankitApi, rankitSocketUrl } from "../rankitApi";
 import { BROADCAST_COUNTRIES, readPrefs, writePrefs, resolveBroadcastCountry, localeCountry } from "../rankitPrefs";
 import { MatchCard, Stars, RankItMark, TeamMark, formatWhen } from "./cards";
+import CompetitionMatches from "../redesign/CompetitionMatches";
+import CompetitionPlayers from "../redesign/CompetitionPlayers";
 import "../rankit.css";
 import "./rankit-web.css";
 
@@ -931,48 +933,12 @@ const ENTITY_LOADER = {
    Veri zaten geliyordu (team_name, appearances, potm_votes), gösterilmiyordu. */
 function CompetitionBody({ id, data, onOpenMatch, onOpenEntity }) {
   const [tab, setTab] = useState("table");
-  const [week, setWeek] = useState(null);
-  // Yüklenen haftayı ADIYLA BİRLİKTE tutuyoruz: "hangi hafta yükleniyor"
-  // bilgisi böyle türetilebiliyor ve efektin başında state sıfırlamak
-  // gerekmiyor (react-hooks/set-state-in-effect).
-  const [loaded, setLoaded] = useState({ stage: null, matches: [] });
-  // `data.matchweeks || []` her render'da YENİ bir dizi üretiyordu ve aşağıdaki
-  // useMemo'yu her seferinde yeniden çalıştırıyordu; referans burada sabitleniyor.
-  const weeks = useMemo(() => data.matchweeks || [], [data.matchweeks]);
-
-  // Açılışta oynanmakta olan haftayı seç: tamamlanmamış ilk hafta, yoksa sonuncu.
-  const currentWeek = useMemo(() => {
-    const live = weeks.find((w) => w.finished < w.matches);
-    return (live || weeks[weeks.length - 1] || null)?.stage || null;
-  }, [weeks]);
-
-  const activeWeek = week || currentWeek;
-
-  useEffect(() => {
-    if (tab !== "matches" || !activeWeek) return undefined;
-    let alive = true;
-    rankitApi.competitionMatches(id, activeWeek)
-      .then((d) => alive && setLoaded({ stage: activeWeek, matches: (d.matches || []).map(toCard) }))
-      .catch(() => alive && setLoaded({ stage: activeWeek, matches: [] }));
-    return () => { alive = false; };
-  }, [id, tab, activeWeek]);
-
-  // null => hâlâ yükleniyor (ya da başka bir haftanın sonucu duruyor).
-  const weekMatches = loaded.stage === activeWeek ? loaded.matches : null;
-
-  const players = useMemo(() => {
-    // "Popular" bir sıraya dayanmalı: önce topluluk oyları, sonra maç sayısı.
-    return [...(data.popular_players || [])].sort((a, b) =>
-      (b.potm_votes + b.respect_votes) - (a.potm_votes + a.respect_votes) ||
-      b.appearances - a.appearances);
-  }, [data.popular_players]);
-
   const standings = data.standings || [];
 
   return (
     <>
       <div className="ri-detail-tabs" role="tablist" aria-label="Competition">
-        {[["table", "Table"], ["players", "Players"], ["matches", "Matches"]].map(([key, label]) => (
+        {[["table", "Table"], ["matches", "Matches"], ["players", "Players"]].map(([key, label]) => (
           <button key={key} role="tab" aria-selected={tab === key}
             className={tab === key ? "active" : undefined}
             onClick={() => setTab(key)}>{label}</button>
@@ -1016,53 +982,19 @@ function CompetitionBody({ id, data, onOpenMatch, onOpenEntity }) {
               note="Standings appear once results are in for this season." />
       )}
 
+      {/* 3d — sezon cetveli. Eskiden burada POTM/Respect oylarina gore
+          siralanmis bir "popular players" listesi vardi; 3d baska bir sey
+          istiyor ve bilesenin kendi basligi bunu soyluyor. */}
       {tab === "players" && (
-        players.length ? (
-          <div className="riw-player-rows">
-            {players.map((p) => {
-              const votes = (p.potm_votes || 0) + (p.respect_votes || 0);
-              return (
-                <button key={p.id} type="button" className="riw-player-row"
-                  onClick={() => onOpenEntity?.("player", p.id)}>
-                  <span className="riw-player-name">{p.name}</span>
-                  <span className="riw-player-team">{p.team_short || p.team_name}</span>
-                  <span className="riw-player-stat">
-                    {votes ? `${votes} votes` : `${p.appearances} apps`}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        ) : <Empty icon={CircleUserRound} title="No players yet"
-              note="Players appear once squads are loaded for this competition." />
+        <CompetitionPlayers competitionId={id}
+          onOpenPlayer={(pid) => onOpenEntity?.("player", pid)} />
       )}
 
+      {/* 3c — hafta seridi + gun gun fikstur kartlari. Telefonla AYNI bilesen. */}
       {tab === "matches" && (
-        <>
-          <div className="riw-weeks" role="tablist" aria-label="Matchweek">
-            {weeks.map((w) => (
-              <button key={w.stage} role="tab" aria-selected={activeWeek === w.stage}
-                className={activeWeek === w.stage ? "on" : undefined}
-                onClick={() => setWeek(w.stage)}
-                title={`${w.matches} matches, ${w.finished} played`}>
-                {/* Uzun etiket dar bir şeritte okunmaz: "Matchday 12" -> "12" */}
-                {(w.stage.match(/\d+/) || [w.stage])[0]}
-              </button>
-            ))}
-          </div>
-          {!weeks.length && (
-            <Empty icon={ListIcon} title="No matchweeks"
-              note="This competition does not publish rounds." />
-          )}
-          {!!weeks.length && (
-            <>
-              <div className="ri-chip-title">{activeWeek}</div>
-              <Wall matches={weekMatches || []} loading={weekMatches === null} error=""
-                onOpen={(m) => onOpenMatch(m.id)}
-                empty={<Empty icon={ListIcon} title="No matches in this round" note="" />} />
-            </>
-          )}
-        </>
+        <CompetitionMatches competitionId={id}
+          matchweeks={data.matchweeks || []} fixtures={data.fixtures || []}
+          onOpenMatch={(m) => onOpenMatch(m.id)} />
       )}
     </>
   );

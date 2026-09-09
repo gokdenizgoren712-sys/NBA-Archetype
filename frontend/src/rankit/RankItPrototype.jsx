@@ -15,6 +15,8 @@ import { toMatchCardProps, diaryToMatchCardProps } from "./redesign/toMatchCardP
 import StreakRing from "./redesign/StreakRing";
 import CompanionPanel from "./redesign/CompanionPanel";
 import AllReviews from "./redesign/AllReviews";
+import CompetitionMatches from "./redesign/CompetitionMatches";
+import CompetitionPlayers from "./redesign/CompetitionPlayers";
 import ReviewThread from "./redesign/ReviewThread";
 import { rankitHaptics } from "./rankitHaptics";
 import "./rankit.css";
@@ -244,50 +246,27 @@ function MatchCard({ match, hideScores, onOpen, onOpenCompetition, featured = fa
 }
 
 function CompetitionDetail({ detail, onClose, onOpenMatch, onOpenPlayer }) {
-  // Sekmeler weble AYNI: Table / Players / Matches. Matches artık "sıradaki
-  // 60 maç" değil, hafta hafta gezilebiliyor — bir sezon 38 hafta ve
-  // kullanıcının aradığı şey genelde belirli bir hafta.
+  // Sekme sirasi 3c/3d'ye gore: Table · Matches · Players. Matches ile
+  // Players artik paylasilan bilesenler (redesign/) — web ile telefon ayni
+  // ekrani iki kez yazmiyor.
   const [section, setSection] = useState("Table");
-  const [week, setWeek] = useState(null);
-  const [loaded, setLoaded] = useState({ stage: null, matches: [] });
-  const weeks = useMemo(() => detail?.matchweeks || [], [detail?.matchweeks]);
-  const currentWeek = useMemo(() => {
-    const live = weeks.find(w => w.finished < w.matches);
-    return (live || weeks[weeks.length - 1] || null)?.stage || null;
-  }, [weeks]);
-  const activeWeek = week || currentWeek;
   const competitionId = detail?.competition?.id;
-  useEffect(() => {
-    if (section !== "Matches" || !activeWeek || !competitionId) return undefined;
-    let alive = true;
-    rankitApi.competitionMatches(competitionId, activeWeek)
-      .then(d => alive && setLoaded({ stage: activeWeek, matches: (d.matches || []).map(fromApiMatch) }))
-      .catch(() => alive && setLoaded({ stage: activeWeek, matches: [] }));
-    return () => { alive = false; };
-  }, [competitionId, section, activeWeek]);
-  const weekMatches = loaded.stage === activeWeek ? loaded.matches : null;
   if (!detail) return <div className="ri-sheet-wrap" onClick={onClose}><section className="ri-detail-sheet ri-competition-sheet" onClick={event=>event.stopPropagation()}><SheetHandle onClose={onClose}/><div className="ri-entity-loading">Loading competition…</div></section></div>;
   const competition = detail.competition;
-  const fixtures = (detail.fixtures || []).map(fromApiMatch);
   return <div className="ri-sheet-wrap" onClick={onClose}><section className="ri-detail-sheet ri-competition-sheet" onClick={event=>event.stopPropagation()}>
     <SheetHandle onClose={onClose}/><button className="ri-sheet-close" onClick={onClose}><X size={19}/></button>
     <header className="ri-competition-head"><small>{competition.country || "Competition"} · {competition.season}</small><h2>{competition.name}</h2><span>{competition.sport}</span></header>
-    <div className="ri-detail-tabs ri-competition-tabs">{["Table","Players","Matches"].map(name=><button key={name} className={section===name?"active":""} onClick={()=>setSection(name)}>{name}</button>)}</div>
-    {section === "Matches" && <>
-      {weeks.length > 0 && <div className="ri-week-strip">{weeks.map(w=><button key={w.stage} className={activeWeek===w.stage?"on":""} onClick={()=>setWeek(w.stage)} title={`${w.matches} matches, ${w.finished} played`}>{(w.stage.match(/\d+/)||[w.stage])[0]}</button>)}</div>}
-      <div className="ri-competition-fixtures">
-        {(weekMatches ?? fixtures).map(match=><button key={match.id} onClick={()=>{onClose();onOpenMatch(match)}}><span><small>{match.stage || "Fixture"}</small><strong>{match.home.short} <b>vs</b> {match.away.short}</strong></span><time>{match.status === "live" ? "LIVE" : match.status === "finished" ? match.score : match.date}</time><ChevronRight size={15}/></button>)}
-        {weekMatches === null && weeks.length > 0 && <div className="ri-entity-loading">Loading…</div>}
-        {weekMatches?.length === 0 && <div className="ri-empty-state"><CalendarDays size={22}/><strong>No matches in this round</strong><span>Pick another matchweek above.</span></div>}
-        {!weeks.length && !fixtures.length && <div className="ri-empty-state"><CalendarDays size={22}/><strong>No fixtures</strong><span>The next scheduled matches will appear here.</span></div>}
-      </div>
-    </>}
+    <div className="ri-detail-tabs ri-competition-tabs">{["Table","Matches","Players"].map(name=><button key={name} className={section===name?"active":""} onClick={()=>setSection(name)}>{name}</button>)}</div>
+    {section === "Matches" && <CompetitionMatches competitionId={competitionId}
+      matchweeks={detail.matchweeks || []} fixtures={detail.fixtures || []}
+      onOpenMatch={match=>{onClose();onOpenMatch(fromApiMatch(match))}}/>}
     {section === "Table" && <div className="ri-competition-table"><header><span>#</span><strong>Team</strong><span>P</span><span>{competition.sport === "Basketball" ? "+/-" : "GD"}</span><span>{competition.sport === "Basketball" ? "W" : "PTS"}</span></header>{(detail.standings||[]).map((row,index)=><div key={row.team_id}><span>{index+1}</span><strong><TeamMark team={{name:row.name,short:row.short_name,color:row.color,crest_url:row.crest_url}}/><b>{row.short_name}</b></strong><span>{row.played}</span><span>{row.gd>0?`+${row.gd}`:row.gd}</span><span>{row.points}</span></div>)}{!detail.standings?.length&&<div className="ri-empty-state"><List size={22}/><strong>No league table for this stage</strong><span>Qualifying and knockout ties are shown under fixtures.</span></div>}</div>}
-    {section === "Players" && <div className="ri-popular-players">{(detail.popular_players||[]).map((player,index)=><button key={player.id} onClick={()=>{onClose();onOpenPlayer(player.id)}}><b>{index+1}</b>{player.image_url?<img src={player.image_url} alt=""/>:<span>{player.name.slice(0,2).toUpperCase()}</span>}<div><strong>{player.name}</strong><small>{player.team_name || "Competition player"}</small></div><em>{player.potm_votes} POTM · {player.respect_votes} Respect</em></button>)}{!detail.popular_players?.length&&<div className="ri-empty-state"><Trophy size={22}/><strong>Popular players will appear here</strong><span>Community POTM and Respect votes shape this list.</span></div>}</div>}
+    {section === "Players" && <CompetitionPlayers competitionId={competitionId}
+      onOpenPlayer={id=>{onClose();onOpenPlayer(id)}}/>}
   </section></div>;
 }
 
-function MatchDetail({ match, hideScores, onClose, onSave, onToggleWatchlist, onToggleFavorite, onRefresh }) {
+function MatchDetail({ match, hideScores, onClose, onSave, onToggleWatchlist, onToggleFavorite, onRefresh, onOpenCompetition }) {
   const draftReady = useRef(false);
   const [rating, setRating] = useState(match.my_rating ?? 0);
   const [classic, setClassic] = useState(!!match.my_classic);
@@ -445,7 +424,9 @@ function MatchDetail({ match, hideScores, onClose, onSave, onToggleWatchlist, on
       <SheetHandle onClose={onClose}/>
       <button className="ri-sheet-close" onClick={onClose}><X size={19} /></button>
       <div className="ri-v03-hero" style={{"--detail-home":match.home.color,"--detail-away":match.away.color}}>
-        <div className={`ri-detail-kicker ${match.status}`}><span>{match.competition}{match.stage ? ` · ${match.stage}` : ""}</span><b>{match.status === "finished" ? "FULL TIME" : match.status === "live" ? "LIVE" : "UPCOMING"}</b></div>
+        <div className={`ri-detail-kicker ${match.status}`}>{match.competition_id
+          ? <button type="button" className="ri-kicker-comp" onClick={()=>{onClose();onOpenCompetition?.(match.competition_id)}}>{match.competition}{match.stage ? ` · ${match.stage}` : ""}</button>
+          : <span>{match.competition}{match.stage ? ` · ${match.stage}` : ""}</span>}<b>{match.status === "finished" ? "FULL TIME" : match.status === "live" ? "LIVE" : "UPCOMING"}</b></div>
         <div className="ri-detail-teams">
           <div className="ri-v03-team"><TeamMark team={match.home}/><strong>{match.home.short}</strong>{match.home.name !== match.home.short && <small>{match.home.name}</small>}</div>
           <div className="ri-v03-score"><small>{match.dateOnly || match.date}</small><strong className={hideScores && match.status === "finished" ? "ri-blur" : ""}><ScoreValue match={match} detail/></strong><span>{match.season}</span></div>
@@ -1270,7 +1251,7 @@ export default function RankItPrototype({ nativeBack = false }) {
     {detail?._loading ? (
       <MatchDetailLoading onClose={() => setDetail(null)}/>
     ) : detail && (
-      <MatchDetail match={detail} hideScores={hideScores} onClose={() => setDetail(null)} onSave={saveMatchLog} onToggleWatchlist={toggleWatchlist} onToggleFavorite={toggleFavorite} onRefresh={refreshDetail}/>
+      <MatchDetail match={detail} hideScores={hideScores} onClose={() => setDetail(null)} onSave={saveMatchLog} onToggleWatchlist={toggleWatchlist} onToggleFavorite={toggleFavorite} onRefresh={refreshDetail} onOpenCompetition={openCompetition}/>
     )}
     {competitionDetail && <CompetitionDetail detail={competitionDetail.data} onClose={()=>setCompetitionDetail(null)} onOpenMatch={openMatch} onOpenPlayer={id=>openEntity("player",id)}/>}
     {entityDetail && <EntityDetail detail={entityDetail} onClose={()=>setEntityDetail(null)} onOpenMatch={openMatch} onOpenEntity={openEntity} onChanged={openEntity}/>} 

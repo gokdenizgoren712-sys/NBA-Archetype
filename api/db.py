@@ -615,6 +615,32 @@ def init_db():
             PRIMARY KEY (comment_id, user_id)
         );
 
+        -- Sezon siralamalari (ekran 3d). Bunlar BIZIM verimiz DEGIL: saglayicinin
+        -- yayimladigi lig cetveli. rankit_match_players sezon kadrosu, oradan
+        -- gol/asist cikmiyor; rankit_moments'ta gol var ama yalnizca olay
+        -- yoklamasi yapilmis maclar icin ve oyuncuya bagli degil, isim olarak.
+        -- Bu yuzden ayri bir tablo: cetvel dogrudan kaynaktan aliniyor.
+        --
+        -- Tazeleme SIL-VE-YAZ: bir oyuncu ilk 40'tan dusebilir ve UPSERT onu
+        -- listede birakirdi.
+        CREATE TABLE IF NOT EXISTS rankit_player_stats (
+            competition_id     INTEGER NOT NULL REFERENCES rankit_competitions(id) ON DELETE CASCADE,
+            season             TEXT NOT NULL,
+            stat               TEXT NOT NULL,   -- goals | assists | minutes
+            rank               INTEGER NOT NULL,
+            name               TEXT NOT NULL,
+            provider_player_id INTEGER,
+            team_name          TEXT,
+            team_id            INTEGER REFERENCES rankit_teams(id) ON DELETE SET NULL,
+            position           TEXT,
+            value              REAL NOT NULL,
+            matches            INTEGER,
+            minutes            INTEGER,
+            updated_at         TEXT DEFAULT (datetime('now')),
+            PRIMARY KEY (competition_id, season, stat, name)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_rankit_player_stats ON rankit_player_stats(competition_id, season, stat, rank);
         CREATE INDEX IF NOT EXISTS idx_rankit_comments_entry ON rankit_review_comments(entry_id, created_at);
         CREATE INDEX IF NOT EXISTS idx_rankit_watchalong_match ON rankit_watchalong_messages(match_id, room, id);
         CREATE INDEX IF NOT EXISTS idx_mobile_auth_code ON mobile_auth_codes(code_hash, expires_at);

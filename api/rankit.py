@@ -361,6 +361,9 @@ def _match_dict(conn, row, uid: Optional[int] = None) -> dict:
         "provider": row["provider"],
         "status": row["status"], "starts_at": row["starts_at"],
         "home": _team(row, "home"), "away": _team(row, "away"), "score": score,
+        # Ekran 3c skoru iki SATIRDA yaziyor, tek dizede degil: kaybeden
+        # taraf sonmus renkte. Dizeyi ayristirmak yerine iki alan.
+        "home_score": row["home_score"], "away_score": row["away_score"],
         "broadcaster": row["broadcaster"], "editorial": bool(row["editorial"]),
         "summary": row["summary"], "cover_variant": row["cover_variant"],
         "community_rating": round(float(rating["avg"]), 1) if rating["avg"] is not None else None,
@@ -784,6 +787,51 @@ def rankit_competition_matches(competition_id: int, stage: str = Query(default="
             rows = conn.execute(MATCH_SELECT + """ WHERE m.competition_id=?
                 ORDER BY m.starts_at LIMIT 200""", (competition_id,)).fetchall()
         return {"stage": stage, "matches": [_match_dict(conn, row, uid) for row in rows]}
+
+
+@router.get("/competitions/{competition_id}/players")
+def rankit_competition_players(competition_id: int, stat: str = Query(default="goals", max_length=16)):
+    """Ekran 3d - sezon cetveli.
+
+    Bu liste TOPLULUK verisi degil, saglayicinin sezon siralamasi (bkz.
+    rankit_live_sync.refresh_player_stats). Ayri durmasinin sebebi ekranin
+    kendi notu: "Players are a reference list. RankIt rates matches, not
+    performances." Yani buradaki sira bizim oylarimizla oynanmaz.
+
+    `available` bos donebilir: basketbol turnuvalarinda cetvel yayimlayan bir
+    kaynak yok. Arayuz sekmeyi bos gostermek yerine hic gostermiyor.
+    """
+    with get_conn() as conn:
+        competition = conn.execute("SELECT id,name,season,sport FROM rankit_competitions WHERE id=?",
+                                   (competition_id,)).fetchone()
+        if not competition:
+            raise HTTPException(404, "Competition not found")
+        available = [r["stat"] for r in conn.execute(
+            """SELECT stat FROM rankit_player_stats WHERE competition_id=?
+               GROUP BY stat ORDER BY CASE stat WHEN 'goals' THEN 0 WHEN 'assists' THEN 1
+               ELSE 2 END""", (competition_id,)).fetchall()]
+        if not available:
+            return {"stat": stat, "available": [], "players": [], "updated_at": None}
+        # Istenen cetvel yoksa elimizdeki ilkine dus - bos ekran gostermektense.
+        if stat not in available:
+            stat = available[0]
+        rows = conn.execute(
+            """SELECT s.rank,s.name,s.team_name,s.team_id,s.position,s.value,
+                      s.matches,s.minutes,s.provider_player_id,s.updated_at,
+                      t.short_name team_short,t.color team_color,
+                      COALESCE(tl.logo_url,t.crest_url) crest_url,
+                      (SELECT p.id FROM rankit_players p
+                       WHERE p.sport=? AND p.name=s.name LIMIT 1) player_id
+               FROM rankit_player_stats s
+               LEFT JOIN rankit_teams t ON t.id=s.team_id
+               LEFT JOIN rankit_team_logos tl ON tl.team_id=t.id
+               WHERE s.competition_id=? AND s.stat=?
+               ORDER BY s.rank, s.name""",
+            (competition["sport"], competition_id, stat)).fetchall()
+        return {"stat": stat, "available": available,
+                "season": competition["season"],
+                "players": [dict(r) for r in rows],
+                "updated_at": rows[0]["updated_at"] if rows else None}
 
 
 @router.get("/matches/{match_id}")

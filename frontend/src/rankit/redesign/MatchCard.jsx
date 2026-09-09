@@ -38,7 +38,7 @@ const GOLD = "#ffb11b";
    Sütunu ondan boyutla yoksa rozetler kırpılır (0.5.2'de tam bu oldu).
    Yarıçap crest'ten TÜRETİLİR: sabit 18/21 yazılırsa crestSize 38'e
    inince şekil daireye dönüşüyor. */
-function Shield({ side, color, ink, abbr, crestUrl, badgeScale = 0.23, front = false }) {
+export function Shield({ side, color, ink, abbr, crestUrl, badgeScale = 0.23, front = false }) {
   return (
     <div style={{
       width: side * 1.414, height: side * 1.414,

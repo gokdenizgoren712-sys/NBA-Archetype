@@ -10,16 +10,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Send, Flame } from "lucide-react";
 import { rankitApi, rankitSocketUrl } from "../rankitApi";
+import { RAMP, NAMES, inkFor } from "./heat";
 
-const RAMP = ["#2f5480", "#5b4fa8", "#9a3f96", "#d43a63", "#f5402e"];
-const NAMES = ["COLD", "FLAT", "GOOD", "GREAT", "HOT"];
 const INK_3 = "#9aa0a6";
 const INK_4 = "#7f868b";
 const GREEN = "#3fb08c";
 // DESIGN.md `line` token'i — tek kenarlik rengi, 1px.
 const LINE = "rgba(255,255,255,.09)";
-
-const inkFor = (v) => (v ? RAMP[Math.max(0, Math.min(4, Math.round(v) - 1))] : INK_3);
 
 /* Maça kalan süre. 5a "KICKS OFF IN 24:18" gösteriyor — dakika:saniye. */
 function useCountdown(startsAt) {
