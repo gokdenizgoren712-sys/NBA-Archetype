@@ -95,3 +95,28 @@ export function toMatchCardProps(match, opts = {}) {
     ...(scoreSize ? { scoreSize: fitScore(scoreSize, homeScore, awayScore, cardWidth, crestSize) } : null),
   };
 }
+
+
+/* Gunluk satiri MAC nesnesiyle AYNI sekle sahip degil: /diary duz sutunlar
+   donduruyor (home_short, home_color, ...) ve `id` MACIN degil KAYDIN id'si.
+   toMatchCardProps'u dogrudan uygulamak takim adlarini undefined birakir,
+   skoru yok eder ve kart tiklaninca yanlis maci acar — web tarafinda
+   diaryToCard ayni sebeple ayri duruyor. */
+export function diaryToMatchCardProps(entry, opts = {}) {
+  if (!entry) return null;
+  const score = entry.home_score == null ? null : `${entry.home_score} – ${entry.away_score}`;
+  return toMatchCardProps({
+    id: entry.match_id,
+    competition: entry.competition,
+    sport: entry.sport,
+    status: entry.status,
+    time: "",
+    home: { name: entry.home_name, short: entry.home_short, color: entry.home_color, crest_url: entry.home_crest },
+    away: { name: entry.away_name, short: entry.away_short, color: entry.away_color, crest_url: entry.away_crest },
+    score,
+    // Rafta gosterilen isi KULLANICININ kendi puani, toplulugunki degil:
+    // burasi kendi gunlugun, kalabaligin ortalamasi degil.
+    communityRating: entry.rating,
+    instantClassic: !!entry.classic,
+  }, opts);
+}

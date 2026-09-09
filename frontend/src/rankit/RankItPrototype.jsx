@@ -11,7 +11,7 @@ import { BROADCAST_COUNTRIES, readPrefs, writePrefs, resolveBroadcastCountry, lo
 // Faz 2 — redesign kartı bayrak arkasında; kapalıyken hiçbir şey değişmiyor.
 import { RANKIT_NEW_CARD } from "./redesign/flags";
 import RedesignMatchCard from "./redesign/MatchCard";
-import { toMatchCardProps } from "./redesign/toMatchCardProps";
+import { toMatchCardProps, diaryToMatchCardProps } from "./redesign/toMatchCardProps";
 import StreakRing from "./redesign/StreakRing";
 import { computeStreak } from "./redesign/streak";
 import { rankitHaptics } from "./rankitHaptics";
@@ -838,7 +838,14 @@ function DiscoverView({ hideScores, onOpen, onOpenCompetition, catalog = matches
       </div></div></div>
     </div>
     <section className="ri-section"><div className="ri-section-head"><div><small>COMMUNITY PICKS</small><h2>Popular this week</h2></div></div>
-      <div className="ri-discover-grid">{smartCatalog.map(m => <MatchCard key={m.id} match={m} hideScores={hideScores} onOpen={onOpen} onOpenCompetition={onOpenCompetition} />)}</div>
+      <div className={`ri-discover-grid${RANKIT_NEW_CARD ? " is-redesign" : ""}`}>{smartCatalog.map(m => RANKIT_NEW_CARD
+        // Ekran 2c, §2.5 preset: 155 genislik / crest 44 / skor 30, compact.
+        ? <div key={m.id} className="ri-card-slot" role="button" tabIndex={0} onClick={()=>onOpen(m)}
+            onKeyDown={e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();onOpen(m)}}}
+            aria-label={`${m.home.short} vs ${m.away.short}`}>
+            <RedesignMatchCard {...toMatchCardProps(m,{hideScores,compact:true,scoreSize:30,cardWidth:155,crestSize:44})} crestSize={44} cut={14}/>
+          </div>
+        : <MatchCard key={m.id} match={m} hideScores={hideScores} onOpen={onOpen} onOpenCompetition={onOpenCompetition} />)}</div>
       {pageCatalog.length < total && <button className="ri-load-more" disabled={loading} onClick={()=>load(true)}>{loading?"Loading…":`Load more · ${pageCatalog.length}/${total}`}</button>}
     </section>
     <section className="ri-section"><div className="ri-section-head"><div><small>CURATED BY MEMBERS</small><h2>Popular lists</h2></div><button onClick={onCreateList}>Create</button></div>
@@ -878,10 +885,17 @@ function ActivityView({ diaryEntries = [], watchlist = [], listCatalog = [], fri
   return <><div className="ri-page-title"><small>YOUR SPORTING LIFE</small><h1>Activity</h1></div>
     <div className="ri-segment"><button className={sub === "Friends" ? "active" : ""} onClick={() => setSub("Friends")}>Friends</button><button className={sub === "Diary" ? "active" : ""} onClick={() => setSub("Diary")}>Diary</button></div>
     {sub === "Friends" ? <div className="ri-activity-list">{friendFeed.map(a => <article key={a.id || `${a.user}-${a.match.id}`} onClick={()=>onOpen(a.match)}><div className="ri-avatar">{a.initials}</div><div className="ri-feed-copy"><p><strong>{a.user}</strong> {a.action}</p><h3>{a.match.home.name || a.match.home.short} <span>vs</span> {a.match.away.name || a.match.away.short}</h3><Stars value={a.rating || 0} compact /><blockquote>"{a.text}"</blockquote><small><MessageCircle size={12}/> Open match</small></div></article>)}{!friendFeed.length && <div className="ri-empty-state"><Users size={22}/><strong>No activity yet</strong><span>Follow members to build your feed.</span></div>}</div>
-      : <div className="ri-diary"><div className="ri-diary-toolbar"><div className="ri-diary-filters">{["Watched","Watchlist","Classics","Lists"].map(x=><button key={x} className={filter===x?"active":""} onClick={()=>setFilter(x)}>{x}</button>)}</div>{filter !== "Lists" && <div className="ri-view-toggle"><button className={diaryView==="Timeline"?"active":""} onClick={()=>setDiaryView("Timeline")}><List size={14}/></button><button className={diaryView==="Cards"?"active":""} onClick={()=>setDiaryView("Cards")}><LayoutGrid size={14}/></button></div>}</div>
+      : <div className="ri-diary"><div className="ri-diary-toolbar"><div className="ri-diary-filters">{["Watched","Watchlist","Classics","Lists"].map(x=><button key={x} className={filter===x?"active":""} onClick={()=>setFilter(x)}>{x}</button>)}</div>{filter !== "Lists" && <div className="ri-view-toggle"><button className={diaryView==="Timeline"?"active":""} onClick={()=>setDiaryView("Timeline")}><List size={14}/></button><button className={diaryView==="Cards"?"active":""} onClick={()=>setDiaryView("Cards")} aria-label="Shelf view"><LayoutGrid size={14}/></button></div>}</div>
       {filter === "Watchlist" ? <><label className="ri-watch-sort"><span>SORT WATCHLIST</span><select value={watchSort} onChange={e=>setWatchSort(e.target.value)}><option>Match date</option><option>Added</option><option>Competition</option></select></label><div className="ri-discover-grid">{sortedWatchlist.map(m=><MatchCard key={m.id} match={m} hideScores={false} onOpen={onOpen} onOpenCompetition={onOpenCompetition}/>)}</div></>
       : filter === "Lists" ? <div className="ri-list-stack">{listCatalog.map(l=><article key={l.id} onClick={()=>onOpenList(l.id)}><ListPlus size={18}/><div><strong>{l.title}</strong><span>{l.match_count} matches · {l.ranked?"Ranked":"Unranked"}</span></div></article>)}</div>
       : diaryView === "Timeline" ? <><div className="ri-diary-heat"><header><span>LAST 28 DAYS</span><strong>{heatDays.reduce((a,n)=>a+n,0)} watched</strong></header><div>{heatDays.map((n,i)=><i key={i} data-level={Math.min(3,n)}/>)}</div></div>{filteredDiary.map((e,index)=>{const month=new Date(`${e.watched_date}T12:00:00`).toLocaleDateString("en-GB",{month:"long",year:"numeric"});const prev=index?new Date(`${filteredDiary[index-1].watched_date}T12:00:00`).toLocaleDateString("en-GB",{month:"long",year:"numeric"}):null;return <div key={e.id}>{month!==prev&&<div className="ri-diary-group"><span>{e.competition}</span><strong>{month}</strong></div>}<div className="ri-diary-row" onClick={()=>onOpen({id:e.match_id})}><span className="ri-diary-date">{e.watched_date}</span><div className="ri-mini-crests"><TeamMark team={{short:e.home_short,color:e.home_color}}/><TeamMark team={{short:e.away_short,color:e.away_color}}/></div><div><strong>{e.home_short} vs {e.away_short}</strong><small>{e.home_score} - {e.away_score} · {e.competition}</small></div><Stars value={e.rating||0} compact/></div></div>})}</>
+      : RANKIT_NEW_CARD
+      // Ekran 2e "SHELF", §2.5 preset: 155 genislik / crest 40 / skor 28.
+      ? <div className="ri-diary-cards is-redesign">{filteredDiary.map(e=><div key={e.id} className="ri-card-slot" role="button" tabIndex={0}
+          aria-label={`Open ${e.home_short} vs ${e.away_short}`} onClick={()=>onOpen({id:e.match_id})}
+          onKeyDown={event=>{if(event.key==="Enter"||event.key===" "){event.preventDefault();onOpen({id:e.match_id})}}}>
+          <RedesignMatchCard {...diaryToMatchCardProps(e,{compact:true,scoreSize:28,cardWidth:155,crestSize:40})} crestSize={40} cut={14}/>
+        </div>)}</div>
       : <div className="ri-diary-cards">{filteredDiary.map(e=><div role="button" tabIndex={0} aria-label={`Open ${e.home_short} vs ${e.away_short}`} onClick={()=>onOpen({id:e.match_id})} onKeyDown={event=>{if(event.key==="Enter"||event.key===" "){event.preventDefault();onOpen({id:e.match_id})}}} key={e.id} style={{"--card-a":e.home_color,"--card-b":e.away_color}}><small>{e.competition}</small><strong>{e.home_short}</strong><b>{e.sport==="Basketball"?<>{e.home_score}<br/>{e.away_score}</>:<>{e.home_score} – {e.away_score}</>}</b><strong>{e.away_short}</strong><Stars value={e.rating||0} compact/><ClassicStamp active={!!e.classic} small/></div>)}</div>}</div>}
   </>;
 }
