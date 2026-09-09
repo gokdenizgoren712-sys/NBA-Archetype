@@ -605,6 +605,16 @@ def init_db():
             PRIMARY KEY (moment_id, user_id)
         );
 
+        -- Yanitlara respect (§6.1: "Respect replaces likes"). Incelemenin
+        -- kendi respect'i rankit_review_likes'ta; yanitlarinki ayri, cunku
+        -- ikisi ayri nesne ve §7.1'in 50 puanlik tavani yalnizca INCELEME
+        -- icin gecerli.
+        CREATE TABLE IF NOT EXISTS rankit_comment_respect (
+            comment_id INTEGER NOT NULL REFERENCES rankit_review_comments(id) ON DELETE CASCADE,
+            user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            PRIMARY KEY (comment_id, user_id)
+        );
+
         CREATE INDEX IF NOT EXISTS idx_rankit_comments_entry ON rankit_review_comments(entry_id, created_at);
         CREATE INDEX IF NOT EXISTS idx_rankit_watchalong_match ON rankit_watchalong_messages(match_id, room, id);
         CREATE INDEX IF NOT EXISTS idx_mobile_auth_code ON mobile_auth_codes(code_hash, expires_at);
@@ -620,6 +630,14 @@ def init_db():
         # elle degistirilmis bir deger her acilista geri alinmaz.
         from .rankit_rank import seed_rules
         seed_rules(conn)
+        # §6.1 geriye donuk: reply_to_user_id sutunu eklenmeden once yazilmis
+        # yorumlarin adresi yok. Anlamca hepsi INCELEMENIN YAZARINA yazilmisti
+        # (bir incelemenin altina yorum birakmak buydu), o yuzden oraya
+        # baglaniyorlar. Adressiz bir yanit arayuzde yarim gorunur.
+        conn.execute("""UPDATE rankit_review_comments
+                        SET reply_to_user_id=(SELECT e.user_id FROM rankit_diary_entries e
+                                              WHERE e.id=rankit_review_comments.entry_id)
+                        WHERE reply_to_user_id IS NULL""")
         # RankIt katalog senkronizasyonu: dis veri kaynagindaki mac kimligi
         # tekrar calistirmalarda ayni maci gunceller, kopya uretmez.
         # events_polled_at: canli olay yoklamasinda SIRA icin. En eski
@@ -637,6 +655,14 @@ def init_db():
             SELECT id,crest_url,'legacy' FROM rankit_teams
             WHERE crest_url IS NOT NULL AND trim(crest_url)<>''""")
         # Migration: add columns to existing DBs that predate these fields
+        # §6.1: bir yanit BIR KISIYE yoneliktir ve o handle yaziyla degil
+        # yanit EYLEMIYLE uretilir. Yuvalama tek seviye, o yuzden agac
+        # degil duz liste + "kime" sutunu.
+        for col, dfn in [("reply_to_user_id", "INTEGER")]:
+            try:
+                conn.execute(f"ALTER TABLE rankit_review_comments ADD COLUMN {col} {dfn}")
+            except Exception:
+                pass
         for col, dfn in [
             ("is_banned",     "INTEGER NOT NULL DEFAULT 0"),
             ("reset_token",   "TEXT"),

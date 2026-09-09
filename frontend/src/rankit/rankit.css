@@ -281,3 +281,26 @@
 .ri-review-acts button[aria-pressed="true"]{color:#eceded;border-color:rgba(255,255,255,.24)}
 .ri-review-read{margin-left:auto;font:700 10px var(--font-logo);letter-spacing:.1em;color:#9aa0a6;cursor:pointer}
 .ri-reviews-link{display:inline-flex;align-items:center;gap:4px;border:0;background:none;padding:0;font:700 9px var(--font-logo);letter-spacing:.1em;color:var(--ri-gold)}
+
+/* ── Ekran 4a: yanıt dizisi ──────────────────────────────────────────────── */
+.ri-thread-review{border:1px solid var(--ri-line);border-radius:18px;background:#121315;padding:14px;margin-top:4px}
+.ri-thread-review p{margin:9px 0 0;font-size:13px;line-height:1.55;color:#c9cccd}
+.ri-thread-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:11px}
+.ri-thread-tags span{font:600 10px var(--font-logo);letter-spacing:.06em;color:#9aa0a6;border:1px solid var(--ri-line);border-radius:999px;padding:4px 9px}
+.ri-rank-chip{font:700 9px var(--font-logo);letter-spacing:.1em;color:#9aa0a6;border:1px solid var(--ri-line);border-radius:999px;padding:2px 7px}
+.ri-reply{padding:13px 3px;border-top:1px solid var(--ri-line);min-width:0}
+.ri-reply-who{display:flex;align-items:baseline;gap:7px;min-width:0}
+.ri-reply-who strong{font:700 12px var(--font-logo);color:#eceded;white-space:nowrap}
+.ri-reply-who em{font-style:normal;font:600 9px var(--font-logo);letter-spacing:.1em;color:var(--ri-green);white-space:nowrap}
+.ri-reply-who small{margin-left:auto;font-size:10px;color:#7f868b;flex:none}
+.ri-author-mark{font:700 8px var(--font-logo);letter-spacing:.14em;color:#7f868b;border:1px solid var(--ri-line);border-radius:4px;padding:2px 5px}
+.ri-reply p{margin:6px 0 0;font-size:12.5px;line-height:1.5;color:#c9cccd}
+/* Adreslenen handle: metnin parçası değil, ayrı bir işaret. */
+.ri-address{color:#9a3f96;font-weight:500;margin-right:5px}
+.ri-reply-acts{display:flex;align-items:center;gap:7px;margin-top:9px}
+.ri-reply-acts button{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:0 10px;border:1px solid var(--ri-line);border-radius:999px;background:none;color:#9aa0a6;font:700 10px var(--font-logo);letter-spacing:.06em}
+.ri-reply-acts button[aria-pressed="true"]{color:#eceded;border-color:rgba(255,255,255,.24)}
+.ri-reply-compose{margin-top:18px}
+.ri-replying-to{display:flex;align-items:center;gap:6px;font-size:11px;color:#9aa0a6;margin-bottom:7px}
+.ri-replying-to b{color:#9a3f96;font-weight:500}
+.ri-replying-to button{margin-left:auto;border:0;background:none;color:#7f868b;display:grid;place-items:center;width:24px;height:24px}

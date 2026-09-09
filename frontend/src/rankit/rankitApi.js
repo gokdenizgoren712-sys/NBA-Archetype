@@ -69,7 +69,12 @@ export const rankitApi = {
   watchlist: () => request("/watchlist"),
   likeReview: entryId => request(`/reviews/${entryId}/like`, body("POST", {})),
   comments: entryId => request(`/reviews/${entryId}/comments`),
-  addComment: (entryId, content) => request(`/reviews/${entryId}/comments`, body("POST", { content })),
+  // §6.1: adres yanit EYLEMIYLE gecer, kullanicinin yazdigi metinle degil.
+  addComment: (entryId, content, replyTo = null) =>
+    request(`/reviews/${entryId}/comments`, body("POST", { content, reply_to: replyTo })),
+  reviewThread: (entryId, tzOffset = 0) =>
+    request(`/reviews/${entryId}/thread?tz_offset=${tzOffset}`),
+  respectComment: commentId => request(`/comments/${commentId}/respect`, body("POST", {})),
   // Companion (ekran 5a/5b) — Watchalong sekmesinin yerini aldi.
   // Ekran 3j — altin elmasin actigi sey. Genel arama degil: bu gecenin
   // puanlanmamislari + son yedi gunun yakalanmamislari.

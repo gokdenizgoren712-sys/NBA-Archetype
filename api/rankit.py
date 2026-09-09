@@ -166,6 +166,9 @@ class ListIn(BaseModel):
 
 class ReviewCommentIn(BaseModel):
     content: str = Field(min_length=1, max_length=500)
+    # §6.1: onek YAZILMAZ, yanit eylemi uretir. Istemci kime yanit
+    # verdigini gonderir; sunucu handle'i kendisi cozer.
+    reply_to: Optional[int] = None
 
 
 class TargetIn(BaseModel):
@@ -1182,7 +1185,13 @@ def add_review_comment(entry_id: int, body: ReviewCommentIn, user=Depends(get_op
     with get_conn() as conn:
         uid = _actor_id(user, conn)
         _require_review_access(conn, entry_id, uid)
-        cur = conn.execute("INSERT INTO rankit_review_comments(user_id,entry_id,content) VALUES(?,?,?)", (uid, entry_id, body.content.strip()))
+        # Adres varsayilani INCELEMENIN YAZARI: bir yanit her zaman birine
+        # yoneliktir, ve hicbir sey secilmediyse yoneldigi kisi yazardir.
+        entry = conn.execute("SELECT user_id FROM rankit_diary_entries WHERE id=?", (entry_id,)).fetchone()
+        target = body.reply_to or (int(entry["user_id"]) if entry else None)
+        cur = conn.execute(
+            "INSERT INTO rankit_review_comments(user_id,entry_id,content,reply_to_user_id) VALUES(?,?,?,?)",
+            (uid, entry_id, body.content.strip(), target))
         return {"ok": True, "comment_id": cur.lastrowid}
 
 
@@ -1362,6 +1371,100 @@ def rankit_mark_moment(moment_id: int, user=Depends(get_optional_user)):
         n = conn.execute("SELECT COUNT(*) n FROM rankit_moment_marks WHERE moment_id=?",
                          (moment_id,)).fetchone()["n"]
         return {"marked": not bool(exists), "marks": n}
+
+
+@router.get("/reviews/{entry_id}/thread")
+def rankit_review_thread(entry_id: int, tz_offset: int = 0, user=Depends(get_optional_user)):
+    """Ekran 4a — bir incelemenin kendi yuzeyi.
+
+    §6.1: mac sayfasinin inceleme listesi ile bir incelemenin yanit dizisi
+    AYRI yuzeyler. Burada inceleme nesnenin kendisi; yanitlar ona asili.
+
+    Yanitlar DUZ bir liste, agac degil: yuvalama tek seviye, derinlik yerine
+    "kime" bilgisi tasiniyor. Sira EN COK RESPECT.
+    """
+    with get_conn() as conn:
+        uid = int(user["sub"]) if user else (None if IS_PROD else _demo_user_id(conn))
+        _require_review_access(conn, entry_id, uid)
+
+        row = conn.execute("""
+            SELECT e.id,e.user_id,e.rating,e.review,e.classic,e.spoiler,e.created_at,
+                   u.username, m.id match_id, m.starts_at,
+                   ht.name home_name, at.name away_name, m.home_score, m.away_score,
+                   (SELECT COUNT(*) FROM rankit_review_likes l WHERE l.entry_id=e.id) respect,
+                   EXISTS(SELECT 1 FROM rankit_review_likes l WHERE l.entry_id=e.id AND l.user_id=?) respected
+            FROM rankit_diary_entries e
+            JOIN users u ON u.id=e.user_id
+            JOIN rankit_matches m ON m.id=e.match_id
+            JOIN rankit_teams ht ON ht.id=m.home_team_id
+            JOIN rankit_teams at ON at.id=m.away_team_id
+            WHERE e.id=?""", (uid or -1, entry_id)).fetchone()
+        if not row:
+            raise HTTPException(404, "Review not found")
+
+        author_points = rankit_rank.total_points(conn, int(row["user_id"]))
+        logged = rankit_rank._as_dt(row["created_at"])
+        played = rankit_rank._as_dt(row["starts_at"])
+
+        tags = [r["tag"] for r in conn.execute(
+            "SELECT tag FROM rankit_entry_tags WHERE entry_id=?", (entry_id,))]
+
+        replies = [dict(r) for r in conn.execute("""
+            SELECT c.id, c.content, c.created_at, c.user_id, u.username,
+                   t.username reply_to,
+                   (SELECT COUNT(*) FROM rankit_comment_respect k WHERE k.comment_id=c.id) respect,
+                   EXISTS(SELECT 1 FROM rankit_comment_respect k
+                          WHERE k.comment_id=c.id AND k.user_id=?) respected
+            FROM rankit_review_comments c
+            JOIN users u ON u.id=c.user_id
+            LEFT JOIN users t ON t.id=c.reply_to_user_id
+            WHERE c.entry_id=?
+            ORDER BY respect DESC, c.id ASC""", (uid or -1, entry_id))]
+        for r in replies:
+            # §6.1: yazarin kendi yanitlari AUTHOR isareti tasir.
+            r["is_author"] = int(r["user_id"]) == int(row["user_id"])
+
+        return {
+            "review": {
+                "id": row["id"], "username": row["username"],
+                "rating": row["rating"], "review": row["review"],
+                "classic": bool(row["classic"]), "spoiler": bool(row["spoiler"]),
+                "created_at": row["created_at"],
+                "respect": row["respect"], "respected": bool(row["respected"]),
+                "tags": tags,
+                "on_the_night": bool(
+                    logged and played
+                    and rankit_rank.rankit_day(logged, tz_offset)
+                        == rankit_rank.rankit_day(played, tz_offset)),
+                # §7.3: incelemenin yaninda yalnizca KADEME ADI, ilerleme yok.
+                "rank": rankit_rank.tier_for(author_points)["tier"],
+                "rank_name": rankit_rank.tier_for(author_points)["name"],
+            },
+            "match": {
+                "id": row["match_id"],
+                "title": f"{row['home_name']} {row['home_score']}-{row['away_score']} {row['away_name']}"
+                         if row["home_score"] is not None else f"{row['home_name']} v {row['away_name']}",
+            },
+            "replies": replies,
+        }
+
+
+@router.post("/comments/{comment_id}/respect")
+def rankit_comment_respect(comment_id: int, user=Depends(get_optional_user)):
+    """Yanita respect. §6.1: begeni degil respect — asla altin, asla animasyon."""
+    with get_conn() as conn:
+        uid = _actor_id(user, conn)
+        exists = conn.execute("SELECT 1 FROM rankit_comment_respect WHERE comment_id=? AND user_id=?",
+                              (comment_id, uid)).fetchone()
+        if exists:
+            conn.execute("DELETE FROM rankit_comment_respect WHERE comment_id=? AND user_id=?",
+                         (comment_id, uid))
+        else:
+            conn.execute("INSERT INTO rankit_comment_respect(comment_id,user_id) VALUES(?,?)",
+                         (comment_id, uid))
+        n = conn.execute("SELECT COUNT(*) n FROM rankit_comment_respect WHERE comment_id=?",
+                         (comment_id,)).fetchone()["n"]
+        return {"respected": not bool(exists), "respect": n}
 
 
 @router.get("/matches/{match_id}/reviews")

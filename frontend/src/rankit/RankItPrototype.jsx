@@ -15,6 +15,7 @@ import { toMatchCardProps, diaryToMatchCardProps } from "./redesign/toMatchCardP
 import StreakRing from "./redesign/StreakRing";
 import CompanionPanel from "./redesign/CompanionPanel";
 import AllReviews from "./redesign/AllReviews";
+import ReviewThread from "./redesign/ReviewThread";
 import { rankitHaptics } from "./rankitHaptics";
 import "./rankit.css";
 import "./rankit-motion.css";
@@ -311,6 +312,9 @@ function MatchDetail({ match, hideScores, onClose, onSave, onToggleWatchlist, on
   // Companion rozeti (ekran 5a/5b). Katilim sayisi sunucudan gelir; sekme
   // sayiyi gostermek icin panelin acilmasini beklememeli.
   const [allReviewsOpen, setAllReviewsOpen] = useState(false);
+  // 5c -> 4a: bir incelemeye tiklamak ONUN yuzeyini acar (§6.1: mac
+  // sayfasinin listesi ile bir incelemenin dizisi AYRI yuzeyler).
+  const [threadId, setThreadId] = useState(null);
   const [companionState, setCompanionState] = useState(null);
   useEffect(() => { rankitApi.companion(match.id).then(setCompanionState).catch(()=>setCompanionState(null)); }, [match.id]);
   const companionBadge = companionState?.badge || null;
@@ -572,7 +576,9 @@ function MatchDetail({ match, hideScores, onClose, onSave, onToggleWatchlist, on
 
       {allReviewsOpen && <AllReviews matchId={match.id}
         title={`${match.home.short} ${match.score || "vs"} ${match.away.short}`}
+        onOpenThread={id=>setThreadId(id)}
         onClose={()=>setAllReviewsOpen(false)}/>}
+      {threadId && <ReviewThread entryId={threadId} onClose={()=>setThreadId(null)}/>}
       {actionNotice && <div key={actionNotice.id} role="status" className={`ri-action-toast ${actionNotice.tone}`} onAnimationEnd={() => setActionNotice(null)}>{actionNotice.message}</div>}
     </section>
   </div>;
