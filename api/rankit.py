@@ -885,14 +885,22 @@ def rankit_match(match_id: int, user=Depends(get_optional_user)):
 
 @router.get("/search")
 def rankit_search(q: str = Query(default="", max_length=80), kind: str = "All",
-                  status: str = Query("All", description="upcoming|live|finished")):
+                  status: str = Query("All", description="upcoming|live|finished"),
+                  user=Depends(get_optional_user)):
     """Arama. status verilirse maç sonuçları ona göre kısılır.
 
     "Rank a match" yüzeyi bunu 'finished' ile çağırıyor: orada iş bir maçı
     PUANLAMAK ve oynanmamış bir maç o listede ölü bir satır. Varsayılan "All",
-    yani mevcut çağıranlar (genel arama) etkilenmiyor."""
+    yani mevcut çağıranlar (genel arama) etkilenmiyor.
+
+    Ekran 3e her satırın altına KULLANICIYA ÖZEL bir cümle yazıyor —
+    "in your diary", "12 rated", "7 of 12". Bu yüzden arama artık kimliği
+    biliyor; maç sonuçları da _match_dict'e uid ile giriyor, yoksa
+    "defterinde" satırı her zaman boş çıkardı.
+    """
     term = f"%{q.strip()}%"
     with get_conn() as conn:
+        uid = int(user["sub"]) if user else (None if IS_PROD else _demo_user_id(conn))
         matches = []
         if kind in ("All", "Matches"):
             where = "WHERE (h.name LIKE ? OR a.name LIKE ? OR c.name LIKE ?)"
@@ -900,15 +908,51 @@ def rankit_search(q: str = Query(default="", max_length=80), kind: str = "All",
             if status != "All":
                 where += " AND m.status=?"
                 args.append(status)
-            rows = conn.execute(MATCH_SELECT + " " + where + " ORDER BY m.starts_at DESC LIMIT 20", args).fetchall()
-            matches = [_match_dict(conn, r) for r in rows]
+            # Sira "en yeni" DEGIL. Bir sezon gelecek maya kadar uzuyor;
+            # starts_at DESC listenin tepesine sekiz ay sonrasini koyuyor ve
+            # 3e'nin ilk satiri ("14 Sep - in your diary") asla gorunmuyordu.
+            # Once DEFTERINDEKILER, sonra SIMDIYE EN YAKIN.
+            order = """ ORDER BY (SELECT 1 FROM rankit_diary_entries e
+                                  WHERE e.match_id=m.id AND e.user_id=?) DESC,
+                                 ABS(julianday(m.starts_at)-julianday('now'))
+                        LIMIT 20"""
+            rows = conn.execute(MATCH_SELECT + " " + where + order, args + [uid]).fetchall()
+            matches = [_match_dict(conn, r, uid) for r in rows]
         players = [dict(r) for r in conn.execute("SELECT id,name,sport,team_id FROM rankit_players WHERE name LIKE ? LIMIT 20", (term,)).fetchall()] if kind in ("All", "Players") else []
+        # 3e kulüp satırı: "Premier League · 12 rated". Turnuva o kulübün EN SON
+        # maçından geliyor (bir kulüp kupada da oynar, afiş olan ligidir);
+        # sayı DISTINCT maç, çünkü rewatch aynı maçı iki kez saydırmamalı.
         teams = [dict(r) for r in conn.execute("""SELECT t.id,t.name,t.short_name,t.sport,t.color,
-            COALESCE(l.logo_url,t.crest_url) crest_url FROM rankit_teams t
+            COALESCE(l.logo_url,t.crest_url) crest_url,
+            (SELECT c.name FROM rankit_matches m JOIN rankit_competitions c ON c.id=m.competition_id
+             WHERE m.home_team_id=t.id OR m.away_team_id=t.id
+             ORDER BY m.starts_at DESC LIMIT 1) competition,
+            (SELECT COUNT(DISTINCT e.match_id) FROM rankit_diary_entries e
+             JOIN rankit_matches m2 ON m2.id=e.match_id
+             WHERE e.user_id=? AND e.rating IS NOT NULL
+               AND (m2.home_team_id=t.id OR m2.away_team_id=t.id)) rated
+            FROM rankit_teams t
             LEFT JOIN rankit_team_logos l ON l.team_id=t.id
-            WHERE t.name LIKE ? OR t.short_name LIKE ? LIMIT 20""", (term, term)).fetchall()] if kind in ("All", "Teams") else []
+            WHERE t.name LIKE ? OR t.short_name LIKE ? LIMIT 20""", (uid, term, term)).fetchall()] if kind in ("All", "Teams") else []
         members = [dict(r) for r in conn.execute("SELECT id,username FROM users WHERE username LIKE ? AND username NOT LIKE 'rankit_demo' LIMIT 20", (term,)).fetchall()] if kind in ("All", "Members") else []
-        lists = [dict(r) for r in conn.execute("SELECT id,title,description,ranked FROM rankit_lists WHERE visibility='public' AND title LIKE ? LIMIT 20", (term,)).fetchall()] if kind in ("All", "Lists") else []
+        # 3e koleksiyon satırı: halka "7 of 12", altyazı da EŞLEŞME SEBEBİ
+        # ("includes Arsenal"). Sebebi yazabilmek için listeler artık yalnızca
+        # başlıkla değil, İÇERDİKLERİ kulüple de eşleşiyor — "arsenal" yazan
+        # biri "Every London Derby"yi başlıktan asla bulamazdı.
+        lists = [dict(r) for r in conn.execute("""SELECT l.id,l.title,l.description,l.ranked,
+            (SELECT COUNT(*) FROM rankit_list_items i WHERE i.list_id=l.id) total,
+            (SELECT COUNT(DISTINCT i.match_id) FROM rankit_list_items i
+             JOIN rankit_diary_entries e ON e.match_id=i.match_id
+             WHERE i.list_id=l.id AND e.user_id=? AND e.rating IS NOT NULL) rated,
+            (SELECT t.name FROM rankit_list_items i JOIN rankit_matches m ON m.id=i.match_id
+             JOIN rankit_teams t ON t.id IN (m.home_team_id, m.away_team_id)
+             WHERE i.list_id=l.id AND t.name LIKE ? LIMIT 1) matched_team
+            FROM rankit_lists l
+            WHERE l.visibility='public' AND (l.title LIKE ? OR EXISTS(
+              SELECT 1 FROM rankit_list_items i JOIN rankit_matches m ON m.id=i.match_id
+              JOIN rankit_teams t ON t.id IN (m.home_team_id, m.away_team_id)
+              WHERE i.list_id=l.id AND t.name LIKE ?))
+            LIMIT 20""", (uid, term, term, term)).fetchall()] if kind in ("All", "Lists") else []
         return {"matches": matches, "players": players, "teams": teams, "members": members, "lists": lists}
 
 

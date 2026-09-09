@@ -801,3 +801,15 @@
    olduğu görünmüyordu. */
 .riw-vote-team + .riw-vote-team { margin-top: 10px; }
 .riw-vote-team > small { display: block; font: 700 8.5px var(--font-logo); letter-spacing: .13em; color: #7f868b; margin-bottom: 6px; }
+
+/* Ekran 3e web cercevesi. Bilesen ortak; burasi yalnizca katmanin kutusu.
+   Telefonda tam ekran, webde ortalanmis bir panel -- ayni isaretleme. */
+.riw-find-wrap{align-items:flex-start;padding-top:8vh}
+.riw-find{width:min(100%,560px);border-radius:20px;background:linear-gradient(155deg,#1a1b1e,#0f1012);
+  border:1px solid var(--ri-line);box-shadow:0 22px 80px rgba(0,0,0,.6);overflow:hidden;display:flex}
+.riw-find .ri-find{flex:1;min-width:0}
+.riw-search-trigger{display:flex;align-items:center;gap:9px;width:100%;min-height:44px;margin-bottom:6px;
+  padding:0 12px;border:1px solid var(--ri-line);border-radius:999px;background:#121315;color:#9aa0a6;
+  font:700 12px var(--font-logo);letter-spacing:.06em;text-align:left}
+.riw-search-trigger:hover{color:#eceded;border-color:rgba(255,255,255,.18)}
+.riw-search-trigger:focus-visible{outline:2px solid var(--ri-gold);outline-offset:2px}

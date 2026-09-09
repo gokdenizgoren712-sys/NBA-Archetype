@@ -11,6 +11,7 @@ import { rankitApi, rankitSocketUrl } from "../rankitApi";
 import { BROADCAST_COUNTRIES, readPrefs, writePrefs, resolveBroadcastCountry, localeCountry } from "../rankitPrefs";
 import { MatchCard, Stars, RankItMark, TeamMark, formatWhen } from "./cards";
 import CompetitionMatches from "../redesign/CompetitionMatches";
+import SearchSheet from "../redesign/SearchSheet";
 import CompetitionPlayers from "../redesign/CompetitionPlayers";
 import "../rankit.css";
 import "./rankit-web.css";
@@ -98,7 +99,7 @@ function diaryToCard(e) {
 
 /* ── Ray ──────────────────────────────────────────────────────────────────── */
 
-function Rail({ user, onRank }) {
+function Rail({ user, onRank, onSearch }) {
   return (
     <aside className="riw-rail">
       <div className="riw-brand">
@@ -108,6 +109,13 @@ function Rail({ user, onRank }) {
           <small>BY PRIMARY ARCH</small>
         </div>
       </div>
+
+      {/* Web'de global arama HIC yoktu -- yalnizca "Rank a match" sheet'inin
+          kendi mac aramasi vardi. 3e iki yuzeye birden gidiyor (parite
+          sozlesmesi), o yuzden raya kendi girisi geliyor. */}
+      <button type="button" className="riw-search-trigger" onClick={onSearch}>
+        <Search size={15} /> <span>Search</span>
+      </button>
 
       <nav className="riw-nav">
         {SECTIONS.map(({ to, end, Icon, label, rank }) => (
@@ -1878,6 +1886,7 @@ export default function RankItWeb({ section = "home" }) {
   const navigate = useNavigate();
   const [meta, setMeta] = useState(null);
   const [rankOpen, setRankOpen] = useState(false);
+  const [findOpen, setFindOpen] = useState(false);
 
   // Denetçi artık KÖKTE, tek örnek — Catalog/ActivityView/HomeView'ün her biri
   // kendi "open" state'i ve kendi <Inspector>'ını taşıyordu. Küçültme özelliği
@@ -1944,12 +1953,23 @@ export default function RankItWeb({ section = "home" }) {
       <SEO title="RankIt — rate the matches you watch"
         description="A social diary for football and basketball. Rate matches, keep a record, follow people whose taste you recognise."
         path="/rankit" />
-      <Rail user={user} onRank={() => setRankOpen(true)} />
+      <Rail user={user} onRank={() => setRankOpen(true)} onSearch={() => setFindOpen(true)} />
       <div className="riw-body">{body}</div>
 
       {rankOpen && (
         <RankSheet onClose={() => setRankOpen(false)}
           onPick={(id) => { setRankOpen(false); openMatch(id); }} />
+      )}
+      {/* 3e -- telefonla AYNI bileşen; çerçeveyi kabuk veriyor. */}
+      {findOpen && (
+        <div className="ri-sheet-wrap riw-find-wrap" onClick={() => setFindOpen(false)}>
+          <section className="riw-find" onClick={(e) => e.stopPropagation()}
+            role="dialog" aria-modal="true" aria-label="Search RankIt">
+            <SearchSheet onClose={() => setFindOpen(false)}
+              onOpenMatch={(m) => { setFindOpen(false); openMatch(m.id); }}
+              onOpenEntity={(kind, id) => { setFindOpen(false); openEntity(kind, id); }} />
+          </section>
+        </div>
       )}
       {inspectId && (
         <Inspector id={inspectId} minimized={inspectMinimized}

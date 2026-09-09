@@ -15,6 +15,7 @@ import { toMatchCardProps, diaryToMatchCardProps } from "./redesign/toMatchCardP
 import StreakRing from "./redesign/StreakRing";
 import CompanionPanel from "./redesign/CompanionPanel";
 import AllReviews from "./redesign/AllReviews";
+import SearchSheet from "./redesign/SearchSheet";
 import CompetitionMatches from "./redesign/CompetitionMatches";
 import CompetitionPlayers from "./redesign/CompetitionPlayers";
 import ReviewThread from "./redesign/ReviewThread";
@@ -641,35 +642,6 @@ function ReviewFeed({ reviews, onRefresh }) {
   </article>)}</div>;
 }
 
-function GlobalSearch({ onClose, onOpenMatch, onOpenEntity, initialQuery = "" }) {
-  const [query, setQuery] = useState(initialQuery);
-  const [kind, setKind] = useState("All");
-  const [results, setResults] = useState({ matches: [], players: [], teams: [], members: [], lists: [] });
-  const [suggestedMembers, setSuggestedMembers] = useState([]);
-  useEffect(()=>{ rankitApi.search("","Members").then(data=>setSuggestedMembers(data.members||[])).catch(()=>{}); },[]);
-  useEffect(() => {
-    if (!query.trim()) {
-      setResults({ matches: [], players: [], teams: [], members: [], lists: [] });
-      return;
-    }
-    const timer = setTimeout(() => {
-      rankitApi.search(query.trim(), kind)
-        .then(data => setResults({ ...data, matches: (data.matches || []).map(fromApiMatch) }))
-        .catch(() => {});
-    }, 180);
-    return () => clearTimeout(timer);
-  }, [query, kind]);
-  return <div className="ri-sheet-wrap" onClick={onClose}><section className="ri-rank-sheet ri-global-sheet" onClick={e => e.stopPropagation()}>
-    <SheetHandle onClose={onClose}/><div className="ri-rank-head"><div><small>SEARCH ALL OF RANKIT</small><h2>Discover something memorable</h2></div><button onClick={onClose}><X size={20}/></button></div>
-    <label className="ri-search"><Search size={17}/><input autoFocus value={query} onChange={e => setQuery(e.target.value)} placeholder="Matches, teams, players, members, lists"/></label>
-    <div className="ri-search-kinds">{["All","Matches","Players","Teams","Members","Lists"].map(x=><button key={x} className={kind===x?"active":""} onClick={()=>setKind(x)}>{x}</button>)}</div>
-    {!query && <><div className="ri-search-shelves"><small>TRENDING NOW</small><div><button>Champions League</button><button>NBA Playoffs</button><button>Community Classics</button></div></div><div className="ri-people-shelf"><small>PEOPLE TO FOLLOW</small>{suggestedMembers.map(member=><button key={member.id} onClick={()=>{onClose();onOpenEntity("member",member.id)}}><span>{member.username.slice(0,2).toUpperCase()}</span><strong>@{member.username}</strong><ChevronRight size={14}/></button>)}</div></>}
-    {(kind === "All" || kind === "Matches") && <div className="ri-rank-results">{results.matches.map(m=><button key={m.id} onClick={()=>{onClose();onOpenMatch(m)}}><div className="ri-mini-crests"><TeamMark team={m.home}/><TeamMark team={m.away}/></div><span><strong>{m.home.short} vs {m.away.short}</strong><small>{m.competition} · {m.date}</small></span><ChevronRight size={17}/></button>)}</div>}
-    {kind === "All" && <div className="ri-rank-results">{[...results.players.map(x=>({...x,_kind:"player"})),...results.teams.map(x=>({...x,_kind:"team"})),...results.members.map(x=>({...x,_kind:"member"})),...results.lists.map(x=>({...x,_kind:"list"}))].map(item=><button key={`${item._kind}-${item.id}`} onClick={()=>{onClose();onOpenEntity(item._kind,item.id)}}><span><strong>{item.name||item.username||item.title}</strong><small>{item._kind}</small></span><ChevronRight size={17}/></button>)}</div>}
-    {query && ["Players","Teams","Members","Lists"].includes(kind) && <div className="ri-rank-results">{(results[kind.toLowerCase()] || []).map(item => { const entityKind={Players:"player",Teams:"team",Members:"member",Lists:"list"}[kind]; return <button key={`${entityKind}-${item.id}`} onClick={()=>{onClose();onOpenEntity(entityKind,item.id)}}><span><strong>{item.name || item.username || item.title}</strong><small>{item.sport || item.team || item.description || kind.slice(0,-1)}</small></span><ChevronRight size={17}/></button>})}</div>}
-  </section></div>;
-}
-
 function EntityDetail({ detail, onClose, onOpenMatch, onOpenEntity, onChanged }) {
   const { kind, data } = detail;
   if (!data) return <div className="ri-sheet-wrap" onClick={onClose}><section className="ri-detail-sheet ri-entity-sheet" onClick={e=>e.stopPropagation()}><SheetHandle onClose={onClose}/><div className="ri-entity-loading">Loading profile…</div></section></div>;
@@ -1256,7 +1228,11 @@ export default function RankItPrototype({ nativeBack = false }) {
     {competitionDetail && <CompetitionDetail detail={competitionDetail.data} onClose={()=>setCompetitionDetail(null)} onOpenMatch={openMatch} onOpenPlayer={id=>openEntity("player",id)}/>}
     {entityDetail && <EntityDetail detail={entityDetail} onClose={()=>setEntityDetail(null)} onOpenMatch={openMatch} onOpenEntity={openEntity} onChanged={openEntity}/>} 
     {rankOpen && <RankSheet onOpenMatch={openMatch} onClose={() => setRankOpen(false)}/>} 
-    {searchOpen && <GlobalSearch initialQuery={quickSearch} onClose={() => setSearchOpen(false)} onOpenMatch={openMatch} onOpenEntity={openEntity}/>} 
+    {/* Ekran 3e. Eski GlobalSearch alti kutulu bir filtre satiri ve ayrimsiz
+        bir liste tasiyordu; 3e tek alan + gruplu sonuc istiyor. */}
+    {searchOpen && <SearchSheet initialQuery={quickSearch} onClose={() => setSearchOpen(false)}
+      onOpenMatch={m => {setSearchOpen(false);openMatch(fromApiMatch(m))}}
+      onOpenEntity={(kind,id) => {setSearchOpen(false);openEntity(kind,id)}}/>} 
     {listCreatorOpen && <ListCreator catalog={catalog} onClose={()=>setListCreatorOpen(false)} onCreated={refreshCollections}/>} 
     {notificationOpen && (
       <NotificationCenter feed={feed} watchlist={watchlist} onClose={()=>setNotificationOpen(false)} onOpenMatch={openMatch}/>

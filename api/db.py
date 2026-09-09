@@ -656,14 +656,6 @@ def init_db():
         # elle degistirilmis bir deger her acilista geri alinmaz.
         from .rankit_rank import seed_rules
         seed_rules(conn)
-        # §6.1 geriye donuk: reply_to_user_id sutunu eklenmeden once yazilmis
-        # yorumlarin adresi yok. Anlamca hepsi INCELEMENIN YAZARINA yazilmisti
-        # (bir incelemenin altina yorum birakmak buydu), o yuzden oraya
-        # baglaniyorlar. Adressiz bir yanit arayuzde yarim gorunur.
-        conn.execute("""UPDATE rankit_review_comments
-                        SET reply_to_user_id=(SELECT e.user_id FROM rankit_diary_entries e
-                                              WHERE e.id=rankit_review_comments.entry_id)
-                        WHERE reply_to_user_id IS NULL""")
         # RankIt katalog senkronizasyonu: dis veri kaynagindaki mac kimligi
         # tekrar calistirmalarda ayni maci gunceller, kopya uretmez.
         # events_polled_at: canli olay yoklamasinda SIRA icin. En eski
@@ -689,6 +681,19 @@ def init_db():
                 conn.execute(f"ALTER TABLE rankit_review_comments ADD COLUMN {col} {dfn}")
             except Exception:
                 pass
+        # SIRA ONEMLI: bu doldurma ALTER'DAN SONRA. Once yazilmisti ve TEMIZ
+        # bir veritabaninda init_db "no such column: reply_to_user_id" ile
+        # patliyordu -- gelistirme veritabaninda sutun zaten vardi, o yuzden
+        # gorunmedi; testler yakaladi.
+        #
+        # §6.1 geriye donuk: sutun eklenmeden once yazilmis yorumlarin adresi
+        # yok. Anlamca hepsi INCELEMENIN YAZARINA yazilmisti (bir incelemenin
+        # altina yorum birakmak buydu), o yuzden oraya baglaniyorlar.
+        # Adressiz bir yanit arayuzde yarim gorunur.
+        conn.execute("""UPDATE rankit_review_comments
+                        SET reply_to_user_id=(SELECT e.user_id FROM rankit_diary_entries e
+                                              WHERE e.id=rankit_review_comments.entry_id)
+                        WHERE reply_to_user_id IS NULL""")
         for col, dfn in [
             ("is_banned",     "INTEGER NOT NULL DEFAULT 0"),
             ("reset_token",   "TEXT"),
