@@ -28,7 +28,7 @@ export default function StreakRing({ nights = 0, size = 44 }) {
     <div
       style={{ position: "relative", width: size, height: size, flex: "none", display: "grid", placeItems: "center" }}
       role="img"
-      aria-label={active ? `Streak: ${nights} nights` : "No streak yet"}
+      aria-label={active ? `Streak: ${nights} ${nights === 1 ? "night" : "nights"}` : "No streak yet"}
     >
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ position: "absolute", inset: 0, transform: "rotate(-90deg)" }} aria-hidden="true">
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(255,255,255,.12)" strokeWidth="2" />

@@ -6,7 +6,7 @@ import {
   ChevronDown, Heart, LoaderCircle, Radio, RotateCcw, Send, Share2, SlidersHorizontal,
   Star, ThumbsUp, Trophy, Users, X, Shield} from "lucide-react";
 import { activity, lists, matches } from "./mockData";
-import { rankitApi, rankitSocketUrl } from "./rankitApi";
+import { rankitApi } from "./rankitApi";
 import { BROADCAST_COUNTRIES, readPrefs, writePrefs, resolveBroadcastCountry, localeCountry } from "./rankitPrefs";
 // Faz 2 — redesign kartı bayrak arkasında; kapalıyken hiçbir şey değişmiyor.
 import { RANKIT_NEW_CARD } from "./redesign/flags";
@@ -14,7 +14,6 @@ import RedesignMatchCard from "./redesign/MatchCard";
 import { toMatchCardProps, diaryToMatchCardProps } from "./redesign/toMatchCardProps";
 import StreakRing from "./redesign/StreakRing";
 import CompanionPanel from "./redesign/CompanionPanel";
-import { computeStreak } from "./redesign/streak";
 import { rankitHaptics } from "./rankitHaptics";
 import "./rankit.css";
 import "./rankit-motion.css";
@@ -702,33 +701,93 @@ function EntityDetail({ detail, onClose, onOpenMatch, onOpenEntity, onChanged })
   </section></div>;
 }
 
-function RankSheet({ onClose, onOpenMatch, catalog = matches }) {
+/* Ekran 3j — altın elmasın açtığı sheet.
+   Genel bir arama DEĞİL. §7.2'ye dayanan üç bölüm: bu gece oynanıp
+   puanlanmamışlar (puanlamak seriyi ayakta tutar), sonra son yedi günün
+   yakalanmamışları. Arama en altta, çünkü çoğu zaman aradığın maç zaten
+   ilk listede. */
+function RankSheet({ onClose, onOpenMatch }) {
   const [query, setQuery] = useState("");
-  const [filtered, setFiltered] = useState(catalog.filter(m=>m.status==="finished"));
-  const [loading, setLoading] = useState(false);
-  useEffect(()=>{
-    const timer=setTimeout(async()=>{
-      setLoading(true);
+  const [found, setFound] = useState(null);
+  const [data, setData] = useState(null);
+  const tz = -new Date().getTimezoneOffset();
+
+  useEffect(() => {
+    rankitApi.quickRate(tz).then(setData).catch(() => setData(null));
+  }, [tz]);
+
+  useEffect(() => {
+    if (query.trim().length < 2) { setFound(null); return undefined; }
+    const timer = setTimeout(async () => {
       try {
-        const data=query.trim().length>=2 ? await rankitApi.search(query.trim(),"Matches") : await rankitApi.catalog({status:"finished",limit:60});
-        setFiltered((data.matches||[]).map(fromApiMatch));
-      } finally { setLoading(false); }
-    },180);
-    return()=>clearTimeout(timer);
-  },[query]);
+        const r = await rankitApi.search(query.trim(), "Matches");
+        setFound((r.matches || []).map(fromApiMatch));
+      } catch { setFound([]); }
+    }, 180);
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  const row = (m, note) => (
+    <button key={m.id} className="ri-quick-row" onClick={() => { onClose(); onOpenMatch(m); }}>
+      <div className="ri-mini-crests"><TeamMark team={m.home}/><TeamMark team={m.away}/></div>
+      <span>
+        <strong>{m.home.short} vs {m.away.short}</strong>
+        <small>{note}</small>
+      </span>
+      <ChevronRight size={16}/>
+    </button>
+  );
+
   return <div className="ri-sheet-wrap" onClick={onClose}>
     <section className="ri-rank-sheet" onClick={e => e.stopPropagation()}>
       <SheetHandle onClose={onClose}/>
-      <div className="ri-rank-head"><div><small>ADD TO YOUR DIARY</small><h2>Rank a match</h2></div><button onClick={onClose}><X size={20} /></button></div>
-      <label className="ri-search"><Search size={17} /><input autoFocus value={query} onChange={e => setQuery(e.target.value)} placeholder="Search teams or matches" /></label>
-      <div className="ri-quick-date"><CalendarDays size={15} /> {loading ? "Searching all matches…" : query ? `${filtered.length} matches found` : "Recently played"}</div>
-      <div className="ri-rank-results">
-        {filtered.map(m => <button key={m.id} onClick={() => { onClose(); onOpenMatch(m); }}>
-          <div className="ri-mini-crests"><TeamMark team={m.home} /><TeamMark team={m.away} /></div>
-          <span><strong>{m.home.short} vs {m.away.short}</strong><small>{m.competition} · {m.date}</small></span>
-          <ChevronRight size={17} />
-        </button>)}
+      <div className="ri-rank-head">
+        <div><small>RATE A MATCH</small><h2>What did you watch?</h2></div>
+        <button onClick={onClose}><X size={20}/></button>
       </div>
+      <label className="ri-search"><Search size={17}/>
+        <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search any match"/>
+      </label>
+
+      {found ? (
+        <div className="ri-quick-group">
+          <small>{found.length} FOUND</small>
+          {found.map(m => row(m, `${m.competition} · ${m.dateOnly || m.date}`))}
+        </div>
+      ) : !data ? <div className="ri-entity-loading">Loading…</div> : <>
+        {!!data.tonight.length && (
+          <div className="ri-quick-group">
+            <small>FROM TONIGHT · NOT YET LOGGED</small>
+            {data.tonight.map(m => {
+              const card = fromApiMatch(m);
+              // "Keeps your streak alive" yalnizca seri VARSA dogru; yoksa
+              // henuz korunacak bir sey yok, o zaman maçin kendi bilgisi yazar.
+              return row(card, data.streak > 0
+                ? <em>Keeps your streak alive</em>
+                : `Full time · ${card.time}`);
+            })}
+          </div>
+        )}
+        {!!data.catchup_total && (
+          <div className="ri-quick-group">
+            <small>OR CATCH UP</small>
+            <div className="ri-quick-row" style={{ borderTop: 0 }}>
+              <CalendarDays size={16}/>
+              <span><strong>Last 7 days</strong><small>Matches you have not rated</small></span>
+              <b className="ri-quick-count">{data.catchup_total} unrated</b>
+            </div>
+            {data.catchup.slice(0, 8).map(m => {
+              const card = fromApiMatch(m);
+              return row(card, `${card.competition} · ${card.dateOnly || card.date}`);
+            })}
+          </div>
+        )}
+        {!data.tonight.length && !data.catchup_total && (
+          <div className="ri-empty-state"><CalendarDays size={22}/>
+            <strong>Everything is logged</strong>
+            <span>Nothing from the last seven days is waiting for a rating.</span></div>
+        )}
+      </>}
     </section>
   </div>;
 }
@@ -1007,9 +1066,14 @@ export default function RankItPrototype({ nativeBack = false }) {
   const [networkState, setNetworkState] = useState(() => navigator.onLine ? "online" : "offline");
   const [tabDirection, setTabDirection] = useState(1);
   const [diaryEntries, setDiaryEntries] = useState([]);
-  // §7.2 — seri, günlükten türetiliyor. Arka uçta streak alanı YOK; burada
-  // yalnızca "oynandığı gün puanlandı mı" kuralı hesaplanabiliyor.
-  const streakNights = useMemo(() => computeStreak(diaryEntries), [diaryEntries]);
+  // §7.2 — seri SUNUCUDAN. Faz 2'de bunu istemcide hesaplıyordum çünkü arka
+  // uçta streak yoktu; §7 yazıldıktan sonra iki hesap birbirine düştü
+  // (sunucu 1, istemci 0). Dinlenme gecesi kuralı kullanıcının neyi takip
+  // ettiğini bilmeyi gerektiriyor, o bilgi istemcide yok — vekil kaldırıldı.
+  const [streakNights, setStreakNights] = useState(0);
+  useEffect(() => {
+    rankitApi.rank().then(d => setStreakNights(d?.streak?.current || 0)).catch(() => {});
+  }, [diaryEntries]);
   const [profileData, setProfileData] = useState(null);
   const [listCatalog, setListCatalog] = useState([]);
   const [watchlist, setWatchlist] = useState([]);
@@ -1196,7 +1260,7 @@ export default function RankItPrototype({ nativeBack = false }) {
     )}
     {competitionDetail && <CompetitionDetail detail={competitionDetail.data} onClose={()=>setCompetitionDetail(null)} onOpenMatch={openMatch} onOpenPlayer={id=>openEntity("player",id)}/>}
     {entityDetail && <EntityDetail detail={entityDetail} onClose={()=>setEntityDetail(null)} onOpenMatch={openMatch} onOpenEntity={openEntity} onChanged={openEntity}/>} 
-    {rankOpen && <RankSheet catalog={catalog} onOpenMatch={openMatch} onClose={() => setRankOpen(false)}/>} 
+    {rankOpen && <RankSheet onOpenMatch={openMatch} onClose={() => setRankOpen(false)}/>} 
     {searchOpen && <GlobalSearch initialQuery={quickSearch} onClose={() => setSearchOpen(false)} onOpenMatch={openMatch} onOpenEntity={openEntity}/>} 
     {listCreatorOpen && <ListCreator catalog={catalog} onClose={()=>setListCreatorOpen(false)} onCreated={refreshCollections}/>} 
     {notificationOpen && (

@@ -245,3 +245,25 @@
 .ri-moment em{flex:none;display:flex;align-items:center;gap:4px;font-style:normal;font:700 9px var(--font-logo);color:#7f868b}
 /* Sekmeye rozet sigsin diye konum bagi. */
 .ri-detail-tabs button{position:relative}
+
+/* ── Prompt 5: kabuk ─────────────────────────────────────────────────────────
+   Nav aktif durumu ALTIN. §1'in "bolge basina bir altin" butcesi burada
+   asilmiyor: nav elmasi KROM ve sayilmiyor, aktif sekme de nav'in kendi
+   isaretleyicisi — ikisi ayni bolgenin tek altin isi. */
+.ri-bottom-nav button.active{color:var(--ri-gold)}
+.ri-bottom-nav button.active small{color:var(--ri-gold)}
+/* Aktif sekmenin ustunde ince bir altin cizgi: renk tek basina tasimasin. */
+.ri-bottom-nav button.active:not(.rank):before{content:"";position:absolute;top:0;left:50%;transform:translateX(-50%);width:22px;height:2px;border-radius:0 0 2px 2px;background:var(--ri-gold)}
+.ri-bottom-nav button{position:relative}
+
+/* Ekran 3j — hizli puanlama */
+.ri-quick-group{margin-top:18px}
+.ri-quick-group>small{display:block;font:700 9px var(--font-logo);letter-spacing:.14em;color:#7f868b;margin-bottom:9px}
+.ri-quick-row{display:flex;align-items:center;gap:11px;width:100%;padding:11px 3px;border:0;border-top:1px solid var(--ri-line);background:none;text-align:left;color:inherit;min-width:0}
+.ri-quick-row>span{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.ri-quick-row strong{font:700 13px var(--font-logo);color:#eceded;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ri-quick-row small{font-size:10px;color:#9aa0a6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* "Keeps your streak alive" — seriyle dogrudan bagli tek satir, o yuzden
+   yesil (semantik "kazanilmis/korunmus") degil altin degil: ısı degil, durum. */
+.ri-quick-row em{font-style:normal;color:var(--ri-green);font-weight:600}
+.ri-quick-count{flex:none;font:700 11px var(--font-logo);color:var(--ri-gold)}

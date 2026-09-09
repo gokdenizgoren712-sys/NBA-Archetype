@@ -71,6 +71,10 @@ export const rankitApi = {
   comments: entryId => request(`/reviews/${entryId}/comments`),
   addComment: (entryId, content) => request(`/reviews/${entryId}/comments`, body("POST", { content })),
   // Companion (ekran 5a/5b) — Watchalong sekmesinin yerini aldi.
+  // Ekran 3j — altin elmasin actigi sey. Genel arama degil: bu gecenin
+  // puanlanmamislari + son yedi gunun yakalanmamislari.
+  rank: () => request("/rank"),
+  quickRate: (tzOffset = 0) => request(`/quick-rate?tz_offset=${tzOffset}`),
   companion: matchId => request(`/matches/${matchId}/companion`),
   pulse: (matchId, value, minute) => request(`/matches/${matchId}/pulse`, body("POST", { value, minute })),
   markMoment: momentId => request(`/moments/${momentId}/mark`, body("POST", {})),

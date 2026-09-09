@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import os
 import re
-from datetime import date
+from datetime import date, datetime, timezone
 from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect
@@ -1362,6 +1362,51 @@ def rankit_mark_moment(moment_id: int, user=Depends(get_optional_user)):
         n = conn.execute("SELECT COUNT(*) n FROM rankit_moment_marks WHERE moment_id=?",
                          (moment_id,)).fetchone()["n"]
         return {"marked": not bool(exists), "marks": n}
+
+
+@router.get("/quick-rate")
+def rankit_quick_rate(tz_offset: int = 0, user=Depends(get_optional_user)):
+    """Ekran 3j — altin elmasin actigi sey.
+
+    Genel bir arama DEGIL. Uc bolum: bu gecenin puanlanmamis maclari,
+    "seriyi ayakta tutar" isaretiyle; sonra son yedi gunun yakalanmamislari.
+    Sira §7.2'ye dayaniyor: bir gece ancak O GUN oynanan bir maci o gun
+    puanlarsan sayilir, yani "bu gece" ile "yakalama" ayri seyler.
+    """
+    with get_conn() as conn:
+        uid = _actor_id(user, conn)
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
+        today = rankit_rank.rankit_day(now, tz_offset)
+
+        rows = conn.execute(MATCH_SELECT + """
+            WHERE m.status='finished'
+              AND datetime(m.starts_at) >= datetime('now','-7 days')
+              AND NOT EXISTS (SELECT 1 FROM rankit_diary_entries e
+                              WHERE e.user_id=? AND e.match_id=m.id)
+            ORDER BY m.starts_at DESC LIMIT 120""", (uid,)).fetchall()
+
+        tonight, catchup = [], []
+        for row in rows:
+            card = _match_dict(conn, row, uid)
+            played = rankit_rank.rankit_day(
+                rankit_rank._as_dt(row["starts_at"]) or now, tz_offset)
+            if played == today:
+                # Bu gece oynandi ve puanlanmadi: puanlamak seriyi ayakta tutar.
+                card["keeps_streak"] = True
+                tonight.append(card)
+            else:
+                catchup.append(card)
+
+        streak = rankit_rank.streak_for(conn, uid, tz_offset)
+        return {
+            "tonight": tonight,
+            "catchup": catchup[:40],
+            "catchup_total": len(catchup),
+            "streak": streak["current"],
+            # Bu gece puanlanacak mac yoksa seri risk altinda DEGIL —
+            # §7.2'nin dinlenme gecesi kurali. Arayuz bunu soyleyebilsin.
+            "at_risk": bool(tonight) and streak["current"] > 0,
+        }
 
 
 @router.get("/rank")
