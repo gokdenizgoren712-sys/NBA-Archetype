@@ -215,3 +215,33 @@
 .ri-card-slot:focus-visible{outline:2px solid var(--ri-gold);outline-offset:3px}
 /* Kartın İÇİNDEKİ her nowrap satırı da küçülebilmeli. */
 .ri-card-slot [style*="nowrap"]{min-width:0}
+
+/* ── Ekran 2g: Community üç blok ─────────────────────────────────────────────
+   Dokuz kutu tek kolonda alt alta diziliyordu; artık üç adlandırılmış bölüm.
+   Renkler DESIGN.md metin token'ları. */
+.ri-entry-block{border:1px solid var(--ri-line);border-radius:18px;background:#121315;padding:14px;margin-bottom:13px}
+.ri-block-head{display:flex;align-items:baseline;justify-content:space-between;gap:9px;margin-bottom:11px;min-width:0}
+.ri-block-head small{font:700 9px var(--font-logo);letter-spacing:.14em;color:#7f868b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ri-block-head b{font:700 9px var(--font-logo);letter-spacing:.1em;color:#9aa0a6;flex:none}
+.ri-saved-flag{color:var(--ri-green)!important}
+
+/* ── Ekran 5a/5b: Companion ──────────────────────────────────────────────── */
+.ri-tab-badge{position:absolute;top:6px;right:6px;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:rgba(255,255,255,.12);color:#c9cccd;font:700 8px var(--font-logo);letter-spacing:.08em;display:grid;place-items:center;font-style:normal}
+.ri-tab-badge.live{background:#f5402e;color:#fff}
+.ri-companion-card{border:1px solid var(--ri-line);border-radius:18px;background:#121315;padding:16px;display:flex;flex-direction:column;align-items:center;gap:4px}
+.ri-companion-card span{font:700 9px var(--font-logo);letter-spacing:.14em;color:#7f868b}
+.ri-companion-card strong{font:700 31px var(--font-logo);color:#eceded;line-height:1}
+.ri-companion-card small{font-size:11px;color:#9aa0a6}
+.ri-companion-note{font-size:11px;line-height:1.5;color:#9aa0a6;margin:11px 0 0;text-align:center}
+.ri-pulse-head{display:flex;align-items:flex-end;justify-content:space-between;gap:9px;margin-top:4px}
+.ri-pulse-head>div{display:flex;flex-direction:column;gap:2px;min-width:0}
+.ri-pulse-head span{font:700 9px var(--font-logo);letter-spacing:.14em;color:#7f868b}
+.ri-pulse-head strong{font:700 31px var(--font-logo);line-height:1}
+.ri-pulse-head small{font-size:10px;color:#7f868b;flex:none}
+.ri-moments{margin-top:18px}
+.ri-moment{display:flex;align-items:center;gap:9px;padding:9px 2px;border-bottom:1px solid var(--ri-line);min-width:0}
+.ri-moment b{flex:0 0 30px;font:700 11px var(--font-logo);color:var(--ri-gold);font-variant-numeric:tabular-nums}
+.ri-moment span{flex:1;min-width:0;font-size:12px;color:#c9cccd;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ri-moment em{flex:none;display:flex;align-items:center;gap:4px;font-style:normal;font:700 9px var(--font-logo);color:#7f868b}
+/* Sekmeye rozet sigsin diye konum bagi. */
+.ri-detail-tabs button{position:relative}

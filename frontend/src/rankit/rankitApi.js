@@ -70,6 +70,10 @@ export const rankitApi = {
   likeReview: entryId => request(`/reviews/${entryId}/like`, body("POST", {})),
   comments: entryId => request(`/reviews/${entryId}/comments`),
   addComment: (entryId, content) => request(`/reviews/${entryId}/comments`, body("POST", { content })),
+  // Companion (ekran 5a/5b) — Watchalong sekmesinin yerini aldi.
+  companion: matchId => request(`/matches/${matchId}/companion`),
+  pulse: (matchId, value, minute) => request(`/matches/${matchId}/pulse`, body("POST", { value, minute })),
+  markMoment: momentId => request(`/moments/${momentId}/mark`, body("POST", {})),
   watchalong: (matchId, room = "community") => request(`/matches/${matchId}/watchalong?room=${encodeURIComponent(room)}`),
 };
 

@@ -1251,6 +1251,116 @@ class PresenceIn(BaseModel):
     seconds: int = Field(ge=0, le=1800)   # tek raporda en fazla 30 dk
 
 
+class PulseIn(BaseModel):
+    """Canli okuma (ekran 5b "YOUR LIVE READ"). Isi rampasiyla ayni olcek."""
+    value: float = Field(ge=0, le=5)
+    minute: int = Field(ge=0, le=200)
+
+
+@router.get("/matches/{match_id}/companion")
+def rankit_companion(match_id: int, user=Depends(get_optional_user)):
+    """Companion sekmesinin tum durumu — 5a (mac oncesi) ve 5b (canli).
+
+    Rozet mac durumundan turer: katilim sayisi -> LIVE -> hicbir sey.
+    Emekli olan Watchalong sekmesinin yerini aliyor.
+    """
+    with get_conn() as conn:
+        uid = int(user["sub"]) if user else (None if IS_PROD else _demo_user_id(conn))
+        row = conn.execute("SELECT status,starts_at,sport FROM rankit_matches WHERE id=?",
+                           (match_id,)).fetchone()
+        if not row:
+            raise HTTPException(404, "Match not found")
+
+        joined = conn.execute(
+            "SELECT COUNT(*) n FROM rankit_companion_presence WHERE match_id=?",
+            (match_id,)).fetchone()["n"]
+
+        # Su anki nabiz: kullanici basina SON okuma. Her ornegi ortalamak
+        # cok okuma yapani agirliklandirirdi.
+        current = conn.execute(
+            """SELECT AVG(value) v, COUNT(*) n FROM rankit_pulse_reads p
+               WHERE match_id=? AND id=(SELECT MAX(id) FROM rankit_pulse_reads
+                                        WHERE match_id=p.match_id AND user_id=p.user_id)""",
+            (match_id,)).fetchone()
+
+        # Zaman cizelgesi: 5'er dakikalik kovalar. Okumanin VERILDIGI dakika
+        # kullaniliyor, kaydedildigi an degil — 73'te verilen okuma 30'un
+        # ortalamasina girmemeli.
+        timeline = [dict(r) for r in conn.execute(
+            """SELECT (minute/5)*5 bucket, ROUND(AVG(value),2) value, COUNT(*) reads
+               FROM rankit_pulse_reads WHERE match_id=?
+               GROUP BY bucket ORDER BY bucket""", (match_id,))]
+
+        moments = [dict(r) for r in conn.execute(
+            """SELECT m.id,m.minute,m.kind,m.label,
+                      (SELECT COUNT(*) FROM rankit_moment_marks k WHERE k.moment_id=m.id) marks
+               FROM rankit_moments m WHERE m.match_id=? ORDER BY m.minute DESC""",
+            (match_id,))]
+
+        mine = conn.execute(
+            """SELECT value,minute FROM rankit_pulse_reads
+               WHERE match_id=? AND user_id=? ORDER BY id DESC LIMIT 1""",
+            (match_id, uid or -1)).fetchone()
+
+        status = row["status"]
+        return {
+            "status": status,
+            "starts_at": row["starts_at"],
+            # 5a: katilim sayisi, 5b: LIVE, bitmisse rozet yok.
+            "badge": str(joined) if status == "upcoming" and joined else ("LIVE" if status == "live" else None),
+            "joined": joined,
+            "pulse": {"value": round(current["v"], 2) if current and current["v"] is not None else None,
+                      "reads": current["n"] if current else 0,
+                      "timeline": timeline},
+            "my_read": {"value": mine["value"], "minute": mine["minute"]} if mine else None,
+            "moments": moments,
+            # 5a'nin sozu: "Live rating opens at kick-off. Your stars still
+            # wait for full time." Yildiz puanlama HALA bitmis mac istiyor.
+            "live_read_open": status == "live",
+        }
+
+
+@router.post("/matches/{match_id}/pulse")
+def rankit_pulse(match_id: int, body: PulseIn, user=Depends(get_optional_user)):
+    """Canli okuma birak. Yalnizca mac CANLIYKEN — 5a acikca "live rating
+    opens at kick-off" diyor."""
+    with get_conn() as conn:
+        uid = _actor_id(user, conn)
+        row = conn.execute("SELECT status FROM rankit_matches WHERE id=?", (match_id,)).fetchone()
+        if not row:
+            raise HTTPException(404, "Match not found")
+        if row["status"] != "live":
+            raise HTTPException(409, "The live read opens at kick-off")
+        conn.execute(
+            "INSERT INTO rankit_pulse_reads(match_id,user_id,value,minute) VALUES(?,?,?,?)",
+            (match_id, uid, float(body.value), int(body.minute)))
+        agg = conn.execute(
+            """SELECT AVG(value) v, COUNT(*) n FROM rankit_pulse_reads p
+               WHERE match_id=? AND id=(SELECT MAX(id) FROM rankit_pulse_reads
+                                        WHERE match_id=p.match_id AND user_id=p.user_id)""",
+            (match_id,)).fetchone()
+        return {"ok": True, "pulse": round(agg["v"], 2) if agg["v"] is not None else None,
+                "reads": agg["n"]}
+
+
+@router.post("/moments/{moment_id}/mark")
+def rankit_mark_moment(moment_id: int, user=Depends(get_optional_user)):
+    """Bir ani isaretle ("148 marked this"). Idempotent."""
+    with get_conn() as conn:
+        uid = _actor_id(user, conn)
+        exists = conn.execute("SELECT 1 FROM rankit_moment_marks WHERE moment_id=? AND user_id=?",
+                              (moment_id, uid)).fetchone()
+        if exists:
+            conn.execute("DELETE FROM rankit_moment_marks WHERE moment_id=? AND user_id=?",
+                         (moment_id, uid))
+        else:
+            conn.execute("INSERT INTO rankit_moment_marks(moment_id,user_id) VALUES(?,?)",
+                         (moment_id, uid))
+        n = conn.execute("SELECT COUNT(*) n FROM rankit_moment_marks WHERE moment_id=?",
+                         (moment_id,)).fetchone()["n"]
+        return {"marked": not bool(exists), "marks": n}
+
+
 @router.get("/rank")
 def rankit_rank_view(user=Depends(get_optional_user)):
     """Kademe, puan ve seri. §7.3 ikisini AYRI tutuyor — ayni bilesende yan

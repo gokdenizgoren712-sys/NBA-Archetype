@@ -13,6 +13,7 @@ import { RANKIT_NEW_CARD } from "./redesign/flags";
 import RedesignMatchCard from "./redesign/MatchCard";
 import { toMatchCardProps, diaryToMatchCardProps } from "./redesign/toMatchCardProps";
 import StreakRing from "./redesign/StreakRing";
+import CompanionPanel from "./redesign/CompanionPanel";
 import { computeStreak } from "./redesign/streak";
 import { rankitHaptics } from "./rankitHaptics";
 import "./rankit.css";
@@ -307,6 +308,11 @@ function MatchDetail({ match, hideScores, onClose, onSave, onToggleWatchlist, on
   const [showPotmPicker, setShowPotmPicker] = useState(false);
   const [showRespectPicker, setShowRespectPicker] = useState(false);
   const [broadcastInfo, setBroadcastInfo] = useState(null);
+  // Companion rozeti (ekran 5a/5b). Katilim sayisi sunucudan gelir; sekme
+  // sayiyi gostermek icin panelin acilmasini beklememeli.
+  const [companionState, setCompanionState] = useState(null);
+  useEffect(() => { rankitApi.companion(match.id).then(setCompanionState).catch(()=>setCompanionState(null)); }, [match.id]);
+  const companionBadge = companionState?.badge || null;
   // "Bu maçı listeme ekle": addListItem ucu vardı ama iki yüzey de
   // çağırmıyordu. Web'e eklenirken telefon geride kalmasın — parite
   // sözleşmesi tek yönlü değil (bkz. rankit/PRODUCT.md).
@@ -441,8 +447,9 @@ function MatchDetail({ match, hideScores, onClose, onSave, onToggleWatchlist, on
           <div className="ri-v03-team"><TeamMark team={match.away}/><strong>{match.away.short}</strong>{match.away.name !== match.away.short && <small>{match.away.name}</small>}</div>
         </div>
       </div>
-      <div className="ri-detail-tabs"><button className={section === "Match" ? "active" : ""} onClick={() => setSection("Match")}>Match</button><button className={section === "Community" ? "active" : ""} onClick={() => setSection("Community")}>Community</button></div>
-      {section === "Match" ? <>
+      <div className="ri-detail-tabs" role="tablist">{["Match","Community","Companion"].map(name=><button key={name} role="tab" aria-selected={section===name} className={section===name?"active":""} onClick={()=>setSection(name)}>{name}{/* Rozet mac durumundan turer: katilim sayisi -> LIVE -> hicbir sey. */}{name==="Companion" && companionBadge && <i className={`ri-tab-badge${match.status==="live"?" live":""}`}>{companionBadge}</i>}</button>)}</div>
+      {section === "Companion" ? <CompanionPanel matchId={match.id} isLoggedIn/>
+      : section === "Match" ? <>
         {match.summary && <p className="ri-summary">{match.summary}</p>}
         <div className="ri-broadcast"><small>{country.supported ? `WATCH IN ${country.code}` : "BROADCAST"}</small><strong>{!country.supported ? "Not covered in your region yet" : (broadcastInfo?.channels?.map(channel=>channel.name).join(" · ") || match.broadcaster || "To be announced")}</strong><span>{broadcastInfo?.confidence === "confirmed" ? "Confirmed broadcaster" : broadcastInfo?.confidence === "typical" ? "Typical competition coverage · check before the match" : match.status === "finished" ? "Broadcast information unavailable" : "Coverage has not been confirmed yet"}</span></div>
         <div className="ri-timeline"><small>MATCH</small><div><span>{match.status === "finished" ? "FT" : match.time || match.dateOnly}</span><strong>{match.status === "finished" ? "Full time" : "Scheduled"}</strong></div><button onClick={() => setSection("Community")}>Community <ChevronRight size={14}/></button></div>
@@ -478,32 +485,87 @@ function MatchDetail({ match, hideScores, onClose, onSave, onToggleWatchlist, on
           </div>}
         </div>
       </> : match.status === "finished" ? <>
-        <div className="ri-v03-community-stats">
-          <div><Star size={15} fill="currentColor"/><strong>{match.communityRating ?? "—"}</strong><span>COMMUNITY</span></div>
-          <div><MessageCircle size={15}/><strong>{match.reviewCount || 0}</strong><span>REVIEWS</span></div>
-          <div><Award size={15}/><strong>{match.classic_count || 0}</strong><span>CLASSICS</span></div>
-        </div>
-        {(match.potm || communityTags.length > 0) && <section className="ri-v03-consensus">
-          {match.potm && <div className="ri-v03-potm"><Trophy size={18}/><span><small>COMMUNITY PLAYER OF THE MATCH</small><strong>{match.potm.name}</strong></span><b>{match.potm.votes || 0}×</b></div>}
-          {communityTags.length > 0 && <div className="ri-v03-tag-cloud">{communityTags.map(item=><span key={item.tag} className={item.tag===match.dominantTag?"dominant":""}>{item.tag}<b>{item.count.toLocaleString()}×</b></span>)}</div>}
-        </section>}
-        <div className="ri-v03-log-head"><div><small>YOUR MATCH DIARY</small><h3>{match.my_watched_date ? "Update your entry" : "Log this match"}</h3></div>{match.my_watched_date&&<b>LOGGED</b>}</div>
-        <div className="ri-rating-panel"><small>YOUR RATING</small><Stars value={rating} onChange={setRating}/><ClassicStamp active={classic} onClick={() => setClassic(v => !v)}/></div>
-        <div className="ri-chip-title">DESCRIBE THE MATCH <span>{tags.length}/3</span></div>
-        <div className="ri-tag-picker">{visibleTags.map(tag => <button key={tag} className={tags.includes(tag) ? "active" : ""} onClick={() => toggleTag(tag)}>{tag}</button>)}<button className="ri-more-tags" onClick={()=>setShowMoreTags(v=>!v)}>{showMoreTags?"Less":"More"}</button></div>
-        <div className="ri-detail-row"><span>Community rating</span><strong><Star size={14} fill="currentColor"/> {match.communityRating ?? "Not rated"} <small>({match.ratings.toLocaleString()})</small></strong></div>
-        <div className="ri-vote-block ri-v03-votes">
-          <button className="ri-v03-vote-trigger" onClick={()=>setShowPotmPicker(value=>!value)}><Trophy size={16}/><span><small>YOUR PLAYER OF THE MATCH</small><strong>{selectedPotm?.name || "Choose one player"}</strong></span><b>{showPotmPicker ? "CLOSE" : potmId ? "CHANGE" : "CHOOSE"}</b></button>
-          {showPotmPicker && <div className="ri-match-player-groups">{Object.entries(playersByTeam).map(([team,players])=><section key={`potm-${team}`}><small>{team}</small><div className="ri-respect-grid">{players.map(player => <button key={`potm-${player.id}`} className={potmId === player.id ? "active" : ""} onClick={() => {choosePotm(player.id);setShowPotmPicker(false)}}>{player.image_url?<img src={player.image_url} alt=""/>:<Trophy size={12}/>}<span>{player.name}</span></button>)}</div></section>)}</div>}
-          <button className="ri-v03-vote-trigger respect" onClick={()=>setShowRespectPicker(value=>!value)}><ThumbsUp size={16}/><span><small>RESPECT · UP TO TWO</small><strong>{selectedRespect.length ? selectedRespect.map(player=>player.name).join(" · ") : "Recognise other performances"}</strong></span><b>{showRespectPicker ? "CLOSE" : respect.length ? "CHANGE" : "CHOOSE"}</b></button>
-          {showRespectPicker && <div className="ri-match-player-groups">{Object.entries(playersByTeam).map(([team,players])=><section key={`respect-${team}`}><small>{team}</small><div className="ri-respect-grid">{players.filter(player=>player.id!==potmId).map(player => <button key={`respect-${player.id}`} className={respect.includes(player.id) ? "active" : ""} onClick={() => toggleRespect(player.id)}>{player.image_url?<img src={player.image_url} alt=""/>:<ThumbsUp size={12}/>}<span>{player.name}</span></button>)}</div></section>)}</div>}
-        </div>
-        <textarea className="ri-review-input" maxLength={4000} value={review} onChange={e=>setReview(e.target.value)} placeholder="Write an optional review…" rows="3"/>
-        <div className="ri-review-options"><label><input type="checkbox" checked={spoiler} onChange={e=>setSpoiler(e.target.checked)}/> Contains spoilers</label><label><input type="checkbox" checked={rewatch} onChange={e=>setRewatch(e.target.checked)}/> Log as rewatch</label><select value={visibility} onChange={e=>setVisibility(e.target.value)} aria-label="Review visibility"><option value="public">Public</option><option value="followers">Followers</option><option value="private">Private</option></select></div>
-        <button disabled={saveState === "saving"} aria-busy={saveState === "saving"} className={`ri-review-cta${saveState === "saved" ? " saved" : ""}${saveState === "saving" ? " is-busy" : ""}`} onClick={saveLog}>{saveState === "saving" ? <LoaderCircle className="ri-spin" size={17}/> : <MessageCircle size={17}/>} {saveState === "saving" ? "Saving…" : saveState === "saved" ? "Saved to Diary" : saveState === "error" ? "Could not save · Try again" : match.my_watched_date && !rewatch ? "Update Diary Entry" : "Save to Diary"}</button>
-        {saveState === "saved" && <div className="ri-save-result"><span>YOUR RANKIT</span><strong>{rating || "—"} / 5 {classic ? "· CLASSIC" : ""}</strong><button onClick={()=>shareMatch(match,hideScores)}><Share2 size={14}/> Share rating card</button></div>}
-        <ReviewFeed reviews={match.reviews || []} onRefresh={onRefresh}/>
-      </> : <WatchalongPanel matchId={match.id}/>} 
+        {/* Ekran 2g: dokuz blok UCE indi. Sayim gercekti — eski surumde
+            ust duzeyde tam dokuz kutu vardi (stats, log-head, rating, chip,
+            tags, detail-row, votes, review, options) ve hepsi ayni kolonda
+            alt alta diziliyordu. Uc bolum ayni ozellikleri tasiyor, hicbiri
+            kaldirilmadi; POTM ve Respect "senin kaydin"in parcasi oldugu
+            icin birinci bolume girdi. */}
+
+        {/* 1 — YOUR ENTRY */}
+        <section className="ri-entry-block">
+          <div className="ri-block-head">
+            <small>YOUR ENTRY</small>
+            {match.my_watched_date && <b className="ri-saved-flag">SAVED</b>}
+          </div>
+          <div className="ri-rating-panel">
+            <Stars value={rating} onChange={setRating}/>
+            <ClassicStamp active={classic} onClick={() => setClassic(v => !v)}/>
+          </div>
+          <div className="ri-vote-block">
+            <button className="ri-v03-vote-trigger" onClick={()=>setShowPotmPicker(v=>!v)}>
+              <Trophy size={16}/><span><small>PLAYER OF THE MATCH</small><strong>{selectedPotm?.name || "Choose one player"}</strong></span>
+              <b>{showPotmPicker ? "CLOSE" : potmId ? "CHANGE" : "CHOOSE"}</b>
+            </button>
+            {showPotmPicker && <div className="ri-match-player-groups">{Object.entries(playersByTeam).map(([team,players])=>
+              <section key={`potm-${team}`}><small>{team}</small><div className="ri-respect-grid">{players.map(player =>
+                <button key={`potm-${player.id}`} className={potmId === player.id ? "active" : ""} onClick={() => {choosePotm(player.id);setShowPotmPicker(false)}}>
+                  {player.image_url?<img src={player.image_url} alt=""/>:<Trophy size={12}/>}<span>{player.name}</span></button>)}</div></section>)}</div>}
+            <button className="ri-v03-vote-trigger respect" onClick={()=>setShowRespectPicker(v=>!v)}>
+              <ThumbsUp size={16}/><span><small>RESPECT · UP TO TWO</small><strong>{selectedRespect.length ? selectedRespect.map(p=>p.name).join(" · ") : "Recognise other performances"}</strong></span>
+              <b>{showRespectPicker ? "CLOSE" : respect.length ? "CHANGE" : "CHOOSE"}</b>
+            </button>
+            {showRespectPicker && <div className="ri-match-player-groups">{Object.entries(playersByTeam).map(([team,players])=>
+              <section key={`respect-${team}`}><small>{team}</small><div className="ri-respect-grid">{players.filter(p=>p.id!==potmId).map(player =>
+                <button key={`respect-${player.id}`} className={respect.includes(player.id) ? "active" : ""} onClick={() => toggleRespect(player.id)}>
+                  {player.image_url?<img src={player.image_url} alt=""/>:<ThumbsUp size={12}/>}<span>{player.name}</span></button>)}</div></section>)}</div>}
+          </div>
+        </section>
+
+        {/* 2 — TAGS & REVIEW */}
+        <section className="ri-entry-block">
+          <div className="ri-block-head"><small>TAGS &amp; REVIEW</small><b>{tags.length} of 3</b></div>
+          <div className="ri-tag-picker">{visibleTags.map(tag =>
+            <button key={tag} className={tags.includes(tag) ? "active" : ""} onClick={() => toggleTag(tag)}>{tag}</button>)}
+            <button className="ri-more-tags" onClick={()=>setShowMoreTags(v=>!v)}>{showMoreTags?"Less":"More"}</button></div>
+          <textarea className="ri-review-input" maxLength={4000} value={review} onChange={e=>setReview(e.target.value)}
+            placeholder="Write an optional review…" rows="3"/>
+          <div className="ri-review-options">
+            <label><input type="checkbox" checked={spoiler} onChange={e=>setSpoiler(e.target.checked)}/> Contains spoilers</label>
+            <label><input type="checkbox" checked={rewatch} onChange={e=>setRewatch(e.target.checked)}/> Log as rewatch</label>
+            <select value={visibility} onChange={e=>setVisibility(e.target.value)} aria-label="Review visibility">
+              <option value="public">Public</option><option value="followers">Followers</option><option value="private">Private</option>
+            </select>
+          </div>
+          <button disabled={saveState === "saving"} aria-busy={saveState === "saving"}
+            className={`ri-review-cta${saveState === "saved" ? " saved" : ""}${saveState === "saving" ? " is-busy" : ""}`} onClick={saveLog}>
+            {saveState === "saving" ? <LoaderCircle className="ri-spin" size={17}/> : <MessageCircle size={17}/>}{" "}
+            {saveState === "saving" ? "Saving…" : saveState === "saved" ? "Saved to Diary" : saveState === "error" ? "Could not save · Try again" : match.my_watched_date && !rewatch ? "Update Diary Entry" : "Save to Diary"}
+          </button>
+          {saveState === "saved" && <div className="ri-save-result"><span>YOUR RANKIT</span><strong>{rating || "—"} / 5 {classic ? "· CLASSIC" : ""}</strong>
+            <button onClick={()=>shareMatch(match,hideScores)}><Share2 size={14}/> Share rating card</button></div>}
+        </section>
+
+        {/* 3 — WHAT EVERYONE ELSE SAID */}
+        <section className="ri-entry-block">
+          <div className="ri-block-head">
+            <small>WHAT EVERYONE ELSE SAID</small>
+            <b>{match.reviewCount || 0} reviews</b>
+          </div>
+          <div className="ri-v03-community-stats">
+            <div><Star size={15} fill="currentColor"/><strong>{match.communityRating ?? "—"}</strong><span>COMMUNITY</span></div>
+            <div><MessageCircle size={15}/><strong>{match.reviewCount || 0}</strong><span>REVIEWS</span></div>
+            <div><Award size={15}/><strong>{match.classic_count || 0}</strong><span>CLASSICS</span></div>
+          </div>
+          {(match.potm || communityTags.length > 0) && <div className="ri-v03-consensus">
+            {match.potm && <div className="ri-v03-potm"><Trophy size={18}/><span><small>COMMUNITY PLAYER OF THE MATCH</small><strong>{match.potm.name}</strong></span><b>{match.potm.votes || 0}×</b></div>}
+            {communityTags.length > 0 && <div className="ri-v03-tag-cloud">{communityTags.map(item=>
+              <span key={item.tag} className={item.tag===match.dominantTag?"dominant":""}>{item.tag}<b>{item.count.toLocaleString()}×</b></span>)}</div>}
+          </div>}
+          <ReviewFeed reviews={match.reviews || []} onRefresh={onRefresh}/>
+        </section>
+      </> : <div className="ri-empty-state"><Radio size={22}/><strong>Nothing to review yet</strong><span>Community opens when the match finishes. The Companion tab is live now.</span></div>}
+
       {actionNotice && <div key={actionNotice.id} role="status" className={`ri-action-toast ${actionNotice.tone}`} onAnimationEnd={() => setActionNotice(null)}>{actionNotice.message}</div>}
     </section>
   </div>;
@@ -583,25 +645,6 @@ function ReviewFeed({ reviews, onRefresh }) {
     <footer><button disabled={busyLikes.includes(r.id)} aria-label={`${reactions[r.id]?.liked ? "Unlike" : "Like"} review by ${r.username}`} className={reactions[r.id]?.liked ? "active" : ""} onClick={() => like(r)}><Heart size={12} fill={reactions[r.id]?.liked ? "currentColor" : "none"}/> {reactions[r.id]?.likes ?? r.likes}</button><button onClick={() => toggleComments(r.id)}><MessageCircle size={12}/> {r.comments}</button></footer>
     {openId === r.id && <div className="ri-comments">{commentState[r.id] === "loading" ? <p className="ri-inline-state">Loading replies…</p> : (comments[r.id] || []).map(c => <p key={c.id}><strong>@{c.username}</strong> {c.content}</p>)}{commentState[r.id] === "error" && <p className="ri-inline-state error">Could not update replies. Try again.</p>}<div><input value={draft} onChange={e => setDraft(e.target.value)} onKeyDown={e=>e.key === "Enter" && addComment(r.id)} placeholder="Write a reply"/><button disabled={commentState[r.id] === "saving" || !draft.trim()} onClick={() => addComment(r.id)}>{commentState[r.id] === "saving" ? <LoaderCircle className="ri-spin" size={13}/> : <Send size={13}/>}</button></div></div>}
   </article>)}</div>;
-}
-
-function WatchalongPanel({ matchId }) {
-  const [messages, setMessages] = useState([]);
-  const [draft, setDraft] = useState("");
-  const [connected, setConnected] = useState(false);
-  const socketRef = useMemo(() => ({ current: null }), []);
-  useEffect(() => {
-    rankitApi.watchalong(matchId).then(d => setMessages(d.messages || [])).catch(() => {});
-    const token = localStorage.getItem("nba_arch_token") || "";
-    const ws = new WebSocket(rankitSocketUrl(`/api/rankit/ws/watchalong/${matchId}?token=${encodeURIComponent(token)}`));
-    socketRef.current = ws;
-    ws.onopen = () => setConnected(true);
-    ws.onclose = () => setConnected(false);
-    ws.onmessage = event => { const data = JSON.parse(event.data); if (data.message) setMessages(v => [...v, data.message]); };
-    return () => ws.close();
-  }, [matchId, socketRef]);
-  const send = () => { if (!draft.trim() || socketRef.current?.readyState !== WebSocket.OPEN) return; socketRef.current.send(JSON.stringify({ content: draft.trim() })); setDraft(""); };
-  return <div className="ri-watchalong-live"><div className="ri-watchalong-card"><Radio size={22}/><div><small>LIVE WATCHALONG</small><strong>{connected ? "Community room connected" : "Connecting…"}</strong><span>React together without turning RankIt into a score app.</span></div></div><div className="ri-chat-log">{messages.map(m => <p key={m.id}><strong>@{m.username}</strong><span>{m.content}</span></p>)}</div><div className="ri-chat-compose"><input value={draft} onChange={e=>setDraft(e.target.value)} onKeyDown={e=>e.key === "Enter" && send()} placeholder="Say something about the match"/><button onClick={send}><Send size={15}/></button></div></div>;
 }
 
 function GlobalSearch({ onClose, onOpenMatch, onOpenEntity, initialQuery = "" }) {

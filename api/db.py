@@ -568,6 +568,43 @@ def init_db():
             PRIMARY KEY (user_id, match_id)
         );
 
+        -- ── Companion: canli nabiz (ekran 5b "CROWD PULSE") ──────────────────
+        -- Bu SAGLAYICININ momentum verisi DEGIL. Sahibin tanimi: "companion
+        -- uzerindeki pulse mac canliyken verilen spektrum" — yani izleyenlerin
+        -- o an verdigi COLD..HOT okumasi. FotMob'un momentum'u ayri bir sey
+        -- ve karistirilirsa "kalabaligin nabzi" saglayicinin istatistigine
+        -- donusur.
+        --
+        -- Her ORNEK saklanir, kullanici basina tek satir degil: 73'te verilen
+        -- okuma 30'un ortalamasina girmemeli, yoksa zaman cizelgesi duzlesir.
+        CREATE TABLE IF NOT EXISTS rankit_pulse_reads (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            match_id   INTEGER NOT NULL REFERENCES rankit_matches(id) ON DELETE CASCADE,
+            user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            value      REAL NOT NULL,      -- 0..5, ısı rampasıyla ayni olcek
+            minute     INTEGER NOT NULL,   -- mac dakikasi
+            created_at TEXT DEFAULT (datetime('now'))
+        );
+
+        -- Anlar (ekran 5b "MOMENTS"). Saglayicidan geliyor; kadro icin zaten
+        -- cagrilan matchDetails ayni yanitta tasiyor, ek istek yok.
+        CREATE TABLE IF NOT EXISTS rankit_moments (
+            id       INTEGER PRIMARY KEY AUTOINCREMENT,
+            match_id INTEGER NOT NULL REFERENCES rankit_matches(id) ON DELETE CASCADE,
+            minute   INTEGER NOT NULL,
+            kind     TEXT NOT NULL,        -- goal | card | own_goal
+            label    TEXT NOT NULL,
+            detail   TEXT,
+            UNIQUE(match_id, minute, kind, label)
+        );
+
+        -- "148 marked this" — bir ani isaretleyenler.
+        CREATE TABLE IF NOT EXISTS rankit_moment_marks (
+            moment_id INTEGER NOT NULL REFERENCES rankit_moments(id) ON DELETE CASCADE,
+            user_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            PRIMARY KEY (moment_id, user_id)
+        );
+
         CREATE INDEX IF NOT EXISTS idx_rankit_comments_entry ON rankit_review_comments(entry_id, created_at);
         CREATE INDEX IF NOT EXISTS idx_rankit_watchalong_match ON rankit_watchalong_messages(match_id, room, id);
         CREATE INDEX IF NOT EXISTS idx_mobile_auth_code ON mobile_auth_codes(code_hash, expires_at);
@@ -576,6 +613,7 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_rankit_bcast_rule ON rankit_broadcast_rules(competition_id, country);
         CREATE INDEX IF NOT EXISTS idx_rankit_lineup_match ON rankit_match_lineup_players(match_id, team_id, role, ord);
         CREATE INDEX IF NOT EXISTS idx_rankit_points_user ON rankit_points(user_id, created_at);
+        CREATE INDEX IF NOT EXISTS idx_rankit_pulse ON rankit_pulse_reads(match_id, minute);
         CREATE INDEX IF NOT EXISTS idx_rankit_team_logo ON rankit_team_logos(team_id);
         """)
         # Puan kollarini tohumla. INSERT OR IGNORE, yani A/B testi sirasinda

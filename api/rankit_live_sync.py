@@ -216,6 +216,35 @@ def _store_lineup(conn, match_id: int, team_id: int, side: str, block: dict) -> 
     )
 
 
+def _store_moments(conn, match_id: int, events: list) -> None:
+    """Gol ve kartlari ana cevirir (ekran 5b MOMENTS).
+
+    UNIQUE(match_id,minute,kind,label) tekrar yazmayi engelliyor: is her 15
+    dakikada bir kosuyor ve ayni golu bes kez eklemesi gerekmiyor.
+    """
+    rows = []
+    for e in events:
+        kind = str(e.get("type") or "").lower()
+        who = e.get("nameStr") or (e.get("player") or {}).get("name") or ""
+        minute = e.get("time")
+        if minute is None or not who:
+            continue
+        if kind == "goal":
+            k = "own_goal" if e.get("ownGoal") else "goal"
+            label = f"{'Own goal' if e.get('ownGoal') else 'Goal'} - {who}"
+        elif kind == "card":
+            card = str(e.get("card") or "").lower()
+            k = "card"
+            label = f"{'Red card' if card == 'red' else 'Yellow card'} - {who}"
+        else:
+            continue
+        rows.append((match_id, int(minute), k, label, who))
+    if rows:
+        conn.executemany(
+            """INSERT OR IGNORE INTO rankit_moments(match_id,minute,kind,label,detail)
+               VALUES(?,?,?,?,?)""", rows)
+
+
 def refresh_lineups() -> dict:
     """Doğrulanmış 11 + yedek + diziliş + teknik direktör.
 
@@ -242,6 +271,17 @@ def refresh_lineups() -> dict:
             lineup = ((response.json().get("content") or {}).get("lineup") or {})
         except Exception:
             continue
+        # Anlar AYNI yanitta geliyor (matchFacts.events) — kadro icin zaten
+        # yapilan cagriyi ikinci kez yapmiyoruz.
+        try:
+            events = (((response.json().get("content") or {})
+                       .get("matchFacts") or {}).get("events") or {}).get("events") or []
+        except Exception:
+            events = []
+        if events:
+            with get_conn() as conn:
+                _store_moments(conn, target["id"], events)
+
         pairs = (("home", "homeTeam", target["home_team_id"]),
                  ("away", "awayTeam", target["away_team_id"]))
         with get_conn() as conn:
