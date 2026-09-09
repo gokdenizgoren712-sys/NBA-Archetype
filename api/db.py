@@ -622,7 +622,11 @@ def init_db():
         seed_rules(conn)
         # RankIt katalog senkronizasyonu: dis veri kaynagindaki mac kimligi
         # tekrar calistirmalarda ayni maci gunceller, kopya uretmez.
-        for col, dfn in [("provider", "TEXT"), ("provider_match_id", "TEXT")]:
+        # events_polled_at: canli olay yoklamasinda SIRA icin. En eski
+        # yoklanan once gelir, boylece cok sayida canli macta hicbiri ac
+        # kalmaz (bkz. rankit_live_sync.refresh_live_events).
+        for col, dfn in [("provider", "TEXT"), ("provider_match_id", "TEXT"),
+                         ("events_polled_at", "TEXT"), ("live_minute", "TEXT")]:
             try:
                 conn.execute(f"ALTER TABLE rankit_matches ADD COLUMN {col} {dfn}")
             except Exception:

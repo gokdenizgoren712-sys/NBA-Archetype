@@ -1266,7 +1266,7 @@ def rankit_companion(match_id: int, user=Depends(get_optional_user)):
     """
     with get_conn() as conn:
         uid = int(user["sub"]) if user else (None if IS_PROD else _demo_user_id(conn))
-        row = conn.execute("SELECT status,starts_at,sport FROM rankit_matches WHERE id=?",
+        row = conn.execute("SELECT status,starts_at,sport,live_minute FROM rankit_matches WHERE id=?",
                            (match_id,)).fetchone()
         if not row:
             raise HTTPException(404, "Match not found")
@@ -1306,6 +1306,9 @@ def rankit_companion(match_id: int, user=Depends(get_optional_user)):
         return {
             "status": status,
             "starts_at": row["starts_at"],
+            # 5b zaman cizelgesinin son etiketi ("73'"). Saglayicidan
+            # geliyor, hizli olay dongusu yaziyor.
+            "minute": row["live_minute"],
             # 5a: katilim sayisi, 5b: LIVE, bitmisse rozet yok.
             "badge": str(joined) if status == "upcoming" and joined else ("LIVE" if status == "live" else None),
             "joined": joined,

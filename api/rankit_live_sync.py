@@ -295,6 +295,121 @@ def refresh_lineups() -> dict:
     return {"checked": len(targets), "stored": stored}
 
 
+# ── Canli olaylar: AYRI ve HIZLI dongu ───────────────────────────────────────
+# 15 dakikalik kadans olaylar icin cok yavas. 67'deki gol ekranda 15 dakika
+# sonra gorunurse 5b'nin "18 new since the red card" satiri anlamsiz olur ve
+# nabiz zaman cizelgesi olayla hizalanmaz.
+#
+# Ama ters uc de gercek: FotMob resmi API DEGIL (CLAUDE.md rate-limit uyarisi)
+# ve yogun bir cumartesi ayni anda 77 mac canli olabiliyor. Hepsini dakikada
+# bir yoklamak engellenmenin yolu.
+#
+# Cozum oncelik + sira: kisa aralik, kucuk parti, ve
+#   (1) icinde INSAN OLAN maclar once  — gecikmenin hissedildigi tek yer
+#   (2) sonra en eski yoklanan          — cok macta hicbiri ac kalmasin
+# 77 canli mac, partide 12, 45 saniyede bir => tam tur ~4.5 dakika, ama
+# izlenen maclar her turda tazeleniyor.
+EVENTS_JOB = "rankit_live_events"
+EVENTS_INTERVAL_SECONDS = 45
+EVENTS_BATCH = 12
+
+
+def _claim_events() -> bool:
+    with get_conn() as conn:
+        cur = conn.execute(
+            f"""INSERT INTO rankit_sync_state(job_name,last_attempt)
+                VALUES(?,datetime('now'))
+                ON CONFLICT(job_name) DO UPDATE SET last_attempt=datetime('now')
+                WHERE last_attempt IS NULL
+                   OR last_attempt < datetime('now','-{EVENTS_INTERVAL_SECONDS} seconds')""",
+            (EVENTS_JOB,))
+        return cur.rowcount > 0
+
+
+def _live_targets(conn):
+    return conn.execute(
+        f"""SELECT m.id, m.provider_match_id,
+                   (SELECT COUNT(*) FROM rankit_companion_presence p WHERE p.match_id=m.id)
+                 + (SELECT COUNT(*) FROM rankit_watchlist w WHERE w.match_id=m.id) AS watchers
+            FROM rankit_matches m
+            WHERE m.provider='fotmob' AND m.provider_match_id IS NOT NULL
+              AND m.status='live'
+            ORDER BY watchers DESC,
+                     COALESCE(m.events_polled_at,'') ASC
+            LIMIT {EVENTS_BATCH}""").fetchall()
+
+
+def refresh_live_events() -> dict:
+    """Canli maclarin olaylarini, skorunu ve dakikasini tazeler.
+
+    Yavas isten AYRI: o is kadro/fikstur icin 15 dakikada bir kosuyor, bu
+    yalnizca CANLI maclara bakiyor ve hicbir mac canli degilse tek bir
+    COUNT sorgusuyla geri donuyor — bos yere saglayiciya gitmiyor.
+    """
+    from curl_cffi import requests
+
+    with get_conn() as conn:
+        targets = [dict(r) for r in _live_targets(conn)]
+    if not targets:
+        return {"live": 0, "polled": 0, "moments": 0}
+
+    polled = moments = 0
+    for t in targets:
+        try:
+            response = requests.get(
+                "https://www.fotmob.com/api/data/matchDetails",
+                params={"matchId": t["provider_match_id"]},
+                impersonate="chrome124", timeout=20)
+            if response.status_code != 200:
+                continue
+            payload = response.json()
+        except Exception:
+            continue
+        polled += 1
+
+        content = payload.get("content") or {}
+        events = ((content.get("matchFacts") or {}).get("events") or {}).get("events") or []
+        status = (payload.get("header") or {}).get("status") or {}
+        live_time = (status.get("liveTime") or {}).get("short")
+        score = status.get("scoreStr")
+
+        with get_conn() as conn:
+            if events:
+                before = conn.execute("SELECT COUNT(*) n FROM rankit_moments WHERE match_id=?",
+                                      (t["id"],)).fetchone()["n"]
+                _store_moments(conn, t["id"], events)
+                moments += conn.execute("SELECT COUNT(*) n FROM rankit_moments WHERE match_id=?",
+                                        (t["id"],)).fetchone()["n"] - before
+            # Skor ve dakika ayni yanittan; ek istek yok.
+            sets, args = ["events_polled_at=datetime('now')"], []
+            if score and "-" in str(score):
+                home, _, away = str(score).partition("-")
+                sets += ["home_score=?", "away_score=?"]
+                args += [home.strip(), away.strip()]
+            if live_time:
+                sets.append("live_minute=?")
+                args.append(str(live_time))
+            if status.get("finished"):
+                sets.append("status='finished'")
+            conn.execute(f"UPDATE rankit_matches SET {','.join(sets)} WHERE id=?",
+                         (*args, t["id"]))
+        time.sleep(0.3)   # saglayiciya nazik ol
+    return {"live": len(targets), "polled": polled, "moments": moments}
+
+
+def _events_worker() -> None:
+    time.sleep(18)
+    while True:
+        try:
+            if _claim_events():
+                out = refresh_live_events()
+                if out["polled"]:
+                    print(f"[rankit-events] {out}", flush=True)
+        except Exception as exc:
+            print(f"[rankit-events] failed: {exc}", flush=True)
+        time.sleep(15)
+
+
 def refresh_live_scores() -> dict:
     scopes = _active_scopes()
     updated = 0
@@ -337,6 +452,9 @@ def _worker() -> None:
 
 
 def start_rankit_live_sync() -> None:
+    # Olaylar icin AYRI worker: kadro/fikstur 15 dakikada bir yeterli ama
+    # canli olaylar degil. Ikisi ayri claim satiri kullaniyor.
+    threading.Thread(target=_events_worker, name="rankit-live-events", daemon=True).start()
     # Her process kendi hafif worker'ını açabilir; veritabanı claim'i sağlayıcı
     # çağrısının tüm process'lerde toplam 15 dakikada bir yapılmasını garanti eder.
     threading.Thread(target=_worker, name="rankit-live-sync", daemon=True).start()
