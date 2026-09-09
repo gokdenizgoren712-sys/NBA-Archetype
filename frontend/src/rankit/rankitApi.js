@@ -73,6 +73,9 @@ export const rankitApi = {
   // Companion (ekran 5a/5b) — Watchalong sekmesinin yerini aldi.
   // Ekran 3j — altin elmasin actigi sey. Genel arama degil: bu gecenin
   // puanlanmamislari + son yedi gunun yakalanmamislari.
+  // Ekran 5c — tum incelemeler. sort: respected | newest | lowest
+  matchReviews: (matchId, sort = "respected", tzOffset = 0) =>
+    request(`/matches/${matchId}/reviews?sort=${encodeURIComponent(sort)}&tz_offset=${tzOffset}`),
   rank: () => request("/rank"),
   quickRate: (tzOffset = 0) => request(`/quick-rate?tz_offset=${tzOffset}`),
   companion: matchId => request(`/matches/${matchId}/companion`),

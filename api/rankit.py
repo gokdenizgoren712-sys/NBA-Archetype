@@ -1364,6 +1364,57 @@ def rankit_mark_moment(moment_id: int, user=Depends(get_optional_user)):
         return {"marked": not bool(exists), "marks": n}
 
 
+@router.get("/matches/{match_id}/reviews")
+def rankit_match_reviews(match_id: int, sort: str = "respected",
+                         tz_offset: int = 0, limit: int = 60,
+                         user=Depends(get_optional_user)):
+    """Ekran 5c — Community sekmesindeki "318 reviews >" buraya gidiyor.
+
+    Iki sey mac sayfasindaki ozetten farkli:
+      * TAKIP ETTIKLERIN ustte, ayri bir bolumde. Bir incelemeyi kimin
+        yazdigi, kac respect aldigindan once gelir.
+      * Varsayilan sira EN COK RESPECT — yeni degil. §6.1: "Replies sort by
+        most respected, not newest." Ayni ilke inceleme listesinde de gecerli.
+    """
+    order = {
+        "respected": "respect DESC, e.id DESC",
+        "newest": "e.id DESC",
+        "lowest": "e.rating ASC, e.id DESC",
+    }.get(sort, "respect DESC, e.id DESC")
+
+    with get_conn() as conn:
+        uid = int(user["sub"]) if user else (None if IS_PROD else _demo_user_id(conn))
+        rows = conn.execute(f"""
+            SELECT e.id, e.user_id, e.rating, e.review, e.classic, e.spoiler,
+                   e.created_at, m.starts_at, u.username,
+                   (SELECT COUNT(*) FROM rankit_review_likes l WHERE l.entry_id=e.id) respect,
+                   (SELECT COUNT(*) FROM rankit_review_comments c WHERE c.entry_id=e.id) replies,
+                   EXISTS(SELECT 1 FROM rankit_follows f
+                          WHERE f.user_id=? AND f.target_type='user' AND f.target_id=e.user_id) followed
+            FROM rankit_diary_entries e
+            JOIN users u ON u.id=e.user_id
+            JOIN rankit_matches m ON m.id=e.match_id
+            WHERE e.match_id=? AND e.visibility='public' AND e.review<>''
+            ORDER BY {order} LIMIT ?""", (uid or -1, match_id, limit)).fetchall()
+
+        followed, everyone = [], []
+        for row in rows:
+            item = dict(row)
+            # §7.1'in "gecesinde puanladi" isareti incelemede de gorunur:
+            # 5c'de "@deniz - on the night - 2h" diye geciyor.
+            logged = rankit_rank._as_dt(row["created_at"])
+            played = rankit_rank._as_dt(row["starts_at"])
+            item["on_the_night"] = bool(
+                logged and played
+                and rankit_rank.rankit_day(logged, tz_offset)
+                    == rankit_rank.rankit_day(played, tz_offset))
+            item.pop("starts_at", None)
+            (followed if row["followed"] else everyone).append(item)
+
+        return {"total": len(rows), "sort": sort,
+                "followed": followed, "everyone": everyone}
+
+
 @router.get("/quick-rate")
 def rankit_quick_rate(tz_offset: int = 0, user=Depends(get_optional_user)):
     """Ekran 3j — altin elmasin actigi sey.

@@ -267,3 +267,17 @@
    yesil (semantik "kazanilmis/korunmus") degil altin degil: ısı degil, durum. */
 .ri-quick-row em{font-style:normal;color:var(--ri-green);font-weight:600}
 .ri-quick-count{flex:none;font:700 11px var(--font-logo);color:var(--ri-gold)}
+
+/* ── Ekran 5c: tüm incelemeler ───────────────────────────────────────────── */
+.ri-review-row{padding:13px 3px;border-top:1px solid var(--ri-line);min-width:0}
+.ri-review-who{display:flex;align-items:baseline;gap:7px;margin-bottom:6px;min-width:0}
+.ri-review-who strong{font:700 12px var(--font-logo);color:#eceded;white-space:nowrap}
+.ri-review-who em{font-style:normal;font:600 9px var(--font-logo);letter-spacing:.1em;color:var(--ri-green);white-space:nowrap}
+.ri-review-who small{margin-left:auto;font-size:10px;color:#7f868b;flex:none}
+.ri-review-row p{margin:0;font-size:12.5px;line-height:1.5;color:#c9cccd}
+.ri-spoiler-gate{width:100%;text-align:left;border:1px dashed rgba(255,255,255,.22);border-radius:10px;background:none;color:#9aa0a6;font:inherit;padding:8px 10px}
+.ri-review-acts{display:flex;align-items:center;gap:7px;margin-top:9px}
+.ri-review-acts button{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:0 10px;border:1px solid var(--ri-line);border-radius:999px;background:none;color:#9aa0a6;font:700 10px var(--font-logo)}
+.ri-review-acts button[aria-pressed="true"]{color:#eceded;border-color:rgba(255,255,255,.24)}
+.ri-review-read{margin-left:auto;font:700 10px var(--font-logo);letter-spacing:.1em;color:#9aa0a6;cursor:pointer}
+.ri-reviews-link{display:inline-flex;align-items:center;gap:4px;border:0;background:none;padding:0;font:700 9px var(--font-logo);letter-spacing:.1em;color:var(--ri-gold)}

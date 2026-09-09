@@ -14,6 +14,7 @@ import RedesignMatchCard from "./redesign/MatchCard";
 import { toMatchCardProps, diaryToMatchCardProps } from "./redesign/toMatchCardProps";
 import StreakRing from "./redesign/StreakRing";
 import CompanionPanel from "./redesign/CompanionPanel";
+import AllReviews from "./redesign/AllReviews";
 import { rankitHaptics } from "./rankitHaptics";
 import "./rankit.css";
 import "./rankit-motion.css";
@@ -309,6 +310,7 @@ function MatchDetail({ match, hideScores, onClose, onSave, onToggleWatchlist, on
   const [broadcastInfo, setBroadcastInfo] = useState(null);
   // Companion rozeti (ekran 5a/5b). Katilim sayisi sunucudan gelir; sekme
   // sayiyi gostermek icin panelin acilmasini beklememeli.
+  const [allReviewsOpen, setAllReviewsOpen] = useState(false);
   const [companionState, setCompanionState] = useState(null);
   useEffect(() => { rankitApi.companion(match.id).then(setCompanionState).catch(()=>setCompanionState(null)); }, [match.id]);
   const companionBadge = companionState?.badge || null;
@@ -549,7 +551,10 @@ function MatchDetail({ match, hideScores, onClose, onSave, onToggleWatchlist, on
         <section className="ri-entry-block">
           <div className="ri-block-head">
             <small>WHAT EVERYONE ELSE SAID</small>
-            <b>{match.reviewCount || 0} reviews</b>
+            {/* Ekran 2g'deki "318 reviews >" — 5c'ye acilan tek kapi. */}
+            <button className="ri-reviews-link" onClick={()=>setAllReviewsOpen(true)}>
+              {match.reviewCount || 0} {match.reviewCount === 1 ? "review" : "reviews"} <ChevronRight size={13}/>
+            </button>
           </div>
           <div className="ri-v03-community-stats">
             <div><Star size={15} fill="currentColor"/><strong>{match.communityRating ?? "—"}</strong><span>COMMUNITY</span></div>
@@ -565,6 +570,9 @@ function MatchDetail({ match, hideScores, onClose, onSave, onToggleWatchlist, on
         </section>
       </> : <div className="ri-empty-state"><Radio size={22}/><strong>Nothing to review yet</strong><span>Community opens when the match finishes. The Companion tab is live now.</span></div>}
 
+      {allReviewsOpen && <AllReviews matchId={match.id}
+        title={`${match.home.short} ${match.score || "vs"} ${match.away.short}`}
+        onClose={()=>setAllReviewsOpen(false)}/>}
       {actionNotice && <div key={actionNotice.id} role="status" className={`ri-action-toast ${actionNotice.tone}`} onAnimationEnd={() => setActionNotice(null)}>{actionNotice.message}</div>}
     </section>
   </div>;
