@@ -16,6 +16,7 @@ import StreakRing from "./redesign/StreakRing";
 import CompanionPanel from "./redesign/CompanionPanel";
 import AllReviews from "./redesign/AllReviews";
 import SearchSheet from "./redesign/SearchSheet";
+import Alerts from "./redesign/Alerts";
 import CompetitionMatches from "./redesign/CompetitionMatches";
 import CompetitionPlayers from "./redesign/CompetitionPlayers";
 import ReviewThread from "./redesign/ReviewThread";
@@ -570,14 +571,6 @@ function MatchDetailLoading({ onClose }) {
   return <div className="ri-sheet-wrap" onClick={onClose}><section className="ri-detail-sheet" onClick={event => event.stopPropagation()}>
     <SheetHandle onClose={onClose}/><div className="ri-entity-loading">Loading match…</div>
   </section></div>;
-}
-
-function NotificationCenter({ feed, watchlist, onClose, onOpenMatch }) {
-  const [filter,setFilter]=useState("All");
-  const social=feed.map(item=>({id:`social-${item.id}`,kind:"Social",title:`@${item.user} published a review`,text:item.text,match:item.match}));
-  const matchesFeed=watchlist.slice(0,8).map(match=>({id:`match-${match.id}`,kind:"Matches",title:`${match.home.short} vs ${match.away.short}`,text:match.status==="live"?"Live now":"Coming up from your watchlist",match}));
-  const items=[...matchesFeed,...social].filter(item=>filter==="All"||item.kind===filter);
-  return <div className="ri-sheet-wrap" onClick={onClose}><section className="ri-rank-sheet ri-notification-sheet" onClick={event=>event.stopPropagation()}><SheetHandle onClose={onClose}/><div className="ri-rank-head"><div><small>STAY IN THE LOOP</small><h2>Notifications</h2></div><button onClick={onClose}><X size={20}/></button></div><div className="ri-search-kinds">{["All","Matches","Social"].map(x=><button key={x} className={filter===x?"active":""} onClick={()=>setFilter(x)}>{x}</button>)}</div><div className="ri-notification-list">{items.map(item=><button key={item.id} onClick={()=>{onClose();onOpenMatch(item.match)}}><i className={item.kind.toLowerCase()}/><span><strong>{item.title}</strong><small>{item.text||item.kind}</small></span><ChevronRight size={15}/></button>)}{!items.length&&<div className="ri-empty-state"><Bell size={20}/><strong>Nothing new here</strong><span>Your match and social updates will appear here.</span></div>}</div></section></div>;
 }
 
 function ReviewFeed({ reviews, onRefresh }) {
@@ -1235,7 +1228,12 @@ export default function RankItPrototype({ nativeBack = false }) {
       onOpenEntity={(kind,id) => {setSearchOpen(false);openEntity(kind,id)}}/>} 
     {listCreatorOpen && <ListCreator catalog={catalog} onClose={()=>setListCreatorOpen(false)} onCreated={refreshCollections}/>} 
     {notificationOpen && (
-      <NotificationCenter feed={feed} watchlist={watchlist} onClose={()=>setNotificationOpen(false)} onOpenMatch={openMatch}/>
+      /* Ekran 3f. Eskisi arkadas akisi + izleme listesini istemcide birlestirip
+         bildirim gibi gosteriyordu; artik gercek olaylar ve turetilmis
+         durumlar var (bkz. api/rankit_notify.py). */
+      <Alerts onClose={()=>setNotificationOpen(false)}
+        onOpenMatch={id=>{setNotificationOpen(false);openMatch({id})}}
+        onOpenList={id=>{setNotificationOpen(false);openEntity("list",id)}}/>
     )}
     {exitNotice && <div role="status" className="ri-action-toast success">Press back again to exit</div>}
   </div>;

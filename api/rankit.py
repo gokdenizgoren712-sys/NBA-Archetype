@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field
 from .auth import get_optional_user, require_admin, _decode, _is_banned
 from .db import get_conn
 from . import rankit_rank
+from . import rankit_notify
 
 router = APIRouter(prefix="/api/rankit", tags=["RankIt"])
 IS_PROD = bool(os.environ.get("RAILWAY_ENVIRONMENT") or os.environ.get("RENDER") == "true" or os.environ.get("IS_PROD") == "true")
@@ -630,6 +631,15 @@ def rankit_set_broadcast(body: BroadcastIn, user=Depends(require_admin)):
                 verified_at=datetime('now'),updated_by=excluded.updated_by,
                 updated_at=datetime('now')""",
                 (body.match_id, country, body.broadcaster_id, uid))
+            # 3f: "Chelsea vs Sporting CP now has a UK broadcaster listed."
+            # Yalnizca o maci izleme listesine almis olanlara.
+            name = conn.execute("SELECT name FROM rankit_broadcasters WHERE id=?",
+                                (body.broadcaster_id,)).fetchone()
+            for w in conn.execute("SELECT user_id FROM rankit_watchlist WHERE match_id=?",
+                                  (body.match_id,)).fetchall():
+                rankit_notify.notify(conn, int(w["user_id"]), "broadcast",
+                                     match_id=body.match_id,
+                                     detail=f"{country} · {name['name']}" if name else country)
             return {"ok": True, "kind": "confirmed"}
         if not conn.execute("SELECT 1 FROM rankit_competitions WHERE id=?", (body.competition_id,)).fetchone():
             raise HTTPException(404, "Competition not found")
@@ -956,6 +966,25 @@ def rankit_search(q: str = Query(default="", max_length=80), kind: str = "All",
         return {"matches": matches, "players": players, "teams": teams, "members": members, "lists": lists}
 
 
+@router.get("/notifications")
+def rankit_notifications(tz: int = Query(default=0, ge=-840, le=840),
+                         user=Depends(get_optional_user)):
+    """Ekran 3f. Durumlar once (hep TONIGHT), sonra olaylar kendi zamanlarinda."""
+    with get_conn() as conn:
+        uid = int(user["sub"]) if user else (None if IS_PROD else _demo_user_id(conn))
+        if not uid:
+            return {"items": [], "unread": 0, "states": 0}
+        return rankit_notify.feed(conn, uid, tz)
+
+
+@router.post("/notifications/read")
+def rankit_notifications_read(user=Depends(get_optional_user)):
+    """"Mark read" yalnizca OLAYLARI kapatir; durumlar kosul gecince kaybolur."""
+    with get_conn() as conn:
+        uid = _actor_id(user, conn)
+        return {"ok": True, "marked": rankit_notify.mark_read(conn, uid)}
+
+
 @router.get("/players/{player_id}")
 def rankit_player_detail(player_id: int, user=Depends(get_optional_user)):
     with get_conn() as conn:
@@ -1088,6 +1117,16 @@ def rankit_log(body: DiaryIn, user=Depends(get_optional_user)):
         # geliyor, yani duzenleme yeniden odemez; burada tekrar cagirmak
         # zararsiz ve "ilk kayit miydi" sorusunu uygulama koduna tasimiyor.
         award = rankit_rank.award_for_rating(conn, uid, body.match_id, body.tz_offset)
+        # 3f: "@deniz stamped an Instant Classic on a match in your diary."
+        # Yalnizca CLASSIC damgasi -- her puanlama herkesi rahatsiz etmemeli.
+        # Kime: o maci defterine almis herkese. UNIQUE ayni damgayi ikinci kez
+        # bildirmiyor, yani kaydi duzenlemek bildirimi tekrarlamaz.
+        if body.classic:
+            for other in conn.execute(
+                    """SELECT DISTINCT user_id FROM rankit_diary_entries
+                       WHERE match_id=? AND user_id<>?""", (body.match_id, uid)).fetchall():
+                rankit_notify.notify(conn, int(other["user_id"]), "classic",
+                                     actor_id=uid, match_id=body.match_id)
         return {"ok": True, "entry_id": entry_id, "updated": updated,
                 "points_awarded": award["points"], "award_kind": award["kind"]}
 
@@ -1134,6 +1173,8 @@ def rankit_follow(body: FollowIn, user=Depends(get_optional_user)):
             conn.execute("DELETE FROM rankit_follows WHERE user_id=? AND target_type=? AND target_id=?", (uid, body.target_type, body.target_id))
             return {"following": False}
         conn.execute("INSERT INTO rankit_follows(user_id,target_type,target_id,notify) VALUES(?,?,?,?)", (uid, body.target_type, body.target_id, int(body.notify)))
+        if body.target_type == "user":
+            rankit_notify.notify(conn, int(body.target_id), "follow", actor_id=uid)
         return {"following": True}
 
 
@@ -1232,6 +1273,11 @@ def toggle_review_like(entry_id: int, user=Depends(get_optional_user)):
         # kisiye degil). Tavan inceleme basina 50 puan: tek bir viral yorumun
         # kademe satin almasini engelliyor.
         author = conn.execute("SELECT user_id FROM rankit_diary_entries WHERE id=?", (entry_id,)).fetchone()
+        # Bildirim yalnizca respect VERILIRKEN; geri alinca satir silinmiyor
+        # ama UNIQUE tekrar yazmayi da engelliyor (bkz. rankit_notify.notify).
+        if author and not exists:
+            rankit_notify.notify(conn, int(author["user_id"]), "respect",
+                                 actor_id=uid, entry_id=entry_id)
         if author and int(author["user_id"]) != uid:
             earned = conn.execute(
                 """SELECT COALESCE(SUM(points),0) n FROM rankit_points
@@ -1284,6 +1330,9 @@ def add_review_comment(entry_id: int, body: ReviewCommentIn, user=Depends(get_op
         cur = conn.execute(
             "INSERT INTO rankit_review_comments(user_id,entry_id,content,reply_to_user_id) VALUES(?,?,?,?)",
             (uid, entry_id, body.content.strip(), target))
+        # Yanit ADRESLENEN kisiye gider, incelemenin yazarina degil: §6.1'de
+        # bir yanit her zaman BIRINE yoneliktir ve o kisi yazar olmayabilir.
+        rankit_notify.notify(conn, target, "reply", actor_id=uid, entry_id=entry_id)
         return {"ok": True, "comment_id": cur.lastrowid}
 
 

@@ -46,6 +46,21 @@ them to predict anything.
 
 **Set by the user on 2026-09-05. This is not a guideline; it is the process.**
 
+> **Paused on 2026-09-09, by the user:** *"web kısmını daha sonra
+> ilerleticez, şu an odak mobilde."* During the UI-redesign prompt sequence
+> the phone is built alone and the web is allowed to fall behind on purpose.
+> Rule 1 below is deferred, not cancelled. The debt is real and listed here so
+> the catch-up pass is work, not a re-check:
+>
+> | Owed to the web | Screen |
+> |---|---|
+> | All-reviews list | `5c` |
+> | Review thread, addressed replies | `4a` |
+> | Competition Matches / Players | `3c` / `3d` |
+> | Search | `3e` (landed on web, then paused) |
+> | Notifications | `3f` |
+> | Watchalong tab still shown | retired in phase 4 on the phone only |
+
 ### 1. Every feature lands on both surfaces, in the same pass
 
 Anything asked for from here on is built for **web and mobile together**. Not

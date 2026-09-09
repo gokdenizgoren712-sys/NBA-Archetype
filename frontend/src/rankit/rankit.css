@@ -247,6 +247,52 @@
 /* Web: ortalanmis katman -- ayni isaretleme, baska cerceve. */
 .riw .ri-find{max-height:min(78vh,720px)}
 
+/* -- Ekran 3f: bildirimler -----------------------------------------------
+   Iki parlaklik var ve anlami tek: OKUNMAMIS parlak (--ri-card), okunmus
+   sonuk (#121315). Durumlar (sicak mac, kapanan koleksiyon) hep okunmamis
+   gorunur cunku okundu isaretlenemezler -- kosul gecince kaybolurlar. */
+.ri-alerts{position:fixed;left:0;right:0;top:0;bottom:73px;z-index:19;background:#090a0b;
+  display:flex;flex-direction:column}
+.ri-alerts-head{display:flex;align-items:flex-end;justify-content:space-between;gap:13px;
+  height:64px;padding:0 26px 13px;flex:none}
+.ri-alerts-head h2{margin:0;font:700 31px/1 var(--font-logo);letter-spacing:.02em;color:#eceded}
+.ri-alerts-head button{height:44px;padding:0 2px;border:0;background:none;color:#9aa0a6;
+  font:700 12px var(--font-logo);letter-spacing:.09em;text-transform:uppercase}
+.ri-alerts-head button:focus-visible{outline:2px solid var(--ri-gold);outline-offset:2px;border-radius:6px}
+.ri-alerts-body{flex:1;min-height:0;overflow-y:auto;padding:0 26px 26px;scrollbar-width:none}
+.ri-alerts-body::-webkit-scrollbar{display:none}
+.ri-alert-stack{display:flex;flex-direction:column;gap:10px;margin-bottom:26px}
+
+.ri-alert{position:relative;overflow:hidden;border:1px solid var(--ri-line);border-radius:14px;
+  background:#121315}
+.ri-alert.unread{background:var(--ri-card)}
+.ri-alert-body{display:grid;grid-template-columns:34px minmax(0,1fr);align-items:flex-start;gap:13px;
+  width:100%;padding:14px;border:0;background:none;color:inherit;text-align:left}
+.ri-alert-body[disabled]{cursor:default}
+.ri-alert-body>span{min-width:0;display:flex;flex-direction:column;gap:9px}
+.ri-alert p{margin:0;font:400 12px/1.5 var(--font-sans);color:#c9cccd;text-wrap:pretty}
+.ri-alert p strong{font-weight:500;color:#eceded}
+.ri-alert small{font:400 12px/1 var(--font-sans);color:#7f868b}
+.ri-alert-face{width:34px;height:34px;border-radius:999px;flex:none;display:grid;place-items:center;
+  background:#1f2124;color:#9aa0a6;font:700 11px var(--font-logo);letter-spacing:.04em}
+.ri-alert-ring{position:relative;flex:none;display:block}
+.ri-alert-ring>i{position:absolute;inset:0;border-radius:999px}
+.ri-alert-ring::after{content:"";position:absolute;inset:4px;border-radius:999px;background:#121315}
+.ri-alert.unread .ri-alert-ring::after{background:var(--ri-card)}
+
+/* Sicak mac uyarisi: serit + isi etiketi + TEK altin eylem. Bu ekranin tek
+   altini; §1'in butcesi bunun icin harcaniyor. */
+.ri-alert-hot{background:var(--ri-card);padding:14px 14px 14px 17px}
+.ri-alert-hot>i{position:absolute;left:0;top:14px;bottom:14px;width:3px}
+.ri-alert-head{display:flex;align-items:center;gap:11px;
+  font:700 9px/1 var(--font-logo);letter-spacing:.14em}
+.ri-alert-dot{width:9px;height:9px;border-radius:999px;flex:none}
+.ri-alert-hot p{margin-top:11px}
+.ri-alert-cta{width:100%;height:44px;margin-top:13px;border:0;border-radius:10px;
+  background:var(--ri-gold);color:#17120a;
+  font:700 12px var(--font-logo);letter-spacing:.09em;text-transform:uppercase}
+.ri-alert-cta:focus-visible,.ri-alert-body:focus-visible{outline:2px solid var(--ri-gold);outline-offset:2px}
+
 /* Mac sayfasindaki turnuva adi 3c/3d'ye aciliyor. Yeni kompakt kart eski
    karttaki turnuva cipini tasimiyor; web'de bu baglanti zaten mac sayfasinda,
    telefon da ayni yerden acsin. Gorunum span'in aynisi -- konum degismiyor. */

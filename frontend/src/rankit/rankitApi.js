@@ -51,6 +51,10 @@ export const rankitApi = {
   // Ekran 3d — sezon cetveli (goals | assists | minutes). Topluluk oylari
   // DEGIL, saglayicinin siralamasi.
   competitionPlayers: (id, stat) => request(`/competitions/${id}/players?stat=${encodeURIComponent(stat || "goals")}`),
+  // Ekran 3f. Durumlar (bu gecenin sicak maci, kapanmaya bir mac kalan
+  // koleksiyon) sunucuda TURETILIYOR, saklanmiyor.
+  notifications: (tz = 0) => request(`/notifications?tz=${tz}`),
+  markNotificationsRead: () => request("/notifications/read", { method: "POST" }),
   match: id => request(`/matches/${id}`),
   broadcasts: (id, country = "TR") => request(`/matches/${id}/broadcasts?country=${encodeURIComponent(country)}`),
   player: id => request(`/players/${id}`),

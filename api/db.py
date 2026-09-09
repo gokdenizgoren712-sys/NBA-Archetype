@@ -640,6 +640,39 @@ def init_db():
             PRIMARY KEY (competition_id, season, stat, name)
         );
 
+        -- Bildirimler (ekran 3f). Burada YALNIZCA OLAYLAR duruyor: biri
+        -- respect verdi, biri yanitladi, biri takip etti. DURUMLAR (bu gece
+        -- puanlanmamis sicak mac, bir mac kala kapanacak koleksiyon)
+        -- yazilmiyor, okuma aninda turetiliyor -- cunku dogruluklari zamana
+        -- bagli: "gece yarisindan once puanla" yarin yalan olur.
+        --
+        -- Metin de yazilmiyor, yalnizca REFERANS. Cumleyi arayuz kuruyor;
+        -- kayitli ingilizce cumleler ifadeyi dondurur ve veri degisince
+        -- (kulup adi, puan) sessizce eskir.
+        CREATE TABLE IF NOT EXISTS rankit_notifications (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            kind       TEXT NOT NULL,   -- respect|reply|classic|follow|broadcast
+            actor_id   INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            match_id   INTEGER REFERENCES rankit_matches(id) ON DELETE CASCADE,
+            entry_id   INTEGER REFERENCES rankit_diary_entries(id) ON DELETE CASCADE,
+            list_id    INTEGER REFERENCES rankit_lists(id) ON DELETE CASCADE,
+            detail     TEXT,            -- yayinci adi gibi tek parca veri
+            created_at TEXT DEFAULT (datetime('now')),
+            read_at    TEXT
+        );
+
+        -- Ayni olay iki kez bildirilmez: respect geri alinip tekrar verilirse
+        -- yeni bir satir dogmamali.
+        --
+        -- Sutun UNIQUE'i BU ISI YAPMIYOR: SQLite'ta NULL'lar birbirinden
+        -- FARKLI sayilir, ve bir respect bildiriminin match_id/list_id'si
+        -- NULL. Iki ayni satir sorunsuz giriyordu (test yakaladi). COALESCE'li
+        -- ifade indeksi NULL'lari tek bir degere indiriyor.
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_rankit_notify_once ON rankit_notifications(
+            user_id, kind, COALESCE(actor_id,-1), COALESCE(entry_id,-1),
+            COALESCE(match_id,-1), COALESCE(list_id,-1));
+        CREATE INDEX IF NOT EXISTS idx_rankit_notify ON rankit_notifications(user_id, read_at, created_at DESC);
         CREATE INDEX IF NOT EXISTS idx_rankit_player_stats ON rankit_player_stats(competition_id, season, stat, rank);
         CREATE INDEX IF NOT EXISTS idx_rankit_comments_entry ON rankit_review_comments(entry_id, created_at);
         CREATE INDEX IF NOT EXISTS idx_rankit_watchalong_match ON rankit_watchalong_messages(match_id, room, id);
