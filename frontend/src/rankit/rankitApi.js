@@ -72,6 +72,9 @@ export const rankitApi = {
   createList: value => request("/lists", body("POST", value)),
   list: id => request(`/lists/${id}`),
   addListItem: (id, value) => request(`/lists/${id}/items`, body("POST", value)),
+  // Ekran 3h. Kalp DEGIL respect (§6.1); kaydetmek ayri tabloda.
+  respectList: id => request(`/lists/${id}/respect`, { method: "POST" }),
+  saveList: id => request(`/lists/${id}/save`, { method: "POST" }),
   potm: (matchId, playerId) => request(`/matches/${matchId}/potm`, body("POST", { player_id: playerId })),
   respect: (matchId, playerIds) => request(`/matches/${matchId}/respect`, body("PUT", { player_ids: playerIds })),
   follow: value => request("/follow", body("POST", value)),

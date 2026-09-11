@@ -21,7 +21,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Search, X, ChevronRight } from "lucide-react";
 import { rankitApi } from "../rankitApi";
-import { Shield } from "./MatchCard";
+import { Shield, CrestPair } from "./MatchCard";
 import { inkFor, RAMP, RAMP_OFF } from "./heat";
 
 const INK = "#eceded";
@@ -42,23 +42,6 @@ function when(match) {
       at.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
   }
   return DAY.format(at);
-}
-
-/* §2.6'nın kompakt çifti. Aralık sahibin kararı: "ne kadar az örtüşüyorsa o
-   kadar iyi" -> 2.414 (MatchCard ile aynı sabit). Tasarımın 52px'lik bloğuna
-   sığması için elmas 22'ye iniyor; blok 53px, oran korunuyor. */
-function CrestPair({ home, away, side = 22 }) {
-  const box = side * 1.414;
-  return (
-    <div style={{ width: side * 2.414, height: box, position: "relative", flex: "none" }} aria-hidden="true">
-      <div style={{ position: "absolute", left: 0, top: 0 }}>
-        <Shield side={side} color={home.color || GOLD} ink={INK} abbr={home.short} crestUrl={home.crest_url} badgeScale={0.3} />
-      </div>
-      <div style={{ position: "absolute", right: 0, top: 0 }}>
-        <Shield side={side} color={away.color || GOLD} ink={INK} abbr={away.short} crestUrl={away.crest_url} badgeScale={0.3} front />
-      </div>
-    </div>
-  );
 }
 
 /* Koleksiyon halkası. Yay ilerlemeyi çiziyor, ortadaki sayı yüzdesi —

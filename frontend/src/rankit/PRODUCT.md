@@ -58,6 +58,8 @@ them to predict anything.
 > | Review thread, addressed replies | `4a` |
 > | Notifications | `3f` |
 > | Settings, grouped — plus *Keep hiding until I rate* (the web's cards do not call `hidesScore`) | `3g` |
+> | List shelf — respect, save, *Add from your diary* | `3h` |
+> | Someone else's profile — rank, taste overlap, recent shelf | `3i` |
 > | Watchalong tab still shown | retired in phase 4 on the phone only |
 >
 > Not owed: `3c` / `3d` and `3e` landed on both surfaces before the pause

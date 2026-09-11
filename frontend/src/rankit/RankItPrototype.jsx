@@ -18,6 +18,8 @@ import AllReviews from "./redesign/AllReviews";
 import SearchSheet from "./redesign/SearchSheet";
 import Alerts from "./redesign/Alerts";
 import Settings from "./redesign/Settings";
+import ListShelf from "./redesign/ListShelf";
+import MemberProfile from "./redesign/MemberProfile";
 import { closeTopmost } from "./redesign/backStack";
 import CompetitionMatches from "./redesign/CompetitionMatches";
 import CompetitionPlayers from "./redesign/CompetitionPlayers";
@@ -1000,6 +1002,10 @@ export default function RankItPrototype({ nativeBack = false }) {
   const [detail, setDetail] = useState(null);
   const [competitionDetail, setCompetitionDetail] = useState(null);
   const [entityDetail, setEntityDetail] = useState(null);
+  // 3h / 3i tam ekran YERLER, sheet degil: kendi verilerini cekiyorlar ve
+  // geri tusu yiginina kendileri kaydoluyorlar (redesign/backStack.js).
+  const [shelfId, setShelfId] = useState(null);
+  const [memberId, setMemberId] = useState(null);
   const [rankOpen, setRankOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchExpanded, setSearchExpanded] = useState(false);
@@ -1039,9 +1045,6 @@ export default function RankItPrototype({ nativeBack = false }) {
     let active = true;
     CapacitorApp.addListener("backButton", () => {
       const state = backStateRef.current;
-      // Once bilesenlerin ICINDE acilan yuzeyler (bkz. redesign/backStack.js):
-      // kabuk onlari state olarak bilmiyor.
-      if (closeTopmost()) return;
       if (state.listCreatorOpen) setListCreatorOpen(false);
       else if (state.notificationOpen) setNotificationOpen(false);
       else if (state.competitionDetail) setCompetitionDetail(null);
@@ -1050,6 +1053,10 @@ export default function RankItPrototype({ nativeBack = false }) {
       else if (state.detail) setDetail(null);
       else if (state.entityDetail) setEntityDetail(null);
       else if (state.searchExpanded) setSearchExpanded(false);
+      // Kayitli tam ekran yuzeyler (Settings, liste, profil) BURADA: kabugun
+      // sheet'leri z-20, bunlar z-19 -- sheet'ler hep ustte, once onlar
+      // kapanir. Yuzeylerin kendi aralarindaki sirayi yigin tutuyor.
+      else if (closeTopmost()) { /* en ustteki kayitli yuzey kapandi */ }
       else if (state.tab !== "Home") { setTabDirection(-1); setTab("Home"); }
       else if (exitArmedRef.current) CapacitorApp.exitApp();
       else {
@@ -1129,6 +1136,14 @@ export default function RankItPrototype({ nativeBack = false }) {
     }
   };
   const openEntity = async (kind, id) => {
+    // Liste ve uye bir YER: acilinca ustunu ortecek gecici sheet'ler kapanir,
+    // yoksa z-19'daki tam ekran yuzey z-20'deki sheet'in ALTINDA kalirdi.
+    if (kind === "list" || kind === "member") {
+      setEntityDetail(null); setDetail(null); setCompetitionDetail(null);
+      setSearchOpen(false); setNotificationOpen(false); setRankOpen(false);
+      if (kind === "list") setShelfId(id); else setMemberId(id);
+      return;
+    }
     setEntityDetail({ kind, data: null });
     try {
       const loader = kind === "list" ? rankitApi.list : kind === "member" ? rankitApi.member : kind === "team" ? rankitApi.team : rankitApi.player;
@@ -1209,7 +1224,11 @@ export default function RankItPrototype({ nativeBack = false }) {
       <MatchDetail match={detail} hideScores={hideScores} onClose={() => setDetail(null)} onSave={saveMatchLog} onToggleWatchlist={toggleWatchlist} onToggleFavorite={toggleFavorite} onRefresh={refreshDetail} onOpenCompetition={openCompetition}/>
     )}
     {competitionDetail && <CompetitionDetail detail={competitionDetail.data} onClose={()=>setCompetitionDetail(null)} onOpenMatch={openMatch} onOpenPlayer={id=>openEntity("player",id)}/>}
-    {entityDetail && <EntityDetail detail={entityDetail} onClose={()=>setEntityDetail(null)} onOpenMatch={openMatch} onOpenEntity={openEntity} onChanged={openEntity}/>} 
+    {entityDetail && <EntityDetail detail={entityDetail} onClose={()=>setEntityDetail(null)} onOpenMatch={openMatch} onOpenEntity={openEntity} onChanged={openEntity}/>}
+    {shelfId && <ListShelf listId={shelfId} onClose={()=>setShelfId(null)}
+      onOpenMatch={m=>openMatch(fromApiMatch(m))} onOpenMember={id=>setMemberId(id)}/>}
+    {memberId && <MemberProfile memberId={memberId} onClose={()=>setMemberId(null)}
+      onOpenMatch={m=>openMatch(fromApiMatch(m))}/>} 
     {rankOpen && <RankSheet onOpenMatch={openMatch} onClose={() => setRankOpen(false)}/>} 
     {/* Ekran 3e. Eski GlobalSearch alti kutulu bir filtre satiri ve ayrimsiz
         bir liste tasiyordu; 3e tek alan + gruplu sonuc istiyor. */}

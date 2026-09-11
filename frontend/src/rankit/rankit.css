@@ -10,7 +10,7 @@
 .rankit-app,.riw{--ri-gold:#ffb11b;--ri-green:#3fb08c;--ri-card:#151618;--ri-line:rgba(255,255,255,.09)}
 .rankit-app{position:fixed;inset:0;z-index:1000;background:#090a0b;color:#eaeaea;font-family:var(--font-sans);overflow:hidden;--ri-gold:#ffb11b;--ri-green:#3fb08c;--ri-card:#151618;--ri-line:rgba(255,255,255,.09)}
 .rankit-app *{box-sizing:border-box}.rankit-app button{font:inherit}.ri-header{height:64px;padding:12px 18px;display:flex;align-items:center;justify-content:space-between;background:rgba(10,11,12,.86);backdrop-filter:blur(18px);border-bottom:1px solid var(--ri-line);position:relative;z-index:5}.ri-brand{display:flex;align-items:center;gap:9px}.ri-brand>div{display:flex;flex-direction:column}.ri-brand strong{font:700 20px/18px var(--font-logo);letter-spacing:.15em}.ri-brand small{font:600 8px/12px var(--font-logo);letter-spacing:.19em;color:var(--ri-gold)}.ri-header>button{position:relative;border:0;background:none;color:#bbb;padding:8px}.ri-header i{position:absolute;width:6px;height:6px;border-radius:50%;background:var(--ri-gold);right:6px;top:6px;box-shadow:0 0 8px var(--ri-gold)}
-.ri-main{height:calc(100% - 137px);overflow-y:auto;padding:0 max(16px,calc((100vw - 520px)/2));scrollbar-width:none}.ri-main::-webkit-scrollbar{display:none}.ri-home-controls{position:sticky;top:0;z-index:4;background:linear-gradient(#090a0b 82%,transparent);padding:14px 0 18px}.ri-sport-scroll{display:flex;gap:7px;overflow-x:auto;padding-bottom:10px;scrollbar-width:none}.ri-sport-scroll button,.ri-diary-filters button{white-space:nowrap;border:1px solid var(--ri-line);background:#121315;color:#777;padding:7px 13px;border-radius:999px;font-size:12px}.ri-sport-scroll button.active,.ri-diary-filters button.active{color:#111;background:var(--ri-gold);border-color:var(--ri-gold);font-weight:700;box-shadow:0 0 16px rgba(255,177,27,.22)}.ri-sport-scroll button:last-child{opacity:.48}.ri-hide-score{border:0;background:none;color:#73777b;display:flex;align-items:center;gap:6px;font-size:11px;margin-left:auto;padding:0 3px}.ri-hide-score.active{color:var(--ri-gold)}
+.ri-main{height:calc(100% - 137px);overflow-y:auto;padding:0 max(16px,calc((100vw - 520px)/2));scrollbar-width:none}.ri-main::-webkit-scrollbar{display:none}.ri-home-controls{position:sticky;top:0;z-index:4;background:linear-gradient(#090a0b 82%,transparent);padding:14px 0 18px}.ri-sport-scroll{display:flex;gap:7px;overflow-x:auto;padding-bottom:10px;scrollbar-width:none}.ri-sport-scroll button,.ri-diary-filters button{white-space:nowrap;border:1px solid var(--ri-line);background:#121315;color:#777;padding:7px 13px;border-radius:999px;font-size:12px}.ri-sport-scroll button.active,.ri-diary-filters button.active{color:#111;background:var(--ri-gold);border-color:var(--ri-gold);font-weight:700;box-shadow:0 0 16px rgba(255,177,27,.22)}.ri-sport-scroll button:last-child{opacity:.48}button.ri-hide-score{border:0;background:none;color:#73777b;display:flex;align-items:center;gap:6px;font-size:11px;margin-left:auto;padding:0 3px}.ri-hide-score.active{color:var(--ri-gold)}
 .ri-section{margin:7px 0 28px}.ri-section-head{display:flex;align-items:end;justify-content:space-between;margin-bottom:12px}.ri-section-head small,.ri-page-title small,.ri-detail-kicker,.ri-rating-panel>small,.ri-broadcast>small{font:700 9px var(--font-logo);letter-spacing:.17em;color:var(--ri-gold)}.ri-section-head h2{font:700 21px/1 var(--font-logo);margin:4px 0 0}.ri-section-head button{border:0;background:none;color:#777;font-size:11px}.ri-card-stack{display:flex;flex-direction:column;gap:14px}
 .ri-match-card{position:relative;overflow:hidden;border:1px solid var(--ri-line);border-radius:22px;background:linear-gradient(145deg,color-mix(in srgb,var(--home) 12%,#151618),#111214 48%,color-mix(in srgb,var(--away) 10%,#111214));box-shadow:0 14px 34px rgba(0,0,0,.28);cursor:pointer}.ri-match-card.featured{border-color:rgba(255,177,27,.22)}.ri-card-holo{position:absolute;inset:0;pointer-events:none;opacity:.1;background:repeating-linear-gradient(68deg,transparent 0 8px,rgba(255,255,255,.12) 8px 9px,transparent 9px 20px);mix-blend-mode:screen}.ri-match-top{height:37px;padding:0 13px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--ri-line);font:600 9px var(--font-logo);letter-spacing:.09em;color:#8d9093}.ri-community-rating{display:flex;gap:4px;align-items:center;color:var(--ri-gold);font-size:12px}.ri-live-date{color:#d7d7d7}.ri-match-art{height:148px;display:grid;grid-template-columns:1fr 1.2fr 1fr;align-items:center;position:relative}.ri-match-art:before{content:"";position:absolute;left:50%;top:10%;bottom:8%;width:1px;background:linear-gradient(transparent,rgba(255,255,255,.17),transparent)}.ri-team-side{display:flex;justify-content:center;filter:drop-shadow(0 8px 15px rgba(0,0,0,.5))}.ri-team-mark{width:56px;height:56px;border-radius:18px 18px 21px 21px;display:grid;place-items:center;background:linear-gradient(145deg,color-mix(in srgb,var(--team) 60%,#fff),color-mix(in srgb,var(--team) 70%,#050505));border:1px solid color-mix(in srgb,var(--team) 55%,#fff);box-shadow:0 0 25px color-mix(in srgb,var(--team) 28%,transparent),inset 0 1px rgba(255,255,255,.35);transform:rotate(45deg)}.ri-team-mark span{transform:rotate(-45deg);font:800 14px var(--font-logo);color:white;text-shadow:0 1px 4px #000}.ri-player-art{height:100%;position:relative;overflow:hidden;display:flex;justify-content:center}.ri-player-no{position:absolute;font:800 105px/1 var(--font-logo);color:rgba(255,255,255,.04);top:5px}.ri-player-silhouette{width:80px;height:118px;position:absolute;bottom:0;background:linear-gradient(#686d71,#17191b);clip-path:polygon(35% 0,65% 0,72% 12%,68% 22%,88% 42%,82% 100%,18% 100%,12% 42%,32% 22%,28% 12%);filter:drop-shadow(0 0 16px rgba(255,177,27,.22))}.ri-potm{position:absolute;bottom:9px;left:0;right:0;text-align:center;display:flex;flex-direction:column}.ri-potm small{font:700 7px var(--font-logo);letter-spacing:.13em;color:var(--ri-gold)}.ri-potm strong{font:700 12px var(--font-logo);text-shadow:0 2px 5px #000}.ri-versus{align-self:center;text-align:center;display:flex;flex-direction:column}.ri-versus small{font:700 7px var(--font-logo);letter-spacing:.16em;color:#8d9093}.ri-versus strong{font:800 25px var(--font-logo);color:#fff}.ri-score-band{display:grid;grid-template-columns:1fr 82px 1fr;align-items:center;padding:11px 14px;border-top:1px solid var(--ri-line);border-bottom:1px solid var(--ri-line);background:rgba(0,0,0,.23);text-align:center}.ri-score-band>div:not(.ri-score){display:flex;flex-direction:column}.ri-score-band strong{font:700 13px var(--font-logo);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ri-score-band small{font-size:8px;color:#777;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ri-score{font:800 22px var(--font-logo);letter-spacing:.04em}.ri-score.hidden,.ri-blur{filter:blur(8px);user-select:none}.ri-match-foot{height:38px;padding:0 13px;display:flex;justify-content:space-between;align-items:center;gap:10px;color:#72767a;font-size:9px}
 /* Yayıncı adı ("Watch on NBA League Pass") ve tur bilgisi ("Final Four ·
@@ -99,7 +99,7 @@
 .ri-review-feed{margin-top:24px;display:grid;gap:9px}.ri-review-feed>article{padding:12px;border:1px solid var(--ri-line);border-radius:14px;background:#111214}.ri-review-feed>article>div:first-child{display:flex;align-items:center;justify-content:space-between}.ri-review-feed article p{margin:7px 0;color:#aaa;font-size:10px;line-height:1.5}.ri-review-feed footer{display:flex;gap:8px}.ri-review-feed footer button{display:flex;align-items:center;gap:4px;border:0;background:transparent;color:#666;font-size:9px}.ri-review-feed footer button.active{color:#ff6f91}.ri-comments{border-top:1px solid var(--ri-line);margin-top:9px;padding-top:7px}.ri-comments>p{margin:4px 0!important}.ri-comments>div{display:flex;gap:6px;margin-top:7px}.ri-comments input,.ri-chat-compose input{flex:1;min-width:0;border:1px solid var(--ri-line);border-radius:10px;background:#0b0c0e;color:#ddd;padding:9px;font-size:10px}.ri-comments button,.ri-chat-compose button{width:35px;border:0;border-radius:10px;background:var(--ri-gold);color:#18120a;display:grid;place-items:center}
 .ri-watchalong-live{margin-top:15px}.ri-chat-log{height:230px;overflow:auto;margin-top:9px;padding:10px;border:1px solid var(--ri-line);border-radius:14px;background:#0c0d0f}.ri-chat-log p{display:flex;flex-direction:column;margin:0 0 9px}.ri-chat-log strong{font-size:9px;color:var(--ri-green)}.ri-chat-log span{font-size:10px;color:#bbb}.ri-chat-compose{display:flex;gap:7px;margin-top:8px}.ri-chat-compose button{height:36px}
 .ri-check{display:flex;align-items:center;gap:8px;color:#999;font-size:10px;margin:12px 2px}.ri-rank-results button.selected{border-color:rgba(255,177,27,.5);background:rgba(255,177,27,.08)}.ri-list-stack{display:grid;gap:8px}.ri-list-stack article{display:flex;gap:10px;align-items:center;padding:13px;border:1px solid var(--ri-line);border-radius:13px;background:#121315}.ri-list-stack svg{color:var(--ri-gold)}.ri-list-stack div{display:flex;flex-direction:column}.ri-list-stack strong{font:700 13px var(--font-logo)}.ri-list-stack span{font-size:9px;color:#777}.ri-profile-stats{grid-template-columns:repeat(3,1fr)!important;row-gap:12px}
-.ri-catalog-filters{display:flex;gap:8px;align-items:center;justify-content:space-between;margin:0 0 12px}.ri-catalog-filters>div{display:flex;gap:5px}.ri-catalog-filters button,.ri-catalog-filters select{border:1px solid var(--ri-line);border-radius:999px;background:#111214;color:#888;padding:7px 10px;font-size:9px}.ri-catalog-filters button.active{color:#17120a;background:var(--ri-gold);border-color:var(--ri-gold)}.ri-catalog-filters select{max-width:160px;border-radius:10px;outline:none}.ri-load-more{display:block;margin:16px auto 0;border:1px solid rgba(255,177,27,.3);border-radius:999px;background:rgba(255,177,27,.06);color:var(--ri-gold);padding:9px 18px;font-size:10px}
+.ri-catalog-filters{display:flex;gap:8px;align-items:center;justify-content:space-between;margin:0 0 12px}.ri-catalog-filters>div{display:flex;gap:5px}.ri-catalog-filters button,.ri-catalog-filters select{border:1px solid var(--ri-line);border-radius:999px;background:#111214;color:#888;padding:7px 10px;font-size:9px}.ri-catalog-filters button.active{color:#17120a;background:var(--ri-gold);border-color:var(--ri-gold)}.ri-catalog-filters select{max-width:160px;border-radius:10px;outline:none}button.ri-load-more{display:block;margin:16px auto 0;border:1px solid rgba(255,177,27,.3);border-radius:999px;background:rgba(255,177,27,.06);color:var(--ri-gold);padding:9px 18px;font-size:10px}
 .ri-catalog-filters .ri-catalog-selects{display:grid;grid-template-columns:86px minmax(118px,1fr);gap:5px}.ri-catalog-filters .ri-catalog-selects select{min-width:0;width:100%}@media(max-width:390px){.ri-catalog-filters{align-items:flex-start;flex-direction:column}.ri-catalog-filters .ri-catalog-selects{width:100%;grid-template-columns:96px 1fr}.ri-catalog-filters .ri-catalog-selects select{max-width:none}}
 .ri-squad-preview{margin-top:16px}.ri-squad-preview>div:last-child{display:grid;grid-template-columns:1fr 1fr;gap:8px}.ri-squad-preview section{border:1px solid var(--ri-line);border-radius:14px;background:#101113;padding:10px;min-width:0}.ri-squad-preview header{display:flex;align-items:center;gap:7px;border-bottom:1px solid var(--ri-line);padding-bottom:7px}.ri-squad-preview header .ri-team-mark{width:27px;height:27px}.ri-squad-preview header strong{font:700 11px var(--font-logo);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ri-squad-preview section>div{display:flex;flex-direction:column;gap:5px;margin-top:8px;max-height:210px;overflow:auto}.ri-squad-preview section span{display:flex;align-items:center;gap:5px;font-size:8px;color:#999}.ri-squad-preview section span b{width:17px;color:var(--ri-gold);font:700 8px var(--font-logo)}
 .ri-diary-cards>div{clip-path:polygon(0 0,calc(100% - 11px) 0,100% 11px,100% 100%,11px 100%,0 calc(100% - 11px));border-radius:16px 0 16px 0}
@@ -195,7 +195,7 @@
    altina donerdi -- bu projede bir kez yasandi (arama cubugundaki altin
    kutu, :focus-visible'in metin girdisinde her zaman eslesmesi). Odagi
    imlec zaten gosteriyor; halka dugmelerde duruyor, ise yaradigi yerde. */
-.ri-find-cancel{flex:none;height:44px;padding:0 6px;border:0;background:none;color:#9aa0a6;
+button.ri-find-cancel{flex:none;height:44px;padding:0 6px;border:0;background:none;color:#9aa0a6;
   font:700 12px var(--font-logo);letter-spacing:.09em;text-transform:uppercase}
 .ri-find-cancel:focus-visible{outline:2px solid var(--ri-gold);outline-offset:2px;border-radius:6px}
 .ri-find-body{flex:1;min-height:0;overflow-y:auto;padding:0 26px 26px;scrollbar-width:none}
@@ -288,7 +288,7 @@
   font:700 9px/1 var(--font-logo);letter-spacing:.14em}
 .ri-alert-dot{width:9px;height:9px;border-radius:999px;flex:none}
 .ri-alert-hot p{margin-top:11px}
-.ri-alert-cta{width:100%;height:44px;margin-top:13px;border:0;border-radius:10px;
+button.ri-alert-cta{width:100%;height:44px;margin-top:13px;border:0;border-radius:10px;
   background:var(--ri-gold);color:#17120a;
   font:700 12px var(--font-logo);letter-spacing:.09em;text-transform:uppercase}
 .ri-alert-cta:focus-visible,.ri-alert-body:focus-visible{outline:2px solid var(--ri-gold);outline-offset:2px}
@@ -338,6 +338,86 @@
 .ri-switch.on{background:var(--ri-green);justify-content:flex-end}
 .ri-switch>i{width:22px;height:22px;border-radius:999px;background:#0c0d0f;display:block}
 .ri-set-toggle[disabled]{opacity:.55}
+
+/* NOT -- buton sinif kurallari `button.` ile yaziliyor. `.rankit-app button
+   {font:inherit}` (0,1,1) tek sinifli bir kurali (0,1,0) YENIYOR: "Add from
+   your diary" 12px Rajdhani yerine 16px Outfit ciziliyordu (olculdu). Ayni
+   hata yedi kuralda vardi, ikisi (hide-score, load-more) redesign oncesinden.
+   `button.x` (0,1,1) esitliyor ve dosyada SONRA geldigi icin kazaniyor. */
+/* -- Ekranlar 3h / 3i: tam ekran yuzeyler ---------------------------------
+   Ikisi de .rankit-app'e PORTAL ile gidiyor (bkz. Settings.jsx): cagrildiklari
+   yer donusumlu bir ata tasiyabilir ve position:fixed onun icine hapsolur. */
+.ri-shelf,.ri-member{position:fixed;left:0;right:0;top:0;bottom:73px;z-index:19;background:#090a0b;
+  display:flex;flex-direction:column}
+.ri-shelf-head,.ri-member-head{display:flex;align-items:center;gap:4px;height:64px;padding:0 15px 0 4px;flex:none}
+.ri-shelf-head button,.ri-member-head button{width:44px;height:44px;flex:none;border:0;background:none;
+  color:#c9cccd;display:grid;place-items:center}
+.ri-member-head strong{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  font:700 13px/1 var(--font-logo);letter-spacing:.02em;color:#eceded}
+.ri-shelf-body,.ri-member-body{flex:1;min-height:0;overflow-y:auto;padding:0 26px 26px;scrollbar-width:none}
+.ri-shelf-body::-webkit-scrollbar,.ri-member-body::-webkit-scrollbar{display:none}
+.ri-shelf-head button:focus-visible,.ri-member-head button:focus-visible{outline:2px solid var(--ri-gold);outline-offset:-4px;border-radius:10px}
+
+/* 3h baslik blogu */
+.ri-shelf-title{margin-bottom:18px}
+.ri-shelf-title small{display:flex;align-items:center;gap:4px;font:700 9px/1 var(--font-logo);letter-spacing:.14em;color:#7f868b}
+/* Handle bir baglanti ama gorunumu etiketin parcasi; dokunma hedefi 44px. */
+.ri-shelf-title small button{min-height:44px;margin:-17px 0;padding:0 2px;border:0;background:none;
+  font:inherit;letter-spacing:inherit;color:#c9cccd}
+.ri-shelf-title h2{margin:9px 0 0;font:700 26px/1.15 var(--font-logo);letter-spacing:.02em;color:#eceded;text-wrap:balance}
+.ri-shelf-title p{margin:11px 0 0;font:400 12px/1.5 var(--font-sans);color:#9aa0a6;text-wrap:pretty}
+.ri-shelf-acts{display:flex;align-items:center;gap:16px;margin-top:16px}
+/* Sayaclar MUREKKEP, isi degil: tasarim "142"yi #d43a63 ciziyor ama §1'e
+   gore isi bir CTA'ya giremez. */
+.ri-shelf-acts button{display:flex;align-items:center;gap:8px;min-height:44px;padding:0 2px;border:0;
+  background:none;color:#9aa0a6}
+.ri-shelf-acts button[aria-pressed="true"]{color:#eceded}
+.ri-shelf-acts button[disabled]{cursor:default}
+.ri-shelf-acts b{font:700 12px/1 var(--font-logo);font-variant-numeric:tabular-nums}
+.ri-shelf-acts button:focus-visible{outline:2px solid var(--ri-gold);outline-offset:2px;border-radius:8px}
+
+/* 3h satirlari: 68px, sira + kompakt cift + metin + isi cubugu. §4.1 icin
+   minmax(0,1fr) + min-width:0 IKISI BIRDEN. */
+.ri-shelf-items{display:flex;flex-direction:column;gap:10px}
+.ri-shelf-item{display:grid;grid-template-columns:auto auto minmax(0,1fr) auto;align-items:center;gap:13px;
+  width:100%;min-height:68px;padding:8px 14px;border:1px solid var(--ri-line);border-radius:14px;
+  background:var(--ri-card);color:inherit;text-align:left}
+.ri-shelf-rank{width:22px;font:700 21px/1 var(--font-logo);color:#7f868b;font-variant-numeric:tabular-nums}
+.ri-shelf-text{min-width:0;display:flex;flex-direction:column;gap:6px}
+.ri-shelf-text strong{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  font:700 13px/1 var(--font-logo);letter-spacing:.02em;color:#eceded}
+.ri-shelf-text small{font:400 12px/1 var(--font-sans);color:#9aa0a6}
+.ri-shelf-item>i{width:4px;height:36px;border-radius:2px}
+button.ri-shelf-add{display:flex;align-items:center;justify-content:center;gap:9px;min-height:48px;
+  border:1px dashed rgba(255,255,255,.16);border-radius:10px;background:#121315;color:#9aa0a6;
+  font:700 12px/1 var(--font-logo);letter-spacing:.09em;text-transform:uppercase}
+.ri-shelf-item:focus-visible,.ri-shelf-add:focus-visible{outline:2px solid var(--ri-gold);outline-offset:2px}
+
+/* 3i */
+.ri-member-id{display:flex;align-items:center;gap:16px;margin-bottom:18px}
+.ri-member-id>div{min-width:0}
+/* Notr disk: kimlik icin palet yok, isi rampasiyla boyamak "@kisi sicak"
+   demek olurdu. */
+.ri-member-avatar{width:66px;height:66px;flex:none;border-radius:999px;display:grid;place-items:center;
+  background:#121315;border:1px solid var(--ri-line);font:700 21px var(--font-logo);color:#9aa0a6}
+.ri-member-id h2{margin:0;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  font:700 21px/1 var(--font-logo);letter-spacing:.02em;color:#eceded}
+.ri-member-id small{display:block;margin-top:8px;font:400 12px/1 var(--font-sans);color:#9aa0a6}
+button.ri-member-follow{width:100%;min-height:48px;margin-bottom:18px;border:0;border-radius:10px;
+  background:var(--ri-gold);color:#17120a;font:700 12px/1 var(--font-logo);letter-spacing:.09em;text-transform:uppercase}
+.ri-member-follow:focus-visible{outline:2px solid #eceded;outline-offset:2px}
+.ri-member-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:26px}
+.ri-member-stats>div{min-width:0;padding:13px;border:1px solid var(--ri-line);border-radius:14px;background:var(--ri-card)}
+.ri-member-stats strong{display:block;font:700 21px/1 var(--font-logo);color:#eceded;font-variant-numeric:tabular-nums}
+.ri-member-stats span{display:block;margin-top:6px;font:400 12px/1.3 var(--font-sans);color:#9aa0a6}
+.ri-member-overlap{margin-bottom:26px}
+.ri-member-overlap .ri-chip-title b{font:700 12px/1 var(--font-logo);letter-spacing:0}
+.ri-member-overlap-card{padding:14px;border:1px solid var(--ri-line);border-radius:14px;background:#121315}
+.ri-member-overlap-card p{margin:0;font:400 12px/1.5 var(--font-sans);color:#9aa0a6;text-wrap:pretty}
+.ri-member-bars{display:flex;gap:4px;margin-bottom:11px}
+.ri-member-bars span{flex:1;height:5px;border-radius:3px}
+.ri-member-shelf{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.ri-member-shelf>.ri-card-slot{min-width:0}
 
 /* Mac sayfasindaki turnuva adi 3c/3d'ye aciliyor. Yeni kompakt kart eski
    karttaki turnuva cipini tasimiyor; web'de bu baglanti zaten mac sayfasinda,
@@ -513,7 +593,7 @@
 .ri-review-acts button{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:0 10px;border:1px solid var(--ri-line);border-radius:999px;background:none;color:#9aa0a6;font:700 10px var(--font-logo)}
 .ri-review-acts button[aria-pressed="true"]{color:#eceded;border-color:rgba(255,255,255,.24)}
 .ri-review-read{margin-left:auto;font:700 10px var(--font-logo);letter-spacing:.1em;color:#9aa0a6;cursor:pointer}
-.ri-reviews-link{display:inline-flex;align-items:center;gap:4px;border:0;background:none;padding:0;font:700 9px var(--font-logo);letter-spacing:.1em;color:var(--ri-gold)}
+button.ri-reviews-link{display:inline-flex;align-items:center;gap:4px;border:0;background:none;padding:0;font:700 9px var(--font-logo);letter-spacing:.1em;color:var(--ri-gold)}
 
 /* ── Ekran 4a: yanıt dizisi ──────────────────────────────────────────────── */
 .ri-thread-review{border:1px solid var(--ri-line);border-radius:18px;background:#121315;padding:14px;margin-top:4px}

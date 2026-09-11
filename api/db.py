@@ -687,6 +687,29 @@ def init_db():
             PRIMARY KEY (user_id, key)
         );
 
+        -- Listeye respect (ekran 3h). Tasarim burada kalp ve isi rengi ciziyor;
+        -- ikisi de kendi kurallarini ciğniyor: §6.1 "Respect replaces likes"
+        -- ve §1 "isi asla bir CTA degil". Bir liste de bir GORUS -- fiil
+        -- respect, kontrol RankIt elmasi. Inceleme respect'inin tablosuyla
+        -- ayni sekil.
+        -- Listeyi kaydetmek (3h "38 saved"). rankit_follows DEGIL: onun CHECK
+        -- kisiti hedefi user/team/player/competition ile sinirliyor ve SQLite
+        -- CHECK'i ALTER edemiyor -- gercek takipleri tasiyan tabloyu yeniden
+        -- kurmak yerine ayri tablo.
+        CREATE TABLE IF NOT EXISTS rankit_list_saves (
+            list_id    INTEGER NOT NULL REFERENCES rankit_lists(id) ON DELETE CASCADE,
+            user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            created_at TEXT DEFAULT (datetime('now')),
+            PRIMARY KEY (list_id, user_id)
+        );
+
+        CREATE TABLE IF NOT EXISTS rankit_list_respect (
+            list_id    INTEGER NOT NULL REFERENCES rankit_lists(id) ON DELETE CASCADE,
+            user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            created_at TEXT DEFAULT (datetime('now')),
+            PRIMARY KEY (list_id, user_id)
+        );
+
         CREATE INDEX IF NOT EXISTS idx_rankit_notify ON rankit_notifications(user_id, read_at, created_at DESC);
         CREATE INDEX IF NOT EXISTS idx_rankit_player_stats ON rankit_player_stats(competition_id, season, stat, rank);
         CREATE INDEX IF NOT EXISTS idx_rankit_comments_entry ON rankit_review_comments(entry_id, created_at);

@@ -38,6 +38,7 @@ def conn():
         CREATE TABLE rankit_lists(id INTEGER PRIMARY KEY, user_id INTEGER, title TEXT,
                                   updated_at TEXT);
         CREATE TABLE rankit_list_items(list_id INTEGER, match_id INTEGER);
+        CREATE TABLE rankit_list_saves(list_id INTEGER, user_id INTEGER);
         CREATE TABLE rankit_user_settings(user_id INTEGER, key TEXT, value TEXT,
                                           PRIMARY KEY(user_id,key));
         CREATE TABLE rankit_notifications(
@@ -193,8 +194,8 @@ def test_durum_okundu_sayilmaz(conn):
 
 # ── Kapanmaya bir mac kalan koleksiyon ───────────────────────────────────────
 
-def _seed_list(conn, total, rated):
-    conn.execute("INSERT INTO rankit_lists VALUES(3,1,'Every London Derby','2026-09-01')")
+def _seed_list(conn, total, rated, owner=1):
+    conn.execute("INSERT INTO rankit_lists VALUES(3,?,'Every London Derby','2026-09-01')", (owner,))
     for i in range(total):
         mid = 200 + i
         conn.execute("INSERT INTO rankit_matches VALUES(?,5,?,'finished',10,11)",
@@ -210,6 +211,16 @@ def test_bir_mac_kala_uyari(conn):
     item = [i for i in out["items"] if i["kind"] == "collection"][0]
     assert item["rated"] == 11 and item["total"] == 12
     assert item["match"]            # kalan macin adi yazilabilmeli
+
+
+def test_kaydedilen_liste_de_uyarir(conn):
+    """Baskasinin listesi, KAYDETTIYSEN. Bu dal once olu idi: rankit_follows'ta
+    target_type='list' araniyordu ama o tablonun CHECK kisiti 'list'i hic
+    kabul etmiyordu."""
+    _seed_list(conn, total=4, rated=3, owner=2)
+    assert not [i for i in N.feed(conn, 1)["items"] if i["kind"] == "collection"]
+    conn.execute("INSERT INTO rankit_list_saves VALUES(3,1)")
+    assert [i for i in N.feed(conn, 1)["items"] if i["kind"] == "collection"]
 
 
 def test_iki_mac_kala_uyari_yok(conn):

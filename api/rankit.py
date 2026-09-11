@@ -152,6 +152,9 @@ class RespectIn(BaseModel):
 
 
 class FollowIn(BaseModel):
+    # 'list' YOK: rankit_follows'un CHECK kisiti onu reddediyor. Liste
+    # kaydetme kendi tablosunda (rankit_list_saves) -- gercek takipleri
+    # tasiyan bir tabloyu CHECK degistirmek icin yeniden kurmak yerine.
     target_type: Literal["user", "team", "player", "competition"]
     target_id: int
     notify: bool = False
@@ -1071,22 +1074,103 @@ def rankit_team_detail(team_id: int, user=Depends(get_optional_user)):
                 "matches": [_match_dict(conn, row, uid) for row in rows]}
 
 
+# Zevk ortakligi icin taban. Iki ortak macta "%100 uyusuyorsunuz" demek
+# bilgi degil gurultu; 3i'nin cumlesi ("41 of the 57") ancak orneklem varken
+# bir sey soyler.
+OVERLAP_MIN_SHARED = 5
+# "Uyusmak" = en fazla yarim yildiz fark. Puanlar 0.5 adimli; yarim yildiz
+# bir adim, yani ayni maca komsu iki okuma.
+OVERLAP_TOLERANCE = 0.5
+
+
+def _visible_entries_sql(alias: str = "e") -> str:
+    """Bir kullanicinin kayitlarindan IZLEYENIN gorebildikleri.
+
+    Profil istatistigi, ortalama ve zevk ortakligi hep BU kume uzerinden:
+    ozel kayitlarla hesaplanan bir ortalama ya da "57 macta 41 uyum" cumlesi,
+    o kaydi gizleyen kisinin puanini dolayli olarak ele verir.
+    Parametreler: (owner_id, viewer_id, viewer_id, owner_id).
+    """
+    return f"""{alias}.user_id=? AND ({alias}.visibility='public'
+        OR {alias}.user_id=?
+        OR ({alias}.visibility='followers' AND EXISTS(
+            SELECT 1 FROM rankit_follows f WHERE f.user_id=? AND f.target_type='user'
+            AND f.target_id=?)))"""
+
+
 @router.get("/members/{member_id}")
 def rankit_member_detail(member_id: int, user=Depends(get_optional_user)):
+    """Ekran 3i — baskasinin profili."""
     with get_conn() as conn:
         member = conn.execute("SELECT id,username,created_at FROM users WHERE id=?", (member_id,)).fetchone()
         if not member:
             raise HTTPException(404, "Member not found")
         uid = int(user["sub"]) if user else (None if IS_PROD else _demo_user_id(conn))
-        stats = conn.execute("""SELECT COUNT(*) diary_count,COUNT(DISTINCT match_id) matches,
-            COALESCE(SUM(classic),0) classics,AVG(rating) avg_rating FROM rankit_diary_entries WHERE user_id=?""", (member_id,)).fetchone()
-        entries = [dict(r) for r in conn.execute("""SELECT e.id,e.match_id,e.rating,e.review,e.watched_date,e.classic,
+        seen = _visible_entries_sql()
+        vis = (member_id, uid or -1, uid or -1, member_id)
+        stats = conn.execute(f"""SELECT COUNT(*) diary_count,COUNT(DISTINCT match_id) matches,
+            COALESCE(SUM(classic),0) classics,AVG(rating) avg_rating
+            FROM rankit_diary_entries e WHERE {seen}""", vis).fetchone()
+        entries = [dict(r) for r in conn.execute(f"""SELECT e.id,e.match_id,e.rating,e.review,e.watched_date,e.classic,
             h.short_name home_short,a.short_name away_short FROM rankit_diary_entries e
             JOIN rankit_matches m ON m.id=e.match_id JOIN rankit_teams h ON h.id=m.home_team_id
-            JOIN rankit_teams a ON a.id=m.away_team_id WHERE e.user_id=? AND e.visibility='public'
-            ORDER BY e.watched_date DESC,e.id DESC LIMIT 30""", (member_id,)).fetchall()]
+            JOIN rankit_teams a ON a.id=m.away_team_id WHERE {seen}
+            ORDER BY e.watched_date DESC,e.id DESC LIMIT 30""", vis).fetchall()]
         followed = bool(uid and conn.execute("SELECT 1 FROM rankit_follows WHERE user_id=? AND target_type='user' AND target_id=?", (uid, member_id)).fetchone())
-        return {"member": dict(member), "stats": dict(stats), "following": followed, "entries": entries}
+
+        # §7.1 — profilde KADEME. Baskasinin profilinde ilerleme cubugu yok
+        # (3i yalnizca "Rank 5 · Season Ticket" yaziyor); ilerleme kisinin
+        # kendi profilinde.
+        rank = rankit_rank.tier_for(rankit_rank.total_points(conn, member_id))
+
+        # Zevk ortakligi. Iki tarafin da MAC BASINA SON puani (rewatch ayni
+        # maci iki kez saydirmasin). Onun tarafi yalnizca gorebildiklerin.
+        overlap = None
+        if uid and uid != member_id:
+            row = conn.execute(f"""
+                WITH mine AS (
+                    SELECT e.match_id, e.rating r FROM rankit_diary_entries e
+                    WHERE e.id IN (SELECT MAX(id) FROM rankit_diary_entries
+                                   WHERE user_id=? AND rating IS NOT NULL GROUP BY match_id)),
+                theirs AS (
+                    SELECT e.match_id, e.rating r FROM rankit_diary_entries e
+                    WHERE e.id IN (SELECT MAX(e.id) FROM rankit_diary_entries e
+                                   WHERE {seen} AND e.rating IS NOT NULL GROUP BY e.match_id))
+                SELECT COUNT(*) shared,
+                       COALESCE(SUM(ABS(t.r - m.r) <= ?), 0) agree,
+                       AVG(t.r - m.r) bias
+                FROM mine m JOIN theirs t ON t.match_id=m.match_id""",
+                (uid, *vis, OVERLAP_TOLERANCE)).fetchone()
+            shared = int(row["shared"] or 0)
+            overlap = {
+                "shared": shared,
+                "agree": int(row["agree"] or 0),
+                # Taban altinda YUZDE YOK: arayuz "henuz yeterli degil" diyor.
+                "pct": round(row["agree"] / shared, 3) if shared >= OVERLAP_MIN_SHARED else None,
+                # Pozitif = o senden SICAK puanliyor, negatif = soguk.
+                "bias": round(float(row["bias"]), 2) if shared >= OVERLAP_MIN_SHARED else None,
+                "min_shared": OVERLAP_MIN_SHARED,
+            }
+
+        # 3i RECENT SHELF: kompakt MatchCard'lar. Isi TOPLULUGUN, yildizlar
+        # ONUN -- tasarimda Arsenal 4.6 isi ile bes yildiz yan yana.
+        # Mac basina SON kayit: ayni maci iki kez loglamak (rewatch) rafta iki
+        # ayni kart demek -- ve arayuzde ayni React anahtari.
+        shelf_rows = conn.execute(f"""SELECT e.id entry_id, e.match_id, e.rating, e.classic
+            FROM rankit_diary_entries e
+            WHERE e.id IN (SELECT MAX(e.id) FROM rankit_diary_entries e WHERE {seen}
+                           GROUP BY e.match_id)
+            ORDER BY e.watched_date DESC, e.id DESC LIMIT 6""", vis).fetchall()
+        shelf = []
+        for r in shelf_rows:
+            m = conn.execute(MATCH_SELECT + " WHERE m.id=?", (r["match_id"],)).fetchone()
+            if m:
+                shelf.append({**_match_dict(conn, m, uid), "entry_id": r["entry_id"],
+                              "their_rating": r["rating"], "their_classic": bool(r["classic"])})
+
+        return {"member": dict(member), "stats": dict(stats), "following": followed,
+                "entries": entries, "rank": rank, "overlap": overlap, "shelf": shelf,
+                "is_self": bool(uid and uid == member_id)}
 
 
 @router.get("/diary")
@@ -1238,16 +1322,84 @@ def create_rankit_list(body: ListIn, user=Depends(get_optional_user)):
         return {"ok": True, "list_id": cur.lastrowid}
 
 
+def _require_list_access(conn, list_id: int, uid: Optional[int]):
+    """Liste gorunurlugu. Once HIC yoktu: /lists/{id} her listeyi kimlige
+    bakmadan donuyordu, yani 'private' bir liste kimligi tahmin eden herkese
+    aciktı (guvenlik analizindeki "lists IDOR" maddesi). 404, 403 degil:
+    gizli bir listenin VAR OLDUGUNU da soylememek icin."""
+    row = conn.execute("""SELECT l.*,u.username FROM rankit_lists l
+        JOIN users u ON u.id=l.user_id WHERE l.id=?""", (list_id,)).fetchone()
+    if not row:
+        raise HTTPException(404, "List not found")
+    owner = int(row["user_id"])
+    if row["visibility"] == "public" or uid == owner:
+        return row
+    if row["visibility"] == "followers" and uid and conn.execute(
+            """SELECT 1 FROM rankit_follows WHERE user_id=? AND target_type='user'
+               AND target_id=?""", (uid, owner)).fetchone():
+        return row
+    raise HTTPException(404, "List not found")
+
+
 @router.get("/lists/{list_id}")
-def rankit_list_detail(list_id: int):
+def rankit_list_detail(list_id: int, user=Depends(get_optional_user)):
+    """Ekran 3h — "a list is a shelf you curate"."""
     with get_conn() as conn:
-        row = conn.execute("""SELECT l.*,u.username FROM rankit_lists l
-            JOIN users u ON u.id=l.user_id WHERE l.id=?""", (list_id,)).fetchone()
-        if not row:
-            raise HTTPException(404, "List not found")
+        uid = int(user["sub"]) if user else (None if IS_PROD else _demo_user_id(conn))
+        row = _require_list_access(conn, list_id, uid)
         items = conn.execute(MATCH_SELECT + """ JOIN rankit_list_items li ON li.match_id=m.id
             WHERE li.list_id=? ORDER BY li.position""", (list_id,)).fetchall()
-        return {"list": dict(row), "matches": [_match_dict(conn, m) for m in items]}
+        respect = conn.execute("SELECT COUNT(*) n FROM rankit_list_respect WHERE list_id=?",
+                               (list_id,)).fetchone()["n"]
+        saves = conn.execute("SELECT COUNT(*) n FROM rankit_list_saves WHERE list_id=?",
+                             (list_id,)).fetchone()["n"]
+        mine = lambda sql: bool(uid and conn.execute(sql, (list_id, uid)).fetchone())
+        return {
+            "list": dict(row),
+            # uid ile: "your 5★" satiri izleyenin kendi puanindan geliyor.
+            "matches": [_match_dict(conn, m, uid) for m in items],
+            "respect": respect,
+            "respected": mine("SELECT 1 FROM rankit_list_respect WHERE list_id=? AND user_id=?"),
+            "saves": saves,
+            "saved": mine("SELECT 1 FROM rankit_list_saves WHERE list_id=? AND user_id=?"),
+            "is_owner": bool(uid and uid == int(row["user_id"])),
+        }
+
+
+@router.post("/lists/{list_id}/save")
+def rankit_list_save(list_id: int, user=Depends(get_optional_user)):
+    """3h "38 saved". Kaydetmek bildirim URETMIYOR: tasarimda karsiligi yok
+    ve bir listenin sahibine "biri kaydetti" demek respect'le yaristirir."""
+    with get_conn() as conn:
+        uid = _actor_id(user, conn)
+        _require_list_access(conn, list_id, uid)
+        had = conn.execute("SELECT 1 FROM rankit_list_saves WHERE list_id=? AND user_id=?",
+                           (list_id, uid)).fetchone()
+        if had:
+            conn.execute("DELETE FROM rankit_list_saves WHERE list_id=? AND user_id=?", (list_id, uid))
+        else:
+            conn.execute("INSERT INTO rankit_list_saves(list_id,user_id) VALUES(?,?)", (list_id, uid))
+        n = conn.execute("SELECT COUNT(*) n FROM rankit_list_saves WHERE list_id=?",
+                         (list_id,)).fetchone()["n"]
+        return {"saved": not had, "saves": n}
+
+
+@router.post("/lists/{list_id}/respect")
+def rankit_list_respect(list_id: int, user=Depends(get_optional_user)):
+    with get_conn() as conn:
+        uid = _actor_id(user, conn)
+        row = _require_list_access(conn, list_id, uid)
+        had = conn.execute("SELECT 1 FROM rankit_list_respect WHERE list_id=? AND user_id=?",
+                           (list_id, uid)).fetchone()
+        if had:
+            conn.execute("DELETE FROM rankit_list_respect WHERE list_id=? AND user_id=?", (list_id, uid))
+        else:
+            conn.execute("INSERT INTO rankit_list_respect(list_id,user_id) VALUES(?,?)", (list_id, uid))
+            rankit_notify.notify(conn, int(row["user_id"]), "list_respect",
+                                 actor_id=uid, list_id=list_id)
+        n = conn.execute("SELECT COUNT(*) n FROM rankit_list_respect WHERE list_id=?",
+                         (list_id,)).fetchone()["n"]
+        return {"respected": not had, "respect": n}
 
 
 @router.post("/lists/{list_id}/items")

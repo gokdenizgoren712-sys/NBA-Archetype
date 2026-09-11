@@ -142,8 +142,11 @@ def _closing_list(conn, user_id: int) -> Optional[dict]:
                    JOIN rankit_diary_entries e ON e.match_id=i.match_id
                    WHERE i.list_id=l.id AND e.user_id=? AND e.rating IS NOT NULL) rated
            FROM rankit_lists l
-           WHERE (l.user_id=? OR EXISTS(SELECT 1 FROM rankit_follows f
-                  WHERE f.user_id=? AND f.target_type='list' AND f.target_id=l.id))
+           -- Sahibi ya da KAYDEDEN. Onceden rankit_follows'ta target_type='list'
+           -- araniyordu, ama o tablonun CHECK kisiti 'list'i hic kabul
+           -- etmiyordu: bu dal hicbir zaman tetiklenemezdi.
+           WHERE (l.user_id=? OR EXISTS(SELECT 1 FROM rankit_list_saves s
+                  WHERE s.user_id=? AND s.list_id=l.id))
            ORDER BY l.updated_at DESC""", (user_id, user_id, user_id)).fetchall()
     for r in row:
         if r["total"] > 1 and r["total"] - r["rated"] == 1:
