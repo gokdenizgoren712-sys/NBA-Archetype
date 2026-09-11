@@ -27,7 +27,7 @@ def conn():
         """
         CREATE TABLE users(id INTEGER PRIMARY KEY, username TEXT);
         CREATE TABLE rankit_teams(id INTEGER PRIMARY KEY, short_name TEXT);
-        CREATE TABLE rankit_competitions(id INTEGER PRIMARY KEY, name TEXT);
+        CREATE TABLE rankit_competitions(id INTEGER PRIMARY KEY, sport TEXT, name TEXT, season TEXT);
         CREATE TABLE rankit_matches(id INTEGER PRIMARY KEY, competition_id INTEGER,
                                     starts_at TEXT, status TEXT,
                                     home_team_id INTEGER, away_team_id INTEGER);
@@ -57,7 +57,9 @@ def conn():
     c.execute("INSERT INTO users VALUES(2,'mara')")
     c.execute("INSERT INTO rankit_teams VALUES(10,'ARS')")
     c.execute("INSERT INTO rankit_teams VALUES(11,'TOT')")
-    c.execute("INSERT INTO rankit_competitions VALUES(5,'Premier League')")
+    c.execute("INSERT INTO rankit_competitions VALUES(5,'Football','Premier League','2026-27')")
+    # Ayni turnuvanin GECEN sezonu: sezon turnuvadan bagimsiz (sahibin karari).
+    c.execute("INSERT INTO rankit_competitions VALUES(4,'Football','Premier League','2025-26')")
     return c
 
 
@@ -232,3 +234,13 @@ def test_iki_mac_kala_uyari_yok(conn):
 def test_kapanmis_koleksiyon_uyarmaz(conn):
     _seed_list(conn, total=12, rated=12)
     assert [i for i in N.feed(conn, 1)["items"] if i["kind"] == "collection"] == []
+
+
+def test_gecen_sezonu_takip_eden_bu_sezon_da_uyarilir(conn):
+    """Takip gecen sezonun satirinda (4), mac bu sezonun satirinda (5). Sezon
+    turnuvadan bagimsiz: "Premier League"i takip etmek her sezonunu takip
+    etmek. Id esitligiyle bu uyari sezon donunce sessizce dusuyordu."""
+    _seed_hot(conn, rating=4.6, watchlisted=False)
+    assert N.feed(conn, 1)["states"] == 0
+    conn.execute("INSERT INTO rankit_follows VALUES(1,'competition',4)")
+    assert N.feed(conn, 1)["states"] == 1

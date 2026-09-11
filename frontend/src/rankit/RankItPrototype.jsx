@@ -858,7 +858,32 @@ function DiscoverView({ hideScores, onOpen, onOpenCompetition, catalog = matches
   const [total, setTotal] = useState(catalog.length);
   const [loading, setLoading] = useState(false);
   const [refineOpen, setRefineOpen] = useState(false);
-  const competitions = (meta?.competitions || []).filter(c => sportFilter === "All" || c.sport === sportFilter);
+  // Turnuva sezondan BAGIMSIZ (sahibin karari, 2026-09-12): "Premier League
+  // 25-26" ve "26-27" iki turnuva degil, bir turnuvanin iki sezonu. /meta
+  // satirlari sezon basina geliyor; burada her turnuva BIR KEZ, sezonlariyla.
+  const families = useMemo(() => {
+    const byKey = new Map();
+    for (const c of meta?.competitions || []) {
+      if (sportFilter !== "All" && c.sport !== sportFilter) continue;
+      const key = `${c.sport}|${c.name}`;
+      const fam = byKey.get(key) || { key, name: c.name, sport: c.sport, seasons: [] };
+      if (!fam.seasons.includes(c.season)) fam.seasons.push(c.season);
+      byKey.set(key, fam);
+    }
+    return [...byKey.values()]
+      .map(f => ({ ...f, seasons: [...f.seasons].sort().reverse() }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [meta?.competitions, sportFilter]);
+  const family = families.find(f => f.name === competition);
+  // Turnuva secildiyse yalnizca ONUN sezonlari; secilmediyse hepsi.
+  const seasonOptions = family ? family.seasons : (meta?.seasons || []);
+  const pickCompetition = name => {
+    setCompetition(name);
+    // Turnuvadan sonra sezon kendiliginden secilir: en guncel olani. Kullanici
+    // ikisini birlikte secmek zorunda degil; isterse sezonu degistirir.
+    const fam = families.find(f => f.name === name);
+    setSeason(name === "All" || !fam ? "All" : fam.seasons[0]);
+  };
   useEffect(() => {
     try { localStorage.setItem("rankit:discover-sport", sportFilter); } catch { /* depolama kapalıysa filtre yine çalışır */ }
   }, [sportFilter]);
@@ -899,8 +924,11 @@ function DiscoverView({ hideScores, onOpen, onOpenCompetition, catalog = matches
         <span className="ri-refine-icon"><SlidersHorizontal size={16}/></span><span><strong>Season & competition</strong><small>{refinementSummary}</small></span>{refinementCount>0&&<b>{refinementCount}</b>}<ChevronDown className="ri-refine-chevron" size={16}/>
       </button>
       <div className="ri-refine-collapse" aria-hidden={!refineOpen}><div><div className="ri-catalog-selects">
-        <label><span>SEASON</span><select value={season} onChange={e=>{setSeason(e.target.value);setCompetition("All")}}><option value="All">All seasons</option>{(meta?.seasons||[]).map(s=><option key={s} value={s}>{s}</option>)}</select></label>
-        <label><span>COMPETITION</span><select value={competition} onChange={e=>setCompetition(e.target.value)}><option value="All">All competitions</option>{competitions.filter(c=>season==="All"||c.season===season).map(c=><option key={`${c.sport}-${c.name}-${c.season}`} value={c.name}>{c.name} · {c.season}</option>)}</select></label>
+        {/* Once TURNUVA (her biri bir kez), sonra SEZON. Sezon degismek
+            turnuvayi sifirlamiyor -- eskiden sifirliyordu ve "PL 25-26"yi
+            bulmak icin once sezonu sonra turnuvayi secmek gerekiyordu. */}
+        <label><span>COMPETITION</span><select value={competition} onChange={e=>pickCompetition(e.target.value)}><option value="All">All competitions</option>{families.map(f=><option key={f.key} value={f.name}>{f.name}</option>)}</select></label>
+        <label><span>SEASON</span><select value={season} onChange={e=>setSeason(e.target.value)}><option value="All">All seasons</option>{seasonOptions.map(s=><option key={s} value={s}>{s}</option>)}</select></label>
       </div></div></div>
     </div>
     <section className="ri-section"><div className="ri-section-head"><div><small>COMMUNITY PICKS</small><h2>Popular this week</h2></div></div>

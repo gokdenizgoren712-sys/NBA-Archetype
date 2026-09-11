@@ -10,8 +10,8 @@
  * Tasarımın metninden iki sapma, ikisi de ekran yalan söylemesin diye:
  *   * 4g "Your diary stays private until you share a card" diyor. Doğru
  *     değil: bir kayıt varsayılan olarak herkese açık, görünürlüğü kayıt
- *     başına sen seçiyorsun. Satır bunu söylüyor. Varsayılanın özel olup
- *     olmaması bir ürün kararı ve sahibine soruldu.
+ *     başına sen seçiyorsun. Satır bunu söylüyor. Sahibinin kararı
+ *     (2026-09-12): varsayılan herkese açık kalıyor, düzeltilmiş satır doğru.
  *   * 4h "This only decides what appears on your home" diyor. "Only" yanlış:
  *     takipler serinin dinlenme gecelerini (§7.2) ve "Running hot"u da
  *     belirliyor. "Only" düştü.

@@ -61,6 +61,7 @@ them to predict anything.
 > | List shelf — respect, save, *Add from your diary* | `3h` |
 > | Someone else's profile — rank, taste overlap, recent shelf | `3i` |
 > | Follow editor (4h's picker in edit mode, from Settings › Competitions & clubs) | `4h` |
+> | Discover filter: competition once, season after it (owner decision 2026-09-12) | `2c` |
 >
 > `4g` is phone-only by nature — on the web the site itself is the Primary
 > Arch sign-in. The follow-aware home ordering is server-side, so the web's
@@ -161,7 +162,10 @@ POTM and respect voting, review likes and comments, lists, entity pages
 (competition / player / team / member / list), watchalong, broadcast rows, and
 confirmed lineups with formation and manager.
 
-Shipped on mobile only: nothing. Parity is 27 of 27.
+Shipped on mobile only: the redesign surfaces listed in the web-debt table
+under "Working agreement" — parity is paused on the owner's word since
+2026-09-09. (This line said "nothing, 27 of 27" until 2026-09-12; that was true
+before the pause and stale after it.)
 
 Not built: reporting/moderation, per-endpoint rate limiting, notification
 delivery outside the app.
@@ -170,6 +174,24 @@ delivery outside the app.
 the bench and the coach; the NBA and EuroLeague providers are not wired for it,
 so basketball still falls back to the season squad. A match with no announced
 lineup returns an empty list rather than a season squad presented as one.
+
+## Owner decisions
+
+Answers to product questions raised during the redesign. Each one changed
+code; the date is when it was given.
+
+| Date | Question | Decision |
+|---|---|---|
+| 2026-09-12 | `3i` draws a chat bubble beside *Following*, but RankIt has no messaging | Left out. No DMs. |
+| 2026-09-12 | `4g` promises "Your diary stays private until you share a card"; entries default to public | Keep public by default. The screen says what is true: you choose visibility per entry. |
+| 2026-09-12 | How follows shape the home | Three tiers, each ordered by nearness to now: **1)** followed clubs' matches *on that RankIt day*, **2)** followed leagues' matches (same day), **3)** everything else. Ordering, never a filter. |
+| 2026-09-12 | Competition follows pointed at one season's row and lapsed at rollover | A season is a dimension of a competition, not a different competition. Following "Premier League" follows every season. Filters list each competition once; picking one selects its latest season, which can then be changed. |
+
+The last one is implemented as an identity rule, not a schema change: a
+competition is `(sport, name)`. `rankit_rank.FOLLOWED_COMPETITION_SQL` and
+`followed_competition_ids()` are the single definition; home, streak rest
+nights and the Running-hot alert all use it. A competition that is *renamed*
+between seasons would split into two — none is today, but it is the known edge.
 
 ## Known risks before beta
 

@@ -25,6 +25,7 @@ def conn():
     c.executescript(
         """
         CREATE TABLE users(id INTEGER PRIMARY KEY, username TEXT);
+        CREATE TABLE rankit_competitions(id INTEGER PRIMARY KEY, sport TEXT, name TEXT, season TEXT);
         CREATE TABLE rankit_matches(id INTEGER PRIMARY KEY, starts_at TEXT, competition_id INTEGER);
         CREATE TABLE rankit_diary_entries(id INTEGER PRIMARY KEY, user_id INTEGER,
                                           match_id INTEGER, watched_date TEXT,
@@ -41,6 +42,8 @@ def conn():
         """
     )
     c.execute("INSERT INTO users(id,username) VALUES(1,'deniz')")
+    c.execute("INSERT INTO rankit_competitions VALUES(1,'Football','League','2026-27')")
+    c.execute("INSERT INTO rankit_competitions VALUES(2,'Football','League','2025-26')")
     R.seed_rules(c)
     # Iki kol da ayni degeri alsin ki testler kol atamasina bagli olmasin;
     # A/B'nin kendisi ayri testte dogrulaniyor.
@@ -224,3 +227,27 @@ def test_gec_puanlama_az_oder_ve_yukseltilemez(conn):
     again = R.award_for_rating(conn, 1, 1)
     assert again["points"] == 0
     assert R.total_points(conn, 1) == 5
+
+
+def test_sezon_donunce_takip_dusmez(conn):
+    """Takip GECEN sezonun satirinda (2); bu sezonun maclari 1'de. Dinlenme
+    kurali yine uygulanmali ve kacirilan mac yine seriyi kirmali -- sezon
+    turnuvadan bagimsiz (sahibin karari, 2026-09-12)."""
+    conn.execute("INSERT INTO rankit_follows VALUES(1,'competition',2)")
+    today = utcnow()
+    d0 = R.rankit_day(today)
+    d1 = R.rankit_day(today - timedelta(days=1))
+    d2 = R.rankit_day(today - timedelta(days=2))
+    _seed_match(conn, 1, d0); _seed_rating(conn, 1, d0)
+    _seed_match(conn, 2, d1)                        # oynandi, PUANLANMADI
+    _seed_match(conn, 3, d2); _seed_rating(conn, 3, d2)
+    out = R.streak_for(conn, 1)
+    assert out["rest_nights_enforced"] is True
+    assert out["current"] == 1, "gecen sezonu takip etmek bu sezonun macini da kapsamali"
+    assert out["followed_competitions"] == 1
+
+
+def test_iki_sezon_satiri_tek_turnuva_sayilir(conn):
+    conn.execute("INSERT INTO rankit_follows VALUES(1,'competition',1)")
+    conn.execute("INSERT INTO rankit_follows VALUES(1,'competition',2)")
+    assert R.followed_competition_count(conn, 1) == 1

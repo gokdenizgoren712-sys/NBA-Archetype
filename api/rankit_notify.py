@@ -112,13 +112,14 @@ def _hot_match(conn, user_id: int, tz_offset: int) -> Optional[dict]:
            FROM rankit_matches m
            JOIN rankit_teams h ON h.id=m.home_team_id
            JOIN rankit_teams a ON a.id=m.away_team_id
+           JOIN rankit_competitions mc ON mc.id=m.competition_id
            WHERE m.status='finished'
              AND m.starts_at >= ? AND m.starts_at < ?
              AND NOT EXISTS(SELECT 1 FROM rankit_diary_entries e
                             WHERE e.match_id=m.id AND e.user_id=? AND e.rating IS NOT NULL)
              AND (EXISTS(SELECT 1 FROM rankit_watchlist w WHERE w.match_id=m.id AND w.user_id=?)
-                  OR EXISTS(SELECT 1 FROM rankit_follows f WHERE f.user_id=?
-                            AND f.target_type='competition' AND f.target_id=m.competition_id))
+                  -- Turnuva takibi SEZONDAN bagimsiz (rankit_rank.FOLLOWED_COMPETITION_SQL).
+                  OR """ + rankit_rank.FOLLOWED_COMPETITION_SQL + """)
            ORDER BY rating DESC
            LIMIT 1""",
         (user_id, opens.isoformat(sep="T"), closes.isoformat(sep="T"),

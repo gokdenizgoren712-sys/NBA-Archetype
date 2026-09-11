@@ -204,19 +204,19 @@ def test_turnuva_seciciye_bir_kez_girer(db):
     assert [(x["name"], x["season"]) for x in comps] == [("L", "2026-27")]
 
 
-def test_ana_ekran_takipleri_once_getirir(db):
-    """4h'nin sozu "Build my home": takip edilen kulubun maci, simdiye daha
-    uzak olsa bile once gelir. Filtre degil, sira."""
+def test_ana_ekran_takip_filtre_degil_sira(db):
+    """Takipler SIRAYI degistirir, listeyi daraltmaz: sessiz bir gecede
+    yalnizca takiplerle sinirli bir ana ekran bos kalirdi. (Onceki surum
+    uzak bir kulup macini da basa aliyordu; sahibin 2026-09-12 karari onu
+    "o RankIt gunu" ile sinirladi -- bkz. test_gun_disindaki_kulup_maci_one_gecmez.)"""
     with DB.get_conn() as c:
         c.execute("INSERT INTO rankit_teams(id,sport,name,short_name) VALUES(3,'Football','C','C')")
-        # takip edilen kulubun maci UZAK, digerleri yakin
         c.execute("""INSERT INTO rankit_matches(id,sport,competition_id,season,starts_at,status,
                      home_team_id,away_team_id,provider) VALUES(60,'Football',1,'2026-27',
                      '2027-05-01T20:00:00','upcoming',3,1,'fotmob')""")
         c.execute("INSERT INTO rankit_follows(user_id,target_type,target_id) VALUES(2,'team',3)")
     ids = [m["id"] for m in RK.rankit_home("All", None, None, who(2))["matches"]]
-    assert ids[0] == 60
-    assert len(ids) > 1, "takip edilmeyen maclar da gorunmeli -- filtre degil"
+    assert 60 in ids and len(ids) > 1, "takip edilmeyen maclar da gorunmeli"
 
 
 def test_duzenleyici_birakir_kisi_takibine_dokunmaz(db):
@@ -240,3 +240,73 @@ def test_duzenleyici_oneri_disi_takibi_gosterir(db):
         c.execute("INSERT INTO rankit_follows(user_id,target_type,target_id) VALUES(2,'team',9)")
     out = RK.rankit_onboarding("", who(2))
     assert 9 in [c["id"] for c in out["followed_clubs"]]
+
+
+
+def _day_window():
+    from datetime import datetime, timedelta, timezone
+    from api import rankit_rank as R
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    opens = datetime.fromisoformat(R.rankit_day(now, 0)) + timedelta(hours=R.RANKIT_DAY_START_HOUR)
+    return opens, opens + timedelta(days=1)
+
+
+def test_ana_ekran_uc_kademe(db):
+    """Sahibin karari: 1) takip edilen KULUBUN o RankIt gunundeki maci,
+    2) takip edilen LIGIN maci, 3) digerleri. Kademe icinde yakinlik."""
+    opens, closes = _day_window()
+    at = lambda h: (opens + __import__("datetime").timedelta(hours=h)).isoformat()
+    with DB.get_conn() as c:
+        c.execute("INSERT INTO rankit_competitions(id,sport,name,season) VALUES(3,'Football','Other','2026-27')")
+        c.execute("INSERT INTO rankit_teams(id,sport,name,short_name) VALUES(3,'Football','C','C'),(4,'Football','D','D')")
+        rows = [
+            (70, 3, 1, 2, at(1)),   # takipsiz lig, takipsiz kulupler, EN YAKIN
+            (71, 1, 1, 2, at(5)),   # takip edilen lig (1)
+            (72, 3, 3, 4, at(9)),   # takip edilen kulup (3), takipsiz lig
+        ]
+        for mid, comp, h, a, when in rows:
+            c.execute("""INSERT INTO rankit_matches(id,sport,competition_id,season,starts_at,status,
+                         home_team_id,away_team_id,provider) VALUES(?,'Football',?,'2026-27',?,'upcoming',?,?,'fotmob')""",
+                      (mid, comp, when, h, a))
+        c.execute("DELETE FROM rankit_matches WHERE id BETWEEN 1 AND 10")
+        c.execute("INSERT INTO rankit_follows(user_id,target_type,target_id) VALUES(2,'team',3)")
+        c.execute("INSERT INTO rankit_follows(user_id,target_type,target_id) VALUES(2,'competition',1)")
+    ids = [m["id"] for m in RK.rankit_home("All", opens.isoformat(), closes.isoformat(), who(2))["matches"]]
+    assert ids == [72, 71, 70]
+
+
+def test_gun_disindaki_kulup_maci_one_gecmez(db):
+    """"If there is on that RankIt day": gelecek haftaki kulup maci bu
+    gecenin lig macinin ustune cikmamali (pencere gelmese bile)."""
+    opens, closes = _day_window()
+    import datetime as dt
+    with DB.get_conn() as c:
+        c.execute("INSERT INTO rankit_teams(id,sport,name,short_name) VALUES(3,'Football','C','C')")
+        c.execute("DELETE FROM rankit_matches WHERE id BETWEEN 1 AND 10")
+        c.execute("""INSERT INTO rankit_matches(id,sport,competition_id,season,starts_at,status,
+                     home_team_id,away_team_id,provider) VALUES(80,'Football',1,'2026-27',?,'upcoming',1,2,'fotmob')""",
+                  ((opens + dt.timedelta(hours=8)).isoformat(),))
+        c.execute("""INSERT INTO rankit_matches(id,sport,competition_id,season,starts_at,status,
+                     home_team_id,away_team_id,provider) VALUES(81,'Football',1,'2026-27',?,'upcoming',3,2,'fotmob')""",
+                  ((opens + dt.timedelta(days=6)).isoformat(),))
+        c.execute("INSERT INTO rankit_follows(user_id,target_type,target_id) VALUES(2,'team',3)")
+        c.execute("INSERT INTO rankit_follows(user_id,target_type,target_id) VALUES(2,'competition',1)")
+    ids = [m["id"] for m in RK.rankit_home("All", None, None, who(2))["matches"]]
+    assert ids.index(80) < ids.index(81)
+
+
+def test_gecen_sezon_takibi_secicide_guncel_satiri_isaretler(db):
+    """Takip eski sezon satirinda; secici en yeni satiri gosteriyor ve onu
+    takipli saymali. Duzenleyiciyle kaydetmek takibi CALKALAMAMALI."""
+    with DB.get_conn() as c:
+        c.execute("INSERT INTO rankit_competitions(id,sport,name,season) VALUES(2,'Football','L','2025-26')")
+        c.execute("INSERT INTO rankit_follows(user_id,target_type,target_id) VALUES(2,'competition',2)")
+    out = RK.rankit_onboarding("", who(2))
+    assert out["followed_competition_ids"] == [1]
+    assert out["competitions"][0]["followed"] is True
+    RK.rankit_set_sources(RK.OnboardIn(competitions=[1]), who(2))
+    with DB.get_conn() as c:
+        rows = [r["target_id"] for r in c.execute(
+            "SELECT target_id FROM rankit_follows WHERE user_id=2 AND target_type='competition'")]
+    assert rows == [2], "ayni turnuva: eski satir yerinde kalmali, ikinci satir yazilmamali"
+    assert RK.rankit_onboarding_save(RK.OnboardIn(competitions=[1]), who(2))["following_sources"] == 1

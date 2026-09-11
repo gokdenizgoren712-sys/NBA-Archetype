@@ -12,8 +12,8 @@
  *     karar).
  *   * Büyük isim satırı kullanıcı adı. Tasarım "Deniz Yalçın" yazıyor ama
  *     hesaplarda görünen ad alanı YOK; uydurmak yerine adı yazıyoruz.
- *   * Konuşma balonu düğmesi yok. RankIt'te mesajlaşma yok; ne yapacağı bir
- *     mekanik kararı ve sahibine soruldu.
+ *   * Konuşma balonu düğmesi yok. RankIt'te mesajlaşma yok; sahibinin kararı
+ *     (2026-09-12): düğme dışarıda kalıyor.
  *
  * Özel kayıtlar hiçbir sayıya girmiyor — ortalama, "Logged", ortaklık, raf:
  * hepsi izleyenin GÖREBİLDİĞİ kayıtlardan (bkz. api/rankit.py

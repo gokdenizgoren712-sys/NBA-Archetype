@@ -131,6 +131,40 @@ def revoke(conn, user_id: int, subject_type: str, subject_id: int) -> int:
     return int(rows["n"] or 0)
 
 
+# ── Turnuva kimligi: sezondan BAGIMSIZ ──────────────────────────────────────
+# Sahibin karari (2026-09-12): "Season is a season whether it's 15-16 or
+# 26-27, only the competition changes." rankit_competitions sezon basina bir
+# satir tutuyor (Premier League 2025-26 ve 2026-27 iki satir), ama bir turnuva
+# BIR sey: onu takip etmek her sezonunu takip etmek demek. Satir kimligi yeni
+# sezonda degisiyor ve id esitligiyle kurulan bir takip sezon donunce SESSIZCE
+# dusuyordu. Kimlik (sport, name).
+#
+# Tek bir `?` (kullanici) bekler; icinde `mc` maçin turnuva satiri olmali.
+FOLLOWED_COMPETITION_SQL = """EXISTS(SELECT 1 FROM rankit_follows f
+    JOIN rankit_competitions fc ON fc.id=f.target_id
+    WHERE f.user_id=? AND f.target_type='competition'
+      AND fc.sport=mc.sport AND fc.name=mc.name)"""
+
+
+def followed_competition_ids(conn, user_id: int) -> list[int]:
+    """Takip edilen turnuvalarin TUM sezon satirlari."""
+    return [int(r[0]) for r in conn.execute(
+        """SELECT DISTINCT c2.id FROM rankit_follows f
+           JOIN rankit_competitions c1 ON c1.id=f.target_id
+           JOIN rankit_competitions c2 ON c2.sport=c1.sport AND c2.name=c1.name
+           WHERE f.user_id=? AND f.target_type='competition'""", (user_id,))]
+
+
+def followed_competition_count(conn, user_id: int) -> int:
+    """Takip edilen turnuva SAYISI -- satir degil aile. Eski bir sezon satirini
+    ve yenisini birlikte takip eden biri iki turnuva takip etmiyor."""
+    row = conn.execute(
+        """SELECT COUNT(DISTINCT c.sport || '|' || c.name) n FROM rankit_follows f
+           JOIN rankit_competitions c ON c.id=f.target_id
+           WHERE f.user_id=? AND f.target_type='competition'""", (user_id,)).fetchone()
+    return int(row["n"] or 0)
+
+
 def total_points(conn, user_id: int) -> int:
     row = conn.execute(
         "SELECT COALESCE(SUM(points),0) n FROM rankit_points WHERE user_id=?", (user_id,)
@@ -240,13 +274,10 @@ def streak_for(conn, user_id: int, tz_offset_minutes: int = 0) -> dict:
         if rankit_day(logged, tz_offset_minutes) == rankit_day(started, tz_offset_minutes):
             rated_days.add(rankit_day(started, tz_offset_minutes))
 
-    followed = [
-        int(r["target_id"])
-        for r in conn.execute(
-            "SELECT target_id FROM rankit_follows WHERE user_id=? AND target_type='competition'",
-            (user_id,),
-        )
-    ]
+    # Takip edilen turnuvalarin HER sezonu (bkz. followed_competition_ids):
+    # gecen sezonun satirini takip eden birinin bu sezonki dinlenme geceleri
+    # de sayilmali.
+    followed = followed_competition_ids(conn, user_id)
     # Takip edilen turnuvalarda mac olan gunler. Hicbiri takip edilmiyorsa
     # her gun dinlenme gunudur ve seri yalnizca puanlanan gunlerden orulur.
     active_days: set[str] = set()
@@ -267,7 +298,7 @@ def streak_for(conn, user_id: int, tz_offset_minutes: int = 0) -> dict:
         "current": current,
         "best": max(best, current),
         "rated_nights": len(rated_days),
-        "followed_competitions": len(followed),
+        "followed_competitions": followed_competition_count(conn, user_id) if followed else 0,
         # Takip yoksa dinlenme kurali uygulanamaz; arayuz bunu soyleyebilsin.
         "rest_nights_enforced": bool(followed),
     }
