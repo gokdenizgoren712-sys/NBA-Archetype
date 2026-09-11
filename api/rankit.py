@@ -429,7 +429,21 @@ def rankit_home(
         # RankIt" başlığının altında bir yıl önceki eleme maçları duruyordu.
         # /catalog zaten bu sabiti kullanıyor; ana ekranın kullanmaması gözden
         # kaçmış.
-        sql += NEAREST_MATCH_ORDER + " LIMIT 12"
+        # 4h'nin sozu: "Build my home". Takip ettigin turnuva ya da kulubun
+        # maclari ONCE gelir, sonra simdiye yakinlik. Filtre DEGIL, sira:
+        # sessiz bir gecede yalnizca takiplerle sinirli bir ana ekran BOS
+        # kalirdi. Takip yoksa davranis aynen eskisi.
+        follows_any = bool(uid and conn.execute(
+            """SELECT 1 FROM rankit_follows WHERE user_id=?
+               AND target_type IN ('competition','team') LIMIT 1""", (uid,)).fetchone())
+        if follows_any:
+            sql += """ ORDER BY (EXISTS(SELECT 1 FROM rankit_follows f WHERE f.user_id=?
+                          AND ((f.target_type='competition' AND f.target_id=m.competition_id)
+                            OR (f.target_type='team' AND f.target_id IN (m.home_team_id, m.away_team_id))))) DESC,
+                        ABS(julianday(m.starts_at)-julianday('now')), m.starts_at LIMIT 12"""
+            args.append(uid)
+        else:
+            sql += NEAREST_MATCH_ORDER + " LIMIT 12"
         rows = conn.execute(sql, args).fetchall()
         cards = [_match_dict(conn, r, uid) for r in rows]
         activity_rows = conn.execute("""SELECT e.id,e.review,e.rating,e.created_at,u.username,u.id user_id,m.id match_id,
@@ -986,6 +1000,130 @@ def rankit_notifications_read(user=Depends(get_optional_user)):
     with get_conn() as conn:
         uid = _actor_id(user, conn)
         return {"ok": True, "marked": rankit_notify.mark_read(conn, uid)}
+
+
+# ── Ilk kurulum (ekranlar 4g / 4h) ──────────────────────────────────────────
+ONBOARD_CLUBS = 7   # 4h: yedi kulup + bir "Search" karosu
+
+
+class OnboardIn(BaseModel):
+    competitions: list[int] = Field(default_factory=list, max_length=40)
+    clubs: list[int] = Field(default_factory=list, max_length=80)
+    skipped: bool = False
+
+
+def _current_competitions(conn):
+    """Her turnuva BIR KEZ, en guncel sezonuyla. rankit_competitions sezon
+    basina satir tutuyor; secici "Premier League"i iki kez gostermemeli.
+
+    Sira TOPLULUK ETKINLIGI (o turnuvanin tum sezonlarindaki kayit sayisi),
+    esitlikte ad. Mac sayisi populerlik degil -- NBA 1200 mac oynuyor diye
+    listenin basina gecmemeli."""
+    return conn.execute("""
+        WITH latest AS (
+            SELECT c.name, c.sport, MAX(c.season) season FROM rankit_competitions c
+            WHERE EXISTS(SELECT 1 FROM rankit_matches m WHERE m.competition_id=c.id
+                         AND m.provider IS NOT NULL)
+            GROUP BY c.name, c.sport)
+        SELECT c.id, c.name, c.sport, c.season,
+               (SELECT COUNT(*) FROM rankit_diary_entries e JOIN rankit_matches m ON m.id=e.match_id
+                JOIN rankit_competitions c2 ON c2.id=m.competition_id
+                WHERE c2.name=c.name AND c2.sport=c.sport) activity
+        FROM rankit_competitions c JOIN latest l
+          ON l.name=c.name AND l.sport=c.sport AND l.season=c.season
+        ORDER BY activity DESC, c.name""").fetchall()
+
+
+@router.get("/onboarding")
+def rankit_onboarding(competitions: str = Query(default="", max_length=400),
+                      user=Depends(get_optional_user)):
+    """4h icin veri. Kulupler SECILEN turnuvalardan gelir: once turnuva
+    secilir, kulup listesi ona gore daralir. Hic secim yoksa hepsinden."""
+    with get_conn() as conn:
+        uid = int(user["sub"]) if user else (None if IS_PROD else _demo_user_id(conn))
+        picked = [int(x) for x in competitions.split(",") if x.strip().isdigit()]
+        comps = _current_competitions(conn)
+        followed = {(r["target_type"], r["target_id"]) for r in conn.execute(
+            "SELECT target_type,target_id FROM rankit_follows WHERE user_id=?", (uid or -1,))}
+        scope = picked or [r["id"] for r in comps]
+        marks = ",".join("?" * len(scope)) or "NULL"
+        clubs = conn.execute(f"""
+            SELECT t.id, t.name, t.short_name, t.color,
+                   COALESCE(l.logo_url, t.crest_url) crest_url,
+                   (SELECT COUNT(*) FROM rankit_diary_entries e JOIN rankit_matches m2 ON m2.id=e.match_id
+                    WHERE t.id IN (m2.home_team_id, m2.away_team_id)) activity
+            FROM rankit_teams t LEFT JOIN rankit_team_logos l ON l.team_id=t.id
+            WHERE t.id IN (SELECT home_team_id FROM rankit_matches WHERE competition_id IN ({marks})
+                           UNION SELECT away_team_id FROM rankit_matches WHERE competition_id IN ({marks}))
+            ORDER BY activity DESC, t.name
+            LIMIT ?""", (*scope, *scope, ONBOARD_CLUBS)).fetchall()
+        done = bool(uid and conn.execute("""SELECT 1 FROM rankit_user_settings
+            WHERE user_id=? AND key='onboarded' AND value='1'""", (uid,)).fetchone())
+        # Duzenleyici (Settings > Competitions & clubs) icin: takip edilen HER
+        # kulup. Oneri listesi yedi kulup; disinda kalan bir takip ekranda
+        # gorunmezse birakilamaz da.
+        followed_clubs = [dict(r) for r in conn.execute("""
+            SELECT t.id, t.name, t.short_name, t.color, COALESCE(l.logo_url, t.crest_url) crest_url
+            FROM rankit_follows f JOIN rankit_teams t ON t.id=f.target_id
+            LEFT JOIN rankit_team_logos l ON l.team_id=t.id
+            WHERE f.user_id=? AND f.target_type='team' ORDER BY t.name""", (uid or -1,)).fetchall()]
+        # Takip edilen turnuva eski bir sezon satiri olabilir; secicide gorunmesi
+        # icin kimligi de donuyor.
+        followed_comp_ids = sorted(tid for kind, tid in followed if kind == "competition")
+        return {
+            "done": done,
+            "competitions": [{**dict(r), "followed": ("competition", r["id"]) in followed} for r in comps],
+            "clubs": [{**dict(r), "followed": ("team", r["id"]) in followed} for r in clubs],
+            "followed_clubs": followed_clubs,
+            "followed_competition_ids": followed_comp_ids,
+        }
+
+
+@router.put("/follows/sources")
+def rankit_set_sources(body: OnboardIn, user=Depends(get_optional_user)):
+    """Settings > Competitions & clubs. Ilk kurulumdan FARKLI: bu bir
+    DUZENLEYICI, gonderilen kume turnuva+kulup takiplerinin TAMAMI -- secimi
+    kaldirilan birakilir. Kisi ve oyuncu takiplerine dokunmaz."""
+    with get_conn() as conn:
+        uid = _actor_id(user, conn)
+        valid_c = {r["id"] for r in conn.execute("SELECT id FROM rankit_competitions")}
+        valid_t = {r["id"] for r in conn.execute("SELECT id FROM rankit_teams")}
+        want = {("competition", c) for c in body.competitions if c in valid_c} |                {("team", t) for t in body.clubs if t in valid_t}
+        have = {(r["target_type"], r["target_id"]) for r in conn.execute(
+            """SELECT target_type,target_id FROM rankit_follows WHERE user_id=?
+               AND target_type IN ('competition','team')""", (uid,))}
+        for kind, tid in have - want:
+            conn.execute("DELETE FROM rankit_follows WHERE user_id=? AND target_type=? AND target_id=?",
+                         (uid, kind, tid))
+        for kind, tid in want - have:
+            conn.execute("INSERT INTO rankit_follows(user_id,target_type,target_id) VALUES(?,?,?)",
+                         (uid, kind, tid))
+        return {"ok": True, "following_sources": len(want)}
+
+
+@router.post("/onboarding")
+def rankit_onboarding_save(body: OnboardIn, user=Depends(get_optional_user)):
+    """"Build my home" ya da "Skip". Ikisi de kurulumu KAPATIR; Skip bir daha
+    sormaz. Takipler eklenir, var olanlar silinmez -- ilk kurulum baska bir
+    cihazda yeniden gorunse bile kimsenin takibini dusurmemeli."""
+    with get_conn() as conn:
+        uid = _actor_id(user, conn)
+        if not body.skipped:
+            valid_c = {r["id"] for r in conn.execute("SELECT id FROM rankit_competitions")}
+            valid_t = {r["id"] for r in conn.execute("SELECT id FROM rankit_teams")}
+            for cid in dict.fromkeys(body.competitions):
+                if cid in valid_c:
+                    conn.execute("""INSERT OR IGNORE INTO rankit_follows(user_id,target_type,target_id)
+                                    VALUES(?,'competition',?)""", (uid, cid))
+            for tid in dict.fromkeys(body.clubs):
+                if tid in valid_t:
+                    conn.execute("""INSERT OR IGNORE INTO rankit_follows(user_id,target_type,target_id)
+                                    VALUES(?,'team',?)""", (uid, tid))
+        conn.execute("""INSERT INTO rankit_user_settings(user_id,key,value) VALUES(?,'onboarded','1')
+                        ON CONFLICT(user_id,key) DO UPDATE SET value='1'""", (uid,))
+        n = conn.execute("""SELECT COUNT(*) n FROM rankit_follows WHERE user_id=?
+                            AND target_type IN ('competition','team')""", (uid,)).fetchone()["n"]
+        return {"ok": True, "following_sources": n}
 
 
 # Sunucunun DAVRANDIGI ayarlar ve varsayilanlari. Listede olmayan bir anahtar

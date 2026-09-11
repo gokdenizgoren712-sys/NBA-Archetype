@@ -38,7 +38,7 @@ const GOLD = "#ffb11b";
    Sütunu ondan boyutla yoksa rozetler kırpılır (0.5.2'de tam bu oldu).
    Yarıçap crest'ten TÜRETİLİR: sabit 18/21 yazılırsa crestSize 38'e
    inince şekil daireye dönüşüyor. */
-export function Shield({ side, color, ink, abbr, crestUrl, badgeScale = 0.23, front = false }) {
+export function Shield({ side, color, ink, abbr, crestUrl, badgeScale = 0.23, front = false, ring = null }) {
   return (
     <div style={{
       width: side * 1.414, height: side * 1.414,
@@ -50,7 +50,9 @@ export function Shield({ side, color, ink, abbr, crestUrl, badgeScale = 0.23, fr
         transform: "rotate(45deg)",
         borderRadius: `${side * 0.29}px ${side * 0.29}px ${side * 0.34}px ${side * 0.34}px`,
         background: `linear-gradient(135deg,color-mix(in oklab,${color} 82%,#0b0b0b),color-mix(in oklab,${color} 30%,#0b0b0b))`,
-        border: "1px solid rgba(255,255,255,.18)",
+        // `ring`: secim halkasi (4h'de secilen kulup 2px altin). Verilmezse
+        // kalkanin kendi ince kenari.
+        border: ring || "1px solid rgba(255,255,255,.18)",
         display: "grid", placeItems: "center", overflow: "hidden",
         /* §2.6 — öndeki kalkan kart zeminiyle bir çizgi taşır, yoksa iki
            kalkan tek şekle kaynıyor. */

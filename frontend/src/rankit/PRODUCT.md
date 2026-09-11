@@ -60,6 +60,11 @@ them to predict anything.
 > | Settings, grouped — plus *Keep hiding until I rate* (the web's cards do not call `hidesScore`) | `3g` |
 > | List shelf — respect, save, *Add from your diary* | `3h` |
 > | Someone else's profile — rank, taste overlap, recent shelf | `3i` |
+> | Follow editor (4h's picker in edit mode, from Settings › Competitions & clubs) | `4h` |
+>
+> `4g` is phone-only by nature — on the web the site itself is the Primary
+> Arch sign-in. The follow-aware home ordering is server-side, so the web's
+> home gets it without a change.
 > | Watchalong tab still shown | retired in phase 4 on the phone only |
 >
 > Not owed: `3c` / `3d` and `3e` landed on both surfaces before the pause

@@ -58,6 +58,12 @@ export const rankitApi = {
   // Ekran 3g. YALNIZCA sunucunun davrandigi ayarlar; cihaza bagli olanlar
   // rankitPrefs.js'te (localStorage) kaliyor.
   settings: () => request("/settings"),
+  // Ekranlar 4g/4h. competitions: secilen turnuva kimlikleri (virgul) --
+  // kulup listesi onlara gore daraliyor.
+  onboarding: (competitions = "") => request(`/onboarding?competitions=${encodeURIComponent(competitions)}`),
+  saveOnboarding: value => request("/onboarding", body("POST", value)),
+  // Settings > Competitions & clubs: TAM kume, secimi kaldirilan birakilir.
+  setSources: value => request("/follows/sources", body("PUT", value)),
   saveSettings: (patch) => request("/settings", { method: "PUT", body: JSON.stringify(patch) }),
   match: id => request(`/matches/${id}`),
   broadcasts: (id, country = "TR") => request(`/matches/${id}/broadcasts?country=${encodeURIComponent(country)}`),

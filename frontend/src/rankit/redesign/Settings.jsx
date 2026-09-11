@@ -25,6 +25,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { rankitApi } from "../rankitApi";
 import { BROADCAST_COUNTRIES, localeCountry } from "../rankitPrefs";
 import { useBackClose } from "./backStack";
+import { FollowPicker } from "./FirstRun";
 
 const INK_4 = "#7f868b";
 
@@ -63,10 +64,13 @@ function Group({ title, children }) {
   );
 }
 
-export default function Settings({ prefs, setPref, followCount, onClose, onOpenFollows }) {
-  // onOpenFollows yoksa satir BAGLANTI DEGIL: ok isareti koymak, hicbir
-  // yere gitmeyen bir kapi cizmek olur. Takip duzenleyicisi 4h (ilk kurulum,
-  // "turnuva ve kulup sec") ile gelecek; o gelince buraya baglanacak.
+export default function Settings({ prefs, setPref, followCount, onClose, onFollowsChanged }) {
+  // "Competitions & clubs" 4h'nin secicisini DUZENLEYICI kipinde aciyor.
+  const [editingFollows, setEditingFollows] = useState(false);
+  // Kaydedilen sayi, profil verisinden gelenin YERINE gecer; kaydedilmediyse
+  // profilinki. useState(followCount) profil sonradan yuklenince eskide kalirdi.
+  const [saved, setCount] = useState(null);
+  const count = saved ?? followCount;
   const [account, setAccount] = useState(null);
   const [busy, setBusy] = useState(false);
 
@@ -81,10 +85,11 @@ export default function Settings({ prefs, setPref, followCount, onClose, onOpenF
   // aria-modal iddia ediliyorsa Escape kapatmali; odak hapsi 8. prompt'ta
   // butun sheet'lerle birlikte, tek elden geliyor.
   useEffect(() => {
-    const onKey = (e) => e.key === "Escape" && onClose();
+    // Duzenleyici acikken Escape ONU kapatir, ayarlari degil.
+    const onKey = (e) => e.key === "Escape" && !editingFollows && onClose();
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, [onClose, editingFollows]);
 
   const setAccountFlag = async (key, value) => {
     if (busy) return;
@@ -135,7 +140,7 @@ export default function Settings({ prefs, setPref, followCount, onClose, onOpenF
             </select>
           </label>
           <Row label="Competitions &amp; clubs"
-            value={`${followCount} followed`} onClick={onOpenFollows} />
+            value={`${count} followed`} onClick={() => setEditingFollows(true)} />
         </Group>
 
         <Group title="ALERTS">
@@ -171,5 +176,9 @@ export default function Settings({ prefs, setPref, followCount, onClose, onOpenF
       </div>
     </div>
   );
-  return host ? createPortal(screen, host) : screen;
+  return <>
+    {host ? createPortal(screen, host) : screen}
+    {editingFollows && <FollowPicker mode="edit" onClose={() => setEditingFollows(false)}
+      onDone={(r) => { setEditingFollows(false); if (r?.following_sources != null) setCount(r.following_sources); onFollowsChanged?.(); }} />}
+  </>;
 }

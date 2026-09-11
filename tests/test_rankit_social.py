@@ -29,9 +29,11 @@ def db(monkeypatch):
         c.execute("INSERT INTO rankit_competitions(id,sport,name,season) VALUES(1,'Football','L','2026-27')")
         c.execute("INSERT INTO rankit_teams(id,sport,name,short_name) VALUES(1,'Football','A','A'),(2,'Football','B','B')")
         for mid in range(1, 11):
+            # provider dolu: secici yalnizca senkronlanmis turnuvalari gosterir
+            # (tohum-yalnizca bir turnuva gercek degil).
             c.execute("""INSERT INTO rankit_matches(id,sport,competition_id,season,starts_at,status,
-                         home_team_id,away_team_id,home_score,away_score)
-                         VALUES(?,'Football',1,'2026-27',?,'finished',1,2,1,0)""",
+                         home_team_id,away_team_id,home_score,away_score,provider)
+                         VALUES(?,'Football',1,'2026-27',?,'finished',1,2,1,0,'fotmob')""",
                       (mid, f"2026-08-{mid:02d}T20:00:00"))
     return path
 
@@ -162,3 +164,79 @@ def test_raf_rewatch_i_tekrarlamaz(db):
     assert [m["id"] for m in shelf].count(1) == 1
     assert len({m["entry_id"] for m in shelf}) == len(shelf)
     assert [m for m in shelf if m["id"] == 1][0]["their_rating"] == 4.5, "SON kayit gosterilmeli"
+
+
+# ── 4g / 4h: ilk kurulum ─────────────────────────────────────────────────────
+
+def test_kurulum_takipleri_yazar_ve_kapanir(db):
+    out = RK.rankit_onboarding("", who(2))
+    assert out["done"] is False and [c["id"] for c in out["competitions"]] == [1]
+    res = RK.rankit_onboarding_save(RK.OnboardIn(competitions=[1], clubs=[1, 2]), who(2))
+    assert res["following_sources"] == 3
+    assert RK.rankit_onboarding("", who(2))["done"] is True
+
+
+def test_skip_bir_daha_sormaz_ve_takip_yazmaz(db):
+    RK.rankit_onboarding_save(RK.OnboardIn(competitions=[1], skipped=True), who(2))
+    out = RK.rankit_onboarding("", who(2))
+    assert out["done"] is True
+    assert not any(c["followed"] for c in out["competitions"])
+
+
+def test_kurulum_var_olan_takibi_dusurmez_ve_uydurma_kimligi_yazmaz(db):
+    with DB.get_conn() as c:
+        c.execute("INSERT INTO rankit_follows(user_id,target_type,target_id) VALUES(2,'team',2)")
+    RK.rankit_onboarding_save(RK.OnboardIn(competitions=[999], clubs=[1]), who(2))
+    with DB.get_conn() as c:
+        rows = {(r["target_type"], r["target_id"]) for r in
+                c.execute("SELECT target_type,target_id FROM rankit_follows WHERE user_id=2")}
+    assert rows == {("team", 1), ("team", 2)}, "999 yok sayilmali, var olan takip durmali"
+
+
+def test_turnuva_seciciye_bir_kez_girer(db):
+    """Sezon basina satir var; secici "L"yi iki kez gostermemeli, en yenisini."""
+    with DB.get_conn() as c:
+        c.execute("INSERT INTO rankit_competitions(id,sport,name,season) VALUES(2,'Football','L','2025-26')")
+        c.execute("""INSERT INTO rankit_matches(id,sport,competition_id,season,starts_at,status,
+                     home_team_id,away_team_id,provider) VALUES(50,'Football',2,'2025-26',
+                     '2025-08-01T20:00:00','finished',1,2,'fotmob')""")
+    comps = RK.rankit_onboarding("", who(2))["competitions"]
+    assert [(x["name"], x["season"]) for x in comps] == [("L", "2026-27")]
+
+
+def test_ana_ekran_takipleri_once_getirir(db):
+    """4h'nin sozu "Build my home": takip edilen kulubun maci, simdiye daha
+    uzak olsa bile once gelir. Filtre degil, sira."""
+    with DB.get_conn() as c:
+        c.execute("INSERT INTO rankit_teams(id,sport,name,short_name) VALUES(3,'Football','C','C')")
+        # takip edilen kulubun maci UZAK, digerleri yakin
+        c.execute("""INSERT INTO rankit_matches(id,sport,competition_id,season,starts_at,status,
+                     home_team_id,away_team_id,provider) VALUES(60,'Football',1,'2026-27',
+                     '2027-05-01T20:00:00','upcoming',3,1,'fotmob')""")
+        c.execute("INSERT INTO rankit_follows(user_id,target_type,target_id) VALUES(2,'team',3)")
+    ids = [m["id"] for m in RK.rankit_home("All", None, None, who(2))["matches"]]
+    assert ids[0] == 60
+    assert len(ids) > 1, "takip edilmeyen maclar da gorunmeli -- filtre degil"
+
+
+def test_duzenleyici_birakir_kisi_takibine_dokunmaz(db):
+    """Settings'teki duzenleyici gonderilen kumeyi TAM kume sayar: secimi
+    kaldirilan takip birakilir. Ilk kurulum ise yalnizca ekler."""
+    with DB.get_conn() as c:
+        c.execute("INSERT INTO rankit_follows(user_id,target_type,target_id) VALUES(2,'team',1)")
+        c.execute("INSERT INTO rankit_follows(user_id,target_type,target_id) VALUES(2,'team',2)")
+        c.execute("INSERT INTO rankit_follows(user_id,target_type,target_id) VALUES(2,'user',1)")
+    RK.rankit_set_sources(RK.OnboardIn(competitions=[1], clubs=[2]), who(2))
+    with DB.get_conn() as c:
+        rows = {(r["target_type"], r["target_id"]) for r in
+                c.execute("SELECT target_type,target_id FROM rankit_follows WHERE user_id=2")}
+    assert rows == {("competition", 1), ("team", 2), ("user", 1)}
+
+
+def test_duzenleyici_oneri_disi_takibi_gosterir(db):
+    """Takip edilen ama onerilmeyen kulup de listede olmali; yoksa birakilamaz."""
+    with DB.get_conn() as c:
+        c.execute("INSERT INTO rankit_teams(id,sport,name,short_name) VALUES(9,'Football','Far','FAR')")
+        c.execute("INSERT INTO rankit_follows(user_id,target_type,target_id) VALUES(2,'team',9)")
+    out = RK.rankit_onboarding("", who(2))
+    assert 9 in [c["id"] for c in out["followed_clubs"]]

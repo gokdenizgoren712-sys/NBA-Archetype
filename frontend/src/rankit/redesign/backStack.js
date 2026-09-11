@@ -21,14 +21,18 @@ export function useBackClose(close) {
   // kapatıcıyı bağımlılık yapmak her render'da çıkar-gir yapar ve alttaki
   // bir yüzeyi üsttekinin üstüne çıkarırdı.
   useEffect(() => { latest.current = close; });
+  const active = !!close;
   useEffect(() => {
+    // Kapatici yoksa (yuzey bu kipte kendini kapatamiyor, orn. ilk kurulum)
+    // yigina GIRMEZ: bos bir giris geri tusunu yutardi.
+    if (!active) return undefined;
     const entry = () => latest.current?.();
     stack.push(entry);
     return () => {
       const at = stack.indexOf(entry);
       if (at >= 0) stack.splice(at, 1);
     };
-  }, []);
+  }, [active]);
 }
 
 /* Kabuk geri tuşunda önce bunu çağırır. Kapatacak bir şey varsa true. */
