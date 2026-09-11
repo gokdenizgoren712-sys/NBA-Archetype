@@ -62,6 +62,11 @@ them to predict anything.
 > | Someone else's profile — rank, taste overlap, recent shelf | `3i` |
 > | Follow editor (4h's picker in edit mode, from Settings › Competitions & clubs) | `4h` |
 > | Discover filter: competition once, season after it (owner decision 2026-09-12) | `2c` |
+> | §5 states: card-geometry skeletons, empty-with-one-action, the offline banner, the rating outbox and `THAT'S ALL N` | `3k` / `3l` |
+>
+> Shared, so already on the web: `request()` now tells a network failure from
+> a server error (a GET that answers 404/500 no longer serves stale cache and
+> calls itself offline).
 >
 > `4g` is phone-only by nature — on the web the site itself is the Primary
 > Arch sign-in. The follow-aware home ordering is server-side, so the web's
