@@ -21,6 +21,7 @@ import { createPortal } from "react-dom";
 import { Check, ChevronLeft, Search } from "lucide-react";
 import { Logo } from "../../components/BrandIcons";
 import { rankitApi } from "../rankitApi";
+import { SkeletonChips, Loading } from "./States";
 import { Shield } from "./MatchCard";
 import { useBackClose } from "./backStack";
 
@@ -178,7 +179,7 @@ export function FollowPicker({ onDone, mode = "first", onClose }) {
         </div>}
 
         <div className="ri-chip-title">COMPETITIONS · {picked.size} PICKED</div>
-        {comps === null && <div className="ri-entity-loading">Loading…</div>}
+        {comps === null && <Loading label="Loading competitions"><SkeletonChips/></Loading>}
         <div className="ri-first-chips">
           {(comps || []).map((c) => (
             <button key={c.id} type="button" aria-pressed={picked.has(c.id)}

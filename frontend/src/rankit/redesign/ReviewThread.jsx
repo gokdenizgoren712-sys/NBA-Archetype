@@ -12,6 +12,7 @@
 import { useEffect, useState } from "react";
 import { X, CornerUpLeft } from "lucide-react";
 import { rankitApi } from "../rankitApi";
+import { SkeletonRows, Loading } from "./States";
 
 const INK = "#eceded";
 const INK_3 = "#9aa0a6";
@@ -110,7 +111,7 @@ export default function ReviewThread({ entryId, onClose }) {
         <div className="ri-sheet-grab" aria-hidden="true" />
         <button className="ri-sheet-close" onClick={onClose} aria-label="Close"><X size={19} /></button>
 
-        {!data && <div className="ri-entity-loading">Loading…</div>}
+        {!data && <Loading label="Loading the thread"><SkeletonRows count={3} height={84}/></Loading>}
 
         {review && <>
           <div className="ri-rank-head">

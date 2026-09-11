@@ -10,6 +10,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Send, Flame } from "lucide-react";
 import { rankitApi, rankitSocketUrl } from "../rankitApi";
+import { SkeletonRows, Loading } from "./States";
 import { RAMP, NAMES, inkFor } from "./heat";
 
 const INK_3 = "#9aa0a6";
@@ -163,7 +164,7 @@ export default function CompanionPanel({ matchId, isLoggedIn = true }) {
   const live = state?.status === "live";
   const pulse = state?.pulse?.value;
 
-  if (!state) return <div className="ri-entity-loading">Loading…</div>;
+  if (!state) return <Loading label="Loading the companion"><SkeletonRows count={2} height={88}/></Loading>;
 
   return (
     <div className="ri-companion">

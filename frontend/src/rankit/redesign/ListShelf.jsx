@@ -23,6 +23,7 @@ import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { ChevronLeft, Plus, Bookmark, X } from "lucide-react";
 import { rankitApi } from "../rankitApi";
+import { SkeletonRows, Loading, EndOfList } from "./States";
 import { CrestPair } from "./MatchCard";
 import { inkFor } from "./heat";
 import { useBackClose } from "./backStack";
@@ -111,7 +112,7 @@ function DiaryPicker({ listId, inList, onAdded, onClose }) {
           <div><small>ADD TO LIST</small><h2>From your diary</h2></div>
           <button type="button" onClick={onClose} aria-label="Close"><X size={20} /></button>
         </div>
-        {entries === null && <div className="ri-entity-loading">Loading…</div>}
+        {entries === null && <Loading label="Loading your diary"><SkeletonRows count={3} height={58} gap={8} radius={12}/></Loading>}
         {rows.map((e) => (
           <button key={e.id} type="button" className="ri-quick-row" disabled={busy === e.match_id}
             onClick={() => add(e.match_id)}>
@@ -170,7 +171,7 @@ export default function ListShelf({ listId, onClose, onOpenMatch, onOpenMember }
         <button type="button" onClick={onClose} aria-label="Back"><ChevronLeft size={16} /></button>
       </div>
       <div className="ri-shelf-body">
-        {!data && <div className="ri-entity-loading">Loading…</div>}
+        {!data && <Loading label="Loading the list"><SkeletonRows count={4} height={68}/></Loading>}
         {data?.missing && (
           <div className="ri-empty-state"><strong>This list is not available</strong>
             <span style={{ color: INK_3 }}>It may be private, or it was removed.</span></div>
@@ -202,6 +203,7 @@ export default function ListShelf({ listId, onClose, onOpenMatch, onOpenMember }
             {data.matches.map((m, i) => (
               <Item key={m.id} match={m} index={i} ranked={!!list.ranked} onOpen={onOpenMatch} />
             ))}
+            {!!data.matches.length && <EndOfList count={data.matches.length} />}
             {!data.matches.length && !data.is_owner && (
               <p className="ri-companion-note">Nothing on this shelf yet.</p>
             )}

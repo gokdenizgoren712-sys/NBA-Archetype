@@ -6,36 +6,54 @@ function headers() {
   return { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) };
 }
 
+export const LAST_SYNC_KEY = "rankit:lastSync";
+
+/* AG hatasi ile SUNUCU hatasi ayri seyler (ekran 3l). Eskiden ikisi ayni
+   catch'e dusuyordu: bir GET 404 ya da 500 dondugunde onbellekteki eski veri
+   sessizce donuyor ve uygulama "offline" diyordu -- sunucuya ulasilmisken.
+   Artik yalnizca fetch'in KENDISI reddedince cevrimdisiyiz; HTTP hatasi
+   `status` tasir, cevrimdisi hata `offline` tasir. Kuyruk (rankitOutbox.js)
+   bu ayrima dayaniyor: cevrimdisi puan bekletilir, reddedilen puan degil. */
 async function request(path, options = {}) {
   const method = options.method || "GET";
   let userId = "guest";
   try { userId = JSON.parse(localStorage.getItem("nba_arch_user"))?.id || "guest"; } catch { /* bozuk kullanıcı cache'i izolasyonu bozmaz */ }
   const cacheKey = `rankit:cache:${userId}:${path}`;
+  let res;
   try {
-    const res = await fetch(`${BASE}${path}`, { cache: "no-store", ...options, headers: { ...headers(), ...(options.headers || {}) } });
-    if (!res.ok) {
-      const errorBody = await res.json().catch(() => ({}));
-      throw new Error(errorBody.detail || `${res.status} ${res.statusText}`);
-    }
-    const data = await res.json();
-    if (method === "GET") {
-      try { localStorage.setItem(cacheKey, JSON.stringify({ savedAt: Date.now(), data })); } catch { /* depolama doluysa canlı veri yine kullanılır */ }
-    }
-    window.dispatchEvent(new CustomEvent("rankit:network", { detail: "online" }));
-    return data;
-  } catch (error) {
+    res = await fetch(`${BASE}${path}`, { cache: "no-store", ...options, headers: { ...headers(), ...(options.headers || {}) } });
+    // 502/503/504: ag gecidi var ama uygulama YOK (dagitim aninda Railway
+    // boyle doner). Kullanici icin RankIt'e ulasilamiyor -- cevrimdisiyla
+    // ayni yol: onbellek gosterilir, puan kuyruga girer.
+    if (res.status === 502 || res.status === 503 || res.status === 504) throw new Error("unreachable");
+  } catch {
+    window.dispatchEvent(new CustomEvent("rankit:network", { detail: "offline" }));
     if (method === "GET") {
       try {
         const cached = JSON.parse(localStorage.getItem(cacheKey));
-        if (cached?.data) {
-          window.dispatchEvent(new CustomEvent("rankit:network", { detail: "offline" }));
-          return cached.data;
-        }
+        // Onbellekten donen yanit ISARETLI: ekran 62% sonuk gostermek ve
+        // "Cached 3h ago" yazmak icin bunu bilmeli.
+        if (cached?.data && typeof cached.data === "object") return { ...cached.data, _cachedAt: cached.savedAt };
       } catch { /* geçersiz cache normal hata yoluna düşer */ }
     }
-    window.dispatchEvent(new CustomEvent("rankit:network", { detail: "offline" }));
-    throw error;
+    const offline = new Error("You're offline");
+    offline.offline = true;
+    throw offline;
   }
+  // Sunucuya ULASILDI: hata olsa bile cevrimici.
+  window.dispatchEvent(new CustomEvent("rankit:network", { detail: "online" }));
+  if (!res.ok) {
+    const errorBody = await res.json().catch(() => ({}));
+    const failed = new Error(errorBody.detail || `${res.status} ${res.statusText}`);
+    failed.status = res.status;
+    throw failed;
+  }
+  const data = await res.json();
+  if (method === "GET") {
+    try { localStorage.setItem(cacheKey, JSON.stringify({ savedAt: Date.now(), data })); } catch { /* depolama doluysa canlı veri yine kullanılır */ }
+  }
+  try { localStorage.setItem(LAST_SYNC_KEY, String(Date.now())); } catch { /* sadece bilgi */ }
+  return data;
 }
 
 const body = (method, value) => ({ method, body: JSON.stringify(value) });

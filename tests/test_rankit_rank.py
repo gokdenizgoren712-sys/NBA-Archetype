@@ -251,3 +251,29 @@ def test_iki_sezon_satiri_tek_turnuva_sayilir(conn):
     conn.execute("INSERT INTO rankit_follows VALUES(1,'competition',1)")
     conn.execute("INSERT INTO rankit_follows VALUES(1,'competition',2)")
     assert R.followed_competition_count(conn, 1) == 1
+
+
+# ── Cevrimdisi puanlama (ekran 3l) ───────────────────────────────────────────
+
+def test_cevrimdisi_an_dar_pencerede_kabul(conn):
+    now = utcnow()
+    started = now - timedelta(hours=10)
+    ok = now - timedelta(hours=6)
+    assert R.accepted_rated_at(ok, started, now) == ok
+    # gelecekte (saat kaymasi payini asan)
+    assert R.accepted_rated_at(now + timedelta(minutes=30), started, now) is None
+    # mac baslamadan once
+    assert R.accepted_rated_at(started - timedelta(minutes=1), started, now) is None
+    # 36 saatten eski
+    assert R.accepted_rated_at(now - timedelta(hours=40), now - timedelta(hours=50), now) is None
+
+
+def test_gece_puanlanip_ertesi_gun_yuklenen_puan_gecesinde_sayilir(conn):
+    """"Your rating from tonight is saved on this phone. It uploads when
+    you're back." Yukleme ani sayilsaydi 15 yerine 5 odenirdi."""
+    now = utcnow()
+    night = R.rankit_day(now - timedelta(days=1))
+    _seed_match(conn, 1, night, hour=20)
+    rated = datetime.fromisoformat(f"{night}T22:30:00")
+    out = R.award_for_rating(conn, 1, 1, at=rated)
+    assert out["same_day"] is True and out["points"] == 15

@@ -219,15 +219,50 @@ def rankit_day(moment: datetime, tz_offset_minutes: int = 0) -> str:
     return local.date().isoformat()
 
 
-def award_for_rating(conn, user_id: int, match_id: int, tz_offset_minutes: int = 0) -> dict:
+# Cevrimdisi puanlama (ekran 3l): "Your rating is saved on this phone. It
+# uploads when you're back." Yukleme anini puanlama ani saymak, gece
+# puanlayip ertesi ogleden sonra baglanan birinin serisini ve "gecesinde"
+# odulunu sessizce silerdi -- ekranin verdigi soz bosa cikardi. O yuzden
+# telefonun damgasi kabul ediliyor, ama DAR bir pencerede: gelecekte olamaz
+# (5 dk saat kaymasi payi), mac baslamadan once olamaz, ve en fazla 36 saat
+# eski olabilir. Pencere disindaysa puan YINE kaydedilir, yalnizca an sunucu
+# saati olur -- kullanicinin verisi damgadan onemli.
+OFFLINE_GRACE_HOURS = 36
+CLOCK_SKEW_MINUTES = 5
+
+
+def accepted_rated_at(claimed, match_started, now=None):
+    """Telefonun bildirdigi puanlama anini kabul et ya da None don."""
+    if claimed is None:
+        return None
+    now = now or datetime.now(timezone.utc).replace(tzinfo=None)
+    moment = _as_dt(claimed)
+    started = _as_dt(match_started)
+    if moment is None:
+        return None
+    if moment.tzinfo is not None:
+        moment = moment.astimezone(timezone.utc).replace(tzinfo=None)
+    if moment > now + timedelta(minutes=CLOCK_SKEW_MINUTES):
+        return None
+    if moment < now - timedelta(hours=OFFLINE_GRACE_HOURS):
+        return None
+    if started is not None and moment < started:
+        return None
+    return moment
+
+
+def award_for_rating(conn, user_id: int, match_id: int, tz_offset_minutes: int = 0,
+                     at: Optional[datetime] = None) -> dict:
     """Bir maci puanlamanin oduelu.
 
     §7.1 iki oran veriyor: oynandigi RankIt gununde 15, sonra 5. Hangisi
     oldugu maçin baslangicina ve puanlamanin ANINA bakilarak belirlenir.
+    `at`: cevrimdisi yapilip sonra yuklenen puanin kabul edilmis ani
+    (bkz. accepted_rated_at); verilmezse simdi.
     """
     row = conn.execute("SELECT starts_at FROM rankit_matches WHERE id=?", (match_id,)).fetchone()
     started = _as_dt(row["starts_at"]) if row else None
-    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    now = at or datetime.now(timezone.utc).replace(tzinfo=None)
     same_day = bool(
         started
         and rankit_day(started, tz_offset_minutes) == rankit_day(now, tz_offset_minutes)

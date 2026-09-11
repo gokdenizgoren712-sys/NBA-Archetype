@@ -141,6 +141,9 @@ class DiaryIn(BaseModel):
     classic: Optional[bool] = None
     spoiler: Optional[bool] = None
     tags: Optional[list[str]] = None
+    # Cevrimdisi kuyruktan gelen puanin telefondaki ANI (ekran 3l). Dar bir
+    # pencerede kabul ediliyor -- bkz. rankit_rank.accepted_rated_at.
+    rated_at: Optional[datetime] = None
 
 
 class VoteIn(BaseModel):
@@ -1403,11 +1406,12 @@ def rankit_log(body: DiaryIn, user=Depends(get_optional_user)):
         raise HTTPException(422, "Watched date cannot be in the future")
     with get_conn() as conn:
         uid = _actor_id(user, conn)
-        match = conn.execute("SELECT status FROM rankit_matches WHERE id=?", (body.match_id,)).fetchone()
+        match = conn.execute("SELECT status,starts_at FROM rankit_matches WHERE id=?", (body.match_id,)).fetchone()
         if not match:
             raise HTTPException(404, "Match not found")
         if match["status"] != "finished":
             raise HTTPException(409, "Only finished matches can be added to the diary")
+        rated_at = rankit_rank.accepted_rated_at(body.rated_at, match["starts_at"])
         existing = None if body.is_rewatch else conn.execute("""SELECT id FROM rankit_diary_entries
             WHERE user_id=? AND match_id=? AND is_rewatch=0 ORDER BY id DESC LIMIT 1""", (uid, body.match_id)).fetchone()
         if existing:
@@ -1440,12 +1444,17 @@ def rankit_log(body: DiaryIn, user=Depends(get_optional_user)):
                                                (body.review or "").strip(), int(body.is_rewatch),
                                                body.visibility or "public", int(bool(body.classic)), int(bool(body.spoiler))))
             entry_id, updated = cur.lastrowid, False
+            # Seri created_at'e bakiyor (§7.2): cevrimdisi yapilmis puanin ANI
+            # yukleme ani degil, telefondaki an -- kabul edildiyse.
+            if rated_at is not None:
+                conn.execute("UPDATE rankit_diary_entries SET created_at=? WHERE id=?",
+                             (rated_at.strftime("%Y-%m-%d %H:%M:%S"), entry_id))
         for tag in dict.fromkeys(t.strip() for t in (body.tags or []) if t.strip()):
             conn.execute("INSERT INTO rankit_entry_tags(entry_id,tag) VALUES(?,?)", (entry_id, tag[:40]))
         # §7.1 — puanlama odulu. Idempotensi rankit_points'teki UNIQUE'ten
         # geliyor, yani duzenleme yeniden odemez; burada tekrar cagirmak
         # zararsiz ve "ilk kayit miydi" sorusunu uygulama koduna tasimiyor.
-        award = rankit_rank.award_for_rating(conn, uid, body.match_id, body.tz_offset)
+        award = rankit_rank.award_for_rating(conn, uid, body.match_id, body.tz_offset, at=rated_at)
         # 3f: "@deniz stamped an Instant Classic on a match in your diary."
         # Yalnizca CLASSIC damgasi -- her puanlama herkesi rahatsiz etmemeli.
         # Kime: o maci defterine almis herkese. UNIQUE ayni damgayi ikinci kez

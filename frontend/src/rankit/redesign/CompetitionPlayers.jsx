@@ -19,6 +19,7 @@
 import { useEffect, useState } from "react";
 import { CircleUserRound } from "lucide-react";
 import { rankitApi } from "../rankitApi";
+import { SkeletonRows, Loading } from "./States";
 import { Shield } from "./MatchCard";
 
 const INK = "#eceded";
@@ -74,7 +75,7 @@ export default function CompetitionPlayers({ competitionId, onOpenPlayer }) {
         ))}
       </div>
 
-      {!data && <div className="ri-entity-loading">Loading…</div>}
+      {!data && <Loading label="Loading the leaderboard"><SkeletonRows count={6} height={60} gap={6} radius={10}/></Loading>}
 
       {!!data?.players?.length && <>
         <div className="ri-leaderboard-head" aria-hidden="true">

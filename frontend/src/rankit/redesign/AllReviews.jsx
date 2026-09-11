@@ -10,6 +10,7 @@
 import { useEffect, useState } from "react";
 import { X, MessageCircle } from "lucide-react";
 import { rankitApi } from "../rankitApi";
+import { SkeletonRows, Loading, EmptyState, EndOfList } from "./States";
 
 const SORTS = [
   ["respected", "Most respected"],
@@ -18,7 +19,6 @@ const SORTS = [
 ];
 
 const INK_3 = "#9aa0a6";
-const INK_4 = "#7f868b";
 
 /* "2h" — 5c zamanı böyle yazıyor, tam tarih değil. Bir inceleme akışında
    önemli olan ne kadar taze olduğu. */
@@ -143,7 +143,7 @@ export default function AllReviews({ matchId, title, onClose, onOpenThread }) {
           ))}
         </div>
 
-        {!data && <div className="ri-entity-loading">Loading…</div>}
+        {!data && <Loading label="Loading reviews"><SkeletonRows count={3} height={92}/></Loading>}
 
         {!!data?.followed?.length && (
           <div className="ri-quick-group">
@@ -158,13 +158,15 @@ export default function AllReviews({ matchId, title, onClose, onOpenThread }) {
             {data.everyone.map((r) => <Row key={r.id} row={r} onOpenThread={onOpenThread} />)}
           </div>
         )}
+        {/* Listenin sonu yalnizca HEPSI geldiyse: uc bir ust sinirla kesiyor
+            ve "total" ayri donuyor. Kesilmis listede "that's all" yalan olur. */}
+        {!!data?.total && (data.followed?.length || 0) + (data.everyone?.length || 0) >= data.total && (
+          <EndOfList count={data.total} />
+        )}
 
         {data && !data.total && (
-          <div className="ri-empty-state">
-            <MessageCircle size={22} />
-            <strong>No reviews yet</strong>
-            <span style={{ color: INK_4 }}>Write the first one and it shows up here for everyone.</span>
-          </div>
+          <EmptyState title="No reviews yet" body="Write the first one and it shows up here for everyone."
+            action="Write the first one" onAction={onClose} />
         )}
       </section>
     </div>

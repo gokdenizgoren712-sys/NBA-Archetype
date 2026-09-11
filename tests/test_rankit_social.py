@@ -310,3 +310,34 @@ def test_gecen_sezon_takibi_secicide_guncel_satiri_isaretler(db):
             "SELECT target_id FROM rankit_follows WHERE user_id=2 AND target_type='competition'")]
     assert rows == [2], "ayni turnuva: eski satir yerinde kalmali, ikinci satir yazilmamali"
     assert RK.rankit_onboarding_save(RK.OnboardIn(competitions=[1]), who(2))["following_sources"] == 1
+
+
+def test_kuyruktan_gelen_puan_telefondaki_ani_tasir(db):
+    """Ekran 3l: cevrimdisi yapilip sonra yuklenen puan. created_at yukleme
+    ani olsaydi seri o geceyi kaybederdi; telefonun ani (dar pencerede)
+    kayda yaziliyor."""
+    from datetime import datetime, timedelta, timezone
+    from api import rankit_rank as R
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    night = R.rankit_day(now - timedelta(days=1), 0)
+    kick = datetime.fromisoformat(f"{night}T20:00:00")
+    rated = kick + timedelta(hours=2, minutes=30)
+    with DB.get_conn() as c:
+        c.execute("""INSERT INTO rankit_matches(id,sport,competition_id,season,starts_at,status,
+                     home_team_id,away_team_id,home_score,away_score,provider)
+                     VALUES(90,'Football',1,'2026-27',?,'finished',1,2,2,1,'fotmob')""",
+                  (kick.isoformat(),))
+    RK.rankit_log(RK.DiaryIn(match_id=90, rating=4.0, rated_at=rated), who(2))
+    with DB.get_conn() as c:
+        created = c.execute("SELECT created_at FROM rankit_diary_entries WHERE user_id=2 AND match_id=90").fetchone()[0]
+        assert created == rated.strftime("%Y-%m-%d %H:%M:%S")
+        assert R.streak_for(c, 2)["current"] >= 1
+
+
+def test_pencere_disindaki_an_puani_dusurmez(db):
+    """Damga kabul edilmese bile PUAN kaydedilir -- veri damgadan onemli."""
+    from datetime import datetime
+    RK.rankit_log(RK.DiaryIn(match_id=1, rating=3.5, rated_at=datetime(2001, 1, 1)), who(2))
+    with DB.get_conn() as c:
+        row = c.execute("SELECT rating, created_at FROM rankit_diary_entries WHERE user_id=2 AND match_id=1").fetchone()
+    assert row["rating"] == 3.5 and not row["created_at"].startswith("2001")

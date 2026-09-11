@@ -21,11 +21,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Search, X, ChevronRight } from "lucide-react";
 import { rankitApi } from "../rankitApi";
+import { SkeletonRows, Loading, EmptyState } from "./States";
 import { Shield, CrestPair } from "./MatchCard";
 import { inkFor, RAMP, RAMP_OFF } from "./heat";
 
 const INK = "#eceded";
-const INK_3 = "#9aa0a6";
 const INK_4 = "#7f868b";
 const GOLD = "#ffb11b";
 
@@ -118,7 +118,7 @@ export default function SearchSheet({ initialQuery = "", onClose, onOpenMatch, o
         {term.length < 2 && (
           <p className="ri-find-hint">Type a club, a competition, or a collection.</p>
         )}
-        {data === null && <div className="ri-entity-loading">Searching…</div>}
+        {data === null && <Loading label="Searching"><SkeletonRows count={4}/></Loading>}
 
         {!!data?.matches?.length && (
           <Group title="MATCHES">
@@ -218,11 +218,9 @@ export default function SearchSheet({ initialQuery = "", onClose, onOpenMatch, o
         )}
 
         {data && term.length >= 2 && !count && (
-          <div className="ri-empty-state">
-            <Search size={22} />
-            <strong>Nothing matches “{term}”</strong>
-            <span style={{ color: INK_3 }}>Try a club’s short name, or a competition.</span>
-          </div>
+          <EmptyState title={`Nothing matches “${term}”`}
+            body="Try a club’s short name, or a competition."
+            action="Clear search" onAction={() => { setQuery(""); field.current?.focus(); }} />
         )}
       </div>
     </div>

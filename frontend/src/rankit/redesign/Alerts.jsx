@@ -21,11 +21,11 @@
  *     bitecekmiş gibi göstermek olurdu.
  */
 import { useEffect, useState } from "react";
-import { Bell, Tv } from "lucide-react";
+import { Tv } from "lucide-react";
 import { rankitApi } from "../rankitApi";
+import { SkeletonRows, Loading, EmptyState } from "./States";
 import { inkFor, RAMP, RAMP_OFF } from "./heat";
 
-const INK_4 = "#7f868b";
 
 function ago(iso) {
   if (!iso) return "";
@@ -179,7 +179,7 @@ export default function Alerts({ onClose, onOpenMatch, onOpenList }) {
       </div>
 
       <div className="ri-alerts-body">
-        {!loaded && <div className="ri-entity-loading">Loading…</div>}
+        {!loaded && <Loading label="Loading alerts"><SkeletonRows count={3} height={76}/></Loading>}
 
         {groups.map((group, index) => (
           <section key={`${group.key}-${index}`}>
@@ -193,13 +193,7 @@ export default function Alerts({ onClose, onOpenMatch, onOpenList }) {
         ))}
 
         {loaded && !items.length && (
-          <div className="ri-empty-state">
-            <Bell size={22} />
-            <strong>Nothing new</strong>
-            <span style={{ color: INK_4 }}>
-              Respect, replies and the night’s hottest match land here.
-            </span>
-          </div>
+          <EmptyState title="Nothing new" body="Respect, replies and the night’s hottest match land here." />
         )}
       </div>
     </div>

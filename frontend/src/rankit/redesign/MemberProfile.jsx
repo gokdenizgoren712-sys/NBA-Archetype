@@ -23,6 +23,7 @@ import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { ChevronLeft } from "lucide-react";
 import { rankitApi } from "../rankitApi";
+import { SkeletonRows, Loading } from "./States";
 import RedesignMatchCard from "./MatchCard";
 import { toMatchCardProps } from "./toMatchCardProps";
 import { RAMP, heatSteps } from "./heat";
@@ -107,7 +108,7 @@ export default function MemberProfile({ memberId, onClose, onOpenMatch }) {
         {member && <strong>@{member.username}</strong>}
       </div>
       <div className="ri-member-body">
-        {!data && <div className="ri-entity-loading">Loading…</div>}
+        {!data && <Loading label="Loading the profile"><SkeletonRows count={3} height={72}/></Loading>}
         {data?.missing && <div className="ri-empty-state"><strong>This profile is not available</strong></div>}
         {member && <>
           <div className="ri-member-id">

@@ -1,11 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { App as CapacitorApp } from "@capacitor/app";
 import {
   Award, Bell, Bookmark, CalendarDays, ChevronLeft, ChevronRight, CircleUserRound,
   Compass, Eye, EyeOff, Home, LayoutGrid, List, ListPlus, MessageCircle, Plus, Search,
-  ChevronDown, Heart, LoaderCircle, Radio, RotateCcw, Send, Share2, SlidersHorizontal,
+  ChevronDown, Heart, Radio, RotateCcw, Send, Share2, SlidersHorizontal,
   Star, ThumbsUp, Trophy, Users, X, Shield} from "lucide-react";
-import { activity, lists, matches } from "./mockData";
 import { rankitApi } from "./rankitApi";
 import { readPrefs, writePrefs, resolveBroadcastCountry, hidesScore } from "./rankitPrefs";
 // Faz 2 — redesign kartı bayrak arkasında; kapalıyken hiçbir şey değişmiyor.
@@ -21,6 +20,9 @@ import Settings from "./redesign/Settings";
 import ListShelf from "./redesign/ListShelf";
 import MemberProfile from "./redesign/MemberProfile";
 import { closeTopmost } from "./redesign/backStack";
+import { SkeletonCard, SkeletonRows, SheetSkeleton, Loading, EmptyState, EndOfList } from "./redesign/States";
+import { queueRating, flushOutbox, outbox, onOutboxChange } from "./rankitOutbox";
+import { LAST_SYNC_KEY } from "./rankitApi";
 import CompetitionMatches from "./redesign/CompetitionMatches";
 import CompetitionPlayers from "./redesign/CompetitionPlayers";
 import ReviewThread from "./redesign/ReviewThread";
@@ -257,7 +259,7 @@ function CompetitionDetail({ detail, onClose, onOpenMatch, onOpenPlayer }) {
   // ekrani iki kez yazmiyor.
   const [section, setSection] = useState("Table");
   const competitionId = detail?.competition?.id;
-  if (!detail) return <div className="ri-sheet-wrap" onClick={onClose}><section className="ri-detail-sheet ri-competition-sheet" onClick={event=>event.stopPropagation()}><SheetHandle onClose={onClose}/><div className="ri-entity-loading">Loading competition…</div></section></div>;
+  if (!detail) return <div className="ri-sheet-wrap" onClick={onClose}><section className="ri-detail-sheet ri-competition-sheet" onClick={event=>event.stopPropagation()}><SheetHandle onClose={onClose}/><Loading label="Loading competition"><SheetSkeleton rows={5}/></Loading></section></div>;
   const competition = detail.competition;
   return <div className="ri-sheet-wrap" onClick={onClose}><section className="ri-detail-sheet ri-competition-sheet" onClick={event=>event.stopPropagation()}>
     <SheetHandle onClose={onClose}/><button className="ri-sheet-close" onClick={onClose}><X size={19}/></button>
@@ -359,10 +361,14 @@ function MatchDetail({ match, hideScores, onClose, onSave, onToggleWatchlist, on
   const saveLog = async () => {
     setSaveState("saving");
     try {
-      await onSave?.({
-        diary: { match_id: match.id, watched_date: new Date().toISOString().slice(0, 10), rating: rating || null, review, classic, tags, visibility, spoiler, is_rewatch: rewatch },
+      const result = await onSave?.({
+        // tz_offset: RankIt gunu kullanicinin saatinde (§7.2). Gonderilmiyordu
+        // ve sunucu UTC ile hesapliyordu -- UTC+3'te "gecesinde" sinirlari
+        // uc saat kayiyordu.
+        diary: { match_id: match.id, watched_date: new Date().toISOString().slice(0, 10), rating: rating || null, review, classic, tags, visibility, spoiler, is_rewatch: rewatch, tz_offset: -new Date().getTimezoneOffset() },
         matchId: match.id, potmId, respectIds: respect,
       });
+      if (result?.queued) { setSaveState("queued"); try { localStorage.removeItem(`rankit:draft:${match.id}`); } catch { /* kuyrukta */ } return; }
       setSaveState("saved");
       rankitHaptics.success();
       try { localStorage.removeItem(`rankit:draft:${match.id}`); } catch { /* kayıt tamamlandı */ }
@@ -467,11 +473,11 @@ function MatchDetail({ match, hideScores, onClose, onSave, onToggleWatchlist, on
         </div>}
         {!match.lineups?.length && playerOptions.length > 0 && <div className="ri-squad-preview"><div className="ri-chip-title">SEASON SQUADS <span>{playerOptions.length}</span></div><div>{[match.home,match.away].map(team=><section key={team.id}><header><TeamMark team={team}/><strong>{team.name}</strong></header><div>{playerOptions.filter(p=>p.team===team.short).map(p=><span key={p.id}>{p.shirt_no&&<b>{p.shirt_no}</b>}{p.name}</span>)}</div></section>)}</div></div>}
         <div className="ri-detail-actions">
-          {match.status === "upcoming" && <button disabled={watchlistBusy} aria-busy={watchlistBusy} className={`ri-review-cta${watchlist ? " saved" : ""}${watchlistBusy ? " is-busy" : ""}`} onClick={toggleWatchlist}>{watchlistBusy ? <LoaderCircle className="ri-spin" size={17}/> : <Bookmark size={17} fill={watchlist ? "currentColor" : "none"} />} {watchlist ? "In your watchlist" : "Add to watchlist"}</button>}
-          <button disabled={favoriteBusy} aria-busy={favoriteBusy} className={`ri-review-cta secondary${favorited ? " saved" : ""}${favoriteBusy ? " is-busy" : ""}`} onClick={toggleFavorite}>{favoriteBusy ? <LoaderCircle className="ri-spin" size={17}/> : <Heart size={17} fill={favorited ? "currentColor" : "none"}/>} {favorited ? "Favourite" : "Add to favourites"}</button>
+          {match.status === "upcoming" && <button disabled={watchlistBusy} aria-busy={watchlistBusy} className={`ri-review-cta${watchlist ? " saved" : ""}${watchlistBusy ? " is-busy" : ""}`} onClick={toggleWatchlist}><Bookmark size={17} fill={watchlist ? "currentColor" : "none"} /> {watchlist ? "In your watchlist" : "Add to watchlist"}</button>}
+          <button disabled={favoriteBusy} aria-busy={favoriteBusy} className={`ri-review-cta secondary${favorited ? " saved" : ""}${favoriteBusy ? " is-busy" : ""}`} onClick={toggleFavorite}><Heart size={17} fill={favorited ? "currentColor" : "none"}/> {favorited ? "Favourite" : "Add to favourites"}</button>
           <button className="ri-review-cta secondary" aria-expanded={listOpen} onClick={openLists}><ListPlus size={17}/> Add to list</button>
           {listOpen && <div className="ri-tag-picker">
-            {myLists === null && <span>Loading…</span>}
+            {myLists === null && <Loading label="Loading your lists"><SkeletonRows count={1} height={36} radius={999}/></Loading>}
             {myLists?.map(l => <button key={l.id} onClick={()=>addToList(l.id,l.title)}>{l.title}</button>)}
             {myLists?.length === 0 && <span>No lists yet — make one from the Rank sheet.</span>}
           </div>}
@@ -531,8 +537,9 @@ function MatchDetail({ match, hideScores, onClose, onSave, onToggleWatchlist, on
           </div>
           <button disabled={saveState === "saving"} aria-busy={saveState === "saving"}
             className={`ri-review-cta${saveState === "saved" ? " saved" : ""}${saveState === "saving" ? " is-busy" : ""}`} onClick={saveLog}>
-            {saveState === "saving" ? <LoaderCircle className="ri-spin" size={17}/> : <MessageCircle size={17}/>}{" "}
-            {saveState === "saving" ? "Saving…" : saveState === "saved" ? "Saved to Diary" : saveState === "error" ? "Could not save · Try again" : match.my_watched_date && !rewatch ? "Update Diary Entry" : "Save to Diary"}
+            {/* §5: donen cark yok. Mesgul durum metinle ve aria-busy ile. */}
+            <MessageCircle size={17}/>{" "}
+            {saveState === "saving" ? "Saving…" : saveState === "saved" ? "Saved to Diary" : saveState === "queued" ? "Saved on this phone · uploads when you're back" : saveState === "error" ? "Could not save · Try again" : match.my_watched_date && !rewatch ? "Update Diary Entry" : "Save to Diary"}
           </button>
           {saveState === "saved" && <div className="ri-save-result"><span>YOUR RANKIT</span><strong>{rating || "—"} / 5 {classic ? "· CLASSIC" : ""}</strong>
             <button onClick={()=>shareMatch(match,hideScores)}><Share2 size={14}/> Share rating card</button></div>}
@@ -573,7 +580,7 @@ function MatchDetail({ match, hideScores, onClose, onSave, onToggleWatchlist, on
 
 function MatchDetailLoading({ onClose }) {
   return <div className="ri-sheet-wrap" onClick={onClose}><section className="ri-detail-sheet" onClick={event => event.stopPropagation()}>
-    <SheetHandle onClose={onClose}/><div className="ri-entity-loading">Loading match…</div>
+    <SheetHandle onClose={onClose}/><Loading label="Loading match"><SheetSkeleton rows={3}/></Loading>
   </section></div>;
 }
 
@@ -635,13 +642,13 @@ function ReviewFeed({ reviews, onRefresh }) {
   return <div className="ri-review-feed"><div className="ri-chip-title">COMMUNITY REVIEWS <span>{reviews.length}</span></div>{reviews.map(r => <article key={r.id}>
     <div><strong>@{r.username}</strong><Stars value={r.rating || 0} compact/></div>{r.spoiler && !revealed.includes(r.id) ? <button className="ri-spoiler-cover" onClick={()=>setRevealed(v=>[...v,r.id])}><EyeOff size={14}/><span>Spoiler review</span><small>Tap to reveal</small></button> : <p>{r.review}</p>}
     <footer><button disabled={busyLikes.includes(r.id)} aria-label={`${reactions[r.id]?.liked ? "Unlike" : "Like"} review by ${r.username}`} className={reactions[r.id]?.liked ? "active" : ""} onClick={() => like(r)}><Heart size={12} fill={reactions[r.id]?.liked ? "currentColor" : "none"}/> {reactions[r.id]?.likes ?? r.likes}</button><button onClick={() => toggleComments(r.id)}><MessageCircle size={12}/> {r.comments}</button></footer>
-    {openId === r.id && <div className="ri-comments">{commentState[r.id] === "loading" ? <p className="ri-inline-state">Loading replies…</p> : (comments[r.id] || []).map(c => <p key={c.id}><strong>@{c.username}</strong> {c.content}</p>)}{commentState[r.id] === "error" && <p className="ri-inline-state error">Could not update replies. Try again.</p>}<div><input value={draft} onChange={e => setDraft(e.target.value)} onKeyDown={e=>e.key === "Enter" && addComment(r.id)} placeholder="Write a reply"/><button disabled={commentState[r.id] === "saving" || !draft.trim()} onClick={() => addComment(r.id)}>{commentState[r.id] === "saving" ? <LoaderCircle className="ri-spin" size={13}/> : <Send size={13}/>}</button></div></div>}
+    {openId === r.id && <div className="ri-comments">{commentState[r.id] === "loading" ? <Loading label="Loading replies"><SkeletonRows count={2} height={40} gap={6} radius={10}/></Loading> : (comments[r.id] || []).map(c => <p key={c.id}><strong>@{c.username}</strong> {c.content}</p>)}{commentState[r.id] === "error" && <p className="ri-inline-state error">Could not update replies. Try again.</p>}<div><input value={draft} onChange={e => setDraft(e.target.value)} onKeyDown={e=>e.key === "Enter" && addComment(r.id)} placeholder="Write a reply"/><button disabled={commentState[r.id] === "saving" || !draft.trim()} onClick={() => addComment(r.id)}><Send size={13}/></button></div></div>}
   </article>)}</div>;
 }
 
 function EntityDetail({ detail, onClose, onOpenMatch, onOpenEntity, onChanged }) {
   const { kind, data } = detail;
-  if (!data) return <div className="ri-sheet-wrap" onClick={onClose}><section className="ri-detail-sheet ri-entity-sheet" onClick={e=>e.stopPropagation()}><SheetHandle onClose={onClose}/><div className="ri-entity-loading">Loading profile…</div></section></div>;
+  if (!data) return <div className="ri-sheet-wrap" onClick={onClose}><section className="ri-detail-sheet ri-entity-sheet" onClick={e=>e.stopPropagation()}><SheetHandle onClose={onClose}/><Loading label="Loading"><SheetSkeleton rows={4}/></Loading></section></div>;
   const entity = data[kind];
   const title = entity?.name || entity?.username || entity?.title;
   const subtitle = kind === "player" ? `${entity.sport} · ${entity.team_name || "Free agent"}` : kind === "team" ? `${entity.sport} · ${entity.country || "Global"}` : kind === "member" ? "RankIt member" : `Curated by @${entity.username}`;
@@ -718,7 +725,7 @@ function RankSheet({ onClose, onOpenMatch }) {
           <small>{found.length} FOUND</small>
           {found.map(m => row(m, `${m.competition} · ${m.dateOnly || m.date}`))}
         </div>
-      ) : !data ? <div className="ri-entity-loading">Loading…</div> : <>
+      ) : !data ? <Loading label="Loading matches"><SkeletonRows count={4}/></Loading> : <>
         {!!data.tonight.length && (
           <div className="ri-quick-group">
             <small>FROM TONIGHT · NOT YET LOGGED</small>
@@ -803,7 +810,7 @@ function useCarousel(count) {
   return { ref, index, goTo };
 }
 
-function HomeView({ sport, setSport, hideScores, setHideScores, onOpen, onOpenCompetition, onNavigate, catalog = matches, feed = activity, loading = false }) {
+function HomeView({ sport, setSport, hideScores, setHideScores, onOpen, onOpenCompetition, onNavigate, catalog = [], feed = [], loading = false }) {
   const shown = useMemo(() => catalog.filter(m => sport === "All" || m.sport === sport), [sport, catalog]);
   const heroes = useMemo(() => shown.slice(0, 3), [shown]);
   const day = rankitDayContext();
@@ -819,14 +826,19 @@ function HomeView({ sport, setSport, hideScores, setHideScores, onOpen, onOpenCo
     </div>
     <section className="ri-section">
       <div className="ri-section-head"><div><small>{day.eyebrow}</small><h2>{day.title}</h2></div><button onClick={() => onNavigate("Discover")}>See all</button></div>
-      <div className={`ri-hero-carousel${RANKIT_NEW_CARD ? " is-redesign" : ""}`} ref={carousel.ref}>{loading ? [0,1,2].map(i=><MatchCardSkeleton key={i} featured/>) : heroes.length ? heroes.map(m => RANKIT_NEW_CARD
+      <div className={`ri-hero-carousel${RANKIT_NEW_CARD ? " is-redesign" : ""}`} ref={carousel.ref}>{loading ? (RANKIT_NEW_CARD
+          // 3k: iskelet kartin KENDI geometrisi, ayni yuvada -- veri gelince kayma yok.
+          ? [0,1,2].map(i=><div key={i} className="ri-hero-slot"><SkeletonCard artHeight={150} crestSize={62} cut={22}/></div>)
+          : [0,1,2].map(i=><MatchCardSkeleton key={i} featured/>)) : heroes.length ? heroes.map(m => RANKIT_NEW_CARD
         // Ekran 2a: hero kartı 323 genişlik / 150 sanat / 62 crest / 52 skor (§2.5).
         ? <div key={m.id} className="ri-hero-slot" role="button" tabIndex={0} onClick={()=>onOpen(m)}
             onKeyDown={e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();onOpen(m)}}}
             aria-label={`${m.home.short} vs ${m.away.short}`}>
             <RedesignMatchCard {...toMatchCardProps(m,{hideScores,scoreSize:52,cardWidth:323,crestSize:62})} artHeight={150} crestSize={62} cut={22}/>
           </div>
-        : <MatchCard key={m.id} match={m} hideScores={hideScores} onOpen={onOpen} onOpenCompetition={onOpenCompetition} featured />) : <div className="ri-day-empty"><CalendarDays size={20}/><strong>No {sport === "All" ? "matches" : sport.toLowerCase()} in this RankIt day</strong><span>11:00 today → 11:00 tomorrow</span></div>}</div>
+        : <MatchCard key={m.id} match={m} hideScores={hideScores} onOpen={onOpen} onOpenCompetition={onOpenCompetition} featured />) : <div className="ri-day-empty-slot"><EmptyState title={`No ${sport === "All" ? "matches" : sport.toLowerCase()} in this RankIt day`}
+          body="A RankIt day runs 11:00 to 11:00. Nothing is scheduled in this one yet."
+          action="Find a match" onAction={() => onNavigate("Discover")}/></div>}</div>
       {heroes.length > 1 && <div className="ri-carousel-dots" role="tablist" aria-label="Tonight's matches">
         {heroes.map((match, index) => <button key={match.id} type="button" role="tab"
           aria-selected={carousel.index === index}
@@ -837,6 +849,8 @@ function HomeView({ sport, setSport, hideScores, setHideScores, onOpen, onOpenCo
     </section>
     <section className="ri-section ri-friends-preview">
       <div className="ri-section-head"><div><small>POPULAR ACROSS RANKIT</small><h2>Community reviews</h2></div><button onClick={() => onNavigate("Activity")}>Activity</button></div>
+      {loading && !feed.length && <Loading label="Loading reviews"><SkeletonRows count={2} height={72}/></Loading>}
+      {!loading && !feed.length && <EmptyState title="No reviews yet" body="Reviews people write about matches show up here." action="Find a match" onAction={() => onNavigate("Discover")}/>}
       {feed.slice(0, 2).map(a => <div className="ri-activity-row" key={`${a.user}-${a.id || a.match?.id}`}>
         <div className="ri-avatar">{a.initials}</div><div><p><strong>{a.user}</strong> {a.action} <b>{a.match.home.short}–{a.match.away.short}</b></p><Stars value={a.rating || 0} compact /><span>{a.text}</span></div>
       </div>)}
@@ -844,7 +858,7 @@ function HomeView({ sport, setSport, hideScores, setHideScores, onOpen, onOpenCo
   </>;
 }
 
-function DiscoverView({ hideScores, onOpen, onOpenCompetition, catalog = matches, meta, listCatalog = [], onCreateList, onOpenList }) {
+function DiscoverView({ hideScores, onOpen, onOpenCompetition, catalog = [], meta, listCatalog = [], onCreateList, onOpenList }) {
   const [sportFilter, setSportFilter] = useState(() => {
     try {
       const saved = localStorage.getItem("rankit:discover-sport");
@@ -856,7 +870,11 @@ function DiscoverView({ hideScores, onOpen, onOpenCompetition, catalog = matches
   const [status, setStatus] = useState("All");
   const [pageCatalog, setPageCatalog] = useState(catalog);
   const [total, setTotal] = useState(catalog.length);
-  const [loading, setLoading] = useState(false);
+  // Ilk sayfa gelene kadar YUKLENIYOR: bos izgara "0 matches" gibi okunurdu.
+  const [loading, setLoading] = useState(true);
+  // Yukleme BASARISIZ mi oldu? Cevrimdisi ve onbellekte bir sey yokken bos
+  // izgara "bu filtrelere uyan mac yok" diyordu -- yalan: bakilamadi bile.
+  const [failed, setFailed] = useState(false);
   const [refineOpen, setRefineOpen] = useState(false);
   // Turnuva sezondan BAGIMSIZ (sahibin karari, 2026-09-12): "Premier League
   // 25-26" ve "26-27" iki turnuva degil, bir turnuvanin iki sezonu. /meta
@@ -888,13 +906,13 @@ function DiscoverView({ hideScores, onOpen, onOpenCompetition, catalog = matches
     try { localStorage.setItem("rankit:discover-sport", sportFilter); } catch { /* depolama kapalıysa filtre yine çalışır */ }
   }, [sportFilter]);
   const load = async (append = false) => {
-    setLoading(true);
+    setLoading(true); setFailed(false);
     const offset = append ? pageCatalog.length : 0;
     const data = await rankitApi.catalog({ sport: sportFilter, competition, season, status: status === "All" ? "All" : status.toLowerCase(), limit: 60, offset });
     setPageCatalog(v => append ? [...v, ...(data.matches || []).map(fromApiMatch)] : (data.matches || []).map(fromApiMatch));
     setTotal(data.total || 0); setLoading(false);
   };
-  useEffect(() => { load(false).catch(()=>setLoading(false)); }, [sportFilter, competition, season, status]);
+  useEffect(() => { load(false).catch(()=>{ setLoading(false); setFailed(true); }); }, [sportFilter, competition, season, status]);
   const clearFilters = () => { setSportFilter("All"); setCompetition("All"); setSeason("All"); setStatus("All"); setRefineOpen(false); };
   const activeFilterCount = [sportFilter,competition,season,status].filter(x=>x!=="All").length;
   const refinementCount = [competition, season].filter(x => x !== "All").length;
@@ -917,7 +935,7 @@ function DiscoverView({ hideScores, onOpen, onOpenCompetition, catalog = matches
   }), [pageCatalog]);
   return <><div className="ri-page-title"><small>FIND YOUR NEXT MATCH</small><h1>Discover</h1></div>
     <div className={`ri-filter-panel ri-filter-redesign${refineOpen ? " is-open" : ""}`}>
-      <div className="ri-filter-heading"><div><small>QUICK FILTERS</small><strong>{loading ? "Updating matches…" : `${total} matches`}</strong></div>{activeFilterCount>0&&<button className="ri-filter-reset" onClick={clearFilters}><RotateCcw size={12}/> Clear {activeFilterCount}</button>}</div>
+      <div className="ri-filter-heading"><div><small>QUICK FILTERS</small><strong>{loading ? "Updating matches…" : failed ? `Offline · ${pageCatalog.length} saved on this phone` : `${total} matches`}</strong></div>{activeFilterCount>0&&<button className="ri-filter-reset" onClick={clearFilters}><RotateCcw size={12}/> Clear {activeFilterCount}</button>}</div>
       <div className="ri-filter-group"><span>SPORT</span><div className="ri-filter-pills">{["All","Basketball","Football"].map(s=><button key={s} className={sportFilter===s?"active":""} onClick={()=>{setSportFilter(s);setCompetition("All")}}>{s}</button>)}</div></div>
       <div className="ri-filter-group"><span>STATUS</span><div className="ri-filter-pills">{["All","Live","Upcoming","Finished"].map(s=><button key={s} className={status===s?"active":""} onClick={()=>setStatus(s)}>{s}</button>)}</div></div>
       <button className="ri-refine-trigger" aria-expanded={refineOpen} onClick={()=>setRefineOpen(v=>!v)}>
@@ -932,6 +950,12 @@ function DiscoverView({ hideScores, onOpen, onOpenCompetition, catalog = matches
       </div></div></div>
     </div>
     <section className="ri-section"><div className="ri-section-head"><div><small>COMMUNITY PICKS</small><h2>Popular this week</h2></div></div>
+      {loading && !pageCatalog.length && <Loading label="Loading matches"><div className={`ri-discover-grid${RANKIT_NEW_CARD ? " is-redesign" : ""}`}>
+        {[0,1,2,3].map(i=><div key={i} className="ri-card-slot">{RANKIT_NEW_CARD ? <SkeletonCard compact crestSize={44} cut={14} scoreSize={30}/> : <MatchCardSkeleton/>}</div>)}
+      </div></Loading>}
+      {!loading && !pageCatalog.length && (failed
+        ? <EmptyState title="Discover needs a connection" body="Nothing from here was saved on this phone yet. Your diary and anything you opened recently still work." action="Retry" onAction={() => load(false).catch(() => { setLoading(false); setFailed(true); })}/>
+        : <EmptyState title="No matches for these filters" body="Nothing in the catalogue matches this sport, status, competition and season together." action="Clear filters" onAction={clearFilters}/>)}
       <div className={`ri-discover-grid${RANKIT_NEW_CARD ? " is-redesign" : ""}`}>{smartCatalog.map(m => RANKIT_NEW_CARD
         // Ekran 2c, §2.5 preset: 155 genislik / crest 44 / skor 30, compact.
         ? <div key={m.id} className="ri-card-slot" role="button" tabIndex={0} onClick={()=>onOpen(m)}
@@ -940,10 +964,13 @@ function DiscoverView({ hideScores, onOpen, onOpenCompetition, catalog = matches
             <RedesignMatchCard {...toMatchCardProps(m,{hideScores,compact:true,scoreSize:30,cardWidth:155,crestSize:44})} crestSize={44} cut={14}/>
           </div>
         : <MatchCard key={m.id} match={m} hideScores={hideScores} onOpen={onOpen} onOpenCompetition={onOpenCompetition} />)}</div>
-      {pageCatalog.length < total && <button className="ri-load-more" disabled={loading} onClick={()=>load(true)}>{loading?"Loading…":`Load more · ${pageCatalog.length}/${total}`}</button>}
+      {pageCatalog.length < total && <button className="ri-load-more" disabled={loading} aria-busy={loading} onClick={()=>load(true)}>{loading?"Loading…":`Load more · ${pageCatalog.length}/${total}`}</button>}
+      {/* Sonlu koleksiyon: hepsi yuklendiyse bunu SOYLER (§5). */}
+      {!loading && total > 0 && pageCatalog.length >= total && <EndOfList count={total}/>}
     </section>
     <section className="ri-section"><div className="ri-section-head"><div><small>CURATED BY MEMBERS</small><h2>Popular lists</h2></div><button onClick={onCreateList}>Create</button></div>
-      <div className="ri-list-row">{(listCatalog.length ? listCatalog : lists).map((l, index) => <button key={l.id || l.title} onClick={()=>l.id && onOpenList(l.id)} style={{"--list-accent":l.accent || ["#FFB11B","#3FB08C","#7B61FF"][index%3]}}><div className="ri-list-cover"><i/><i/><i/><i/></div><ListPlus size={18}/><strong>{l.title}</strong><span>{l.match_count ?? l.count ?? 0} matches · @{l.username || "member"}</span></button>)}</div>
+      {!listCatalog.length && <EmptyState title="No lists yet" body="A list is a shelf of matches someone curates. Nobody has made one." action="Create a list" onAction={onCreateList}/>}
+      <div className="ri-list-row">{listCatalog.map((l, index) => <button key={l.id || l.title} onClick={()=>l.id && onOpenList(l.id)} style={{"--list-accent":l.accent || ["#FFB11B","#3FB08C","#7B61FF"][index%3]}}><div className="ri-list-cover"><i/><i/><i/><i/></div><ListPlus size={18}/><strong>{l.title}</strong><span>{l.match_count ?? l.count ?? 0} matches · @{l.username || "member"}</span></button>)}</div>
     </section></>;
 }
 
@@ -962,34 +989,42 @@ function ListCreator({ catalog, onClose, onCreated }) {
   return <div className="ri-sheet-wrap" onClick={onClose}><section className="ri-rank-sheet" onClick={e=>e.stopPropagation()}><SheetHandle onClose={onClose}/><div className="ri-rank-head"><div><small>YOUR COLLECTION</small><h2>Create a list</h2></div><button onClick={onClose}><X size={20}/></button></div><label className="ri-search"><ListPlus size={17}/><input value={title} onChange={e=>setTitle(e.target.value)} placeholder="List title"/></label><label className="ri-check"><input type="checkbox" checked={ranked} onChange={e=>setRanked(e.target.checked)}/> Ranked list</label><div className="ri-rank-results">{catalog.map(m=><button key={m.id} className={selected.includes(m.id)?"selected":""} onClick={()=>toggle(m.id)}><div className="ri-mini-crests"><TeamMark team={m.home}/><TeamMark team={m.away}/></div><span><strong>{m.home.short} vs {m.away.short}</strong><small>{m.competition}</small></span><b>{selected.includes(m.id)?"✓":"+"}</b></button>)}</div><button className="ri-review-cta" disabled={saving || !title.trim()} onClick={save}>{saving?"Creating…":"Create list"}</button></section></div>;
 }
 
-function ActivityView({ diaryEntries = [], watchlist = [], listCatalog = [], friendFeed = [], onOpen, onOpenCompetition, onOpenList }) {
+function ActivityView({ diaryEntries = [], diaryLoaded = true, watchlist = [], listCatalog = [], friendFeed = [], onOpen, onOpenCompetition, onOpenList, onRank, onFind, onNavigate, onCreateList }) {
   const [sub, setSub] = useState(() => { try { return localStorage.getItem("rankit:activity-tab") || "Friends"; } catch { return "Friends"; } });
   const [diaryView, setDiaryView] = useState("Timeline");
   const [filter, setFilter] = useState("Watched");
   const [watchSort, setWatchSort] = useState("Match date");
-  const diaryRows = diaryEntries.length ? diaryEntries : matches.filter(m=>m.status==="finished").map(m=>({
-    id:m.id,match_id:m.id,watched_date:m.date.split(" · ")[0],rating:m.id.includes?.("fcb")?5:4,classic:m.id.includes?.("fcb")?1:0,
-    home_short:m.home.short,home_name:m.home.name,home_color:m.home.color,away_short:m.away.short,away_name:m.away.name,away_color:m.away.color,
-    home_score:Number(m.score?.split("–")[0]),away_score:Number(m.score?.split("–")[1]),competition:m.competition,sport:m.sport,
-  }));
+  // Defter BOSSA bos kalir (§5, 3l: "We won't fill it with anything you
+  // didn't watch"). Eskiden bos bir defter mockData'daki maclarla -- ve
+  // kullanicinin hic vermedigi 5 yildizlarla -- dolduruluyordu.
+  const diaryRows = diaryEntries;
   const filteredDiary = filter === "Classics" ? diaryRows.filter(e=>e.classic) : diaryRows;
   const sortedWatchlist = useMemo(() => [...watchlist].sort((a,b) => watchSort === "Competition" ? a.competition.localeCompare(b.competition) : watchSort === "Added" ? Number(b.id)-Number(a.id) : new Date(a.starts_at)-new Date(b.starts_at)), [watchlist,watchSort]);
   useEffect(()=>{ try { localStorage.setItem("rankit:activity-tab",sub); } catch { /* tercih opsiyonel */ } },[sub]);
   const heatDays = Array.from({length:28},(_,i)=>{ const d=new Date(); d.setDate(d.getDate()-(27-i)); const key=d.toISOString().slice(0,10); return diaryRows.filter(e=>e.watched_date===key).length; });
   return <><div className="ri-page-title"><small>YOUR SPORTING LIFE</small><h1>Activity</h1></div>
     <div className="ri-segment"><button className={sub === "Friends" ? "active" : ""} onClick={() => setSub("Friends")}>Friends</button><button className={sub === "Diary" ? "active" : ""} onClick={() => setSub("Diary")}>Diary</button></div>
-    {sub === "Friends" ? <div className="ri-activity-list">{friendFeed.map(a => <article key={a.id || `${a.user}-${a.match.id}`} onClick={()=>onOpen(a.match)}><div className="ri-avatar">{a.initials}</div><div className="ri-feed-copy"><p><strong>{a.user}</strong> {a.action}</p><h3>{a.match.home.name || a.match.home.short} <span>vs</span> {a.match.away.name || a.match.away.short}</h3><Stars value={a.rating || 0} compact /><blockquote>"{a.text}"</blockquote><small><MessageCircle size={12}/> Open match</small></div></article>)}{!friendFeed.length && <div className="ri-empty-state"><Users size={22}/><strong>No activity yet</strong><span>Follow members to build your feed.</span></div>}</div>
+    {sub === "Friends" ? <div className="ri-activity-list">{friendFeed.map(a => <article key={a.id || `${a.user}-${a.match.id}`} onClick={()=>onOpen(a.match)}><div className="ri-avatar">{a.initials}</div><div className="ri-feed-copy"><p><strong>{a.user}</strong> {a.action}</p><h3>{a.match.home.name || a.match.home.short} <span>vs</span> {a.match.away.name || a.match.away.short}</h3><Stars value={a.rating || 0} compact /><blockquote>"{a.text}"</blockquote><small><MessageCircle size={12}/> Open match</small></div></article>)}{!friendFeed.length && <EmptyState title="No activity yet" body="Reviews from people you follow land here. RankIt won't suggest anyone — search for someone you know." action="Find people" onAction={onFind}/>}</div>
       : <div className="ri-diary"><div className="ri-diary-toolbar"><div className="ri-diary-filters">{["Watched","Watchlist","Classics","Lists"].map(x=><button key={x} className={filter===x?"active":""} onClick={()=>setFilter(x)}>{x}</button>)}</div>{filter !== "Lists" && <div className="ri-view-toggle"><button className={diaryView==="Timeline"?"active":""} onClick={()=>setDiaryView("Timeline")}><List size={14}/></button><button className={diaryView==="Cards"?"active":""} onClick={()=>setDiaryView("Cards")} aria-label="Shelf view"><LayoutGrid size={14}/></button></div>}</div>
-      {filter === "Watchlist" ? <><label className="ri-watch-sort"><span>SORT WATCHLIST</span><select value={watchSort} onChange={e=>setWatchSort(e.target.value)}><option>Match date</option><option>Added</option><option>Competition</option></select></label><div className="ri-discover-grid">{sortedWatchlist.map(m=><MatchCard key={m.id} match={m} hideScores={false} onOpen={onOpen} onOpenCompetition={onOpenCompetition}/>)}</div></>
-      : filter === "Lists" ? <div className="ri-list-stack">{listCatalog.map(l=><article key={l.id} onClick={()=>onOpenList(l.id)}><ListPlus size={18}/><div><strong>{l.title}</strong><span>{l.match_count} matches · {l.ranked?"Ranked":"Unranked"}</span></div></article>)}</div>
-      : diaryView === "Timeline" ? <><div className="ri-diary-heat"><header><span>LAST 28 DAYS</span><strong>{heatDays.reduce((a,n)=>a+n,0)} watched</strong></header><div>{heatDays.map((n,i)=><i key={i} data-level={Math.min(3,n)}/>)}</div></div>{filteredDiary.map((e,index)=>{const month=new Date(`${e.watched_date}T12:00:00`).toLocaleDateString("en-GB",{month:"long",year:"numeric"});const prev=index?new Date(`${filteredDiary[index-1].watched_date}T12:00:00`).toLocaleDateString("en-GB",{month:"long",year:"numeric"}):null;return <div key={e.id}>{month!==prev&&<div className="ri-diary-group"><span>{e.competition}</span><strong>{month}</strong></div>}<div className="ri-diary-row" onClick={()=>onOpen({id:e.match_id})}><span className="ri-diary-date">{e.watched_date}</span><div className="ri-mini-crests"><TeamMark team={{short:e.home_short,color:e.home_color}}/><TeamMark team={{short:e.away_short,color:e.away_color}}/></div><div><strong>{e.home_short} vs {e.away_short}</strong><small>{e.home_score} - {e.away_score} · {e.competition}</small></div><Stars value={e.rating||0} compact/></div></div>})}</>
+      {filter === "Watchlist" ? <><label className="ri-watch-sort"><span>SORT WATCHLIST</span><select value={watchSort} onChange={e=>setWatchSort(e.target.value)}><option>Match date</option><option>Added</option><option>Competition</option></select></label><div className="ri-discover-grid">{sortedWatchlist.map(m=><MatchCard key={m.id} match={m} hideScores={false} onOpen={onOpen} onOpenCompetition={onOpenCompetition}/>)}</div>
+      {!sortedWatchlist.length && <EmptyState title="Nothing on your watchlist" body="Add an upcoming match and it waits here until kick-off." action="Browse upcoming" onAction={() => onNavigate?.("Discover")}/>}
+      {!!sortedWatchlist.length && <EndOfList count={sortedWatchlist.length}/>}</>
+      : filter === "Lists" ? <><div className="ri-list-stack">{listCatalog.map(l=><article key={l.id} onClick={()=>onOpenList(l.id)}><ListPlus size={18}/><div><strong>{l.title}</strong><span>{l.match_count} matches · {l.ranked?"Ranked":"Unranked"}</span></div></article>)}</div>
+        {!listCatalog.length && <EmptyState title="No lists yet" body="A list is a shelf you curate — the matches you'd put in front of someone." action="Create a list" onAction={onCreateList}/>}</>
+      : !diaryLoaded ? <Loading label="Loading your diary">{diaryView === "Cards" && RANKIT_NEW_CARD
+          ? <div className="ri-diary-cards is-redesign">{[0,1,2,3].map(i=><div key={i} className="ri-card-slot"><SkeletonCard compact crestSize={40} cut={14} scoreSize={28}/></div>)}</div>
+          : <SkeletonRows count={4} height={58} gap={8} radius={12}/>}</Loading>
+      : !filteredDiary.length ? (filter === "Classics"
+          ? <EmptyState title="No classics yet" body="Stamp a match Classic when it earns it. Only the ones you stamp show here." action="Rate a match" onAction={onRank}/>
+          : <EmptyState title="Nothing in the diary yet" body="Rate one match and it starts here. We won't fill it with anything you didn't watch." action="Rate your first match" onAction={onRank}/>)
+      : diaryView === "Timeline" ? <><div className="ri-diary-heat"><header><span>LAST 28 DAYS</span><strong>{heatDays.reduce((a,n)=>a+n,0)} watched</strong></header><div>{heatDays.map((n,i)=><i key={i} data-level={Math.min(3,n)}/>)}</div></div>{filteredDiary.map((e,index)=>{const month=new Date(`${e.watched_date}T12:00:00`).toLocaleDateString("en-GB",{month:"long",year:"numeric"});const prev=index?new Date(`${filteredDiary[index-1].watched_date}T12:00:00`).toLocaleDateString("en-GB",{month:"long",year:"numeric"}):null;return <div key={e.id}>{month!==prev&&<div className="ri-diary-group"><span>{e.competition}</span><strong>{month}</strong></div>}<div className="ri-diary-row" onClick={()=>onOpen({id:e.match_id})}><span className="ri-diary-date">{e.watched_date}</span><div className="ri-mini-crests"><TeamMark team={{short:e.home_short,color:e.home_color}}/><TeamMark team={{short:e.away_short,color:e.away_color}}/></div><div><strong>{e.home_short} vs {e.away_short}</strong><small>{e.home_score} - {e.away_score} · {e.competition}</small></div><Stars value={e.rating||0} compact/></div></div>})}<EndOfList count={filteredDiary.length}/></>
       : RANKIT_NEW_CARD
       // Ekran 2e "SHELF", §2.5 preset: 155 genislik / crest 40 / skor 28.
-      ? <div className="ri-diary-cards is-redesign">{filteredDiary.map(e=><div key={e.id} className="ri-card-slot" role="button" tabIndex={0}
+      ? <><div className="ri-diary-cards is-redesign">{filteredDiary.map(e=><div key={e.id} className="ri-card-slot" role="button" tabIndex={0}
           aria-label={`Open ${e.home_short} vs ${e.away_short}`} onClick={()=>onOpen({id:e.match_id})}
           onKeyDown={event=>{if(event.key==="Enter"||event.key===" "){event.preventDefault();onOpen({id:e.match_id})}}}>
           <RedesignMatchCard {...diaryToMatchCardProps(e,{compact:true,scoreSize:28,cardWidth:155,crestSize:40})} crestSize={40} cut={14}/>
-        </div>)}</div>
+        </div>)}</div><EndOfList count={filteredDiary.length}/></>
       : <div className="ri-diary-cards">{filteredDiary.map(e=><div role="button" tabIndex={0} aria-label={`Open ${e.home_short} vs ${e.away_short}`} onClick={()=>onOpen({id:e.match_id})} onKeyDown={event=>{if(event.key==="Enter"||event.key===" "){event.preventDefault();onOpen({id:e.match_id})}}} key={e.id} style={{"--card-a":e.home_color,"--card-b":e.away_color}}><small>{e.competition}</small><strong>{e.home_short}</strong><b>{e.sport==="Basketball"?<>{e.home_score}<br/>{e.away_score}</>:<>{e.home_score} – {e.away_score}</>}</b><strong>{e.away_short}</strong><Stars value={e.rating||0} compact/><ClassicStamp active={!!e.classic} small/></div>)}</div>}</div>}
   </>;
 }
@@ -1040,13 +1075,22 @@ export default function RankItPrototype({ nativeBack = false }) {
   const [listCreatorOpen, setListCreatorOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [quickSearch, setQuickSearch] = useState("");
-  const [catalog, setCatalog] = useState(matches);
-  const [feed, setFeed] = useState(activity);
+  // Ornek veri YOK (§5: "no sample fixtures"). Kabuk eskiden mockData'daki
+  // uydurma maclarla ve uydurma arkadas etkinligiyle aciliyordu; API
+  // cevap vermezse kullanici var olmayan maclari goruyordu.
+  const [catalog, setCatalog] = useState([]);
+  const [feed, setFeed] = useState([]);
   const [apiError, setApiError] = useState("");
   const [initialLoading, setInitialLoading] = useState(true);
+  const refreshPersonalRef = useRef(null);
   const [networkState, setNetworkState] = useState(() => navigator.onLine ? "online" : "offline");
   const [tabDirection, setTabDirection] = useState(1);
+  const [syncAge, setSyncAge] = useState("");
   const [diaryEntries, setDiaryEntries] = useState([]);
+  // Defter YUKLENMEDEN bos durum gosterilmemeli: once iskelet, sonra ya
+  // kayitlar ya da "Nothing in the diary yet".
+  const [diaryLoaded, setDiaryLoaded] = useState(false);
+  const [queued, setQueued] = useState(() => outbox().length);
   // §7.2 — seri SUNUCUDAN. Faz 2'de bunu istemcide hesaplıyordum çünkü arka
   // uçta streak yoktu; §7 yazıldıktan sonra iki hesap birbirine düştü
   // (sunucu 1, istemci 0). Dinlenme gecesi kuralı kullanıcının neyi takip
@@ -1100,15 +1144,40 @@ export default function RankItPrototype({ nativeBack = false }) {
     return () => { active = false; handle?.remove(); clearTimeout(exitTimerRef.current); };
   }, [nativeBack]);
   useEffect(()=>{ try { localStorage.setItem("rankit:hide-scores",String(hideScores)); } catch { /* tercih opsiyonel */ } },[hideScores]);
+  // Kuyruk (ekran 3l): cevrimdisi yapilan puan telefonda bekler ve sunucuya
+  // ulasilinca yuklenir. Tetik OLAYLAR: tarayicinin "online"i ve ilk basarili
+  // istek ("rankit:network" online) -- acilista ag varsa ikincisi gelir.
+  // Bir efekt degil: ag durumuna bakan bir efektten setState cagirmak
+  // react-hooks/set-state-in-effect'in tam yakaladigi sey.
+  const flushQueued = useCallback(async () => {
+    const out = await flushOutbox();
+    if (out.sent) refreshPersonalRef.current?.().catch(() => {});
+    if (out.rejected) setApiError(out.rejected === 1 ? "A saved rating could not be uploaded" : `${out.rejected} saved ratings could not be uploaded`);
+    return out;
+  }, []);
   useEffect(() => {
-    const offline = () => setNetworkState("offline");
+    // "3h ago": son basarili senkronun yasi. OLAY aninda hesaplaniyor, render'da
+    // degil (Date.now() render'da saf olmayan bir cagri).
+    const age = () => {
+      let at = 0;
+      try { at = Number(localStorage.getItem(LAST_SYNC_KEY)) || 0; } catch { /* bilinmiyor */ }
+      if (!at) return "";
+      const mins = Math.max(1, Math.round((Date.now() - at) / 60000));
+      return mins < 60 ? `${mins}m ago` : mins < 1440 ? `${Math.round(mins / 60)}h ago` : `${Math.round(mins / 1440)}d ago`;
+    };
+    const offline = () => { setNetworkState("offline"); setSyncAge(age()); };
     const reconnect = () => setNetworkState("reconnecting");
-    const network = event => setNetworkState(event.detail);
+    const network = event => {
+      setNetworkState(event.detail);
+      if (event.detail === "offline") setSyncAge(age());
+      if (event.detail === "online" && outbox().length) flushQueued().catch(() => {});
+    };
     window.addEventListener("offline", offline);
     window.addEventListener("online", reconnect);
     window.addEventListener("rankit:network", network);
     return () => { window.removeEventListener("offline", offline); window.removeEventListener("online", reconnect); window.removeEventListener("rankit:network", network); };
-  }, []);
+  }, [flushQueued]);   // flushQueued sabit (useCallback []); dinleyiciler bir kez kurulur
+  useEffect(() => onOutboxChange(setQueued), []);
   const refreshCollections = async () => {
     const [listData, watchData] = await Promise.all([rankitApi.lists(), rankitApi.watchlist()]);
     setListCatalog(listData.lists || []);
@@ -1117,6 +1186,7 @@ export default function RankItPrototype({ nativeBack = false }) {
   const refreshPersonal = async () => {
     const [diary, profile, home] = await Promise.all([rankitApi.diary(), rankitApi.profile(), loadRankitHome("All")]);
     setDiaryEntries(diary.entries || []);
+    setDiaryLoaded(true);
     setProfileData(profile);
     setCatalog((home.matches || []).map(fromApiMatch));
   };
@@ -1129,7 +1199,7 @@ export default function RankItPrototype({ nativeBack = false }) {
       })));
       setApiError("");
     }).catch(e => setApiError(e.message)).finally(() => setInitialLoading(false));
-    rankitApi.diary().then(d=>setDiaryEntries(d.entries||[])).catch(()=>{});
+    rankitApi.diary().then(d=>setDiaryEntries(d.entries||[])).catch(()=>{}).finally(()=>setDiaryLoaded(true));
     rankitApi.profile().then(setProfileData).catch(()=>{});
     rankitApi.meta().then(setCatalogMeta).catch(()=>{});
     refreshCollections().catch(()=>{});
@@ -1181,8 +1251,16 @@ export default function RankItPrototype({ nativeBack = false }) {
       setApiError(error.message);
     }
   };
+  // Render sirasinda ref'e YAZILMAZ (react-hooks/refs); her render sonrasi guncellenir.
+  useEffect(() => { refreshPersonalRef.current = refreshPersonal; });
   const saveMatchLog = async ({ diary, matchId, potmId, respectIds }) => {
-    await rankitApi.log(diary);
+    try {
+      await rankitApi.log(diary);
+    } catch (error) {
+      // Yalnizca AG hatasi kuyruga girer; sunucunun reddettigi puan degil.
+      if (error?.offline) { queueRating({ diary, matchId, potmId, respectIds }); return { queued: true }; }
+      throw error;
+    }
     await Promise.all([
       potmId ? rankitApi.potm(matchId, potmId) : Promise.resolve(),
       rankitApi.respect(matchId, respectIds || []),
@@ -1213,7 +1291,7 @@ export default function RankItPrototype({ nativeBack = false }) {
     else if (delta < -7) setHeaderHidden(false);
     lastScrollRef.current = next;
   };
-  return <div className={`rankit-app${headerHidden ? " header-hidden" : ""}`}>
+  return <div className={`rankit-app${headerHidden ? " header-hidden" : ""}${networkState === "offline" ? " is-offline" : ""}`}>
     <header className="ri-header"><div className="ri-brand"><RankItMark size={29}/><div><strong>RANKIT</strong><small>BY PRIMARY ARCH</small></div></div>
       <div className="ri-header-tools">
         {/* Ekran 2a: seri halkası ve spoiler kalkanı başlıkta, bildirimin solunda. */}
@@ -1224,7 +1302,13 @@ export default function RankItPrototype({ nativeBack = false }) {
         <button aria-label="Open notifications" onClick={()=>setNotificationOpen(true)}><Bell size={19}/><i/></button>
       </div></header>
     <main className="ri-main" onScroll={handleMainScroll}>
-      {networkState !== "online" && <div className={`ri-network-note ${networkState}`}><i/>{networkState === "reconnecting" ? "Reconnecting…" : "Offline · showing your latest saved content"}</div>}
+      {/* 3l — ag gidince: kirmizi cizgili serit, kartlar %62 (bkz. .is-offline),
+          ve kuyrukta puan varsa "telefonda saklandi" sozu + 44px Retry. */}
+      {networkState === "offline" && <div className="ri-offline" role="status"><i aria-hidden="true"/><span>OFFLINE — SHOWING YOUR LAST SYNC{syncAge ? ` · ${syncAge.toUpperCase()}` : ""}</span></div>}
+      {queued > 0 && <div className="ri-outbox" role="status">
+        <p>{queued === 1 ? "Your rating is saved on this phone. It uploads when you're back." : `${queued} ratings are saved on this phone. They upload when you're back.`}</p>
+        <button type="button" className="ri-outbox-retry" onClick={() => flushQueued().catch(() => {})}>Retry</button>
+      </div>}
       {apiError && networkState === "online" && <div className="ri-api-note">Could not refresh · {apiError}</div>}
       <div key={tab} className={`ri-tab-stage ${tabDirection > 0 ? "forward" : "backward"}`}>
         {tab === "Home" && (
@@ -1234,7 +1318,9 @@ export default function RankItPrototype({ nativeBack = false }) {
           <DiscoverView hideScores={hideScores} onOpen={openMatch} onOpenCompetition={openCompetition} catalog={catalog} meta={catalogMeta} listCatalog={listCatalog} onCreateList={()=>setListCreatorOpen(true)} onOpenList={id=>openEntity("list",id)}/>
         )}
         {tab === "Activity" && (
-          <ActivityView diaryEntries={diaryEntries} watchlist={watchlist} listCatalog={listCatalog} friendFeed={feed} onOpen={openMatch} onOpenCompetition={openCompetition} onOpenList={id=>openEntity("list",id)}/>
+          <ActivityView diaryEntries={diaryEntries} diaryLoaded={diaryLoaded} watchlist={watchlist} listCatalog={listCatalog} friendFeed={feed} onOpen={openMatch} onOpenCompetition={openCompetition} onOpenList={id=>openEntity("list",id)}
+            onRank={()=>setRankOpen(true)} onFind={()=>setSearchOpen(true)} onCreateList={()=>setListCreatorOpen(true)}
+            onNavigate={name=>{setTabDirection(TABS.findIndex(x=>x[0]===name)-TABS.findIndex(x=>x[0]===tab));setTab(name)}}/>
         )}
         {tab === "Profile" && (
           <ProfileView profileData={profileData} diaryEntries={diaryEntries} onOpen={openMatch}/>

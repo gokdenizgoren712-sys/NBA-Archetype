@@ -412,6 +412,52 @@ button.ri-first-skip{flex:none;min-height:44px;padding:0 4px;border:0;background
 .ri-first-cta{position:fixed;left:0;right:0;bottom:0;padding:13px 26px max(26px,env(safe-area-inset-bottom));
   background:rgba(9,10,11,.94);border-top:1px solid var(--ri-line)}
 
+/* -- §5 Durumlar (ekranlar 3k / 3l) ---------------------------------------
+   "Say what happened, name the one action, never fake data." Iskelet
+   dolgusu #1c1d21, zemin #121315 -- ikisi de §5'te adiyla gecen degerler. */
+.ri-sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.ri-loading{display:block;min-width:0}
+
+/* Bos durum: kesikli elmas, 15px baslik, bir cumle, TEK eylem. */
+.ri-empty{display:flex;flex-direction:column;align-items:center;text-align:center;padding:34px 18px}
+.ri-empty-mark{width:88px;height:88px;display:grid;place-items:center;margin-bottom:18px}
+.ri-empty-mark i{display:block;width:62px;height:62px;transform:rotate(45deg);
+  border-radius:18px 18px 21px 21px;border:1px dashed rgba(255,255,255,.24)}
+.ri-empty strong{font:700 15px/1.3 var(--font-logo);letter-spacing:.02em;color:#eceded;text-wrap:balance}
+.ri-empty p{margin:9px 0 0;max-width:34ch;font:400 12px/1.5 var(--font-sans);color:#9aa0a6;text-wrap:pretty}
+.ri-empty button{margin-top:18px;min-height:44px;padding:0 18px;border:0;border-radius:10px;
+  background:var(--ri-gold);color:#17120a;font:700 12px/1 var(--font-logo);letter-spacing:.09em;text-transform:uppercase}
+.ri-empty button:focus-visible{outline:2px solid #eceded;outline-offset:2px}
+
+/* Listenin sonu: cizgi - THAT'S ALL N - cizgi. */
+.ri-end{display:flex;align-items:center;gap:13px;margin:18px 0}
+/* Ana ekranin kahraman seridi yatay kayiyor; bos durum tam genislik almali. */
+.ri-day-empty-slot{flex:0 0 100%;min-width:0}
+.ri-end i{flex:1;height:1px;background:var(--ri-line)}
+.ri-end span{flex:none;font:700 9px/1 var(--font-logo);letter-spacing:.14em;color:#7f868b;font-variant-numeric:tabular-nums}
+
+/* Cevrimdisi seridi. §5 bunu adiyla #f5402e ile istiyor -- isi rampasinin
+   veri disinda kullanildigi TEK yer ve kaynagi HANDOFF'un kendisi. Nokta
+   sabit: animasyon yok (eski serit yanip sonuyordu, reduced-motion'a
+   bakmadan). */
+.ri-offline{position:sticky;top:0;z-index:8;margin:0 -16px 10px;height:44px;display:flex;align-items:center;gap:9px;
+  padding:0 16px;background:rgba(245,64,46,.12);border-bottom:1px solid rgba(245,64,46,.3);backdrop-filter:blur(14px)}
+.ri-offline i{width:7px;height:7px;border-radius:999px;background:#f5402e;flex:none}
+.ri-offline span{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  font:700 9px/1 var(--font-logo);letter-spacing:.14em;color:#f5402e}
+/* Onbellekteki kartlar GIZLENMEZ, %62'ye soner (§5). Cevrimdisiyken ekrandaki
+   her kart son senkronun kartidir. */
+.rankit-app.is-offline :is(.ri-hero-slot,.ri-card-slot,.ri-match-card,.ri-fixture,.ri-find-match,
+  .ri-shelf-item,.ri-diary-cards>div,.ri-leaderboard-row,.ri-activity-row){opacity:.62}
+/* Kuyruk notu: "saved on this phone, uploads when you're back" + 44px Retry. */
+.ri-outbox{display:flex;align-items:center;gap:13px;margin:0 0 12px;padding:13px 14px;
+  border:1px solid var(--ri-line);border-radius:14px;background:#121315}
+.ri-outbox p{flex:1;min-width:0;margin:0;font:400 12px/1.5 var(--font-sans);color:#9aa0a6;text-wrap:pretty}
+button.ri-outbox-retry{flex:none;min-height:44px;padding:0 15px;border:1px solid rgba(255,255,255,.14);border-radius:10px;
+  background:var(--ri-card);color:#eceded;font:700 12px/1 var(--font-logo);letter-spacing:.09em;text-transform:uppercase}
+button.ri-outbox-retry:disabled{opacity:.55}
+button.ri-outbox-retry:focus-visible{outline:2px solid var(--ri-gold);outline-offset:2px}
+
 /* NOT -- buton sinif kurallari `button.` ile yaziliyor. `.rankit-app button
    {font:inherit}` (0,1,1) tek sinifli bir kurali (0,1,0) YENIYOR: "Add from
    your diary" 12px Rajdhani yerine 16px Outfit ciziliyordu (olculdu). Ayni

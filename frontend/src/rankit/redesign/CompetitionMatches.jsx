@@ -18,6 +18,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { CalendarDays } from "lucide-react";
 import { rankitApi } from "../rankitApi";
+import { SkeletonRows, Loading } from "./States";
 import { Shield } from "./MatchCard";
 import { heatSteps, inkFor } from "./heat";
 
@@ -153,7 +154,7 @@ export default function CompetitionMatches({ competitionId, matchweeks = [], fix
         </div>
       </>}
 
-      {rows === null && <div className="ri-entity-loading">Loading…</div>}
+      {rows === null && <Loading label="Loading matches"><SkeletonRows count={3} height={128}/></Loading>}
 
       {days.map((day) => (
         <section key={day.key}>
