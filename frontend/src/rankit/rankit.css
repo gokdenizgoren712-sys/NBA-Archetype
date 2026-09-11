@@ -293,6 +293,52 @@
   font:700 12px var(--font-logo);letter-spacing:.09em;text-transform:uppercase}
 .ri-alert-cta:focus-visible,.ri-alert-body:focus-visible{outline:2px solid var(--ri-gold);outline-offset:2px}
 
+/* -- Ekran 3g: ayarlar ---------------------------------------------------
+   Basligin kendisi tasarim: "no orphan rows". Her satir bir GRUBA ait, her
+   grup tek bir kart, ve kart icindeki ayrimi ust cizgi yapiyor. Eskisi duz
+   bir listeydi -- ulke, skor, hareket ve uc yasal baglanti ayni kolonda,
+   aralarinda bir iliski iddiasi olmadan. */
+.ri-settings{position:fixed;left:0;right:0;top:0;bottom:73px;z-index:19;background:#090a0b;
+  display:flex;flex-direction:column}
+.ri-settings-head{display:flex;align-items:center;gap:9px;height:64px;padding:0 26px 0 15px;flex:none}
+.ri-settings-head button{width:44px;height:44px;flex:none;border:0;background:none;color:#c9cccd;
+  display:grid;place-items:center}
+.ri-settings-head button:focus-visible{outline:2px solid var(--ri-gold);outline-offset:-4px;border-radius:10px}
+.ri-settings-head h2{margin:0;font:700 21px/1 var(--font-logo);letter-spacing:.02em;color:#eceded}
+.ri-settings-body{flex:1;min-height:0;overflow-y:auto;padding:0 26px 26px;scrollbar-width:none}
+.ri-settings-body::-webkit-scrollbar{display:none}
+.ri-set-group{margin-bottom:18px}
+.ri-set-card{border:1px solid var(--ri-line);border-radius:14px;background:var(--ri-card);overflow:hidden}
+
+.ri-set-toggle,.ri-set-line{display:flex;align-items:center;gap:13px;width:100%;
+  border:0;background:none;color:inherit;text-align:left;text-decoration:none}
+.ri-set-toggle{min-height:56px;padding:11px 16px}
+.ri-set-line{min-height:52px;padding:11px 16px}
+.ri-set-label{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.ri-set-label strong{font:700 13px/1 var(--font-logo);letter-spacing:.02em;color:#eceded}
+.ri-set-label small{font:400 12px/1.35 var(--font-sans);color:#9aa0a6;text-wrap:pretty}
+.ri-set-value{flex:none;font:400 12px/1 var(--font-sans);color:#9aa0a6}
+.ri-set-line select{flex:none;border:0;background:none;color:#9aa0a6;
+  font:400 12px var(--font-sans);padding:0;min-height:44px}
+.ri-set-toggle:focus-visible,.ri-set-line:focus-visible{outline:2px solid var(--ri-gold);outline-offset:-2px}
+/* Satir arasi cizgi. Ilk satirda YOK: kartin kendi kenarligi zaten orada.
+   Ozgulluk (0,2,0) KASITLI -- once `.ri-set-card>*+*` (0,1,0) idi ve
+   yukaridaki `.ri-set-toggle,.ri-set-line{border:0}` ayni ozgullukte, daha
+   SONRA geldigi icin cizgiyi siliyordu. Olculdu: ikinci satirda 0px none. */
+.ri-set-card>*+.ri-set-toggle,.ri-set-card>*+.ri-set-line{border-top:1px solid var(--ri-line)}
+/* Secicili satir: select'in 44px'lik dokunma yuksekligi + satirin 11px
+   dolgusu 66px ediyordu; tasarim 52 ciziyor. Dokunma hedefi select'in
+   kendisi, satirin dolgusu inceliyor. */
+.ri-set-line:has(select){padding-block:4px}
+
+/* 46x28 anahtar. Acikken --ri-green: burada yesil "durum" degil "acik", ve
+   isi paleti veri icin ayrilmis (§1) -- bir anahtar veri degil. */
+.ri-switch{flex:none;width:46px;height:28px;border-radius:999px;padding:3px;
+  background:rgba(255,255,255,.14);display:flex;justify-content:flex-start}
+.ri-switch.on{background:var(--ri-green);justify-content:flex-end}
+.ri-switch>i{width:22px;height:22px;border-radius:999px;background:#0c0d0f;display:block}
+.ri-set-toggle[disabled]{opacity:.55}
+
 /* Mac sayfasindaki turnuva adi 3c/3d'ye aciliyor. Yeni kompakt kart eski
    karttaki turnuva cipini tasimiyor; web'de bu baglanti zaten mac sayfasinda,
    telefon da ayni yerden acsin. Gorunum span'in aynisi -- konum degismiyor. */

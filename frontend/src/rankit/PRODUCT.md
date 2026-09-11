@@ -56,10 +56,14 @@ them to predict anything.
 > |---|---|
 > | All-reviews list | `5c` |
 > | Review thread, addressed replies | `4a` |
-> | Competition Matches / Players | `3c` / `3d` |
-> | Search | `3e` (landed on web, then paused) |
 > | Notifications | `3f` |
+> | Settings, grouped — plus *Keep hiding until I rate* (the web's cards do not call `hidesScore`) | `3g` |
 > | Watchalong tab still shown | retired in phase 4 on the phone only |
+>
+> Not owed: `3c` / `3d` and `3e` landed on both surfaces before the pause
+> (phases 6c and 6d run the same shared components). An earlier version of
+> this table listed `3c` / `3d` as owed; checked against `RankItWeb.jsx` on
+> 2026-09-11 and corrected.
 
 ### 1. Every feature lands on both surfaces, in the same pass
 

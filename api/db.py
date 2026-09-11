@@ -672,6 +672,21 @@ def init_db():
         CREATE UNIQUE INDEX IF NOT EXISTS idx_rankit_notify_once ON rankit_notifications(
             user_id, kind, COALESCE(actor_id,-1), COALESCE(entry_id,-1),
             COALESCE(match_id,-1), COALESCE(list_id,-1));
+        -- Hesaba bagli ayarlar (ekran 3g). Burada YALNIZCA sunucunun
+        -- davrandigi ayarlar duruyor. Cihaza bagli olanlar (skor gizleme,
+        -- hareket azaltma, yayin ulkesi) localStorage'da kaliyor ve orada
+        -- kalmalari kasitli: ayni hesapla telefonda skorlari gizleyip webde
+        -- gostermek mesru bir istek (bkz. rankitPrefs.js).
+        --
+        -- Anahtar/deger, sabit sutunlar degil: her yeni ayar bir migration
+        -- getirseydi 3g'yi genisletmek pahali olurdu.
+        CREATE TABLE IF NOT EXISTS rankit_user_settings (
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            key     TEXT NOT NULL,
+            value   TEXT NOT NULL,
+            PRIMARY KEY (user_id, key)
+        );
+
         CREATE INDEX IF NOT EXISTS idx_rankit_notify ON rankit_notifications(user_id, read_at, created_at DESC);
         CREATE INDEX IF NOT EXISTS idx_rankit_player_stats ON rankit_player_stats(competition_id, season, stat, rank);
         CREATE INDEX IF NOT EXISTS idx_rankit_comments_entry ON rankit_review_comments(entry_id, created_at);

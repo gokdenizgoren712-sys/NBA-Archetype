@@ -985,6 +985,48 @@ def rankit_notifications_read(user=Depends(get_optional_user)):
         return {"ok": True, "marked": rankit_notify.mark_read(conn, uid)}
 
 
+# Sunucunun DAVRANDIGI ayarlar ve varsayilanlari. Listede olmayan bir anahtar
+# yazilamaz: 3g'nin disindaki bir sey buraya sizmasin.
+SERVER_SETTINGS = {
+    # 3f'in "RUNNING HOT" uyarisi. Kapaliysa uretilmiyor -- istemcide
+    # gizlemek yetmez, cunku uyari sunucuda dogruyor.
+    "alerts_running_hot": True,
+}
+
+
+def _read_settings(conn, uid: Optional[int]) -> dict:
+    out = dict(SERVER_SETTINGS)
+    if not uid:
+        return out
+    for row in conn.execute("SELECT key,value FROM rankit_user_settings WHERE user_id=?", (uid,)):
+        if row["key"] in out:
+            out[row["key"]] = row["value"] == "1"
+    return out
+
+
+@router.get("/settings")
+def rankit_settings(user=Depends(get_optional_user)):
+    with get_conn() as conn:
+        uid = int(user["sub"]) if user else (None if IS_PROD else _demo_user_id(conn))
+        return _read_settings(conn, uid)
+
+
+@router.put("/settings")
+def rankit_set_settings(body: dict, user=Depends(get_optional_user)):
+    with get_conn() as conn:
+        uid = _actor_id(user, conn)
+        for key, value in body.items():
+            if key not in SERVER_SETTINGS:
+                continue
+            conn.execute("""INSERT INTO rankit_user_settings(user_id,key,value) VALUES(?,?,?)
+                ON CONFLICT(user_id,key) DO UPDATE SET value=excluded.value""",
+                (uid, key, "1" if value else "0"))
+        # AYNI baglantidan okunuyor. rankit_settings'i cagirmak yeni bir
+        # baglanti aciyordu ve bu islem henuz islenmemis oldugu icin yanit
+        # ESKI degeri tasiyordu -- arayuz her dokunusta bir tik geride kalirdi.
+        return _read_settings(conn, uid)
+
+
 @router.get("/players/{player_id}")
 def rankit_player_detail(player_id: int, user=Depends(get_optional_user)):
     with get_conn() as conn:
@@ -1764,6 +1806,12 @@ def rankit_profile(user=Depends(get_optional_user)):
             SUM(classic) classics,AVG(rating) avg_rating FROM rankit_diary_entries WHERE user_id=?""", (uid,)).fetchone()
         extra = {
             "following": conn.execute("SELECT COUNT(*) n FROM rankit_follows WHERE user_id=?", (uid,)).fetchone()["n"],
+            # 3g "Competitions & clubs - 6 followed". Yukaridaki sayi KISILERI
+            # ve listeleri de iceriyor; o satira verilseydi takip ettigin
+            # insanlari "kulup" diye sayardi.
+            "following_sources": conn.execute(
+                """SELECT COUNT(*) n FROM rankit_follows WHERE user_id=?
+                   AND target_type IN ('competition','team')""", (uid,)).fetchone()["n"],
             "favorites": conn.execute("SELECT COUNT(*) n FROM rankit_favorites WHERE user_id=?", (uid,)).fetchone()["n"],
             "watchlist": conn.execute("SELECT COUNT(*) n FROM rankit_watchlist WHERE user_id=?", (uid,)).fetchone()["n"],
             "lists": conn.execute("SELECT COUNT(*) n FROM rankit_lists WHERE user_id=?", (uid,)).fetchone()["n"],

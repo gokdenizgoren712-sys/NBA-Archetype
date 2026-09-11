@@ -55,6 +55,10 @@ export const rankitApi = {
   // koleksiyon) sunucuda TURETILIYOR, saklanmiyor.
   notifications: (tz = 0) => request(`/notifications?tz=${tz}`),
   markNotificationsRead: () => request("/notifications/read", { method: "POST" }),
+  // Ekran 3g. YALNIZCA sunucunun davrandigi ayarlar; cihaza bagli olanlar
+  // rankitPrefs.js'te (localStorage) kaliyor.
+  settings: () => request("/settings"),
+  saveSettings: (patch) => request("/settings", { method: "PUT", body: JSON.stringify(patch) }),
   match: id => request(`/matches/${id}`),
   broadcasts: (id, country = "TR") => request(`/matches/${id}/broadcasts?country=${encodeURIComponent(country)}`),
   player: id => request(`/players/${id}`),

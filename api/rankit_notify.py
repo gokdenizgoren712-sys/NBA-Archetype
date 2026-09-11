@@ -87,6 +87,13 @@ def _hot_match(conn, user_id: int, tz_offset: int) -> Optional[dict]:
     ettigi bir turnuvada. 3f'in metni "You watched it" diyor ama bunu bilemeyiz
     -- arayuz gercek sebebi yaziyor (`reason`).
     """
+    # 3g'deki "Running hot" anahtari. Kapaliysa uyari HIC uretilmiyor --
+    # istemcide gizlemek yetmez, cunku dogum yeri burasi.
+    off = conn.execute(
+        """SELECT 1 FROM rankit_user_settings
+           WHERE user_id=? AND key='alerts_running_hot' AND value='0'""", (user_id,)).fetchone()
+    if off:
+        return None
     # RankIt gunu 11:00 -> 11:00 (§7.2), yani takvim gunu DEGIL. Pencereyi
     # burada hesaplayip SQL'e iki damga olarak veriyoruz; date() aritmetigiyle
     # yaklasmak gece yarisindan sonra oynanan maclari yanlis gune atiyor.

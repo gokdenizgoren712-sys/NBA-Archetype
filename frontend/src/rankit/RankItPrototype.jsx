@@ -7,7 +7,7 @@ import {
   Star, ThumbsUp, Trophy, Users, X, Shield} from "lucide-react";
 import { activity, lists, matches } from "./mockData";
 import { rankitApi } from "./rankitApi";
-import { BROADCAST_COUNTRIES, readPrefs, writePrefs, resolveBroadcastCountry, localeCountry } from "./rankitPrefs";
+import { readPrefs, writePrefs, resolveBroadcastCountry, hidesScore } from "./rankitPrefs";
 // Faz 2 — redesign kartı bayrak arkasında; kapalıyken hiçbir şey değişmiyor.
 import { RANKIT_NEW_CARD } from "./redesign/flags";
 import RedesignMatchCard from "./redesign/MatchCard";
@@ -17,6 +17,8 @@ import CompanionPanel from "./redesign/CompanionPanel";
 import AllReviews from "./redesign/AllReviews";
 import SearchSheet from "./redesign/SearchSheet";
 import Alerts from "./redesign/Alerts";
+import Settings from "./redesign/Settings";
+import { closeTopmost } from "./redesign/backStack";
 import CompetitionMatches from "./redesign/CompetitionMatches";
 import CompetitionPlayers from "./redesign/CompetitionPlayers";
 import ReviewThread from "./redesign/ReviewThread";
@@ -228,7 +230,7 @@ function MatchCard({ match, hideScores, onOpen, onOpenCompetition, featured = fa
         <strong>{match.home.short}</strong>
         {match.home.name !== match.home.short && <small>{match.home.name}</small>}
       </div>
-      <div className={`ri-score${hideScores && finished ? " hidden" : ""}`}>
+      <div className={`ri-score${hidesScore(hideScores, match) ? " hidden" : ""}`}>
         {finished ? <ScoreValue match={match}/> : "—"}
       </div>
       <div>
@@ -431,7 +433,7 @@ function MatchDetail({ match, hideScores, onClose, onSave, onToggleWatchlist, on
           : <span>{match.competition}{match.stage ? ` · ${match.stage}` : ""}</span>}<b>{match.status === "finished" ? "FULL TIME" : match.status === "live" ? "LIVE" : "UPCOMING"}</b></div>
         <div className="ri-detail-teams">
           <div className="ri-v03-team"><TeamMark team={match.home}/><strong>{match.home.short}</strong>{match.home.name !== match.home.short && <small>{match.home.name}</small>}</div>
-          <div className="ri-v03-score"><small>{match.dateOnly || match.date}</small><strong className={hideScores && match.status === "finished" ? "ri-blur" : ""}><ScoreValue match={match} detail/></strong><span>{match.season}</span></div>
+          <div className="ri-v03-score"><small>{match.dateOnly || match.date}</small><strong className={hidesScore(hideScores, match) ? "ri-blur" : ""}><ScoreValue match={match} detail/></strong><span>{match.season}</span></div>
           <div className="ri-v03-team"><TeamMark team={match.away}/><strong>{match.away.short}</strong>{match.away.name !== match.away.short && <small>{match.away.name}</small>}</div>
         </div>
       </div>
@@ -973,29 +975,14 @@ function ProfileView({ profileData, diaryEntries = [], onOpen }) {
   const favourites = (profileData?.favorite_matches || []).map(fromApiMatch);
   const sports=[...new Set(diaryEntries.map(entry=>entry.sport))].filter(Boolean);
   const recentClassics=diaryEntries.filter(entry=>entry.classic).slice(0,3);
-  if (tab === "Settings") return <>
-    <div className="ri-profile-head"><div className="ri-profile-avatar">{initials}</div><div><small>@{username}</small><h1>Settings</h1><p>How RankIt behaves on this device.</p></div></div>
-    <div className="ri-detail-tabs">{["Overview","Settings"].map(name=><button key={name} className={tab===name?"active":""} onClick={()=>setTab(name)}>{name}</button>)}</div>
-    <div className="ri-chip-title">PERSONALISATION</div>
-    <label className="ri-set-row" htmlFor="ri-country">
-      <div><strong>Broadcast country</strong><small>{prefs.broadcastCountry==="auto" ? (localeCountry() ? `Following your device — ${localeCountry()}` : "Your region has no coverage data yet") : "Which country's listings to show on a match"}</small></div>
-      <select id="ri-country" value={prefs.broadcastCountry} onChange={e=>setPref({broadcastCountry:e.target.value})}>
-        <option value="auto">Auto</option>
-        {BROADCAST_COUNTRIES.map(c=><option key={c.code} value={c.code}>{c.label}</option>)}
-      </select>
-    </label>
-    <label className="ri-set-row" htmlFor="ri-hide">
-      <div><strong>Hide scores by default</strong><small>Cards open blurred until you choose to look.</small></div>
-      <input id="ri-hide" type="checkbox" checked={prefs.hideScores} onChange={e=>setPref({hideScores:e.target.checked})}/>
-    </label>
-    <label className="ri-set-row" htmlFor="ri-motion">
-      <div><strong>Reduce motion</strong><small>Turns off card entrance animations without changing your OS setting.</small></div>
-      <input id="ri-motion" type="checkbox" checked={prefs.reduceMotion} onChange={e=>setPref({reduceMotion:e.target.checked})}/>
-    </label>
-    <div className="ri-chip-title">LEGAL</div>
-    {[["/privacy-policy","Privacy policy"],["/terms-of-service","Terms of service"],["/rankit/download","Update RankIt"]].map(([href,label])=>
-      <a key={href} className="ri-set-row" href={href}><div><strong>{label}</strong></div><ChevronRight size={15}/></a>)}
-  </>;
+  // Ekran 3g tam ekran ve kendi basligi var; artik Profil'in bir sekmesi
+  // degil, onun uzerine acilan bir yuzey. "no orphan rows" duz listeyle
+  // uyusmuyordu.
+  if (tab === "Settings") return (
+    <Settings prefs={prefs} setPref={setPref}
+      followCount={profileData?.stats?.following_sources ?? 0}
+      onClose={() => setTab("Overview")} />
+  );
 
   return <><div className="ri-profile-head"><div className="ri-profile-avatar">{initials}</div><div><small>@{username}</small><h1>{username}</h1><p>Basketball nights, European football and the occasional instant classic.</p></div></div>
     <div className="ri-detail-tabs">{["Overview","Settings"].map(name=><button key={name} className={tab===name?"active":""} onClick={()=>setTab(name)}>{name}</button>)}</div>
@@ -1052,6 +1039,9 @@ export default function RankItPrototype({ nativeBack = false }) {
     let active = true;
     CapacitorApp.addListener("backButton", () => {
       const state = backStateRef.current;
+      // Once bilesenlerin ICINDE acilan yuzeyler (bkz. redesign/backStack.js):
+      // kabuk onlari state olarak bilmiyor.
+      if (closeTopmost()) return;
       if (state.listCreatorOpen) setListCreatorOpen(false);
       else if (state.notificationOpen) setNotificationOpen(false);
       else if (state.competitionDetail) setCompetitionDetail(null);

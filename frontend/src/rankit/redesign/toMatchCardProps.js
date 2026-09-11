@@ -6,6 +6,8 @@
  * Uydurulan hiçbir alan yok: karşılığı olmayan prop boş geçiliyor ve kart
  * onu çizmiyor.
  */
+import { hidesScore } from "../rankitPrefs";
+
 
 /* 3 harfli rozet. Kısa ad zaten kısaysa onu kullan, değilse sesli harfleri
    atmadan ilk üç harfi al — "Tottenham" → "TOT", "Man City" → "MAN". */
@@ -85,7 +87,9 @@ export function toMatchCardProps(match, opts = {}) {
     awayCrestUrl: match.away?.crest_url || "",
     heat,
     classic: !!match.instantClassic,
-    spoiler: hideScores && finished,
+    // 3g "Keep hiding until I rate" — kural rankitPrefs'te tek yerde;
+    // burada tekrar yazilsaydi bir ekranda acik bir ekranda kapali olurdu.
+    spoiler: hidesScore(hideScores, match),
     ratings: match.ratings ? `${Number(match.ratings).toLocaleString()} ratings` : "",
     /* Ayak sol tarafı: damga yokken yayın/aşama bilgisi. Kart tarihi
        tekrar etmiyor — üst şerit zaten yazıyor. */

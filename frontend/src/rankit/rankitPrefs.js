@@ -24,6 +24,11 @@ export const DEFAULT_PREFS = {
   // gizlilik yükü getiriyor, tarayıcı zaten bir cevap veriyor.
   broadcastCountry: "auto",
   hideScores: false,
+  // 3g "Keep hiding until I rate". hideScores acikken bile PUANLADIGIN mac
+  // acilir: spoiler korkusu kendi kaydin icin gecersiz, zaten izledin.
+  // Varsayilan acik -- tasarim ikisini de acik cizmis ve kapali olsaydi
+  // kendi defterin de bulanik kalirdi.
+  hideUntilRated: true,
   // Kart giriş animasyonları. prefers-reduced-motion zaten saygı görüyor;
   // bu, o ayarı açmadan kapatmak isteyen için.
   reduceMotion: false,
@@ -45,22 +50,48 @@ export function localeCountry() {
   return null;
 }
 
+/* Son okunan tercihler. readPrefs her çağrıda localStorage okuyup JSON
+   ayrıştırıyordu; 60 kartlık bir ızgarada kart başına bir kez çağrılan bir
+   yardımcı bunu 60 ayrıştırmaya çeviriyor. Yazma önbelleği geçersiz kılıyor,
+   yani tazelik kaybı yok. */
+let cache = null;
+
 export function readPrefs() {
+  if (cache) return cache;
   try {
     const raw = localStorage.getItem(KEY);
-    if (!raw) return { ...DEFAULT_PREFS };
-    return { ...DEFAULT_PREFS, ...JSON.parse(raw) };
+    cache = raw ? { ...DEFAULT_PREFS, ...JSON.parse(raw) } : { ...DEFAULT_PREFS };
   } catch {
-    return { ...DEFAULT_PREFS };
+    cache = { ...DEFAULT_PREFS };
   }
+  return cache;
 }
 
 export function writePrefs(next) {
   const merged = { ...readPrefs(), ...next };
+  cache = merged;
   try {
     localStorage.setItem(KEY, JSON.stringify(merged));
   } catch { /* yazamazsak tercih bu oturumda yaşar, uygulama çalışmaya devam eder */ }
   return merged;
+}
+
+/**
+ * Bu maçın skoru gizlensin mi? — 3g'nin iki spoiler anahtarı TEK yerde.
+ *
+ * "Keep hiding until I rate" açıkken kendi puanladığın maç açılır: spoiler
+ * korkusu kendi kaydın için geçersiz, zaten izledin. Kapalıyken gizleme
+ * ayrım yapmaz.
+ *
+ * Kural burada duruyor çünkü üç ayrı yerde uygulanıyordu (eski kart, maç
+ * sayfası, yeni kartın adaptörü) ve üçünün ayrışması "bir ekranda açık, bir
+ * ekranda kapalı" demek olurdu.
+ */
+export function hidesScore(hideScores, match, prefs = readPrefs()) {
+  if (!hideScores || match?.status !== "finished") return false;
+  const rated = !!(match.my_watched_date || match.myWatchedDate
+                   || match.my_rating != null || match.myRating != null);
+  return !(prefs.hideUntilRated && rated);
 }
 
 /**

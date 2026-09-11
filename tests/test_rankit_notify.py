@@ -12,6 +12,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from api import rankit_notify as N
+from api import rankit_rank as R
 
 
 def utcnow():
@@ -37,6 +38,8 @@ def conn():
         CREATE TABLE rankit_lists(id INTEGER PRIMARY KEY, user_id INTEGER, title TEXT,
                                   updated_at TEXT);
         CREATE TABLE rankit_list_items(list_id INTEGER, match_id INTEGER);
+        CREATE TABLE rankit_user_settings(user_id INTEGER, key TEXT, value TEXT,
+                                          PRIMARY KEY(user_id,key));
         CREATE TABLE rankit_notifications(
             id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL,
             kind TEXT NOT NULL, actor_id INTEGER, match_id INTEGER, entry_id INTEGER,
@@ -97,8 +100,22 @@ def test_bildirim_yazilamamasi_cagirani_dusurmez(conn):
 
 # ── Durumlar ─────────────────────────────────────────────────────────────────
 
+def _tonight():
+    """Bu RankIt gunu icinde, gecmiste kalan bir an.
+
+    "Iki saat once" YETMIYOR: RankIt gunu 11:00'de basliyor, yani her gun
+    11:00-13:00 UTC arasinda "iki saat once" DUNUN RankIt gunune dusuyor ve
+    sicak mac testleri o iki saat boyunca kirmizi yaniyordu (2026-09-11
+    11:11'de yakalandi). Gunun acilisina kenetleniyor.
+    """
+    now = utcnow()
+    day = R.rankit_day(now, 0)
+    opens = datetime.fromisoformat(day) + timedelta(hours=R.RANKIT_DAY_START_HOUR)
+    return max(opens, now - timedelta(hours=2))
+
+
 def _seed_hot(conn, *, rating, watchlisted=True, when=None, rated_by_user=False):
-    at = when or (utcnow() - timedelta(hours=2))
+    at = when or _tonight()
     conn.execute("""INSERT INTO rankit_matches
         VALUES(100,5,?, 'finished',10,11)""", (at.isoformat(sep="T"),))
     # Toplulugun puani: baska kullanicilardan.
@@ -147,6 +164,15 @@ def test_dunku_mac_bu_gecenin_uyarisi_degil(conn):
     """§7.2 penceresi: RankIt gunu 11:00 -> 11:00. Iki gun onceki mac
     bu gecenin "gece yarisindan once puanla" uyarisini uretemez."""
     _seed_hot(conn, rating=4.9, when=utcnow() - timedelta(days=2))
+    assert N.feed(conn, 1)["states"] == 0
+
+
+def test_running_hot_kapatilabilir(conn):
+    """3g'deki anahtar uyariyi SUNUCUDA susturmali; istemcide gizlemek
+    yetmez, cunku uyarinin dogdugu yer burasi."""
+    _seed_hot(conn, rating=4.6)
+    assert N.feed(conn, 1)["states"] == 1
+    conn.execute("INSERT INTO rankit_user_settings VALUES(1,'alerts_running_hot','0')")
     assert N.feed(conn, 1)["states"] == 0
 
 
