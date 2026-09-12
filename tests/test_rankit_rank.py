@@ -264,8 +264,9 @@ def test_cevrimdisi_an_dar_pencerede_kabul(conn):
     assert R.accepted_rated_at(now + timedelta(minutes=30), started, now) is None
     # mac baslamadan once
     assert R.accepted_rated_at(started - timedelta(minutes=1), started, now) is None
-    # 36 saatten eski
-    assert R.accepted_rated_at(now - timedelta(hours=40), now - timedelta(hours=50), now) is None
+    # pencerenin siniri: 24 saat (sahibin karari, 2026-09-12)
+    assert R.accepted_rated_at(now - timedelta(hours=23), now - timedelta(hours=30), now) is not None
+    assert R.accepted_rated_at(now - timedelta(hours=25), now - timedelta(hours=30), now) is None
 
 
 def test_gece_puanlanip_ertesi_gun_yuklenen_puan_gecesinde_sayilir(conn):

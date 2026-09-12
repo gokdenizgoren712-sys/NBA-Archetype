@@ -224,10 +224,13 @@ def rankit_day(moment: datetime, tz_offset_minutes: int = 0) -> str:
 # puanlayip ertesi ogleden sonra baglanan birinin serisini ve "gecesinde"
 # odulunu sessizce silerdi -- ekranin verdigi soz bosa cikardi. O yuzden
 # telefonun damgasi kabul ediliyor, ama DAR bir pencerede: gelecekte olamaz
-# (5 dk saat kaymasi payi), mac baslamadan once olamaz, ve en fazla 36 saat
+# (5 dk saat kaymasi payi), mac baslamadan once olamaz, ve en fazla 24 saat
 # eski olabilir. Pencere disindaysa puan YINE kaydedilir, yalnizca an sunucu
 # saati olur -- kullanicinin verisi damgadan onemli.
-OFFLINE_GRACE_HOURS = 36
+# 24 saat sahibinin karari (2026-09-12): gece puanlayip ertesi gun baglanan
+# gercek durumu kapsiyor, ama sahte istekle geriye donuk "gecesinde" puani
+# talep etme penceresini bir gunle sinirliyor.
+OFFLINE_GRACE_HOURS = 24
 CLOCK_SKEW_MINUTES = 5
 
 

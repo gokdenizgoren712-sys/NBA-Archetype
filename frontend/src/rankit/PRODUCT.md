@@ -191,6 +191,7 @@ code; the date is when it was given.
 | 2026-09-12 | `4g` promises "Your diary stays private until you share a card"; entries default to public | Keep public by default. The screen says what is true: you choose visibility per entry. |
 | 2026-09-12 | How follows shape the home | Three tiers, each ordered by nearness to now: **1)** followed clubs' matches *on that RankIt day*, **2)** followed leagues' matches (same day), **3)** everything else. Ordering, never a filter. |
 | 2026-09-12 | Competition follows pointed at one season's row and lapsed at rollover | A season is a dimension of a competition, not a different competition. Following "Premier League" follows every season. Filters list each competition once; picking one selects its latest season, which can then be changed. |
+| 2026-09-12 | How far back an offline phone's own timestamp may be trusted | **24 hours** (was 36). Covers rating at night and reconnecting the next day; caps how far back a forged request could claim the on-the-night 15 points. Outside the window the rating still saves, stamped at upload time. `rankit_rank.OFFLINE_GRACE_HOURS`. |
 
 The last one is implemented as an identity rule, not a schema change: a
 competition is `(sport, name)`. `rankit_rank.FOLLOWED_COMPETITION_SQL` and
