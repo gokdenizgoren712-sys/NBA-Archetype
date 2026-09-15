@@ -392,6 +392,14 @@ def sync_football(season: str) -> dict:
     long_season = f"{start_year}-{start_year + 1}"
     fotmob_season = f"{start_year}/{start_year + 1}"
     total_matches = total_players = linked = total_pruned = 0
+    # Saglayici istekleri yazma islemi ACILMADAN once. Eskiden ff.api() bu
+    # transaction'in icindeydi: ilk INSERT yazma kilidini aliyor ve 16 lig
+    # istegi boyunca (403/429'da geri cekilmeyle dakikalarca) birakmiyordu --
+    # o sirada kullanicinin puan kaydi "database is locked" ile duserdi.
+    # Tek seferlik aktarimda gorunmuyordu; katalog artik periyodik
+    # (api/rankit_catalog_sync.py). Test: test_rankit_catalog_refresh.py.
+    payloads = {slug: ff.api(f"leagues?id={league_id}&season={fotmob_season.replace('/', '%2F')}") or {}
+                for slug, (league_id, _name, _country, _mode) in FOOTBALL_LEAGUES.items()}
     with get_conn() as conn:
         for slug, (league_id, league_name, country, mode) in FOOTBALL_LEAGUES.items():
             comp_id = _competition(conn, "Football", league_name, country, season)
@@ -401,7 +409,7 @@ def sync_football(season: str) -> dict:
                 parquet = ROOT / "data" / f"football__{slug}__{previous}-{previous + 1}__fotmob.parquet"
             roster_df = pd.read_parquet(parquet) if parquet.exists() else pd.DataFrame(columns=["PLAYER_ID","PLAYER_NAME","TEAM"])
             roster_df = roster_df[["PLAYER_ID", "PLAYER_NAME", "TEAM"]].dropna().drop_duplicates("PLAYER_ID")
-            payload = ff.api(f"leagues?id={league_id}&season={fotmob_season.replace('/', '%2F')}") or {}
+            payload = payloads[slug]
             fixtures = [item for item in ((payload.get("fixtures") or {}).get("allMatches") or [])
                         if _fixture_in_season(item, start_year)]
             if mode == "uefa":
@@ -461,6 +469,8 @@ def sync_football(season: str) -> dict:
                         conn.execute("INSERT OR IGNORE INTO rankit_match_players(match_id,player_id,team_id) VALUES(?,?,?)", (mid, pid, team_ids[team_name]))
                         linked += 1
                 total_matches += 1
+            # Lig basina commit: kilit tek bir ligin yazimi kadar kisa kalir.
+            conn.commit()
     return {"matches": total_matches, "players": total_players, "links": linked, "pruned": total_pruned}
 
 
