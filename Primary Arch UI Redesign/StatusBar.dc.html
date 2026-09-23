@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 24px 0 26px;font-family:Rajdhani,system-ui,sans-serif;font-weight:700;font-size:13px;letter-spacing:.02em;color:#eceded;flex:none">
+<span>{{ time }}</span>
+<div style="display:flex;align-items:flex-end;gap:5px">
+<div style="display:flex;align-items:flex-end;gap:2px"><div style="width:3px;height:5px;background:#eceded;border-radius:1px"></div><div style="width:3px;height:7px;background:#eceded;border-radius:1px"></div><div style="width:3px;height:9px;background:#eceded;border-radius:1px"></div><div style="width:3px;height:11px;background:#eceded;border-radius:1px"></div></div>
+<span style="font-size:11px;font-weight:700;letter-spacing:.04em">{{ net }}</span>
+<div style="width:22px;height:11px;border:1px solid rgba(255,255,255,.5);border-radius:3px;padding:1.5px"><div style="width:70%;height:100%;background:#eceded;border-radius:1.5px"></div></div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:375,&quot;height&quot;:44},&quot;time&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;21:45&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;net&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;5G&quot;,&quot;4G&quot;,&quot;LTE&quot;],&quot;default&quot;:&quot;5G&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    return { time: this.props.time ?? "21:45", net: this.props.net ?? "5G" };
+  }
+}
+</script>
+</body>
+</html>

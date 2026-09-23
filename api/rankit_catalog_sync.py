@@ -33,6 +33,7 @@ import time
 from datetime import datetime, timedelta, timezone
 
 from .db import get_conn
+from .rankit_live_sync import background_jobs_enabled
 
 
 JOB_NAME = "rankit_catalog_v040"          # ilk aktarim
@@ -198,4 +199,7 @@ def _worker() -> None:
 
 def start_rankit_catalog_sync() -> None:
     # Eskiden ilk aktarim bitmisse burada donuluyordu -- hatanin kendisi buydu.
+    # Tek kapatma yolu ortak anahtar (testler, bakim).
+    if not background_jobs_enabled():
+        return
     threading.Thread(target=_worker, name="rankit-catalog-sync", daemon=True).start()

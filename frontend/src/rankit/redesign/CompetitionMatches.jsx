@@ -18,9 +18,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { CalendarDays } from "lucide-react";
 import { rankitApi } from "../rankitApi";
-import { SkeletonRows, Loading } from "./States";
+import { SkeletonRows, Loading, ErrorState } from "./States";
+import { hidesScore, readPrefs } from "../rankitPrefs";
 import { Shield } from "./MatchCard";
-import { heatSteps, inkFor } from "./heat";
+import { communityHeat, communityRatingCount, communityVerdictCovered, heatSteps, inkFor, MIN_COMMUNITY_RATINGS } from "./heat";
 
 const INK = "#eceded";
 const INK_3 = "#9aa0a6";
@@ -58,9 +59,15 @@ function Side({ team, score, dim }) {
   );
 }
 
-function Fixture({ match, onOpen }) {
-  const played = match.status === "finished" || match.status === "live";
-  const rating = match.community_rating;
+function Fixture({ match, onOpen, hideScores }) {
+  const [communityRevealed, setCommunityRevealed] = useState(false);
+  const hidden = hidesScore(hideScores, match);
+  const finished = match.status === "finished";
+  const played = finished || match.status === "live";
+  const verdictCovered = finished && communityVerdictCovered(match, { revealed: communityRevealed });
+  const rating = !finished || hidden || verdictCovered ? null : communityHeat(match);
+  const count = finished ? communityRatingCount(match) : null;
+  const tooFew = finished && !hidden && count !== null && count < MIN_COMMUNITY_RATINGS;
   const heat = inkFor(rating);
 
   if (!played) {
@@ -75,9 +82,10 @@ function Fixture({ match, onOpen }) {
     );
   }
 
-  const home = match.home_score, away = match.away_score;
+  const home = hidden ? null : match.home_score, away = hidden ? null : match.away_score;
   return (
-    <button type="button" className="ri-fixture" onClick={() => onOpen(match)}>
+    <div role="button" tabIndex={0} className="ri-fixture" onClick={event => { if (!event.target.closest("button")) onOpen(match); }}
+      onKeyDown={event => { if (!event.target.closest("button") && ["Enter", " "].includes(event.key)) { event.preventDefault(); onOpen(match); } }}>
       {/* Sol şerit = topluluk puanı. Puan yoksa çizgi rengi: "henüz kimse
           puanlamadı" ile "soğuk maç" aynı şey değil. */}
       <i aria-hidden="true" style={{ background: rating ? heat : LINE }} />
@@ -86,17 +94,22 @@ function Fixture({ match, onOpen }) {
       <div className="ri-fixture-heat">
         <div>
           {heatSteps(rating).map((color, index) => (
-            <span key={index} style={{ background: color }} />
+            <span key={index} style={{ background: color, filter: verdictCovered ? "blur(3px)" : "none" }} />
           ))}
         </div>
         {/* §1 — sayı her zaman rengin yanında. */}
-        <b style={{ color: rating ? heat : INK_4 }}>{rating ? rating.toFixed(1) : "—"}</b>
+        {!verdictCovered && <b style={{ color: rating ? heat : INK_4 }}>{rating ? rating.toFixed(1) : tooFew ? "TOO FEW RATINGS" : "—"}</b>}
       </div>
-    </button>
+      {verdictCovered && !hidden && <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: 8, color: INK_3, fontSize: 10 }}>
+        <span>Rate it first — then see whether the room agreed with you.</span>
+        <button type="button" onClick={event => { event.stopPropagation(); setCommunityRevealed(true); }}
+          style={{ flex: "none", border: 0, padding: 0, background: "none", color: GOLD, font: "700 10px Rajdhani,system-ui,sans-serif", cursor: "pointer" }}>REVEAL ANYWAY</button>
+      </div>}
+    </div>
   );
 }
 
-export default function CompetitionMatches({ competitionId, matchweeks = [], fixtures = [], onOpenMatch }) {
+export default function CompetitionMatches({ competitionId, matchweeks = [], fixtures = [], onOpenMatch, hideScores = readPrefs().hideScores }) {
   // Açılışta oynanmakta olan hafta: tamamlanmamış ilk hafta, yoksa sonuncu.
   const current = useMemo(() => {
     const live = matchweeks.find((w) => w.finished < w.matches);
@@ -107,17 +120,19 @@ export default function CompetitionMatches({ competitionId, matchweeks = [], fix
   // Yüklenen haftayı VERİYLE BİRLİKTE tutuyoruz; "hangi hafta yükleniyor"
   // böyle türetiliyor ve efektin başında state sıfırlamak gerekmiyor.
   const [loaded, setLoaded] = useState({ stage: null, matches: [] });
+  const [retry, setRetry] = useState(0);
 
   useEffect(() => {
     if (!active || !competitionId) return undefined;
     let alive = true;
     rankitApi.competitionMatches(competitionId, active)
       .then((d) => alive && setLoaded({ stage: active, matches: d.matches || [] }))
-      .catch(() => alive && setLoaded({ stage: active, matches: [] }));
+      .catch(error => alive && setLoaded({ stage: active, matches: null, error }));
     return () => { alive = false; };
-  }, [competitionId, active]);
+  }, [competitionId, active, retry]);
 
   const rows = active ? (loaded.stage === active ? loaded.matches : null) : fixtures;
+  const error = active && loaded.stage === active ? loaded.error : null;
 
   // Gün gün grupla; 3c başlıkları maçların kendi tarihinden geliyor.
   const days = useMemo(() => {
@@ -154,13 +169,14 @@ export default function CompetitionMatches({ competitionId, matchweeks = [], fix
         </div>
       </>}
 
-      {rows === null && <Loading label="Loading matches"><SkeletonRows count={3} height={128}/></Loading>}
+      {error && <ErrorState error={error} onRetry={()=>{setLoaded({stage:null,matches:[]});setRetry(v=>v+1);}}/>}
+      {rows === null && !error && <Loading label="Loading matches"><SkeletonRows count={3} height={128}/></Loading>}
 
       {days.map((day) => (
         <section key={day.key}>
           <div className="ri-chip-title">{day.key}</div>
           <div className="ri-fixture-stack">
-            {day.matches.map((m) => <Fixture key={m.id} match={m} onOpen={onOpenMatch} />)}
+            {day.matches.map((m) => <Fixture key={m.id} match={m} onOpen={onOpenMatch} hideScores={hideScores} />)}
           </div>
         </section>
       ))}

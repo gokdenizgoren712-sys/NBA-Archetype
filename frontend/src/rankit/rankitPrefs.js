@@ -87,11 +87,15 @@ export function writePrefs(next) {
  * sayfası, yeni kartın adaptörü) ve üçünün ayrışması "bir ekranda açık, bir
  * ekranda kapalı" demek olurdu.
  */
+export function hasOwnRating(match) {
+  const value = match?.my_rating ?? match?.myRating;
+  return value !== null && value !== undefined && value !== "" &&
+    Number.isFinite(Number(value)) && Number(value) > 0;
+}
+
 export function hidesScore(hideScores, match, prefs = readPrefs()) {
-  if (!hideScores || match?.status !== "finished") return false;
-  const rated = !!(match.my_watched_date || match.myWatchedDate
-                   || match.my_rating != null || match.myRating != null);
-  return !(prefs.hideUntilRated && rated);
+  if (!hideScores || !["finished", "live"].includes(match?.status)) return false;
+  return !(prefs.hideUntilRated && hasOwnRating(match));
 }
 
 /**
@@ -106,10 +110,10 @@ export function resolveBroadcastCountry(prefs = readPrefs()) {
   }
   const guess = localeCountry();
   if (guess) return { code: guess, supported: true, source: "locale" };
-  let region = null;
+  let region;
   try {
     region = String(navigator.language || "").split("-")[1] || null;
-  } catch { region = null; }
+  } catch { return { code: null, supported: false, source: "locale", region: null }; }
   // Tarayıcı kapsam dışı bir ülke söylüyor: sormaya devam etmiyoruz.
   return { code: null, supported: false, source: "locale", region };
 }

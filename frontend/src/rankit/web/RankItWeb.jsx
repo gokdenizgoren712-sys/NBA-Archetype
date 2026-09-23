@@ -3,16 +3,24 @@ import { Link, NavLink, useParams, useNavigate } from "react-router-dom";
 import {
   Home, Compass, Activity as ActivityIcon, List as ListIcon, CircleUserRound,
   Smartphone, Star, X, Minus, ChevronLeft, ChevronRight, FileText, Plus, Search,
-  SlidersHorizontal, MessageSquare, Award, Eye, EyeOff, Radio, Send, Bookmark, Heart, Trophy, ThumbsUp,
+  SlidersHorizontal, MessageSquare, Award, Eye, EyeOff, Radio, Send, Bookmark, Heart,
 } from "lucide-react";
 import { SEO } from "../../hooks/useSEO";
 import { useAuth } from "../../contexts/AuthContext";
 import { rankitApi, rankitSocketUrl } from "../rankitApi";
-import { BROADCAST_COUNTRIES, readPrefs, writePrefs, resolveBroadcastCountry, localeCountry } from "../rankitPrefs";
+import { BROADCAST_COUNTRIES, hidesScore, readPrefs, writePrefs, resolveBroadcastCountry, localeCountry } from "../rankitPrefs";
 import { MatchCard, Stars, RankItMark, TeamMark, formatWhen } from "./cards";
 import CompetitionMatches from "../redesign/CompetitionMatches";
 import SearchSheet from "../redesign/SearchSheet";
 import CompetitionPlayers from "../redesign/CompetitionPlayers";
+import { ratingField } from "../redesign/ratingField";
+import CommunityVerdictGate from "../redesign/CommunityVerdictGate";
+import ExpectedHeat from "../redesign/ExpectedHeat";
+import { playedPlayers } from "../redesign/playedPlayers";
+import PlayersPicker from "../redesign/PlayersPicker";
+import { reviewerFromStorage, isOwnContent } from "../redesign/reviewIdentity";
+import { createReplyAttempts } from "../redesign/replyAttempt";
+import { communityHeat, communityVerdictCovered } from "../redesign/heat";
 import "../rankit.css";
 import "./rankit-web.css";
 
@@ -262,13 +270,17 @@ function Carousel({ items, hideScores, onOpen }) {
 }
 
 /* Topluluk yorumu satırı — /home ve Activity aynı şekli paylaşıyor. */
-function ReviewRow({ row, onOpen, onOpenEntity }) {
+function ReviewRow({ row, onOpen, onOpenEntity, ratedMatchIds, hideScores = false }) {
+  const [revealed, setRevealed] = useState(false);
   const initial = (row.username || "?").slice(0, 1).toUpperCase();
   const teams = `${row.home_short || row.home_name} v ${row.away_short || row.away_name}`;
+  const match = { status: "finished", review_count: 1, my_rating: ratedMatchIds?.has(Number(row.match_id)) ? 1 : null };
+  const scoreHidden = hidesScore(hideScores, match) && !revealed;
+  const verdictCovered = communityVerdictCovered(match, { revealed });
   return (
-    <article className="riw-review" onClick={() => onOpen?.(row.match_id)}
+    <article className="riw-review" onClick={event => { if (!event.target.closest("button")) onOpen?.(row.match_id); }}
       role="button" tabIndex={0}
-      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen?.(row.match_id); } }}>
+      onKeyDown={(e) => { if (!e.target.closest("button") && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onOpen?.(row.match_id); } }}>
       <span className="riw-avatar">{initial}</span>
       <div>
         <p>
@@ -282,8 +294,13 @@ function ReviewRow({ row, onOpen, onOpenEntity }) {
           ) : <strong>@{row.username}</strong>}
           {" "}rated <b>{teams}</b>
         </p>
-        {typeof row.rating === "number" && row.rating > 0 && <Stars value={row.rating} compact />}
-        {row.review && <blockquote>{row.review}</blockquote>}
+        {row.review_withheld ? <CommunityVerdictGate spoiler actionLabel="OPEN MATCH"
+          message="Contains spoilers — open the match to read this review."
+          onReveal={event => { event.stopPropagation(); onOpen?.(row.match_id); }} />
+          : scoreHidden || verdictCovered ? <CommunityVerdictGate spoiler={scoreHidden} onReveal={event => { event.stopPropagation(); setRevealed(true); }} /> : <>
+          {typeof row.rating === "number" && row.rating > 0 && <Stars value={row.rating} compact />}
+          {row.review && <blockquote>{row.review}</blockquote>}
+        </>}
       </div>
     </article>
   );
@@ -295,9 +312,8 @@ function ReviewRow({ row, onOpen, onOpenEntity }) {
    dediği. İkisi de aynı <Catalog> bileşenini render ettiği için beş gezinme
    yerinden ikisi birebir aynı sayfayı açıyordu; sunucunun /home ucu (hero
    kartlar + son herkese açık yorumlar) hiç çağrılmıyordu bile. */
-function HomeView({ onOpenMatch }) {
+function HomeView({ onOpenMatch, hideScores, onToggleScores, ratedMatchIds }) {
   const [sport, setSport] = useState("All");
-  const [hideScores, setHideScores] = useState(false);
   const [data, setData] = useState(null);
   const [err, setErr] = useState("");
 
@@ -329,7 +345,7 @@ function HomeView({ onOpenMatch }) {
           ))}
         </div>
         <button className={`riw-hide${hideScores ? " on" : ""}`}
-          aria-pressed={hideScores} onClick={() => setHideScores((v) => !v)}>
+          aria-pressed={hideScores} onClick={onToggleScores}>
           {hideScores ? <EyeOff size={14} /> : <Eye size={14} />}
           {hideScores ? "Scores hidden" : "Hide scores"}
         </button>
@@ -360,7 +376,7 @@ function HomeView({ onOpenMatch }) {
                 <h2>Community reviews</h2>
               </header>
               <div className="riw-review-list">
-                {activity.map((r) => <ReviewRow key={r.id} row={r} onOpen={onOpenMatch} />)}
+                {activity.map((r) => <ReviewRow key={r.id} row={r} onOpen={onOpenMatch} ratedMatchIds={ratedMatchIds} hideScores={hideScores} />)}
                 {!activity.length && (
                   <Empty icon={MessageSquare} title="No reviews yet"
                     note="Be the first to write one — open a finished match and rate it." />
@@ -376,11 +392,21 @@ function HomeView({ onOpenMatch }) {
 
 /* ── Denetçi ──────────────────────────────────────────────────────────────── */
 
-function Inspector({ id, minimized, onClose, onMinimize, onRestore, onLogged, onOpenEntity }) {
+function Inspector({ id, minimized, hideScores, onClose, onMinimize, onRestore, onLogged, onOpenEntity }) {
   const { isLoggedIn } = useAuth();
   const [detail, setDetail] = useState(null);
   const [err, setErr] = useState("");
   const [rating, setRating] = useState(0);
+  /* §5.4: puan alani yalniz KULLANICI dokunduysa gidiyor. Uc "alan yok" ile
+     "alan null"u ayiriyor; null puani SILER. Detay yanitindan once (ya da
+     yanit gelmediyse) rating hala 0 oldugu icin, sadece inceleme yazip
+     kaydeden kullanicinin sunucudaki puani siliniyordu. Yeni kayitta alanin
+     yoklugu da null demek (uc: `not existing` dalinda body.rating None), o
+     yuzden ayrica gondermeye gerek yok. */
+  const [ratingTouched, setRatingTouched] = useState(false);
+  const rate = value => { setRatingTouched(true); setRating(value); };
+  const [communityRevealed, setCommunityRevealed] = useState(false);
+  const [scoreRevealed, setScoreRevealed] = useState(false);
   const [review, setReview] = useState("");
   // Classic damgası webde HİÇ yoktu: telefonda puanlamanın yanındaki en
   // belirgin hareket, webde puan kaydedilebiliyor ama "bu bir klasikti"
@@ -394,6 +420,9 @@ function Inspector({ id, minimized, onClose, onMinimize, onRestore, onLogged, on
   const [favorited, setFavorited] = useState(false);
   const [potmId, setPotmId] = useState(null);
   const [respect, setRespect] = useState([]);
+  const [playersOpen, setPlayersOpen] = useState(false);
+  const [voteBusy, setVoteBusy] = useState(false);
+  const voteBusyRef = useRef(false);
   const [broadcast, setBroadcast] = useState(null);
   const [busy, setBusy] = useState("");
   const [notice, setNotice] = useState(null);
@@ -408,7 +437,7 @@ function Inspector({ id, minimized, onClose, onMinimize, onRestore, onLogged, on
     rankitApi.match(id)
       .then((d) => {
         if (!alive) return;
-        setDetail(d); setRating(d.my_rating || 0); setReview(d.my_review || "");
+        setDetail(d); setRating(d.my_rating || 0); setRatingTouched(false); setReview(d.my_review || ""); setCommunityRevealed(false); setScoreRevealed(false);
         setClassic(!!d.my_classic);
         setWatchlisted(!!d.watchlisted); setFavorited(!!d.favorited);
         setPotmId(d.my_potm_id || null); setRespect(d.my_respect_ids || []);
@@ -459,7 +488,7 @@ function Inspector({ id, minimized, onClose, onMinimize, onRestore, onLogged, on
     const previous = watchlisted;
     setWatchlisted(!previous); setBusy("watchlist");
     try {
-      const r = await rankitApi.toggleWatchlist(id);
+      const r = await rankitApi.toggleWatchlist(id, !previous);
       setWatchlisted(r.watchlisted);
       flash(r.watchlisted ? "Added to your watchlist" : "Removed from your watchlist");
     } catch {
@@ -472,7 +501,7 @@ function Inspector({ id, minimized, onClose, onMinimize, onRestore, onLogged, on
     const previous = favorited;
     setFavorited(!previous); setBusy("favorite");
     try {
-      const r = await rankitApi.favorite({ target_type: "match", target_id: id });
+      const r = await rankitApi.favorite({ target_type: "match", target_id: id }, !previous);
       setFavorited(r.favorited);
       flash(r.favorited ? "Added to your favourites" : "Removed from your favourites");
     } catch {
@@ -481,24 +510,30 @@ function Inspector({ id, minimized, onClose, onMinimize, onRestore, onLogged, on
   };
 
   const choosePotm = async (playerId) => {
+    if (voteBusyRef.current || playerId === potmId) return;
+    voteBusyRef.current = true; setVoteBusy(true);
     const previous = potmId;
+    const previousRespect = respect;
     setPotmId(playerId);
     // POTM ve Respect aynı oyuncuyu iki kez saymamalı — telefondaki kural.
     setRespect((v) => v.filter((x) => x !== playerId));
     try { await rankitApi.potm(id, playerId); flash("Player of the Match saved"); }
-    catch { setPotmId(previous); flash("Vote could not be saved", "error"); }
+    catch { setPotmId(previous); setRespect(previousRespect); flash("Vote could not be saved", "error"); }
+    finally { voteBusyRef.current = false; setVoteBusy(false); }
   };
 
   const toggleRespect = async (playerId) => {
-    if (playerId === potmId) return;
+    if (voteBusyRef.current || playerId === potmId) return;
     const previous = respect;
     const next = respect.includes(playerId)
       ? respect.filter((x) => x !== playerId)
       : respect.length < 2 ? [...respect, playerId] : respect;
     if (next === respect) return;
+    voteBusyRef.current = true; setVoteBusy(true);
     setRespect(next);
     try { await rankitApi.respect(id, next); }
     catch { setRespect(previous); flash("Vote could not be saved", "error"); }
+    finally { voteBusyRef.current = false; setVoteBusy(false); }
   };
 
   const openLists = async () => {
@@ -520,24 +555,20 @@ function Inspector({ id, minimized, onClose, onMinimize, onRestore, onLogged, on
 
   const save = () => {
     setState("saving");
-    rankitApi.log({ match_id: id, rating: rating || null, review, classic })
-      .then(() => { setState("saved"); onLogged?.(); })
+    rankitApi.log({ match_id: id, ...ratingField({ touched: ratingTouched, hasEntry: true, rating }), review, classic })
+      .then(() => { setState("saved"); setDetail(previous => ({ ...previous, my_rating: rating || null })); onLogged?.(); })
       .catch((e) => { setState("error"); setErr(String(e.message || e)); });
   };
 
   const finished = detail?.status === "finished";
+  const scoreHidden = hidesScore(hideScores, { ...detail, my_rating: rating }) && !scoreRevealed;
+  const verdictCovered = communityVerdictCovered({ ...detail, my_rating: rating }, { revealed: communityRevealed });
+  const communityHidden = scoreHidden || verdictCovered;
   const when = formatWhen(detail?.starts_at);
   // Oylama listesi alfabetik tek bir duvardı: "Adam Smith" hangi takımda
   // belli olmuyordu ve aynı 30 isim POTM ve Respect için arka arkaya iki kez
   // basılıyordu. Telefon takıma göre grupluyor, web gruplamıyordu.
-  const playersByTeam = useMemo(() => {
-    const groups = new Map();
-    for (const p of detail?.players || []) {
-      if (!groups.has(p.team)) groups.set(p.team, []);
-      groups.get(p.team).push(p);
-    }
-    return [...groups.entries()];
-  }, [detail?.players]);
+  const playerOptions = useMemo(() => playedPlayers(detail?.lineups), [detail?.lineups]);
 
   // Küçültülmüşken tam çekmece hiç DOM'da değil — sadece köşedeki taslak
   // çipi. Bileşenin kendisi (ve içindeki rating/review state'i) mount'ta
@@ -598,8 +629,14 @@ function Inspector({ id, minimized, onClose, onMinimize, onRestore, onLogged, on
                 <strong>{detail.home?.short || detail.home?.name}</strong>
               </div>
               <div>
-                <small>{finished ? "FULL TIME" : when.time || detail.status?.toUpperCase()}</small>
-                <strong>{detail.score || "VS"}</strong>
+                <small>{scoreHidden && finished ? "PLAYED" : finished ? "FULL TIME" : when.time || detail.status?.toUpperCase()}</small>
+                {/* §3.1: skoru gormek ile odanin hukmunu gormek IKI AYRI karar.
+                    "Rate it first — then see whether the room agreed with you"
+                    cumlesi skor acildiktan SONRA da duruyor. Telefon zaten boyle
+                    davraniyordu (yalniz setRevealed); web burada ikisini birden
+                    aciyordu — ayni politikanin iki yuzeyde farkli davranmasi. */}
+                {scoreHidden ? <button type="button" className="ri-card-reveal" onClick={() => setScoreRevealed(true)}>Reveal match</button>
+                  : <strong>{detail.score || "VS"}</strong>}
                 <small>{when.date}</small>
               </div>
               <div>
@@ -621,7 +658,8 @@ function Inspector({ id, minimized, onClose, onMinimize, onRestore, onLogged, on
               <WatchalongPanel matchId={detail.id} isLoggedIn={isLoggedIn} />
             ) : tab === "Match" ? (
               <>
-                {detail.summary && <p className="ri-summary">{detail.summary}</p>}
+                {!scoreHidden && detail.summary && <p className="ri-summary">{detail.summary}</p>}
+                {detail.status === "upcoming" && <ExpectedHeat match={detail}/>}
                 <div className="riw-facts">
                   <div><span>KICK-OFF</span><strong>{when.full || "—"}</strong></div>
                   <div>
@@ -655,7 +693,7 @@ function Inspector({ id, minimized, onClose, onMinimize, onRestore, onLogged, on
                       <em>Typical coverage — check before kick-off</em>
                     ) : null}
                   </div>
-                  {detail.potm && (
+                  {detail.potm && !communityHidden && (
                     <div><span>COMMUNITY POTM</span><strong>{detail.potm.name}</strong></div>
                   )}
                 </div>
@@ -791,10 +829,11 @@ function Inspector({ id, minimized, onClose, onMinimize, onRestore, onLogged, on
               </>
             ) : (
               <>
-                <div className="riw-community-stats">
+                {communityHidden && <CommunityVerdictGate spoiler={scoreHidden} onReveal={() => { setScoreRevealed(true); setCommunityRevealed(true); }} />}
+                {!communityHidden && <div className="riw-community-stats">
                   <div>
                     <Star size={14} fill="currentColor" />
-                    <strong>{detail.community_rating ?? "—"}</strong>
+                    <strong>{communityHeat(detail)?.toFixed(1) ?? "—"}</strong>
                     <span>COMMUNITY</span>
                   </div>
                   <div>
@@ -807,9 +846,9 @@ function Inspector({ id, minimized, onClose, onMinimize, onRestore, onLogged, on
                     <strong>{detail.classic_count ?? 0}</strong>
                     <span>CLASSICS</span>
                   </div>
-                </div>
+                </div>}
 
-                {!!detail.tags?.length && (
+                {!communityHidden && !!detail.tags?.length && (
                   <div className="riw-tagcloud">
                     {detail.tags.slice(0, 6).map((t) => (
                       <span key={t.tag}>{t.tag}<b>{t.count}</b></span>
@@ -821,56 +860,26 @@ function Inspector({ id, minimized, onClose, onMinimize, onRestore, onLogged, on
                   isLoggedIn ? (
                     <>
                       <div className="ri-rating-panel">
-                        <small>YOUR RATING</small>
-                        <Stars value={rating} onChange={setRating} />
-                        <button type="button" onClick={() => setClassic((v) => !v)}
+                        <small>{rating > 0 ? "YOUR RATING" : "HOW WAS IT?"}</small>
+                        <Stars value={rating} onChange={rate} />
+                        {rating > 0 && <button type="button" onClick={() => setClassic((v) => !v)}
                           aria-pressed={classic}
                           className={`ri-classic${classic ? " active" : ""}`}>
                           <span>CLASSIC</span><small>RANKIT SELECT</small>
-                        </button>
+                        </button>}
                       </div>
+                      {rating <= 0 && <p className="ri-unrated-hint">Tags, players and a review open once there is a rating.</p>}
                       {/* POTM + Respect: telefonda vardı, webde yoktu. Aynı kural —
                           bir oyuncu ikisinde birden olamaz, respect en fazla iki kişi. */}
-                      {!!detail.players?.length && (
+                      {Number(detail.my_rating) > 0 && playerOptions.length > 0 && (
                         <div className="ri-vote-block">
-                          <div className="ri-chip-title">
-                            YOUR PLAYER OF THE MATCH
-                            <span>{potmId ? "1" : "0"}/1</span>
-                          </div>
-                          {playersByTeam.map(([team, list]) => (
-                            <section key={`potm-${team}`} className="riw-vote-team">
-                              <small>{team}</small>
-                              <div className="ri-respect-grid">
-                                {list.map((p) => (
-                                  <button key={`potm-${p.id}`} type="button"
-                                    className={potmId === p.id ? "active" : undefined}
-                                    onClick={() => choosePotm(p.id)}>
-                                    <Trophy size={12} /><span>{p.name}</span>
-                                  </button>
-                                ))}
-                              </div>
-                            </section>
-                          ))}
-                          <div className="ri-chip-title">
-                            RESPECT <span>{respect.length}/2</span>
-                          </div>
-                          {playersByTeam.map(([team, list]) => (
-                            <section key={`respect-${team}`} className="riw-vote-team">
-                              <small>{team}</small>
-                              <div className="ri-respect-grid">
-                                {list.filter((p) => p.id !== potmId).map((p) => (
-                                  <button key={`respect-${p.id}`} type="button"
-                                    className={respect.includes(p.id) ? "active" : undefined}
-                                    onClick={() => toggleRespect(p.id)}>
-                                    <ThumbsUp size={12} /><span>{p.name}</span>
-                                  </button>
-                                ))}
-                              </div>
-                            </section>
-                          ))}
+                          <button type="button" className="ri-players-trigger" onClick={() => setPlayersOpen(true)}>
+                            <span><small>PLAYERS · POTM &amp; RESPECT</small><strong>{playerOptions.find((p) => p.id === potmId)?.name || "Choose a player"}{respect.length ? ` · ${respect.length} respect` : ""}</strong></span>
+                            <b>CHOOSE</b>
+                          </button>
                         </div>
                       )}
-                      <textarea className="ri-review-input" rows="3" maxLength={4000}
+                      {rating > 0 && <><textarea className="ri-review-input" rows="3" maxLength={4000}
                         aria-label="Your review"
                         value={review} onChange={(e) => setReview(e.target.value)}
                         placeholder="Write an optional review…" />
@@ -878,7 +887,7 @@ function Inspector({ id, minimized, onClose, onMinimize, onRestore, onLogged, on
                         {state === "saving" ? "Saving…"
                           : state === "saved" ? "Saved to your diary"
                           : detail.my_watched_date ? "Update diary entry" : "Save to diary"}
-                      </button>
+                      </button></>}
                       {detail.my_watched_date && (
                         <p className="riw-quiet riw-merge-note">
                           Your Classic stamp, tags and visibility stay as you set them in the app.
@@ -895,7 +904,7 @@ function Inspector({ id, minimized, onClose, onMinimize, onRestore, onLogged, on
                   <p className="riw-quiet">Ratings open when the match finishes.</p>
                 )}
 
-                <div className="ri-review-feed">
+                {!communityHidden && <div className="ri-review-feed">
                   {detail.reviews?.slice(0, 8).map((r) => (
                     <ReviewArticle key={r.id} row={r} isLoggedIn={isLoggedIn} />
                   ))}
@@ -903,7 +912,7 @@ function Inspector({ id, minimized, onClose, onMinimize, onRestore, onLogged, on
                     <Empty icon={MessageSquare} title="No reviews yet"
                       note="Write the first one — it shows up here for everyone." />
                   )}
-                </div>
+                </div>}
               </>
             )}
           </>
@@ -912,6 +921,10 @@ function Inspector({ id, minimized, onClose, onMinimize, onRestore, onLogged, on
           <div key={notice.id} role="status" className={`ri-action-toast ${notice.tone}`}
             onAnimationEnd={() => setNotice(null)}>{notice.message}</div>
         )}
+        {playersOpen && playerOptions.length > 0 && <PlayersPicker variant="web" players={playerOptions}
+          potmId={potmId} respectIds={respect} onPotm={choosePotm} onRespect={toggleRespect} busy={voteBusy}
+          onClose={() => setPlayersOpen(false)}
+          matchLabel={`${detail?.home?.short || detail?.home?.name || "Home"} vs ${detail?.away?.short || detail?.away?.name || "Away"}`} />}
       </section>
     </div>
   );
@@ -1009,7 +1022,7 @@ function CompetitionBody({ id, data, onOpenMatch, onOpenEntity }) {
 }
 
 
-function EntityDrawer({ kind, id, onClose, onOpenMatch, onOpenEntity }) {
+function EntityDrawer({ kind, id, onClose, onOpenMatch, onOpenEntity, hideScores, ratedMatchIds }) {
   const { isLoggedIn } = useAuth();
   const [data, setData] = useState(null);
   const [err, setErr] = useState("");
@@ -1063,7 +1076,7 @@ function EntityDrawer({ kind, id, onClose, onOpenMatch, onOpenEntity }) {
     const before = following;
     setFollowing(!before);
     try {
-      const r = await rankitApi.follow({ target_type: followTarget, target_id: id, notify: false });
+      const r = await rankitApi.follow({ target_type: followTarget, target_id: id, notify: false }, !before);
       setFollowing(r.following);
     } catch { setFollowing(before); }
   };
@@ -1073,7 +1086,7 @@ function EntityDrawer({ kind, id, onClose, onOpenMatch, onOpenEntity }) {
     const before = favorited;
     setFavorited(!before);
     try {
-      const r = await rankitApi.favorite({ target_type: kind, target_id: id });
+      const r = await rankitApi.favorite({ target_type: kind, target_id: id }, !before);
       setFavorited(r.favorited);
     } catch { setFavorited(before); }
   };
@@ -1148,7 +1161,9 @@ function EntityDrawer({ kind, id, onClose, onOpenMatch, onOpenEntity }) {
             {kind === "member" && !!data.entries?.length && (
               <div className="riw-review-list">
                 {data.entries.slice(0, 8).map((e) => (
-                  <ReviewRow key={e.id} row={e} onOpen={onOpenMatch} />
+                  <ReviewRow key={e.id} row={e} onOpen={onOpenMatch}
+                    onOpenEntity={onOpenEntity} ratedMatchIds={ratedMatchIds}
+                    hideScores={hideScores} />
                 ))}
               </div>
             )}
@@ -1159,7 +1174,8 @@ function EntityDrawer({ kind, id, onClose, onOpenMatch, onOpenEntity }) {
                   {kind === "competition" ? "FIXTURES" : "MATCHES"} <span>{matches.length}</span>
                 </div>
                 <Wall matches={matches} loading={false} error=""
-                  onOpen={(m) => onOpenMatch(m.id)} empty={null} />
+                  onOpen={(m) => onOpenMatch(m.id)} empty={null}
+                  hideScores={hideScores} />
               </>
             )}
           </>
@@ -1175,6 +1191,8 @@ function EntityDrawer({ kind, id, onClose, onOpenMatch, onOpenEntity }) {
    Yorumlar TEMBEL yükleniyor: bir maçta sekiz inceleme var ve hiçbirine
    bakılmadan sekiz istek atmanın anlamı yok. */
 function ReviewArticle({ row, isLoggedIn }) {
+  const ownReview = isOwnContent(row, reviewerFromStorage(localStorage));
+  const [replyAttempts] = useState(createReplyAttempts);
   const [liked, setLiked] = useState(!!row.liked);
   const [likes, setLikes] = useState(row.likes || 0);
   const [open, setOpen] = useState(false);
@@ -1187,11 +1205,11 @@ function ReviewArticle({ row, isLoggedIn }) {
   const [spoilerShown, setSpoilerShown] = useState(false);
 
   const toggleLike = async () => {
-    if (!isLoggedIn) return;
+    if (!isLoggedIn || ownReview) return;
     const before = { liked, likes };
     setLiked(!liked); setLikes(likes + (liked ? -1 : 1));
     try {
-      const r = await rankitApi.likeReview(row.id);
+      const r = await rankitApi.likeReview(row.id, !liked);
       setLiked(r.liked); setLikes(r.likes);
     } catch { setLiked(before.liked); setLikes(before.likes); }
   };
@@ -1208,9 +1226,11 @@ function ReviewArticle({ row, isLoggedIn }) {
   const send = async () => {
     const text = draft.trim();
     if (!text || sending) return;
+    const clientId = replyAttempts.forSend(row.id, text);
     setSending(true);
     try {
-      await rankitApi.addComment(row.id, text);
+      await rankitApi.addComment(row.id, text, null, clientId);
+      replyAttempts.confirmed(row.id, text);
       setComments((await rankitApi.comments(row.id)).comments || []);
       setDraft("");
     } catch { /* gönderilemedi: taslak duruyor, kullanıcı tekrar deneyebilir */ }
@@ -1234,11 +1254,11 @@ function ReviewArticle({ row, isLoggedIn }) {
       )}
       <div className="riw-review-actions">
         <button type="button" className={liked ? "on" : undefined} onClick={toggleLike}
-          disabled={!isLoggedIn} aria-pressed={liked}
-          aria-label={liked ? "Remove your like" : "Like this review"}>
+          disabled={!isLoggedIn || ownReview} aria-pressed={liked}
+          aria-label={ownReview ? "Your review · respect count" : liked ? "Remove your like" : "Like this review"}>
           <Heart size={13} fill={liked ? "currentColor" : "none"} /> {likes || ""}
         </button>
-        <button type="button" onClick={openComments} aria-expanded={open}>
+        <button type="button" onClick={openComments} aria-expanded={open} disabled={!!row.spoiler && !spoilerShown}>
           <MessageSquare size={13} /> {row.comments || ""}
         </button>
       </div>
@@ -1363,7 +1383,7 @@ function WatchalongPanel({ matchId, isLoggedIn }) {
    sonra bul" demek; buradaki iş tek bir maçı hatırlayıp puanlamak, o yüzden
    ayrı bir yüzey ve doğrudan arama. Yalnızca BİTMİŞ maçlar: oynanmamış bir
    maçı puanlatmak anlamsız. */
-function RankSheet({ onClose, onPick }) {
+function RankSheet({ onClose, onPick, hideScores }) {
   const [q, setQ] = useState("");
   const [rows, setRows] = useState(null);
   const [err, setErr] = useState("");
@@ -1411,7 +1431,7 @@ function RankSheet({ onClose, onPick }) {
             <button key={m.id} type="button" onClick={() => onPick(m.id)}>
               <span className="riw-rank-comp">{m.competition}</span>
               <span className="riw-rank-teams">
-                {m.home.short || m.home.name} <b>{m.score || "—"}</b> {m.away.short || m.away.name}
+                {m.home.short || m.home.name} <b>{hidesScore(hideScores, m) ? "—" : m.score || "—"}</b> {m.away.short || m.away.name}
               </span>
               <span className="riw-rank-date">{m.date}</span>
             </button>
@@ -1453,13 +1473,12 @@ function useCatalog(filters) {
   return { ...state, more: () => setOffset((o) => o + 24), canLoadMore: state.matches.length < state.total };
 }
 
-function Catalog({ title, note, meta, tabs, onOpenMatch }) {
+function Catalog({ title, note, meta, tabs, onOpenMatch, hideScores, onToggleScores }) {
   const [sport, setSport] = useState("All");
   const [competition, setCompetition] = useState("All");
   const [season, setSeason] = useState("All");
   const [status, setStatus] = useState("All");
   const [filterOpen, setFilterOpen] = useState(false);
-  const [hideScores, setHideScores] = useState(false);
 
   const filters = useMemo(() => ({ sport, competition, season, status }),
     [sport, competition, season, status]);
@@ -1503,7 +1522,7 @@ function Catalog({ title, note, meta, tabs, onOpenMatch }) {
         )}
         <div className="riw-toolbar-gap" />
         <button className={`riw-hide${hideScores ? " on" : ""}`}
-          aria-pressed={hideScores} onClick={() => setHideScores((v) => !v)}>
+          aria-pressed={hideScores} onClick={onToggleScores}>
           {hideScores ? <EyeOff size={14} /> : <Eye size={14} />}
           {hideScores ? "Scores hidden" : "Hide scores"}
         </button>
@@ -1580,7 +1599,7 @@ function Catalog({ title, note, meta, tabs, onOpenMatch }) {
    TOPLULUK (başkalarının kayıtları ve yorumları) ve SENİN GÜNLÜĞÜN. Sayfanın
    adı "Activity" olmasına rağmen tek gösterdiği kendi kayıtlarındı; başka
    kimsenin yorumu web'de hiçbir yerde görünmüyordu. */
-function ActivityView({ onOpenMatch, refreshToken, onOpenEntity }) {
+function ActivityView({ onOpenMatch, refreshToken, onOpenEntity, hideScores, ratedMatchIds }) {
   const { isLoggedIn } = useAuth();
   const [tab, setTab] = useState("community");
   const [rows, setRows] = useState(null);
@@ -1647,20 +1666,20 @@ function ActivityView({ onOpenMatch, refreshToken, onOpenEntity }) {
         {tab === "community" ? (
           <div className="riw-review-list">
             {feed === null && <p className="ri-entity-loading">Loading…</p>}
-            {feed?.map((r) => <ReviewRow key={r.id} row={r} onOpen={onOpenMatch} onOpenEntity={onOpenEntity} />)}
+            {feed?.map((r) => <ReviewRow key={r.id} row={r} onOpen={onOpenMatch} onOpenEntity={onOpenEntity} ratedMatchIds={ratedMatchIds} hideScores={hideScores} />)}
             {feed && !feed.length && (
               <Empty icon={MessageSquare} title="No public reviews yet"
                 note="Reviews members choose to make public show up here." />
             )}
           </div>
         ) : tab === "watchlist" ? (
-          <Wall matches={watchRows || []} loading={isLoggedIn && watch === null} error=""
+          <Wall matches={watchRows || []} loading={isLoggedIn && watch === null} error="" hideScores={hideScores}
             onOpen={(m) => onOpenMatch(m.id)}
             empty={<Empty icon={Bookmark}
               title={isLoggedIn ? "Nothing on the watchlist" : "Sign in to keep a watchlist"}
               note="Open any upcoming match and add it — it waits here until kick-off." />} />
         ) : (
-          <Wall matches={rows || []} loading={rows === null} error={err}
+          <Wall matches={rows || []} loading={rows === null} error={err} hideScores={hideScores}
             onOpen={(m) => onOpenMatch(m.id)}
             empty={<Empty icon={ActivityIcon}
               title={isLoggedIn ? "No entries yet" : "Sign in to keep a diary"}
@@ -1748,7 +1767,7 @@ function Lists({ tabs, onOpenEntity }) {
   );
 }
 
-function Profile() {
+function Profile({ hideScores, onToggleScores }) {
   const { isLoggedIn, user } = useAuth();
   const [tab, setTab] = useState("overview");
   const [prefs, setPrefs] = useState(readPrefs);
@@ -1828,8 +1847,8 @@ function Profile() {
                 <strong>Hide scores by default</strong>
                 <small>Cards and drawers open blurred until you choose to look.</small>
               </div>
-              <input id="riw-hide" type="checkbox" checked={prefs.hideScores}
-                onChange={(e) => setPref({ hideScores: e.target.checked })} />
+              <input id="riw-hide" type="checkbox" checked={hideScores}
+                onChange={onToggleScores} />
             </label>
 
             <label className="riw-set-row" htmlFor="riw-motion">
@@ -1882,9 +1901,17 @@ function Profile() {
 /* ── Kabuk ────────────────────────────────────────────────────────────────── */
 
 export default function RankItWeb({ section = "home" }) {
-  const { user } = useAuth();
+  const { user, isLoggedIn } = useAuth();
   const navigate = useNavigate();
   const [meta, setMeta] = useState(null);
+  const [hideScores, setHideScores] = useState(() => readPrefs().hideScores);
+  const [ratedMatchIds, setRatedMatchIds] = useState(new Set());
+  const visibleRatedMatchIds = isLoggedIn ? ratedMatchIds : new Set();
+  const toggleScores = () => {
+    const next = !hideScores;
+    setHideScores(next);
+    writePrefs({ hideScores: next });
+  };
   const [rankOpen, setRankOpen] = useState(false);
   const [findOpen, setFindOpen] = useState(false);
 
@@ -1918,6 +1945,14 @@ export default function RankItWeb({ section = "home" }) {
   useEffect(() => { setDiscoverTab(section === "lists" ? "lists" : "matches"); }, [section]);
 
   useEffect(() => { rankitApi.meta().then(setMeta).catch(() => setMeta(null)); }, []);
+  useEffect(() => {
+    if (!isLoggedIn) return undefined;
+    let alive = true;
+    rankitApi.diary().then(data => {
+      if (alive) setRatedMatchIds(new Set((data.entries || []).filter(entry => Number(entry.rating) > 0).map(entry => Number(entry.match_id))));
+    }).catch(() => { if (alive) setRatedMatchIds(new Set()); });
+    return () => { alive = false; };
+  }, [isLoggedIn, logVersion]);
 
   const discoverTabs = (
     <div className="riw-tabs" role="tablist" aria-label="Discover">
@@ -1937,15 +1972,15 @@ export default function RankItWeb({ section = "home" }) {
 
   const discover = discoverTab === "lists"
     ? <Lists tabs={discoverTabs} onOpenEntity={openEntity} />
-    : <Catalog meta={meta} title="Discover" tabs={discoverTabs} onOpenMatch={openMatch}
+    : <Catalog meta={meta} title="Discover" tabs={discoverTabs} onOpenMatch={openMatch} hideScores={hideScores} onToggleScores={toggleScores}
         note="Filter down to a competition, a season or a state of play." />;
 
   const body = {
-    home: <HomeView onOpenMatch={openMatch} />,
+    home: <HomeView onOpenMatch={openMatch} hideScores={hideScores} onToggleScores={toggleScores} ratedMatchIds={visibleRatedMatchIds} />,
     discover,
     lists: discover,
-    activity: <ActivityView onOpenMatch={openMatch} refreshToken={logVersion} onOpenEntity={openEntity} />,
-    profile: <Profile />,
+    activity: <ActivityView onOpenMatch={openMatch} refreshToken={logVersion} onOpenEntity={openEntity} hideScores={hideScores} ratedMatchIds={visibleRatedMatchIds} />,
+    profile: <Profile hideScores={hideScores} onToggleScores={toggleScores} />,
   }[section];
 
   return (
@@ -1957,7 +1992,7 @@ export default function RankItWeb({ section = "home" }) {
       <div className="riw-body">{body}</div>
 
       {rankOpen && (
-        <RankSheet onClose={() => setRankOpen(false)}
+        <RankSheet hideScores={hideScores} onClose={() => setRankOpen(false)}
           onPick={(id) => { setRankOpen(false); openMatch(id); }} />
       )}
       {/* 3e -- telefonla AYNI bileşen; çerçeveyi kabuk veriyor. */}
@@ -1965,21 +2000,22 @@ export default function RankItWeb({ section = "home" }) {
         <div className="ri-sheet-wrap riw-find-wrap" onClick={() => setFindOpen(false)}>
           <section className="riw-find" onClick={(e) => e.stopPropagation()}
             role="dialog" aria-modal="true" aria-label="Search RankIt">
-            <SearchSheet onClose={() => setFindOpen(false)}
+            <SearchSheet hideScores={hideScores} onClose={() => setFindOpen(false)}
               onOpenMatch={(m) => { setFindOpen(false); openMatch(m.id); }}
               onOpenEntity={(kind, id) => { setFindOpen(false); openEntity(kind, id); }} />
           </section>
         </div>
       )}
       {inspectId && (
-        <Inspector id={inspectId} minimized={inspectMinimized}
+        <Inspector id={inspectId} minimized={inspectMinimized} hideScores={hideScores}
           onClose={closeMatch} onMinimize={minimizeMatch} onRestore={restoreMatch}
           onOpenEntity={openEntity}
           onLogged={() => setLogVersion((v) => v + 1)} />
       )}
       {entity && (
         <EntityDrawer key={`${entity.kind}-${entity.id}`} kind={entity.kind} id={entity.id}
-          onClose={closeEntity} onOpenMatch={openMatch} onOpenEntity={openEntity} />
+          onClose={closeEntity} onOpenMatch={openMatch} onOpenEntity={openEntity}
+          hideScores={hideScores} ratedMatchIds={visibleRatedMatchIds} />
       )}
     </div>
   );

@@ -29,7 +29,7 @@ def conn():
         CREATE TABLE rankit_matches(id INTEGER PRIMARY KEY, starts_at TEXT, competition_id INTEGER);
         CREATE TABLE rankit_diary_entries(id INTEGER PRIMARY KEY, user_id INTEGER,
                                           match_id INTEGER, watched_date TEXT,
-                                          created_at TEXT);
+                                          created_at TEXT, rating REAL, rated_at TEXT);
         CREATE TABLE rankit_follows(user_id INTEGER, target_type TEXT, target_id INTEGER);
         CREATE TABLE rankit_points(
             id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL,
@@ -135,7 +135,7 @@ def _seed_match(conn, mid, day_iso, hour=20, comp=1):
                  (mid, f"{day_iso}T{hour:02d}:00:00", comp))
 
 
-def _seed_rating(conn, mid, night_iso, hour=22):
+def _seed_rating(conn, mid, night_iso, hour=22, rating=4.0):
     """Puanlama ANI olarak yazar (created_at), takvim gunu olarak degil.
 
     night_iso bir RankIt GUNU etiketi; saat varsayilan 22:00, yani o gunun
@@ -143,9 +143,23 @@ def _seed_rating(conn, mid, night_iso, hour=22):
     RankIt gunu 11:00'de basliyor ve iki takvim gunune yayiliyor.
     """
     stamp = f"{night_iso}T{hour:02d}:00:00"
+    # Adi "puan": eskiden rating YAZMIYORDU ve seri her kaydi sayiyordu --
+    # fikstür, izleme kaydini puan sayan hatayi kodluyordu.
     conn.execute(
-        "INSERT INTO rankit_diary_entries(user_id,match_id,watched_date,created_at) VALUES(1,?,?,?)",
-        (mid, night_iso, stamp))
+        "INSERT INTO rankit_diary_entries(user_id,match_id,watched_date,created_at,rating) VALUES(1,?,?,?,?)",
+        (mid, night_iso, stamp, rating))
+
+
+def test_yildizsiz_izleme_kaydi_geceyi_saymaz(conn):
+    """BUILD §12.1: seri YALNIZCA gecesinde puanlamayla uzar. Ayni gece
+    yildiz vermeden yapilan izleme kaydi bir puan degil (CODE.md Adim 2)."""
+    today = R.rankit_day(utcnow())
+    _seed_match(conn, 1, today)
+    _seed_rating(conn, 1, today, rating=None)
+    out = R.streak_for(conn, 1)
+    assert out["current"] == 0 and out["rated_nights"] == 0
+    _seed_rating(conn, 1, today, rating=3.5)
+    assert R.streak_for(conn, 1)["rated_nights"] == 1
 
 
 def test_ayni_gecede_iki_mac_tek_gece_sayilir(conn):
@@ -215,6 +229,30 @@ def test_gecesinde_puanlama_daha_cok_oder(conn):
     _seed_match(conn, 1, R.rankit_day(now), hour=max(11, now.hour))
     out = R.award_for_rating(conn, 1, 1)
     assert out["same_day"] is True and out["points"] == 15
+
+
+def test_gecesinde_kazanilan_odul_duzenlemede_dusmez(conn):
+    """Olculen hata: gecesinde 15, uc gun sonra kaydi duzenlemek 5'e
+    dusuruyordu. Ilk odul kalir."""
+    night = R.rankit_day(utcnow() - timedelta(days=4))
+    _seed_match(conn, 1, night, hour=20)
+    kick = datetime.fromisoformat(f"{night}T20:00:00")
+    first = R.award_for_rating(conn, 1, 1, at=kick + timedelta(hours=2))
+    assert first["same_day"] is True and first["points"] == 15
+    edit = R.award_for_rating(conn, 1, 1, at=kick + timedelta(days=3))
+    assert edit["points"] == 0 and edit["kind"] == "rate_same_day"
+    assert R.total_points(conn, 1) == 15
+
+
+def test_gece_yildizsiz_kaydedilip_sonra_puanlanan_mac_geceyi_saymaz(conn):
+    """Seri puanin VERILDIGI ana bakar (rated_at), kaydin olusturuldugu ana
+    degil: gece kaydedilip uc gun sonra puanlanan mac o geceyi saymaz."""
+    today = R.rankit_day(utcnow())
+    _seed_match(conn, 1, today)
+    _seed_rating(conn, 1, today)
+    later = (datetime.fromisoformat(f"{today}T22:00:00") + timedelta(days=3)).isoformat(sep=" ")
+    conn.execute("UPDATE rankit_diary_entries SET rated_at=? WHERE match_id=1", (later,))
+    assert R.streak_for(conn, 1)["rated_nights"] == 0
 
 
 def test_gec_puanlama_az_oder_ve_yukseltilemez(conn):

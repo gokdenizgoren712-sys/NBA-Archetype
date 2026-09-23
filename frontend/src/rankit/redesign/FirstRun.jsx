@@ -24,6 +24,7 @@ import { rankitApi } from "../rankitApi";
 import { SkeletonChips, Loading } from "./States";
 import { Shield } from "./MatchCard";
 import { useBackClose } from "./backStack";
+import { useDialog } from "./useDialog";
 
 const INK = "#eceded";
 const GOLD = "#ffb11b";
@@ -34,9 +35,10 @@ const GREEN = "#3fb08c";
 export function ConnectScreen({ mark, busy, error, onConnect, onCreate, onBrowse }) {
   return (
     <main className="ri-first ri-first-connect">
+      {/* 4g: yatay kilit -- isaret + "RANK" / altin "IT" + "BY PRIMARY ARCH". */}
       <div className="ri-first-brand">
         {mark}
-        <small>BY PRIMARY ARCH</small>
+        <span><strong aria-label="RankIt">RANK<span>IT</span></strong><small>BY PRIMARY ARCH</small></span>
       </div>
 
       <div className="ri-first-arch">
@@ -97,12 +99,10 @@ export function FollowPicker({ onDone, mode = "first", onClose }) {
   // yine gorunur kalmali.
   const [extra, setExtra] = useState([]);
   useBackClose(editing ? onClose : null);
-  useEffect(() => {
-    if (!editing) return undefined;
-    const onKey = (e) => e.key === "Escape" && onClose?.();
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [editing, onClose]);
+  // Ilk kurulumda bu ekran uygulamanin KENDISI -- kapanacak bir sey yok,
+  // arkasinda da bir sey yok. Dialog yalnizca Ayarlar'dan acilan duzenleme
+  // kipinde: o zaman ustunde durdugu bir ekran var.
+  const dialog = useDialog({ onClose, label: "Competitions and clubs", active: editing });
 
   useEffect(() => {
     rankitApi.onboarding("").then((d) => {
@@ -158,8 +158,7 @@ export function FollowPicker({ onDone, mode = "first", onClose }) {
   };
 
   const screen = (
-    <main className={`ri-first ri-first-follow${editing ? " edit" : ""}`}
-      {...(editing ? { role: "dialog", "aria-modal": "true", "aria-label": "Competitions and clubs" } : null)}>
+    <main {...dialog} className={`ri-first ri-first-follow${editing ? " edit" : ""}`}>
       <div className="ri-first-top">
         {editing ? <>
           <button type="button" className="ri-first-back" onClick={onClose} aria-label="Back"><ChevronLeft size={16} /></button>

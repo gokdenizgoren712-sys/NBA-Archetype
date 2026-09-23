@@ -28,7 +28,7 @@
 .rankit-app button{transition:color .16s ease,background-color .16s ease,border-color .16s ease,opacity .16s ease,transform .13s ease,box-shadow .18s ease}
 .rankit-app button:active:not(:disabled){transform:scale(.955)}
 .rankit-app button:disabled{cursor:wait}
-.rankit-app button:focus-visible,.rankit-app input:focus-visible,.rankit-app select:focus-visible,.rankit-app textarea:focus-visible{outline:2px solid rgba(255,177,27,.72);outline-offset:2px}
+.rankit-app button:focus-visible,.rankit-app input:focus-visible,.rankit-app select:focus-visible,.rankit-app textarea:focus-visible{outline:2px solid var(--ri-focus);outline-offset:2px}
 .ri-bottom-nav button:active:not(:disabled){transform:translateY(1px) scale(.91)}
 .ri-bottom-nav button svg{transition:transform .22s cubic-bezier(.2,.8,.3,1),filter .2s ease}
 .ri-bottom-nav button.active:not(.rank) svg{transform:translateY(-2px) scale(1.08);filter:drop-shadow(0 0 7px rgba(255,177,27,.25))}
@@ -59,6 +59,6 @@
 .ri-hero-carousel,.ri-sport-scroll,.ri-tag-picker,.ri-respect-grid{scroll-behavior:smooth}
 
 @media(prefers-reduced-motion:reduce){
-  .rankit-app,.ri-tab-stage,.ri-sheet-wrap,.ri-detail-sheet,.ri-rank-sheet,.ri-action-toast,.ri-entity-loading,.ri-entity-loading:before,.ri-spin,.ri-auth-card,.ri-auth-brand svg,.ri-auth-loading svg,.ri-match-skeleton:after{animation-duration:.001ms!important;animation-delay:0s!important;animation-iteration-count:1!important}
+  .rankit-app,.ri-tab-stage,.ri-sheet-wrap,.ri-detail-sheet,.ri-rank-sheet,.ri-action-toast,.ri-entity-loading,.ri-entity-loading:before,.ri-spin,.ri-auth-card,.ri-auth-brand svg,.ri-auth-loading svg,.ri-match-skeleton:after,.ri-bottom-nav button.active small,.ri-network-note.reconnecting i{animation-duration:.001ms!important;animation-delay:0s!important;animation-iteration-count:1!important}
   .rankit-app *{scroll-behavior:auto!important;transition-duration:.001ms!important}
 }

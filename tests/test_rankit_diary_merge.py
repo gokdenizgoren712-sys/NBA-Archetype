@@ -137,3 +137,37 @@ def test_explicit_values_still_win(client, actor, match_id):
     assert row["visibility"] == "public"
     assert row["review"] == ""
     assert tags == [], "Acikca gonderilen bos etiket listesi uygulanmadi"
+
+
+def test_absent_rating_keeps_it_null_rating_clears_it(client, actor, match_id):
+    """`rating` alanının YOKLUĞU ile AÇIK `null` farklı şeyler (B2).
+
+    Bu ayrım olmadan istemcinin `rating: rating || null` kalıbı sessiz bir
+    puan silici: yerel `rating` herhangi bir nedenle 0 iken (detay yanıtı
+    gelmeden kaydetme, `my_rating` taşımayan bayat maç nesnesi, çevrimdışı
+    kopya) sadece inceleme yazmak SUNUCUDAKİ puanı siliyordu. Puanı kaldırmak
+    hâlâ mümkün olmalı, ama ancak AÇIKÇA istenince.
+    """
+    # Zemin: puanlı bir kayıt.
+    r = client.post("/api/rankit/diary", headers=actor["h"], json={
+        "match_id": match_id, "rating": 4, "review": "Puanli kayit",
+    })
+    assert r.status_code == 200, r.text
+    assert _entry(actor["id"], match_id)[0]["rating"] == 4
+
+    # 1) Alan YOK: puana dokunulmuyor.
+    r = client.post("/api/rankit/diary", headers=actor["h"], json={
+        "match_id": match_id, "review": "Yalniz inceleme guncellendi",
+    })
+    assert r.status_code == 200, r.text
+    row, _ = _entry(actor["id"], match_id)
+    assert row["rating"] == 4, "alan gonderilmedigi halde puan degisti"
+    assert row["review"] == "Yalniz inceleme guncellendi"
+
+    # 2) Alan AÇIKÇA null: puan siliniyor. (Bu olmadan "hicbir sey yapma"
+    #    gibi bir duzeltme de birinci maddeyi gecerdi.)
+    r = client.post("/api/rankit/diary", headers=actor["h"], json={
+        "match_id": match_id, "rating": None,
+    })
+    assert r.status_code == 200, r.text
+    assert _entry(actor["id"], match_id)[0]["rating"] is None, "acik null puani silmedi"

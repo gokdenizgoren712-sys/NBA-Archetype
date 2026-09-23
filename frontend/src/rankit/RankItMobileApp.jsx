@@ -103,6 +103,6 @@ export default function RankItMobileApp() {
       ? <button className="ri-mobile-account" onClick={logout} aria-label="Log out"><span>{user.username?.slice(0, 2).toUpperCase()}</span><LogOut size={14}/></button>
       // Misafir: ayni kose, "Sign in" -- 4g'ye geri doner.
       : <button className="ri-mobile-account" onClick={logout} aria-label="Sign in"><span>IN</span><LogIn size={14}/></button>}
-    <RankItPrototype nativeBack/>
+    <RankItPrototype nativeBack accountAction={logout} accountActionLabel={user ? 'Log out' : 'Sign in'}/>
   </div>;
 }

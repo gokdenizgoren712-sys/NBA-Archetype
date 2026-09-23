@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Outfit:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0b0c0e;font-family:Outfit,system-ui,sans-serif;-webkit-font-smoothing:antialiased;color-scheme:dark}
+a{color:#ffb11b;text-decoration:none}
+a:hover{color:#ffe9b0}
+*{box-sizing:border-box}
+@keyframes livedot{0%,100%{opacity:1}50%{opacity:.25}}
+@media (max-width:820px){
+  [data-rail]{position:fixed;left:0;right:0;bottom:0;top:auto;width:auto;height:73px;flex-direction:row!important;align-items:center;border-right:0!important;border-top:1px solid rgba(255,255,255,.09);background:rgba(11,12,14,.86);backdrop-filter:blur(18px);padding:0 8px!important;z-index:5}
+  [data-rail-brand]{display:none}
+  [data-rail-nav]{flex-direction:row!important;flex:1;gap:0!important}
+  [data-rail-nav] > *{flex:1;justify-content:center}
+  [data-rail-label]{display:none}
+  [data-rail-cta]{display:none}
+  [data-shell]{padding-bottom:73px}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</helmet>
+
+<div data-shell style="min-height:100vh;display:flex;align-items:stretch">
+
+<div data-rail style="flex:none;width:232px;border-right:1px solid rgba(255,255,255,.09);display:flex;flex-direction:column;padding:26px 18px;gap:26px;position:sticky;top:0;align-self:flex-start;height:100vh">
+  <div data-rail-brand>
+    <div style="font:700 21px/1 Rajdhani,sans-serif;letter-spacing:.02em;color:#eceded">RankIt</div>
+    <div style="font:700 9px/1 Rajdhani,sans-serif;letter-spacing:.14em;color:#7f868b;margin-top:5px">BY PRIMARY ARCH</div>
+  </div>
+
+  <div data-rail-nav style="display:flex;flex-direction:column;gap:4px">
+    <div style="position:relative;height:44px;display:flex;align-items:center;gap:13px;padding:0 13px;border-radius:10px;background:linear-gradient(90deg,rgba(255,177,27,.14),rgba(255,177,27,0))">
+      <div style="position:absolute;left:0;top:11px;bottom:11px;width:3px;border-radius:0 3px 3px 0;background:#ffb11b"></div>
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#ffb11b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V21h13V9.5"/></svg>
+      <span data-rail-label style="font:700 13px/1 Rajdhani,sans-serif;letter-spacing:.09em;text-transform:uppercase;color:#ffb11b">Home</span>
+    </div>
+    <div style="height:44px;display:flex;align-items:center;gap:13px;padding:0 13px;border-radius:10px">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#7f868b" stroke-width="1.8" stroke-linecap="round" style="flex:none"><circle cx="11" cy="11" r="7"/><path d="m20 20-4.2-4.2"/></svg>
+      <span data-rail-label style="font:700 13px/1 Rajdhani,sans-serif;letter-spacing:.09em;text-transform:uppercase;color:#9aa0a6">Discover</span>
+    </div>
+    <div style="height:44px;display:flex;align-items:center;gap:13px;padding:0 13px;border-radius:10px">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#7f868b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M3 12h4l2.5-6 4 12 2.5-6h5"/></svg>
+      <span data-rail-label style="font:700 13px/1 Rajdhani,sans-serif;letter-spacing:.09em;text-transform:uppercase;color:#9aa0a6">Diary</span>
+    </div>
+    <div style="height:44px;display:flex;align-items:center;gap:13px;padding:0 13px;border-radius:10px">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#7f868b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+      <span data-rail-label style="font:700 13px/1 Rajdhani,sans-serif;letter-spacing:.09em;text-transform:uppercase;color:#9aa0a6">Lists</span>
+    </div>
+    <div style="height:44px;display:flex;align-items:center;gap:13px;padding:0 13px;border-radius:10px">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#7f868b" stroke-width="1.8" stroke-linecap="round" style="flex:none"><circle cx="12" cy="8.5" r="3.7"/><path d="M5 20.5c1.2-3.6 3.8-5.2 7-5.2s5.8 1.6 7 5.2"/></svg>
+      <span data-rail-label style="font:700 13px/1 Rajdhani,sans-serif;letter-spacing:.09em;text-transform:uppercase;color:#9aa0a6">Profile</span>
+    </div>
+  </div>
+
+  <div data-rail-cta style="margin-top:auto;display:flex;flex-direction:column;gap:13px">
+    <div style="display:flex;align-items:center;gap:13px;padding:13px;border-radius:14px;background:#121315;border:1px solid rgba(255,255,255,.09)">
+      <div style="position:relative;width:38px;height:38px;display:grid;place-items:center;flex:none">
+        <div style="position:absolute;inset:0;border-radius:999px;background:conic-gradient(from -90deg,#f5402e 0turn,#d43a63 .58turn,rgba(255,255,255,.1) .58turn)"></div>
+        <div style="position:absolute;inset:4px;border-radius:999px;background:#121315"></div>
+        <span style="position:relative;font:700 13px/1 Rajdhani,sans-serif;color:#eceded">12</span>
+      </div>
+      <div style="min-width:0">
+        <div style="font:700 12px/1 Rajdhani,sans-serif;letter-spacing:.09em;text-transform:uppercase;color:#c9cccd">Streak</div>
+        <div style="font:400 12px/1 Outfit,sans-serif;color:#9aa0a6;margin-top:5px">Nights logged</div>
+      </div>
+    </div>
+    <div style="height:44px;border-radius:10px;background:#ffb11b;display:flex;align-items:center;justify-content:center;gap:9px">
+      <div style="width:15px;height:15px;transform:rotate(45deg);border-radius:5px 5px 6px 6px;background:#17120a"></div>
+      <span style="font:700 13px/1 Rajdhani,sans-serif;letter-spacing:.09em;text-transform:uppercase;color:#17120a">Rank a match</span>
+    </div>
+  </div>
+</div>
+
+<div style="flex:1;min-width:0;display:flex;flex-direction:column">
+
+  <div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap;padding:26px 26px 18px;border-bottom:1px solid rgba(255,255,255,.09)">
+    <div style="min-width:0;flex:1 1 220px">
+      <div style="font:700 9px/1 Rajdhani,sans-serif;letter-spacing:.14em;color:#7f868b">THE WALL</div>
+      <div style="font:700 31px/1 Rajdhani,sans-serif;letter-spacing:.02em;color:#eceded;margin-top:9px">Recently rated</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;flex:none">
+      <div style="height:44px;display:flex;align-items:center;gap:9px;padding:0 15px;border-radius:999px;background:#0c0d0f;border:1px solid rgba(255,255,255,.09)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7f868b" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-4.2-4.2"/></svg>
+        <span style="font:400 12px/1 Outfit,sans-serif;color:#7f868b">Search matches</span>
+      </div>
+      <div style="height:44px;display:flex;align-items:center;gap:9px;padding:0 15px;border-radius:999px;background:#121315;border:1px solid rgba(255,255,255,.09)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#c9cccd" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
+        <span style="font:700 12px/1 Rajdhani,sans-serif;letter-spacing:.09em;text-transform:uppercase;color:#c9cccd">Filters</span>
+        <span style="font:700 11px/1 Rajdhani,sans-serif;padding:3px 6px;border-radius:6px;background:#ffb11b;color:#17120a">2</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:18px 26px 0">
+    <div style="height:38px;padding:0 15px;display:flex;align-items:center;border-radius:999px;background:#ffb11b;font:700 12px Rajdhani,sans-serif;letter-spacing:.06em;color:#17120a">All sports</div>
+    <div style="height:38px;padding:0 15px;display:flex;align-items:center;border-radius:999px;background:#121315;font:700 12px Rajdhani,sans-serif;letter-spacing:.06em;color:#9aa0a6">Football</div>
+    <div style="height:38px;padding:0 15px;display:flex;align-items:center;border-radius:999px;background:#121315;font:700 12px Rajdhani,sans-serif;letter-spacing:.06em;color:#9aa0a6">Basketball</div>
+    <div style="height:38px;padding:0 15px;display:flex;align-items:center;gap:8px;border-radius:999px;background:#121315;font:700 12px Rajdhani,sans-serif;letter-spacing:.06em;color:#9aa0a6">
+      <div style="width:6px;height:6px;border-radius:999px;background:#f5402e;animation:livedot 1.6s ease-in-out infinite"></div>Live
+    </div>
+    <div style="height:38px;padding:0 15px;display:flex;align-items:center;border-radius:999px;background:#121315;font:700 12px Rajdhani,sans-serif;letter-spacing:.06em;color:#9aa0a6">Classics</div>
+  </div>
+
+  <div style="padding:18px 26px 26px;display:grid;grid-template-columns:repeat(auto-fill,minmax(268px,1fr));gap:18px">
+    <div style="min-width:0;--home:#c8202f;--away:#e9ecf2;--crest:62px;height:340px">
+      <dc-import name="MatchCard" comp="Premier League · MW 4" homeAbbr="ARS" awayAbbr="TOT" awayCrestInk="#101318" homeShort="Arsenal" awayShort="Tottenham" homeScore="3" awayScore="1" heat="4.6" classic="true" ratings="2,481" artHeight="140" scoreSize="46" hint-size="100%,340px"></dc-import>
+    </div>
+    <div style="min-width:0;--home:#0d3b6b;--away:#f5a300;--crest:62px;height:340px">
+      <dc-import name="MatchCard" comp="NBA" homeAbbr="OKC" awayAbbr="DEN" awayCrestInk="#17120a" homeShort="Thunder" awayShort="Nuggets" homeScore="118" awayScore="115" heat="4.7" classic="true" ratings="1,204" artHeight="140" scoreSize="30" hint-size="100%,340px"></dc-import>
+    </div>
+    <div style="min-width:0;--home:#3b1f5e;--away:#7a1d2b;--crest:62px;height:340px">
+      <dc-import name="MatchCard" comp="LaLiga" homeAbbr="BET" awayAbbr="VAL" homeShort="Real Betis" awayShort="Valencia" homeScore="2" awayScore="2" heat="3.8" ratings="612" footNote="RATED BY 3 FRIENDS" artHeight="140" scoreSize="46" hint-size="100%,340px"></dc-import>
+    </div>
+    <div style="min-width:0;--home:#0d3b8f;--away:#1f6a3f;--crest:62px;height:340px">
+      <dc-import name="MatchCard" comp="Champions League" statusLabel="LIVE · 73'" finished="true" homeAbbr="CHE" awayAbbr="SPO" homeShort="Chelsea" awayShort="Sporting CP" homeScore="2" awayScore="1" heat="4.4" heatLabel="PULSE RISING" ratings="312 in" artHeight="140" scoreSize="46" hint-size="100%,340px"></dc-import>
+    </div>
+    <div style="min-width:0;--home:#1f6a3f;--away:#8a1538;--crest:62px;height:340px">
+      <dc-import name="MatchCard" comp="Serie A" homeAbbr="NAP" awayAbbr="TOR" homeShort="Napoli" awayShort="Torino" homeScore="0" awayScore="0" heat="1.6" ratings="308" footNote="QUIET NIGHT" artHeight="140" scoreSize="46" hint-size="100%,340px"></dc-import>
+    </div>
+    <div style="min-width:0;--home:#b9a642;--away:#67c1f0;--crest:62px;height:340px">
+      <dc-import name="MatchCard" comp="Premier League · MW 5" statusLabel="SATURDAY" finished="false" homeAbbr="NEW" awayAbbr="MCI" awayCrestInk="#101318" homeShort="Newcastle" awayShort="Man City" kickoff="17:30" heat="3.9" heatLabel="EXPECTED" ratings="2,104 want it" artHeight="140" hint-size="100%,340px"></dc-import>
+    </div>
+  </div>
+
+  <div style="padding:0 26px 44px;font:400 12px/1.6 Outfit,sans-serif;color:#7f868b;max-width:640px;text-wrap:pretty">The wall is <code style="font:500 11px/1.5 ui-monospace,monospace;color:#9aa0a6">repeat(auto-fill, minmax(268px, 1fr))</code> — drag the preview narrower and the columns reflow, then the rail drops to a bottom bar at 820px. Filters stay a 288px slide-over so the wall never loses width.</div>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{}"></script>
+</body>
+</html>

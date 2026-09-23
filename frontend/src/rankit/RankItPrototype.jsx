@@ -1,15 +1,43 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { App as CapacitorApp } from "@capacitor/app";
 import {
-  Award, Bell, Bookmark, CalendarDays, ChevronLeft, ChevronRight, CircleUserRound,
-  Compass, Eye, EyeOff, Home, LayoutGrid, List, ListPlus, MessageCircle, Plus, Search,
-  ChevronDown, Heart, Radio, RotateCcw, Send, Share2, SlidersHorizontal,
-  Star, ThumbsUp, Trophy, Users, X, Shield} from "lucide-react";
+  Award, Bell, Bookmark, CalendarDays, ChevronDown, ChevronRight, CircleUserRound,
+  Compass, Eye, EyeOff, Home, List, ListPlus, MessageCircle, Plus, Search,
+  Heart, Radio, Send, Share2, SlidersHorizontal,
+  Star, Trophy, Users, X, Shield} from "lucide-react";
 import { rankitApi } from "./rankitApi";
 import { readPrefs, writePrefs, resolveBroadcastCountry, hidesScore } from "./rankitPrefs";
+import { formatWhen } from "./formatWhen";
+import { communityHeat, communityRatingCount, communityVerdictCovered, hasCommunityVerdict, heatSteps, NAMES, MIN_COMMUNITY_RATINGS } from "./redesign/heat";
+import CommunityVerdictGate from "./redesign/CommunityVerdictGate";
+import ExpectedHeat from "./redesign/ExpectedHeat";
+import { broadcastLabel } from "./redesign/broadcastLabel";
+import { appetiteOpen, appetiteValue, nextAppetite } from "./redesign/appetite";
+import { liveFreshness } from "./redesign/liveFreshness";
+import { playedPlayers } from "./redesign/playedPlayers";
+import PlayersPicker from "./redesign/PlayersPicker";
+import ReviewComposer from "./redesign/ReviewComposer";
+import HuntIndex from "./redesign/Hunt";
+import FilterDrawer from "./redesign/FilterDrawer";
+import { activeCount as filterCount, toCatalogQuery } from "./redesign/discoverFilters";
+import LiveLineup from "./redesign/LiveLineup";
+import MatchEvents from "./redesign/MatchEvents";
+import { finishedMatchEventState } from "./redesign/finishedMatchEvents";
+import { companionMinute } from "./redesign/companionView";
+import { ratingField } from "./redesign/ratingField";
+import { nightStatus } from "./redesign/streakNight";
+import { huntLine, huntPercent } from "./redesign/huntSummary";
+import { DiaryFilterBar, DiaryHeatStrip, DiaryTimeline } from "./redesign/Diary";
+import FriendsFeed from "./redesign/FriendsFeed";
+import { filterDiary, sortDiary, sortWatchlist, statLine, triggerLabel, groupsByMonth } from "./redesign/diaryView";
+import { saveCta, RATE_CTA } from "./redesign/saveCta";
+import { reviewerFromStorage, isOwnContent } from "./redesign/reviewIdentity";
+import { createReplyAttempts } from "./redesign/replyAttempt";
 // Faz 2 — redesign kartı bayrak arkasında; kapalıyken hiçbir şey değişmiyor.
 import { RANKIT_NEW_CARD } from "./redesign/flags";
-import RedesignMatchCard from "./redesign/MatchCard";
+import RedesignMatchCard, { Shield as CrestDiamond, CrestPair } from "./redesign/MatchCard";
+import { tonightRows, tonightLabel, tonightStatus } from "./redesign/homeTonight";
+import { competitionEyebrow, competitionSub } from "./redesign/competitionHead";
 import { toMatchCardProps, diaryToMatchCardProps } from "./redesign/toMatchCardProps";
 import StreakRing from "./redesign/StreakRing";
 import CompanionPanel from "./redesign/CompanionPanel";
@@ -20,13 +48,18 @@ import Settings from "./redesign/Settings";
 import ListShelf from "./redesign/ListShelf";
 import MemberProfile from "./redesign/MemberProfile";
 import { closeTopmost } from "./redesign/backStack";
-import { SkeletonCard, SkeletonRows, SheetSkeleton, Loading, EmptyState, EndOfList } from "./redesign/States";
-import { queueRating, flushOutbox, outbox, onOutboxChange } from "./rankitOutbox";
+import { SkeletonCard, SkeletonRows, SheetSkeleton, Loading, EmptyState, EndOfList, ErrorState } from "./redesign/States";
+import { saveRating, ratingAccount, flushOutbox, outbox, onOutboxChange } from "./rankitOutbox";
+import { entrySnapshot, snapshotFromMatch } from "./entryState";
 import { LAST_SYNC_KEY } from "./rankitApi";
 import CompetitionMatches from "./redesign/CompetitionMatches";
 import CompetitionPlayers from "./redesign/CompetitionPlayers";
 import ReviewThread from "./redesign/ReviewThread";
+import CollectibleResult from "./redesign/CollectibleResult";
+import ProfileRoot from "./redesign/ProfileRoot";
+import { createCollectible, collectibleEditMatch } from "./collectibleState";
 import { rankitHaptics } from "./rankitHaptics";
+import { useDialog, closeTopDialog } from "./redesign/useDialog";
 import "./rankit.css";
 import "./rankit-motion.css";
 import "./rankit-filter.css";
@@ -40,19 +73,13 @@ const TABS = [
 
 function fromApiMatch(m) {
   if (!m) return m;
-  const when = new Date(m.starts_at);
-  const fullDate = Number.isNaN(when.getTime()) ? m.starts_at : new Intl.DateTimeFormat("en-GB", {
-    day: "2-digit", month: "short", year: "numeric",
-  }).format(when);
-  const time = Number.isNaN(when.getTime()) ? "" : new Intl.DateTimeFormat("en-GB", {
-    hour: "2-digit", minute: "2-digit",
-  }).format(when);
+  const { date: fullDate, time, full } = formatWhen(m.starts_at);
   return {
     ...m,
     // `date` tam dize olarak KALIYOR: fikstür listesi ve bildirimlerde tek
     // zaman referansı o. Kart ve maç sayfası ise parçaları ayrı kullanır,
     // yoksa aynı kartta saat iki, maç sayfasında tarih iki kez yazılıyordu.
-    date: `${fullDate}${time ? ` · ${time}` : ""}`,
+    date: full,
     dateOnly: fullDate,
     time,
     communityRating: m.community_rating,
@@ -78,6 +105,7 @@ function rankitDayContext(now = new Date()) {
   return {
     start: start.toISOString(),
     end: end.toISOString(),
+    daytime,
     eyebrow: daytime ? "YOUR DAY" : "YOUR NIGHT",
     title: daytime ? "Today on RankIt" : "Tonight on RankIt",
   };
@@ -85,7 +113,8 @@ function rankitDayContext(now = new Date()) {
 
 function loadRankitHome(sport = "All") {
   const day = rankitDayContext();
-  return rankitApi.home(sport, day.start, day.end);
+  const region = resolveBroadcastCountry();
+  return rankitApi.home(sport, day.start, day.end, region.supported ? region.code : "");
 }
 
 function RankItMark({ size = 28 }) {
@@ -120,7 +149,7 @@ function SheetHandle({ onClose }) {
       setTimeout(() => sheet.style.removeProperty("--ri-sheet-drag"), 300);
     }
   };
-  return <div className="ri-sheet-grab ri-sheet-drag-handle" role="button" aria-label="Drag down to close"
+  return <div className="ri-sheet-grab ri-sheet-drag-handle" aria-hidden="true"
     onClick={event => event.stopPropagation()}
     onPointerDown={event => {
       if (event.button !== 0) return;
@@ -146,8 +175,15 @@ function Stars({ value = 0, onChange, compact = false }) {
 }
 
 function ClassicStamp({ active, onClick, small = false }) {
-  return <button className={`ri-classic${active ? " active" : ""}${small ? " small" : ""}`} onClick={onClick ? event => { rankitHaptics.impact(); onClick(event); } : undefined}>
-    <span>CLASSIC</span><small>RANKIT SELECT</small>
+  const className = `ri-classic${active ? " active" : ""}${small ? " small" : ""}`;
+  const inner = <><span>CLASSIC</span><small>RANKIT SELECT</small></>;
+  // Damga yalnizca puanlama panelinde bir KONTROL; gunluk kartinda ve profil
+  // satirinda okunan bir ISARET. onClick yokken de <button> uretmek klavye
+  // sirasina hicbir sey yapmayan duraklar koyuyordu (§26) ve 35.5px'lik bu
+  // duraklar 44px hedef kuralini bos yere ihlal ediyordu (§6).
+  if (!onClick) return <span className={className}>{inner}</span>;
+  return <button className={className} onClick={event => { rankitHaptics.impact(); onClick(event); }}>
+    {inner}
   </button>;
 }
 
@@ -167,7 +203,8 @@ function TeamMark({ team }) {
 }
 
 function ScoreValue({ match, detail = false }) {
-  if (match.status !== "finished") return <>VS</>;
+  if (!["finished", "live"].includes(match.status)) return <>VS</>;
+  if (!match.score) return <>—</>;
   const parts = match.score.split(/\s*[–-]\s*/);
   if (match.sport === "Basketball" && parts.length === 2) {
     return <span className={`ri-basket-score${detail ? " detail" : ""}`}><b>{parts[0]}</b><b>{parts[1]}</b></span>;
@@ -187,13 +224,18 @@ async function shareMatch(match, hideScores = false) {
 }
 
 function MatchCard({ match, hideScores, onOpen, onOpenCompetition, featured = false }) {
+  const [communityRevealed, setCommunityRevealed] = useState(false);
   const finished = match.status === "finished";
   const live = match.status === "live";
+  const hidden = hidesScore(hideScores, match);
+  const verdictCovered = communityVerdictCovered(match, { revealed: communityRevealed });
+  const rating = communityHeat(match);
+  const count = communityRatingCount(match);
   // role/tabIndex/onKeyDown eskiden yoktu — bu kart bir <article onClick>, ve
   // telefon Capacitor uygulaması olarak da paketlendiği için erişilebilirlik
   // servisi kullanan biri için tamamen erişilemezdi. Web'in kendi MatchCard'ı
   // (cards.jsx) bunu zaten doğru yapıyordu; aynı deseni buraya taşıyoruz.
-  return <article className={`ri-match-card${featured ? " featured" : ""}${match.instantClassic ? " instant" : ""}`}
+  return <article className={`ri-match-card${featured ? " featured" : ""}${finished && match.instantClassic && !hidden && !verdictCovered ? " instant" : ""}`}
     role="button" tabIndex={0}
     aria-label={`${match.home.name || match.home.short} versus ${match.away.name || match.away.short}`}
     onClick={event => {
@@ -207,14 +249,14 @@ function MatchCard({ match, hideScores, onOpen, onOpenCompetition, featured = fa
     style={{ "--home": match.home.color, "--away": match.away.color }}>
     <div className="ri-card-holo" />
     <div className="ri-match-top">
-      {match.instantClassic ? <span>INSTANT CLASSIC</span> : <button type="button" disabled={!match.competition_id}
+      {finished && match.instantClassic && !hidden && !verdictCovered ? <span>INSTANT CLASSIC</span> : <button type="button" disabled={!match.competition_id}
         onClick={event=>{event.stopPropagation();onOpenCompetition?.(match.competition_id)}}>{match.competition}</button>}
-      {finished ? <span className="ri-community-rating"><Star size={11} fill="currentColor" /> {match.communityRating}</span> : live ? <span className="ri-live-tag">LIVE</span> : <span className="ri-live-date">{match.dateOnly || match.date}</span>}
+      {finished ? <span className="ri-community-rating">{hidden ? "PLAYED" : verdictCovered ? "FULL TIME" : rating !== null ? <><Star size={11} fill="currentColor" /> {rating.toFixed(1)}</> : count !== null && count < MIN_COMMUNITY_RATINGS ? "TOO FEW RATINGS" : "FULL TIME"}</span> : live ? <span className="ri-live-tag">LIVE</span> : <span className="ri-live-date">{match.dateOnly || match.date}</span>}
     </div>
 
     <div className="ri-match-art">
       <div className="ri-team-side home"><TeamMark team={match.home} /></div>
-      {finished && match.player ? (
+      {finished && match.player && !hidden && !verdictCovered ? (
         <div className="ri-player-art">
           <span className="ri-player-no">{match.playerNo}</span>
           <div className="ri-player-silhouette" />
@@ -234,8 +276,8 @@ function MatchCard({ match, hideScores, onOpen, onOpenCompetition, featured = fa
         <strong>{match.home.short}</strong>
         {match.home.name !== match.home.short && <small>{match.home.name}</small>}
       </div>
-      <div className={`ri-score${hidesScore(hideScores, match) ? " hidden" : ""}`}>
-        {finished ? <ScoreValue match={match}/> : "—"}
+      <div className={`ri-score${hidden ? " hidden" : ""}`}>
+        {finished ? hidden ? <span aria-label="Score hidden">—</span> : <ScoreValue match={match}/> : "—"}
       </div>
       <div>
         <strong>{match.away.short}</strong>
@@ -246,56 +288,113 @@ function MatchCard({ match, hideScores, onOpen, onOpenCompetition, featured = fa
     <div className="ri-match-foot">
       <span>{finished
         ? `${match.ratings.toLocaleString()} ratings · ${match.reviewCount ?? 0} reviews`
-        : match.broadcaster ? `Watch on ${match.broadcaster}` : "Broadcast details pending"}</span>
-      <span>{finished && match.dominantTag ? match.dominantTag : match.stage || match.date}</span>
+        : broadcastLabel(match)}</span>
+      <span>{finished && match.dominantTag && !hidden && !verdictCovered ? match.dominantTag : match.stage || match.date}</span>
     </div>
+    {verdictCovered && !hidden && <button type="button" className="ri-spoiler-gate" onClick={event => { event.stopPropagation(); setCommunityRevealed(true); }}>
+      Rate it first — then see whether the room agreed with you. <b>REVEAL ANYWAY</b>
+    </button>}
     {!finished && <button className="ri-card-share" aria-label="Share match" onClick={event=>{event.stopPropagation();shareMatch(match,hideScores)}}><Share2 size={13}/></button>}
   </article>;
 }
 
-function CompetitionDetail({ detail, onClose, onOpenMatch, onOpenPlayer }) {
+function CompetitionDetail({ detail, hideScores, onClose, onOpenMatch, onOpenPlayer }) {
   // Sekme sirasi 3c/3d'ye gore: Table · Matches · Players. Matches ile
   // Players artik paylasilan bilesenler (redesign/) — web ile telefon ayni
   // ekrani iki kez yazmiyor.
   const [section, setSection] = useState("Table");
   const competitionId = detail?.competition?.id;
-  if (!detail) return <div className="ri-sheet-wrap" onClick={onClose}><section className="ri-detail-sheet ri-competition-sheet" onClick={event=>event.stopPropagation()}><SheetHandle onClose={onClose}/><Loading label="Loading competition"><SheetSkeleton rows={5}/></Loading></section></div>;
+  const dialog = useDialog({ onClose, label: detail?.competition?.name || "Competition" });
+  if (!detail) return <div className="ri-sheet-wrap" onClick={onClose}><section {...dialog} className="ri-detail-sheet ri-competition-sheet" onClick={event=>event.stopPropagation()}><SheetHandle onClose={onClose}/><Loading label="Loading competition"><SheetSkeleton rows={5}/></Loading></section></div>;
   const competition = detail.competition;
-  return <div className="ri-sheet-wrap" onClick={onClose}><section className="ri-detail-sheet ri-competition-sheet" onClick={event=>event.stopPropagation()}>
+  return <div className="ri-sheet-wrap" onClick={onClose}><section {...dialog} className="ri-detail-sheet ri-competition-sheet" onClick={event=>event.stopPropagation()}>
     <SheetHandle onClose={onClose}/><button className="ri-sheet-close" onClick={onClose}><X size={19}/></button>
-    <header className="ri-competition-head"><small>{competition.country || "Competition"} · {competition.season}</small><h2>{competition.name}</h2><span>{competition.sport}</span></header>
+    {/* 2i: sola yasli; "ENGLAND · 2026/27" / ad / "Football · 20 clubs · Matchweek 4". */}
+    <header className="ri-competition-head"><small>{competitionEyebrow(competition)}</small><h2>{competition.name}</h2><span>{competitionSub(detail)}</span></header>
     <div className="ri-detail-tabs ri-competition-tabs">{["Table","Matches","Players"].map(name=><button key={name} className={section===name?"active":""} onClick={()=>setSection(name)}>{name}</button>)}</div>
-    {section === "Matches" && <CompetitionMatches competitionId={competitionId}
+    {section === "Matches" && <CompetitionMatches competitionId={competitionId} hideScores={hideScores}
       matchweeks={detail.matchweeks || []} fixtures={detail.fixtures || []}
       onOpenMatch={match=>{onClose();onOpenMatch(fromApiMatch(match))}}/>}
-    {section === "Table" && <div className="ri-competition-table"><header><span>#</span><strong>Team</strong><span>P</span><span>{competition.sport === "Basketball" ? "+/-" : "GD"}</span><span>{competition.sport === "Basketball" ? "W" : "PTS"}</span></header>{(detail.standings||[]).map((row,index)=><div key={row.team_id}><span>{index+1}</span><strong><TeamMark team={{name:row.name,short:row.short_name,color:row.color,crest_url:row.crest_url}}/><b>{row.short_name}</b></strong><span>{row.played}</span><span>{row.gd>0?`+${row.gd}`:row.gd}</span><span>{row.points}</span></div>)}{!detail.standings?.length&&<div className="ri-empty-state"><List size={22}/><strong>No league table for this stage</strong><span>Qualifying and knockout ties are shown under fixtures.</span></div>}</div>}
+    {section === "Table" && <div className="ri-competition-table"><header><span>#</span><strong>{competition.sport === "Basketball" ? "Team" : "Club"}</strong><span>P</span><span>{competition.sport === "Basketball" ? "+/-" : "GD"}</span><span>{competition.sport === "Basketball" ? "W" : "PTS"}</span></header>{(detail.standings||[]).map((row,index)=><div key={row.team_id}><span>{index+1}</span><strong><CrestDiamond side={31} color={row.color || "#3a3f47"} ink="#fff" abbr={(row.short_name || row.name || "").slice(0, 3).toUpperCase()} crestUrl={row.crest_url} badgeScale={0.3}/><b>{row.name || row.short_name}</b></strong><span>{row.played}</span><span>{row.gd>0?`+${row.gd}`:row.gd}</span><span>{row.points}</span></div>)}{!detail.standings?.length&&<div className="ri-empty-state"><List size={22}/><strong>No league table for this stage</strong><span>Qualifying and knockout ties are shown under fixtures.</span></div>}</div>}
     {section === "Players" && <CompetitionPlayers competitionId={competitionId}
       onOpenPlayer={id=>{onClose();onOpenPlayer(id)}}/>}
   </section></div>;
 }
 
-function MatchDetail({ match, hideScores, onClose, onSave, onToggleWatchlist, onToggleFavorite, onRefresh, onOpenCompetition }) {
-  const draftReady = useRef(false);
-  const [rating, setRating] = useState(match.my_rating ?? 0);
-  const [classic, setClassic] = useState(!!match.my_classic);
+export function MatchDetail({ match, hideScores, onClose, onSave, onResult, onToggleWatchlist, onToggleFavorite, onRefresh, onOpenCompetition }) {
+  const dialog = useDialog({ onClose, label: `${match.home.short} vs ${match.away.short}` });
+  const draftKey = `rankit:draft:${ratingAccount()}:${match.id}`;
+  const [initialEntry] = useState(() => {
+    if (match.__entry) return match.__entry;
+    const base = JSON.parse(snapshotFromMatch(match));
+    try {
+      const draft = JSON.parse(localStorage.getItem(draftKey));
+      if (draft) return {...base, ...draft};
+      const queued = outbox().find(item => item.matchId === match.id);
+      if (queued) return {...base, ...queued.diary, entryId:queued.receipt?.entry_id || queued.diary.entry_id, watchedDate:queued.diary.watched_date, potmId:queued.potmId, respect:queued.respectIds, rewatch:queued.diary.is_rewatch};
+    } catch { /* Okunamayan taslak uygulamayi cokertmez. */ }
+    return base;
+  });
+  const [rating, setRating] = useState(initialEntry.rating);
+  /* Puan alanini SADECE kullanici dokunduysa gonderiyoruz (§5.4 "never discard
+     work the user already did"). Uc artik "alan yok" ile "alan null" arasini
+     ayiriyor: alan yoksa puana dokunulmuyor, null ise puan SILINIYOR. Eski
+     `rating: rating || null` kalibi, composer bayat bir `match` nesnesiyle
+     acildiginda (cevrimdisi kopya, my_rating tasimayan liste yaniti) yalniz
+     inceleme yazan kullanicinin sunucudaki puanini sessizce siliyordu. */
+  const [ratingTouched, setRatingTouched] = useState(false);
+  const rate = value => { setRatingTouched(true); setRating(value); };
+  const [classic, setClassic] = useState(initialEntry.classic);
   const [watchlist, setWatchlist] = useState(!!match.watchlisted);
+  const [appetite, setAppetite] = useState(() => appetiteValue(match.my_appetite));
+  const [appetiteBusy, setAppetiteBusy] = useState(false);
+  const [appetiteError, setAppetiteError] = useState("");
+  const [appetiteClosed, setAppetiteClosed] = useState(false);
+  const [appetiteClock, setAppetiteClock] = useState(Date.now);
+  const [liveClock, setLiveClock] = useState(Date.now);
   const [favorited, setFavorited] = useState(!!match.favorited);
   const [section, setSection] = useState(match.status === "finished" ? "Community" : "Match");
-  const [tags, setTags] = useState(match.my_tags || []);
-  const [respect, setRespect] = useState(match.my_respect_ids || []);
-  const [potmId, setPotmId] = useState(match.my_potm_id || null);
-  const [review, setReview] = useState(match.my_review || "");
-  const [spoiler, setSpoiler] = useState(!!match.my_spoiler);
-  const [visibility, setVisibility] = useState(match.my_visibility || "public");
-  const [rewatch, setRewatch] = useState(false);
-  const [saveState, setSaveState] = useState("idle");
+  const [tags, setTags] = useState(initialEntry.tags || []);
+  const [respect, setRespect] = useState(initialEntry.respect || []);
+  const [potmId, setPotmId] = useState(initialEntry.potmId || null);
+  const [review, setReview] = useState(initialEntry.review || "");
+  const [spoiler, setSpoiler] = useState(!!initialEntry.spoiler);
+  const [visibility, setVisibility] = useState(initialEntry.visibility || "public");
+  const [rewatch, setRewatch] = useState(!!initialEntry.rewatch);
+  const [entryId, setEntryId] = useState(initialEntry.entryId || null);
+  const [saveState, setSaveState] = useState(match.__entry ? (match.__entryPending ? "queued" : "saved") : "idle");
+  const [saveError, setSaveError] = useState("");
+  const [revealed, setRevealed] = useState(false);
+  const [communityRevealed, setCommunityRevealed] = useState(false);
+  const scoreHidden = hidesScore(hideScores, match) && !revealed;
+  // Secilmis ama kaydedilmemis yildizlar kalabalik sonucunu erken acmamali.
+  const verdictCovered = communityVerdictCovered(match, { revealed: communityRevealed });
+  const hasCrowdData = hasCommunityVerdict(match) || Number(match.rating_count) > 0;
+  const communityHidden = hasCrowdData && (scoreHidden || verdictCovered);
+  const liveDelayed = liveFreshness(match, liveClock) === "stale";
+  const [savedSnapshot, setSavedSnapshot] = useState(() => match.__entry ? entrySnapshot(match.__entry) : snapshotFromMatch(match));
+  const snapshot = entrySnapshot({ rating, classic, tags, review, spoiler, visibility, potmId, respect, rewatch });
+  const dirty = snapshot !== savedSnapshot;
+  // Kaydet dugmesinin etiketi + etkinligi tek yerde (§5.4 / §9, bkz. saveCta.js).
+  const cta = saveCta({ saveState, dirty, entryId, watchedDate: match.my_watched_date,
+                        loadedRating: initialEntry.rating, rewatch });
   const [watchlistBusy, setWatchlistBusy] = useState(false);
   const [favoriteBusy, setFavoriteBusy] = useState(false);
   const [actionNotice, setActionNotice] = useState(null);
   const [showMoreTags, setShowMoreTags] = useState(false);
-  const [showPotmPicker, setShowPotmPicker] = useState(false);
-  const [showRespectPicker, setShowRespectPicker] = useState(false);
-  const [broadcastInfo, setBroadcastInfo] = useState(null);
+  const [playersOpen, setPlayersOpen] = useState(false);
+  const [composerOpen, setComposerOpen] = useState(false);
+  const [broadcastInfo, setBroadcastInfo] = useState(undefined);
+  useEffect(() => {
+    if (match.status !== "upcoming") return undefined;
+    const timer = setInterval(() => setAppetiteClock(Date.now()), 30000);
+    return () => clearInterval(timer);
+  }, [match.status]);
+  useEffect(() => {
+    if (match.status !== "live") return undefined;
+    const timer = setInterval(() => setLiveClock(Date.now()), 30000);
+    return () => clearInterval(timer);
+  }, [match.status]);
   // Companion rozeti (ekran 5a/5b). Katilim sayisi sunucudan gelir; sekme
   // sayiyi gostermek icin panelin acilmasini beklememeli.
   const [allReviewsOpen, setAllReviewsOpen] = useState(false);
@@ -303,8 +402,15 @@ function MatchDetail({ match, hideScores, onClose, onSave, onToggleWatchlist, on
   // sayfasinin listesi ile bir incelemenin dizisi AYRI yuzeyler).
   const [threadId, setThreadId] = useState(null);
   const [companionState, setCompanionState] = useState(null);
-  useEffect(() => { rankitApi.companion(match.id).then(setCompanionState).catch(()=>setCompanionState(null)); }, [match.id]);
+  useEffect(() => {
+    let active = true;
+    const refresh = () => rankitApi.companion(match.id).then(data => { if (active) setCompanionState(data); }).catch(() => { if (active) setCompanionState(null); });
+    refresh();
+    const timer = section !== "Companion" && ["upcoming", "live"].includes(match.status) ? setInterval(refresh, 30000) : null;
+    return () => { active = false; if (timer) clearInterval(timer); };
+  }, [match.id, match.status, section]);
   const companionBadge = companionState?.badge || null;
+  const resultEventState = finishedMatchEventState(match, companionState);
   // "Bu maçı listeme ekle": addListItem ucu vardı ama iki yüzey de
   // çağırmıyordu. Web'e eklenirken telefon geride kalmasın — parite
   // sözleşmesi tek yönlü değil (bkz. rankit/PRODUCT.md).
@@ -313,27 +419,14 @@ function MatchDetail({ match, hideScores, onClose, onSave, onToggleWatchlist, on
   const tagOptions = match.sport === "Football"
     ? ["Nail-biter", "Great Atmosphere", "Comeback", "Penalty Drama", "Goal Fest", "Tactical Battle", "Upset", "Late Winner", "Derby Energy"]
     : ["Nail-biter", "Great Atmosphere", "Comeback", "Overtime", "Clutch Performance", "Shootout", "Defensive Masterclass", "Upset", "Buzzer Beater"];
-  const playerOptions = match.players || [];
+  const seasonPlayers = match.players || [];
+  const playerOptions = playedPlayers(match.lineups);
   const visibleTags = showMoreTags ? tagOptions : tagOptions.slice(0,5);
-  const playersByTeam = playerOptions.reduce((groups, player) => ({ ...groups, [player.team]: [...(groups[player.team] || []), player] }), {});
-  const communityTags = Array.isArray(match.tags) ? match.tags : [];
+  const crowdHeat = communityHeat(match);
+  const crowdRatings = communityRatingCount(match);
   const selectedPotm = playerOptions.find(player => player.id === potmId);
   const selectedRespect = playerOptions.filter(player => respect.includes(player.id));
-  useEffect(() => {
-    setRating(match.my_rating ?? 0); setClassic(!!match.my_classic);
-    setTags(match.my_tags || []); setRespect(match.my_respect_ids || []);
-    setPotmId(match.my_potm_id || null); setReview(match.my_review || "");
-    setSpoiler(!!match.my_spoiler); setVisibility(match.my_visibility || "public");
-    try {
-      const draft = JSON.parse(localStorage.getItem(`rankit:draft:${match.id}`));
-      if (draft && !match.my_watched_date) {
-        setRating(draft.rating || 0); setClassic(!!draft.classic); setTags(draft.tags || []);
-        setReview(draft.review || ""); setSpoiler(!!draft.spoiler); setVisibility(draft.visibility || "public");
-        setPotmId(draft.potmId || null); setRespect(draft.respect || []);
-      }
-    } catch { /* bozuk taslak yok sayılır */ }
-    draftReady.current = true;
-  }, [match.id, match.my_watched_date]);
+  const eligibleIds = new Set(playerOptions.map(player => player.id));
   // Ülke artık sabit değil: tercihten, yoksa cihaz dilinden. Kapsam dışıysa
   // hiç sormuyoruz — başka bir ülkenin yayıncısını göstermek yanlış bilgi.
   const country = useMemo(() => resolveBroadcastCountry(), []);
@@ -343,12 +436,12 @@ function MatchDetail({ match, hideScores, onClose, onSave, onToggleWatchlist, on
     return undefined;
   }, [match.id, country]);
   useEffect(() => {
-    if (!draftReady.current) return undefined;
-    const timer = setTimeout(() => {
-      try { localStorage.setItem(`rankit:draft:${match.id}`, JSON.stringify({ rating, classic, tags, review, spoiler, visibility, potmId, respect })); } catch { /* taslak opsiyonel */ }
-    }, 250);
-    return () => clearTimeout(timer);
-  }, [match.id,rating,classic,tags,review,spoiler,visibility,potmId,respect]);
+    try {
+      if (dirty) localStorage.setItem(draftKey, JSON.stringify({...JSON.parse(snapshot),entryId,watchedDate:initialEntry.watchedDate || match.my_watched_date}));
+      else localStorage.removeItem(draftKey);
+    } catch { /* Kalici kaydetme hatayi ayrica bildirir. */ }
+    return undefined;
+  }, [draftKey, snapshot, dirty, entryId, initialEntry.watchedDate, match.my_watched_date]);
   const toggleTag = tag => setTags(v => v.includes(tag) ? v.filter(x => x !== tag) : v.length < 3 ? [...v, tag] : v);
   const toggleRespect = id => {
     if (id === potmId) return;
@@ -359,20 +452,32 @@ function MatchDetail({ match, hideScores, onClose, onSave, onToggleWatchlist, on
     setRespect(v => v.filter(x => x !== id));
   };
   const saveLog = async () => {
+    if (saveState === "saving") return;
     setSaveState("saving");
+    setSaveError("");
     try {
       const result = await onSave?.({
         // tz_offset: RankIt gunu kullanicinin saatinde (§7.2). Gonderilmiyordu
         // ve sunucu UTC ile hesapliyordu -- UTC+3'te "gecesinde" sinirlari
         // uc saat kayiyordu.
-        diary: { match_id: match.id, watched_date: new Date().toISOString().slice(0, 10), rating: rating || null, review, classic, tags, visibility, spoiler, is_rewatch: rewatch, tz_offset: -new Date().getTimezoneOffset() },
-        matchId: match.id, potmId, respectIds: respect,
+        diary: { match_id: match.id, entry_id:entryId || undefined, watched_date: initialEntry.watchedDate || match.my_watched_date || new Date().toISOString().slice(0, 10),
+          ...ratingField({ touched: ratingTouched, hasEntry: !!entryId, rating }),
+          review, classic, tags, visibility, spoiler, is_rewatch: rewatch, tz_offset: -new Date().getTimezoneOffset() },
+        matchId: match.id,
+        potmId: rating > 0 && eligibleIds.has(potmId) ? potmId : null,
+        respectIds: rating > 0 ? respect.filter(id => eligibleIds.has(id) && id !== potmId).slice(0, 2) : [],
       });
-      if (result?.queued) { setSaveState("queued"); try { localStorage.removeItem(`rankit:draft:${match.id}`); } catch { /* kuyrukta */ } return; }
-      setSaveState("saved");
-      rankitHaptics.success();
-      try { localStorage.removeItem(`rankit:draft:${match.id}`); } catch { /* kayıt tamamlandı */ }
-    } catch { setSaveState("error"); }
+      setSavedSnapshot(snapshot);
+      if (result?.receipt?.entry_id) setEntryId(result.receipt.entry_id);
+      setSaveState(result?.queued ? "queued" : "saved");
+      if (!result?.queued) rankitHaptics.success();
+      onResult?.(createCollectible(match, { ...JSON.parse(snapshot), entryId:result?.receipt?.entry_id || entryId,
+        watchedDate:initialEntry.watchedDate || match.my_watched_date || new Date().toISOString().slice(0,10) }, result));
+    } catch (error) {
+      const partial = outbox().find(item=>item.matchId===match.id)?.receipt;
+      if (partial?.entry_id) setEntryId(partial.entry_id);
+      setSaveState("error"); setSaveError(error.message || "Could not save. Your changes are still here.");
+    }
   };
   const showNotice = (message, tone = "success") => {
     // id yalnızca React key'i: değişince toast animasyonu baştan oynar.
@@ -404,14 +509,41 @@ function MatchDetail({ match, hideScores, onClose, onSave, onToggleWatchlist, on
     setWatchlist(optimistic);
     setWatchlistBusy(true);
     try {
-      const result = await onToggleWatchlist(match.id);
+      const result = await onToggleWatchlist(match.id, optimistic);
       setWatchlist(result.watchlisted);
+      if (!result.watchlisted) setAppetite(null);
       showNotice(result.watchlisted ? "Added to your watchlist" : "Removed from your watchlist");
     } catch {
       setWatchlist(previous);
       showNotice("Watchlist could not be updated", "error");
     } finally {
       setWatchlistBusy(false);
+    }
+  };
+  const chooseAppetite = async (value) => {
+    if (appetiteBusy || appetiteClosed || !appetiteOpen(match, appetiteClock)) return;
+    const previous = appetite;
+    const next = nextAppetite(previous, value);
+    setAppetite(next);
+    setAppetiteBusy(true);
+    setAppetiteError("");
+    try {
+      const result = await rankitApi.appetite(match.id, next);
+      setAppetite(appetiteValue(result.my_appetite));
+      setWatchlist(!!result.watchlisted);
+      if (onRefresh) Promise.resolve(onRefresh()).catch(() => {});
+    } catch (error) {
+      setAppetite(previous);
+      if (error.status === 409) {
+        setAppetiteClosed(true);
+        setAppetiteError("Expected heat closed at kick-off.");
+      } else if (error.status === 401) {
+        setAppetiteError("Sign in again to save your read.");
+      } else {
+        setAppetiteError(error.offline ? "You're offline. Your read was not saved." : "Your read could not be saved. Try again.");
+      }
+    } finally {
+      setAppetiteBusy(false);
     }
   };
   const toggleFavorite = async () => {
@@ -421,7 +553,7 @@ function MatchDetail({ match, hideScores, onClose, onSave, onToggleWatchlist, on
     setFavorited(optimistic);
     setFavoriteBusy(true);
     try {
-      const result = await onToggleFavorite({ target_type: "match", target_id: match.id });
+      const result = await onToggleFavorite({ target_type: "match", target_id: match.id }, !previous);
       setFavorited(result.favorited);
       showNotice(result.favorited ? "Added to your favourites" : "Removed from your favourites");
     } catch {
@@ -431,33 +563,57 @@ function MatchDetail({ match, hideScores, onClose, onSave, onToggleWatchlist, on
       setFavoriteBusy(false);
     }
   };
+  // 2f / 2g / 15a: maç sayfasının iki başlık hali. Match sekmesinde sade
+  // hero (gri eyebrow, iki elmas, durum hapı + skor, "Arsenal vs Tottenham",
+  // tarih satırı); Community ve Companion'da kompakt satır ("Arsenal 3–1
+  // Tottenham" / "Community · 318 reviews"). Kapat solda, sekmeler sola yaslı.
+  const heroStatus = match.status === "finished" ? scoreHidden ? "PLAYED" : "FULL TIME"
+    : match.status === "live" ? `LIVE${match.live_minute ? ` · ${companionMinute(match.live_minute, match.sport)}` : ""}${liveDelayed ? " · DELAYED" : ""}` : "UPCOMING";
+  const statusWord = match.status === "finished" ? "Full time" : match.status === "live" ? "Live" : "Upcoming";
+  const whenLine = [match.dateOnly || match.date, match.time, match.venue].filter(Boolean).join(" · ");
+  const scoreText = !scoreHidden && ["finished","live"].includes(match.status) && match.score
+    ? match.score.replace(/\s*[–-]\s*/, "–") : null;
+  const compactTitle = scoreText ? `${match.home.short} ${scoreText} ${match.away.short}` : `${match.home.short} vs ${match.away.short}`;
+  const compactSub = section === "Community" && match.reviewCount > 0
+    ? `Community · ${match.reviewCount.toLocaleString("en-GB")} ${match.reviewCount === 1 ? "review" : "reviews"}`
+    : [statusWord, match.dateOnly].filter(Boolean).join(" · ");
+  const crest = toMatchCardProps(match);
   return <div className="ri-sheet-wrap" onClick={onClose}>
-    <section className="ri-detail-sheet" onClick={e => e.stopPropagation()}>
+    <section {...dialog} className="ri-detail-sheet ri-match-sheet" onClick={e => e.stopPropagation()}>
       <SheetHandle onClose={onClose}/>
-      <button className="ri-sheet-close" onClick={onClose}><X size={19} /></button>
-      <div className="ri-v03-hero" style={{"--detail-home":match.home.color,"--detail-away":match.away.color}}>
-        <div className={`ri-detail-kicker ${match.status}`}>{match.competition_id
+      <button className="ri-sheet-close" onClick={onClose} aria-label="Close match"><X size={17} /></button>
+      {section === "Match" ? <div className="ri-v03-hero is-2f">
+        <div className={`ri-detail-kicker ${match.status}${liveDelayed ? " is-stale" : ""}`}>{match.competition_id
           ? <button type="button" className="ri-kicker-comp" onClick={()=>{onClose();onOpenCompetition?.(match.competition_id)}}>{match.competition}{match.stage ? ` · ${match.stage}` : ""}</button>
-          : <span>{match.competition}{match.stage ? ` · ${match.stage}` : ""}</span>}<b>{match.status === "finished" ? "FULL TIME" : match.status === "live" ? "LIVE" : "UPCOMING"}</b></div>
+          : <span>{match.competition}{match.stage ? ` · ${match.stage}` : ""}</span>}</div>
         <div className="ri-detail-teams">
-          <div className="ri-v03-team"><TeamMark team={match.home}/><strong>{match.home.short}</strong>{match.home.name !== match.home.short && <small>{match.home.name}</small>}</div>
-          <div className="ri-v03-score"><small>{match.dateOnly || match.date}</small><strong className={hidesScore(hideScores, match) ? "ri-blur" : ""}><ScoreValue match={match} detail/></strong><span>{match.season}</span></div>
-          <div className="ri-v03-team"><TeamMark team={match.away}/><strong>{match.away.short}</strong>{match.away.name !== match.away.short && <small>{match.away.name}</small>}</div>
+          <div className="ri-v03-team"><CrestDiamond side={44} color={crest.homeColor} ink={crest.homeCrestInk} abbr={crest.homeAbbr} crestUrl={crest.homeCrestUrl} badgeScale={0.28}/></div>
+          <div className="ri-v03-score"><b className={`ri-status-pill ${match.status}${liveDelayed ? " is-stale" : ""}`}>{heroStatus}</b>
+            {scoreHidden ? <button className="ri-card-reveal" onClick={()=>setRevealed(true)}>Reveal match</button> : <strong><ScoreValue match={match} detail/></strong>}</div>
+          <div className="ri-v03-team"><CrestDiamond side={44} color={crest.awayColor} ink={crest.awayCrestInk} abbr={crest.awayAbbr} crestUrl={crest.awayCrestUrl} badgeScale={0.28}/></div>
         </div>
+        <div className="ri-v03-names"><strong>{match.home.name || match.home.short} vs {match.away.name || match.away.short}</strong>
+          {whenLine && <small>{whenLine}</small>}</div>
       </div>
-      <div className="ri-detail-tabs" role="tablist">{["Match","Community","Companion"].map(name=><button key={name} role="tab" aria-selected={section===name} className={section===name?"active":""} onClick={()=>setSection(name)}>{name}{/* Rozet mac durumundan turer: katilim sayisi -> LIVE -> hicbir sey. */}{name==="Companion" && companionBadge && <i className={`ri-tab-badge${match.status==="live"?" live":""}`}>{companionBadge}</i>}</button>)}</div>
-      {section === "Companion" ? <CompanionPanel matchId={match.id} isLoggedIn/>
+      : <div className="ri-sheet-compact"><strong>{compactTitle}</strong><small>{compactSub}</small></div>}
+      <div className="ri-detail-tabs" role="tablist">{["Match","Community","Companion"].map(name=><button key={name} role="tab" aria-selected={section===name} className={section===name?"active":""} onClick={()=>setSection(name)}>{name}{/* Rozet mac durumundan turer: katilim sayisi -> LIVE -> hicbir sey. */}{name==="Companion" && companionBadge && <i className={`ri-tab-badge${companionState?.status==="live"?" live":""}`}>{companionBadge}</i>}</button>)}</div>
+      {section === "Companion" ? <CompanionPanel matchId={match.id} sport={match.sport} onStateChange={setCompanionState}
+        isLoggedIn={!!localStorage.getItem("nba_arch_token")} rated={rating > 0}
+        onRate={value=>{if(!rating && value)rate(value);setSection("Community");}}/>
       : section === "Match" ? <>
-        {match.summary && <p className="ri-summary">{match.summary}</p>}
-        <div className="ri-broadcast"><small>{country.supported ? `WATCH IN ${country.code}` : "BROADCAST"}</small><strong>{!country.supported ? "Not covered in your region yet" : (broadcastInfo?.channels?.map(channel=>channel.name).join(" · ") || match.broadcaster || "To be announced")}</strong><span>{broadcastInfo?.confidence === "confirmed" ? "Confirmed broadcaster" : broadcastInfo?.confidence === "typical" ? "Typical competition coverage · check before the match" : match.status === "finished" ? "Broadcast information unavailable" : "Coverage has not been confirmed yet"}</span></div>
-        <div className="ri-timeline"><small>MATCH</small><div><span>{match.status === "finished" ? "FT" : match.time || match.dateOnly}</span><strong>{match.status === "finished" ? "Full time" : "Scheduled"}</strong></div><button onClick={() => setSection("Community")}>Community <ChevronRight size={14}/></button></div>
+        {!scoreHidden && match.summary && <p className="ri-summary">{match.summary}</p>}
+        {match.status === "upcoming" && <ExpectedHeat match={match}/>}
+        <div className="ri-broadcast"><small>{country.supported ? `WATCH IN ${country.code}` : "BROADCAST"}</small><strong>{!country.supported ? "Not covered in your region yet" : broadcastInfo === undefined ? "Checking coverage…" : broadcastInfo === null ? "Broadcast information unavailable" : broadcastInfo?.channels?.length ? broadcastInfo.channels.map(channel=>channel.name).join(" · ") : "Not covered in your region yet"}</strong><span>{broadcastInfo?.confidence === "confirmed" ? "Confirmed broadcaster" : broadcastInfo?.confidence === "typical" ? "Typical competition coverage · check before the match" : "Coverage has not been confirmed yet"}</span></div>
+        <div className="ri-timeline"><small>MATCH</small><div><span>{match.status === "finished" ? scoreHidden ? "—" : "FT" : match.status === "live" ? companionMinute(match.live_minute, match.sport) || "LIVE" : match.time || match.dateOnly}</span><strong>{match.status === "finished" ? scoreHidden ? "Played" : "Full time" : match.status === "live" ? liveDelayed ? "Updates delayed" : "Live now" : "Scheduled"}</strong></div><button onClick={() => setSection("Community")}>Community <ChevronRight size={14}/></button></div>
         {/* Doğrulanmış kadro: sağlayıcının o maça özel açıkladığı 11, yedekler,
             diziliş ve teknik direktör. Sezon kadrosundan AYRI alan (`lineups`
             vs `players`) — "gerçek ilk 11 mi bilmiyoruz" sorusunun cevabı bu
             ayrım. Elde yoksa hiç basılmıyor, sezon kadrosu 11'miş gibi
             sunulmuyor. */}
-        {match.lineups?.length > 0 && <div className="ri-lineup">
-          <div className="ri-lineup-title"><span>CONFIRMED LINEUP</span><em>Can change until kick-off</em></div>
+        {match.status === "live" && match.lineups?.length > 0 && <LiveLineup lineups={match.lineups}
+          inRoom={companionState?.in_room} onCompanion={() => setSection("Companion")} />}
+        {match.status !== "live" && match.lineups?.length > 0 && <div className="ri-lineup">
+          <div className="ri-lineup-title"><span>CONFIRMED LINEUP</span>{match.status === "upcoming" && <em>Can change until kick-off</em>}</div>
           <div className="ri-lineup-grid">{match.lineups.map(side => <section key={side.team_id} className="ri-lineup-side">
             <div className="ri-lineup-head">
               <strong>{side.team}</strong>
@@ -471,9 +627,13 @@ function MatchDetail({ match, hideScores, onClose, onSave, onToggleWatchlist, on
             </div>}
           </section>)}</div>
         </div>}
-        {!match.lineups?.length && playerOptions.length > 0 && <div className="ri-squad-preview"><div className="ri-chip-title">SEASON SQUADS <span>{playerOptions.length}</span></div><div>{[match.home,match.away].map(team=><section key={team.id}><header><TeamMark team={team}/><strong>{team.name}</strong></header><div>{playerOptions.filter(p=>p.team===team.short).map(p=><span key={p.id}>{p.shirt_no&&<b>{p.shirt_no}</b>}{p.name}</span>)}</div></section>)}</div></div>}
+        {match.status === "upcoming" && !match.lineups?.length && <div className="ri-squad-preview"><div className="ri-chip-title">SEASON SQUADS {seasonPlayers.length > 0 && <span>{seasonPlayers.length}</span>}</div><p>Lineups are not announced — a season squad is not a starting eleven.</p>{seasonPlayers.length > 0 && <div>{[match.home,match.away].map(team=><section key={team.id}><header><TeamMark team={team}/><strong>{team.name}</strong></header><div>{seasonPlayers.filter(p=>p.team===team.short).map(p=><span key={p.id}>{p.shirt_no&&<b>{p.shirt_no}</b>}{p.name}</span>)}</div></section>)}</div>}</div>}
+        {match.status === "finished" && <MatchEvents events={resultEventState.events} checked={resultEventState.checked}
+          sport={match.sport} home={match.home} away={match.away}/>}
         <div className="ri-detail-actions">
-          {match.status === "upcoming" && <button disabled={watchlistBusy} aria-busy={watchlistBusy} className={`ri-review-cta${watchlist ? " saved" : ""}${watchlistBusy ? " is-busy" : ""}`} onClick={toggleWatchlist}><Bookmark size={17} fill={watchlist ? "currentColor" : "none"} /> {watchlist ? "In your watchlist" : "Add to watchlist"}</button>}
+          {match.status === "upcoming" && !!match.lineups?.length && <button className="ri-review-cta" onClick={() => setSection("Companion")}>Watch with your Companion</button>}
+          {match.status === "upcoming" && <button disabled={watchlistBusy} aria-busy={watchlistBusy} className={`ri-review-cta${watchlist ? " saved" : ""}${watchlistBusy ? " is-busy" : ""}${match.lineups?.length ? " secondary" : ""}`} onClick={toggleWatchlist}><Bookmark size={17} fill={watchlist ? "currentColor" : "none"} /> {watchlist ? "In your watchlist" : "Add to watchlist"}</button>}
+          {match.status === "live" && !match.lineups?.length && <button className="ri-live-lineup-cta" onClick={() => setSection("Companion")}>Watch with your Companion</button>}
           <button disabled={favoriteBusy} aria-busy={favoriteBusy} className={`ri-review-cta secondary${favorited ? " saved" : ""}${favoriteBusy ? " is-busy" : ""}`} onClick={toggleFavorite}><Heart size={17} fill={favorited ? "currentColor" : "none"}/> {favorited ? "Favourite" : "Add to favourites"}</button>
           <button className="ri-review-cta secondary" aria-expanded={listOpen} onClick={openLists}><ListPlus size={17}/> Add to list</button>
           {listOpen && <div className="ri-tag-picker">
@@ -483,95 +643,117 @@ function MatchDetail({ match, hideScores, onClose, onSave, onToggleWatchlist, on
           </div>}
         </div>
       </> : match.status === "finished" ? <>
-        {/* Ekran 2g: dokuz blok UCE indi. Sayim gercekti — eski surumde
-            ust duzeyde tam dokuz kutu vardi (stats, log-head, rating, chip,
-            tags, detail-row, votes, review, options) ve hepsi ayni kolonda
-            alt alta diziliyordu. Uc bolum ayni ozellikleri tasiyor, hicbiri
-            kaldirilmadi; POTM ve Respect "senin kaydin"in parcasi oldugu
-            icin birinci bolume girdi. */}
+        {rating <= 0 ? <>
+          <section className="ri-unrated-entry">
+            <div className="ri-block-head"><small>YOUR ENTRY</small><b>NOT LOGGED</b></div>
+            <h2>How was it?</h2>
+            <Stars value={rating} onChange={rate} />
+            <p>Tap to rate · half stars are fine</p>
+          </section>
+          <p className="ri-unrated-hint">Tags, players and a review open once there is a rating.</p>
+        </> : <>
+        {/* BUILD §9.4 / 2g: review girişin parçası; etiket ve oyuncular aynı
+            ikinci blokta. Kalabalığın hükmü yalnız bundan sonra gelir. */}
 
         {/* 1 — YOUR ENTRY */}
         <section className="ri-entry-block">
           <div className="ri-block-head">
             <small>YOUR ENTRY</small>
-            {match.my_watched_date && <b className="ri-saved-flag">SAVED</b>}
+            {dirty ? <b>UNSAVED CHANGES</b> : (match.my_watched_date || saveState === "saved") && <b className="ri-saved-flag">SAVED</b>}
           </div>
           <div className="ri-rating-panel">
-            <Stars value={rating} onChange={setRating}/>
+            <Stars value={rating} onChange={rate}/>
             <ClassicStamp active={classic} onClick={() => setClassic(v => !v)}/>
           </div>
-          <div className="ri-vote-block">
-            <button className="ri-v03-vote-trigger" onClick={()=>setShowPotmPicker(v=>!v)}>
-              <Trophy size={16}/><span><small>PLAYER OF THE MATCH</small><strong>{selectedPotm?.name || "Choose one player"}</strong></span>
-              <b>{showPotmPicker ? "CLOSE" : potmId ? "CHANGE" : "CHOOSE"}</b>
-            </button>
-            {showPotmPicker && <div className="ri-match-player-groups">{Object.entries(playersByTeam).map(([team,players])=>
-              <section key={`potm-${team}`}><small>{team}</small><div className="ri-respect-grid">{players.map(player =>
-                <button key={`potm-${player.id}`} className={potmId === player.id ? "active" : ""} onClick={() => {choosePotm(player.id);setShowPotmPicker(false)}}>
-                  {player.image_url?<img src={player.image_url} alt=""/>:<Trophy size={12}/>}<span>{player.name}</span></button>)}</div></section>)}</div>}
-            <button className="ri-v03-vote-trigger respect" onClick={()=>setShowRespectPicker(v=>!v)}>
-              <ThumbsUp size={16}/><span><small>RESPECT · UP TO TWO</small><strong>{selectedRespect.length ? selectedRespect.map(p=>p.name).join(" · ") : "Recognise other performances"}</strong></span>
-              <b>{showRespectPicker ? "CLOSE" : respect.length ? "CHANGE" : "CHOOSE"}</b>
-            </button>
-            {showRespectPicker && <div className="ri-match-player-groups">{Object.entries(playersByTeam).map(([team,players])=>
-              <section key={`respect-${team}`}><small>{team}</small><div className="ri-respect-grid">{players.filter(p=>p.id!==potmId).map(player =>
-                <button key={`respect-${player.id}`} className={respect.includes(player.id) ? "active" : ""} onClick={() => toggleRespect(player.id)}>
-                  {player.image_url?<img src={player.image_url} alt=""/>:<ThumbsUp size={12}/>}<span>{player.name}</span></button>)}</div></section>)}</div>}
-          </div>
-        </section>
-
-        {/* 2 — TAGS & REVIEW */}
-        <section className="ri-entry-block">
-          <div className="ri-block-head"><small>TAGS &amp; REVIEW</small><b>{tags.length} of 3</b></div>
-          <div className="ri-tag-picker">{visibleTags.map(tag =>
-            <button key={tag} className={tags.includes(tag) ? "active" : ""} onClick={() => toggleTag(tag)}>{tag}</button>)}
-            <button className="ri-more-tags" onClick={()=>setShowMoreTags(v=>!v)}>{showMoreTags?"Less":"More"}</button></div>
-          <textarea className="ri-review-input" maxLength={4000} value={review} onChange={e=>setReview(e.target.value)}
-            placeholder="Write an optional review…" rows="3"/>
+          {/* §11.1: inceleme girdinin bir ALANI; yazma ekrani (15c) girdiden
+              acilir ve girdiye geri yazar. Oyuncu satiriyla ayni dil. */}
+          <button type="button" className="ri-players-trigger ri-review-trigger" onClick={() => setComposerOpen(true)}>
+            <span><small>YOUR REVIEW</small><strong>{review ? review.trim().slice(0, 60) + (review.trim().length > 60 ? "…" : "") : "Write about the night"}</strong></span>
+            <b>{review ? "EDIT" : "WRITE"}</b>
+          </button>
           <div className="ri-review-options">
             <label><input type="checkbox" checked={spoiler} onChange={e=>setSpoiler(e.target.checked)}/> Contains spoilers</label>
-            <label><input type="checkbox" checked={rewatch} onChange={e=>setRewatch(e.target.checked)}/> Log as rewatch</label>
+            <label><input type="checkbox" checked={rewatch} disabled={!!entryId} onChange={e=>setRewatch(e.target.checked)}/> {entryId ? (rewatch ? "Editing this rewatch" : "Editing this diary entry") : "Log as rewatch"}</label>
             <select value={visibility} onChange={e=>setVisibility(e.target.value)} aria-label="Review visibility">
               <option value="public">Public</option><option value="followers">Followers</option><option value="private">Private</option>
             </select>
           </div>
-          <button disabled={saveState === "saving"} aria-busy={saveState === "saving"}
-            className={`ri-review-cta${saveState === "saved" ? " saved" : ""}${saveState === "saving" ? " is-busy" : ""}`} onClick={saveLog}>
+        </section>
+
+        {/* 2 — TAGS & PLAYERS */}
+        <section className="ri-entry-block">
+          <div className="ri-block-head"><small>TAGS &amp; PLAYERS</small><b>{tags.length} of 3 tags</b></div>
+          <div className="ri-tag-picker">{visibleTags.map(tag =>
+            <button key={tag} className={tags.includes(tag) ? "active" : ""} onClick={() => toggleTag(tag)}>{tag}</button>)}
+            <button className="ri-more-tags" onClick={()=>setShowMoreTags(v=>!v)}>{showMoreTags?"Less":"More"}</button></div>
+          <div className="ri-block-head ri-players-summary-head"><small>PLAYERS</small><b>{potmId ? 1 : 0} POTM · {selectedRespect.length} RESPECT</b></div>
+          {playerOptions.length > 0 ? <div className="ri-vote-block">
+            <button type="button" className="ri-players-trigger" onClick={() => setPlayersOpen(true)}>
+              <span><small>PLAYER OF THE MATCH &amp; RESPECT</small><strong>{selectedPotm?.name || "Choose a player"}{selectedRespect.length ? ` · ${selectedRespect.map(p => p.name).join(" · ")}` : ""}</strong></span>
+              <b>CHOOSE</b>
+            </button>
+          </div> : <p className="ri-companion-note">Player picks open when a confirmed match lineup is available.</p>}
+          <button disabled={cta.disabled} aria-busy={cta.busy}
+            className={`ri-review-cta${cta.state === "saved" ? " saved" : ""}${cta.busy ? " is-busy" : ""}`} onClick={saveLog}>
             {/* §5: donen cark yok. Mesgul durum metinle ve aria-busy ile. */}
             <MessageCircle size={17}/>{" "}
-            {saveState === "saving" ? "Saving…" : saveState === "saved" ? "Saved to Diary" : saveState === "queued" ? "Saved on this phone · uploads when you're back" : saveState === "error" ? "Could not save · Try again" : match.my_watched_date && !rewatch ? "Update Diary Entry" : "Save to Diary"}
+            {cta.label}
           </button>
-          {saveState === "saved" && <div className="ri-save-result"><span>YOUR RANKIT</span><strong>{rating || "—"} / 5 {classic ? "· CLASSIC" : ""}</strong>
-            <button onClick={()=>shareMatch(match,hideScores)}><Share2 size={14}/> Share rating card</button></div>}
+          {saveError && <p role="alert">{saveError}</p>}
         </section>
+        </>}
 
         {/* 3 — WHAT EVERYONE ELSE SAID */}
         <section className="ri-entry-block">
           <div className="ri-block-head">
             <small>WHAT EVERYONE ELSE SAID</small>
             {/* Ekran 2g'deki "318 reviews >" — 5c'ye acilan tek kapi. */}
-            <button className="ri-reviews-link" onClick={()=>setAllReviewsOpen(true)}>
-              {match.reviewCount || 0} {match.reviewCount === 1 ? "review" : "reviews"} <ChevronRight size={13}/>
-            </button>
+            {match.reviewCount > 0 ? <button className="ri-reviews-link" disabled={communityHidden} onClick={()=>setAllReviewsOpen(true)}>
+              {match.reviewCount} {match.reviewCount === 1 ? "review" : "reviews"} <ChevronRight size={13}/>
+            </button> : <span className="ri-reviews-count">0 reviews</span>}
           </div>
-          <div className="ri-v03-community-stats">
-            <div><Star size={15} fill="currentColor"/><strong>{match.communityRating ?? "—"}</strong><span>COMMUNITY</span></div>
-            <div><MessageCircle size={15}/><strong>{match.reviewCount || 0}</strong><span>REVIEWS</span></div>
-            <div><Award size={15}/><strong>{match.classic_count || 0}</strong><span>CLASSICS</span></div>
-          </div>
-          {(match.potm || communityTags.length > 0) && <div className="ri-v03-consensus">
-            {match.potm && <div className="ri-v03-potm"><Trophy size={18}/><span><small>COMMUNITY PLAYER OF THE MATCH</small><strong>{match.potm.name}</strong></span><b>{match.potm.votes || 0}×</b></div>}
-            {communityTags.length > 0 && <div className="ri-v03-tag-cloud">{communityTags.map(item=>
-              <span key={item.tag} className={item.tag===match.dominantTag?"dominant":""}>{item.tag}<b>{item.count.toLocaleString()}×</b></span>)}</div>}
-          </div>}
-          <ReviewFeed reviews={match.reviews || []} onRefresh={onRefresh}/>
+          {!hasCrowdData ? <p className="ri-crowd-empty">No community ratings yet. Your entry can be the first.</p>
+          : communityHidden ? <CommunityVerdictGate spoiler={scoreHidden} onReveal={()=>{setRevealed(true);setCommunityRevealed(true)}}/> : <>
+            <div className="ri-crowd-heat-head"><span>{crowdHeat === null ? "TOO FEW RATINGS" : NAMES[Math.round(crowdHeat) - 1]}</span><strong>{crowdHeat?.toFixed(1) ?? "—"}</strong></div>
+            <div className="ri-crowd-heat-ramp" aria-label={crowdHeat === null ? "Too few ratings for heat" : `Community heat ${crowdHeat.toFixed(1)} out of 5`}>
+              {heatSteps(crowdHeat).map((color, index) => <i key={index} style={{background:color}} />)}
+            </div>
+            <p className="ri-crowd-verdict">{(crowdRatings ?? 0).toLocaleString()} ratings
+              {crowdHeat !== null && crowdRatings > 0 && ` · ${Math.round((Number(match.classic_count) || 0) / crowdRatings * 100)}% called it a Classic`}
+              {Number(match.potm_votes) >= MIN_COMMUNITY_RATINGS && match.potm?.name && ` · POTM went to ${match.potm.name}`}
+              {match.potm_votes != null && Number(match.potm_votes) < MIN_COMMUNITY_RATINGS && " · POTM: TOO FEW VOTES"}</p>
+            <ReviewFeed reviews={match.reviews || []} onRefresh={onRefresh}/>
+          </>}
         </section>
-      </> : <div className="ri-empty-state"><Radio size={22}/><strong>Nothing to review yet</strong><span>Community opens when the match finishes. The Companion tab is live now.</span></div>}
+        {/* §9 tablosu "Full time, unrated -> Rate this match"; §9.3 "inert until
+            there are stars". BUILD bu evre icin baska bir etiket vermiyor. */}
+        {rating <= 0 && <div className="ri-unrated-footer"><button type="button" disabled>{RATE_CTA}</button></div>}
+      </> : match.status === "upcoming" ? <section className="ri-appetite-entry">
+        <div className="ri-block-head"><small>YOUR READ</small><b>MATCH PREVIEW</b></div>
+        <h2>How much do you want to watch?</h2>
+        <p>Share a 1–5 reading before kick-off. This is not a match rating.</p>
+        {appetiteOpen(match, appetiteClock) && !appetiteClosed ? <>
+          <div className="ri-appetite-choices" role="group" aria-label="Your interest in watching this match" aria-busy={appetiteBusy}>
+            {[1, 2, 3, 4, 5].map(value => <button key={value} type="button" disabled={appetiteBusy}
+              aria-pressed={appetite === value} aria-label={`${value} out of 5`}
+              onClick={() => chooseAppetite(value)}>{value}</button>)}
+          </div>
+          <p className="ri-appetite-note">{appetite ? `${appetite} / 5 · Tap again to clear your read.` : "A read also adds this match to your watchlist."}</p>
+        </> : <p className="ri-appetite-note">Expected heat closes at kick-off.</p>}
+        {appetiteError && <p className="ri-appetite-error" role="alert">{appetiteError}</p>}
+      </section> : <div className="ri-empty-state"><Radio size={22}/><strong>Nothing to review yet</strong><span>Community opens when the match finishes. The Companion tab is live now.</span></div>}
 
       {allReviewsOpen && <AllReviews matchId={match.id}
-        title={`${match.home.short} ${match.score || "vs"} ${match.away.short}`}
+        title={`${match.home.short} ${scoreHidden ? "vs" : match.score || "vs"} ${match.away.short}`}
         onOpenThread={id=>setThreadId(id)}
         onClose={()=>setAllReviewsOpen(false)}/>}
+      {composerOpen && <ReviewComposer value={review} onChange={setReview} onClose={() => setComposerOpen(false)}
+        matchLabel={`${match.home.short} ${scoreHidden ? "vs" : (match.score || "vs")} ${match.away.short}`}
+        rating={rating} classic={classic}/>}
+      {playersOpen && <PlayersPicker players={playerOptions} potmId={eligibleIds.has(potmId) ? potmId : null}
+        respectIds={respect.filter(id => eligibleIds.has(id) && id !== potmId)}
+        onPotm={choosePotm} onRespect={toggleRespect} onClose={() => setPlayersOpen(false)}
+        matchLabel={`${match.home.short} ${scoreHidden ? "vs" : match.score || "vs"} ${match.away.short}`} />}
       {threadId && <ReviewThread entryId={threadId} onClose={()=>setThreadId(null)}/>}
       {actionNotice && <div key={actionNotice.id} role="status" className={`ri-action-toast ${actionNotice.tone}`} onAnimationEnd={() => setActionNotice(null)}>{actionNotice.message}</div>}
     </section>
@@ -579,12 +761,15 @@ function MatchDetail({ match, hideScores, onClose, onSave, onToggleWatchlist, on
 }
 
 function MatchDetailLoading({ onClose }) {
-  return <div className="ri-sheet-wrap" onClick={onClose}><section className="ri-detail-sheet" onClick={event => event.stopPropagation()}>
+  const dialog = useDialog({ onClose, label: "Match" });
+  return <div className="ri-sheet-wrap" onClick={onClose}><section {...dialog} className="ri-detail-sheet" onClick={event => event.stopPropagation()}>
     <SheetHandle onClose={onClose}/><Loading label="Loading match"><SheetSkeleton rows={3}/></Loading>
   </section></div>;
 }
 
 function ReviewFeed({ reviews, onRefresh }) {
+  const reviewer = reviewerFromStorage(localStorage);
+  const [replyAttempts] = useState(createReplyAttempts);
   const [openId, setOpenId] = useState(null);
   const [comments, setComments] = useState({});
   const [draft, setDraft] = useState("");
@@ -610,9 +795,12 @@ function ReviewFeed({ reviews, onRefresh }) {
   };
   const addComment = async id => {
     if (!draft.trim()) return;
+    const content = draft.trim();
+    const clientId = replyAttempts.forSend(id, content);
     setCommentState(v => ({ ...v, [id]: "saving" }));
     try {
-      await rankitApi.addComment(id, draft.trim());
+      await rankitApi.addComment(id, content, null, clientId);
+      replyAttempts.confirmed(id, content);
       setDraft("");
       const data = await rankitApi.comments(id);
       setComments(v => ({ ...v, [id]: data.comments || [] }));
@@ -623,14 +811,14 @@ function ReviewFeed({ reviews, onRefresh }) {
     }
   };
   const like = async review => {
-    if (busyLikes.includes(review.id)) return;
+    if (isOwnContent(review, reviewer) || busyLikes.includes(review.id)) return;
     const previous = reactions[review.id] || { liked: !!review.liked, likes: review.likes || 0 };
     const optimistic = { liked: !previous.liked, likes: Math.max(0, previous.likes + (previous.liked ? -1 : 1)) };
     setReactions(v => ({ ...v, [review.id]: optimistic }));
     setBusyLikes(v => [...v, review.id]);
     rankitHaptics.selection();
     try {
-      const result = await rankitApi.likeReview(review.id);
+      const result = await rankitApi.likeReview(review.id, optimistic.liked);
       setReactions(v => ({ ...v, [review.id]: result }));
       await onRefresh?.();
     } catch {
@@ -641,22 +829,26 @@ function ReviewFeed({ reviews, onRefresh }) {
   };
   return <div className="ri-review-feed"><div className="ri-chip-title">COMMUNITY REVIEWS <span>{reviews.length}</span></div>{reviews.map(r => <article key={r.id}>
     <div><strong>@{r.username}</strong><Stars value={r.rating || 0} compact/></div>{r.spoiler && !revealed.includes(r.id) ? <button className="ri-spoiler-cover" onClick={()=>setRevealed(v=>[...v,r.id])}><EyeOff size={14}/><span>Spoiler review</span><small>Tap to reveal</small></button> : <p>{r.review}</p>}
-    <footer><button disabled={busyLikes.includes(r.id)} aria-label={`${reactions[r.id]?.liked ? "Unlike" : "Like"} review by ${r.username}`} className={reactions[r.id]?.liked ? "active" : ""} onClick={() => like(r)}><Heart size={12} fill={reactions[r.id]?.liked ? "currentColor" : "none"}/> {reactions[r.id]?.likes ?? r.likes}</button><button onClick={() => toggleComments(r.id)}><MessageCircle size={12}/> {r.comments}</button></footer>
-    {openId === r.id && <div className="ri-comments">{commentState[r.id] === "loading" ? <Loading label="Loading replies"><SkeletonRows count={2} height={40} gap={6} radius={10}/></Loading> : (comments[r.id] || []).map(c => <p key={c.id}><strong>@{c.username}</strong> {c.content}</p>)}{commentState[r.id] === "error" && <p className="ri-inline-state error">Could not update replies. Try again.</p>}<div><input value={draft} onChange={e => setDraft(e.target.value)} onKeyDown={e=>e.key === "Enter" && addComment(r.id)} placeholder="Write a reply"/><button disabled={commentState[r.id] === "saving" || !draft.trim()} onClick={() => addComment(r.id)}><Send size={13}/></button></div></div>}
+    <footer><button disabled={isOwnContent(r, reviewer) || busyLikes.includes(r.id)} aria-label={isOwnContent(r, reviewer) ? `Your review · ${reactions[r.id]?.likes ?? r.likes} respects` : `${reactions[r.id]?.liked ? "Unlike" : "Like"} review by ${r.username}`} className={reactions[r.id]?.liked ? "active" : ""} onClick={() => like(r)}><Heart size={12} fill={reactions[r.id]?.liked ? "currentColor" : "none"}/> {reactions[r.id]?.likes ?? r.likes}</button><button disabled={!!r.spoiler && !revealed.includes(r.id)} onClick={() => toggleComments(r.id)}><MessageCircle size={12}/> {r.comments}</button></footer>
+    {openId === r.id && <div className="ri-comments">{commentState[r.id] === "loading" ? <Loading label="Loading replies"><SkeletonRows count={2} height={40} gap={6} radius={10}/></Loading> : r.spoiler && !revealed.includes(r.id) ? <p>Reveal the review to read its replies.</p> : (comments[r.id] || []).map(c => <p key={c.id}><strong>@{c.username}</strong> {c.content}</p>)}{commentState[r.id] === "error" && <p className="ri-inline-state error">Could not update replies. Try again.</p>}<div><input value={draft} onChange={e => setDraft(e.target.value)} onKeyDown={e=>e.key === "Enter" && addComment(r.id)} placeholder="Write a reply"/><button disabled={commentState[r.id] === "saving" || !draft.trim()} onClick={() => addComment(r.id)}><Send size={13}/></button></div></div>}
   </article>)}</div>;
 }
 
-function EntityDetail({ detail, onClose, onOpenMatch, onOpenEntity, onChanged }) {
+function EntityDetail({ detail, onClose, onOpenMatch, onOpenEntity, onChanged, hideScores = false, ratedMatchIds }) {
   const { kind, data } = detail;
-  if (!data) return <div className="ri-sheet-wrap" onClick={onClose}><section className="ri-detail-sheet ri-entity-sheet" onClick={e=>e.stopPropagation()}><SheetHandle onClose={onClose}/><Loading label="Loading"><SheetSkeleton rows={4}/></Loading></section></div>;
+  const entityName = data?.[kind]?.name || data?.[kind]?.username || data?.[kind]?.title;
+  const dialog = useDialog({ onClose, label: entityName || kind });
+  if (!data) return <div className="ri-sheet-wrap" onClick={onClose}><section {...dialog} className="ri-detail-sheet ri-entity-sheet" onClick={e=>e.stopPropagation()}><SheetHandle onClose={onClose}/><Loading label="Loading"><SheetSkeleton rows={4}/></Loading></section></div>;
   const entity = data[kind];
   const title = entity?.name || entity?.username || entity?.title;
   const subtitle = kind === "player" ? `${entity.sport} · ${entity.team_name || "Free agent"}` : kind === "team" ? `${entity.sport} · ${entity.country || "Global"}` : kind === "member" ? "RankIt member" : `Curated by @${entity.username}`;
   const matchesForEntity = (data.matches || []).map(fromApiMatch);
   const targetType = kind === "member" ? "user" : kind;
-  const toggleFollow = async () => { await rankitApi.follow({target_type:targetType,target_id:entity.id,notify:false}); onChanged(kind,entity.id); };
-  const toggleFavoriteEntity = async () => { await rankitApi.favorite({target_type:kind,target_id:entity.id}); onChanged(kind,entity.id); };
-  return <div className="ri-sheet-wrap" onClick={onClose}><section className="ri-detail-sheet ri-entity-sheet" onClick={e=>e.stopPropagation()}>
+  // Istenen durum ekranin gosterdiginin tersi; belirsiz istegin tekrari
+  // bunu geri cevirmesin diye acikca gonderiliyor (§5.4).
+  const toggleFollow = async () => { await rankitApi.follow({target_type:targetType,target_id:entity.id,notify:false}, !data.following); onChanged(kind,entity.id); };
+  const toggleFavoriteEntity = async () => { await rankitApi.favorite({target_type:kind,target_id:entity.id}, !data.favorited); onChanged(kind,entity.id); };
+  return <div className="ri-sheet-wrap" onClick={onClose}><section {...dialog} className="ri-detail-sheet ri-entity-sheet" onClick={e=>e.stopPropagation()}>
     <SheetHandle onClose={onClose}/>
     <button className="ri-sheet-close" onClick={onClose}><X size={19}/></button>
     <div className="ri-entity-hero" style={{"--entity-color":entity?.color || entity?.team_color || "#FFB11B"}}>
@@ -667,7 +859,13 @@ function EntityDetail({ detail, onClose, onOpenMatch, onOpenEntity, onChanged })
     {kind === "player" && <div className="ri-entity-stats"><div><strong>{data.stats.potm_votes}</strong><span>POTM</span></div><div><strong>{data.stats.respect_votes}</strong><span>Respect</span></div><div><strong>{data.stats.appearances}</strong><span>Matches</span></div></div>}
     {kind === "member" && <div className="ri-entity-stats"><div><strong>{data.stats.matches}</strong><span>Matches</span></div><div><strong>{data.stats.classics}</strong><span>Classics</span></div><div><strong>{Number(data.stats.avg_rating || 0).toFixed(1)}</strong><span>Average</span></div></div>}
     {kind === "team" && <section className="ri-entity-section"><div className="ri-section-head"><div><small>SEASON SQUAD</small><h2>Players</h2></div></div><div className="ri-player-links">{data.players.slice(0,30).map(p=><button key={p.id} onClick={()=>onOpenEntity("player",p.id)}><b>{p.shirt_no || "—"}</b><span>{p.name}<small>{p.potm_votes} POTM · {p.respect_votes} Respect</small></span><ChevronRight size={14}/></button>)}</div></section>}
-    {kind === "member" && <section className="ri-entity-section"><div className="ri-section-head"><div><small>RECENTLY</small><h2>Public diary</h2></div></div><div className="ri-member-diary">{data.entries.map(e=><button key={e.id} onClick={()=>onOpenMatch({id:e.match_id})}><strong>{e.home_short} · {e.away_short}</strong><Stars value={e.rating || 0} compact/><span>{e.review || e.watched_date}</span></button>)}</div></section>}
+    {kind === "member" && <section className="ri-entity-section"><div className="ri-section-head"><div><small>RECENTLY</small><h2>Public diary</h2></div></div><div className="ri-member-diary">{data.entries.map(e=>{
+      const shielded = hidesScore(hideScores, { status: "finished", my_rating: ratedMatchIds?.has(Number(e.match_id)) ? 1 : null });
+      return <button key={e.id} onClick={()=>onOpenMatch({id:e.match_id})}><strong>{e.home_short} · {e.away_short}</strong>
+        {!shielded && !e.review_withheld && <Stars value={e.rating || 0} compact/>}
+        <span>{e.review_withheld ? "Contains spoilers — open match to read" : shielded ? "Review hidden — open match to reveal" : e.review || e.watched_date}</span>
+      </button>;
+    })}</div></section>}
     {matchesForEntity.length > 0 && <section className="ri-entity-section"><div className="ri-section-head"><div><small>{kind === "list" ? "COLLECTION" : "MATCH HISTORY"}</small><h2>{kind === "list" ? `${matchesForEntity.length} matches` : "Recent matches"}</h2></div></div><div className="ri-entity-matches">{matchesForEntity.map(m=><button key={m.id} onClick={()=>onOpenMatch(m)}><div className="ri-mini-crests"><TeamMark team={m.home}/><TeamMark team={m.away}/></div><span><strong>{m.home.short} vs {m.away.short}</strong><small>{m.competition} · {m.date}</small></span><ChevronRight size={15}/></button>)}</div></section>}
   </section></div>;
 }
@@ -677,10 +875,13 @@ function EntityDetail({ detail, onClose, onOpenMatch, onOpenEntity, onChanged })
    puanlanmamışlar (puanlamak seriyi ayakta tutar), sonra son yedi günün
    yakalanmamışları. Arama en altta, çünkü çoğu zaman aradığın maç zaten
    ilk listede. */
-function RankSheet({ onClose, onOpenMatch }) {
+function RankSheet({ onClose, onOpenMatch, hideScores }) {
+  const dialog = useDialog({ onClose, label: "Rate a match" });
   const [query, setQuery] = useState("");
   const [found, setFound] = useState(null);
   const [data, setData] = useState(null);
+  // 3j: "Last 7 days · 18 unrated" KAPALI bir kart; liste dokununca acilir.
+  const [catchupOpen, setCatchupOpen] = useState(false);
   const tz = -new Date().getTimezoneOffset();
 
   useEffect(() => {
@@ -698,9 +899,10 @@ function RankSheet({ onClose, onOpenMatch }) {
     return () => clearTimeout(timer);
   }, [query]);
 
-  const row = (m, note) => (
-    <button key={m.id} className="ri-quick-row" onClick={() => { onClose(); onOpenMatch(m); }}>
-      <div className="ri-mini-crests"><TeamMark team={m.home}/><TeamMark team={m.away}/></div>
+  const night = nightStatus(data);
+  const row = (m, note, streak = false) => (
+    <button key={m.id} className={`ri-quick-row${streak ? " is-streak" : ""}`} onClick={() => { onClose(); onOpenMatch(m); }}>
+      <CrestPair home={{ short: m.home.short, color: m.home.color, crest_url: m.home.crest_url }} away={{ short: m.away.short, color: m.away.color, crest_url: m.away.crest_url }}/>
       <span>
         <strong>{m.home.short} vs {m.away.short}</strong>
         <small>{note}</small>
@@ -710,7 +912,7 @@ function RankSheet({ onClose, onOpenMatch }) {
   );
 
   return <div className="ri-sheet-wrap" onClick={onClose}>
-    <section className="ri-rank-sheet" onClick={e => e.stopPropagation()}>
+    <section {...dialog} className="ri-rank-sheet ri-quick-sheet" onClick={e => e.stopPropagation()}>
       <SheetHandle onClose={onClose}/>
       <div className="ri-rank-head">
         <div><small>RATE A MATCH</small><h2>What did you watch?</h2></div>
@@ -729,25 +931,25 @@ function RankSheet({ onClose, onOpenMatch }) {
         {!!data.tonight.length && (
           <div className="ri-quick-group">
             <small>FROM TONIGHT · NOT YET LOGGED</small>
+            {night.note && <p className={`ri-quick-note${night.tone === 'at-risk' ? ' at-risk' : ''}`} role="status">{night.note}</p>}
             {data.tonight.map(m => {
               const card = fromApiMatch(m);
-              // "Keeps your streak alive" yalnizca seri VARSA dogru; yoksa
-              // henuz korunacak bir sey yok, o zaman maçin kendi bilgisi yazar.
-              return row(card, data.streak > 0
+              return row(card, night.keepsStreak
                 ? <em>Keeps your streak alive</em>
-                : `Full time · ${card.time}`);
+                : `${hidesScore(hideScores, card) ? "Played" : "Full time"} · ${card.time}`, night.keepsStreak);
             })}
           </div>
         )}
         {!!data.catchup_total && (
           <div className="ri-quick-group">
             <small>OR CATCH UP</small>
-            <div className="ri-quick-row" style={{ borderTop: 0 }}>
+            <button type="button" className="ri-quick-row ri-quick-catchup" aria-expanded={catchupOpen}
+              onClick={() => setCatchupOpen(open => !open)}>
               <CalendarDays size={16}/>
-              <span><strong>Last 7 days</strong><small>Matches you have not rated</small></span>
+              <span><strong>Last 7 days</strong></span>
               <b className="ri-quick-count">{data.catchup_total} unrated</b>
-            </div>
-            {data.catchup.slice(0, 8).map(m => {
+            </button>
+            {catchupOpen && data.catchup.slice(0, 8).map(m => {
               const card = fromApiMatch(m);
               return row(card, `${card.competition} · ${card.dateOnly || card.date}`);
             })}
@@ -810,31 +1012,57 @@ function useCarousel(count) {
   return { ref, index, goTo };
 }
 
-function HomeView({ sport, setSport, hideScores, setHideScores, onOpen, onOpenCompetition, onNavigate, catalog = [], feed = [], loading = false }) {
+function FeedVerdict({ activity, ratedMatchIds, hideScores, quote = false, onOpen }) {
+  const [revealed, setRevealed] = useState(false);
+  const match = { status: "finished", my_rating: ratedMatchIds.has(Number(activity.match.id)) ? 1 : null, review_count: 1 };
+  const scoreHidden = hidesScore(hideScores, match) && !revealed;
+  const verdictCovered = communityVerdictCovered(match, { revealed });
+  if (activity.reviewWithheld) {
+    return <CommunityVerdictGate spoiler actionLabel="OPEN MATCH"
+      message="Contains spoilers — open the match to read this review."
+      onReveal={event => { event.stopPropagation(); onOpen?.(activity.match); }} />;
+  }
+  if (scoreHidden || verdictCovered) {
+    return <CommunityVerdictGate spoiler={scoreHidden} onReveal={event => { event.stopPropagation(); setRevealed(true); }} />;
+  }
+  return <><Stars value={activity.rating || 0} compact />{quote ? <blockquote>"{activity.text}"</blockquote> : <span>{activity.text}</span>}</>;
+}
+
+function HomeView({ sport, setSport, hideScores, setHideScores, onOpen, onOpenCompetition, onNavigate, catalog = [], feed = [], ratedMatchIds, loading = false }) {
   const shown = useMemo(() => catalog.filter(m => sport === "All" || m.sport === sport), [sport, catalog]);
   const heroes = useMemo(() => shown.slice(0, 3), [shown]);
   const day = rankitDayContext();
   const carousel = useCarousel(loading ? 3 : heroes.length);
   return <>
+    {/* 2b: kalkan acikken durum satiri + anahtar. Kontrolun kendisi 2a/2b'de
+        basliktaki kalkan; ayrica bir "Hide scores" dugmesi tahtada yok (ayni
+        ayar iki yerde duruyordu). Bayrak kapaliyken baslikta kalkan cizilmedigi
+        icin eski dugme yalniz o yolda kaliyor. */}
+    {RANKIT_NEW_CARD && hideScores && <div className="ri-shield-row">
+      <Shield size={19} aria-hidden="true"/>
+      <span><strong>Spoiler shield</strong><small>Scores, heat and reviews hidden</small></span>
+      <button type="button" role="switch" aria-checked="true" aria-label="Spoiler shield" onClick={() => setHideScores(false)}><i/></button>
+    </div>}
     <div className="ri-home-controls">
       <div className="ri-sport-scroll">
         {SPORTS.map(s => <button key={s} className={sport === s ? "active" : ""} onClick={() => setSport(s)}>{s}</button>)}
       </div>
-      <button className={`ri-hide-score${hideScores ? " active" : ""}`} onClick={() => setHideScores(v => !v)}>
+      {!RANKIT_NEW_CARD && <button className={`ri-hide-score${hideScores ? " active" : ""}`} onClick={() => setHideScores(v => !v)}>
         {hideScores ? <EyeOff size={15} /> : <Eye size={15} />} Hide scores
-      </button>
+      </button>}
     </div>
-    <section className="ri-section">
-      <div className="ri-section-head"><div><small>{day.eyebrow}</small><h2>{day.title}</h2></div><button onClick={() => onNavigate("Discover")}>See all</button></div>
+    {/* 2a: hero pill'lerin hemen altinda, ustunde baslik yok; gunun listesi
+        hero'nun ALTINDA "TONIGHT · 4 MATCHES" olarak geliyor. */}
+    <section className="ri-section ri-home-hero">
       <div className={`ri-hero-carousel${RANKIT_NEW_CARD ? " is-redesign" : ""}`} ref={carousel.ref}>{loading ? (RANKIT_NEW_CARD
           // 3k: iskelet kartin KENDI geometrisi, ayni yuvada -- veri gelince kayma yok.
           ? [0,1,2].map(i=><div key={i} className="ri-hero-slot"><SkeletonCard artHeight={150} crestSize={62} cut={22}/></div>)
           : [0,1,2].map(i=><MatchCardSkeleton key={i} featured/>)) : heroes.length ? heroes.map(m => RANKIT_NEW_CARD
         // Ekran 2a: hero kartı 323 genişlik / 150 sanat / 62 crest / 52 skor (§2.5).
-        ? <div key={m.id} className="ri-hero-slot" role="button" tabIndex={0} onClick={()=>onOpen(m)}
-            onKeyDown={e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();onOpen(m)}}}
+        ? <div key={m.id} className="ri-hero-slot" role="button" tabIndex={0} onClick={e=>{if(!e.target.closest("button"))onOpen(m)}}
+            onKeyDown={e=>{if(e.target===e.currentTarget&&(e.key==="Enter"||e.key===" ")){e.preventDefault();onOpen(m)}}}
             aria-label={`${m.home.short} vs ${m.away.short}`}>
-            <RedesignMatchCard {...toMatchCardProps(m,{hideScores,scoreSize:52,cardWidth:323,crestSize:62})} artHeight={150} crestSize={62} cut={22}/>
+            <RedesignMatchCard {...toMatchCardProps(m,{hideScores,scoreSize:52,cardWidth:323,crestSize:62})} onOpenCompetition={m.competition_id ? ()=>onOpenCompetition?.(m.competition_id) : undefined} artHeight={150} crestSize={62} cut={22}/>
           </div>
         : <MatchCard key={m.id} match={m} hideScores={hideScores} onOpen={onOpen} onOpenCompetition={onOpenCompetition} featured />) : <div className="ri-day-empty-slot"><EmptyState title={`No ${sport === "All" ? "matches" : sport.toLowerCase()} in this RankIt day`}
           body="A RankIt day runs 11:00 to 11:00. Nothing is scheduled in this one yet."
@@ -847,18 +1075,43 @@ function HomeView({ sport, setSport, hideScores, setHideScores, onOpen, onOpenCo
           onClick={() => carousel.goTo(index)} />)}
       </div>}
     </section>
+    {!loading && shown.length > 0 && <section className="ri-section ri-tonight">
+      <div className="ri-label-row"><span>{tonightLabel(shown.length, day.daytime)}</span>
+        <button type="button" onClick={() => onNavigate("Discover")}>See all</button></div>
+      <div className="ri-tonight-list">{tonightRows(shown).slice(0, 6).map(m => {
+        const st = tonightStatus(m);
+        const card = toMatchCardProps(m);
+        return <button type="button" key={m.id} className={`ri-tonight-row is-${st.kind}`} onClick={() => onOpen(m)}
+          aria-label={`${m.home.name || m.home.short} vs ${m.away.name || m.away.short}, ${st.text}`}>
+          <CrestDiamond side={32} color={card.homeColor} ink={card.homeCrestInk} abbr={card.homeAbbr} crestUrl={card.homeCrestUrl} badgeScale={0.3}/>
+          <span><strong>{m.home.name || m.home.short} vs {m.away.name || m.away.short}</strong>
+            <small>{st.kind === "live" && <i aria-hidden="true"/>}{st.text}</small></span>
+          {st.action && <b>{st.action}</b>}
+        </button>;
+      })}</div>
+    </section>}
     <section className="ri-section ri-friends-preview">
-      <div className="ri-section-head"><div><small>POPULAR ACROSS RANKIT</small><h2>Community reviews</h2></div><button onClick={() => onNavigate("Activity")}>Activity</button></div>
+      {/* 2b: bu bolumun basligi bir etiket satiri, iri bir baslik degil. */}
+      <div className="ri-label-row"><span>POPULAR ACROSS RANKIT</span>
+        <button type="button" onClick={() => onNavigate("Activity")}>Activity</button></div>
       {loading && !feed.length && <Loading label="Loading reviews"><SkeletonRows count={2} height={72}/></Loading>}
       {!loading && !feed.length && <EmptyState title="No reviews yet" body="Reviews people write about matches show up here." action="Find a match" onAction={() => onNavigate("Discover")}/>}
       {feed.slice(0, 2).map(a => <div className="ri-activity-row" key={`${a.user}-${a.id || a.match?.id}`}>
-        <div className="ri-avatar">{a.initials}</div><div><p><strong>{a.user}</strong> {a.action} <b>{a.match.home.short}–{a.match.away.short}</b></p><Stars value={a.rating || 0} compact /><span>{a.text}</span></div>
+        <div className="ri-avatar">{a.initials}</div><div><p><strong>{a.user}</strong> {a.action} <b>{a.match.home.short}–{a.match.away.short}</b></p><FeedVerdict activity={a} ratedMatchIds={ratedMatchIds} hideScores={hideScores} onOpen={onOpen}/></div>
       </div>)}
     </section>
   </>;
 }
 
-function DiscoverView({ hideScores, onOpen, onOpenCompetition, catalog = [], meta, listCatalog = [], onCreateList, onOpenList }) {
+function DiscoverView({ hideScores, onOpen, onOpenCompetition, onOpenHunt, catalog = [], meta, listCatalog = [], onCreateList, onOpenList }) {
+  // 2c ust bloğu: The Hunt ilerlemesi. Hata durumunda blok sessizce yok olur —
+  // Discover'in kendi isi katalog, koleksiyon ozeti onun ustune bir katman.
+  const [hunt, setHunt] = useState(null);
+  useEffect(() => {
+    let alive = true;
+    rankitApi.collections().then(r => { if (alive) setHunt(r?.summary || null); }).catch(() => {});
+    return () => { alive = false; };
+  }, []);
   const [sportFilter, setSportFilter] = useState(() => {
     try {
       const saved = localStorage.getItem("rankit:discover-sport");
@@ -868,6 +1121,9 @@ function DiscoverView({ hideScores, onOpen, onOpenCompetition, catalog = [], met
   const [competition, setCompetition] = useState("All");
   const [season, setSeason] = useState("All");
   const [status, setStatus] = useState("All");
+  // 6c MINIMUM HEAT (null = filtre yok) ve soldan acilan cekmece.
+  const [minHeat, setMinHeat] = useState(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [pageCatalog, setPageCatalog] = useState(catalog);
   const [total, setTotal] = useState(catalog.length);
   // Ilk sayfa gelene kadar YUKLENIYOR: bos izgara "0 matches" gibi okunurdu.
@@ -875,98 +1131,93 @@ function DiscoverView({ hideScores, onOpen, onOpenCompetition, catalog = [], met
   // Yukleme BASARISIZ mi oldu? Cevrimdisi ve onbellekte bir sey yokken bos
   // izgara "bu filtrelere uyan mac yok" diyordu -- yalan: bakilamadi bile.
   const [failed, setFailed] = useState(false);
-  const [refineOpen, setRefineOpen] = useState(false);
+  const requestVersion = useRef(0);
   // Turnuva sezondan BAGIMSIZ (sahibin karari, 2026-09-12): "Premier League
   // 25-26" ve "26-27" iki turnuva degil, bir turnuvanin iki sezonu. /meta
   // satirlari sezon basina geliyor; burada her turnuva BIR KEZ, sezonlariyla.
-  const families = useMemo(() => {
+  // Cekmece (6c) tum aileleri alir ve kendi taslak sporuna gore suzer; turnuva
+  // secince sezon en guncele kendiliginden gelir (FilterDrawer.pickCompetition).
+  const allFamilies = useMemo(() => {
     const byKey = new Map();
     for (const c of meta?.competitions || []) {
-      if (sportFilter !== "All" && c.sport !== sportFilter) continue;
       const key = `${c.sport}|${c.name}`;
       const fam = byKey.get(key) || { key, name: c.name, sport: c.sport, seasons: [] };
       if (!fam.seasons.includes(c.season)) fam.seasons.push(c.season);
       byKey.set(key, fam);
     }
-    return [...byKey.values()]
-      .map(f => ({ ...f, seasons: [...f.seasons].sort().reverse() }))
+    return [...byKey.values()].map(f => ({ ...f, seasons: [...f.seasons].sort().reverse() }))
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [meta?.competitions, sportFilter]);
-  const family = families.find(f => f.name === competition);
-  // Turnuva secildiyse yalnizca ONUN sezonlari; secilmediyse hepsi.
-  const seasonOptions = family ? family.seasons : (meta?.seasons || []);
-  const pickCompetition = name => {
-    setCompetition(name);
-    // Turnuvadan sonra sezon kendiliginden secilir: en guncel olani. Kullanici
-    // ikisini birlikte secmek zorunda degil; isterse sezonu degistirir.
-    const fam = families.find(f => f.name === name);
-    setSeason(name === "All" || !fam ? "All" : fam.seasons[0]);
-  };
+  }, [meta?.competitions]);
   useEffect(() => {
     try { localStorage.setItem("rankit:discover-sport", sportFilter); } catch { /* depolama kapalıysa filtre yine çalışır */ }
   }, [sportFilter]);
-  const load = async (append = false) => {
+  const load = useCallback(async (offset = 0) => {
+    const append = offset > 0;
+    const version = ++requestVersion.current;
     setLoading(true); setFailed(false);
-    const offset = append ? pageCatalog.length : 0;
-    const data = await rankitApi.catalog({ sport: sportFilter, competition, season, status: status === "All" ? "All" : status.toLowerCase(), limit: 60, offset });
-    setPageCatalog(v => append ? [...v, ...(data.matches || []).map(fromApiMatch)] : (data.matches || []).map(fromApiMatch));
-    setTotal(data.total || 0); setLoading(false);
-  };
-  useEffect(() => { load(false).catch(()=>{ setLoading(false); setFailed(true); }); }, [sportFilter, competition, season, status]);
-  const clearFilters = () => { setSportFilter("All"); setCompetition("All"); setSeason("All"); setStatus("All"); setRefineOpen(false); };
-  const activeFilterCount = [sportFilter,competition,season,status].filter(x=>x!=="All").length;
-  const refinementCount = [competition, season].filter(x => x !== "All").length;
-  const refinementSummary = [competition !== "All" ? competition : null, season !== "All" ? season : null].filter(Boolean).join(" · ") || "All seasons and competitions";
-  const smartCatalog = useMemo(() => [...pageCatalog].sort((a, b) => {
-    const statusRank = { live: 0, upcoming: 1, finished: 2 };
-    const aStatus = String(a.status || "upcoming").toLowerCase();
-    const bStatus = String(b.status || "upcoming").toLowerCase();
-    const statusDiff = (statusRank[aStatus] ?? 3) - (statusRank[bStatus] ?? 3);
-    if (statusDiff) return statusDiff;
-    if (aStatus === "finished") {
-      const popularity = m => (Number(m.ratings || m.rating_count) || 0) * 3 + (Number(m.reviewCount || m.review_count) || 0) * 2 + (Number(m.communityRating || m.community_rating) || 0);
-      return popularity(b) - popularity(a);
+    try {
+      const data = await rankitApi.catalog({ sport: sportFilter, competition, season, status: status === "All" ? "All" : status.toLowerCase(), minHeat, limit: 60, offset });
+      if (version !== requestVersion.current) return;
+      const incoming = (data.matches || []).map(fromApiMatch);
+      setPageCatalog(v => append ? [...new Map([...v, ...incoming].map(m => [m.id, m])).values()] : incoming);
+      setTotal(data.total || 0);
+    } catch (error) {
+      if (version === requestVersion.current) setFailed(error);
+    } finally {
+      if (version === requestVersion.current) setLoading(false);
     }
-    const timeOf = m => {
-      const parsed = new Date(m.starts_at || m.date).getTime();
-      return Number.isNaN(parsed) ? Number.MAX_SAFE_INTEGER : parsed;
-    };
-    return timeOf(a) - timeOf(b);
-  }), [pageCatalog]);
-  return <><div className="ri-page-title"><small>FIND YOUR NEXT MATCH</small><h1>Discover</h1></div>
-    <div className={`ri-filter-panel ri-filter-redesign${refineOpen ? " is-open" : ""}`}>
-      <div className="ri-filter-heading"><div><small>QUICK FILTERS</small><strong>{loading ? "Updating matches…" : failed ? `Offline · ${pageCatalog.length} saved on this phone` : `${total} matches`}</strong></div>{activeFilterCount>0&&<button className="ri-filter-reset" onClick={clearFilters}><RotateCcw size={12}/> Clear {activeFilterCount}</button>}</div>
-      <div className="ri-filter-group"><span>SPORT</span><div className="ri-filter-pills">{["All","Basketball","Football"].map(s=><button key={s} className={sportFilter===s?"active":""} onClick={()=>{setSportFilter(s);setCompetition("All")}}>{s}</button>)}</div></div>
-      <div className="ri-filter-group"><span>STATUS</span><div className="ri-filter-pills">{["All","Live","Upcoming","Finished"].map(s=><button key={s} className={status===s?"active":""} onClick={()=>setStatus(s)}>{s}</button>)}</div></div>
-      <button className="ri-refine-trigger" aria-expanded={refineOpen} onClick={()=>setRefineOpen(v=>!v)}>
-        <span className="ri-refine-icon"><SlidersHorizontal size={16}/></span><span><strong>Season & competition</strong><small>{refinementSummary}</small></span>{refinementCount>0&&<b>{refinementCount}</b>}<ChevronDown className="ri-refine-chevron" size={16}/>
+  }, [sportFilter, competition, season, status, minHeat]);
+  useEffect(() => {
+    let active = true;
+    const requests = requestVersion;
+    // StrictMode'un ilk kurulum/temizlik çevriminde gereksiz istek başlatma.
+    Promise.resolve().then(() => { if (active) load(); });
+    return () => { active = false; requests.current++; };
+  }, [load]);
+  const clearFilters = () => { setSportFilter("All"); setCompetition("All"); setSeason("All"); setStatus("All"); setMinHeat(null); };
+  const filters = { sport: sportFilter, status, minHeat, competition, season };
+  const activeFilterCount = filterCount(filters);
+  const applyFilters = f => { setSportFilter(f.sport); setStatus(f.status); setMinHeat(f.minHeat); setCompetition(f.competition); setSeason(f.season); };
+  // Cekmecenin "Show N matches" sayisi: ayni uc, tek satir, gercek `total`.
+  const countFor = useCallback(async draft => (await rankitApi.catalog({ ...toCatalogQuery(draft), limit: 1, offset: 0 })).total ?? 0, []);
+  // Siralama katalog ucuna ait; her sayfa geldiginde ekrani yeniden dizme.
+  const smartCatalog = pageCatalog;
+  return <><div className="ri-page-title ri-discover-title"><div><small>FIND YOUR NEXT MATCH</small><h1>Discover</h1></div>
+      {/* 6c: filtreler SOLDAN acilan cekmecede, sayfanin ustunde degil. Ikon
+          filtre aktifken altin (tahta), degilken notr. */}
+      <button type="button" className={`ri-filter-trigger${activeFilterCount ? " is-active" : ""}`} onClick={()=>setDrawerOpen(true)}
+        aria-label={activeFilterCount ? `Filters, ${activeFilterCount} active` : "Filters"} aria-haspopup="dialog">
+        <SlidersHorizontal size={18}/>{!!activeFilterCount && <b>{activeFilterCount}</b>}
       </button>
-      <div className="ri-refine-collapse" aria-hidden={!refineOpen}><div><div className="ri-catalog-selects">
-        {/* Once TURNUVA (her biri bir kez), sonra SEZON. Sezon degismek
-            turnuvayi sifirlamiyor -- eskiden sifirliyordu ve "PL 25-26"yi
-            bulmak icin once sezonu sonra turnuvayi secmek gerekiyordu. */}
-        <label><span>COMPETITION</span><select value={competition} onChange={e=>pickCompetition(e.target.value)}><option value="All">All competitions</option>{families.map(f=><option key={f.key} value={f.name}>{f.name}</option>)}</select></label>
-        <label><span>SEASON</span><select value={season} onChange={e=>setSeason(e.target.value)}><option value="All">All seasons</option>{seasonOptions.map(s=><option key={s} value={s}>{s}</option>)}</select></label>
-      </div></div></div>
     </div>
-    <section className="ri-section"><div className="ri-section-head"><div><small>COMMUNITY PICKS</small><h2>Popular this week</h2></div></div>
+    {drawerOpen && <FilterDrawer value={filters} families={allFamilies} allSeasons={meta?.seasons || []}
+      countFor={countFor} onApply={applyFilters} onClose={()=>setDrawerOpen(false)}/>}
+    {/* 2c: The Hunt ozeti — 2m dizininin girisi. Yuzde yoksa (hic acilmis
+        koleksiyon yok) blok hic cizilmiyor: "0%" bilmemekle ayni sey degil. */}
+    {huntLine(hunt) && <button type="button" className="ri-hunt-summary" onClick={onOpenHunt}>
+      <strong>{huntPercent(hunt) || "—"}</strong>
+      <span><small>THE HUNT</small><b>{huntLine(hunt)}</b></span>
+      <ChevronRight size={16}/>
+    </button>}
+    <section className="ri-section"><div className="ri-section-head"><div><small>{season === "All" ? "MATCH CATALOGUE" : season}</small><h2>{status === "All" ? "Matches to explore" : `${status} matches`}</h2></div>
+      {/* Satir ici panel gidince sayi burada (2c altinda "148 MATCHES"). */}
+      <span className="ri-discover-count" aria-live="polite">{loading ? "Updating…" : failed ? "" : `${total.toLocaleString("en-GB")} ${total === 1 ? "MATCH" : "MATCHES"}`}</span></div>
+      {failed && <ErrorState error={failed} onRetry={()=>load()}/>}
       {loading && !pageCatalog.length && <Loading label="Loading matches"><div className={`ri-discover-grid${RANKIT_NEW_CARD ? " is-redesign" : ""}`}>
         {[0,1,2,3].map(i=><div key={i} className="ri-card-slot">{RANKIT_NEW_CARD ? <SkeletonCard compact crestSize={44} cut={14} scoreSize={30}/> : <MatchCardSkeleton/>}</div>)}
       </div></Loading>}
-      {!loading && !pageCatalog.length && (failed
-        ? <EmptyState title="Discover needs a connection" body="Nothing from here was saved on this phone yet. Your diary and anything you opened recently still work." action="Retry" onAction={() => load(false).catch(() => { setLoading(false); setFailed(true); })}/>
-        : <EmptyState title="No matches for these filters" body="Nothing in the catalogue matches this sport, status, competition and season together." action="Clear filters" onAction={clearFilters}/>)}
+      {!loading && !failed && !pageCatalog.length && <EmptyState title="No matches for these filters" body="Nothing in the catalogue matches this sport, status, competition and season together." action="Clear filters" onAction={clearFilters}/>}
       <div className={`ri-discover-grid${RANKIT_NEW_CARD ? " is-redesign" : ""}`}>{smartCatalog.map(m => RANKIT_NEW_CARD
         // Ekran 2c, §2.5 preset: 155 genislik / crest 44 / skor 30, compact.
-        ? <div key={m.id} className="ri-card-slot" role="button" tabIndex={0} onClick={()=>onOpen(m)}
-            onKeyDown={e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();onOpen(m)}}}
+        ? <div key={m.id} className="ri-card-slot" role="button" tabIndex={0} onClick={e=>{if(!e.target.closest("button"))onOpen(m)}}
+            onKeyDown={e=>{if(e.target===e.currentTarget&&(e.key==="Enter"||e.key===" ")){e.preventDefault();onOpen(m)}}}
             aria-label={`${m.home.short} vs ${m.away.short}`}>
-            <RedesignMatchCard {...toMatchCardProps(m,{hideScores,compact:true,scoreSize:30,cardWidth:155,crestSize:44})} crestSize={44} cut={14}/>
+            <RedesignMatchCard {...toMatchCardProps(m,{hideScores,compact:true,scoreSize:30,cardWidth:155,crestSize:44})} onOpenCompetition={m.competition_id ? ()=>onOpenCompetition?.(m.competition_id) : undefined} crestSize={44} cut={14}/>
           </div>
         : <MatchCard key={m.id} match={m} hideScores={hideScores} onOpen={onOpen} onOpenCompetition={onOpenCompetition} />)}</div>
-      {pageCatalog.length < total && <button className="ri-load-more" disabled={loading} aria-busy={loading} onClick={()=>load(true)}>{loading?"Loading…":`Load more · ${pageCatalog.length}/${total}`}</button>}
+      {pageCatalog.length < total && <button className="ri-load-more" disabled={loading} aria-busy={loading} onClick={()=>load(pageCatalog.length)}>{loading?"Loading…":`Load more · ${pageCatalog.length}/${total}`}</button>}
       {/* Sonlu koleksiyon: hepsi yuklendiyse bunu SOYLER (§5). */}
-      {!loading && total > 0 && pageCatalog.length >= total && <EndOfList count={total}/>}
+      {!loading && !failed && total > 0 && pageCatalog.length >= total && <EndOfList count={total}/>}
     </section>
     <section className="ri-section"><div className="ri-section-head"><div><small>CURATED BY MEMBERS</small><h2>Popular lists</h2></div><button onClick={onCreateList}>Create</button></div>
       {!listCatalog.length && <EmptyState title="No lists yet" body="A list is a shelf of matches someone curates. Nobody has made one." action="Create a list" onAction={onCreateList}/>}
@@ -975,6 +1226,7 @@ function DiscoverView({ hideScores, onOpen, onOpenCompetition, catalog = [], met
 }
 
 function ListCreator({ catalog, onClose, onCreated }) {
+  const dialog = useDialog({ onClose, label: "Create a list" });
   const [title, setTitle] = useState("");
   const [ranked, setRanked] = useState(false);
   const [selected, setSelected] = useState([]);
@@ -986,56 +1238,101 @@ function ListCreator({ catalog, onClose, onCreated }) {
     await rankitApi.createList({ title: title.trim(), description: "Created in RankIt", ranked, visibility: "public", match_ids: selected });
     await onCreated(); onClose();
   };
-  return <div className="ri-sheet-wrap" onClick={onClose}><section className="ri-rank-sheet" onClick={e=>e.stopPropagation()}><SheetHandle onClose={onClose}/><div className="ri-rank-head"><div><small>YOUR COLLECTION</small><h2>Create a list</h2></div><button onClick={onClose}><X size={20}/></button></div><label className="ri-search"><ListPlus size={17}/><input value={title} onChange={e=>setTitle(e.target.value)} placeholder="List title"/></label><label className="ri-check"><input type="checkbox" checked={ranked} onChange={e=>setRanked(e.target.checked)}/> Ranked list</label><div className="ri-rank-results">{catalog.map(m=><button key={m.id} className={selected.includes(m.id)?"selected":""} onClick={()=>toggle(m.id)}><div className="ri-mini-crests"><TeamMark team={m.home}/><TeamMark team={m.away}/></div><span><strong>{m.home.short} vs {m.away.short}</strong><small>{m.competition}</small></span><b>{selected.includes(m.id)?"✓":"+"}</b></button>)}</div><button className="ri-review-cta" disabled={saving || !title.trim()} onClick={save}>{saving?"Creating…":"Create list"}</button></section></div>;
+  return <div className="ri-sheet-wrap" onClick={onClose}><section {...dialog} className="ri-rank-sheet" onClick={e=>e.stopPropagation()}><SheetHandle onClose={onClose}/><div className="ri-rank-head"><div><small>YOUR COLLECTION</small><h2>Create a list</h2></div><button onClick={onClose}><X size={20}/></button></div><label className="ri-search"><ListPlus size={17}/><input value={title} onChange={e=>setTitle(e.target.value)} placeholder="List title"/></label><label className="ri-check"><input type="checkbox" checked={ranked} onChange={e=>setRanked(e.target.checked)}/> Ranked list</label><div className="ri-rank-results">{catalog.map(m=><button key={m.id} className={selected.includes(m.id)?"selected":""} onClick={()=>toggle(m.id)}><div className="ri-mini-crests"><TeamMark team={m.home}/><TeamMark team={m.away}/></div><span><strong>{m.home.short} vs {m.away.short}</strong><small>{m.competition}</small></span><b>{selected.includes(m.id)?"✓":"+"}</b></button>)}</div><button className="ri-review-cta" disabled={saving || !title.trim()} onClick={save}>{saving?"Creating…":"Create list"}</button></section></div>;
 }
 
-function ActivityView({ diaryEntries = [], diaryLoaded = true, watchlist = [], listCatalog = [], friendFeed = [], onOpen, onOpenCompetition, onOpenList, onRank, onFind, onNavigate, onCreateList }) {
-  const [sub, setSub] = useState(() => { try { return localStorage.getItem("rankit:activity-tab") || "Friends"; } catch { return "Friends"; } });
-  const [diaryView, setDiaryView] = useState("Timeline");
-  const [filter, setFilter] = useState("Watched");
+function ActivityView({ initialShelf = false, diaryEntries = [], diaryLoaded = true, watchlist = [], listCatalog = [], friendFeed = [], ratedMatchIds, hideScores, onOpen, onOpenCompetition, onOpenList, onRank, onFind, onNavigate, onCreateList }) {
+  const [sub, setSub] = useState(() => { if (initialShelf) return "Diary"; try { return localStorage.getItem("rankit:activity-tab") || "Friends"; } catch { return "Friends"; } });
+  const [diaryView, setDiaryView] = useState(initialShelf ? "Cards" : "Timeline");
+  // Sahibin karari (2026-09-23): Watched / Classics / Watchlist / Lists ve
+  // siralama sayfanin ustunde pill olarak DURMUYOR; 2e'deki sag ust "Newest"
+  // yazisina dokununca acilan barda. Sayfa tahtadaki sade haline donuyor.
+  const [show, setShow] = useState("Watched");
+  const [sort, setSort] = useState("Newest");
   const [watchSort, setWatchSort] = useState("Match date");
+  const [barOpen, setBarOpen] = useState(false);
   // Defter BOSSA bos kalir (§5, 3l: "We won't fill it with anything you
   // didn't watch"). Eskiden bos bir defter mockData'daki maclarla -- ve
   // kullanicinin hic vermedigi 5 yildizlarla -- dolduruluyordu.
   const diaryRows = diaryEntries;
-  const filteredDiary = filter === "Classics" ? diaryRows.filter(e=>e.classic) : diaryRows;
-  const sortedWatchlist = useMemo(() => [...watchlist].sort((a,b) => watchSort === "Competition" ? a.competition.localeCompare(b.competition) : watchSort === "Added" ? Number(b.id)-Number(a.id) : new Date(a.starts_at)-new Date(b.starts_at)), [watchlist,watchSort]);
+  const shownDiary = useMemo(() => sortDiary(filterDiary(diaryRows, show), sort), [diaryRows, show, sort]);
+  const sortedWatchlist = useMemo(() => sortWatchlist(watchlist, watchSort), [watchlist, watchSort]);
+  const activeSort = show === "Watchlist" ? watchSort : sort;
+  const pickSort = value => show === "Watchlist" ? setWatchSort(value) : setSort(value);
+  const hasViews = show === "Watched" || show === "Classics";
+  const isHidden = e => hidesScore(hideScores, { status: e.status, my_rating: e.rating });
   useEffect(()=>{ try { localStorage.setItem("rankit:activity-tab",sub); } catch { /* tercih opsiyonel */ } },[sub]);
-  const heatDays = Array.from({length:28},(_,i)=>{ const d=new Date(); d.setDate(d.getDate()-(27-i)); const key=d.toISOString().slice(0,10); return diaryRows.filter(e=>e.watched_date===key).length; });
-  return <><div className="ri-page-title"><small>YOUR SPORTING LIFE</small><h1>Activity</h1></div>
-    <div className="ri-segment"><button className={sub === "Friends" ? "active" : ""} onClick={() => setSub("Friends")}>Friends</button><button className={sub === "Diary" ? "active" : ""} onClick={() => setSub("Diary")}>Diary</button></div>
-    {sub === "Friends" ? <div className="ri-activity-list">{friendFeed.map(a => <article key={a.id || `${a.user}-${a.match.id}`} onClick={()=>onOpen(a.match)}><div className="ri-avatar">{a.initials}</div><div className="ri-feed-copy"><p><strong>{a.user}</strong> {a.action}</p><h3>{a.match.home.name || a.match.home.short} <span>vs</span> {a.match.away.name || a.match.away.short}</h3><Stars value={a.rating || 0} compact /><blockquote>"{a.text}"</blockquote><small><MessageCircle size={12}/> Open match</small></div></article>)}{!friendFeed.length && <EmptyState title="No activity yet" body="Reviews from people you follow land here. RankIt won't suggest anyone — search for someone you know." action="Find people" onAction={onFind}/>}</div>
-      : <div className="ri-diary"><div className="ri-diary-toolbar"><div className="ri-diary-filters">{["Watched","Watchlist","Classics","Lists"].map(x=><button key={x} className={filter===x?"active":""} onClick={()=>setFilter(x)}>{x}</button>)}</div>{filter !== "Lists" && <div className="ri-view-toggle"><button className={diaryView==="Timeline"?"active":""} onClick={()=>setDiaryView("Timeline")}><List size={14}/></button><button className={diaryView==="Cards"?"active":""} onClick={()=>setDiaryView("Cards")} aria-label="Shelf view"><LayoutGrid size={14}/></button></div>}</div>
-      {filter === "Watchlist" ? <><label className="ri-watch-sort"><span>SORT WATCHLIST</span><select value={watchSort} onChange={e=>setWatchSort(e.target.value)}><option>Match date</option><option>Added</option><option>Competition</option></select></label><div className="ri-discover-grid">{sortedWatchlist.map(m=><MatchCard key={m.id} match={m} hideScores={false} onOpen={onOpen} onOpenCompetition={onOpenCompetition}/>)}</div>
-      {!sortedWatchlist.length && <EmptyState title="Nothing on your watchlist" body="Add an upcoming match and it waits here until kick-off." action="Browse upcoming" onAction={() => onNavigate?.("Discover")}/>}
-      {!!sortedWatchlist.length && <EndOfList count={sortedWatchlist.length}/>}</>
-      : filter === "Lists" ? <><div className="ri-list-stack">{listCatalog.map(l=><article key={l.id} onClick={()=>onOpenList(l.id)}><ListPlus size={18}/><div><strong>{l.title}</strong><span>{l.match_count} matches · {l.ranked?"Ranked":"Unranked"}</span></div></article>)}</div>
-        {!listCatalog.length && <EmptyState title="No lists yet" body="A list is a shelf you curate — the matches you'd put in front of someone." action="Create a list" onAction={onCreateList}/>}</>
+  const openMatch = match => onOpen(match);
+  // 2e raf karti: 200px, crest 34, skor 26 (basketbol 21). Cerceve YOK --
+  // kart kendi kesigini tasiyor (eski .ri-diary-cards kutusu ikinci bir
+  // cerceve ciziyordu).
+  const shelfSlot = (key, label, open, card) => <div key={key} className="ri-card-slot" role="button" tabIndex={0}
+    aria-label={label} onClick={event=>{if(!event.target.closest("button"))open()}}
+    onKeyDown={event=>{if(event.target===event.currentTarget&&(event.key==="Enter"||event.key===" ")){event.preventDefault();open()}}}>{card}</div>;
+  return <><div className="ri-page-title ri-activity-title"><h1>Activity</h1>
+      {/* 2e: TIMELINE | SHELF baslik satirinin saginda. Yeri sabit -- 2d'deki
+          gibi ay satirina konsaydi, basinca yer degistiren bir dugme olurdu. */}
+      {sub === "Diary" && hasViews && <div className="ri-view-toggle" role="group" aria-label="Diary view">
+        <button type="button" aria-pressed={diaryView==="Timeline"} className={diaryView==="Timeline"?"active":""} onClick={()=>setDiaryView("Timeline")}>TIMELINE</button>
+        <button type="button" aria-pressed={diaryView==="Cards"} className={diaryView==="Cards"?"active":""} onClick={()=>setDiaryView("Cards")}>SHELF</button></div>}
+    </div>
+    <div className="ri-segment is-tabs"><button className={sub === "Friends" ? "active" : ""} onClick={() => setSub("Friends")}>Friends</button><button className={sub === "Diary" ? "active" : ""} onClick={() => setSub("Diary")}>Diary</button></div>
+    {sub === "Friends" ? RANKIT_NEW_CARD
+      // 2q: takip ettiklerinin akisi, her kayit bir koleksiyon karti.
+      ? <FriendsFeed hideScores={hideScores} onOpen={onOpen} onFind={onFind}/>
+      : <div className="ri-activity-list">{friendFeed.map(a => <article key={a.id || `${a.user}-${a.match.id}`} onClick={event=>{if(!event.target.closest("button"))onOpen(a.match)}}><div className="ri-avatar">{a.initials}</div><div className="ri-feed-copy"><p><strong>{a.user}</strong> {a.action}</p><h3>{a.match.home.name || a.match.home.short} <span>vs</span> {a.match.away.name || a.match.away.short}</h3><FeedVerdict activity={a} ratedMatchIds={ratedMatchIds} hideScores={hideScores} onOpen={onOpen} quote/><small><MessageCircle size={12}/> Open match</small></div></article>)}{!friendFeed.length && <EmptyState title="No activity yet" body="Reviews from people you follow land here. RankIt won't suggest anyone — search for someone you know." action="Find people" onAction={onFind}/>}</div>
+      : <div className="ri-diary">
+        {/* 2e: "142 WATCHED · 11 CLASSICS" ve sagda "Newest" -- filtre barinin tetikleyicisi. */}
+        <div className="ri-diary-meta">
+          <span>{statLine({ show, entries: diaryRows, watchlist, lists: listCatalog })}</span>
+          <button type="button" className={`ri-diary-sort${barOpen ? " is-open" : ""}`} aria-expanded={barOpen}
+            aria-controls="ri-diary-bar" onClick={()=>setBarOpen(open=>!open)}>
+            {triggerLabel(show, activeSort)}<ChevronDown size={12} aria-hidden="true"/></button>
+        </div>
+        {barOpen && <DiaryFilterBar id="ri-diary-bar" show={show} sort={activeSort} onShow={setShow} onSort={pickSort}/>}
+      {show === "Watchlist" ? (!sortedWatchlist.length
+          ? <EmptyState title="Nothing on your watchlist" body="Add an upcoming match and it waits here until kick-off." action="Browse upcoming" onAction={() => onNavigate?.("Discover")}/>
+          : <><div className={`ri-diary-cards${RANKIT_NEW_CARD ? " is-redesign" : ""}`}>{sortedWatchlist.map(m => RANKIT_NEW_CARD
+              ? shelfSlot(m.id, `${m.home.short} vs ${m.away.short}`, () => openMatch(m),
+                <RedesignMatchCard {...toMatchCardProps(m,{hideScores,compact:true,scoreSize:m.sport==="Basketball"?21:26,cardWidth:155,crestSize:34})} onOpenCompetition={m.competition_id ? ()=>onOpenCompetition?.(m.competition_id) : undefined} crestSize={34} cut={14}/>)
+              : <MatchCard key={m.id} match={m} hideScores={hideScores} onOpen={onOpen} onOpenCompetition={onOpenCompetition}/>)}</div>
+            <EndOfList count={sortedWatchlist.length}/></>)
+      : show === "Lists" ? (listCatalog.length
+          // 3h'in satir dili: 68px, #151618, 14px yaricap.
+          ? <div className="ri-dlists">{listCatalog.map(l=><button type="button" key={l.id} onClick={()=>onOpenList(l.id)}>
+              <span><strong>{l.title}</strong><small>{(l.match_count ?? 0).toLocaleString("en-GB")} {l.match_count === 1 ? "match" : "matches"} · {l.ranked ? "Ranked" : "Unranked"}</small></span>
+              <ChevronRight size={15} aria-hidden="true"/></button>)}</div>
+          : <EmptyState title="No lists yet" body="A list is a shelf you curate — the matches you'd put in front of someone." action="Create a list" onAction={onCreateList}/>)
       : !diaryLoaded ? <Loading label="Loading your diary">{diaryView === "Cards" && RANKIT_NEW_CARD
-          ? <div className="ri-diary-cards is-redesign">{[0,1,2,3].map(i=><div key={i} className="ri-card-slot"><SkeletonCard compact crestSize={40} cut={14} scoreSize={28}/></div>)}</div>
-          : <SkeletonRows count={4} height={58} gap={8} radius={12}/>}</Loading>
-      : !filteredDiary.length ? (filter === "Classics"
+          ? <div className="ri-diary-cards is-redesign">{[0,1,2,3].map(i=><div key={i} className="ri-card-slot"><SkeletonCard compact crestSize={34} cut={14} scoreSize={26}/></div>)}</div>
+          : <SkeletonRows count={4} height={72} gap={0} radius={0}/>}</Loading>
+      : !shownDiary.length ? (show === "Classics"
           ? <EmptyState title="No classics yet" body="Stamp a match Classic when it earns it. Only the ones you stamp show here." action="Rate a match" onAction={onRank}/>
           : <EmptyState title="Nothing in the diary yet" body="Rate one match and it starts here. We won't fill it with anything you didn't watch." action="Rate your first match" onAction={onRank}/>)
-      : diaryView === "Timeline" ? <><div className="ri-diary-heat"><header><span>LAST 28 DAYS</span><strong>{heatDays.reduce((a,n)=>a+n,0)} watched</strong></header><div>{heatDays.map((n,i)=><i key={i} data-level={Math.min(3,n)}/>)}</div></div>{filteredDiary.map((e,index)=>{const month=new Date(`${e.watched_date}T12:00:00`).toLocaleDateString("en-GB",{month:"long",year:"numeric"});const prev=index?new Date(`${filteredDiary[index-1].watched_date}T12:00:00`).toLocaleDateString("en-GB",{month:"long",year:"numeric"}):null;return <div key={e.id}>{month!==prev&&<div className="ri-diary-group"><span>{e.competition}</span><strong>{month}</strong></div>}<div className="ri-diary-row" onClick={()=>onOpen({id:e.match_id})}><span className="ri-diary-date">{e.watched_date}</span><div className="ri-mini-crests"><TeamMark team={{short:e.home_short,color:e.home_color}}/><TeamMark team={{short:e.away_short,color:e.away_color}}/></div><div><strong>{e.home_short} vs {e.away_short}</strong><small>{e.home_score} - {e.away_score} · {e.competition}</small></div><Stars value={e.rating||0} compact/></div></div>})}<EndOfList count={filteredDiary.length}/></>
+      : diaryView === "Timeline" ? <>
+          {/* 2d: son 28 gece. Seridin sorusu "ne kadar izledim" -- Classics
+              gorunumunde tum defteri gosterirdi, o yuzden yalniz Watched'ta. */}
+          {show === "Watched" && <DiaryHeatStrip entries={diaryRows}/>}
+          <DiaryTimeline entries={shownDiary} grouped={groupsByMonth(sort)} isHidden={isHidden} onOpen={onOpen}/>
+          <EndOfList count={shownDiary.length}/></>
       : RANKIT_NEW_CARD
-      // Ekran 2e "SHELF", §2.5 preset: 155 genislik / crest 40 / skor 28.
-      ? <><div className="ri-diary-cards is-redesign">{filteredDiary.map(e=><div key={e.id} className="ri-card-slot" role="button" tabIndex={0}
-          aria-label={`Open ${e.home_short} vs ${e.away_short}`} onClick={()=>onOpen({id:e.match_id})}
-          onKeyDown={event=>{if(event.key==="Enter"||event.key===" "){event.preventDefault();onOpen({id:e.match_id})}}}>
-          <RedesignMatchCard {...diaryToMatchCardProps(e,{compact:true,scoreSize:28,cardWidth:155,crestSize:40})} crestSize={40} cut={14}/>
-        </div>)}</div><EndOfList count={filteredDiary.length}/></>
-      : <div className="ri-diary-cards">{filteredDiary.map(e=><div role="button" tabIndex={0} aria-label={`Open ${e.home_short} vs ${e.away_short}`} onClick={()=>onOpen({id:e.match_id})} onKeyDown={event=>{if(event.key==="Enter"||event.key===" "){event.preventDefault();onOpen({id:e.match_id})}}} key={e.id} style={{"--card-a":e.home_color,"--card-b":e.away_color}}><small>{e.competition}</small><strong>{e.home_short}</strong><b>{e.sport==="Basketball"?<>{e.home_score}<br/>{e.away_score}</>:<>{e.home_score} – {e.away_score}</>}</b><strong>{e.away_short}</strong><Stars value={e.rating||0} compact/><ClassicStamp active={!!e.classic} small/></div>)}</div>}</div>}
+      ? <><div className="ri-diary-cards is-redesign">{shownDiary.map(e=>shelfSlot(e.id, `Open ${e.home_short} vs ${e.away_short}`, ()=>onOpen({id:e.match_id}),
+          <RedesignMatchCard {...diaryToMatchCardProps(e,{compact:true,scoreSize:e.sport==="Basketball"?21:26,cardWidth:155,crestSize:34,hideScores})} crestSize={34} cut={14}/>))}</div>
+        <EndOfList count={shownDiary.length}/></>
+      : <div className="ri-diary-cards">{shownDiary.map(e=><div role="button" tabIndex={0} aria-label={`Open ${e.home_short} vs ${e.away_short}`} onClick={()=>onOpen({id:e.match_id})} onKeyDown={event=>{if(event.key==="Enter"||event.key===" "){event.preventDefault();onOpen({id:e.match_id})}}} key={e.id} style={{"--card-a":e.home_color,"--card-b":e.away_color}}><small>{e.competition}</small><strong>{e.home_short}</strong><b>{isHidden(e) ? "—" : e.sport==="Basketball"?<>{e.home_score}<br/>{e.away_score}</>:<>{e.home_score} – {e.away_score}</>}</b><strong>{e.away_short}</strong><Stars value={e.rating||0} compact/><ClassicStamp active={!!e.classic&&!isHidden(e)} small/></div>)}</div>}</div>}
   </>;
 }
 
-function ProfileView({ profileData, diaryEntries = [], onOpen }) {
+function ProfileView({ profileData, diaryEntries = [], onOpen, hideScores, onHideScoresChange }) {
   // Ayarlar telefonda HİÇ yoktu (web'de vardı) — parite tek yönlü değil.
   const [tab, setTab] = useState("Overview");
   const [prefs, setPrefs] = useState(readPrefs);
-  const setPref = patch => setPrefs(writePrefs(patch));
+  const setPref = patch => {
+    setPrefs(writePrefs(patch));
+    if (Object.hasOwn(patch, "hideScores")) onHideScoresChange?.(patch.hideScores);
+  };
   const stats = profileData?.stats || {};
-  const username = profileData?.user?.username || "gokdeniz";
+  const username = profileData?.user?.username || "";
   const initials = username.slice(0, 2).toUpperCase();
   const favourites = (profileData?.favorite_matches || []).map(fromApiMatch);
   const sports=[...new Set(diaryEntries.map(entry=>entry.sport))].filter(Boolean);
@@ -1044,12 +1341,12 @@ function ProfileView({ profileData, diaryEntries = [], onOpen }) {
   // degil, onun uzerine acilan bir yuzey. "no orphan rows" duz listeyle
   // uyusmuyordu.
   if (tab === "Settings") return (
-    <Settings prefs={prefs} setPref={setPref}
+    <Settings prefs={{ ...prefs, hideScores }} setPref={setPref}
       followCount={profileData?.stats?.following_sources ?? 0}
       onClose={() => setTab("Overview")} />
   );
 
-  return <><div className="ri-profile-head"><div className="ri-profile-avatar">{initials}</div><div><small>@{username}</small><h1>{username}</h1><p>Basketball nights, European football and the occasional instant classic.</p></div></div>
+  return <><div className="ri-profile-head"><div className="ri-profile-avatar">{initials}</div><div>{username && <small>@{username}</small>}<h1>{username || "Your profile"}</h1></div></div>
     <div className="ri-detail-tabs">{["Overview","Settings"].map(name=><button key={name} className={tab===name?"active":""} onClick={()=>setTab(name)}>{name}</button>)}</div>
     <div className="ri-profile-taste">{sports.map(sport=><span key={sport}>{sport}</span>)}{recentClassics.map(entry=><b key={entry.id}>CLASSIC · {entry.home_short}–{entry.away_short}</b>)}</div>
     <div className="ri-profile-stats"><div><strong>{stats.matches ?? 0}</strong><span>matches</span></div><div><strong>{stats.classics ?? 0}</strong><span>classics</span></div><div><strong>{stats.diary_count ?? 0}</strong><span>diary entries</span></div><div><strong>{stats.watchlist ?? 0}</strong><span>watchlist</span></div><div><strong>{stats.favorites ?? 0}</strong><span>favourites</span></div><div><strong>{stats.lists ?? 0}</strong><span>lists</span></div></div>
@@ -1058,10 +1355,18 @@ function ProfileView({ profileData, diaryEntries = [], onOpen }) {
   </>;
 }
 
-export default function RankItPrototype({ nativeBack = false }) {
+export default function RankItPrototype({ nativeBack = false, accountAction, accountActionLabel }) {
+  const [collectible, setCollectible] = useState(null);
   const [tab, setTab] = useState("Home");
+  const [activityShelf, setActivityShelf] = useState(false);
+  const [profileRevision, setProfileRevision] = useState(0);
   const [sport, setSport] = useState("All");
-  const [hideScores, setHideScores] = useState(() => { try { return localStorage.getItem("rankit:hide-scores") === "true"; } catch { return false; } });
+  const [hideScores, setHideScores] = useState(() => {
+    try {
+      if (localStorage.getItem("rankit:prefs") === null) return localStorage.getItem("rankit:hide-scores") === "true";
+    } catch { /* depolama kapalıysa ortak varsayılanı kullan */ }
+    return readPrefs().hideScores;
+  });
   const [detail, setDetail] = useState(null);
   const [competitionDetail, setCompetitionDetail] = useState(null);
   const [entityDetail, setEntityDetail] = useState(null);
@@ -1069,6 +1374,10 @@ export default function RankItPrototype({ nativeBack = false }) {
   // geri tusu yiginina kendileri kaydoluyorlar (redesign/backStack.js).
   const [shelfId, setShelfId] = useState(null);
   const [memberId, setMemberId] = useState(null);
+  // 2m/2n The Hunt: null = kapali; {collectionId} = dizin acik, istenirse
+  // dogrudan bir koleksiyonla (alerts'ten gelen derin baglanti).
+  const [hunt, setHunt] = useState(null);
+  const openHunt = (collectionId = null) => setHunt({ collectionId });
   const [rankOpen, setRankOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchExpanded, setSearchExpanded] = useState(false);
@@ -1087,6 +1396,7 @@ export default function RankItPrototype({ nativeBack = false }) {
   const [tabDirection, setTabDirection] = useState(1);
   const [syncAge, setSyncAge] = useState("");
   const [diaryEntries, setDiaryEntries] = useState([]);
+  const ratedMatchIds = useMemo(() => new Set(diaryEntries.filter(entry => Number(entry.rating) > 0).map(entry => Number(entry.match_id))), [diaryEntries]);
   // Defter YUKLENMEDEN bos durum gosterilmemeli: once iskelet, sonra ya
   // kayitlar ya da "Nothing in the diary yet".
   const [diaryLoaded, setDiaryLoaded] = useState(false);
@@ -1109,7 +1419,12 @@ export default function RankItPrototype({ nativeBack = false }) {
   const exitTimerRef = useRef(null);
   const lastScrollRef = useRef(0);
   const backStateRef = useRef(null);
-  backStateRef.current = { detail, competitionDetail, entityDetail, rankOpen, searchOpen, searchExpanded, listCreatorOpen, notificationOpen, tab };
+  const resultWasOpen = useRef(false);
+  useEffect(() => {
+    if (resultWasOpen.current && !collectible && !detail) document.querySelector('.ri-bottom-nav button.active')?.focus();
+    resultWasOpen.current = !!collectible;
+  }, [collectible, detail]);
+  useEffect(() => { backStateRef.current = { detail, competitionDetail, entityDetail, rankOpen, searchOpen, searchExpanded, listCreatorOpen, notificationOpen, tab }; });
 
   useEffect(() => {
     if (!nativeBack) return undefined;
@@ -1117,7 +1432,8 @@ export default function RankItPrototype({ nativeBack = false }) {
     let active = true;
     CapacitorApp.addListener("backButton", () => {
       const state = backStateRef.current;
-      if (state.listCreatorOpen) setListCreatorOpen(false);
+      if (closeTopDialog()) { /* Android ve Escape ayni ust dialogu kapatir. */ }
+      else if (state.listCreatorOpen) setListCreatorOpen(false);
       else if (state.notificationOpen) setNotificationOpen(false);
       else if (state.competitionDetail) setCompetitionDetail(null);
       else if (state.rankOpen) setRankOpen(false);
@@ -1143,14 +1459,14 @@ export default function RankItPrototype({ nativeBack = false }) {
     });
     return () => { active = false; handle?.remove(); clearTimeout(exitTimerRef.current); };
   }, [nativeBack]);
-  useEffect(()=>{ try { localStorage.setItem("rankit:hide-scores",String(hideScores)); } catch { /* tercih opsiyonel */ } },[hideScores]);
+  useEffect(() => { writePrefs({ hideScores }); }, [hideScores]);
   // Kuyruk (ekran 3l): cevrimdisi yapilan puan telefonda bekler ve sunucuya
   // ulasilinca yuklenir. Tetik OLAYLAR: tarayicinin "online"i ve ilk basarili
   // istek ("rankit:network" online) -- acilista ag varsa ikincisi gelir.
   // Bir efekt degil: ag durumuna bakan bir efektten setState cagirmak
   // react-hooks/set-state-in-effect'in tam yakaladigi sey.
-  const flushQueued = useCallback(async () => {
-    const out = await flushOutbox();
+  const flushQueued = useCallback(async (retryFailed = false) => {
+    const out = await flushOutbox({ retryFailed });
     if (out.sent) refreshPersonalRef.current?.().catch(() => {});
     if (out.rejected) setApiError(out.rejected === 1 ? "A saved rating could not be uploaded" : `${out.rejected} saved ratings could not be uploaded`);
     return out;
@@ -1181,6 +1497,7 @@ export default function RankItPrototype({ nativeBack = false }) {
   const refreshCollections = async () => {
     const [listData, watchData] = await Promise.all([rankitApi.lists(), rankitApi.watchlist()]);
     setListCatalog(listData.lists || []);
+    setProfileRevision(value => value + 1);
     setWatchlist((watchData.matches || []).map(fromApiMatch));
   };
   const refreshPersonal = async () => {
@@ -1188,6 +1505,7 @@ export default function RankItPrototype({ nativeBack = false }) {
     setDiaryEntries(diary.entries || []);
     setDiaryLoaded(true);
     setProfileData(profile);
+    setProfileRevision(value => value + 1);
     setCatalog((home.matches || []).map(fromApiMatch));
   };
   useEffect(() => {
@@ -1196,6 +1514,7 @@ export default function RankItPrototype({ nativeBack = false }) {
       setFeed((data.activity || []).map(a => ({
         id: a.id, user: a.username, initials: a.username?.slice(0,2).toUpperCase(), action: "reviewed",
         match: { id: a.match_id, home: { short: a.home_short, name:a.home_name }, away: { short: a.away_short, name:a.away_name } }, rating: a.rating, text: a.review,
+        reviewWithheld: !!a.review_withheld,
       })));
       setApiError("");
     }).catch(e => setApiError(e.message)).finally(() => setInitialLoading(false));
@@ -1254,31 +1573,26 @@ export default function RankItPrototype({ nativeBack = false }) {
   // Render sirasinda ref'e YAZILMAZ (react-hooks/refs); her render sonrasi guncellenir.
   useEffect(() => { refreshPersonalRef.current = refreshPersonal; });
   const saveMatchLog = async ({ diary, matchId, potmId, respectIds }) => {
-    try {
-      await rankitApi.log(diary);
-    } catch (error) {
-      // Yalnizca AG hatasi kuyruga girer; sunucunun reddettigi puan degil.
-      if (error?.offline) { queueRating({ diary, matchId, potmId, respectIds }); return { queued: true }; }
-      throw error;
+    const result = await saveRating({ diary, matchId, potmId, respectIds });
+    if (!result.queued) {
+      // Kayit tamamlandiktan sonra GET hatasi kaydetmeyi basarisiz yapmaz.
+      refreshPersonal().catch(() => {});
+      rankitApi.match(matchId).then(updatedMatch => setDetail(current =>
+        current?.id === matchId ? fromApiMatch(updatedMatch) : current)).catch(() => {});
     }
-    await Promise.all([
-      potmId ? rankitApi.potm(matchId, potmId) : Promise.resolve(),
-      rankitApi.respect(matchId, respectIds || []),
-    ]);
-    const [, updatedMatch] = await Promise.all([refreshPersonal(), rankitApi.match(matchId)]);
-    setDetail(fromApiMatch(updatedMatch));
+    return result;
   };
   const refreshDetail = async () => {
     if (detail?.id) setDetail(fromApiMatch(await rankitApi.match(detail.id)));
   };
-  const toggleWatchlist = async id => {
-    const result = await rankitApi.toggleWatchlist(id);
+  const toggleWatchlist = async (id, on) => {
+    const result = await rankitApi.toggleWatchlist(id, on);
     rankitHaptics.success();
     refreshCollections().catch(() => {});
     return result;
   };
-  const toggleFavorite = async value => {
-    const result = await rankitApi.favorite(value);
+  const toggleFavorite = async (value, on) => {
+    const result = await rankitApi.favorite(value, on);
     rankitHaptics.success();
     rankitApi.profile().then(setProfileData).catch(() => {});
     return result;
@@ -1291,14 +1605,27 @@ export default function RankItPrototype({ nativeBack = false }) {
     else if (delta < -7) setHeaderHidden(false);
     lastScrollRef.current = next;
   };
-  return <div className={`rankit-app${headerHidden ? " header-hidden" : ""}${networkState === "offline" ? " is-offline" : ""}`}>
-    <header className="ri-header"><div className="ri-brand"><RankItMark size={29}/><div><strong>RANKIT</strong><small>BY PRIMARY ARCH</small></div></div>
+  const showCollectible = result => {
+    setDetail(null); setRankOpen(false); setSearchOpen(false); setCompetitionDetail(null);
+    setEntityDetail(null); setNotificationOpen(false); setShelfId(null); setMemberId(null);
+    setCollectible(result);
+  };
+  // 2j: 6a'da secilen skin defterdeki AYNI kaydi boyar; liste yeniden
+  // yuklenmeden once yerelde guncellenir (raf 6a'dan donunce eski skinle kaliyordu).
+  const skinApplied = (entryId, skin) => {
+    setDiaryEntries(list => list.map(e => e.id === entryId ? { ...e, skin } : e));
+    setProfileRevision(value => value + 1);
+  };
+  if (collectible) return <CollectibleResult result={collectible} hideScores={hideScores} onSkinApplied={skinApplied}
+    onDone={()=>setCollectible(null)} onEdit={()=>{setDetail(collectibleEditMatch(collectible));setCollectible(null);}}/>;
+  return <div className={`rankit-app${headerHidden ? " header-hidden" : ""}${networkState === "offline" ? " is-offline" : ""}${RANKIT_NEW_CARD && tab === "Profile" ? " ri-profile6-mode" : ""}`}>
+    <header className="ri-header"><div className="ri-brand"><RankItMark size={29}/><div><strong aria-label="RankIt">RANK<span>IT</span></strong><small>BY PRIMARY ARCH</small></div></div>
       <div className="ri-header-tools">
         {/* Ekran 2a: seri halkası ve spoiler kalkanı başlıkta, bildirimin solunda. */}
         {RANKIT_NEW_CARD && <StreakRing nights={streakNights}/>}
         {RANKIT_NEW_CARD && <button className={`ri-shield${hideScores?" on":""}`} aria-pressed={hideScores}
           aria-label={hideScores?"Show scores":"Hide scores"} onClick={()=>setHideScores(v=>!v)}>
-          <Shield size={17} fill={hideScores?"currentColor":"none"}/></button>}
+          <Shield size={19} strokeWidth={1.8}/></button>}
         <button aria-label="Open notifications" onClick={()=>setNotificationOpen(true)}><Bell size={19}/><i/></button>
       </div></header>
     <main className="ri-main" onScroll={handleMainScroll}>
@@ -1306,24 +1633,30 @@ export default function RankItPrototype({ nativeBack = false }) {
           ve kuyrukta puan varsa "telefonda saklandi" sozu + 44px Retry. */}
       {networkState === "offline" && <div className="ri-offline" role="status"><i aria-hidden="true"/><span>OFFLINE — SHOWING YOUR LAST SYNC{syncAge ? ` · ${syncAge.toUpperCase()}` : ""}</span></div>}
       {queued > 0 && <div className="ri-outbox" role="status">
-        <p>{queued === 1 ? "Your rating is saved on this phone. It uploads when you're back." : `${queued} ratings are saved on this phone. They upload when you're back.`}</p>
-        <button type="button" className="ri-outbox-retry" onClick={() => flushQueued().catch(() => {})}>Retry</button>
+        <p>{queued} {queued === 1 ? "rating is" : "ratings are"} saved on this phone, waiting to upload. If sign-in or review is needed, your saved changes stay here.</p>
+        <button type="button" className="ri-outbox-retry" onClick={() => flushQueued(true).catch(error => setApiError(error.message))}>Retry upload</button>
       </div>}
       {apiError && networkState === "online" && <div className="ri-api-note">Could not refresh · {apiError}</div>}
       <div key={tab} className={`ri-tab-stage ${tabDirection > 0 ? "forward" : "backward"}`}>
         {tab === "Home" && (
-          <HomeView sport={sport} setSport={setSport} hideScores={hideScores} setHideScores={setHideScores} onOpen={openMatch} onOpenCompetition={openCompetition} onNavigate={name=>{setTabDirection(TABS.findIndex(x=>x[0]===name)-TABS.findIndex(x=>x[0]===tab));setTab(name)}} catalog={catalog} feed={feed} loading={initialLoading}/>
+          <HomeView sport={sport} setSport={setSport} hideScores={hideScores} setHideScores={setHideScores} onOpen={openMatch} onOpenCompetition={openCompetition} onNavigate={name=>{setTabDirection(TABS.findIndex(x=>x[0]===name)-TABS.findIndex(x=>x[0]===tab));setTab(name)}} catalog={catalog} feed={feed} ratedMatchIds={ratedMatchIds} loading={initialLoading}/>
         )}
         {tab === "Discover" && (
-          <DiscoverView hideScores={hideScores} onOpen={openMatch} onOpenCompetition={openCompetition} catalog={catalog} meta={catalogMeta} listCatalog={listCatalog} onCreateList={()=>setListCreatorOpen(true)} onOpenList={id=>openEntity("list",id)}/>
+          <DiscoverView hideScores={hideScores} onOpenHunt={()=>openHunt()} onOpen={openMatch} onOpenCompetition={openCompetition} catalog={catalog} meta={catalogMeta} listCatalog={listCatalog} onCreateList={()=>setListCreatorOpen(true)} onOpenList={id=>openEntity("list",id)}/>
         )}
         {tab === "Activity" && (
-          <ActivityView diaryEntries={diaryEntries} diaryLoaded={diaryLoaded} watchlist={watchlist} listCatalog={listCatalog} friendFeed={feed} onOpen={openMatch} onOpenCompetition={openCompetition} onOpenList={id=>openEntity("list",id)}
+          <ActivityView initialShelf={activityShelf} diaryEntries={diaryEntries} diaryLoaded={diaryLoaded} watchlist={watchlist} listCatalog={listCatalog} friendFeed={feed} ratedMatchIds={ratedMatchIds} hideScores={hideScores} onOpen={openMatch} onOpenCompetition={openCompetition} onOpenList={id=>openEntity("list",id)}
             onRank={()=>setRankOpen(true)} onFind={()=>setSearchOpen(true)} onCreateList={()=>setListCreatorOpen(true)}
             onNavigate={name=>{setTabDirection(TABS.findIndex(x=>x[0]===name)-TABS.findIndex(x=>x[0]===tab));setTab(name)}}/>
         )}
         {tab === "Profile" && (
-          <ProfileView profileData={profileData} diaryEntries={diaryEntries} onOpen={openMatch}/>
+          RANKIT_NEW_CARD ? <ProfileRoot key={ratingAccount()} revision={profileRevision} onOpenHunt={()=>openHunt()} onOpen={openMatch} accountAction={accountAction} accountActionLabel={accountActionLabel}
+            hideScores={hideScores}
+            onHideScoresChange={setHideScores}
+            onShelf={()=>{setActivityShelf(true);setTabDirection(-1);setTab("Activity")}}
+            onFind={()=>setSearchOpen(true)} onRank={()=>setRankOpen(true)}
+            onOpenList={id=>openEntity("list",id)} onCreateList={()=>setListCreatorOpen(true)}/>
+            : <ProfileView profileData={profileData} diaryEntries={diaryEntries} onOpen={openMatch} hideScores={hideScores} onHideScoresChange={setHideScores}/>
         )}
       </div>
     </main>
@@ -1335,18 +1668,22 @@ export default function RankItPrototype({ nativeBack = false }) {
     {detail?._loading ? (
       <MatchDetailLoading onClose={() => setDetail(null)}/>
     ) : detail && (
-      <MatchDetail match={detail} hideScores={hideScores} onClose={() => setDetail(null)} onSave={saveMatchLog} onToggleWatchlist={toggleWatchlist} onToggleFavorite={toggleFavorite} onRefresh={refreshDetail} onOpenCompetition={openCompetition}/>
+      <MatchDetail key={`${ratingAccount()}:${detail.id}`} match={detail} hideScores={hideScores} onClose={() => setDetail(null)} onSave={saveMatchLog} onResult={showCollectible} onToggleWatchlist={toggleWatchlist} onToggleFavorite={toggleFavorite} onRefresh={refreshDetail} onOpenCompetition={openCompetition}/>
     )}
-    {competitionDetail && <CompetitionDetail detail={competitionDetail.data} onClose={()=>setCompetitionDetail(null)} onOpenMatch={openMatch} onOpenPlayer={id=>openEntity("player",id)}/>}
-    {entityDetail && <EntityDetail detail={entityDetail} onClose={()=>setEntityDetail(null)} onOpenMatch={openMatch} onOpenEntity={openEntity} onChanged={openEntity}/>}
-    {shelfId && <ListShelf listId={shelfId} onClose={()=>setShelfId(null)}
+    {competitionDetail && <CompetitionDetail detail={competitionDetail.data} hideScores={hideScores} onClose={()=>setCompetitionDetail(null)} onOpenMatch={openMatch} onOpenPlayer={id=>openEntity("player",id)}/>}
+    {entityDetail && <EntityDetail detail={entityDetail} onClose={()=>setEntityDetail(null)} onOpenMatch={openMatch} onOpenEntity={openEntity} onChanged={openEntity} hideScores={hideScores} ratedMatchIds={ratedMatchIds}/>}
+    {shelfId && <ListShelf listId={shelfId} hideScores={hideScores} onClose={()=>setShelfId(null)}
       onOpenMatch={m=>openMatch(fromApiMatch(m))} onOpenMember={id=>setMemberId(id)}/>}
-    {memberId && <MemberProfile memberId={memberId} onClose={()=>setMemberId(null)}
+    {memberId && <MemberProfile memberId={memberId} hideScores={hideScores} onClose={()=>setMemberId(null)}
       onOpenMatch={m=>openMatch(fromApiMatch(m))}/>} 
-    {rankOpen && <RankSheet onOpenMatch={openMatch} onClose={() => setRankOpen(false)}/>} 
+    {hunt && <HuntIndex collectionId={hunt.collectionId} onCollection={id=>setHunt({collectionId:id})}
+      hideScores={hideScores} onClose={()=>setHunt(null)} onOpenMatch={m=>openMatch(fromApiMatch(m))}/>}
+    {rankOpen && (
+      <RankSheet onOpenMatch={openMatch} hideScores={hideScores} onClose={() => setRankOpen(false)}/>
+    )}
     {/* Ekran 3e. Eski GlobalSearch alti kutulu bir filtre satiri ve ayrimsiz
         bir liste tasiyordu; 3e tek alan + gruplu sonuc istiyor. */}
-    {searchOpen && <SearchSheet initialQuery={quickSearch} onClose={() => setSearchOpen(false)}
+    {searchOpen && <SearchSheet initialQuery={quickSearch} hideScores={hideScores} onClose={() => setSearchOpen(false)}
       onOpenMatch={m => {setSearchOpen(false);openMatch(fromApiMatch(m))}}
       onOpenEntity={(kind,id) => {setSearchOpen(false);openEntity(kind,id)}}/>} 
     {listCreatorOpen && <ListCreator catalog={catalog} onClose={()=>setListCreatorOpen(false)} onCreated={refreshCollections}/>} 
@@ -1354,9 +1691,10 @@ export default function RankItPrototype({ nativeBack = false }) {
       /* Ekran 3f. Eskisi arkadas akisi + izleme listesini istemcide birlestirip
          bildirim gibi gosteriyordu; artik gercek olaylar ve turetilmis
          durumlar var (bkz. api/rankit_notify.py). */
-      <Alerts onClose={()=>setNotificationOpen(false)}
+      <Alerts ratedMatchIds={ratedMatchIds} onClose={()=>setNotificationOpen(false)}
         onOpenMatch={id=>{setNotificationOpen(false);openMatch({id})}}
-        onOpenList={id=>{setNotificationOpen(false);openEntity("list",id)}}/>
+        onOpenList={id=>{setNotificationOpen(false);openEntity("list",id)}}
+        onOpenCollection={id=>{setNotificationOpen(false);openHunt(id)}}/>
     )}
     {exitNotice && <div role="status" className="ri-action-toast success">Press back again to exit</div>}
   </div>;

@@ -19,13 +19,15 @@
  * tasarım onu istiyor — ama değeri "Always", tıpkı "Reduce motion / System"
  * gibi.
  */
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { ErrorState, Loading, SkeletonRows } from "./States";
 import { createPortal } from "react-dom";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { rankitApi } from "../rankitApi";
 import { BROADCAST_COUNTRIES, localeCountry } from "../rankitPrefs";
 import { useBackClose } from "./backStack";
 import { FollowPicker } from "./FirstRun";
+import { useDialog } from "./useDialog";
 
 const INK_4 = "#7f868b";
 
@@ -64,7 +66,7 @@ function Group({ title, children }) {
   );
 }
 
-export default function Settings({ prefs, setPref, followCount, onClose, onFollowsChanged }) {
+export default function Settings({ prefs, setPref, followCount, onClose, onFollowsChanged, accountAction, accountActionLabel }) {
   // "Competitions & clubs" 4h'nin secicisini DUZENLEYICI kipinde aciyor.
   const [editingFollows, setEditingFollows] = useState(false);
   // Kaydedilen sayi, profil verisinden gelenin YERINE gecer; kaydedilmediyse
@@ -73,23 +75,21 @@ export default function Settings({ prefs, setPref, followCount, onClose, onFollo
   const count = saved ?? followCount;
   const [account, setAccount] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [loadError, setLoadError] = useState(null);
 
-  useEffect(() => {
-    rankitApi.settings().then(setAccount).catch(() => setAccount({ alerts_running_hot: true }));
+  const loadAccount = useCallback(() => {
+    rankitApi.settings().then(data => {setAccount(data);setLoadError(null);}).catch(setLoadError);
   }, []);
+  useEffect(loadAccount, [loadAccount]);
 
   // Android geri tusu: once BU ekran kapanir, Profil'e donulur. Kayit
   // olmadan kabugun zinciri "tab !== Home" dalina dusup Home'a atliyordu.
   useBackClose(onClose);
 
-  // aria-modal iddia ediliyorsa Escape kapatmali; odak hapsi 8. prompt'ta
-  // butun sheet'lerle birlikte, tek elden geliyor.
-  useEffect(() => {
-    // Duzenleyici acikken Escape ONU kapatir, ayarlari degil.
-    const onKey = (e) => e.key === "Escape" && !editingFollows && onClose();
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onClose, editingFollows]);
+  // Escape, odak tuzagi ve odagin geri verilmesi tek elden (§4.2).
+  // "!editingFollows" gerekmiyor: takip duzenleyici de bir dialog ve
+  // yiginda ustte oldugu icin Escape once onu kapatiyor.
+  const dialog = useDialog({ onClose, label: "Settings" });
 
   const setAccountFlag = async (key, value) => {
     if (busy) return;
@@ -115,13 +115,15 @@ export default function Settings({ prefs, setPref, followCount, onClose, onFollo
   // (--ri-card, --ri-line) orada tanimli.
   const host = typeof document !== "undefined" ? document.querySelector(".rankit-app") : null;
   const screen = (
-    <div className="ri-settings" role="dialog" aria-modal="true" aria-label="Settings">
+    <div {...dialog} className="ri-settings">
       <div className="ri-settings-head">
         <button type="button" onClick={onClose} aria-label="Back"><ChevronLeft size={16} /></button>
         <h2>Settings</h2>
       </div>
 
       <div className="ri-settings-body">
+        {/* Native hesap kontrolu 6b'nin sag ust kontrollerini kapatmasin. */}
+        {accountAction && <Group title="PRIMARY ARCH ACCOUNT"><Row label={accountActionLabel || 'Account'} onClick={accountAction}/></Group>}
         <Group title="SPOILERS">
           <Switch label="Hide scores by default" hint="Blurs score, heat and reviews"
             on={prefs.hideScores} onChange={(v) => setPref({ hideScores: v })} />
@@ -144,9 +146,11 @@ export default function Settings({ prefs, setPref, followCount, onClose, onFollo
         </Group>
 
         <Group title="ALERTS">
-          <Switch label="Running hot" hint="A match you can still watch passes 4.0"
-            on={account?.alerts_running_hot ?? true} busy={busy || !account}
-            onChange={(v) => setAccountFlag("alerts_running_hot", v)} />
+          {loadError && <ErrorState error={loadError} onRetry={loadAccount}/>}
+          {!account && !loadError && <Loading label="Loading alert preferences"><SkeletonRows count={1}/></Loading>}
+          {account && <Switch label="Running hot" hint="A match you can still watch passes 4.0"
+            on={!!account.alerts_running_hot} busy={busy}
+            onChange={(v) => setAccountFlag("alerts_running_hot", v)} />}
         </Group>
 
         <Group title="ACCESSIBILITY">

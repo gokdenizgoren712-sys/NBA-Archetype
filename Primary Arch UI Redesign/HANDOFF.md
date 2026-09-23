@@ -1,8 +1,9 @@
 # RankIt mobile — design handoff
 
-> Status: complete for mobile. 39 screens across 5 turns, one shared card component, both marks specified.
-> Source of truth for visuals: this file + `RankIt Redesign.dc.html`. Source of truth for the Primary Arch mark: `BrandIcons.jsx` (used verbatim).
-> Every decision is closed. One intentional change to the shipped Primary Arch mark: the rule inset in §8.2 (`M 4 24 H 44` → `M 6 24 H 42`).
+> Status (2026-09-14): implementation in progress. The latest user-supplied `RankIt Redesign.dc.html` is now the canonical visual reference. It has 46 screen-ID blocks, including spec and superseded boards, not 46 completed app screens. The previous reference is preserved in `source-history/RankIt Redesign.before-2026-09-14.dc.html`.
+> Live prompt checklist (updated 2026-09-14): `docs/RANKIT_REDESIGN_PROGRESS_2026-09-14.md` contains all 39 original prompt blocks, per-prompt progress, acceptance checkboxes and the current checkpoint (7.01). Use that record to continue; the root `PROMPTS.md` is the older, shorter sequence.
+> Source of truth for visuals: the latest `RankIt Redesign.dc.html`; this handoff and the supplied expanded prompts describe behavior and sequencing. Source of truth for the Primary Arch mark: `BrandIcons.jsx` (used verbatim).
+> The expanded user prompt attachment, transcribed in the live checklist, is not the older root `PROMPTS.md`. HTML-only additions 9a/9b have separate HTML-9A/HTML-9B acceptance records; they do not renumber the 39 prompts or mean phase 9. Unspecified geometry, unlock conditions and server capabilities must not be invented. One approved change to the Primary Arch mark remains the rule inset in §8.2 (`M 4 24 H 44` → `M 6 24 H 42`).
 
 Companion to `frontend/src/rankit/DESIGN.md`. That file is still the law; this file is the **build order and the contracts** for the redesign in `RankIt Redesign.dc.html` (turn 2 = redesigned core surfaces, turn 3 = the surfaces that didn't exist).
 
@@ -14,7 +15,30 @@ Read this top to bottom before opening the repo. It is written to be handed to C
 
 Do **not** ask for "the redesign" in one prompt. The work has one true dependency (`MatchCard`) and everything else is leaves hanging off it. One prompt per phase, in the order below, each ending in a running app.
 
-Phase prompts, verbatim-ready:
+### Current phase numbering (PROMPTS.md)
+
+Use this sequence when a user names a phase. Section numbers in this document are not phase numbers: §8 describes marks, while **phase 8 means states**.
+
+| Phase | Deliverable |
+|---|---|
+| 0–5 | Orientation; card; flagged Home; Diary/Discover; match sheet; shell |
+| 6 | Collectible result `6a`, the shared destination of rating flows |
+| 7 | New surfaces, separately: Profile `6b` / pushed Standing `2p`, reviews/thread, competitions, search, alerts, settings, lists/member, first run, expanded and full-time Companion |
+| 8 | Loading, empty, error, offline and honest pending-save states |
+| 9 | Sheet accessibility, nested dismissal, focus and Android Back |
+| 10 | Skin picker, shared skin variables, portrait/wide share composer |
+| 11–12 | Marks; Android launcher icon |
+| 12.5 | Discover filter drawer `6c`, separate from Discover at rest |
+| 13 | Motion, haptics, notification channels and spoiler-safe deep links |
+| 14 | End-to-end acceptance, including all six navigation contracts |
+
+The prompt says “seven skins” but enumerates **eight**: Default, Broadsheet, Holofoil, Ember, Ink, Gilt, Turf and Floodlight. Preserve all eight named options; the last two are locked. Their unlock conditions require actual product rules, not fabricated thresholds. The size matrix is therefore **16 skin/size combinations**.
+
+The paths in PROMPTS.md are historical: the actual board and handoff are in `Primary Arch UI Redesign/`, not the repository root or `docs/`.
+
+### Historical phase list — retained for earlier work, not current numbering
+
+Original phase prompts:
 
 1. **`MatchCard` only.** "Build `MatchCard` per HANDOFF.md §2. Do not touch any screen yet. Render it in isolation at all six size presets from §2.5 and show me."
 2. **Home behind a flag.** "Replace the home hero card with `MatchCard` behind `RANKIT_NEW_CARD`. Old path must still work with the flag off."
@@ -243,6 +267,70 @@ Every animation in the mockups sits behind `@media (prefers-reduced-motion: redu
 
 ---
 
+### 4.9 Navigation contracts added by PROMPTS.md
+
+These are behavior contracts from the supplied prompts, now supplemented by actual `6a`–`6d` artwork in the September 14 source. The previous missing-artwork blocker is resolved, not the implementation or visual acceptance gates.
+
+#### 4.9.1 Collectible result (`6a`)
+
+Match sheet, quick-rate, Companion and the first onboarding rating converge on one result surface. It is not another dismissible celebration modal. Use the shared card at crest 52px, one statement, three **server-derived** deltas, then Share / Skin / Edit. Never invent a streak increment, reward or rank delta. Pending offline upload is not confirmed success: clearly identify a locally saved entry and defer unconfirmed deltas. Editing returns to the same entry, not a new rewatch. No confetti or sound; one gold item.
+
+The latest artwork puts the card first under a 64px "Saved to your diary" header: crest 52px, art height 128px, card height 306px in the 375px reference. Then comes the entry-count statement and personal rating/Classic sentence. The three tiles show current streak + delta, cumulative points + delta, and collection progress + delta, not diary/streak deltas alone. Share / Skin / Edit have 52px targets, followed by Back to tonight. Adapt responsively and keep basketball scores safe. Collection eligibility and progress require real data; the example London Derby 8/12 is not a fallback.
+
+#### 4.9.2 Profile and Standing (`6b` → `2p`)
+
+Profile is the tab root: identity, rank summary with chevron, three counters, shelf preview and rows for Lists / The Hunt / Your reviews. Standing is pushed from the rank chevron and returns to Profile; it must not replace the root. Counts come from actual account data.
+
+In `6b`: You header with 44px Find people and Settings controls; 64px avatar, name/handle/join date, Following and Followers links to `9a`. Find people opens `9b`. The compact purple rank block links to `2p`; counters are watched, classics, streak. Your shelf has three compact cards (crest 30px, art 42px, height 167px in the reference), with All linking to the diary shelf. Lists / The Hunt / Your reviews are 52px rows. The Your reviews→5c annotation reuses the visual family, not a match scope: show the account's own reviews across matches, never an arbitrary match's review list.
+
+#### 4.9.3 First run
+
+`4g` connect Primary Arch → `4h` select competitions/clubs → `2r` one-promise screen. The next confirmed rating resolves to `6a`. Do not silently create a separate RankIt identity.
+
+#### 4.9.4 Companion expansion and full time
+
+The sheet expands into `4e` / `4f`. Old `2o` is superseded. At full time, `6d` is a distinct read-only record: chart with recorded peak minute, three read-only statistics, closed room with readable thread, and Rate it pre-seeded from the user's live read. A live read never creates a diary entry without confirmation. Do not manufacture chart samples, attendance, or peak values when the API lacks them.
+
+`6d` now supplies the geometry: The night, in full; loudest minute, pulse rise from HT, messages kept; Room closed at full time; Read the thread; Rate it. These labels describe football examples. Basketball requires period-aware labels and real measurements, not synthetic football minutes. Drop the live badge and keep the thread readable.
+
+#### 4.9.5 Hunt and Discover drawer
+
+The Hunt is reachable from both Discover and Profile. Discover at rest (`2c`) keeps its Hunt tile above the grid. The filter drawer (`6c`) is separate, opens from the left, width 288px capped at 85%, with 48px pills and minimum-heat control. Filtering must apply to the full server result set, not only the current loaded page. A failed request keeps existing results visibly marked as previous results.
+
+#### 4.9.6 State-driven Companion badge
+
+Before kickoff, show the upcoming state; while live, a red live indicator with text; after full time, remove the live badge. Basketball timelines use basketball periods, never football KO/HT labels. Late fixture status changes must update an already-open screen.
+
+#### 4.9.7 People surfaces — HTML-only additions (`9a` / `9b`)
+
+The latest board adds these outside the original prompt list. Track as HTML-9A/HTML-9B after the Profile root, not as accessibility phase 9.
+
+- `9a`: Following/Followers tabs with actual counts, search within the selected relationship list, Closest taste ordering, member rows opening `3i`, Find people opening `9b`.
+- `9b`: name/@handle search, actual known Primary Arch relationships, taste-based suggestions and shared-match counts. A shared identity database is not proof that users know each other; do not import contacts or invent known people.
+- Shared relationship states: FOLLOW / FOLLOWING / FOLLOW BACK / MUTUAL. Reconcile follow changes across lists/profile; loading, failure and rollback must be explicit.
+- Show overlap percentages only for **at least 10 shared visible matches**. Below that, explain insufficient shared history. Never compute over private entries or display fabricated percentages. The similarity formula and existing API coverage still require verification.
+- Rows show logged/classics/taste, not follower counts or a popularity ladder. Respect the source styling while retaining at least 44px interactive targets.
+- The `9b` Primary Arch tile still contains an old arch-shaped proposal. Do not copy it over the approved parent mark: §8.2 remains the explicit brand contract.
+
+Implementation note (2026-09-15): `9a` now uses authenticated `GET /people` and
+idempotent `PUT /people/{id}/follow`. The existing 3i agreement metric (within
+half a star, latest visible rated entry per match) is retained with a ten-match
+minimum. `PeopleList` and `MemberProfile` share `RelationshipButton`. Private
+people/member responses are not persisted for offline fallback. Functional
+checks are recorded in the live progress file; acceptance remains open for the
+source TabBar integration and `9b` destination (Find people currently opens the
+existing search), plus native-device checks. Do not treat this as completed `9b`.
+
+### 4.10 Correctness gates before additional visual phases
+
+- Compare normalized form data with the last acknowledged snapshot. Rating, Classic, review, tags, visibility, spoiler flag, POTM and respect edits can all make it dirty.
+- Drafts and queued writes are account-scoped. Confirm durable storage before promising “saved on this phone”. Track diary/POTM/respect completion separately; a partial save is not overall success. Never automatically replay an uncertain rewatch without server idempotency/reconciliation.
+- Spoilers are omitted from rendered text, not merely blurred. Apply the shared live/finished policy to cards, search, details and competition fixtures. Reveal is an explicit keyboard-accessible action; it does not disable the global preference. Spoiler-marked review bodies and replies have their own reveal gate.
+- Diary heat represents **your rating**, with personal labelling; it is not community heat or an Instant Classic vote threshold.
+- HTTP failure is not an empty collection. Retain successful cached content where available; show a retry action. Only show “That's all” when pagination confirms the end.
+- Nested dialogs dismiss topmost first, isolate background interaction, trap focus and restore it to the correct opener. Escape and native Back share the same stack; real-device validation remains a release gate.
+- Offline dimming applies to artwork, not reading text, controls or focus rings. The board's 62% opacity must not make cached reviews unreadable.
+
 ## 5. States
 
 **Loading — skeletons, never spinners.** The skeleton keeps the notches, both crest columns, the score block and the five heat bars in `#1c1d21`. Layout must not shift when data lands. See `3k`.
@@ -262,14 +350,14 @@ Turn 2 (`2a`–`2r`) redesigns what shipped. Turn 3 (`3a`–`3l`) adds what was 
 | id | Screen | Repo target |
 |---|---|---|
 | 2a / 2b | Home — night flow / spoiler shield | `RankItPrototype.jsx`, `rankit-v030.css` |
-| 2c | Discover + filter drawer | `rankit-filter.css` |
+| 2c | Discover at rest, Hunt tile above grid | drawer is separate 6c |
 | 2d / 2e | Diary — timeline / shelf | `RankItPrototype.jsx`, `mockData.js` |
 | 2f / 2g / 2h | Match sheet — Match / Community / upcoming | sheet + score band in `rankit.css` |
 | 2i | Competition — Table | `rankitApi.js` |
 | 2j / 2k / 2l | Skins / share 4:5 / share 16:9 | new |
 | 2m / 2n | The Hunt — index / collection | new |
-| 2o | Live companion | watchalong surface |
-| 2p | Rank & streak | new |
+| 2o | Superseded — do not build | use 4e / 4f |
+| 2p | Standing, pushed from Profile 6b | not the Profile tab root |
 | 2q | Friends shelf | activity feed |
 | 2r | First run | `product/mobile.md` |
 | 3c / 3d | Competition — Matches / Players | tabs beside the table |
@@ -283,19 +371,22 @@ Turn 2 (`2a`–`2r`) redesigns what shipped. Turn 3 (`3a`–`3l`) adds what was 
 | 4a | Review thread — addressed replies + respect | new; replaces broadcast-reply model |
 | 4b | Friends feed, actions unclipped | activity feed |
 | 4c | Crest system + compact anatomy | spec board |
-| 4d | Seven skins × shelf × share | spec board |
+| 4d | Skin system × shelf × share | eight named skins in current prompts |
 | 4e / 4f | Companion with watchalong folded in | watchalong surface merged |
 | 4g / 4h | First run: Primary Arch, then follows | new |
 | 4i | Both marks, sizes and lockups | spec board |
 | 5a / 5b | Sheet · Companion — before / live | replaces the retired watchalong tab |
 | 5c | All reviews — sorted, friends pinned | new; the Community tab's "318 reviews ›" links here |
+| 6a / 6b | Collectible result / Profile root | latest artwork available, §4.9 |
+| 6c / 6d | Discover drawer / full-time Companion | latest artwork available, §4.9 |
+| 9a / 9b | Following & Followers / Find people | HTML-only extension, §4.9.7; not phase 9 |
 
 `RankIt Prototype.dc.html` is the interaction reference — rating, save, streak, spoiler and skin switching all behave there. Read its logic class for the state machines rather than guessing:
 
 - **rating** `0 → 0.5…5` in 0.5 steps.
 - **save** `idle → saving (800ms) → saved`; editing a saved entry → `dirty → saving → saved`.
 - **streak** increments **only** on the first save of a match, never on an update.
-- **spoiler** prop default, overridable locally; blurs score `9–11px`, hides heat, rewrites the status pill.
+- **spoiler** prop default, overridable locally; omit actual score/heat text before explicit reveal (§4.10). Blur may style the placeholder, not conceal readable result text.
 
 ## 6.1 Social model — respect and replies
 
@@ -463,3 +554,23 @@ Both marks stay **in gold** — the shared accent is the point. Separation is by
 Per phase: app runs, flag path clean, no new hex outside §1, no new font, no `1fr` without `minmax(0,1fr)`, targets ≥44, type ≥9px, animations behind reduced-motion, and the six `MatchCard` presets all render without clipping or overflow.
 
 Ship gate: sheets are dialogs, skeletons in place, offline path honest, and gold auditable at one per region with the nav exempt.
+
+## 10. Motion, haptics and notifications — phase 13 contract
+
+This section transcribes the newer prompt requirements; it does not mark them implemented.
+
+### 10.1 Motion
+
+State changes 120ms, sheets/nav 200ms, collectible arrival 280ms, ambient Ember 2600ms. Entrance curve `cubic-bezier(.22,.9,.3,1)`; ambient motion linear. The prompt separately preserves **livedot at 1400ms**, an explicit named exception to its “four durations” wording, not permission for more arbitrary durations.
+
+On `6a`, card scale 0.96 → 1 over 280ms; notch hairlines follow after a 120ms pause. No bounce, confetti or sound. Do not animate scores, heat-bar filling, the respect diamond or gold. Under reduced motion, stop ambient loops and replace transform transitions with opacity-only changes; do not simply speed them up.
+
+### 10.2 Haptics
+
+Commitment only: star/half-star selection; respect light impact; Classic medium impact; confirmed save success notification; failed or locally queued save warning notification. Never scroll, tab changes, sheet open or Back. Honor OS haptics settings independently of reduced motion.
+
+### 10.3 Notifications
+
+Channels: Heat alerts, Streak, Social, Collections. Heat on by default; Streak/Collections off; Social replies on and respects off. This specific Social rule qualifies the prompt's general “only Heat on” sentence. Channel creation does not bypass Android permission or OS overrides. Keep preferences truthful if delivery is unavailable.
+
+For an unrated match, no score, heat value or star count in any notification payload shown to the user. With the spoiler shield on, also omit club names on the lock screen. Heat alerts require a still-watchable match crossing 4.0; Streak at 22:00 only after actual watching that day; Collections only when one match from completion. Deduplicate delivery. Deep-link to the exact match Community tab, addressed reply or collection, including cold-start and signed-out recovery. Audit all notification strings before release.

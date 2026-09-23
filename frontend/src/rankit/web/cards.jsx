@@ -1,18 +1,12 @@
+import { useState } from "react";
 import { Star } from "lucide-react";
+import { hidesScore } from "../rankitPrefs";
+import { communityHeat, communityRatingCount, communityVerdictCovered, MIN_COMMUNITY_RATINGS } from "../redesign/heat";
+export { formatWhen } from "../formatWhen";
 
 // ── Web yüzeyinin kart parçaları ─────────────────────────────────────────────
 //
-// Tarih biçimi telefonla AYNI olmalı (RankItPrototype.fromApiMatch): iki yüzey
-// aynı maçı farklı yazarsa kullanıcı iki ayrı ürün görür. Sunucu yalnızca ISO
-// `starts_at` gönderiyor — `date_label` diye bir alan HİÇ yoktu, web onu okuyup
-// boşa düşüyordu ve kartlarda saat hiç görünmüyordu.
-export function formatWhen(startsAt) {
-  const when = new Date(startsAt);
-  if (!startsAt || Number.isNaN(when.getTime())) return { date: startsAt || "", time: "", full: startsAt || "" };
-  const date = new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric" }).format(when);
-  const time = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit" }).format(when);
-  return { date, time, full: `${date} · ${time}` };
-}
+// Tarih ve saat mobil kartla aynı ortak formatWhen kaynağından gelir.
 
 // Telefonun kartıyla AYNI CSS'i (ri-match-card ve ailesi) kullanıyor, ama aynı
 // bileşen değil: telefonda kart sayfa açıyor, duvarda denetçiye yazıyor, ve
@@ -97,19 +91,22 @@ export function TeamMark({ team }) {
 }
 
 export function MatchCard({ match, onOpen, hideScores = false }) {
+  const [communityRevealed, setCommunityRevealed] = useState(false);
   const finished = match.status === "finished";
   const live = match.status === "live";
-  const rated = typeof match.communityRating === "number" && match.communityRating > 0;
+  const rating = finished ? communityHeat(match) : null;
+  const count = finished ? communityRatingCount(match) : null;
   // Skor gizleme telefonda ürünün imzası: maçı henüz izlememiş biri siteye
   // girip sonucu görmesin diye. Webde hiç yoktu — masaüstünde açan bir üye
   // dün geceyi puanlamaya gelirken sonucu kapıda öğreniyordu.
-  const blur = hideScores && finished;
+  const blur = hidesScore(hideScores, match);
+  const verdictCovered = communityVerdictCovered(match, { revealed: communityRevealed });
 
   return (
     <article
-      className={`ri-match-card${match.instantClassic ? " instant" : ""}`}
+      className={`ri-match-card${finished && match.instantClassic && !blur && !verdictCovered ? " instant" : ""}`}
       onClick={() => onOpen(match)}
-      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(match); } }}
+      onKeyDown={(e) => { if (!e.target.closest("button") && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onOpen(match); } }}
       tabIndex={0} role="button"
       aria-label={`${match.home.name || match.home.short} versus ${match.away.name || match.away.short}`}
       style={{ "--home": match.home?.color, "--away": match.away?.color }}>
@@ -118,11 +115,13 @@ export function MatchCard({ match, onOpen, hideScores = false }) {
       <div className="ri-match-top">
         <span>{match.competition}</span>
         {live ? <span className="ri-live-tag">LIVE</span>
-          : rated ? (
+          : blur ? <span className="ri-live-date">PLAYED</span>
+          : verdictCovered ? <span className="ri-live-date">FULL TIME</span>
+          : rating !== null ? (
             <span className="ri-community-rating">
-              <Star size={11} fill="currentColor" /> {Number(match.communityRating).toFixed(1)}
+              <Star size={11} fill="currentColor" /> {rating.toFixed(1)}
             </span>
-          ) : <span className="ri-live-date">{match.date}</span>}
+          ) : <span className="ri-live-date">{finished && count !== null && count < MIN_COMMUNITY_RATINGS ? "TOO FEW RATINGS" : match.date}</span>}
       </div>
 
       <div className="ri-match-art">
@@ -135,7 +134,7 @@ export function MatchCard({ match, onOpen, hideScores = false }) {
               etiket. Yerini maçın saati aldı — okuyucunun gerçekten ihtiyacı
               olan tek bilgi. */}
           {finished && match.score
-            ? <strong className={blur ? "ri-blur" : undefined}>{match.score}</strong>
+            ? <strong className={blur ? "ri-blur" : undefined} aria-label={blur ? "Score hidden" : undefined}>{blur ? "—" : match.score}</strong>
             : <>{match.time && <small>{match.time}</small>}<strong>VS</strong></>}
         </div>
         <div className="ri-team-side away"><TeamMark team={match.away} /></div>
@@ -163,10 +162,13 @@ export function MatchCard({ match, onOpen, hideScores = false }) {
           </span>
         )}
         <span>
-          {finished && match.dominantTag ? match.dominantTag
+          {finished && match.dominantTag && !blur && !verdictCovered ? match.dominantTag
             : match.stage || (match.reviews ? `${match.reviews} reviews` : "")}
         </span>
       </div>
+      {verdictCovered && !blur && <button type="button" className="ri-spoiler-gate" onClick={(event) => { event.stopPropagation(); setCommunityRevealed(true); }}>
+        Rate it first — then see whether the room agreed with you. <b>REVEAL ANYWAY</b>
+      </button>}
     </article>
   );
 }

@@ -21,11 +21,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Search, X, ChevronRight } from "lucide-react";
 import { rankitApi } from "../rankitApi";
-import { SkeletonRows, Loading, EmptyState } from "./States";
+import { SkeletonRows, Loading, EmptyState, ErrorState } from "./States";
+import { hidesScore, readPrefs } from "../rankitPrefs";
 import { Shield, CrestPair } from "./MatchCard";
-import { inkFor, RAMP, RAMP_OFF } from "./heat";
+import { communityHeat, communityRatingCount, communityVerdictCovered, inkFor, MIN_COMMUNITY_RATINGS, RAMP, RAMP_OFF } from "./heat";
+import { useDialog } from "./useDialog";
 
 const INK = "#eceded";
+const INK_3 = "#9aa0a6";   // BUILD §1.4 ink-3 — diger redesign dosyalariyla ayni jeton
 const INK_4 = "#7f868b";
 const GOLD = "#ffb11b";
 
@@ -60,16 +63,62 @@ function ProgressRing({ done, total, size = 44 }) {
   );
 }
 
-function Group({ title, children }) {
-  return <section className="ri-find-group"><div className="ri-chip-title">{title}</div>{children}</section>;
+/* `truncated`: uc bu bolumu SEARCH_LIMIT'te kesti (bir fazlasini okuyup
+   soyluyor). Kesilmis bir bolumu sessizce bitirmek "hepsi bu" demektir —
+   §5.4 / HANDOFF §4.10. Sinir sabit yazilmiyor, gelen satir sayisindan
+   okunuyor: uc limiti degistirdiginde metin kendiliginden dogru kalir. */
+function Group({ title, children, shown, truncated }) {
+  return <section className="ri-find-group">
+    <div className="ri-chip-title">{title}</div>
+    {children}
+    {truncated && <p className="ri-find-truncated">Showing the first {shown}. Narrow your search to see more.</p>}
+  </section>;
 }
 
-export default function SearchSheet({ initialQuery = "", onClose, onOpenMatch, onOpenEntity }) {
+function MatchResult({ match, hideScores, onOpen }) {
+  const [communityRevealed, setCommunityRevealed] = useState(false);
+  const [scoreRevealed, setScoreRevealed] = useState(false);
+  const scoreHidden = hidesScore(hideScores, match) && !scoreRevealed;
+  const verdictCovered = communityVerdictCovered(match, { revealed: communityRevealed });
+  const rating = communityHeat(match);
+  const count = communityRatingCount(match);
+  return (
+    <div role="button" tabIndex={0} className="ri-find-match" onClick={event => { if (!event.target.closest("button")) onOpen(match); }}
+      onKeyDown={event => { if (!event.target.closest("button") && ["Enter", " "].includes(event.key)) { event.preventDefault(); onOpen(match); } }}>
+      <CrestPair home={match.home} away={match.away} />
+      <span>
+        <strong>{match.home.name || match.home.short}{scoreHidden || !["finished", "live"].includes(match.status) || !match.score ? " vs " : ` ${match.score} `}{match.away.name || match.away.short}</strong>
+        <small>{when(match)}{match.my_watched_date ? " · in your diary" : ""}</small>
+      </span>
+      {hidesScore(hideScores, match) && !scoreRevealed ? (
+        <button type="button" className="ri-find-heat" onClick={event => { event.stopPropagation(); setScoreRevealed(true); }}
+          style={{ border: 0, padding: 0, background: "none", color: GOLD, cursor: "pointer" }} aria-label="Reveal match result">
+          TAP TO REVEAL
+        </button>
+      ) : verdictCovered ? (
+        <button type="button" className="ri-find-heat" onClick={event => { event.stopPropagation(); setCommunityRevealed(true); }}
+          style={{ border: 0, padding: 0, background: "none", color: GOLD, cursor: "pointer" }} aria-label="Reveal community verdict anyway">
+          REVEAL ANYWAY
+        </button>
+      ) : !scoreHidden && rating !== null ? (
+        <span className="ri-find-heat" aria-label={`Community ${rating.toFixed(1)}`}>
+          <i style={{ background: inkFor(rating) }} aria-hidden="true" />{rating.toFixed(1)}
+        </span>
+      ) : !scoreHidden && match.status === "finished" && count !== null && count < MIN_COMMUNITY_RATINGS ? (
+        <span className="ri-find-heat">TOO FEW RATINGS</span>
+      ) : null}
+      {verdictCovered && !scoreHidden && <small style={{ gridColumn: "2 / -1", color: INK_3 }}>Rate it first — then see whether the room agreed with you.</small>}
+    </div>
+  );
+}
+
+export default function SearchSheet({ initialQuery = "", hideScores = readPrefs().hideScores, onClose, onOpenMatch, onOpenEntity }) {
   const [query, setQuery] = useState(initialQuery);
   // Sonucu SORGUSUYLA birlikte tutuyoruz: "hangi sorgu yükleniyor" böyle
   // türetiliyor ve efektin başında state sıfırlamak gerekmiyor.
   const [loaded, setLoaded] = useState({ q: "", data: EMPTY });
   const field = useRef(null);
+  const [retry, setRetry] = useState(0);
 
   const term = query.trim();
 
@@ -79,24 +128,21 @@ export default function SearchSheet({ initialQuery = "", onClose, onOpenMatch, o
     const timer = setTimeout(() => {
       rankitApi.search(term, "All")
         .then((d) => alive && setLoaded({ q: term, data: { ...EMPTY, ...d } }))
-        .catch(() => alive && setLoaded({ q: term, data: EMPTY }));
+        .catch(error => alive && setLoaded({ q: term, data: null, error }));
     }, 180);
     return () => { alive = false; clearTimeout(timer); };
-  }, [term]);
+  }, [term, retry]);
 
-  useEffect(() => {
-    const onKey = (e) => e.key === "Escape" && onClose();
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  const dialog = useDialog({ onClose, label: "Search" });
 
   const data = term.length < 2 ? EMPTY : (loaded.q === term ? loaded.data : null);
+  const error = term.length >= 2 && loaded.q === term ? loaded.error : null;
   const count = useMemo(() => (data
     ? data.matches.length + data.teams.length + data.lists.length + data.members.length + data.players.length
     : 0), [data]);
 
   return (
-    <div className="ri-find">
+    <div {...dialog} className="ri-find">
       <div className="ri-find-bar">
         <label className="ri-find-field">
           <Search size={16} aria-hidden="true" />
@@ -118,45 +164,19 @@ export default function SearchSheet({ initialQuery = "", onClose, onOpenMatch, o
         {term.length < 2 && (
           <p className="ri-find-hint">Type a club, a competition, or a collection.</p>
         )}
-        {data === null && <Loading label="Searching"><SkeletonRows count={4}/></Loading>}
+        {error && <ErrorState error={error} onRetry={() => {setLoaded({q:"",data:null});setRetry(value=>value+1);}}/>}
+        {data === null && !error && <Loading label="Searching"><SkeletonRows count={4}/></Loading>}
 
         {!!data?.matches?.length && (
-          <Group title="MATCHES">
+          <Group title="MATCHES" shown={data.matches.length} truncated={data.truncated?.matches}>
             <div className="ri-find-cards">
-              {data.matches.map((m) => (
-                <button key={m.id} type="button" className="ri-find-match" onClick={() => onOpenMatch(m)}>
-                  <CrestPair home={m.home} away={m.away} />
-                  <span>
-                    {/* Baslikta skor yalnizca OYNANMISSA. Skorun VARLIGINA
-                        bakmak yetmiyor: katalogda oynanmamis maclarin bir
-                        kismi 0-0 tasiyor ve "Celtics 0 - 0 Bucks / Monday
-                        01:00" diye bir satir cikiyordu. 3e oynanmamisi
-                        "vs" ile yaziyor. */}
-                    <strong>
-                      {m.home.name || m.home.short}
-                      {m.status === "upcoming" || !m.score ? " vs " : ` ${m.score} `}
-                      {m.away.name || m.away.short}
-                    </strong>
-                    <small>
-                      {when(m)}
-                      {/* Kişisel satır yalnızca DOĞRUYSA yazılıyor. */}
-                      {m.my_watched_date ? " · in your diary" : ""}
-                    </small>
-                  </span>
-                  {/* Isı çubuğu yalnızca puan varken; yoksa hiç çizilmiyor —
-                      boş bir çubuk "soğuk" der, oysa doğrusu "puan yok". */}
-                  {m.community_rating != null && (
-                    <i style={{ background: inkFor(m.community_rating) }}
-                      title={`Community ${m.community_rating}`} />
-                  )}
-                </button>
-              ))}
+              {data.matches.map((m) => <MatchResult key={m.id} match={m} hideScores={hideScores} onOpen={onOpenMatch} />)}
             </div>
           </Group>
         )}
 
         {!!data?.teams?.length && (
-          <Group title="CLUBS">
+          <Group title="CLUBS" shown={data.teams.length} truncated={data.truncated?.teams}>
             {data.teams.map((t) => (
               <button key={t.id} type="button" className="ri-find-row"
                 onClick={() => onOpenEntity("team", t.id)}>
@@ -171,7 +191,7 @@ export default function SearchSheet({ initialQuery = "", onClose, onOpenMatch, o
         )}
 
         {!!data?.lists?.length && (
-          <Group title="COLLECTIONS">
+          <Group title="COLLECTIONS" shown={data.lists.length} truncated={data.truncated?.lists}>
             <div className="ri-find-cards">
               {data.lists.map((l) => (
                 <button key={l.id} type="button" className="ri-find-collection"
@@ -192,7 +212,7 @@ export default function SearchSheet({ initialQuery = "", onClose, onOpenMatch, o
         )}
 
         {!!data?.members?.length && (
-          <Group title="PEOPLE">
+          <Group title="PEOPLE" shown={data.members.length} truncated={data.truncated?.members}>
             {data.members.map((u) => (
               <button key={u.id} type="button" className="ri-find-row"
                 onClick={() => onOpenEntity("member", u.id)}>
@@ -205,7 +225,7 @@ export default function SearchSheet({ initialQuery = "", onClose, onOpenMatch, o
         )}
 
         {!!data?.players?.length && (
-          <Group title="PLAYERS">
+          <Group title="PLAYERS" shown={data.players.length} truncated={data.truncated?.players}>
             {data.players.map((p) => (
               <button key={p.id} type="button" className="ri-find-row"
                 onClick={() => onOpenEntity("player", p.id)}>

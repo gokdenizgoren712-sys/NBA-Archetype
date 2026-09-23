@@ -43,7 +43,9 @@ async def _json_500(request: Request, exc: Exception):
     logging.error(f"Unhandled exception: {type(exc).__name__}: {exc}\n{_tb.format_exc()}")
     # Prod'da exception tipi/mesajını (dosya yolu, kolon adı vb. sızdırabilir)
     # istemciye döndürme — sadece dev'de debug kolaylığı için detaylı kalsın.
-    detail = f"{type(exc).__name__}: {exc}" if not IS_PROD else "Sunucu hatası — daha sonra tekrar deneyin."
+    # Mesaj istemcide AYNEN gosteriliyor (rankitApi: errorBody.detail) ve
+    # kullaniciya gorunen metin Ingilizce (CLAUDE.md).
+    detail = f"{type(exc).__name__}: {exc}" if not IS_PROD else "Something went wrong on our side. Try again in a moment."
     return JSONResponse(status_code=500, content={"detail": detail})
 
 # ─── Middleware ────────────────────────────────────────────────────────────────
@@ -2843,7 +2845,9 @@ def _rankit_logo_backfill_worker():
         print(f"[startup] RankIt logo backfill failed: {_e}", flush=True)
 
 import threading as _threading
-_threading.Thread(target=_rankit_logo_backfill_worker, daemon=True).start()
+from .rankit_live_sync import background_jobs_enabled as _rankit_jobs_on
+if _rankit_jobs_on():
+    _threading.Thread(target=_rankit_logo_backfill_worker, daemon=True).start()
 
 try:
     from .rankit_live_sync import start_rankit_live_sync as _start_rankit_live_sync

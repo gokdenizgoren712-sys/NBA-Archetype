@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="position:absolute;left:0;right:0;bottom:0;height:73px;font-family:Rajdhani,system-ui,sans-serif;background:rgba(9,10,11,.86);backdrop-filter:blur(18px);border-top:1px solid rgba(255,255,255,.09);display:flex;align-items:center;justify-content:space-between;padding:0 8px">
+
+<div style="flex:1;height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px">
+<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="{{ homeInk }}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V21h13V9.5"/></svg>
+<span style="font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:{{ homeInk }}">Home</span>
+</div>
+
+<div style="flex:1;height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px">
+<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="{{ discoverInk }}" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-4.2-4.2"/></svg>
+<span style="font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:{{ discoverInk }}">Discover</span>
+</div>
+
+<div style="width:60px;flex:none"></div>
+
+<div style="flex:1;height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px">
+<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="{{ activityInk }}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2.5-6 4 12 2.5-6h5"/></svg>
+<span style="font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:{{ activityInk }}">Activity</span>
+</div>
+
+<div style="flex:1;height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px">
+<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="{{ profileInk }}" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="8.5" r="3.7"/><path d="M5 20.5c1.2-3.6 3.8-5.2 7-5.2s5.8 1.6 7 5.2"/></svg>
+<span style="font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:{{ profileInk }}">Profile</span>
+</div>
+
+<div style="position:absolute;left:50%;bottom:26px;transform:translateX(-50%);width:60px;height:60px;display:grid;place-items:center">
+<div style="width:46px;height:46px;transform:rotate(45deg);border-radius:18px 18px 21px 21px;background:linear-gradient(140deg,#ffe9b0,#ffb11b 55%,#e08f00);display:grid;place-items:center;box-shadow:0 0 22px rgba(255,177,27,.35)">
+<span style="transform:rotate(-45deg);font-size:10px;font-weight:700;letter-spacing:.14em;color:#17120a">RANK</span>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:375,&quot;height&quot;:73},&quot;active&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;home&quot;,&quot;discover&quot;,&quot;activity&quot;,&quot;profile&quot;,&quot;none&quot;],&quot;default&quot;:&quot;home&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const a = this.props.active ?? "home";
+    const ink = (t) => (a === t ? "#ffb11b" : "#7f868b");
+    return {
+      homeInk: ink("home"),
+      discoverInk: ink("discover"),
+      activityInk: ink("activity"),
+      profileInk: ink("profile")
+    };
+  }
+}
+</script>
+</body>
+</html>

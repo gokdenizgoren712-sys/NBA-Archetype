@@ -94,8 +94,33 @@ def test_worker_starts_even_after_the_first_import(fresh_db, monkeypatch):
             started.append(self.target)
 
     monkeypatch.setattr(catalog.threading, "Thread", FakeThread)
+    monkeypatch.setenv("RANKIT_BACKGROUND_JOBS", "1")   # conftest kapatiyor
     catalog.start_rankit_catalog_sync()
     assert started == [catalog._worker]
+
+
+def test_background_jobs_stay_off_when_the_switch_is_off(monkeypatch):
+    """Testler (conftest) ve bakim icin tek anahtar: hicbir is baslamaz."""
+    import api.rankit_live_sync as live
+
+    started = []
+
+    class FakeThread:
+        def __init__(self, target=None, name=None, daemon=None):
+            self.target = target
+
+        def start(self):
+            started.append(self.target)
+
+    monkeypatch.setattr(catalog.threading, "Thread", FakeThread)
+    monkeypatch.setattr(live.threading, "Thread", FakeThread)
+    monkeypatch.setenv("RANKIT_BACKGROUND_JOBS", "0")
+    catalog.start_rankit_catalog_sync()
+    live.start_rankit_live_sync()
+    assert started == []
+    monkeypatch.setenv("RANKIT_BACKGROUND_JOBS", "1")
+    live.start_rankit_live_sync()
+    assert len(started) == 2                 # olay dongusu + canli skor
 
 
 def test_catalog_run_inserts_league_phase_fixtures(fresh_db, monkeypatch):

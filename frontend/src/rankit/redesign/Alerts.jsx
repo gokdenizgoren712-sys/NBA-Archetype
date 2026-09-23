@@ -20,11 +20,13 @@
  *     11:00'de kapanıyor (§7.2); "midnight" demek seriyi yanlış saatte
  *     bitecekmiş gibi göstermek olurdu.
  */
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Tv } from "lucide-react";
 import { rankitApi } from "../rankitApi";
-import { SkeletonRows, Loading, EmptyState } from "./States";
-import { inkFor, RAMP, RAMP_OFF } from "./heat";
+import { SkeletonRows, Loading, EmptyState, ErrorState } from "./States";
+import { useResource } from "./useResource";
+import { RAMP, RAMP_OFF } from "./heat";
+import { useDialog } from "./useDialog";
 
 
 function ago(iso) {
@@ -69,7 +71,7 @@ function Ring({ done, total, size = 34 }) {
   );
 }
 
-function Sentence({ item }) {
+function Sentence({ item, rated }) {
   const who = <strong>@{item.actor}</strong>;
   switch (item.kind) {
     case "respect":
@@ -77,7 +79,8 @@ function Sentence({ item }) {
     case "reply":
       return <>{who} replied to you{item.match ? ` on ${item.match}` : ""}.</>;
     case "classic":
-      return <>{who} stamped an Instant Classic on a match in your diary.</>;
+      return rated ? <>{who} stamped an Instant Classic on a match in your diary.</>
+        : <>There is new activity on a match in your diary.</>;
     case "follow":
       return <>{who} started following you.</>;
     case "broadcast": {
@@ -85,34 +88,36 @@ function Sentence({ item }) {
       return <><strong>{item.match}</strong> now has a {country} broadcaster listed{name ? ` — ${name}` : ""}.</>;
     }
     case "collection":
-      return <><strong>{item.list_title}</strong> is one match from closing. {item.match}.</>;
+      return <><strong>{item.collection_title || item.list_title || "A collection"}</strong> is one match from closing. {item.match}.</>;
     default:
       return <>{item.match || "Something happened."}</>;
   }
 }
 
-function Alert({ item, onOpenMatch, onOpenList }) {
+function Alert({ item, ratedMatchIds, onOpenMatch, onOpenList, onOpenCollection }) {
   const open = () => {
+    // collection_id bir kullanici listesi kimligi degil: kapanmaya bir mac
+    // kalan koleksiyon 2n'yi acar (§24 lists vs collections, B1). Eski istemci
+    // prop'u vermiyorsa kalan maca duser.
+    if (item.kind === "collection" && item.collection_id && onOpenCollection) return onOpenCollection(item.collection_id);
+    if (item.kind === "collection" && item.collection_id && item.match_id) return onOpenMatch?.(item.match_id);
     if (item.kind === "collection" && item.list_id) return onOpenList?.(item.list_id);
     if (item.match_id) return onOpenMatch?.(item.match_id);
     return undefined;
   };
 
-  // Sıcak maç uyarısı tek başına bir tip: şerit, ısı etiketi ve TEK eylem.
+  // Sunucu bu durumu özellikle PUANLANMAMIŞ maç için üretir. Bildirimde
+  // "RUNNING HOT"/4.6 yazmak §15'i ihlal eder; yalnızca bitiş bilgisini ver.
   if (item.kind === "hot_match") {
-    const heat = inkFor(item.rating);
     return (
       <article className="ri-alert ri-alert-hot">
-        <i aria-hidden="true" style={{ background: heat }} />
         <div className="ri-alert-head">
-          <span className="ri-alert-dot" aria-hidden="true" style={{ background: heat }} />
-          {/* §1 — sayı her zaman rengin yanında. */}
-          <span style={{ color: heat }}>RUNNING HOT · {item.rating.toFixed(1)}</span>
+          <span>READY TO RATE</span>
         </div>
         <p>
-          <strong>{item.match}</strong> is the highest-rated match of tonight.{" "}
-          {item.reason === "watchlist" ? "It is in your watchlist" : "It is in a competition you follow"}
-          {" "}— rate it before 11:00 to keep the streak.
+          <strong>{item.match}</strong> has finished.{" "}
+          {item.reason === "watchlist" ? "It is in your watchlist" : "It is in a competition you follow"}.
+          {" "}Rate it before 11:00 to keep the streak.
         </p>
         <button type="button" className="ri-alert-cta" onClick={open}>Rate it now</button>
       </article>
@@ -121,12 +126,12 @@ function Alert({ item, onOpenMatch, onOpenList }) {
 
   return (
     <article className={`ri-alert${item.unread ? " unread" : ""}`}>
-      <button type="button" className="ri-alert-body" onClick={open} disabled={!item.match_id && !item.list_id}>
-        {item.kind === "collection" ? <Ring done={item.rated} total={item.total} />
+      <button type="button" className="ri-alert-body" onClick={open} disabled={!item.match_id && !item.list_id && !(item.collection_id && onOpenCollection)}>
+        {item.kind === "collection" ? <Ring done={item.collected ?? item.rated} total={item.total} />
           : item.kind === "broadcast" ? <span className="ri-alert-face" aria-hidden="true"><Tv size={16} /></span>
           : <Avatar name={item.actor} />}
         <span>
-          <p><Sentence item={item} /></p>
+          <p><Sentence item={item} rated={ratedMatchIds?.has(Number(item.match_id))} /></p>
           {item.created_at && <small>{ago(item.created_at)}</small>}
         </span>
       </button>
@@ -134,21 +139,12 @@ function Alert({ item, onOpenMatch, onOpenList }) {
   );
 }
 
-export default function Alerts({ onClose, onOpenMatch, onOpenList }) {
-  const [loaded, setLoaded] = useState(null);
+export default function Alerts({ onClose, onOpenMatch, onOpenList, onOpenCollection, ratedMatchIds }) {
+  const {data:loaded,error,loading,reload:load} = useResource("alerts", () => rankitApi.notifications(-new Date().getTimezoneOffset()));
   const [busy, setBusy] = useState(false);
 
-  const load = () => {
-    const tz = -new Date().getTimezoneOffset();
-    rankitApi.notifications(tz).then(setLoaded).catch(() => setLoaded({ items: [], unread: 0 }));
-  };
-  useEffect(load, []);
 
-  useEffect(() => {
-    const onKey = (e) => e.key === "Escape" && onClose();
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  const dialog = useDialog({ onClose, label: "Alerts" });
 
   const markRead = async () => {
     if (busy) return;
@@ -168,7 +164,7 @@ export default function Alerts({ onClose, onOpenMatch, onOpenList }) {
   }
 
   return (
-    <div className="ri-alerts">
+    <div {...dialog} className="ri-alerts">
       <div className="ri-alerts-head">
         <h2>Alerts</h2>
         {/* Yalnızca kapatılacak bir şey varken. Hiçbir şeyi kapatmayan bir
@@ -179,20 +175,29 @@ export default function Alerts({ onClose, onOpenMatch, onOpenList }) {
       </div>
 
       <div className="ri-alerts-body">
-        {!loaded && <Loading label="Loading alerts"><SkeletonRows count={3} height={76}/></Loading>}
+        {error && <ErrorState error={error} onRetry={load}/>}
+        {loading && !loaded && <Loading label="Loading alerts"><SkeletonRows count={3} height={76}/></Loading>}
 
         {groups.map((group, index) => (
           <section key={`${group.key}-${index}`}>
             <div className="ri-chip-title">{group.key}</div>
             <div className="ri-alert-stack">
               {group.items.map((item) => (
-                <Alert key={item.id} item={item} onOpenMatch={onOpenMatch} onOpenList={onOpenList} />
+                <Alert key={item.id} item={item} ratedMatchIds={ratedMatchIds} onOpenMatch={onOpenMatch} onOpenList={onOpenList} onOpenCollection={onOpenCollection} />
               ))}
             </div>
           </section>
         ))}
 
-        {loaded && !items.length && (
+        {/* Akis 40 olayda kesiliyor (rankit_notify.FEED_LIMIT) ve ucun
+            sayfalama parametresi yok. Sessizce bitirmek "hepsi bu" demek
+            olurdu; "Load more" ise tutulamayacak bir soz. Dogru olan, neyi
+            gosterdigimizi soylemek. */}
+        {loaded?.has_more && !error && (
+          <p className="ri-alerts-truncated">Showing your {items.length} most recent alerts.</p>
+        )}
+
+        {loaded && !error && !items.length && (
           <EmptyState title="Nothing new" body="Respect, replies and the night’s hottest match land here." />
         )}
       </div>

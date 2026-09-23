@@ -1,0 +1,1724 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0b0c0d;font-family:Outfit,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:#ffb11b;text-decoration:none}
+a:hover{color:#ffc65a}
+.dv-turn{padding:48px 52px 40px;border-bottom:1px solid rgba(255,255,255,.08);scroll-margin-top:16px}
+.dv-thd{display:flex;align-items:baseline;gap:12px;margin:0 0 6px}
+.dv-tid{font:700 10px/1 Outfit,sans-serif;letter-spacing:.1em;padding:5px 8px;background:#ffb11b;color:#17120a;border-radius:5px;text-decoration:none}
+.dv-tid:hover{color:#17120a}
+.dv-tname{font:600 15px/1.2 Outfit,sans-serif;color:#eceded}
+.dv-sub{font:400 12.5px/1.6 Outfit,sans-serif;color:#9aa0a6;max-width:760px;margin:0 0 26px}
+.dv-ghd{display:flex;align-items:center;gap:14px;margin:38px 0 20px}
+.dv-gnum{font:700 9px/1 Outfit,sans-serif;letter-spacing:.14em;color:#7f868b}
+.dv-gname{font:600 13px/1 Rajdhani,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:#c9cccd}
+.dv-grule{flex:1;height:1px;background:rgba(255,255,255,.09)}
+.dv-opts{display:flex;flex-wrap:wrap;gap:34px;align-items:flex-start}
+.dv-opt{flex:none;display:flex;flex-direction:column;gap:10px;scroll-margin-top:16px}
+.dv-oid{font:700 10.5px/1 Outfit,sans-serif;letter-spacing:.06em;padding:4px 7px;background:rgba(255,255,255,.09);color:#eceded;border-radius:5px;text-decoration:none}
+.dv-oid:hover{color:#fff}
+.dv-olabel{display:flex;align-items:center;gap:9px;font:400 11.5px/1.3 Outfit,sans-serif;color:#9aa0a6}
+.dv-opt:target .dv-oid{background:#ffb11b;color:#17120a}
+.dv-next{margin:34px 0 0;font:400 12px/1.7 Outfit,sans-serif;color:#7f868b}
+@keyframes emberPulse{0%,100%{opacity:.55;transform:scale(1)}50%{opacity:1;transform:scale(1.06)}}
+@keyframes liveDot{0%,100%{opacity:1}50%{opacity:.25}}
+</style>
+</helmet>
+
+<section class="dv-turn" id="t1">
+<div class="dv-thd"><a class="dv-tid" href="#t1">1</a><span class="dv-tname">RankIt — evolve pass, 18 screens</span></div>
+<p class="dv-sub">Built from <strong style="color:#c9cccd;font-weight:600">mobile-screens.md</strong> (tokens + B-rules treated as binding; the Nba-Archetypes folder wasn't reachable from here). One thesis: today RankIt displays <em>data about matches</em> — after this pass, rating a match <em>produces an artifact</em>. The collectible stops being a card style and becomes the thing you earn, skin, hunt and share. Momento's lesson, applied to opinions instead of attendance.</p>
+
+<div style="display:flex;flex-wrap:wrap;gap:18px;margin:0 0 8px">
+<div style="flex:1 1 300px;min-width:280px;background:#121315;border:1px solid rgba(255,255,255,.09);border-radius:14px;padding:18px 20px">
+<div style="font:700 9px/1 Outfit,sans-serif;letter-spacing:.14em;color:#7f868b;margin-bottom:12px">ADDED SCALE — HEAT</div>
+<div style="font:400 12px/1.55 Outfit,sans-serif;color:#c9cccd;margin-bottom:14px">How good the match was, cold to incandescent. Routed through indigo and magenta on purpose, so no step ever reads as gold.</div>
+<div style="display:flex;gap:6px">
+<div style="flex:1"><div style="height:26px;border-radius:6px;background:#2f5480"></div><div style="font:600 8.5px/1 Outfit,sans-serif;letter-spacing:.1em;color:#7f868b;margin-top:7px">COLD</div></div>
+<div style="flex:1"><div style="height:26px;border-radius:6px;background:#5b4fa8"></div><div style="font:600 8.5px/1 Outfit,sans-serif;letter-spacing:.1em;color:#7f868b;margin-top:7px">FLAT</div></div>
+<div style="flex:1"><div style="height:26px;border-radius:6px;background:#9a3f96"></div><div style="font:600 8.5px/1 Outfit,sans-serif;letter-spacing:.1em;color:#7f868b;margin-top:7px">GOOD</div></div>
+<div style="flex:1"><div style="height:26px;border-radius:6px;background:#d43a63"></div><div style="font:600 8.5px/1 Outfit,sans-serif;letter-spacing:.1em;color:#7f868b;margin-top:7px">HOT</div></div>
+<div style="flex:1"><div style="height:26px;border-radius:6px;background:#f5402e;box-shadow:0 0 16px rgba(245,64,46,.55)"></div><div style="font:600 8.5px/1 Outfit,sans-serif;letter-spacing:.1em;color:#f5402e;margin-top:7px">INCAND.</div></div>
+</div>
+</div>
+<div style="flex:1 1 260px;min-width:250px;background:#121315;border:1px solid rgba(255,255,255,.09);border-radius:14px;padding:18px 20px">
+<div style="font:700 9px/1 Outfit,sans-serif;letter-spacing:.14em;color:#7f868b;margin-bottom:12px">THREE MOVES</div>
+<div style="font:400 12px/1.7 Outfit,sans-serif;color:#c9cccd">
+<div style="display:flex;gap:9px"><span style="color:#7f868b;font-weight:600">01</span><span>Heat gives the quiet upcoming card something to say — anticipation instead of missing data.</span></div>
+<div style="display:flex;gap:9px;margin-top:9px"><span style="color:#7f868b;font-weight:600">02</span><span>The Hunt turns ten simultaneous empty states into one thing worth starting.</span></div>
+<div style="display:flex;gap:9px;margin-top:9px"><span style="color:#7f868b;font-weight:600">03</span><span>Rating on the night is the only streak currency — it rewards being there.</span></div>
+</div>
+</div>
+<div style="flex:1 1 230px;min-width:220px;background:#121315;border:1px solid rgba(255,255,255,.09);border-radius:14px;padding:18px 20px">
+<div style="font:700 9px/1 Outfit,sans-serif;letter-spacing:.14em;color:#7f868b;margin-bottom:12px">HELD</div>
+<div style="font:400 12px/1.7 Outfit,sans-serif;color:#c9cccd">Gold appears once per region — Rank diamond, or Classic hairlines, never both. Shields sized from their rotated footprint. Club colour comes in as <code style="font:500 11px ui-monospace,monospace;color:#9aa0a6">--home</code>/<code style="font:500 11px ui-monospace,monospace;color:#9aa0a6">--away</code>. One border: 1px, <code style="font:500 11px ui-monospace,monospace;color:#9aa0a6">line</code>. Empty stays empty.</div>
+</div>
+</div>
+
+<div class="dv-ghd"><span class="dv-gnum">GROUP A</span><span class="dv-gname">Existing surfaces, redesigned</span><span class="dv-grule"></span></div>
+<div class="dv-opts">
+
+<div class="dv-opt" id="1a">
+<div class="dv-olabel"><a class="dv-oid" href="#1a">1a</a>Home — Tonight on RankIt</div>
+<div style="position:relative;width:375px;height:812px;flex:none;border-radius:40px;overflow:hidden;background:#090a0b;border:1px solid rgba(255,255,255,.14);box-shadow:0 26px 64px rgba(0,0,0,.6);color:#eceded">
+  <dc-import name="StatusBar" hint-size="100%,44px"></dc-import>
+
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 20px 14px 26px">
+    <div>
+      <div style="font:700 21px/1 Rajdhani,sans-serif;letter-spacing:.01em;color:#eceded">RankIt</div>
+      <div style="font:700 9px/1 Outfit,sans-serif;letter-spacing:.14em;color:#7f868b;margin-top:4px">BY PRIMARY ARCH</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <div style="display:flex;align-items:center;gap:8px;height:44px;padding:0 13px 0 9px;border-radius:999px;background:#151618;border:1px solid rgba(255,255,255,.09)">
+        <div style="position:relative;width:26px;height:26px;display:grid;place-items:center">
+          <div style="position:absolute;inset:0;border-radius:999px;background:conic-gradient(from -90deg,#f5402e 0turn,#d43a63 .58turn,rgba(255,255,255,.1) .58turn)"></div>
+          <div style="position:absolute;inset:3px;border-radius:999px;background:#151618"></div>
+          <span style="position:relative;font:700 12px/1 Rajdhani,sans-serif;color:#eceded">12</span>
+        </div>
+        <span style="font:700 9px/1 Outfit,sans-serif;letter-spacing:.13em;color:#c9cccd">NIGHTS</span>
+      </div>
+      <div style="position:relative;width:44px;height:44px;display:grid;place-items:center;border-radius:999px;background:#151618;border:1px solid rgba(255,255,255,.09)">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#c9cccd" stroke-width="1.7" stroke-linecap="round"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 8-3 8h18s-3-1-3-8"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+        <div style="position:absolute;top:10px;right:11px;width:7px;height:7px;border-radius:999px;background:#f5402e;border:1.5px solid #151618"></div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:11px;padding:0 0 0 26px;overflow:hidden">
+    <div style="flex:none;width:98px">
+      <div style="position:relative;height:76px">
+        <div style="position:absolute;left:12px;top:5px;width:52px;height:68px;border-radius:9px;background:linear-gradient(150deg,#2c3f6b,#141a2c);border:1px solid rgba(255,255,255,.11);transform:rotate(-9deg)"></div>
+        <div style="position:absolute;left:26px;top:3px;width:52px;height:68px;border-radius:9px;background:linear-gradient(150deg,#5b3a63,#22131f);border:1px solid rgba(255,255,255,.11);transform:rotate(5deg)"></div>
+        <div style="position:absolute;left:20px;top:0;width:56px;height:72px;border-radius:10px;overflow:hidden;background:linear-gradient(155deg,#7a1d2b,#2b0d13);border:1px solid rgba(255,255,255,.16);box-shadow:0 6px 16px rgba(0,0,0,.5)">
+          <div style="position:absolute;inset:0;background:repeating-linear-gradient(115deg,rgba(255,255,255,.07) 0 3px,transparent 3px 9px)"></div>
+          <div style="position:absolute;left:0;right:0;bottom:0;padding:5px 6px;background:linear-gradient(180deg,transparent,rgba(0,0,0,.75))"><div style="font:700 13px/1 Rajdhani,sans-serif">3–1</div></div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;margin-top:9px">
+        <div style="width:20px;height:20px;border-radius:999px;background:linear-gradient(140deg,#3fb08c,#1d5a48);flex:none"></div>
+        <span style="font:500 11.5px/1 Outfit,sans-serif;color:#c9cccd">Deniz</span>
+      </div>
+      <div style="font:400 10px/1 Outfit,sans-serif;color:#7f868b;margin-top:5px">+3 logged</div>
+    </div>
+    <div style="flex:none;width:98px">
+      <div style="position:relative;height:76px">
+        <div style="position:absolute;left:14px;top:4px;width:52px;height:68px;border-radius:9px;background:linear-gradient(150deg,#4a4f2c,#1c1d12);border:1px solid rgba(255,255,255,.11);transform:rotate(7deg)"></div>
+        <div style="position:absolute;left:20px;top:0;width:56px;height:72px;border-radius:10px;overflow:hidden;background:linear-gradient(155deg,#1d4e89,#0d1f36);border:1px solid rgba(255,255,255,.16);box-shadow:0 6px 16px rgba(0,0,0,.5)">
+          <div style="position:absolute;inset:0;background:repeating-linear-gradient(115deg,rgba(255,255,255,.07) 0 3px,transparent 3px 9px)"></div>
+          <div style="position:absolute;left:0;right:0;bottom:0;padding:5px 6px;background:linear-gradient(180deg,transparent,rgba(0,0,0,.75))"><div style="font:700 13px/1 Rajdhani,sans-serif">112–108</div></div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;margin-top:9px">
+        <div style="width:20px;height:20px;border-radius:999px;background:linear-gradient(140deg,#8b6fc4,#3b2a5c);flex:none"></div>
+        <span style="font:500 11.5px/1 Outfit,sans-serif;color:#c9cccd">Mara</span>
+      </div>
+      <div style="font:400 10px/1 Outfit,sans-serif;color:#7f868b;margin-top:5px">+1 logged</div>
+    </div>
+    <div style="flex:none;width:98px">
+      <div style="position:relative;height:76px">
+        <div style="position:absolute;left:20px;top:0;width:56px;height:72px;border-radius:10px;display:grid;place-items:center;border:1px dashed rgba(255,255,255,.16);background:#0f1012">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7f868b" stroke-width="1.7" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        </div>
+      </div>
+      <div style="font:500 11.5px/1.35 Outfit,sans-serif;color:#9aa0a6;margin-top:9px">Find<br>people</div>
+    </div>
+  </div>
+
+  <div style="display:flex;align-items:center;gap:8px;padding:20px 26px 0;overflow:hidden">
+    <div style="height:32px;padding:0 15px;display:flex;align-items:center;border-radius:999px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.22);font:600 11.5px Outfit,sans-serif;color:#eceded">All</div>
+    <div style="height:32px;padding:0 15px;display:flex;align-items:center;border-radius:999px;border:1px solid rgba(255,255,255,.09);font:500 11.5px Outfit,sans-serif;color:#9aa0a6">Football</div>
+    <div style="height:32px;padding:0 15px;display:flex;align-items:center;border-radius:999px;border:1px solid rgba(255,255,255,.09);font:500 11.5px Outfit,sans-serif;color:#9aa0a6">Basketball</div>
+    <div style="height:32px;padding:0 15px;display:flex;align-items:center;border-radius:999px;border:1px solid rgba(255,255,255,.05);font:500 11.5px Outfit,sans-serif;color:#4d5256">Olympics</div>
+  </div>
+
+  <div style="padding:18px 24px 0">
+    <div style="position:relative;height:352px;border-radius:22px;overflow:hidden;background:linear-gradient(145deg,#7a1d2b 0%,#2a1016 45%,#0f1b34 100%);border:1px solid rgba(255,255,255,.09)">
+      <div style="position:absolute;inset:0;background:repeating-linear-gradient(112deg,rgba(255,255,255,.055) 0 2px,transparent 2px 11px)"></div>
+      <div style="position:absolute;top:-24px;right:-24px;width:44px;height:44px;transform:rotate(45deg);background:#090a0b;border:1px solid #ffb11b"></div>
+      <div style="position:absolute;bottom:-24px;left:-24px;width:44px;height:44px;transform:rotate(45deg);background:#090a0b;border:1px solid #ffb11b"></div>
+      <div style="position:absolute;left:0;top:56px;bottom:56px;width:3px;background:linear-gradient(180deg,#f5402e,#d43a63,#9a3f96);border-radius:0 3px 3px 0"></div>
+
+      <div style="position:relative;display:flex;align-items:flex-start;justify-content:space-between;padding:18px 20px 0">
+        <div>
+          <div style="font:700 9px/1 Outfit,sans-serif;letter-spacing:.14em;color:rgba(236,237,237,.72)">PREMIER LEAGUE · MW 4</div>
+          <div style="font:600 12px/1 Outfit,sans-serif;color:#eceded;margin-top:6px">Emirates Stadium</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:999px;background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.14)">
+          <span style="font:700 9px/1 Outfit,sans-serif;letter-spacing:.12em;color:#eceded">FULL TIME</span>
+        </div>
+      </div>
+
+      <div style="position:relative;display:flex;align-items:center;justify-content:center;gap:16px;margin-top:26px">
+        <div style="width:76px;height:76px;display:grid;place-items:center;flex:none">
+          <div style="width:54px;height:54px;transform:rotate(45deg);border-radius:16px 16px 18px 18px;background:linear-gradient(135deg,#c8202f,#6d0f18);border:1px solid rgba(255,255,255,.18);display:grid;place-items:center">
+            <span style="transform:rotate(-45deg);font:700 14px/1 Rajdhani,sans-serif;letter-spacing:.04em;color:#fff">ARS</span>
+          </div>
+        </div>
+        <div style="text-align:center">
+          <div style="font:700 46px/1 Rajdhani,sans-serif;letter-spacing:.02em;color:#fff;text-shadow:0 2px 18px rgba(0,0,0,.5)">3<span style="color:rgba(255,255,255,.45);margin:0 8px">–</span>1</div>
+          <div style="font:700 9px/1 Outfit,sans-serif;letter-spacing:.13em;color:rgba(236,237,237,.7);margin-top:8px">14 SEP 2026</div>
+        </div>
+        <div style="width:76px;height:76px;display:grid;place-items:center;flex:none">
+          <div style="width:54px;height:54px;transform:rotate(45deg);border-radius:16px 16px 18px 18px;background:linear-gradient(135deg,#e9ecf2,#9aa2b4);border:1px solid rgba(255,255,255,.18);display:grid;place-items:center">
+            <span style="transform:rotate(-45deg);font:700 14px/1 Rajdhani,sans-serif;letter-spacing:.04em;color:#101318">TOT</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="position:relative;display:flex;justify-content:center;gap:10px;margin-top:14px;font:600 12px/1 Outfit,sans-serif;color:rgba(236,237,237,.9)">
+        <span>Arsenal</span><span style="color:rgba(255,255,255,.3)">vs</span><span>Tottenham</span>
+      </div>
+
+      <div style="position:absolute;left:20px;right:20px;bottom:74px">
+        <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:8px">
+          <span style="font:700 9px/1 Outfit,sans-serif;letter-spacing:.14em;color:#f5402e">INCANDESCENT</span>
+          <span style="font:700 15px/1 Rajdhani,sans-serif;color:#eceded">4.6<span style="font:600 10px Outfit,sans-serif;color:#9aa0a6"> / 5</span></span>
+        </div>
+        <div style="display:flex;gap:4px">
+          <div style="flex:1;height:5px;border-radius:3px;background:#2f5480"></div>
+          <div style="flex:1;height:5px;border-radius:3px;background:#5b4fa8"></div>
+          <div style="flex:1;height:5px;border-radius:3px;background:#9a3f96"></div>
+          <div style="flex:1;height:5px;border-radius:3px;background:#d43a63"></div>
+          <div style="flex:1;height:5px;border-radius:3px;background:#f5402e;box-shadow:0 0 12px rgba(245,64,46,.7);animation:emberPulse 2.6s ease-in-out infinite"></div>
+        </div>
+      </div>
+
+      <div style="position:absolute;left:0;right:0;bottom:0;height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;background:rgba(9,10,11,.72);border-top:1px solid rgba(255,255,255,.09)">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="width:14px;height:14px;transform:rotate(45deg);border-radius:4px 4px 5px 5px;background:#ffb11b"></div>
+          <span style="font:700 10px/1 Outfit,sans-serif;letter-spacing:.13em;color:#ffb11b">INSTANT CLASSIC</span>
+        </div>
+        <span style="font:400 11px/1 Outfit,sans-serif;color:#9aa0a6">2,481 ratings</span>
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:center;gap:6px;margin-top:14px">
+      <div style="width:18px;height:4px;border-radius:2px;background:#eceded"></div>
+      <div style="width:4px;height:4px;border-radius:2px;background:rgba(255,255,255,.2)"></div>
+      <div style="width:4px;height:4px;border-radius:2px;background:rgba(255,255,255,.2)"></div>
+      <div style="width:4px;height:4px;border-radius:2px;background:rgba(255,255,255,.2)"></div>
+    </div>
+  </div>
+
+  <div style="display:flex;align-items:baseline;justify-content:space-between;padding:20px 26px 0">
+    <div style="font:600 13px/1 Rajdhani,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:#c9cccd">Tonight · 4 matches</div>
+    <span style="font:500 11px/1 Outfit,sans-serif;color:#9aa0a6">See all</span>
+  </div>
+  <div style="padding:12px 24px 0">
+    <div style="position:relative;height:74px;border-radius:14px;background:#151618;border:1px solid rgba(255,255,255,.09);display:flex;align-items:center;padding:0 16px;gap:12px;overflow:hidden">
+      <div style="position:absolute;left:0;top:14px;bottom:14px;width:3px;background:#5b4fa8;border-radius:0 3px 3px 0"></div>
+      <div style="width:44px;height:44px;display:grid;place-items:center;flex:none"><div style="width:31px;height:31px;transform:rotate(45deg);border-radius:9px 9px 10px 10px;background:linear-gradient(135deg,#0d3b8f,#071e4a);border:1px solid rgba(255,255,255,.14)"></div></div>
+      <div style="flex:1;min-width:0">
+        <div style="font:600 13px/1.2 Outfit,sans-serif;color:#eceded">Chelsea vs Everton</div>
+        <div style="font:400 11px/1 Outfit,sans-serif;color:#9aa0a6;margin-top:5px">20:00 · TNT Sports 1</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font:700 9px/1 Outfit,sans-serif;letter-spacing:.12em;color:#8b6fc4">EXPECTED</div>
+        <div style="font:700 14px/1 Rajdhani,sans-serif;color:#c9cccd;margin-top:6px">3.4</div>
+      </div>
+    </div>
+  </div>
+
+  <dc-import name="TabBar" active="home" hint-size="100%,88px"></dc-import>
+</div>
+</div>
+
+<div class="dv-opt" id="1b">
+<div class="dv-olabel"><a class="dv-oid" href="#1b">1b</a>Home — spoiler shield on (heat is a spoiler too)</div>
+<div style="position:relative;width:375px;height:812px;flex:none;border-radius:40px;overflow:hidden;background:#090a0b;border:1px solid rgba(255,255,255,.14);box-shadow:0 26px 64px rgba(0,0,0,.6);color:#eceded">
+  <dc-import name="StatusBar" hint-size="100%,44px"></dc-import>
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 20px 14px 26px">
+    <div>
+      <div style="font:700 21px/1 Rajdhani,sans-serif;color:#eceded">RankIt</div>
+      <div style="font:700 9px/1 Outfit,sans-serif;letter-spacing:.14em;color:#7f868b;margin-top:4px">BY PRIMARY ARCH</div>
+    </div>
+    <div style="position:relative;width:44px;height:44px;display:grid;place-items:center;border-radius:999px;background:#151618;border:1px solid rgba(255,255,255,.09)">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#c9cccd" stroke-width="1.7" stroke-linecap="round"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 8-3 8h18s-3-1-3-8"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+      <div style="position:absolute;top:10px;right:11px;width:7px;height:7px;border-radius:999px;background:#f5402e;border:1.5px solid #151618"></div>
+    </div>
+  </div>
+
+  <div style="margin:0 24px;height:56px;border-radius:14px;background:#121315;border:1px solid rgba(255,255,255,.09);display:flex;align-items:center;gap:12px;padding:0 14px">
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#3fb08c" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 5 5.6v5.9c0 4.3 2.9 8 7 9.5 4.1-1.5 7-5.2 7-9.5V5.6z"/></svg>
+    <div style="flex:1;min-width:0">
+      <div style="font:600 12.5px/1 Outfit,sans-serif;color:#eceded">Spoiler shield</div>
+      <div style="font:400 10.5px/1 Outfit,sans-serif;color:#9aa0a6;margin-top:5px">Scores, heat and reviews hidden</div>
+    </div>
+    <div style="width:46px;height:28px;border-radius:999px;background:#3fb08c;padding:3px;display:flex;justify-content:flex-end;flex:none">
+      <div style="width:22px;height:22px;border-radius:999px;background:#0c0d0f"></div>
+    </div>
+  </div>
+
+  <div style="padding:18px 24px 0">
+    <div style="position:relative;height:352px;border-radius:22px;overflow:hidden;background:linear-gradient(145deg,#7a1d2b 0%,#2a1016 45%,#0f1b34 100%);border:1px solid rgba(255,255,255,.09)">
+      <div style="position:absolute;inset:0;background:repeating-linear-gradient(112deg,rgba(255,255,255,.055) 0 2px,transparent 2px 11px)"></div>
+      <div style="position:absolute;top:-24px;right:-24px;width:44px;height:44px;transform:rotate(45deg);background:#090a0b;border:1px solid rgba(255,255,255,.09)"></div>
+      <div style="position:absolute;bottom:-24px;left:-24px;width:44px;height:44px;transform:rotate(45deg);background:#090a0b;border:1px solid rgba(255,255,255,.09)"></div>
+
+      <div style="position:relative;display:flex;align-items:flex-start;justify-content:space-between;padding:18px 20px 0">
+        <div>
+          <div style="font:700 9px/1 Outfit,sans-serif;letter-spacing:.14em;color:rgba(236,237,237,.72)">PREMIER LEAGUE · MW 4</div>
+          <div style="font:600 12px/1 Outfit,sans-serif;color:#eceded;margin-top:6px">Emirates Stadium</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:999px;background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.14)">
+          <span style="font:700 9px/1 Outfit,sans-serif;letter-spacing:.12em;color:#eceded">PLAYED</span>
+        </div>
+      </div>
+
+      <div style="position:relative;display:flex;align-items:center;justify-content:center;gap:16px;margin-top:26px">
+        <div style="width:76px;height:76px;display:grid;place-items:center;flex:none">
+          <div style="width:54px;height:54px;transform:rotate(45deg);border-radius:16px 16px 18px 18px;background:linear-gradient(135deg,#c8202f,#6d0f18);border:1px solid rgba(255,255,255,.18);display:grid;place-items:center">
+            <span style="transform:rotate(-45deg);font:700 14px/1 Rajdhani,sans-serif;letter-spacing:.04em;color:#fff">ARS</span>
+          </div>
+        </div>
+        <div style="text-align:center">
+          <div style="font:700 46px/1 Rajdhani,sans-serif;color:#fff;filter:blur(11px);opacity:.75">3 – 1</div>
+          <div style="font:700 9px/1 Outfit,sans-serif;letter-spacing:.13em;color:rgba(236,237,237,.7);margin-top:8px">14 SEP 2026</div>
+        </div>
+        <div style="width:76px;height:76px;display:grid;place-items:center;flex:none">
+          <div style="width:54px;height:54px;transform:rotate(45deg);border-radius:16px 16px 18px 18px;background:linear-gradient(135deg,#e9ecf2,#9aa2b4);border:1px solid rgba(255,255,255,.18);display:grid;place-items:center">
+            <span style="transform:rotate(-45deg);font:700 14px/1 Rajdhani,sans-serif;letter-spacing:.04em;color:#101318">TOT</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="position:relative;display:flex;justify-content:center;gap:10px;margin-top:14px;font:600 12px/1 Outfit,sans-serif;color:rgba(236,237,237,.9)">
+        <span>Arsenal</span><span style="color:rgba(255,255,255,.3)">vs</span><span>Tottenham</span>
+      </div>
+
+      <div style="position:absolute;left:20px;right:20px;bottom:70px;height:44px;border-radius:12px;background:rgba(9,10,11,.55);border:1px solid rgba(255,255,255,.14);display:flex;align-items:center;justify-content:center;gap:9px">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#c9cccd" stroke-width="1.9" stroke-linecap="round"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7.5a4 4 0 0 1 8 0V11"/></svg>
+        <span style="font:700 10px/1 Outfit,sans-serif;letter-spacing:.13em;color:#c9cccd">TAP TO REVEAL SCORE &amp; HEAT</span>
+      </div>
+
+      <div style="position:absolute;left:0;right:0;bottom:0;height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;background:rgba(9,10,11,.72);border-top:1px solid rgba(255,255,255,.09)">
+        <span style="font:400 11px/1 Outfit,sans-serif;color:#9aa0a6">2,481 ratings</span>
+        <span style="font:400 11px/1 Outfit,sans-serif;color:#7f868b">Not watched yet</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="padding:22px 26px 0">
+    <div style="font:700 9px/1 Outfit,sans-serif;letter-spacing:.14em;color:#7f868b">POPULAR ACROSS RANKIT</div>
+  </div>
+  <div style="padding:12px 24px 0;display:flex;flex-direction:column;gap:10px">
+    <div style="border-radius:14px;background:#151618;border:1px solid rgba(255,255,255,.09);padding:13px 15px">
+      <div style="display:flex;align-items:center;gap:9px">
+        <div style="width:26px;height:26px;border-radius:999px;background:linear-gradient(140deg,#8b6fc4,#3b2a5c);flex:none"></div>
+        <span style="font:600 12px/1 Outfit,sans-serif;color:#eceded">@mara</span>
+        <span style="font:400 11px/1 Outfit,sans-serif;color:#7f868b">rated a match you're avoiding</span>
+      </div>
+      <div style="margin-top:11px;height:38px;border-radius:9px;background:#0f1012;border:1px dashed rgba(255,255,255,.13);display:flex;align-items:center;justify-content:center;gap:8px">
+        <span style="font:600 10.5px/1 Outfit,sans-serif;letter-spacing:.06em;color:#9aa0a6">CONTAINS SPOILERS · TAP TO SHOW</span>
+      </div>
+    </div>
+    <div style="border-radius:14px;background:#151618;border:1px solid rgba(255,255,255,.09);padding:13px 15px">
+      <div style="display:flex;align-items:center;gap:9px">
+        <div style="width:26px;height:26px;border-radius:999px;background:linear-gradient(140deg,#3fb08c,#1d5a48);flex:none"></div>
+        <span style="font:600 12px/1 Outfit,sans-serif;color:#eceded">@deniz</span>
+        <span style="font:400 11px/1 Outfit,sans-serif;color:#7f868b">on Madrid derby</span>
+      </div>
+      <div style="font:400 12px/1.5 Outfit,sans-serif;color:#c9cccd;margin-top:9px">Ninety minutes of nothing and I would watch it again tomorrow.</div>
+    </div>
+  </div>
+  <dc-import name="TabBar" active="home" hint-size="100%,88px"></dc-import>
+</div>
+</div>
+
+<div class="dv-opt" id="1c">
+<div class="dv-olabel"><a class="dv-oid" href="#1c">1c</a>Discover — filters as one considered panel</div>
+<div style="position:relative;width:375px;height:812px;flex:none;border-radius:40px;overflow:hidden;background:#090a0b;border:1px solid rgba(255,255,255,.14);box-shadow:0 26px 64px rgba(0,0,0,.6);color:#eceded">
+  <dc-import name="StatusBar" net="4G" hint-size="100%,44px"></dc-import>
+  <div style="padding:6px 26px 0">
+    <div style="font:700 9px/1 Outfit,sans-serif;letter-spacing:.14em;color:#7f868b">FIND YOUR NEXT MATCH</div>
+    <div style="font:700 31px/1 Rajdhani,sans-serif;color:#eceded;margin-top:8px">Discover</div>
+  </div>
+
+  <div style="margin:18px 24px 0;border-radius:18px;background:#121315;border:1px solid rgba(255,255,255,.09);overflow:hidden">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:15px 16px 0">
+      <div style="display:flex;align-items:center;gap:9px">
+        <span style="font:700 9px/1 Outfit,sans-serif;letter-spacing:.14em;color:#7f868b">QUICK FILTERS</span>
+        <span style="font:700 10px/1 Rajdhani,sans-serif;letter-spacing:.06em;color:#c9cccd">148 MATCHES</span>
+      </div>
+      <div style="height:26px;padding:0 10px;display:flex;align-items:center;border-radius:999px;background:rgba(245,64,46,.14);border:1px solid rgba(245,64,46,.35);font:600 10px Outfit,sans-serif;color:#f5402e">Clear 2</div>
+    </div>
+
+    <div style="padding:14px 16px 0">
+      <div style="display:flex;background:#0c0d0f;border:1px solid rgba(255,255,255,.09);border-radius:12px;padding:4px;gap:4px">
+        <div style="flex:1;height:44px;border-radius:9px;background:rgba(255,255,255,.1);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#eceded" stroke-width="1.7"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17M3.5 12h17" stroke-linecap="round"/></svg>
+          <span style="font:600 9.5px/1 Outfit,sans-serif;color:#eceded">Football</span>
+        </div>
+        <div style="flex:1;height:44px;border-radius:9px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7f868b" stroke-width="1.7"><circle cx="12" cy="12" r="8.5"/><path d="M4 7c5 3 11 3 16 0M4 17c5-3 11-3 16 0" stroke-linecap="round"/></svg>
+          <span style="font:500 9.5px/1 Outfit,sans-serif;color:#7f868b">Basketball</span>
+        </div>
+        <div style="flex:1;height:44px;border-radius:9px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7f868b" stroke-width="1.7" stroke-linecap="round"><path d="M4 12h16M8 8h12M8 16h12"/></svg>
+          <span style="font:500 9.5px/1 Outfit,sans-serif;color:#7f868b">All sports</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:7px;padding:12px 16px 0">
+      <div style="height:34px;padding:0 13px;display:flex;align-items:center;border-radius:999px;border:1px solid rgba(255,255,255,.09);font:500 11px Outfit,sans-serif;color:#9aa0a6">All</div>
+      <div style="height:34px;padding:0 13px;display:flex;align-items:center;gap:6px;border-radius:999px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.22);font:600 11px Outfit,sans-serif;color:#eceded">
+        <div style="width:6px;height:6px;border-radius:999px;background:#f5402e;animation:liveDot 1.6s ease-in-out infinite"></div>Live
+      </div>
+      <div style="height:34px;padding:0 13px;display:flex;align-items:center;border-radius:999px;border:1px solid rgba(255,255,255,.09);font:500 11px Outfit,sans-serif;color:#9aa0a6">Upcoming</div>
+      <div style="height:34px;padding:0 13px;display:flex;align-items:center;border-radius:999px;border:1px solid rgba(255,255,255,.09);font:500 11px Outfit,sans-serif;color:#9aa0a6">Finished</div>
+    </div>
+
+    <div style="margin:14px 0 0;border-top:1px solid rgba(255,255,255,.09)">
+      <div style="display:flex;align-items:center;justify-content:space-between;height:48px;padding:0 16px">
+        <span style="font:600 11.5px/1 Outfit,sans-serif;color:#c9cccd">Season &amp; competition</span>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9aa0a6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 15 6-6 6 6"/></svg>
+      </div>
+      <div style="padding:0 16px 16px;display:flex;flex-direction:column;gap:9px">
+        <div style="height:44px;border-radius:11px;background:#0c0d0f;border:1px solid rgba(255,255,255,.09);display:flex;align-items:center;justify-content:space-between;padding:0 14px">
+          <span style="font:500 12px/1 Outfit,sans-serif;color:#eceded">2026 / 27</span>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#7f868b" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+        </div>
+        <div style="height:44px;border-radius:11px;background:#0c0d0f;border:1px solid rgba(255,255,255,.09);display:flex;align-items:center;justify-content:space-between;padding:0 14px">
+          <span style="font:500 12px/1 Outfit,sans-serif;color:#eceded">Premier League</span>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#7f868b" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;align-items:baseline;justify-content:space-between;padding:22px 26px 0">
+    <div style="font:700 9px/1 Outfit,sans-serif;letter-spacing:.14em;color:#7f868b">COMMUNITY PICKS</div>
+    <span style="font:500 11px/1 Outfit,sans-serif;color:#9aa0a6">This week</span>
+  </div>
+  <div style="padding:12px 24px 0;display:grid;grid-template-columns:1fr 1fr;gap:11px">
+    <div style="position:relative;height:132px;border-radius:16px;overflow:hidden;background:linear-gradient(150deg,#3b1f5e,#120b1e);border:1px solid rgba(255,255,255,.09)">
+      <div style="position:absolute;inset:0;background:repeating-linear-gradient(112deg,rgba(255,255,255,.05) 0 2px,transparent 2px 10px)"></div>
+      <div style="position:absolute;top:-16px;right:-16px;width:30px;height:30px;transform:rotate(45deg);background:#090a0b;border:1px solid rgba(255,255,255,.09)"></div>
+      <div style="position:relative;padding:12px 13px">
+        <div style="font:700 8.5px/1 Outfit,sans-serif;letter-spacing:.13em;color:rgba(236,237,237,.7)">LALIGA</div>
+        <div style="font:700 26px/1 Rajdhani,sans-serif;color:#fff;margin-top:14px">2–2</div>
+        <div style="font:500 10.5px/1.35 Outfit,sans-serif;color:#c9cccd;margin-top:7px">Real Betis<br>Valencia</div>
+      </div>
+      <div style="position:absolute;left:13px;right:13px;bottom:11px;display:flex;gap:3px">
+        <div style="flex:1;height:4px;border-radius:2px;background:#2f5480"></div><div style="flex:1;height:4px;border-radius:2px;background:#5b4fa8"></div><div style="flex:1;height:4px;border-radius:2px;background:#9a3f96"></div><div style="flex:1;height:4px;border-radius:2px;background:#d43a63"></div><div style="flex:1;height:4px;border-radius:2px;background:rgba(255,255,255,.12)"></div>
+      </div>
+    </div>
+    <div style="position:relative;height:132px;border-radius:16px;overflow:hidden;background:linear-gradient(150deg,#0d3b6b,#08131f);border:1px solid rgba(255,255,255,.09)">
+      <div style="position:absolute;inset:0;background:repeating-linear-gradient(112deg,rgba(255,255,255,.05) 0 2px,transparent 2px 10px)"></div>
+      <div style="position:absolute;top:-16px;right:-16px;width:30px;height:30px;transform:rotate(45deg);background:#090a0b;border:1px solid rgba(255,255,255,.09)"></div>
+      <div style="position:relative;padding:12px 13px">
+        <div style="font:700 8.5px/1 Outfit,sans-serif;letter-spacing:.13em;color:rgba(236,237,237,.7)">NBA</div>
+        <div style="font:700 26px/1 Rajdhani,sans-serif;color:#fff;margin-top:14px">118–115</div>
+        <div style="font:500 10.5px/1.35 Outfit,sans-serif;color:#c9cccd;margin-top:7px">Thunder<br>Nuggets</div>
+      </div>
+      <div style="position:absolute;left:13px;right:13px;bottom:11px;display:flex;gap:3px">
+        <div style="flex:1;height:4px;border-radius:2px;background:#2f5480"></div><div style="flex:1;height:4px;border-radius:2px;background:#5b4fa8"></div><div style="flex:1;height:4px;border-radius:2px;background:#9a3f96"></div><div style="flex:1;height:4px;border-radius:2px;background:#d43a63"></div><div style="flex:1;height:4px;border-radius:2px;background:#f5402e"></div>
+      </div>
+    </div>
+  </div>
+
+  <div style="position:absolute;left:50%;bottom:104px;transform:translateX(-50%);width:48px;height:48px;border-radius:999px;background:rgba(26,27,30,.92);border:1px solid rgba(255,255,255,.14);display:grid;place-items:center;box-shadow:0 8px 24px rgba(0,0,0,.5)">
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#eceded" stroke-width="1.9" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-4.2-4.2"/></svg>
+  </div>
+  <dc-import name="TabBar" active="discover" hint-size="100%,88px"></dc-import>
+</div>
+</div>
+
+<div class="dv-opt" id="1d">
+<div class="dv-olabel"><a class="dv-oid" href="#1d">1d</a>Diary — timeline with the 28-night ember strip</div>
+<div style="position:relative;width:375px;height:812px;flex:none;border-radius:40px;overflow:hidden;background:#090a0b;border:1px solid rgba(255,255,255,.14);box-shadow:0 26px 64px rgba(0,0,0,.6);color:#eceded">
+  <dc-import name="StatusBar" hint-size="100%,44px"></dc-import>
+  <div style="padding:6px 26px 0">
+    <div style="font:700 31px/1 Rajdhani,sans-serif;color:#eceded">Activity</div>
+  </div>
+  <div style="display:flex;gap:24px;padding:16px 26px 0;border-bottom:1px solid rgba(255,255,255,.09);margin-bottom:0">
+    <div style="padding-bottom:11px;font:600 13px/1 Outfit,sans-serif;color:#7f868b">Friends</div>
+    <div style="padding-bottom:11px;font:600 13px/1 Outfit,sans-serif;color:#eceded;box-shadow:inset 0 -2px 0 #eceded">Diary</div>
+  </div>
+
+  <div style="display:flex;align-items:center;gap:7px;padding:14px 26px 0;overflow:hidden">
+    <div style="height:32px;padding:0 13px;display:flex;align-items:center;border-radius:999px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.22);font:600 11px Outfit,sans-serif;color:#eceded">Watched</div>
+    <div style="height:32px;padding:0 13px;display:flex;align-items:center;border-radius:999px;border:1px solid rgba(255,255,255,.09);font:500 11px Outfit,sans-serif;color:#9aa0a6">Watchlist</div>
+    <div style="height:32px;padding:0 13px;display:flex;align-items:center;border-radius:999px;border:1px solid rgba(255,255,255,.09);font:500 11px Outfit,sans-serif;color:#9aa0a6">Classics</div>
+    <div style="height:32px;padding:0 13px;display:flex;align-items:center;border-radius:999px;border:1px solid rgba(255,255,255,.09);font:500 11px Outfit,sans-serif;color:#9aa0a6">Lists</div>
+  </div>
+
+  <div style="margin:16px 24px 0;border-radius:16px;background:#121315;border:1px solid rgba(255,255,255,.09);padding:15px 16px">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:12px">
+      <span style="font:700 9px/1 Outfit,sans-serif;letter-spacing:.14em;color:#7f868b">LAST 28 NIGHTS</span>
+      <span style="font:400 10.5px/1 Outfit,sans-serif;color:#9aa0a6">19 logged</span>
+    </div>
+    <div style="display:flex;gap:2px;align-items:flex-end;height:34px">
+      <div style="flex:1;height:60%;border-radius:2px;background:#2f5480"></div><div style="flex:1;height:100%;border-radius:2px;background:#d43a63"></div><div style="flex:1;height:22%;border-radius:2px;background:rgba(255,255,255,.07)"></div><div style="flex:1;height:70%;border-radius:2px;background:#9a3f96"></div><div style="flex:1;height:45%;border-radius:2px;background:#5b4fa8"></div><div style="flex:1;height:22%;border-radius:2px;background:rgba(255,255,255,.07)"></div><div style="flex:1;height:88%;border-radius:2px;background:#f5402e;box-shadow:0 0 8px rgba(245,64,46,.6)"></div><div style="flex:1;height:52%;border-radius:2px;background:#5b4fa8"></div><div style="flex:1;height:22%;border-radius:2px;background:rgba(255,255,255,.07)"></div><div style="flex:1;height:74%;border-radius:2px;background:#9a3f96"></div><div style="flex:1;height:40%;border-radius:2px;background:#2f5480"></div><div style="flex:1;height:66%;border-radius:2px;background:#9a3f96"></div><div style="flex:1;height:22%;border-radius:2px;background:rgba(255,255,255,.07)"></div><div style="flex:1;height:94%;border-radius:2px;background:#f5402e;box-shadow:0 0 8px rgba(245,64,46,.6)"></div><div style="flex:1;height:58%;border-radius:2px;background:#5b4fa8"></div><div style="flex:1;height:22%;border-radius:2px;background:rgba(255,255,255,.07)"></div><div style="flex:1;height:80%;border-radius:2px;background:#d43a63"></div><div style="flex:1;height:36%;border-radius:2px;background:#2f5480"></div><div style="flex:1;height:22%;border-radius:2px;background:rgba(255,255,255,.07)"></div><div style="flex:1;height:70%;border-radius:2px;background:#9a3f96"></div><div style="flex:1;height:48%;border-radius:2px;background:#5b4fa8"></div><div style="flex:1;height:84%;border-radius:2px;background:#d43a63"></div><div style="flex:1;height:22%;border-radius:2px;background:rgba(255,255,255,.07)"></div><div style="flex:1;height:62%;border-radius:2px;background:#9a3f96"></div><div style="flex:1;height:44%;border-radius:2px;background:#5b4fa8"></div><div style="flex:1;height:22%;border-radius:2px;background:rgba(255,255,255,.07)"></div><div style="flex:1;height:76%;border-radius:2px;background:#d43a63"></div><div style="flex:1;height:100%;border-radius:2px;background:#f5402e;box-shadow:0 0 8px rgba(245,64,46,.6)"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;margin-top:9px;font:400 9.5px/1 Outfit,sans-serif;color:#7f868b">
+      <span>18 AUG</span><span>Height = your stars · colour = community heat</span>
+    </div>
+  </div>
+
+  <div style="display:flex;align-items:center;gap:10px;padding:20px 26px 0">
+    <span style="font:600 13px/1 Rajdhani,sans-serif;letter-spacing:.1em;color:#c9cccd">SEPTEMBER 2026</span>
+    <div style="flex:1;height:1px;background:rgba(255,255,255,.09)"></div>
+    <div style="display:flex;background:#121315;border:1px solid rgba(255,255,255,.09);border-radius:999px;padding:3px">
+      <div style="height:26px;padding:0 11px;display:flex;align-items:center;border-radius:999px;background:rgba(255,255,255,.1);font:600 10px Outfit,sans-serif;color:#eceded">Timeline</div>
+      <div style="height:26px;padding:0 11px;display:flex;align-items:center;border-radius:999px;font:500 10px Outfit,sans-serif;color:#7f868b">Cards</div>
+    </div>
+  </div>
+
+  <div style="padding:6px 24px 0">
+    <div style="display:flex;align-items:center;gap:13px;height:64px;border-bottom:1px solid rgba(255,255,255,.09)">
+      <div style="width:30px;text-align:center;flex:none"><div style="font:700 17px/1 Rajdhani,sans-serif;color:#eceded">14</div><div style="font:600 8.5px/1 Outfit,sans-serif;letter-spacing:.1em;color:#7f868b;margin-top:3px">SUN</div></div>
+      <div style="width:40px;height:40px;display:grid;place-items:center;flex:none;position:relative">
+        <div style="position:absolute;left:2px;width:22px;height:22px;transform:rotate(45deg);border-radius:6px 6px 7px 7px;background:linear-gradient(135deg,#c8202f,#6d0f18);border:1px solid rgba(255,255,255,.14)"></div>
+        <div style="position:absolute;right:0;width:22px;height:22px;transform:rotate(45deg);border-radius:6px 6px 7px 7px;background:linear-gradient(135deg,#e9ecf2,#9aa2b4);border:1px solid rgba(255,255,255,.14)"></div>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font:600 12.5px/1.2 Outfit,sans-serif;color:#eceded">Arsenal 3–1 Tottenham</div>
+        <div style="display:flex;align-items:center;gap:7px;margin-top:6px">
+          <div style="display:flex;gap:2px">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="#eceded"><path d="M12 2l3 6.9 7.5.7-5.6 5 1.6 7.4L12 18.2 5.5 22l1.6-7.4-5.6-5 7.5-.7z"/></svg><svg width="10" height="10" viewBox="0 0 24 24" fill="#eceded"><path d="M12 2l3 6.9 7.5.7-5.6 5 1.6 7.4L12 18.2 5.5 22l1.6-7.4-5.6-5 7.5-.7z"/></svg><svg width="10" height="10" viewBox="0 0 24 24" fill="#eceded"><path d="M12 2l3 6.9 7.5.7-5.6 5 1.6 7.4L12 18.2 5.5 22l1.6-7.4-5.6-5 7.5-.7z"/></svg><svg width="10" height="10" viewBox="0 0 24 24" fill="#eceded"><path d="M12 2l3 6.9 7.5.7-5.6 5 1.6 7.4L12 18.2 5.5 22l1.6-7.4-5.6-5 7.5-.7z"/></svg><svg width="10" height="10" viewBox="0 0 24 24" fill="#eceded"><path d="M12 2l3 6.9 7.5.7-5.6 5 1.6 7.4L12 18.2 5.5 22l1.6-7.4-5.6-5 7.5-.7z"/></svg>
+          </div>
+          <div style="width:11px;height:11px;transform:rotate(45deg);border-radius:3px 3px 4px 4px;background:#ffb11b"></div>
+        </div>
+      </div>
+      <div style="width:4px;height:34px;border-radius:2px;background:#f5402e;box-shadow:0 0 10px rgba(245,64,46,.6);flex:none"></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:13px;height:64px;border-bottom:1px solid rgba(255,255,255,.09)">
+      <div style="width:30px;text-align:center;flex:none"><div style="font:700 17px/1 Rajdhani,sans-serif;color:#eceded">11</div><div style="font:600 8.5px/1 Outfit,sans-serif;letter-spacing:.1em;color:#7f868b;margin-top:3px">THU</div></div>
+      <div style="width:40px;height:40px;display:grid;place-items:center;flex:none;position:relative">
+        <div style="position:absolute;left:2px;width:22px;height:22px;transform:rotate(45deg);border-radius:6px 6px 7px 7px;background:linear-gradient(135deg,#0d3b8f,#071e4a);border:1px solid rgba(255,255,255,.14)"></div>
+        <div style="position:absolute;right:0;width:22px;height:22px;transform:rotate(45deg);border-radius:6px 6px 7px 7px;background:linear-gradient(135deg,#1f6a3f,#0c2a19);border:1px solid rgba(255,255,255,.14)"></div>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font:600 12.5px/1.2 Outfit,sans-serif;color:#eceded">Chelsea 0–0 Everton</div>
+        <div style="display:flex;gap:2px;margin-top:6px">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="#eceded"><path d="M12 2l3 6.9 7.5.7-5.6 5 1.6 7.4L12 18.2 5.5 22l1.6-7.4-5.6-5 7.5-.7z"/></svg><svg width="10" height="10" viewBox="0 0 24 24" fill="#eceded"><path d="M12 2l3 6.9 7.5.7-5.6 5 1.6 7.4L12 18.2 5.5 22l1.6-7.4-5.6-5 7.5-.7z"/></svg><svg width="10" height="10" viewBox="0 0 24 24" fill="rgba(255,255,255,.2)"><path d="M12 2l3 6.9 7.5.7-5.6 5 1.6 7.4L12 18.2 5.5 22l1.6-7.4-5.6-5 7.5-.7z"/></svg><svg width="10" height="10" viewBox="0 0 24 24" fill="rgba(255,255,255,.2)"><path d="M12 2l3 6.9 7.5.7-5.6 5 1.6 7.4L12 18.2 5.5 22l1.6-7.4-5.6-5 7.5-.7z"/></svg><svg width="10" height="10" viewBox="0 0 24 24" fill="rgba(255,255,255,.2)"><path d="M12 2l3 6.9 7.5.7-5.6 5 1.6 7.4L12 18.2 5.5 22l1.6-7.4-5.6-5 7.5-.7z"/></svg>
+        </div>
+      </div>
+      <div style="width:4px;height:34px;border-radius:2px;background:#2f5480;flex:none"></div>
+    </div>
+  </div>
+  <dc-import name="TabBar" active="activity" hint-size="100%,88px"></dc-import>
+</div>
+</div>
+
+<div class="dv-opt" id="1e">
+<div class="dv-olabel"><a class="dv-oid" href="#1e">1e</a>Diary — collectible grid, not a table of rows</div>
+<div style="position:relative;width:375px;height:812px;flex:none;border-radius:40px;overflow:hidden;background:#090a0b;border:1px solid rgba(255,255,255,.14);box-shadow:0 26px 64px rgba(0,0,0,.6);color:#eceded">
+  <dc-import name="StatusBar" hint-size="100%,44px"></dc-import>
+  <div style="display:flex;align-items:flex-end;justify-content:space-between;padding:6px 24px 0 26px">
+    <div style="font:700 31px/1 Rajdhani,sans-serif;color:#eceded">Diary</div>
+    <div style="display:flex;background:#121315;border:1px solid rgba(255,255,255,.09);border-radius:999px;padding:3px">
+      <div style="height:28px;padding:0 12px;display:flex;align-items:center;border-radius:999px;font:500 10.5px Outfit,sans-serif;color:#7f868b">Timeline</div>
+      <div style="height:28px;padding:0 12px;display:flex;align-items:center;border-radius:999px;background:rgba(255,255,255,.1);font:600 10.5px Outfit,sans-serif;color:#eceded">Cards</div>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 26px 0">
+    <span style="font:700 9px/1 Outfit,sans-serif;letter-spacing:.14em;color:#7f868b">142 WATCHED · 11 CLASSICS</span>
+    <span style="font:500 11px/1 Outfit,sans-serif;color:#9aa0a6">Newest</span>
+  </div>
+
+  <div style="padding:14px 24px 0;display:grid;grid-template-columns:1fr 1fr;gap:12px">
+
+    <div style="position:relative;height:190px;border-radius:18px;overflow:hidden;background:linear-gradient(150deg,#7a1d2b,#2a1016 55%,#0f1b34);border:1px solid rgba(255,255,255,.09)">
+      <div style="position:absolute;inset:0;background:repeating-linear-gradient(112deg,rgba(255,255,255,.06) 0 2px,transparent 2px 10px)"></div>
+      <div style="position:absolute;top:-17px;right:-17px;width:32px;height:32px;transform:rotate(45deg);background:#090a0b;border:1px solid #ffb11b"></div>
+      <div style="position:absolute;bottom:-17px;left:-17px;width:32px;height:32px;transform:rotate(45deg);background:#090a0b;border:1px solid #ffb11b"></div>
+      <div style="position:relative;padding:13px 14px">
+        <div style="font:700 8.5px/1 Outfit,sans-serif;letter-spacing:.13em;color:rgba(236,237,237,.72)">PREMIER LEAGUE</div>
+        <div style="font:700 30px/1 Rajdhani,sans-serif;color:#fff;margin-top:16px">3–1</div>
+        <div style="font:500 10.5px/1.4 Outfit,sans-serif;color:#c9cccd;margin-top:8px">Arsenal<br>Tottenham</div>
+      </div>
+      <div style="position:absolute;left:14px;right:14px;bottom:32px;display:flex;gap:2px">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="#fff"><path d="M12 2l3 6.9 7.5.7-5.6 5 1.6 7.4L12 18.2 5.5 22l1.6-7.4-5.6-5 7.5-.7z"/></svg><svg width="11" height="11" viewBox="0 0 24 24" fill="#fff"><path d="M12 2l3 6.9 7.5.7-5.6 5 1.6 7.4L12 18.2 5.5 22l1.6-7.4-5.6-5 7.5-.7z"/></svg><svg width="11" height="11" viewBox="0 0 24 24" fill="#fff"><path d="M12 2l3 6.9 7.5.7-5.6 5 1.6 7.4L12 18.2 5.5 22l1.6-7.4-5.6-5 7.5-.7z"/></svg><svg width="11" height="11" viewBox="0 0 24 24" fill="#fff"><path d="M12 2l3 6.9 7.5.7-5.6 5 1.6 7.4L12 18.2 5.5 22l1.6-7.4-5.6-5 7.5-.7z"/></svg><svg width="11" height="11" viewBox="0 0 24 24" fill="#fff"><path d="M12 2l3 6.9 7.5.7-5.6 5 1.6 7.4L12 18.2 5.5 22l1.6-7.4-5.6-5 7.5-.7z"/></svg>
+      </div>
+      <div style="position:absolute;left:0;right:0;bottom:0;height:24px;background:rgba(9,10,11,.75);border-top:1px solid rgba(255,177,27,.35);display:flex;align-items:center;gap:6px;padding:0 12px">
+        <div style="width:9px;height:9px;transform:rotate(45deg);border-radius:2px 2px 3px 3px;background:#ffb11b"></div>
+        <span style="font:700 8px/1 Outfit,sans-serif;letter-spacing:.13em;color:#ffb11b">CLASSIC</span>
+      </div>
+    </div>
+
+    <div style="position:relative;height:190px;border-radius:18px;overflow:hidden;background:linear-gradient(150deg,#0d3b6b,#08131f 60%,#1a1b1e);border:1px solid rgba(255,255,255,.09)">
+      <div style="position:absolute;inset:0;background:repeating-linear-gradient(112deg,rgba(255,255,255,.06) 0 2px,transparent 2px 10px)"></div>
+      <div style="position:absolute;top:-17px;right:-17px;width:32px;height:32px;transform:rotate(45deg);background:#090a0b;border:1px solid rgba(255,255,255,.09)"></div>
+      <div style="position:absolute;bottom:-17px;left:-17px;width:32px;height:32px;transform:rotate(45deg);background:#090a0b;border:1px solid rgba(255,255,255,.09)"></div>
+      <div style="position:relative;padding:13px 14px">
+        <div style="font:700 8.5px/1 Outfit,sans-serif;letter-spacing:.13em;color:rgba(236,237,237,.72)">NBA</div>
+        <div style="font:700 30px/1 Rajdhani,sans-serif;color:#fff;margin-top:16px">118–115</div>
+        <div style="font:500 10.5px/1.4 Outfit,sans-serif;color:#c9cccd;margin-top:8px">Thunder<br>Nuggets</div>
+      </div>
+      <div style="position:absolute;left:14px;right:14px;bottom:14px;display:flex;align-items:center;justify-content:space-between">
+        <div style="display:flex;gap:2px">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="#fff"><path d="M12 2l3 6.9 7.5.7-5.6 5 1.6 7.4L12 18.2 5.5 22l1.6-7.4-5.6-5 7.5-.7z"/></svg><svg width="11" height="11" viewBox="0 0 24 24" fill="#fff"><path d="M12 2l3 6.9 7.5.7-5.6 5 1.6 7.4L12 18.2 5.5 22l1.6-7.4-5.6-5 7.5-.7z"/></svg><svg width="11" height="11" viewBox="0 0 24 24" fill="#fff"><path d="M12 2l3 6.9 7.5.7-5.6 5 1.6 7.4L12 18.2 5.5 22l1.6-7.4-5.6-5 7.5-.7z"/></svg><svg width="11" height="11" viewBox="0 0 24 24" fill="#fff"><path d="M12 2l3 6.9 7.5.7-5.6 5 1.6 7.4L12 18.2 5.5 22l1.6-7.4-5.6-5 7.5-.7z"/></svg><svg width="11" height="11" viewBox="0 0 24 24" fill="rgba(255,255,255,.28)"><path d="M12 2l3 6.9 7.5.7-5.6 5 1.6 7.4L12 18.2 5.5 22l1.6-7.4-5.6-5 7.5-.7z"/></svg>
+        </div>
+        <div style="width:3px;height:22px;border-radius:2px;background:#d43a63"></div>
+      </div>
+    </div>
+
+    <div style="position:relative;height:190px;border-radius:18px;overflow:hidden;background:linear-gradient(150deg,#3b1f5e,#120b1e 60%,#0c0d0f);border:1px solid rgba(255,255,255,.09)">
+      <div style="position:absolute;inset:0;background:repeating-linear-gradient(112deg,rgba(255,255,255,.06) 0 2px,transparent 2px 10px)"></div>
+      <div style="position:absolute;top:-17px;right:-17px;width:32px;height:32px;transform:rotate(45deg);background:#090a0b;border:1px solid rgba(255,255,255,.09)"></div>
+      <div style="position:absolute;bottom:-17px;left:-17px;width:32px;height:32px;transform:rotate(45deg);background:#090a0b;border:1px solid rgba(255,255,255,.09)"></div>
+      <div style="position:relative;padding:13px 14px">
+        <div style="font:700 8.5px/1 Outfit,sans-serif;letter-spacing:.13em;color:rgba(236,237,237,.72)">LALIGA</div>
+        <div style="font:700 30px/1 Rajdhani,sans-serif;color:#fff;margin-top:16px">2–2</div>
+        <div style="font:500 10.5px/1.4 Outfit,sans-serif;color:#c9cccd;margin-top:8px">Real Betis<br>Valencia</div>
+      </div>
+      <div style="position:absolute;left:14px;right:14px;bottom:14px;display:flex;align-items:center;justify-content:space-between">
+        <div style="display:flex;gap:2px">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="#fff"><path d="M12 2l3 6.9 7.5.7-5.6 5 1.6 7.4L12 18.2 5.5 22l1.6-7.4-5.6-5 7.5-.7z"/></svg><svg width="11" height="11" viewBox="0 0 24 24" fill="#fff"><path d="M12 2l3 6.9 7.5.7-5.6 5 1.6 7.4L12 18.2 5.5 22l1.6-7.4-5.6-5 7.5-.7z"/></svg><svg width="11" height="11" viewBox="0 0 24 24" fill="#fff"><path d="M12 2l3 6.9 7.5.7-5.6 5 1.6 7.4L12 18.2 5.5 22l1.6-7.4-5.6-5 7.5-.7z"/></svg><svg width="11" height="11" viewBox="0 0 24 24" fill="rgba(255,255,255,.28)"><path d="M12 2l3 6.9 7.5.7-5.6 5 1.6 7.4L12 18.2 5.5 22l1.6-7.4-5.6-5 7.5-.7z"/></svg><svg width="11" height="11" viewBox="0 0 24 24" fill="rgba(255,255,255,.28)"><path d="M12 2l3 6.9 7.5.7-5.6 5 1.6 7.4L12 18.2 5.5 22l1.6-7.4-5.6-5 7.5-.7z"/></svg>
+        </div>
+        <div style="width:3px;height:22px;border-radius:2px;background:#9a3f96"></div>
+      </div>
+    </div>
+
+    <div style="position:relative;height:190px;border-radius:18px;overflow:hidden;background:linear-gradient(150deg,#1f6a3f,#0c2a19 60%,#0c0d0f);border:1px solid rgba(255,255,255,.09)">
+      <div style="position:absolute;inset:0;background:repeating-linear-gradient(112deg,rgba(255,255,255,.06) 0 2px,transparent 2px 10px)"></div>
+      <div style="position:absolute;top:-17px;right:-17px;width:32px;height:32px;transform:rotate(45deg);background:#090a0b;border:1px solid rgba(255,255,255,.09)"></div>
+      <div style="position:absolute;bottom:-17px;left:-17px;width:32px;height:32px;transform:rotate(45deg);background:#090a0b;border:1px solid rgba(255,255,255,.09)"></div>
+      <div style="position:relative;padding:13px 14px">
+        <div style="font:700 8.5px/1 Outfit,sans-serif;letter-spacing:.13em;color:rgba(236,237,237,.72)">SERIE A</div>
+        <div style="font:700 30px/1 Rajdhani,sans-serif;color:#fff;margin-top:16px">0–0</div>
+        <div style="font:500 10.5px/1.4 Outfit,sans-serif;color:#c9cccd;margin-top:8px">Napoli<br>Torino</div>
+      </div>
+      <div style="position:absolute;left:14px;right:14px;bottom:14px;display:flex;align-items:center;justify-content:space-between">
+        <div style="display:flex;gap:2px">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="#fff"><path d="M12 2l3 6.9 7.5.7-5.6 5 1.6 7.4L12 18.2 5.5 22l1.6-7.4-5.6-5 7.5-.7z"/></svg><svg width="11" height="11" viewBox="0 0 24 24" fill="#fff"><path d="M12 2l3 6.9 7.5.7-5.6 5 1.6 7.4L12 18.2 5.5 22l1.6-7.4-5.6-5 7.5-.7z"/></svg><svg width="11" height="11" viewBox="0 0 24 24" fill="rgba(255,255,255,.28)"><path d="M12 2l3 6.9 7.5.7-5.6 5 1.6 7.4L12 18.2 5.5 22l1.6-7.4-5.6-5 7.5-.7z"/></svg><svg width="11" height="11" viewBox="0 0 24 24" fill="rgba(255,255,255,.28)"><path d="M12 2l3 6.9 7.5.7-5.6 5 1.6 7.4L12 18.2 5.5 22l1.6-7.4-5.6-5 7.5-.7z"/></svg><svg width="11" height="11" viewBox="0 0 24 24" fill="rgba(255,255,255,.28)"><path d="M12 2l3 6.9 7.5.7-5.6 5 1.6 7.4L12 18.2 5.5 22l1.6-7.4-5.6-5 7.5-.7z"/></svg>
+        </div>
+        <div style="width:3px;height:22px;border-radius:2px;background:#2f5480"></div>
+      </div>
+    </div>
+
+  </div>
+  <dc-import name="TabBar" active="activity" hint-size="100%,88px"></dc-import>
+</div>
+</div>
+
+<div class="dv-opt" id="1f">
+<div class="dv-olabel"><a class="dv-oid" href="#1f">1f</a>Match sheet — Match tab, confirmed lineup</div>
+<div style="position:relative;width:375px;height:812px;flex:none;border-radius:40px;overflow:hidden;background:#000;border:1px solid rgba(255,255,255,.14);box-shadow:0 26px 64px rgba(0,0,0,.6);color:#eceded">
+  <div style="position:absolute;left:0;right:0;top:0;height:34px;background:#090a0b;opacity:.6"></div>
+  <div style="position:absolute;left:0;right:0;top:26px;bottom:0;background:#1a1b1e;border-radius:26px 26px 0 0;border-top:1px solid rgba(255,255,255,.09);overflow:hidden">
+    <div style="display:flex;justify-content:center;padding-top:9px"><div style="width:38px;height:4px;border-radius:2px;background:rgba(255,255,255,.24)"></div></div>
+
+    <div style="position:relative;padding:14px 20px 0;background:linear-gradient(160deg,rgba(200,32,47,.28),rgba(15,27,52,.28))">
+      <div style="position:absolute;left:20px;top:12px;width:36px;height:36px;border-radius:999px;background:rgba(9,10,11,.6);border:1px solid rgba(255,255,255,.14);display:grid;place-items:center">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#eceded" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </div>
+      <div style="text-align:center;padding-top:6px">
+        <div style="font:700 9px/1 Outfit,sans-serif;letter-spacing:.14em;color:#9aa0a6">PREMIER LEAGUE · MATCHWEEK 4</div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-top:20px">
+        <div style="width:70px;height:70px;display:grid;place-items:center;flex:none">
+          <div style="width:50px;height:50px;transform:rotate(45deg);border-radius:15px 15px 17px 17px;background:linear-gradient(135deg,#c8202f,#6d0f18);border:1px solid rgba(255,255,255,.18);display:grid;place-items:center">
+            <span style="transform:rotate(-45deg);font:700 13px/1 Rajdhani,sans-serif;color:#fff">ARS</span>
+          </div>
+        </div>
+        <div style="text-align:center">
+          <div style="display:flex;align-items:center;gap:5px;justify-content:center;height:22px;padding:0 9px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);margin-bottom:8px">
+            <span style="font:700 8.5px/1 Outfit,sans-serif;letter-spacing:.12em;color:#c9cccd">FULL TIME</span>
+          </div>
+          <div style="font:700 40px/1 Rajdhani,sans-serif;color:#fff">3<span style="color:rgba(255,255,255,.4);margin:0 7px">–</span>1</div>
+        </div>
+        <div style="width:70px;height:70px;display:grid;place-items:center;flex:none">
+          <div style="width:50px;height:50px;transform:rotate(45deg);border-radius:15px 15px 17px 17px;background:linear-gradient(135deg,#e9ecf2,#9aa2b4);border:1px solid rgba(255,255,255,.18);display:grid;place-items:center">
+            <span style="transform:rotate(-45deg);font:700 13px/1 Rajdhani,sans-serif;color:#101318">TOT</span>
+          </div>
+        </div>
+      </div>
+      <div style="text-align:center;padding:12px 0 16px">
+        <div style="font:600 13px/1 Outfit,sans-serif;color:#eceded">Arsenal vs Tottenham</div>
+        <div style="font:400 11px/1 Outfit,sans-serif;color:#9aa0a6;margin-top:7px">14 Sep 2026 · 16:30 · 2026/27</div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:22px;padding:0 20px;border-bottom:1px solid rgba(255,255,255,.09)">
+      <div style="padding:0 0 11px;font:600 13px/1 Outfit,sans-serif;color:#eceded;box-shadow:inset 0 -2px 0 #eceded">Match</div>
+      <div style="padding:0 0 11px;font:600 13px/1 Outfit,sans-serif;color:#7f868b">Community</div>
+      <div style="padding:0 0 11px;display:flex;align-items:center;gap:6px;font:600 13px/1 Outfit,sans-serif;color:#7f868b">Watchalong<span style="font:700 8px/1 Outfit,sans-serif;letter-spacing:.1em;padding:3px 5px;border-radius:4px;background:rgba(255,255,255,.09);color:#9aa0a6">24</span></div>
+    </div>
+
+    <div style="padding:16px 20px 0">
+      <div style="font:400 12.5px/1.6 Outfit,sans-serif;color:#c9cccd">Two red cards, a disallowed goal and a north London crowd that never sat down. Arsenal took it in the last twenty minutes.</div>
+    </div>
+
+    <div style="margin:16px 20px 0;border-radius:14px;background:#151618;border:1px solid rgba(255,255,255,.09);padding:14px 15px">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <span style="font:700 9px/1 Outfit,sans-serif;letter-spacing:.14em;color:#7f868b">WATCH IN UNITED KINGDOM</span>
+        <span style="font:600 9px/1 Outfit,sans-serif;letter-spacing:.1em;color:#3fb08c">CONFIRMED</span>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <div style="height:30px;padding:0 11px;display:flex;align-items:center;border-radius:8px;background:#0c0d0f;border:1px solid rgba(255,255,255,.09);font:600 11px Outfit,sans-serif;color:#eceded">Sky Sports Main Event</div>
+        <div style="height:30px;padding:0 11px;display:flex;align-items:center;border-radius:8px;background:#0c0d0f;border:1px solid rgba(255,255,255,.09);font:600 11px Outfit,sans-serif;color:#eceded">Sky Go</div>
+      </div>
+      <div style="font:400 10.5px/1.5 Outfit,sans-serif;color:#9aa0a6;margin-top:11px">Listed for this fixture, not a competition default.</div>
+    </div>
+
+    <div style="margin:16px 20px 0">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:11px">
+        <span style="font:700 9px/1 Outfit,sans-serif;letter-spacing:.14em;color:#7f868b">CONFIRMED LINEUP</span>
+        <span style="font:400 10px/1 Outfit,sans-serif;color:#7f868b">Can change until kick-off</span>
+      </div>
+      <div style="border-radius:14px;background:#151618;border:1px solid rgba(255,255,255,.09);overflow:hidden">
+        <div style="display:flex;align-items:center;gap:11px;padding:13px 15px;border-bottom:1px solid rgba(255,255,255,.09)">
+          <div style="width:30px;height:30px;display:grid;place-items:center;flex:none"><div style="width:21px;height:21px;transform:rotate(45deg);border-radius:6px 6px 7px 7px;background:linear-gradient(135deg,#c8202f,#6d0f18);border:1px solid rgba(255,255,255,.14)"></div></div>
+          <div style="flex:1;min-width:0">
+            <div style="font:600 12.5px/1 Outfit,sans-serif;color:#eceded">Arsenal</div>
+            <div style="font:400 10.5px/1 Outfit,sans-serif;color:#9aa0a6;margin-top:5px">Mikel Arteta</div>
+          </div>
+          <div style="height:26px;padding:0 10px;display:flex;align-items:center;border-radius:7px;background:#0c0d0f;border:1px solid rgba(255,255,255,.09);font:700 11px Rajdhani,sans-serif;letter-spacing:.08em;color:#c9cccd">4-3-3</div>
+        </div>
+        <div style="padding:12px 15px 14px;display:flex;flex-direction:column;gap:9px">
+          <div style="display:flex;align-items:center;gap:11px"><span style="width:18px;font:700 11px/1 Rajdhani,sans-serif;color:#7f868b">1</span><span style="font:400 12px/1 Outfit,sans-serif;color:#eceded">Raya</span></div>
+          <div style="display:flex;align-items:center;gap:11px"><span style="width:18px;font:700 11px/1 Rajdhani,sans-serif;color:#7f868b">4</span><span style="font:400 12px/1 Outfit,sans-serif;color:#eceded">White</span></div>
+          <div style="display:flex;align-items:center;gap:11px"><span style="width:18px;font:700 11px/1 Rajdhani,sans-serif;color:#7f868b">6</span><span style="font:400 12px/1 Outfit,sans-serif;color:#eceded">Gabriel</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="dv-opt" id="1g">
+<div class="dv-olabel"><a class="dv-oid" href="#1g">1g</a>Match sheet — upcoming, given something to say</div>
+<div style="position:relative;width:375px;height:812px;flex:none;border-radius:40px;overflow:hidden;background:#000;border:1px solid rgba(255,255,255,.14);box-shadow:0 26px 64px rgba(0,0,0,.6);color:#eceded">
+  <div style="position:absolute;left:0;right:0;top:0;height:34px;background:#090a0b;opacity:.6"></div>
+  <div style="position:absolute;left:0;right:0;top:26px;bottom:0;background:#1a1b1e;border-radius:26px 26px 0 0;border-top:1px solid rgba(255,255,255,.09);overflow:hidden">
+    <div style="display:flex;justify-content:center;padding-top:9px"><div style="width:38px;height:4px;border-radius:2px;background:rgba(255,255,255,.24)"></div></div>
+
+    <div style="position:relative;padding:14px 20px 0;background:linear-gradient(160deg,rgba(13,59,143,.3),rgba(31,106,63,.2))">
+      <div style="position:absolute;left:20px;top:12px;width:36px;height:36px;border-radius:999px;background:rgba(9,10,11,.6);border:1px solid rgba(255,255,255,.14);display:grid;place-items:center">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#eceded" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </div>
+      <div style="text-align:center;padding-top:6px">
+        <div style="font:700 9px/1 Outfit,sans-serif;letter-spacing:.14em;color:#9aa0a6">CHAMPIONS LEAGUE · LEAGUE PHASE</div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-top:20px">
+        <div style="width:70px;height:70px;display:grid;place-items:center;flex:none">
+          <div style="width:50px;height:50px;transform:rotate(45deg);border-radius:15px 15px 17px 17px;background:linear-gradient(135deg,#0d3b8f,#071e4a);border:1px solid rgba(255,255,255,.18);display:grid;place-items:center">
+            <span style="transform:rotate(-45deg);font:700 13px/1 Rajdhani,sans-serif;color:#fff">CHE</span>
+          </div>
+        </div>
+        <div style="text-align:center">
+          <div style="font:700 9px/1 Outfit,sans-serif;letter-spacing:.13em;color:#8b6fc4;margin-bottom:9px">IN 2 DAYS</div>
+          <div style="font:700 34px/1 Rajdhani,sans-serif;letter-spacing:.04em;color:rgba(255,255,255,.55)">VS</div>
+        </div>
+        <div style="width:70px;height:70px;display:grid;place-items:center;flex:none">
+          <div style="width:50px;height:50px;transform:rotate(45deg);border-radius:15px 15px 17px 17px;background:linear-gradient(135deg,#1f6a3f,#0c2a19);border:1px solid rgba(255,255,255,.18);display:grid;place-items:center">
+            <span style="transform:rotate(-45deg);font:700 13px/1 Rajdhani,sans-serif;color:#fff">SPO</span>
+          </div>
+        </div>
+      </div>
+      <div style="text-align:center;padding:12px 0 16px">
+        <div style="font:600 13px/1 Outfit,sans-serif;color:#eceded">Chelsea vs Sporting CP</div>
+        <div style="font:400 11px/1 Outfit,sans-serif;color:#9aa0a6;margin-top:7px">16 Sep 2026 · 20:00 · Stamford Bridge</div>
+      </div>
+    </div>
+
+    <div style="margin:18px 20px 0;border-radius:16px;background:#151618;border:1px solid rgba(255,255,255,.09);padding:16px">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:12px">
+        <span style="font:700 9px/1 Outfit,sans-serif;letter-spacing:.14em;color:#8b6fc4">EXPECTED HEAT</span>
+        <span style="font:700 15px/1 Rajdhani,sans-serif;color:#eceded">3.4<span style="font:600 10px Outfit,sans-serif;color:#9aa0a6"> / 5</span></span>
+      </div>
+      <div style="display:flex;gap:4px;margin-bottom:12px">
+        <div style="flex:1;height:5px;border-radius:3px;background:#2f5480"></div>
+        <div style="flex:1;height:5px;border-radius:3px;background:#5b4fa8"></div>
+        <div style="flex:1;height:5px;border-radius:3px;background:#9a3f96"></div>
+        <div style="flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.12)"></div>
+        <div style="flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.12)"></div>
+      </div>
+      <div style="font:400 11.5px/1.55 Outfit,sans-serif;color:#9aa0a6">From 1,204 members who want this one. Not a prediction — an appetite reading.</div>
+    </div>
+
+    <div style="margin:14px 20px 0;border-radius:14px;background:#151618;border:1px solid rgba(255,255,255,.09);padding:14px 15px">
+      <div style="font:700 9px/1 Outfit,sans-serif;letter-spacing:.14em;color:#7f868b;margin-bottom:12px">NOT COVERED IN YOUR REGION YET</div>
+      <div style="font:400 11.5px/1.55 Outfit,sans-serif;color:#c9cccd">No UK broadcaster has been listed for this fixture. We'll tell you the moment one is.</div>
+    </div>
+
+    <div style="margin:14px 20px 0">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:11px">
+        <span style="font:700 9px/1 Outfit,sans-serif;letter-spacing:.14em;color:#7f868b">SEASON SQUADS</span>
+        <span style="font:400 10px/1 Outfit,sans-serif;color:#7f868b">Lineup not announced</span>
+      </div>
+      <div style="border-radius:14px;background:#121315;border:1px dashed rgba(255,255,255,.14);padding:14px 15px;font:400 11.5px/1.55 Outfit,sans-serif;color:#9aa0a6">40 registered names per club. This is not a starting eleven.</div>
+    </div>
+
+    <div style="position:absolute;left:20px;right:20px;bottom:26px;display:flex;gap:10px">
+      <div style="flex:1;height:50px;border-radius:13px;background:#eceded;display:flex;align-items:center;justify-content:center;gap:8px">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#17120a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h12v17l-6-4-6 4z"/></svg>
+        <span style="font:600 12.5px/1 Outfit,sans-serif;color:#17120a">Add to watchlist</span>
+      </div>
+      <div style="width:50px;height:50px;border-radius:13px;background:#151618;border:1px solid rgba(255,255,255,.09);display:grid;place-items:center">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#c9cccd" stroke-width="1.9" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="dv-opt" id="1h">
+<div class="dv-olabel"><a class="dv-oid" href="#1h">1h</a>Competition sheet — Table</div>
+<div style="position:relative;width:375px;height:812px;flex:none;border-radius:40px;overflow:hidden;background:#000;border:1px solid rgba(255,255,255,.14);box-shadow:0 26px 64px rgba(0,0,0,.6);color:#eceded">
+  <div style="position:absolute;left:0;right:0;top:0;height:34px;background:#090a0b;opacity:.6"></div>
+  <div style="position:absolute;left:0;right:0;top:26px;bottom:0;background:#1a1b1e;border-radius:26px 26px 0 0;border-top:1px solid rgba(255,255,255,.09);overflow:hidden">
+    <div style="display:flex;justify-content:center;padding-top:9px"><div style="width:38px;height:4px;border-radius:2px;background:rgba(255,255,255,.24)"></div></div>
+    <div style="position:relative;padding:16px 20px 0">
+      <div style="position:absolute;right:20px;top:10px;width:36px;height:36px;border-radius:999px;background:#151618;border:1px solid rgba(255,255,255,.09);display:grid;place-items:center">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#eceded" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </div>
+      <div style="font:700 9px/1 Outfit,sans-serif;letter-spacing:.14em;color:#7f868b">ENGLAND · 2026/27</div>
+      <div style="font:700 31px/1 Rajdhani,sans-serif;color:#eceded;margin-top:9px">Premier League</div>
+      <div style="font:400 11px/1 Outfit,sans-serif;color:#9aa0a6;margin-top:8px">Football · 20 clubs · Matchweek 4</div>
+    </div>
+    <div style="display:flex;gap:22px;padding:18px 20px 0;border-bottom:1px solid rgba(255,255,255,.09)">
+      <div style="padding-bottom:11px;font:600 13px/1 Outfit,sans-serif;color:#eceded;box-shadow:inset 0 -2px 0 #eceded">Table</div>
+      <div style="padding-bottom:11px;font:600 13px/1 Outfit,sans-serif;color:#7f868b">Players</div>
+      <div style="padding-bottom:11px;font:600 13px/1 Outfit,sans-serif;color:#7f868b">Matches</div>
+    </div>
+
+    <div style="display:flex;align-items:center;padding:13px 20px 9px;font:700 8.5px/1 Outfit,sans-serif;letter-spacing:.13em;color:#7f868b">
+      <span style="width:24px">#</span><span style="flex:1">CLUB</span><span style="width:26px;text-align:center">P</span><span style="width:32px;text-align:center">GD</span><span style="width:32px;text-align:right">PTS</span>
+    </div>
+
+    <div style="display:flex;align-items:center;padding:0 20px;height:48px;border-top:1px solid rgba(255,255,255,.09)">
+      <span style="width:24px;font:700 13px/1 Rajdhani,sans-serif;color:#eceded">1</span>
+      <div style="width:34px;height:34px;display:grid;place-items:center;flex:none"><div style="width:23px;height:23px;transform:rotate(45deg);border-radius:7px 7px 8px 8px;background:linear-gradient(135deg,#c8202f,#6d0f18);border:1px solid rgba(255,255,255,.14)"></div></div>
+      <span style="flex:1;font:500 12.5px/1 Outfit,sans-serif;color:#eceded;padding-left:8px">Arsenal</span>
+      <span style="width:26px;text-align:center;font:400 12px/1 Outfit,sans-serif;color:#c9cccd">4</span>
+      <span style="width:32px;text-align:center;font:400 12px/1 Outfit,sans-serif;color:#c9cccd">+8</span>
+      <span style="width:32px;text-align:right;font:700 14px/1 Rajdhani,sans-serif;color:#eceded">10</span>
+    </div>
+    <div style="display:flex;align-items:center;padding:0 20px;height:48px;border-top:1px solid rgba(255,255,255,.09)">
+      <span style="width:24px;font:700 13px/1 Rajdhani,sans-serif;color:#eceded">2</span>
+      <div style="width:34px;height:34px;display:grid;place-items:center;flex:none"><div style="width:23px;height:23px;transform:rotate(45deg);border-radius:7px 7px 8px 8px;background:linear-gradient(135deg,#67c1f0,#0e5c86);border:1px solid rgba(255,255,255,.14)"></div></div>
+      <span style="flex:1;font:500 12.5px/1 Outfit,sans-serif;color:#eceded;padding-left:8px">Manchester City</span>
+      <span style="width:26px;text-align:center;font:400 12px/1 Outfit,sans-serif;color:#c9cccd">4</span>
+      <span style="width:32px;text-align:center;font:400 12px/1 Outfit,sans-serif;color:#c9cccd">+7</span>
+      <span style="width:32px;text-align:right;font:700 14px/1 Rajdhani,sans-serif;color:#eceded">9</span>
+    </div>
+    <div style="display:flex;align-items:center;padding:0 20px;height:48px;border-top:1px solid rgba(255,255,255,.09)">
+      <span style="width:24px;font:700 13px/1 Rajdhani,sans-serif;color:#eceded">3</span>
+      <div style="width:34px;height:34px;display:grid;place-items:center;flex:none"><div style="width:23px;height:23px;transform:rotate(45deg);border-radius:7px 7px 8px 8px;background:linear-gradient(135deg,#d8232e,#7a0b12);border:1px solid rgba(255,255,255,.14)"></div></div>
+      <span style="flex:1;font:500 12.5px/1 Outfit,sans-serif;color:#eceded;padding-left:8px">Liverpool</span>
+      <span style="width:26px;text-align:center;font:400 12px/1 Outfit,sans-serif;color:#c9cccd">4</span>
+      <span style="width:32px;text-align:center;font:400 12px/1 Outfit,sans-serif;color:#c9cccd">+5</span>
+      <span style="width:32px;text-align:right;font:700 14px/1 Rajdhani,sans-serif;color:#eceded">9</span>
+    </div>
+    <div style="display:flex;align-items:center;padding:0 20px;height:48px;border-top:1px solid rgba(255,255,255,.09)">
+      <span style="width:24px;font:700 13px/1 Rajdhani,sans-serif;color:#eceded">4</span>
+      <div style="width:34px;height:34px;display:grid;place-items:center;flex:none"><div style="width:23px;height:23px;transform:rotate(45deg);border-radius:7px 7px 8px 8px;background:linear-gradient(135deg,#0d3b8f,#071e4a);border:1px solid rgba(255,255,255,.14)"></div></div>
+      <span style="flex:1;font:500 12.5px/1 Outfit,sans-serif;color:#eceded;padding-left:8px">Chelsea</span>
+      <span style="width:26px;text-align:center;font:400 12px/1 Outfit,sans-serif;color:#c9cccd">4</span>
+      <span style="width:32px;text-align:center;font:400 12px/1 Outfit,sans-serif;color:#c9cccd">+3</span>
+      <span style="width:32px;text-align:right;font:700 14px/1 Rajdhani,sans-serif;color:#eceded">8</span>
+    </div>
+    <div style="display:flex;align-items:center;padding:0 20px;height:48px;border-top:1px solid rgba(255,255,255,.09)">
+      <span style="width:24px;font:700 13px/1 Rajdhani,sans-serif;color:#eceded">5</span>
+      <div style="width:34px;height:34px;display:grid;place-items:center;flex:none"><div style="width:23px;height:23px;transform:rotate(45deg);border-radius:7px 7px 8px 8px;background:linear-gradient(135deg,#e9ecf2,#9aa2b4);border:1px solid rgba(255,255,255,.14)"></div></div>
+      <span style="flex:1;font:500 12.5px/1 Outfit,sans-serif;color:#eceded;padding-left:8px">Tottenham</span>
+      <span style="width:26px;text-align:center;font:400 12px/1 Outfit,sans-serif;color:#c9cccd">4</span>
+      <span style="width:32px;text-align:center;font:400 12px/1 Outfit,sans-serif;color:#c9cccd">+1</span>
+      <span style="width:32px;text-align:right;font:700 14px/1 Rajdhani,sans-serif;color:#eceded">7</span>
+    </div>
+    <div style="display:flex;align-items:center;padding:0 20px;height:48px;border-top:1px solid rgba(255,255,255,.09)">
+      <span style="width:24px;font:700 13px/1 Rajdhani,sans-serif;color:#eceded">6</span>
+      <div style="width:34px;height:34px;display:grid;place-items:center;flex:none"><div style="width:23px;height:23px;transform:rotate(45deg);border-radius:7px 7px 8px 8px;background:linear-gradient(135deg,#1f6a3f,#0c2a19);border:1px solid rgba(255,255,255,.14)"></div></div>
+      <span style="flex:1;font:500 12.5px/1 Outfit,sans-serif;color:#eceded;padding-left:8px">Everton</span>
+      <span style="width:26px;text-align:center;font:400 12px/1 Outfit,sans-serif;color:#c9cccd">4</span>
+      <span style="width:32px;text-align:center;font:400 12px/1 Outfit,sans-serif;color:#c9cccd">0</span>
+      <span style="width:32px;text-align:right;font:700 14px/1 Rajdhani,sans-serif;color:#eceded">5</span>
+    </div>
+    <div style="display:flex;align-items:center;padding:0 20px;height:48px;border-top:1px solid rgba(255,255,255,.09)">
+      <span style="width:24px;font:700 13px/1 Rajdhani,sans-serif;color:#eceded">7</span>
+      <div style="width:34px;height:34px;display:grid;place-items:center;flex:none"><div style="width:23px;height:23px;transform:rotate(45deg);border-radius:7px 7px 8px 8px;background:linear-gradient(135deg,#8a1538,#4a0a1e);border:1px solid rgba(255,255,255,.14)"></div></div>
+      <span style="flex:1;font:500 12.5px/1 Outfit,sans-serif;color:#eceded;padding-left:8px">Aston Villa</span>
+      <span style="width:26px;text-align:center;font:400 12px/1 Outfit,sans-serif;color:#c9cccd">4</span>
+      <span style="width:32px;text-align:center;font:400 12px/1 Outfit,sans-serif;color:#c9cccd">−1</span>
+      <span style="width:32px;text-align:right;font:700 14px/1 Rajdhani,sans-serif;color:#eceded">4</span>
+    </div>
+    <div style="display:flex;align-items:center;padding:0 20px;height:48px;border-top:1px solid rgba(255,255,255,.09)">
+      <span style="width:24px;font:700 13px/1 Rajdhani,sans-serif;color:#eceded">8</span>
+      <div style="width:34px;height:34px;display:grid;place-items:center;flex:none"><div style="width:23px;height:23px;transform:rotate(45deg);border-radius:7px 7px 8px 8px;background:linear-gradient(135deg,#b9a642,#5c5320);border:1px solid rgba(255,255,255,.14)"></div></div>
+      <span style="flex:1;font:500 12.5px/1 Outfit,sans-serif;color:#eceded;padding-left:8px">Newcastle</span>
+      <span style="width:26px;text-align:center;font:400 12px/1 Outfit,sans-serif;color:#c9cccd">4</span>
+      <span style="width:32px;text-align:center;font:400 12px/1 Outfit,sans-serif;color:#c9cccd">−2</span>
+      <span style="width:32px;text-align:right;font:700 14px/1 Rajdhani,sans-serif;color:#eceded">4</span>
+    </div>
+    <div style="border-top:1px solid rgba(255,255,255,.09);padding:16px 20px;font:400 11px/1 Outfit,sans-serif;color:#7f868b">Positions 9–20 continue below</div>
+  </div>
+</div>
+</div>
+
+<div class="dv-opt" id="1i">
+<div class="dv-olabel"><a class="dv-oid" href="#1i">1i</a>Competition sheet — Matches, matchweek strip</div>
+<div style="position:relative;width:375px;height:812px;flex:none;border-radius:40px;overflow:hidden;background:#000;border:1px solid rgba(255,255,255,.14);box-shadow:0 26px 64px rgba(0,0,0,.6);color:#eceded">
+  <div style="position:absolute;left:0;right:0;top:0;height:34px;background:#090a0b;opacity:.6"></div>
+  <div style="position:absolute;left:0;right:0;top:26px;bottom:0;background:#1a1b1e;border-radius:26px 26px 0 0;border-top:1px solid rgba(255,255,255,.09);overflow:hidden">
+    <div style="display:flex;justify-content:center;padding-top:9px"><div style="width:38px;height:4px;border-radius:2px;background:rgba(255,255,255,.24)"></div></div>
+    <div style="position:relative;padding:16px 20px 0">
+      <div style="position:absolute;right:20px;top:10px;width:36px;height:36px;border-radius:999px;background:#151618;border:1px solid rgba(255,255,255,.09);display:grid;place-items:center">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#eceded" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </div>
+      <div style="font:700 9px/1 Outfit,sans-serif;letter-spacing:.14em;color:#7f868b">ENGLAND · 2026/27</div>
+      <div style="font:700 31px/1 Rajdhani,sans-serif;color:#eceded;margin-top:9px">Premier League</div>
+    </div>
+    <div style="display:flex;gap:22px;padding:18px 20px 0;border-bottom:1px solid rgba(255,255,255,.09)">
+      <div style="padding-bottom:11px;font:600 13px/1 Outfit,sans-serif;color:#7f868b">Table</div>
+      <div style="padding-bottom:11px;font:600 13px/1 Outfit,sans-serif;color:#7f868b">Players</div>
+      <div style="padding-bottom:11px;font:600 13px/1 Outfit,sans-serif;color:#eceded;box-shadow:inset 0 -2px 0 #eceded">Matches</div>
+    </div>
+
+    <div style="padding:16px 0 0">
+      <div style="font:700 9px/1 Outfit,sans-serif;letter-spacing:.14em;color:#7f868b;padding:0 20px 11px">MATCHWEEK</div>
+      <div style="display:flex;gap:8px;padding:0 20px;overflow:hidden">
+        <div style="width:44px;height:44px;flex:none;border-radius:11px;border:1px solid rgba(255,255,255,.09);display:grid;place-items:center;font:700 15px Rajdhani,sans-serif;color:#7f868b">2</div>
+        <div style="width:44px;height:44px;flex:none;border-radius:11px;border:1px solid rgba(255,255,255,.09);display:grid;place-items:center;font:700 15px Rajdhani,sans-serif;color:#7f868b">3</div>
+        <div style="width:44px;height:44px;flex:none;border-radius:11px;background:#eceded;display:grid;place-items:center;font:700 15px Rajdhani,sans-serif;color:#17120a">4</div>
+        <div style="width:44px;height:44px;flex:none;border-radius:11px;border:1px solid rgba(255,255,255,.09);display:grid;place-items:center;font:700 15px Rajdhani,sans-serif;color:#c9cccd">5</div>
+        <div style="width:44px;height:44px;flex:none;border-radius:11px;border:1px solid rgba(255,255,255,.09);display:grid;place-items:center;font:700 15px Rajdhani,sans-serif;color:#c9cccd">6</div>
+        <div style="width:44px;height:44px;flex:none;border-radius:11px;border:1px solid rgba(255,255,255,.09);display:grid;place-items:center;font:700 15px Rajdhani,sans-serif;color:#c9cccd">7</div>
+        <div style="width:44px;height:44px;flex:none;border-radius:11px;border:1px solid rgba(255,255,255,.09);display:grid;place-items:center;font:700 15px Rajdhani,sans-serif;color:#c9cccd">8</div>
+      </div>
+    </div>
+
+    <div style="padding:20px 20px 0;font:700 9px/1 Outfit,sans-serif;letter-spacing:.14em;color:#7f868b">SATURDAY 14 SEPTEMBER</div>
+    <div style="padding:12px 20px 0;display:flex;flex-direction:column;gap:10px">
+      <div style="position:relative;border-radius:14px;background:#151618;border:1px solid rgba(255,255,255,.09);padding:14px 15px;overflow:hidden">
+        <div style="position:absolute;left:0;top:14px;bottom:14px;width:3px;background:#f5402e;border-radius:0 3px 3px 0"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:26px;height:26px;display:grid;place-items:center;flex:none"><div style="width:18px;height:18px;transform:rotate(45deg);border-radius:5px 5px 6px 6px;background:linear-gradient(135deg,#c8202f,#6d0f18);border:1px solid rgba(255,255,255,.14)"></div></div>
+            <span style="font:500 12.5px/1 Outfit,sans-serif;color:#eceded">Arsenal</span>
+          </div>
+          <span style="font:700 15px/1 Rajdhani,sans-serif;color:#eceded">3</span>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:11px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:26px;height:26px;display:grid;place-items:center;flex:none"><div style="width:18px;height:18px;transform:rotate(45deg);border-radius:5px 5px 6px 6px;background:linear-gradient(135deg,#e9ecf2,#9aa2b4);border:1px solid rgba(255,255,255,.14)"></div></div>
+            <span style="font:500 12.5px/1 Outfit,sans-serif;color:#9aa0a6">Tottenham</span>
+          </div>
+          <span style="font:700 15px/1 Rajdhani,sans-serif;color:#9aa0a6">1</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:9px;margin-top:12px;padding-top:11px;border-top:1px solid rgba(255,255,255,.09)">
+          <div style="width:10px;height:10px;transform:rotate(45deg);border-radius:3px;background:#ffb11b"></div>
+          <span style="font:700 9px/1 Outfit,sans-serif;letter-spacing:.12em;color:#ffb11b">INSTANT CLASSIC</span>
+          <span style="font:400 10.5px/1 Outfit,sans-serif;color:#7f868b;margin-left:auto">4.6 heat</span>
+        </div>
+      </div>
+      <div style="position:relative;border-radius:14px;background:#151618;border:1px solid rgba(255,255,255,.09);padding:14px 15px;overflow:hidden">
+        <div style="position:absolute;left:0;top:14px;bottom:14px;width:3px;background:#2f5480;border-radius:0 3px 3px 0"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:26px;height:26px;display:grid;place-items:center;flex:none"><div style="width:18px;height:18px;transform:rotate(45deg);border-radius:5px 5px 6px 6px;background:linear-gradient(135deg,#0d3b8f,#071e4a);border:1px solid rgba(255,255,255,.14)"></div></div>
+            <span style="font:500 12.5px/1 Outfit,sans-serif;color:#eceded">Chelsea</span>
+          </div>
+          <span style="font:700 15px/1 Rajdhani,sans-serif;color:#eceded">0</span>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:11px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:26px;height:26px;display:grid;place-items:center;flex:none"><div style="width:18px;height:18px;transform:rotate(45deg);border-radius:5px 5px 6px 6px;background:linear-gradient(135deg,#1f6a3f,#0c2a19);border:1px solid rgba(255,255,255,.14)"></div></div>
+            <span style="font:500 12.5px/1 Outfit,sans-serif;color:#eceded">Everton</span>
+          </div>
+          <span style="font:700 15px/1 Rajdhani,sans-serif;color:#eceded">0</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+</div>
+
+<div class="dv-ghd"><span class="dv-gnum">GROUP B</span><span class="dv-gname">New concepts</span><span class="dv-grule"></span></div>
+<div class="dv-opts">
+<div class="dv-opt" id="1j">
+<div class="dv-olabel"><a class="dv-oid" href="#1j">1j</a>Skins — the rating becomes an artifact you dress</div>
+<div style="position:relative;width:375px;height:812px;flex:none;border-radius:40px;overflow:hidden;background:#0c0d0f;border:1px solid rgba(255,255,255,.14);box-shadow:0 26px 64px rgba(0,0,0,.6);color:#eceded">
+  <dc-import name="StatusBar" hint-size="100%,44px"></dc-import>
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 20px 0">
+    <div style="width:36px;height:36px;border-radius:999px;background:#1a1b1e;border:1px solid rgba(255,255,255,.09);display:grid;place-items:center">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#eceded" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </div>
+    <div style="font:600 14px/1 Outfit,sans-serif;color:#eceded">Select skin</div>
+    <div style="width:36px"></div>
+  </div>
+  <div style="padding:18px 20px 0">
+    <div style="display:flex;background:#1a1b1e;border:1px solid rgba(255,255,255,.09);border-radius:12px;padding:4px;gap:4px">
+      <div style="flex:1;height:36px;border-radius:9px;background:rgba(255,255,255,.1);display:grid;place-items:center;font:600 12px Outfit,sans-serif;color:#eceded">All</div>
+      <div style="flex:1;height:36px;border-radius:9px;display:grid;place-items:center;font:500 12px Outfit,sans-serif;color:#7f868b">Earned</div>
+      <div style="flex:1;height:36px;border-radius:9px;display:grid;place-items:center;font:500 12px Outfit,sans-serif;color:#7f868b">Locked</div>
+    </div>
+  </div>
+
+  <div style="padding:18px 20px 0;display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+
+    <div>
+      <div style="position:relative;height:132px;border-radius:12px;overflow:hidden;background:linear-gradient(150deg,#7a1d2b,#2a1016 60%,#0f1b34);border:2px solid #eceded">
+        <div style="position:absolute;inset:0;background:repeating-linear-gradient(112deg,rgba(255,255,255,.06) 0 2px,transparent 2px 9px)"></div>
+        <div style="position:absolute;top:-12px;right:-12px;width:24px;height:24px;transform:rotate(45deg);background:#0c0d0f;border:1px solid rgba(255,255,255,.14)"></div>
+        <div style="position:relative;padding:9px 10px"><div style="font:700 6.5px/1 Outfit,sans-serif;letter-spacing:.12em;color:rgba(236,237,237,.7)">PREM · MW4</div><div style="font:700 20px/1 Rajdhani,sans-serif;color:#fff;margin-top:12px">3–1</div></div>
+        <div style="position:absolute;left:10px;right:10px;bottom:9px;display:flex;gap:2px"><div style="flex:1;height:3px;border-radius:2px;background:#9a3f96"></div><div style="flex:1;height:3px;border-radius:2px;background:#d43a63"></div><div style="flex:1;height:3px;border-radius:2px;background:#f5402e"></div></div>
+      </div>
+      <div style="font:600 10.5px/1 Outfit,sans-serif;color:#eceded;margin-top:9px;text-align:center">Default</div>
+    </div>
+
+    <div>
+      <div style="position:relative;height:132px;border-radius:12px;overflow:hidden;background:#e8e4d9;border:1px solid rgba(255,255,255,.09)">
+        <div style="position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(0,0,0,.045) 0 1px,transparent 1px 4px)"></div>
+        <div style="position:relative;padding:9px 10px">
+          <div style="font:700 6.5px/1 Outfit,sans-serif;letter-spacing:.16em;color:#5c554a;border-bottom:1px solid rgba(0,0,0,.25);padding-bottom:6px">THE MATCH REPORT</div>
+          <div style="font:700 21px/1 Rajdhani,sans-serif;color:#17120a;margin-top:11px">ARS 3<br>TOT 1</div>
+          <div style="font:400 6.5px/1.4 Outfit,sans-serif;color:#5c554a;margin-top:9px">Two red cards and a<br>crowd that never sat</div>
+        </div>
+      </div>
+      <div style="font:600 10.5px/1 Outfit,sans-serif;color:#eceded;margin-top:9px;text-align:center">Broadsheet</div>
+    </div>
+
+    <div>
+      <div style="position:relative;height:132px;border-radius:12px;overflow:hidden;background:linear-gradient(150deg,#1b2440,#0b0f1c);border:1px solid rgba(255,255,255,.09)">
+        <div style="position:absolute;inset:0;background:radial-gradient(circle at 30% 20%,rgba(155,120,255,.5),transparent 45%),radial-gradient(circle at 75% 70%,rgba(60,220,200,.42),transparent 45%),radial-gradient(circle at 55% 95%,rgba(255,110,180,.4),transparent 45%)"></div>
+        <div style="position:absolute;inset:0;background:repeating-linear-gradient(58deg,rgba(255,255,255,.12) 0 1px,transparent 1px 6px)"></div>
+        <div style="position:relative;padding:9px 10px"><div style="font:700 6.5px/1 Outfit,sans-serif;letter-spacing:.12em;color:rgba(255,255,255,.85)">HOLOFOIL</div><div style="font:700 20px/1 Rajdhani,sans-serif;color:#fff;margin-top:12px">3–1</div></div>
+      </div>
+      <div style="font:600 10.5px/1 Outfit,sans-serif;color:#eceded;margin-top:9px;text-align:center">Holofoil</div>
+    </div>
+
+    <div>
+      <div style="position:relative;height:132px;border-radius:12px;overflow:hidden;background:#121315;border:1px solid rgba(255,255,255,.09)">
+        <div style="position:absolute;left:0;right:0;top:32px;height:1px;background:rgba(255,255,255,.09)"></div>
+        <div style="position:absolute;left:-5px;top:27px;width:10px;height:10px;border-radius:999px;background:#0c0d0f"></div>
+        <div style="position:absolute;right:-5px;top:27px;width:10px;height:10px;border-radius:999px;background:#0c0d0f"></div>
+        <div style="position:relative;padding:9px 10px"><div style="font:700 6.5px/1 Outfit,sans-serif;letter-spacing:.14em;color:#9aa0a6">EMIRATES · BLOCK 26</div></div>
+        <div style="position:relative;padding:14px 10px 0"><div style="font:700 26px/1 Rajdhani,sans-serif;color:#eceded">3–1</div><div style="font:400 7px/1.4 Outfit,sans-serif;color:#9aa0a6;margin-top:8px">ADMIT ONE<br>14 SEP 2026</div></div>
+      </div>
+      <div style="font:600 10.5px/1 Outfit,sans-serif;color:#eceded;margin-top:9px;text-align:center">Stub</div>
+    </div>
+
+    <div>
+      <div style="position:relative;height:132px;border-radius:12px;overflow:hidden;background:linear-gradient(165deg,#2f5480,#5b4fa8 38%,#9a3f96 66%,#f5402e);border:1px solid rgba(255,255,255,.09)">
+        <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 120%,rgba(255,255,255,.3),transparent 55%)"></div>
+        <div style="position:relative;padding:9px 10px"><div style="font:700 6.5px/1 Outfit,sans-serif;letter-spacing:.12em;color:rgba(255,255,255,.85)">4.6 HEAT</div></div>
+        <div style="position:absolute;left:10px;bottom:10px"><div style="font:700 30px/1 Rajdhani,sans-serif;color:#fff">3–1</div></div>
+      </div>
+      <div style="font:600 10.5px/1 Outfit,sans-serif;color:#eceded;margin-top:9px;text-align:center">Ember</div>
+    </div>
+
+    <div>
+      <div style="position:relative;height:132px;border-radius:12px;overflow:hidden;background:#0c0d0f;border:1px solid rgba(255,255,255,.16)">
+        <div style="position:relative;padding:9px 10px"><div style="font:700 6.5px/1 Outfit,sans-serif;letter-spacing:.14em;color:#7f868b">ARSENAL — TOTTENHAM</div></div>
+        <div style="position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);text-align:center"><div style="font:700 40px/1 Rajdhani,sans-serif;color:#eceded">3.1</div></div>
+        <div style="position:absolute;left:10px;right:10px;bottom:9px;height:1px;background:rgba(255,255,255,.16)"></div>
+      </div>
+      <div style="font:600 10.5px/1 Outfit,sans-serif;color:#eceded;margin-top:9px;text-align:center">Ink</div>
+    </div>
+
+    <div>
+      <div style="position:relative;height:132px;border-radius:12px;overflow:hidden;background:linear-gradient(150deg,#3b2d0c,#17120a);border:1px solid rgba(255,177,27,.4)">
+        <div style="position:absolute;inset:0;background:repeating-linear-gradient(112deg,rgba(255,177,27,.14) 0 2px,transparent 2px 9px)"></div>
+        <div style="position:absolute;top:-12px;right:-12px;width:24px;height:24px;transform:rotate(45deg);background:#0c0d0f;border:1px solid #ffb11b"></div>
+        <div style="position:relative;padding:9px 10px"><div style="font:700 6.5px/1 Outfit,sans-serif;letter-spacing:.12em;color:#ffb11b">INSTANT CLASSIC</div><div style="font:700 20px/1 Rajdhani,sans-serif;color:#ffb11b;margin-top:12px">3–1</div></div>
+        <div style="position:absolute;left:50%;bottom:10px;transform:translateX(-50%);width:13px;height:13px;border-radius:4px 4px 5px 5px;background:#ffb11b;rotate:45deg"></div>
+      </div>
+      <div style="font:600 10.5px/1 Outfit,sans-serif;color:#eceded;margin-top:9px;text-align:center">Gilt</div>
+    </div>
+
+    <div>
+      <div style="position:relative;height:132px;border-radius:12px;overflow:hidden;background:#121315;border:1px solid rgba(255,255,255,.09)">
+        <div style="position:absolute;inset:0;opacity:.35;background:linear-gradient(150deg,#3b1f5e,#120b1e)"></div>
+        <div style="position:absolute;inset:0;display:grid;place-items:center;background:rgba(9,10,11,.55)">
+          <div style="text-align:center">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9aa0a6" stroke-width="1.9" stroke-linecap="round"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7.5a4 4 0 0 1 8 0V11"/></svg>
+            <div style="font:600 7.5px/1.4 Outfit,sans-serif;color:#9aa0a6;margin-top:7px">7-NIGHT<br>STREAK</div>
+          </div>
+        </div>
+      </div>
+      <div style="font:500 10.5px/1 Outfit,sans-serif;color:#7f868b;margin-top:9px;text-align:center">Floodlight</div>
+    </div>
+
+    <div>
+      <div style="position:relative;height:132px;border-radius:12px;overflow:hidden;background:#121315;border:1px solid rgba(255,255,255,.09)">
+        <div style="position:absolute;inset:0;opacity:.3;background:linear-gradient(150deg,#1f6a3f,#0c2a19)"></div>
+        <div style="position:absolute;inset:0;display:grid;place-items:center;background:rgba(9,10,11,.55)">
+          <div style="text-align:center">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9aa0a6" stroke-width="1.9" stroke-linecap="round"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7.5a4 4 0 0 1 8 0V11"/></svg>
+            <div style="font:600 7.5px/1.4 Outfit,sans-serif;color:#9aa0a6;margin-top:7px">FINISH A<br>COLLECTION</div>
+          </div>
+        </div>
+      </div>
+      <div style="font:500 10.5px/1 Outfit,sans-serif;color:#7f868b;margin-top:9px;text-align:center">Turf</div>
+    </div>
+
+  </div>
+
+  <div style="position:absolute;left:20px;right:20px;bottom:26px;height:52px;border-radius:14px;background:#eceded;display:flex;align-items:center;justify-content:center">
+    <span style="font:600 13px/1 Outfit,sans-serif;color:#17120a">Apply Default</span>
+  </div>
+</div>
+</div>
+
+<div class="dv-opt" id="1k">
+<div class="dv-olabel"><a class="dv-oid" href="#1k">1k</a>Your collectible — the share moment</div>
+<div style="position:relative;width:375px;height:812px;flex:none;border-radius:40px;overflow:hidden;background:#0c0d0f;border:1px solid rgba(255,255,255,.14);box-shadow:0 26px 64px rgba(0,0,0,.6);color:#eceded">
+  <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 38%,rgba(245,64,46,.22),transparent 62%)"></div>
+  <dc-import name="StatusBar" hint-size="100%,44px"></dc-import>
+  <div style="position:relative;display:flex;align-items:center;justify-content:space-between;padding:6px 20px 0">
+    <div style="width:36px;height:36px;border-radius:999px;background:rgba(26,27,30,.9);border:1px solid rgba(255,255,255,.12);display:grid;place-items:center">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#eceded" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+    </div>
+    <div style="width:36px;height:36px;border-radius:999px;background:rgba(26,27,30,.9);border:1px solid rgba(255,255,255,.12);display:grid;place-items:center">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="#eceded"><circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/></svg>
+    </div>
+  </div>
+
+  <div style="position:relative;padding:26px 34px 0">
+    <div style="position:relative;height:482px;border-radius:22px;overflow:hidden;background:linear-gradient(168deg,#2f5480 0%,#5b4fa8 30%,#9a3f96 56%,#d43a63 78%,#f5402e 100%);border:1px solid rgba(255,255,255,.14);box-shadow:0 20px 50px rgba(245,64,46,.16)">
+      <div style="position:absolute;inset:0;background:repeating-linear-gradient(112deg,rgba(255,255,255,.07) 0 2px,transparent 2px 11px)"></div>
+      <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 118%,rgba(255,255,255,.3),transparent 52%)"></div>
+      <div style="position:absolute;top:-24px;right:-24px;width:44px;height:44px;transform:rotate(45deg);background:#0c0d0f;border:1px solid #ffb11b"></div>
+      <div style="position:absolute;bottom:-24px;left:-24px;width:44px;height:44px;transform:rotate(45deg);background:#0c0d0f;border:1px solid #ffb11b"></div>
+
+      <div style="position:relative;padding:20px 20px 0;display:flex;align-items:flex-start;justify-content:space-between">
+        <div>
+          <div style="font:700 9px/1 Outfit,sans-serif;letter-spacing:.14em;color:rgba(255,255,255,.82)">PREMIER LEAGUE</div>
+          <div style="font:600 11.5px/1 Outfit,sans-serif;color:rgba(255,255,255,.7);margin-top:6px">Emirates Stadium · MW 4</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font:700 21px/1 Rajdhani,sans-serif;color:#fff">4.6</div>
+          <div style="font:700 8px/1 Outfit,sans-serif;letter-spacing:.13em;color:rgba(255,255,255,.75);margin-top:5px">HEAT</div>
+        </div>
+      </div>
+
+      <div style="position:relative;display:flex;align-items:center;justify-content:center;gap:12px;margin-top:44px">
+        <div style="width:66px;height:66px;display:grid;place-items:center;flex:none">
+          <div style="width:47px;height:47px;transform:rotate(45deg);border-radius:14px 14px 16px 16px;background:linear-gradient(135deg,#c8202f,#6d0f18);border:1px solid rgba(255,255,255,.28);display:grid;place-items:center">
+            <span style="transform:rotate(-45deg);font:700 12px/1 Rajdhani,sans-serif;color:#fff">ARS</span>
+          </div>
+        </div>
+        <div style="font:700 62px/1 Rajdhani,sans-serif;color:#fff;text-shadow:0 3px 22px rgba(0,0,0,.35)">3<span style="color:rgba(255,255,255,.5);margin:0 6px">–</span>1</div>
+        <div style="width:66px;height:66px;display:grid;place-items:center;flex:none">
+          <div style="width:47px;height:47px;transform:rotate(45deg);border-radius:14px 14px 16px 16px;background:linear-gradient(135deg,#e9ecf2,#9aa2b4);border:1px solid rgba(255,255,255,.28);display:grid;place-items:center">
+            <span style="transform:rotate(-45deg);font:700 12px/1 Rajdhani,sans-serif;color:#101318">TOT</span>
+          </div>
+        </div>
+      </div>
+      <div style="position:relative;text-align:center;margin-top:16px;font:600 13px/1 Outfit,sans-serif;color:#fff">Arsenal vs Tottenham</div>
+
+      <div style="position:relative;margin:34px 20px 0;padding-top:18px;border-top:1px solid rgba(255,255,255,.22)">
+        <div style="display:flex;align-items:center;gap:9px">
+          <div style="display:flex;gap:3px">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><path d="M12 2l3 6.9 7.5.7-5.6 5 1.6 7.4L12 18.2 5.5 22l1.6-7.4-5.6-5 7.5-.7z"/></svg><svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><path d="M12 2l3 6.9 7.5.7-5.6 5 1.6 7.4L12 18.2 5.5 22l1.6-7.4-5.6-5 7.5-.7z"/></svg><svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><path d="M12 2l3 6.9 7.5.7-5.6 5 1.6 7.4L12 18.2 5.5 22l1.6-7.4-5.6-5 7.5-.7z"/></svg><svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><path d="M12 2l3 6.9 7.5.7-5.6 5 1.6 7.4L12 18.2 5.5 22l1.6-7.4-5.6-5 7.5-.7z"/></svg><svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><path d="M12 2l3 6.9 7.5.7-5.6 5 1.6 7.4L12 18.2 5.5 22l1.6-7.4-5.6-5 7.5-.7z"/></svg>
+          </div>
+          <span style="font:700 8.5px/1 Outfit,sans-serif;letter-spacing:.13em;color:rgba(255,255,255,.8)">RATED BY @SELIN</span>
+        </div>
+        <div style="font:400 12.5px/1.55 Outfit,sans-serif;color:#fff;margin-top:11px">Stayed on my feet from the 70th minute. Nights like this are why I keep the diary.</div>
+      </div>
+
+      <div style="position:absolute;left:0;right:0;bottom:0;height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;background:rgba(9,10,11,.42);border-top:1px solid rgba(255,255,255,.22)">
+        <div style="display:flex;align-items:center;gap:7px">
+          <div style="width:11px;height:11px;transform:rotate(45deg);border-radius:3px 3px 4px 4px;background:#ffb11b"></div>
+          <span style="font:700 8.5px/1 Outfit,sans-serif;letter-spacing:.13em;color:#ffb11b">INSTANT CLASSIC</span>
+        </div>
+        <span style="font:700 8.5px/1 Outfit,sans-serif;letter-spacing:.13em;color:rgba(255,255,255,.75)">RANKIT · 2026</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="position:absolute;left:20px;right:20px;bottom:30px;display:flex;gap:10px">
+    <div style="flex:1;height:64px;border-radius:16px;background:rgba(26,27,30,.92);border:1px solid rgba(255,255,255,.1);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#eceded" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 3 10.5 13.5M21 3l-7 18-3.5-7.5L3 10z"/></svg>
+      <span style="font:500 10.5px/1 Outfit,sans-serif;color:#c9cccd">Share</span>
+    </div>
+    <div style="flex:1;height:64px;border-radius:16px;background:rgba(26,27,30,.92);border:1px solid rgba(255,255,255,.1);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px">
+      <div style="display:flex;gap:-4px"><div style="width:11px;height:15px;border-radius:3px;background:#5b4fa8;transform:rotate(-10deg)"></div><div style="width:11px;height:15px;border-radius:3px;background:#d43a63;margin-left:-3px"></div><div style="width:11px;height:15px;border-radius:3px;background:#e8e4d9;margin-left:-3px;transform:rotate(10deg)"></div></div>
+      <span style="font:500 10.5px/1 Outfit,sans-serif;color:#c9cccd">Skins</span>
+    </div>
+    <div style="flex:1;height:64px;border-radius:16px;background:rgba(26,27,30,.92);border:1px solid rgba(255,255,255,.1);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#eceded" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16M6 16l9-9 3 3-9 9H6z"/></svg>
+      <span style="font:500 10.5px/1 Outfit,sans-serif;color:#c9cccd">Edit</span>
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="dv-opt" id="1l">
+<div class="dv-olabel"><a class="dv-oid" href="#1l">1l</a>The Hunt — collections index</div>
+<div style="position:relative;width:375px;height:812px;flex:none;border-radius:40px;overflow:hidden;background:#090a0b;border:1px solid rgba(255,255,255,.14);box-shadow:0 26px 64px rgba(0,0,0,.6);color:#eceded">
+  <dc-import name="StatusBar" hint-size="100%,44px"></dc-import>
+  <div style="padding:6px 26px 0">
+    <div style="font:700 9px/1 Outfit,sans-serif;letter-spacing:.14em;color:#7f868b">MATCHES WORTH CHASING</div>
+    <div style="font:700 31px/1 Rajdhani,sans-serif;color:#eceded;margin-top:8px">The Hunt</div>
+  </div>
+
+  <div style="margin:18px 24px 0;border-radius:18px;background:#121315;border:1px solid rgba(255,255,255,.09);padding:16px;display:flex;align-items:center;gap:16px">
+    <div style="position:relative;width:70px;height:70px;display:grid;place-items:center;flex:none">
+      <div style="position:absolute;inset:0;border-radius:999px;background:conic-gradient(from -90deg,#5b4fa8 0turn,#9a3f96 .22turn,#d43a63 .38turn,rgba(255,255,255,.08) .38turn)"></div>
+      <div style="position:absolute;inset:7px;border-radius:999px;background:#121315"></div>
+      <div style="position:relative;text-align:center">
+        <div style="font:700 18px/1 Rajdhani,sans-serif;color:#eceded">38%</div>
+      </div>
+    </div>
+    <div style="flex:1;min-width:0">
+      <div style="font:600 13px/1 Outfit,sans-serif;color:#eceded">4 collections active</div>
+      <div style="font:400 11.5px/1.5 Outfit,sans-serif;color:#9aa0a6;margin-top:7px">21 of 55 matches collected. Two are one night away from closing.</div>
+    </div>
+  </div>
+
+  <div style="padding:18px 24px 0;display:flex;flex-direction:column;gap:12px">
+
+    <div style="position:relative;border-radius:16px;background:#151618;border:1px solid rgba(255,255,255,.09);padding:15px 16px;overflow:hidden">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div style="flex:1;min-width:0">
+          <div style="font:600 13.5px/1 Outfit,sans-serif;color:#eceded">Every London Derby</div>
+          <div style="font:400 11px/1 Outfit,sans-serif;color:#9aa0a6;margin-top:6px">2026/27 season · 7 of 12</div>
+        </div>
+        <div style="position:relative;width:46px;height:46px;display:grid;place-items:center;flex:none">
+          <div style="position:absolute;inset:0;border-radius:999px;background:conic-gradient(from -90deg,#d43a63 0turn,#f5402e .58turn,rgba(255,255,255,.08) .58turn)"></div>
+          <div style="position:absolute;inset:5px;border-radius:999px;background:#151618"></div>
+          <span style="position:relative;font:700 13px/1 Rajdhani,sans-serif;color:#eceded">58</span>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:14px">
+        <div style="width:28px;height:28px;display:grid;place-items:center;flex:none"><div style="width:20px;height:20px;transform:rotate(45deg);border-radius:6px;background:linear-gradient(135deg,#c8202f,#6d0f18);border:1px solid rgba(255,255,255,.14)"></div></div>
+        <div style="width:28px;height:28px;display:grid;place-items:center;flex:none"><div style="width:20px;height:20px;transform:rotate(45deg);border-radius:6px;background:linear-gradient(135deg,#e9ecf2,#9aa2b4);border:1px solid rgba(255,255,255,.14)"></div></div>
+        <div style="width:28px;height:28px;display:grid;place-items:center;flex:none"><div style="width:20px;height:20px;transform:rotate(45deg);border-radius:6px;background:linear-gradient(135deg,#0d3b8f,#071e4a);border:1px solid rgba(255,255,255,.14)"></div></div>
+        <div style="width:28px;height:28px;display:grid;place-items:center;flex:none"><div style="width:20px;height:20px;transform:rotate(45deg);border-radius:6px;background:#0f1012;border:1px dashed rgba(255,255,255,.18)"></div></div>
+        <div style="width:28px;height:28px;display:grid;place-items:center;flex:none"><div style="width:20px;height:20px;transform:rotate(45deg);border-radius:6px;background:#0f1012;border:1px dashed rgba(255,255,255,.18)"></div></div>
+        <div style="margin-left:auto;align-self:center;font:400 10.5px/1 Outfit,sans-serif;color:#7f868b">+7 more</div>
+      </div>
+    </div>
+
+    <div style="position:relative;border-radius:16px;background:#151618;border:1px solid rgba(255,255,255,.09);padding:15px 16px">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div style="flex:1;min-width:0">
+          <div style="font:600 13.5px/1 Outfit,sans-serif;color:#eceded">Classics of 2026</div>
+          <div style="font:400 11px/1 Outfit,sans-serif;color:#9aa0a6;margin-top:6px">Community-voted · 3 of 25</div>
+        </div>
+        <div style="position:relative;width:46px;height:46px;display:grid;place-items:center;flex:none">
+          <div style="position:absolute;inset:0;border-radius:999px;background:conic-gradient(from -90deg,#5b4fa8 0turn,#9a3f96 .12turn,rgba(255,255,255,.08) .12turn)"></div>
+          <div style="position:absolute;inset:5px;border-radius:999px;background:#151618"></div>
+          <span style="position:relative;font:700 13px/1 Rajdhani,sans-serif;color:#eceded">12</span>
+        </div>
+      </div>
+      <div style="margin-top:13px;padding-top:12px;border-top:1px solid rgba(255,255,255,.09);font:400 11px/1 Outfit,sans-serif;color:#9aa0a6">Next: Bayern vs Dortmund · Saturday</div>
+    </div>
+
+    <div style="position:relative;border-radius:16px;background:#151618;border:1px solid rgba(255,255,255,.09);padding:15px 16px">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div style="flex:1;min-width:0">
+          <div style="font:600 13.5px/1 Outfit,sans-serif;color:#eceded">The 38</div>
+          <div style="font:400 11px/1 Outfit,sans-serif;color:#9aa0a6;margin-top:6px">One Arsenal match every week · 4 of 38</div>
+        </div>
+        <div style="position:relative;width:46px;height:46px;display:grid;place-items:center;flex:none">
+          <div style="position:absolute;inset:0;border-radius:999px;background:conic-gradient(from -90deg,#2f5480 0turn,#5b4fa8 .1turn,rgba(255,255,255,.08) .1turn)"></div>
+          <div style="position:absolute;inset:5px;border-radius:999px;background:#151618"></div>
+          <span style="position:relative;font:700 13px/1 Rajdhani,sans-serif;color:#eceded">10</span>
+        </div>
+      </div>
+      <div style="margin-top:13px;padding-top:12px;border-top:1px solid rgba(255,255,255,.09);display:flex;align-items:center;gap:8px">
+        <div style="width:11px;height:11px;transform:rotate(45deg);border-radius:3px;background:#ffb11b"></div>
+        <span style="font:700 9px/1 Outfit,sans-serif;letter-spacing:.12em;color:#ffb11b">FINISHING THIS UNLOCKS TURF</span>
+      </div>
+    </div>
+
+    <div style="position:relative;border-radius:16px;background:#121315;border:1px dashed rgba(255,255,255,.14);padding:15px 16px">
+      <div style="font:600 13.5px/1 Outfit,sans-serif;color:#9aa0a6">Olympic Finals 2028</div>
+      <div style="font:400 11px/1.5 Outfit,sans-serif;color:#7f868b;margin-top:7px">Opens when the schedule is published. Nothing to collect yet.</div>
+    </div>
+
+  </div>
+  <dc-import name="TabBar" active="discover" hint-size="100%,88px"></dc-import>
+</div>
+</div>
+
+<div class="dv-opt" id="1m">
+<div class="dv-olabel"><a class="dv-oid" href="#1m">1m</a>The Hunt — a collection, honest about gaps</div>
+<div style="position:relative;width:375px;height:812px;flex:none;border-radius:40px;overflow:hidden;background:#090a0b;border:1px solid rgba(255,255,255,.14);box-shadow:0 26px 64px rgba(0,0,0,.6);color:#eceded">
+  <dc-import name="StatusBar" hint-size="100%,44px"></dc-import>
+  <div style="position:relative;padding:6px 20px 0">
+    <div style="width:36px;height:36px;border-radius:999px;background:#151618;border:1px solid rgba(255,255,255,.09);display:grid;place-items:center">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#eceded" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m14 6-6 6 6 6"/></svg>
+    </div>
+  </div>
+
+  <div style="position:relative;margin:14px 24px 0;border-radius:20px;overflow:hidden;background:linear-gradient(150deg,#7a1d2b,#1b1024 60%,#0f1b34);border:1px solid rgba(255,255,255,.09);padding:20px">
+    <div style="position:absolute;inset:0;background:repeating-linear-gradient(112deg,rgba(255,255,255,.05) 0 2px,transparent 2px 11px)"></div>
+    <div style="position:relative;display:flex;align-items:center;gap:16px">
+      <div style="position:relative;width:78px;height:78px;display:grid;place-items:center;flex:none">
+        <div style="position:absolute;inset:0;border-radius:999px;background:conic-gradient(from -90deg,#d43a63 0turn,#f5402e .58turn,rgba(255,255,255,.14) .58turn)"></div>
+        <div style="position:absolute;inset:7px;border-radius:999px;background:#180d1c"></div>
+        <div style="position:relative;text-align:center">
+          <div style="font:700 20px/1 Rajdhani,sans-serif;color:#fff">7</div>
+          <div style="font:600 8px/1 Outfit,sans-serif;color:rgba(255,255,255,.6);margin-top:3px">OF 12</div>
+        </div>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font:700 9px/1 Outfit,sans-serif;letter-spacing:.14em;color:rgba(255,255,255,.7)">COLLECTION</div>
+        <div style="font:700 22px/1.1 Rajdhani,sans-serif;color:#fff;margin-top:8px">Every London<br>Derby</div>
+      </div>
+    </div>
+    <div style="position:relative;font:400 11.5px/1.55 Outfit,sans-serif;color:rgba(255,255,255,.78);margin-top:16px">Rate all twelve this season. Five left, and one of them is Sunday.</div>
+  </div>
+
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:20px 26px 0">
+    <span style="font:700 9px/1 Outfit,sans-serif;letter-spacing:.14em;color:#7f868b">COLLECTED</span>
+    <span style="font:400 11px/1 Outfit,sans-serif;color:#9aa0a6">Season order</span>
+  </div>
+
+  <div style="padding:12px 24px 0;display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+    <div style="position:relative;height:96px;border-radius:12px;overflow:hidden;background:linear-gradient(150deg,#7a1d2b,#2a1016);border:1px solid rgba(255,255,255,.09)">
+      <div style="position:absolute;inset:0;background:repeating-linear-gradient(112deg,rgba(255,255,255,.06) 0 2px,transparent 2px 9px)"></div>
+      <div style="position:absolute;top:-11px;right:-11px;width:22px;height:22px;transform:rotate(45deg);background:#090a0b;border:1px solid #ffb11b"></div>
+      <div style="position:relative;padding:8px 9px"><div style="font:700 6.5px/1 Outfit,sans-serif;letter-spacing:.1em;color:rgba(255,255,255,.7)">ARS–TOT</div><div style="font:700 17px/1 Rajdhani,sans-serif;color:#fff;margin-top:10px">3–1</div></div>
+      <div style="position:absolute;left:9px;bottom:8px;display:flex;gap:1.5px"><div style="width:4px;height:3px;border-radius:2px;background:#f5402e"></div><div style="width:4px;height:3px;border-radius:2px;background:#f5402e"></div><div style="width:4px;height:3px;border-radius:2px;background:#f5402e"></div></div>
+    </div>
+    <div style="position:relative;height:96px;border-radius:12px;overflow:hidden;background:linear-gradient(150deg,#0d3b8f,#071e4a);border:1px solid rgba(255,255,255,.09)">
+      <div style="position:absolute;inset:0;background:repeating-linear-gradient(112deg,rgba(255,255,255,.06) 0 2px,transparent 2px 9px)"></div>
+      <div style="position:absolute;top:-11px;right:-11px;width:22px;height:22px;transform:rotate(45deg);background:#090a0b;border:1px solid rgba(255,255,255,.09)"></div>
+      <div style="position:relative;padding:8px 9px"><div style="font:700 6.5px/1 Outfit,sans-serif;letter-spacing:.1em;color:rgba(255,255,255,.7)">CHE–FUL</div><div style="font:700 17px/1 Rajdhani,sans-serif;color:#fff;margin-top:10px">2–0</div></div>
+    </div>
+    <div style="position:relative;height:96px;border-radius:12px;overflow:hidden;background:linear-gradient(150deg,#3b1f5e,#120b1e);border:1px solid rgba(255,255,255,.09)">
+      <div style="position:absolute;inset:0;background:repeating-linear-gradient(112deg,rgba(255,255,255,.06) 0 2px,transparent 2px 9px)"></div>
+      <div style="position:absolute;top:-11px;right:-11px;width:22px;height:22px;transform:rotate(45deg);background:#090a0b;border:1px solid rgba(255,255,255,.09)"></div>
+      <div style="position:relative;padding:8px 9px"><div style="font:700 6.5px/1 Outfit,sans-serif;letter-spacing:.1em;color:rgba(255,255,255,.7)">WHU–TOT</div><div style="font:700 17px/1 Rajdhani,sans-serif;color:#fff;margin-top:10px">1–1</div></div>
+    </div>
+
+    <div style="position:relative;height:96px;border-radius:12px;background:#121315;border:1px solid #d43a63;display:flex;flex-direction:column;justify-content:space-between;padding:9px">
+      <div style="font:700 6.5px/1 Outfit,sans-serif;letter-spacing:.1em;color:#d43a63">SUNDAY 16:30</div>
+      <div>
+        <div style="font:600 10px/1.3 Outfit,sans-serif;color:#eceded">Crystal Palace<br>Arsenal</div>
+        <div style="font:400 8.5px/1 Outfit,sans-serif;color:#9aa0a6;margin-top:6px">Next in line</div>
+      </div>
+    </div>
+    <div style="height:96px;border-radius:12px;background:#0f1012;border:1px dashed rgba(255,255,255,.14);display:flex;flex-direction:column;justify-content:flex-end;padding:9px">
+      <div style="font:600 10px/1.3 Outfit,sans-serif;color:#7f868b">Brentford<br>Chelsea</div>
+      <div style="font:400 8.5px/1 Outfit,sans-serif;color:#7f868b;margin-top:6px">28 Sep</div>
+    </div>
+    <div style="height:96px;border-radius:12px;background:#0f1012;border:1px dashed rgba(255,255,255,.14);display:flex;flex-direction:column;justify-content:flex-end;padding:9px">
+      <div style="font:600 10px/1.3 Outfit,sans-serif;color:#7f868b">Tottenham<br>West Ham</div>
+      <div style="font:400 8.5px/1 Outfit,sans-serif;color:#7f868b;margin-top:6px">5 Oct</div>
+    </div>
+  </div>
+
+  <div style="margin:18px 24px 0;padding:14px 16px;border-radius:14px;background:#121315;border:1px solid rgba(255,255,255,.09);font:400 11.5px/1.55 Outfit,sans-serif;color:#9aa0a6">
+    Three fixtures are unscheduled. They'll appear here when the league confirms dates.
+  </div>
+  <dc-import name="TabBar" active="discover" hint-size="100%,88px"></dc-import>
+</div>
+</div>
+
+<div class="dv-opt" id="1n">
+<div class="dv-olabel"><a class="dv-oid" href="#1n">1n</a>Companion — the room before kick-off</div>
+<div style="position:relative;width:375px;height:812px;flex:none;border-radius:40px;overflow:hidden;background:#090a0b;border:1px solid rgba(255,255,255,.14);box-shadow:0 26px 64px rgba(0,0,0,.6);color:#eceded">
+  <dc-import name="StatusBar" hint-size="100%,44px"></dc-import>
+  <div style="display:flex;align-items:center;gap:12px;padding:6px 20px 14px">
+    <div style="width:36px;height:36px;border-radius:999px;background:#151618;border:1px solid rgba(255,255,255,.09);display:grid;place-items:center;flex:none">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#eceded" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m14 6-6 6 6 6"/></svg>
+    </div>
+    <div style="flex:1;min-width:0">
+      <div style="font:600 13px/1 Outfit,sans-serif;color:#eceded">Chelsea vs Sporting CP</div>
+      <div style="font:400 10.5px/1 Outfit,sans-serif;color:#9aa0a6;margin-top:5px">Champions League · Companion</div>
+    </div>
+  </div>
+
+  <div style="margin:0 24px;border-radius:18px;background:linear-gradient(150deg,#141c33,#0c0d0f);border:1px solid rgba(255,255,255,.09);padding:20px;text-align:center">
+    <div style="font:700 9px/1 Outfit,sans-serif;letter-spacing:.14em;color:#8b6fc4">KICKS OFF IN</div>
+    <div style="font:700 44px/1 Rajdhani,sans-serif;color:#eceded;margin-top:12px;letter-spacing:.02em">24:18</div>
+    <div style="font:400 11px/1 Outfit,sans-serif;color:#9aa0a6;margin-top:12px">Stamford Bridge · 20:00 BST</div>
+  </div>
+
+  <div style="margin:16px 24px 0;border-radius:16px;background:#121315;border:1px solid rgba(255,255,255,.09);padding:15px 16px">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <span style="font:700 9px/1 Outfit,sans-serif;letter-spacing:.14em;color:#7f868b">IN THE ROOM</span>
+      <span style="font:400 10.5px/1 Outfit,sans-serif;color:#9aa0a6">24 watching</span>
+    </div>
+    <div style="display:flex;align-items:center;margin-top:13px">
+      <div style="width:30px;height:30px;border-radius:999px;background:linear-gradient(140deg,#3fb08c,#1d5a48);border:2px solid #121315"></div>
+      <div style="width:30px;height:30px;border-radius:999px;background:linear-gradient(140deg,#8b6fc4,#3b2a5c);border:2px solid #121315;margin-left:-9px"></div>
+      <div style="width:30px;height:30px;border-radius:999px;background:linear-gradient(140deg,#d43a63,#5c1a2c);border:2px solid #121315;margin-left:-9px"></div>
+      <div style="width:30px;height:30px;border-radius:999px;background:linear-gradient(140deg,#2f5480,#141f33);border:2px solid #121315;margin-left:-9px"></div>
+      <div style="width:30px;height:30px;border-radius:999px;background:#1f2124;border:2px solid #121315;margin-left:-9px;display:grid;place-items:center;font:600 9.5px Outfit,sans-serif;color:#c9cccd">+20</div>
+      <div style="margin-left:auto;height:32px;padding:0 13px;display:flex;align-items:center;border-radius:999px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.22);font:600 11px Outfit,sans-serif;color:#eceded">Invite</div>
+    </div>
+  </div>
+
+  <div style="padding:20px 26px 0;font:700 9px/1 Outfit,sans-serif;letter-spacing:.14em;color:#7f868b">TALK</div>
+
+  <div style="padding:12px 24px 0;display:flex;flex-direction:column;gap:12px">
+    <div style="display:flex;gap:10px">
+      <div style="width:28px;height:28px;border-radius:999px;background:linear-gradient(140deg,#3fb08c,#1d5a48);flex:none"></div>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:baseline;gap:8px"><span style="font:600 11.5px/1 Outfit,sans-serif;color:#eceded">@deniz</span><span style="font:400 10px/1 Outfit,sans-serif;color:#7f868b">19:31</span></div>
+        <div style="font:400 12px/1.5 Outfit,sans-serif;color:#c9cccd;margin-top:6px">Palmer's back in the eleven. That changes everything about the left side.</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px">
+      <div style="width:28px;height:28px;border-radius:999px;background:linear-gradient(140deg,#8b6fc4,#3b2a5c);flex:none"></div>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:baseline;gap:8px"><span style="font:600 11.5px/1 Outfit,sans-serif;color:#eceded">@mara</span><span style="font:400 10px/1 Outfit,sans-serif;color:#7f868b">19:34</span></div>
+        <div style="font:400 12px/1.5 Outfit,sans-serif;color:#c9cccd;margin-top:6px">Calling it now — this one goes in the diary.</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="position:absolute;left:24px;right:24px;bottom:96px;border-radius:14px;background:#121315;border:1px solid rgba(255,255,255,.09);padding:13px 15px;display:flex;align-items:center;gap:11px">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#8b6fc4" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M6.3 6.3l2.1 2.1M15.6 15.6l2.1 2.1M17.7 6.3l-2.1 2.1M8.4 15.6l-2.1 2.1"/></svg>
+    <div style="font:400 11px/1.5 Outfit,sans-serif;color:#9aa0a6">Live rating opens at kick-off. Your final stars still wait for full time.</div>
+  </div>
+
+  <div style="position:absolute;left:24px;right:24px;bottom:26px;height:52px;border-radius:14px;background:#151618;border:1px solid rgba(255,255,255,.09);display:flex;align-items:center;padding:0 16px;gap:12px">
+    <span style="flex:1;font:400 12.5px/1 Outfit,sans-serif;color:#7f868b">Say something…</span>
+    <div style="width:34px;height:34px;border-radius:999px;background:#eceded;display:grid;place-items:center">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#17120a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 3 10.5 13.5M21 3l-7 18-3.5-7.5L3 10z"/></svg>
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="dv-opt" id="1o">
+<div class="dv-olabel"><a class="dv-oid" href="#1o">1o</a>Companion — live, with the crowd's pulse</div>
+<div style="position:relative;width:375px;height:812px;flex:none;border-radius:40px;overflow:hidden;background:#090a0b;border:1px solid rgba(255,255,255,.14);box-shadow:0 26px 64px rgba(0,0,0,.6);color:#eceded">
+  <dc-import name="StatusBar" hint-size="100%,44px"></dc-import>
+  <div style="display:flex;align-items:center;gap:12px;padding:6px 20px 12px">
+    <div style="width:36px;height:36px;border-radius:999px;background:#151618;border:1px solid rgba(255,255,255,.09);display:grid;place-items:center;flex:none">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#eceded" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m14 6-6 6 6 6"/></svg>
+    </div>
+    <div style="flex:1;min-width:0">
+      <div style="font:600 13px/1 Outfit,sans-serif;color:#eceded">Chelsea 2–1 Sporting CP</div>
+      <div style="display:flex;align-items:center;gap:6px;margin-top:5px">
+        <div style="width:6px;height:6px;border-radius:999px;background:#f5402e;animation:liveDot 1.4s ease-in-out infinite"></div>
+        <span style="font:700 9px/1 Outfit,sans-serif;letter-spacing:.12em;color:#f5402e">LIVE · 73'</span>
+      </div>
+    </div>
+    <div style="height:32px;padding:0 12px;display:flex;align-items:center;gap:6px;border-radius:999px;background:#151618;border:1px solid rgba(255,255,255,.09);font:600 10.5px Outfit,sans-serif;color:#c9cccd">312 in</div>
+  </div>
+
+  <div style="margin:0 24px;border-radius:18px;background:#121315;border:1px solid rgba(255,255,255,.09);overflow:hidden">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;padding:15px 16px 0">
+      <span style="font:700 9px/1 Outfit,sans-serif;letter-spacing:.14em;color:#7f868b">CROWD PULSE</span>
+      <span style="font:700 15px/1 Rajdhani,sans-serif;color:#f5402e">4.4 <span style="font:600 9px Outfit,sans-serif;color:#9aa0a6">RISING</span></span>
+    </div>
+    <div style="padding:12px 0 0">
+      <svg width="100%" height="96" viewBox="0 0 320 96" preserveAspectRatio="none" style="display:block">
+        <defs>
+          <linearGradient id="rkPulseFill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#f5402e" stop-opacity=".5"/>
+            <stop offset="1" stop-color="#f5402e" stop-opacity="0"/>
+          </linearGradient>
+          <linearGradient id="rkPulseLine" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0" stop-color="#2f5480"/>
+            <stop offset=".35" stop-color="#5b4fa8"/>
+            <stop offset=".62" stop-color="#9a3f96"/>
+            <stop offset=".82" stop-color="#d43a63"/>
+            <stop offset="1" stop-color="#f5402e"/>
+          </linearGradient>
+        </defs>
+        <path d="M0,74 L26,70 L52,76 L78,58 L104,64 L130,44 L156,52 L182,40 L208,54 L234,26 L260,34 L286,18 L320,10 L320,96 L0,96 Z" fill="url(#rkPulseFill)"/>
+        <polyline points="0,74 26,70 52,76 78,58 104,64 130,44 156,52 182,40 208,54 234,26 260,34 286,18 320,10" fill="none" stroke="url(#rkPulseLine)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+        <circle cx="234" cy="26" r="4" fill="#d43a63"/>
+        <circle cx="320" cy="10" r="4.5" fill="#f5402e"/>
+      </svg>
+    </div>
+    <div style="display:flex;justify-content:space-between;padding:0 16px 14px;font:400 9.5px/1 Outfit,sans-serif;color:#7f868b">
+      <span>KO</span><span>30'</span><span>HT</span><span>60'</span><span>73'</span>
+    </div>
+  </div>
+
+  <div style="padding:18px 26px 0;font:700 9px/1 Outfit,sans-serif;letter-spacing:.14em;color:#7f868b">MOMENTS</div>
+  <div style="padding:12px 24px 0;display:flex;flex-direction:column;gap:9px">
+    <div style="position:relative;border-radius:13px;background:#151618;border:1px solid rgba(255,255,255,.09);padding:12px 14px;display:flex;align-items:center;gap:12px;overflow:hidden">
+      <div style="position:absolute;left:0;top:12px;bottom:12px;width:3px;background:#f5402e"></div>
+      <span style="font:700 15px/1 Rajdhani,sans-serif;color:#eceded;width:30px;flex:none">71'</span>
+      <div style="flex:1;min-width:0">
+        <div style="font:600 12px/1 Outfit,sans-serif;color:#eceded">Red card — Sporting</div>
+        <div style="font:400 10.5px/1 Outfit,sans-serif;color:#9aa0a6;margin-top:5px">Pulse jumped 0.9 in ninety seconds</div>
+      </div>
+      <div style="width:3px;height:26px;border-radius:2px;background:#f5402e;flex:none"></div>
+    </div>
+    <div style="position:relative;border-radius:13px;background:#151618;border:1px solid rgba(255,255,255,.09);padding:12px 14px;display:flex;align-items:center;gap:12px;overflow:hidden">
+      <div style="position:absolute;left:0;top:12px;bottom:12px;width:3px;background:#d43a63"></div>
+      <span style="font:700 15px/1 Rajdhani,sans-serif;color:#eceded;width:30px;flex:none">67'</span>
+      <div style="flex:1;min-width:0">
+        <div style="font:600 12px/1 Outfit,sans-serif;color:#eceded">Goal — Palmer</div>
+        <div style="font:400 10.5px/1 Outfit,sans-serif;color:#9aa0a6;margin-top:5px">148 members marked this</div>
+      </div>
+      <div style="width:3px;height:26px;border-radius:2px;background:#d43a63;flex:none"></div>
+    </div>
+  </div>
+
+  <div style="position:absolute;left:24px;right:24px;bottom:26px;border-radius:18px;background:#151618;border:1px solid rgba(255,255,255,.09);padding:16px">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px">
+      <span style="font:700 9px/1 Outfit,sans-serif;letter-spacing:.14em;color:#7f868b">YOUR LIVE READ</span>
+      <span style="font:400 10.5px/1 Outfit,sans-serif;color:#9aa0a6">Adjust any time</span>
+    </div>
+    <div style="position:relative;height:8px;border-radius:5px;background:linear-gradient(90deg,#2f5480,#5b4fa8,#9a3f96,#d43a63,#f5402e)">
+      <div style="position:absolute;left:78%;top:50%;transform:translate(-50%,-50%);width:26px;height:26px;border-radius:999px;background:#eceded;border:3px solid #151618;box-shadow:0 3px 12px rgba(0,0,0,.55)"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;margin-top:12px;font:600 9px/1 Outfit,sans-serif;letter-spacing:.1em;color:#7f868b">
+      <span>COLD</span><span style="color:#d43a63">YOUR READ · HOT</span><span>INCAND.</span>
+    </div>
+    <div style="margin-top:14px;padding-top:13px;border-top:1px solid rgba(255,255,255,.09);font:400 11px/1.5 Outfit,sans-serif;color:#9aa0a6">
+      Counts toward tonight's streak. Stars and review open at full time.
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="dv-opt" id="1p">
+<div class="dv-olabel"><a class="dv-oid" href="#1p">1p</a>Rank &amp; streak — what being there earns</div>
+<div style="position:relative;width:375px;height:812px;flex:none;border-radius:40px;overflow:hidden;background:#090a0b;border:1px solid rgba(255,255,255,.14);box-shadow:0 26px 64px rgba(0,0,0,.6);color:#eceded">
+  <dc-import name="StatusBar" hint-size="100%,44px"></dc-import>
+  <div style="padding:6px 26px 0">
+    <div style="font:700 31px/1 Rajdhani,sans-serif;color:#eceded">Profile</div>
+  </div>
+  <div style="display:flex;gap:24px;padding:16px 26px 0;border-bottom:1px solid rgba(255,255,255,.09)">
+    <div style="padding-bottom:11px;font:600 13px/1 Outfit,sans-serif;color:#eceded;box-shadow:inset 0 -2px 0 #eceded">Standing</div>
+    <div style="padding-bottom:11px;font:600 13px/1 Outfit,sans-serif;color:#7f868b">Overview</div>
+    <div style="padding-bottom:11px;font:600 13px/1 Outfit,sans-serif;color:#7f868b">Settings</div>
+  </div>
+
+  <div style="position:relative;margin:18px 24px 0;border-radius:20px;overflow:hidden;background:linear-gradient(155deg,#231a3d,#0f0c17);border:1px solid rgba(255,255,255,.09);padding:22px 20px">
+    <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 22% 20%,rgba(155,63,150,.32),transparent 58%)"></div>
+    <div style="position:relative;display:flex;align-items:center;gap:18px">
+      <div style="width:82px;height:82px;display:grid;place-items:center;flex:none">
+        <div style="width:58px;height:58px;transform:rotate(45deg);border-radius:17px 17px 20px 20px;background:linear-gradient(140deg,#d43a63,#7a1d43);border:1px solid rgba(255,255,255,.24);display:grid;place-items:center;box-shadow:0 8px 26px rgba(212,58,99,.34)">
+          <span style="transform:rotate(-45deg);font:700 22px/1 Rajdhani,sans-serif;color:#fff">04</span>
+        </div>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font:700 9px/1 Outfit,sans-serif;letter-spacing:.14em;color:rgba(255,255,255,.65)">RANK 4 OF 7</div>
+        <div style="font:700 24px/1 Rajdhani,sans-serif;color:#fff;margin-top:9px">Terrace Regular</div>
+        <div style="font:400 11px/1 Outfit,sans-serif;color:rgba(255,255,255,.7);margin-top:9px">@selin · 142 matches logged</div>
+      </div>
+    </div>
+    <div style="position:relative;margin-top:20px">
+      <div style="display:flex;justify-content:space-between;font:600 9.5px/1 Outfit,sans-serif;letter-spacing:.1em;color:rgba(255,255,255,.7);margin-bottom:9px">
+        <span>2,840</span><span>SEASON TICKET AT 3,500</span>
+      </div>
+      <div style="height:7px;border-radius:4px;background:rgba(255,255,255,.14);overflow:hidden">
+        <div style="width:81%;height:100%;border-radius:4px;background:linear-gradient(90deg,#9a3f96,#d43a63)"></div>
+      </div>
+    </div>
+  </div>
+
+  <div style="padding:18px 26px 0;font:700 9px/1 Outfit,sans-serif;letter-spacing:.14em;color:#7f868b">WHAT COUNTS</div>
+  <div style="padding:12px 24px 0;display:grid;grid-template-columns:1fr 1fr;gap:10px">
+    <div style="border-radius:14px;background:#151618;border:1px solid rgba(255,255,255,.09);padding:13px 14px">
+      <div style="font:700 20px/1 Rajdhani,sans-serif;color:#eceded">68</div>
+      <div style="font:400 10.5px/1.4 Outfit,sans-serif;color:#9aa0a6;margin-top:7px">Rated on the night<br><span style="color:#7f868b">×15 each</span></div>
+    </div>
+    <div style="border-radius:14px;background:#151618;border:1px solid rgba(255,255,255,.09);padding:13px 14px">
+      <div style="font:700 20px/1 Rajdhani,sans-serif;color:#eceded">412</div>
+      <div style="font:400 10.5px/1.4 Outfit,sans-serif;color:#9aa0a6;margin-top:7px">Likes on your reviews<br><span style="color:#7f868b">×2 each</span></div>
+    </div>
+    <div style="border-radius:14px;background:#151618;border:1px solid rgba(255,255,255,.09);padding:13px 14px">
+      <div style="font:700 20px/1 Rajdhani,sans-serif;color:#eceded">31</div>
+      <div style="font:400 10.5px/1.4 Outfit,sans-serif;color:#9aa0a6;margin-top:7px">Nights in the companion<br><span style="color:#7f868b">×20 each</span></div>
+    </div>
+    <div style="border-radius:14px;background:#151618;border:1px solid rgba(255,255,255,.09);padding:13px 14px">
+      <div style="font:700 20px/1 Rajdhani,sans-serif;color:#eceded">2</div>
+      <div style="font:400 10.5px/1.4 Outfit,sans-serif;color:#9aa0a6;margin-top:7px">Seasons followed end to end<br><span style="color:#7f868b">×300 each</span></div>
+    </div>
+  </div>
+
+  <div style="margin:18px 24px 0;border-radius:16px;background:#121315;border:1px solid rgba(255,255,255,.09);padding:15px 16px">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:13px">
+      <span style="font:700 9px/1 Outfit,sans-serif;letter-spacing:.14em;color:#7f868b">STREAK · 12 NIGHTS</span>
+      <span style="font:400 10.5px/1 Outfit,sans-serif;color:#9aa0a6">Best: 21</span>
+    </div>
+    <div style="display:flex;gap:5px">
+      <div style="flex:1;height:22px;border-radius:5px;background:#5b4fa8"></div><div style="flex:1;height:22px;border-radius:5px;background:#9a3f96"></div><div style="flex:1;height:22px;border-radius:5px;background:#d43a63"></div><div style="flex:1;height:22px;border-radius:5px;background:#f5402e"></div><div style="flex:1;height:22px;border-radius:5px;background:#d43a63"></div><div style="flex:1;height:22px;border-radius:5px;background:#9a3f96"></div><div style="flex:1;height:22px;border-radius:5px;background:#f5402e;box-shadow:0 0 12px rgba(245,64,46,.6);animation:emberPulse 2.6s ease-in-out infinite"></div><div style="flex:1;height:22px;border-radius:5px;background:rgba(255,255,255,.08)"></div>
+    </div>
+    <div style="font:400 11px/1.5 Outfit,sans-serif;color:#9aa0a6;margin-top:12px">One rating on the night of the match keeps it alive. Rating late still counts as a log — just not to the streak.</div>
+  </div>
+  <dc-import name="TabBar" active="profile" hint-size="100%,88px"></dc-import>
+</div>
+</div>
+
+<div class="dv-opt" id="1q">
+<div class="dv-olabel"><a class="dv-oid" href="#1q">1q</a>Friends — the feed as a shelf of collectibles</div>
+<div style="position:relative;width:375px;height:812px;flex:none;border-radius:40px;overflow:hidden;background:#090a0b;border:1px solid rgba(255,255,255,.14);box-shadow:0 26px 64px rgba(0,0,0,.6);color:#eceded">
+  <dc-import name="StatusBar" hint-size="100%,44px"></dc-import>
+  <div style="padding:6px 26px 0">
+    <div style="font:700 31px/1 Rajdhani,sans-serif;color:#eceded">Activity</div>
+  </div>
+  <div style="display:flex;gap:24px;padding:16px 26px 0;border-bottom:1px solid rgba(255,255,255,.09)">
+    <div style="padding-bottom:11px;font:600 13px/1 Outfit,sans-serif;color:#eceded;box-shadow:inset 0 -2px 0 #eceded">Friends</div>
+    <div style="padding-bottom:11px;font:600 13px/1 Outfit,sans-serif;color:#7f868b">Diary</div>
+  </div>
+
+  <div style="display:flex;gap:14px;padding:16px 0 0 26px;overflow:hidden">
+    <div style="flex:none;text-align:center;width:62px">
+      <div style="position:relative;width:58px;height:58px;margin:0 auto">
+        <div style="position:absolute;inset:0;border-radius:999px;background:conic-gradient(from -40deg,#f5402e,#d43a63,#9a3f96,#f5402e)"></div>
+        <div style="position:absolute;inset:2.5px;border-radius:999px;background:#090a0b"></div>
+        <div style="position:absolute;inset:5px;border-radius:999px;background:linear-gradient(140deg,#3fb08c,#1d5a48)"></div>
+      </div>
+      <div style="font:500 11px/1 Outfit,sans-serif;color:#c9cccd;margin-top:8px">deniz</div>
+    </div>
+    <div style="flex:none;text-align:center;width:62px">
+      <div style="position:relative;width:58px;height:58px;margin:0 auto">
+        <div style="position:absolute;inset:0;border-radius:999px;background:conic-gradient(from -40deg,#5b4fa8,#9a3f96,#5b4fa8)"></div>
+        <div style="position:absolute;inset:2.5px;border-radius:999px;background:#090a0b"></div>
+        <div style="position:absolute;inset:5px;border-radius:999px;background:linear-gradient(140deg,#8b6fc4,#3b2a5c)"></div>
+      </div>
+      <div style="font:500 11px/1 Outfit,sans-serif;color:#c9cccd;margin-top:8px">mara</div>
+    </div>
+    <div style="flex:none;text-align:center;width:62px">
+      <div style="position:relative;width:58px;height:58px;margin:0 auto">
+        <div style="position:absolute;inset:0;border-radius:999px;background:rgba(255,255,255,.1)"></div>
+        <div style="position:absolute;inset:2.5px;border-radius:999px;background:#090a0b"></div>
+        <div style="position:absolute;inset:5px;border-radius:999px;background:linear-gradient(140deg,#2f5480,#141f33)"></div>
+      </div>
+      <div style="font:500 11px/1 Outfit,sans-serif;color:#7f868b;margin-top:8px">arda</div>
+    </div>
+    <div style="flex:none;text-align:center;width:62px">
+      <div style="width:58px;height:58px;margin:0 auto;border-radius:999px;border:1px dashed rgba(255,255,255,.18);display:grid;place-items:center">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#7f868b" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+      </div>
+      <div style="font:500 11px/1 Outfit,sans-serif;color:#7f868b;margin-top:8px">Find</div>
+    </div>
+  </div>
+
+  <div style="padding:20px 24px 0;display:flex;flex-direction:column;gap:14px">
+
+    <div style="border-radius:18px;background:#151618;border:1px solid rgba(255,255,255,.09);overflow:hidden">
+      <div style="display:flex;align-items:center;gap:10px;padding:14px 15px 12px">
+        <div style="width:30px;height:30px;border-radius:999px;background:linear-gradient(140deg,#3fb08c,#1d5a48);flex:none"></div>
+        <div style="flex:1;min-width:0">
+          <div style="font:600 12px/1 Outfit,sans-serif;color:#eceded">@deniz</div>
+          <div style="font:400 10.5px/1 Outfit,sans-serif;color:#7f868b;margin-top:5px">on the night · 2h ago</div>
+        </div>
+        <div style="display:flex;gap:2px">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="#eceded"><path d="M12 2l3 6.9 7.5.7-5.6 5 1.6 7.4L12 18.2 5.5 22l1.6-7.4-5.6-5 7.5-.7z"/></svg><svg width="11" height="11" viewBox="0 0 24 24" fill="#eceded"><path d="M12 2l3 6.9 7.5.7-5.6 5 1.6 7.4L12 18.2 5.5 22l1.6-7.4-5.6-5 7.5-.7z"/></svg><svg width="11" height="11" viewBox="0 0 24 24" fill="#eceded"><path d="M12 2l3 6.9 7.5.7-5.6 5 1.6 7.4L12 18.2 5.5 22l1.6-7.4-5.6-5 7.5-.7z"/></svg><svg width="11" height="11" viewBox="0 0 24 24" fill="#eceded"><path d="M12 2l3 6.9 7.5.7-5.6 5 1.6 7.4L12 18.2 5.5 22l1.6-7.4-5.6-5 7.5-.7z"/></svg><svg width="11" height="11" viewBox="0 0 24 24" fill="#eceded"><path d="M12 2l3 6.9 7.5.7-5.6 5 1.6 7.4L12 18.2 5.5 22l1.6-7.4-5.6-5 7.5-.7z"/></svg>
+        </div>
+      </div>
+      <div style="position:relative;height:112px;margin:0 15px;border-radius:14px;overflow:hidden;background:linear-gradient(150deg,#7a1d2b,#2a1016 60%,#0f1b34);border:1px solid rgba(255,255,255,.09)">
+        <div style="position:absolute;inset:0;background:repeating-linear-gradient(112deg,rgba(255,255,255,.06) 0 2px,transparent 2px 10px)"></div>
+        <div style="position:absolute;top:-13px;right:-13px;width:26px;height:26px;transform:rotate(45deg);background:#151618;border:1px solid #ffb11b"></div>
+        <div style="position:relative;padding:12px 14px;display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div style="font:700 8px/1 Outfit,sans-serif;letter-spacing:.13em;color:rgba(255,255,255,.7)">PREMIER LEAGUE · MW 4</div>
+            <div style="font:700 28px/1 Rajdhani,sans-serif;color:#fff;margin-top:12px">3–1</div>
+            <div style="font:500 10.5px/1 Outfit,sans-serif;color:#c9cccd;margin-top:9px">Arsenal vs Tottenham</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font:700 18px/1 Rajdhani,sans-serif;color:#fff">4.6</div>
+            <div style="font:700 7.5px/1 Outfit,sans-serif;letter-spacing:.12em;color:rgba(255,255,255,.7);margin-top:5px">HEAT</div>
+          </div>
+        </div>
+      </div>
+      <div style="padding:13px 15px 0;font:400 12px/1.55 Outfit,sans-serif;color:#c9cccd">Best atmosphere I've been in for years. The second goal took the roof off.</div>
+      <div style="display:flex;align-items:center;gap:16px;padding:13px 15px 14px">
+        <div style="display:flex;align-items:center;gap:7px;height:32px">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9aa0a6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 6.6a5 5 0 0 0-7.1 0L12 8.3l-1.7-1.7a5 5 0 1 0-7.1 7.1L12 21l8.8-7.3a5 5 0 0 0 0-7.1z"/></svg>
+          <span style="font:500 11px/1 Outfit,sans-serif;color:#9aa0a6">24</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:7px;height:32px">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9aa0a6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 4H4v12h4v4l5-4h7z"/></svg>
+          <span style="font:500 11px/1 Outfit,sans-serif;color:#9aa0a6">6</span>
+        </div>
+        <span style="margin-left:auto;font:500 11px/1 Outfit,sans-serif;color:#9aa0a6">Open match</span>
+      </div>
+    </div>
+
+    <div style="border-radius:18px;background:#151618;border:1px solid rgba(255,255,255,.09);padding:14px 15px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:30px;height:30px;border-radius:999px;background:linear-gradient(140deg,#8b6fc4,#3b2a5c);flex:none"></div>
+        <div style="flex:1;min-width:0">
+          <div style="font:600 12px/1 Outfit,sans-serif;color:#eceded">@mara</div>
+          <div style="font:400 10.5px/1 Outfit,sans-serif;color:#7f868b;margin-top:5px">closed a collection · 5h ago</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;margin-top:13px;padding-top:13px;border-top:1px solid rgba(255,255,255,.09)">
+        <div style="position:relative;width:38px;height:38px;display:grid;place-items:center;flex:none">
+          <div style="position:absolute;inset:0;border-radius:999px;background:conic-gradient(from -90deg,#d43a63,#f5402e)"></div>
+          <div style="position:absolute;inset:4px;border-radius:999px;background:#151618"></div>
+          <span style="position:relative;font:700 10px/1 Rajdhani,sans-serif;color:#eceded">100</span>
+        </div>
+        <div style="font:400 12px/1.5 Outfit,sans-serif;color:#c9cccd">Finished <strong style="font-weight:600;color:#eceded">Madrid Derbies</strong> — 6 of 6 rated this season.</div>
+      </div>
+    </div>
+
+  </div>
+  <dc-import name="TabBar" active="activity" hint-size="100%,88px"></dc-import>
+</div>
+</div>
+
+<div class="dv-opt" id="1r">
+<div class="dv-olabel"><a class="dv-oid" href="#1r">1r</a>First run — one promise instead of ten empties</div>
+<div style="position:relative;width:375px;height:812px;flex:none;border-radius:40px;overflow:hidden;background:#090a0b;border:1px solid rgba(255,255,255,.14);box-shadow:0 26px 64px rgba(0,0,0,.6);color:#eceded">
+  <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 22%,rgba(155,63,150,.24),transparent 60%)"></div>
+  <dc-import name="StatusBar" hint-size="100%,44px"></dc-import>
+
+  <div style="position:relative;padding:26px 30px 0;text-align:center">
+    <div style="font:700 21px/1 Rajdhani,sans-serif;color:#eceded">RankIt</div>
+    <div style="font:700 9px/1 Outfit,sans-serif;letter-spacing:.14em;color:#7f868b;margin-top:5px">BY PRIMARY ARCH</div>
+  </div>
+
+  <div style="position:relative;padding:30px 60px 0">
+    <div style="position:relative;height:236px;border-radius:20px;border:1px dashed rgba(255,255,255,.18);background:rgba(18,19,21,.6);overflow:hidden">
+      <div style="position:absolute;top:-18px;right:-18px;width:34px;height:34px;transform:rotate(45deg);background:#090a0b;border:1px dashed rgba(255,255,255,.18)"></div>
+      <div style="position:absolute;bottom:-18px;left:-18px;width:34px;height:34px;transform:rotate(45deg);background:#090a0b;border:1px dashed rgba(255,255,255,.18)"></div>
+      <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:20px">
+        <div style="width:54px;height:54px;display:grid;place-items:center">
+          <div style="width:38px;height:38px;transform:rotate(45deg);border-radius:11px 11px 13px 13px;border:1px dashed rgba(255,255,255,.28)"></div>
+        </div>
+        <div style="font:700 9px/1.6 Outfit,sans-serif;letter-spacing:.14em;color:#7f868b;text-align:center">YOUR FIRST<br>COLLECTIBLE</div>
+        <div style="display:flex;gap:4px">
+          <div style="width:20px;height:4px;border-radius:2px;background:rgba(255,255,255,.1)"></div><div style="width:20px;height:4px;border-radius:2px;background:rgba(255,255,255,.1)"></div><div style="width:20px;height:4px;border-radius:2px;background:rgba(255,255,255,.1)"></div><div style="width:20px;height:4px;border-radius:2px;background:rgba(255,255,255,.1)"></div><div style="width:20px;height:4px;border-radius:2px;background:rgba(255,255,255,.1)"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="position:relative;padding:30px 34px 0;text-align:center">
+    <div style="font:700 26px/1.15 Rajdhani,sans-serif;color:#eceded">Rate one match.<br>The rest builds itself.</div>
+    <div style="font:400 12.5px/1.6 Outfit,sans-serif;color:#9aa0a6;margin-top:14px;text-wrap:pretty">Your diary, your collection, your standing — all of it starts from a single night. We won't fill it with anything you didn't watch.</div>
+  </div>
+
+  <div style="position:relative;padding:24px 30px 0;display:flex;flex-direction:column;gap:13px">
+    <div style="display:flex;align-items:center;gap:13px">
+      <div style="width:26px;height:26px;border-radius:999px;background:#151618;border:1px solid rgba(255,255,255,.12);display:grid;place-items:center;flex:none;font:700 11px Rajdhani,sans-serif;color:#c9cccd">1</div>
+      <span style="font:400 12.5px/1.4 Outfit,sans-serif;color:#c9cccd">Pick a match from the last seven days</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:13px">
+      <div style="width:26px;height:26px;border-radius:999px;background:#151618;border:1px solid rgba(255,255,255,.12);display:grid;place-items:center;flex:none;font:700 11px Rajdhani,sans-serif;color:#c9cccd">2</div>
+      <span style="font:400 12.5px/1.4 Outfit,sans-serif;color:#c9cccd">Give it stars — half stars are fine</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:13px">
+      <div style="width:26px;height:26px;border-radius:999px;background:#151618;border:1px solid rgba(255,255,255,.12);display:grid;place-items:center;flex:none;font:700 11px Rajdhani,sans-serif;color:#c9cccd">3</div>
+      <span style="font:400 12.5px/1.4 Outfit,sans-serif;color:#c9cccd">Keep it, skin it, or share it</span>
+    </div>
+  </div>
+
+  <div style="position:absolute;left:24px;right:24px;bottom:30px">
+    <div style="height:54px;border-radius:15px;background:#eceded;display:flex;align-items:center;justify-content:center">
+      <span style="font:600 13.5px/1 Outfit,sans-serif;color:#17120a">Find a match from this week</span>
+    </div>
+    <div style="height:48px;display:flex;align-items:center;justify-content:center;margin-top:6px">
+      <span style="font:500 12.5px/1 Outfit,sans-serif;color:#9aa0a6">Browse tonight's fixtures instead</span>
+    </div>
+  </div>
+</div>
+</div>
+
+</div>
+<p class="dv-next">Try next: "make <a class="dv-oid" href="#1o">1o</a> the home screen during a live match" · "denser <a class="dv-oid" href="#1e">1e</a> grid, three across" · "show me the Community tab redesign" · "new directions for <a class="dv-oid" href="#1j">1j</a>"</p>
+</section>
+</x-dc>
+</body>
+</html>

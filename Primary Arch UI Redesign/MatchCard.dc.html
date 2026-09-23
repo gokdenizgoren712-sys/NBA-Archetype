@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="position:relative;width:100%;height:100%;min-width:0;border-radius:{{ radius }};clip-path:{{ clip }};background:linear-gradient(155deg,color-mix(in oklab,var(--home,#3a3f47) 44%,var(--card-base,#151618)) 0%,var(--card-base,#151618) 54%,color-mix(in oklab,var(--away,#2a2e34) 34%,var(--card-base,#151618)) 100%);box-shadow:0 14px 34px rgba(0,0,0,.28);font-family:Rajdhani,system-ui,sans-serif;color:var(--card-ink,#eceded);display:flex;flex-direction:column;overflow:hidden">
+
+<div style="position:absolute;inset:0;background:var(--card-sheen,repeating-linear-gradient(68deg,rgba(255,255,255,.055) 0 2px,transparent 2px 11px));pointer-events:none"></div>
+<div style="position:absolute;inset:0;background:var(--card-wash,none);pointer-events:none"></div>
+
+<div style="position:absolute;top:{{ notchOff }};right:{{ notchNeg }};width:{{ notchLen }};height:1px;background:{{ notchLine }};transform:rotate(45deg);pointer-events:none"></div>
+<div style="position:absolute;bottom:{{ notchOff }};left:{{ notchNeg }};width:{{ notchLen }};height:1px;background:{{ notchLine }};transform:rotate(45deg);pointer-events:none"></div>
+
+<sc-if value="{{ wide }}" hint-placeholder-val="{{ true }}">
+<div style="position:relative;display:flex;flex-direction:column;height:100%;min-width:0">
+
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:13px 18px 0;min-height:37px;min-width:0">
+    <div style="display:flex;align-items:center;height:36px;min-width:0;flex:1">
+      <span style="font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--card-eyebrow,#9aa0a6);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ comp }}</span>
+    </div>
+    <div style="display:flex;align-items:center;height:26px;padding:0 10px;border-radius:999px;background:var(--card-badge-bg,rgba(0,0,0,.42));border:1px solid var(--card-badge-line,rgba(255,255,255,.14));flex:none">
+      <span style="font-size:9px;font-weight:700;letter-spacing:.14em;color:var(--card-ink,#eceded);white-space:nowrap">{{ statusLabel }}</span>
+    </div>
+  </div>
+
+  <div style="height:{{ artHeight }};display:flex;align-items:center;justify-content:center;gap:13px;padding:0 18px;flex:none;min-width:0">
+    <div style="position:relative;width:calc(var(--crest,62px) * 1.414);height:calc(var(--crest,62px) * 1.414);display:grid;place-items:center;flex:none">
+      <div style="width:var(--crest,62px);height:var(--crest,62px);transform:rotate(45deg);border-radius:calc(var(--crest,62px) * .29) calc(var(--crest,62px) * .29) calc(var(--crest,62px) * .34) calc(var(--crest,62px) * .34);background:linear-gradient(135deg,color-mix(in oklab,var(--home,#3a3f47) 82%,#0b0b0b),color-mix(in oklab,var(--home,#3a3f47) 30%,#0b0b0b));border:1px solid rgba(255,255,255,.18);display:grid;place-items:center;overflow:hidden">
+        <div style="transform:rotate(-45deg);width:62%;height:62%;display:grid;place-items:center">
+          <sc-if value="{{ homeHasCrest }}">
+          <image-slot id="{{ homeCrestSlot }}" shape="rect" fit="contain" placeholder="crest"></image-slot>
+          </sc-if>
+          <sc-if value="{{ homeNoCrest }}" hint-placeholder-val="{{ true }}">
+          <span style="font-size:calc(var(--crest,62px) * .23);font-weight:700;letter-spacing:.06em;color:{{ homeCrestInk }};white-space:nowrap">{{ homeAbbr }}</span>
+          </sc-if>
+        </div>
+      </div>
+    </div>
+
+    <div style="position:relative;flex:1;min-width:0;height:100%;display:flex;align-items:center;justify-content:center">
+      <sc-if value="{{ potm }}">
+      <div style="position:absolute;inset:0;display:flex;align-items:flex-end;justify-content:center;overflow:hidden">
+        <span style="position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);font-size:calc(var(--crest,62px) * 2.1);font-weight:700;line-height:.78;letter-spacing:-.04em;color:rgba(255,255,255,.06);pointer-events:none">{{ shirtNo }}</span>
+        <div style="position:relative;width:100%;height:100%">
+          <image-slot id="{{ potmSlot }}" shape="rect" fit="contain" placeholder="POTM"></image-slot>
+        </div>
+      </div>
+      </sc-if>
+      <sc-if value="{{ scoreInArt }}" hint-placeholder-val="{{ true }}">
+      <div style="position:relative;font-size:{{ scoreSize }};font-weight:700;line-height:1;letter-spacing:.01em;color:var(--card-score,#fff);filter:{{ scoreBlur }};white-space:nowrap">{{ homeScore }}<span style="opacity:.42;margin:0 8px">–</span>{{ awayScore }}</div>
+      </sc-if>
+      <sc-if value="{{ upcoming }}">
+      <div style="position:relative;text-align:center">
+        <div style="font-size:15px;font-weight:700;letter-spacing:.02em;color:var(--card-ink,#eceded)">{{ kickoff }}</div>
+        <div style="font-size:26px;font-weight:700;letter-spacing:.06em;color:rgba(255,255,255,.42);margin-top:4px">VS</div>
+      </div>
+      </sc-if>
+    </div>
+
+    <div style="position:relative;width:calc(var(--crest,62px) * 1.414);height:calc(var(--crest,62px) * 1.414);display:grid;place-items:center;flex:none">
+      <div style="width:var(--crest,62px);height:var(--crest,62px);transform:rotate(45deg);border-radius:calc(var(--crest,62px) * .29) calc(var(--crest,62px) * .29) calc(var(--crest,62px) * .34) calc(var(--crest,62px) * .34);background:linear-gradient(135deg,color-mix(in oklab,var(--away,#2a2e34) 82%,#0b0b0b),color-mix(in oklab,var(--away,#2a2e34) 30%,#0b0b0b));border:1px solid rgba(255,255,255,.18);display:grid;place-items:center;overflow:hidden">
+        <div style="transform:rotate(-45deg);width:62%;height:62%;display:grid;place-items:center">
+          <sc-if value="{{ awayHasCrest }}">
+          <image-slot id="{{ awayCrestSlot }}" shape="rect" fit="contain" placeholder="crest"></image-slot>
+          </sc-if>
+          <sc-if value="{{ awayNoCrest }}" hint-placeholder-val="{{ true }}">
+          <span style="font-size:calc(var(--crest,62px) * .23);font-weight:700;letter-spacing:.06em;color:{{ awayCrestInk }};white-space:nowrap">{{ awayAbbr }}</span>
+          </sc-if>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:13px;padding:0 18px 13px;min-width:0">
+    <div style="min-width:0;flex:1">
+      <div style="font-size:13px;font-weight:700;letter-spacing:.02em;color:var(--card-ink,#eceded);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ homeShort }}</div>
+    </div>
+    <sc-if value="{{ potm }}">
+    <div style="flex:none;font-size:21px;font-weight:700;line-height:1;color:var(--card-score,#fff);white-space:nowrap">{{ homeScore }}<span style="opacity:.42;margin:0 6px">–</span>{{ awayScore }}</div>
+    </sc-if>
+    <div style="min-width:0;flex:1;text-align:right">
+      <div style="font-size:13px;font-weight:700;letter-spacing:.02em;color:var(--card-ink,#eceded);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ awayShort }}</div>
+    </div>
+  </div>
+
+  <sc-if value="{{ heatOn }}" hint-placeholder-val="{{ true }}">
+  <div style="padding:0 18px 13px;min-width:0">
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:9px;margin-bottom:6px;min-width:0">
+      <span style="font-size:9px;font-weight:700;letter-spacing:.14em;color:{{ heatInk }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">{{ heatLabel }}</span>
+      <span style="font-size:13px;font-weight:700;color:var(--card-ink,#eceded);flex:none">{{ heatValue }}</span>
+    </div>
+    <div style="display:flex;gap:4px">
+      <div style="flex:1;height:5px;border-radius:3px;background:{{ h1 }}"></div>
+      <div style="flex:1;height:5px;border-radius:3px;background:{{ h2 }}"></div>
+      <div style="flex:1;height:5px;border-radius:3px;background:{{ h3 }}"></div>
+      <div style="flex:1;height:5px;border-radius:3px;background:{{ h4 }}"></div>
+      <div style="flex:1;height:5px;border-radius:3px;background:{{ h5 }}"></div>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ shieldOn }}">
+  <div style="margin:0 18px 13px;height:40px;border-radius:10px;background:rgba(9,10,11,.5);border:1px solid rgba(255,255,255,.16);display:flex;align-items:center;justify-content:center;gap:8px">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#c9cccd" stroke-width="1.9" stroke-linecap="round"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7.5a4 4 0 0 1 8 0V11"/></svg>
+    <span style="font-size:9px;font-weight:700;letter-spacing:.14em;color:#c9cccd">TAP TO REVEAL</span>
+  </div>
+  </sc-if>
+
+  <div style="margin-top:auto;height:{{ footHeight }};display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 18px;background:var(--card-footer-bg,rgba(9,10,11,.5));border-top:1px solid var(--card-footer-line,rgba(255,255,255,.09));min-width:0">
+    <sc-if value="{{ classic }}">
+    <div style="flex:none;transform:rotate(-7deg);border:1px solid rgba(255,177,27,.85);border-radius:6px;padding:2px">
+      <div style="border:1px solid rgba(255,177,27,.42);border-radius:4px;padding:4px 9px 5px;text-align:center;white-space:nowrap">
+        <div style="font-size:13px;font-weight:700;line-height:1;letter-spacing:.2em;text-indent:.2em;color:#ffb11b">CLASSIC</div>
+        <div style="font-size:9px;font-weight:700;line-height:1;letter-spacing:.2em;text-indent:.2em;color:rgba(255,177,27,.75);margin-top:3px">RANKIT SELECT</div>
+      </div>
+    </div>
+    </sc-if>
+    <sc-if value="{{ notClassic }}" hint-placeholder-val="{{ true }}">
+    <span style="font-size:9px;font-weight:700;letter-spacing:.14em;color:var(--card-eyebrow,#9aa0a6);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">{{ footNote }}</span>
+    </sc-if>
+    <span style="font-size:10px;font-weight:700;letter-spacing:.06em;color:var(--card-eyebrow,#9aa0a6);white-space:nowrap;flex:none">{{ ratings }}</span>
+  </div>
+</div>
+</sc-if>
+
+<sc-if value="{{ compact }}">
+<div style="position:relative;display:flex;flex-direction:column;height:100%;min-width:0;padding:11px 12px">
+
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;min-width:0;margin-bottom:9px">
+    <span style="font-size:9px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--card-eyebrow,#9aa0a6);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">{{ comp }}</span>
+    <sc-if value="{{ classic }}">
+    <div style="width:11px;height:11px;transform:rotate(45deg);border-radius:3px 3px 4px 4px;background:#ffb11b;flex:none"></div>
+    </sc-if>
+  </div>
+
+  <div style="position:relative;height:{{ crestPairH }};flex:none;display:flex;align-items:center;min-width:0">
+    <div style="position:relative;width:{{ crestPairW }};height:100%;flex:none">
+      <div style="position:absolute;left:var(--crest,40px);top:50%;transform:translateY(-50%);width:calc(var(--crest,40px) * 1.414);height:calc(var(--crest,40px) * 1.414);display:grid;place-items:center">
+        <div style="width:var(--crest,40px);height:var(--crest,40px);transform:rotate(45deg);border-radius:calc(var(--crest,40px) * .29) calc(var(--crest,40px) * .29) calc(var(--crest,40px) * .34) calc(var(--crest,40px) * .34);background:linear-gradient(135deg,color-mix(in oklab,var(--away,#2a2e34) 82%,#0b0b0b),color-mix(in oklab,var(--away,#2a2e34) 30%,#0b0b0b));border:1px solid rgba(255,255,255,.18);display:grid;place-items:center;overflow:hidden">
+          <div style="transform:rotate(-45deg);width:62%;height:62%;display:grid;place-items:center">
+            <sc-if value="{{ awayHasCrest }}">
+            <image-slot id="{{ awayCrestSlotB }}" shape="rect" fit="contain" placeholder="crest"></image-slot>
+            </sc-if>
+            <sc-if value="{{ awayNoCrest }}" hint-placeholder-val="{{ true }}">
+            <span style="font-size:calc(var(--crest,40px) * .26);font-weight:700;letter-spacing:.04em;color:{{ awayCrestInk }};white-space:nowrap">{{ awayAbbr }}</span>
+            </sc-if>
+          </div>
+        </div>
+      </div>
+      <div style="position:absolute;left:0;top:50%;transform:translateY(-50%);width:calc(var(--crest,40px) * 1.414);height:calc(var(--crest,40px) * 1.414);display:grid;place-items:center;z-index:1">
+        <div style="width:var(--crest,40px);height:var(--crest,40px);transform:rotate(45deg);border-radius:calc(var(--crest,40px) * .29) calc(var(--crest,40px) * .29) calc(var(--crest,40px) * .34) calc(var(--crest,40px) * .34);background:linear-gradient(135deg,color-mix(in oklab,var(--home,#3a3f47) 82%,#0b0b0b),color-mix(in oklab,var(--home,#3a3f47) 30%,#0b0b0b));border:1px solid rgba(255,255,255,.18);box-shadow:3px 0 0 var(--card-base,#151618);display:grid;place-items:center;overflow:hidden">
+          <div style="transform:rotate(-45deg);width:62%;height:62%;display:grid;place-items:center">
+            <sc-if value="{{ homeHasCrest }}">
+            <image-slot id="{{ homeCrestSlotB }}" shape="rect" fit="contain" placeholder="crest"></image-slot>
+            </sc-if>
+            <sc-if value="{{ homeNoCrest }}" hint-placeholder-val="{{ true }}">
+            <span style="font-size:calc(var(--crest,40px) * .26);font-weight:700;letter-spacing:.04em;color:{{ homeCrestInk }};white-space:nowrap">{{ homeAbbr }}</span>
+            </sc-if>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:9px;min-width:0">
+    <sc-if value="{{ scoreInArt }}" hint-placeholder-val="{{ true }}">
+    <div style="font-size:{{ scoreSize }};font-weight:700;line-height:1;letter-spacing:.01em;color:var(--card-score,#fff);filter:{{ scoreBlur }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ homeScore }}<span style="opacity:.42;margin:0 5px">–</span>{{ awayScore }}</div>
+    </sc-if>
+    <sc-if value="{{ upcoming }}">
+    <div style="font-size:15px;font-weight:700;line-height:1;letter-spacing:.02em;color:var(--card-ink,#eceded);white-space:nowrap">{{ kickoff }}</div>
+    </sc-if>
+    <div style="font-size:11px;font-weight:700;line-height:1.35;letter-spacing:.02em;color:var(--card-ink,#eceded);margin-top:7px;min-width:0">
+      <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ homeShort }}</div>
+      <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--card-eyebrow,#9aa0a6)">{{ awayShort }}</div>
+    </div>
+  </div>
+
+  <div style="margin-top:auto;min-width:0">
+    <sc-if value="{{ heatOn }}" hint-placeholder-val="{{ true }}">
+    <div style="display:flex;align-items:center;gap:7px;min-width:0">
+      <div style="flex:1;display:flex;gap:3px;min-width:0">
+        <div style="flex:1;height:4px;border-radius:2px;background:{{ h1 }}"></div>
+        <div style="flex:1;height:4px;border-radius:2px;background:{{ h2 }}"></div>
+        <div style="flex:1;height:4px;border-radius:2px;background:{{ h3 }}"></div>
+        <div style="flex:1;height:4px;border-radius:2px;background:{{ h4 }}"></div>
+        <div style="flex:1;height:4px;border-radius:2px;background:{{ h5 }}"></div>
+      </div>
+      <span style="font-size:10px;font-weight:700;color:{{ heatInk }};flex:none">{{ heatValue }}</span>
+    </div>
+    </sc-if>
+    <sc-if value="{{ shieldOn }}">
+    <div style="height:22px;border-radius:6px;background:rgba(9,10,11,.5);border:1px solid rgba(255,255,255,.16);display:flex;align-items:center;justify-content:center">
+      <span style="font-size:9px;font-weight:700;letter-spacing:.13em;color:#c9cccd">HIDDEN</span>
+    </div>
+    </sc-if>
+    <sc-if value="{{ hasStars }}">
+    <div style="font-size:10px;font-weight:700;letter-spacing:.12em;color:var(--card-eyebrow,#9aa0a6);margin-top:7px;white-space:nowrap;overflow:hidden">{{ ratings }}</div>
+    </sc-if>
+  </div>
+</div>
+</sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:327,&quot;height&quot;:344},&quot;compact&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Layout&quot;},&quot;cut&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;min&quot;:8,&quot;max&quot;:26,&quot;default&quot;:22,&quot;unit&quot;:&quot;px&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Layout&quot;},&quot;comp&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;PREMIER LEAGUE · MW 4&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;statusLabel&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;FULL TIME&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;finished&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;},&quot;homeAbbr&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;ARS&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;awayAbbr&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;TOT&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;homeCrestSlot&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Crests&quot;},&quot;awayCrestSlot&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Crests&quot;},&quot;homeCrestInk&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;options&quot;:[&quot;#ffffff&quot;,&quot;#101318&quot;,&quot;#17120a&quot;],&quot;default&quot;:&quot;#ffffff&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Crests&quot;},&quot;awayCrestInk&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;options&quot;:[&quot;#ffffff&quot;,&quot;#101318&quot;,&quot;#17120a&quot;],&quot;default&quot;:&quot;#ffffff&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Crests&quot;},&quot;crestSize&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;min&quot;:28,&quot;max&quot;:80,&quot;default&quot;:62,&quot;unit&quot;:&quot;px&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Crests&quot;},&quot;homeShort&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;Arsenal&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;awayShort&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;Tottenham&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;homeScore&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;3&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;awayScore&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;1&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;kickoff&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;20:00&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;heat&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;min&quot;:0,&quot;max&quot;:5,&quot;step&quot;:0.1,&quot;default&quot;:4.6,&quot;tsType&quot;:&quot;number&quot;},&quot;heatLabel&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;classic&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;},&quot;spoiler&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;ratings&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;2,481 ratings&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;footNote&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;artHeight&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;min&quot;:56,&quot;max&quot;:220,&quot;default&quot;:150,&quot;unit&quot;:&quot;px&quot;,&quot;tsType&quot;:&quot;number&quot;},&quot;scoreSize&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;min&quot;:18,&quot;max&quot;:64,&quot;default&quot;:52,&quot;unit&quot;:&quot;px&quot;,&quot;tsType&quot;:&quot;number&quot;},&quot;potm&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;POTM&quot;},&quot;shirtNo&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;7&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;POTM&quot;},&quot;potmSlot&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;potm-slot&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;POTM&quot;}}">
+const RAMP = ["#2f5480", "#5b4fa8", "#9a3f96", "#d43a63", "#f5402e"];
+const NAMES = ["COLD", "FLAT", "GOOD", "GREAT", "HOT"];
+
+const bool = (v, d) => {
+  if (v === undefined || v === null || v === "") return d;
+  if (v === false || v === "false" || v === 0 || v === "0") return false;
+  return true;
+};
+const num = (v, d) => {
+  const n = Number(v);
+  return isNaN(n) ? d : n;
+};
+
+class Component extends DCLogic {
+  renderVals() {
+    const p = this.props;
+    const finished = bool(p.finished, true);
+    const spoiler = bool(p.spoiler, false);
+    const classic = bool(p.classic, false) && !spoiler;
+    const heat = num(p.heat, 0);
+    const heatOn = bool(p.heatOn, heat > 0) && !spoiler;
+    const compact = bool(p.compact, false);
+    const potm = bool(p.potm, false) && !spoiler && !compact;
+    const steps = Math.max(0, Math.min(5, Math.round(heat)));
+    const rest = "rgba(255,255,255,.12)";
+    const bars = [0, 1, 2, 3, 4].map((i) => (i < steps ? RAMP[i] : rest));
+    const cut = num(p.cut, compact ? 14 : 22);
+    const homeCrest = p.homeCrestSlot || "";
+    const awayCrest = p.awayCrestSlot || "";
+    const ratings = p.ratings ?? "";
+
+    return {
+      compact, wide: !compact,
+      radius: cut + "px",
+      clip: "polygon(0 0,calc(100% - " + cut + "px) 0,100% " + cut + "px,100% 100%," + cut + "px 100%,0 calc(100% - " + cut + "px))",
+      notchOff: (cut / 2) + "px",
+      notchNeg: -(cut * 0.205) + "px",
+      notchLen: (cut * 1.414) + "px",
+      comp: p.comp ?? "",
+      statusLabel: spoiler && finished ? "PLAYED" : p.statusLabel ?? (finished ? "FULL TIME" : "UPCOMING"),
+      artHeight: num(p.artHeight, 96) + "px",
+      crestPairH: (num(p.crestSize, compact ? 40 : 62) * 1.414) + "px",
+      crestPairW: (num(p.crestSize, compact ? 40 : 62) * 2.414) + "px",
+      scoreSize: num(p.scoreSize, compact ? 26 : 46) + "px",
+      footHeight: (classic ? 52 : 44) + "px",
+      finished, upcoming: !finished,
+      scoreInArt: finished && !potm,
+      homeAbbr: p.homeAbbr ?? "", awayAbbr: p.awayAbbr ?? "",
+      homeCrestInk: p.homeCrestInk ?? "#fff",
+      awayCrestInk: p.awayCrestInk ?? "#fff",
+      homeHasCrest: !!homeCrest, homeNoCrest: !homeCrest,
+      awayHasCrest: !!awayCrest, awayNoCrest: !awayCrest,
+      homeCrestSlot: homeCrest, awayCrestSlot: awayCrest,
+      homeCrestSlotB: homeCrest + "-b", awayCrestSlotB: awayCrest + "-b",
+      homeScore: p.homeScore ?? "", awayScore: p.awayScore ?? "",
+      kickoff: p.kickoff ?? "",
+      scoreBlur: spoiler ? "blur(9px)" : "none",
+      homeShort: p.homeShort ?? p.homeAbbr ?? "",
+      awayShort: p.awayShort ?? p.awayAbbr ?? "",
+      heatOn, heatValue: heat ? heat.toFixed(1) : "",
+      heatLabel: p.heatLabel || (steps ? NAMES[steps - 1] : ""),
+      heatInk: steps >= 5 ? "#f5402e" : steps === 4 ? "#d43a63" : steps === 3 ? "#9a3f96" : "#9aa0a6",
+      h1: bars[0], h2: bars[1], h3: bars[2], h4: bars[3], h5: bars[4],
+      shieldOn: spoiler,
+      classic, notClassic: !classic,
+      notchLine: classic ? "#ffb11b" : "var(--card-notch,rgba(255,255,255,.22))",
+      footNote: p.footNote ?? "",
+      ratings, hasStars: !!ratings,
+      potm, shirtNo: p.shirtNo ?? "",
+      potmSlot: p.potmSlot ?? "potm-slot"
+    };
+  }
+}
+</script>
+</body>
+</html>

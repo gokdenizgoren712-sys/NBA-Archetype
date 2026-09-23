@@ -131,6 +131,26 @@ def revoke(conn, user_id: int, subject_type: str, subject_id: int) -> int:
     return int(rows["n"] or 0)
 
 
+# Puanlamanin kendi odul turleri. Ayni maca yazilan baska kazanclar
+# (companion: "A night in the companion") bunlarin disinda kalir.
+RATING_AWARD_KINDS = ("rate_same_day", "rate_late")
+
+
+def revoke_rating(conn, user_id: int, match_id: int) -> int:
+    """Bir macin PUANLAMA odulunu geri al; kac puan geri alindigini doner.
+
+    revoke() konunun TUM puanlarini siliyor -- mac icin bu, ayni maca yazilan
+    companion odulunu da goturur. Burada yalnizca rate_* turleri.
+    """
+    marks = ",".join("?" * len(RATING_AWARD_KINDS))
+    where = f"user_id=? AND subject_type='match' AND subject_id=? AND kind IN ({marks})"
+    args = (user_id, match_id, *RATING_AWARD_KINDS)
+    total = conn.execute(f"SELECT COALESCE(SUM(points),0) n FROM rankit_points WHERE {where}",
+                         args).fetchone()
+    conn.execute(f"DELETE FROM rankit_points WHERE {where}", args)
+    return int(total["n"] or 0)
+
+
 # ── Turnuva kimligi: sezondan BAGIMSIZ ──────────────────────────────────────
 # Sahibin karari (2026-09-12): "Season is a season whether it's 15-16 or
 # 26-27, only the competition changes." rankit_competitions sezon basina bir
@@ -271,18 +291,36 @@ def award_for_rating(conn, user_id: int, match_id: int, tz_offset_minutes: int =
         and rankit_day(started, tz_offset_minutes) == rankit_day(now, tz_offset_minutes)
     )
     kind = "rate_same_day" if same_day else "rate_late"
-    # Iki tur ayni maca odenemez: once digerini temizle ki bir kullanici
-    # gec puanlayip sonra silip yeniden puanlayarak 15'e yukselemesin.
-    other = "rate_late" if same_day else "rate_same_day"
-    conn.execute(
-        "DELETE FROM rankit_points WHERE user_id=? AND kind=? AND subject_type='match' AND subject_id=?",
-        (user_id, other, match_id),
-    )
+    # ILK ODUL KALIR. Eskiden her cagri "diger turu" siliyordu: gecesinde
+    # puanlanip (15) ertesi gun yorumu duzenlenen kayit 5'e dusuyordu
+    # (olculdu: 15 -> 5). Iki tur yine ayni maca odenemez; gec puanlayan
+    # sonradan 15'e cikamaz, cunku odul puanin ANINA gore bir kez verilir.
+    # Puan kaldirilirsa revoke_rating satiri siler ve bir sonraki puanlama
+    # kendi anina gore yeniden oder.
+    marks = ",".join("?" * len(RATING_AWARD_KINDS))
+    earlier = conn.execute(
+        f"""SELECT kind FROM rankit_points WHERE user_id=? AND subject_type='match'
+            AND subject_id=? AND kind IN ({marks})""",
+        (user_id, match_id, *RATING_AWARD_KINDS)).fetchone()
+    if earlier is not None:
+        return {"kind": earlier["kind"], "points": 0,
+                "same_day": earlier["kind"] == "rate_same_day"}
     gained = award(conn, user_id, kind, "match", match_id)
     return {"kind": kind, "points": gained, "same_day": same_day}
 
 
 # ── Streak ───────────────────────────────────────────────────────────────────
+
+# BUILD §5.5: topluluk isisi 20 gercek puan olmadan YOK. Tek tanim; hem mac
+# yaniti (rankit._match_dict) hem "running hot" durumu (rankit_notify) buradan
+# okur -- iki esik sessizce ayrisirsa ayni mac bir yerde sicak, digerinde
+# TOO FEW RATINGS olur.
+MIN_COMMUNITY_RATINGS = 20
+# Instant Classic: puanlayanlarin en az bu kadari Classic damgasi vurmali.
+# Mac karti (rankit._match_dict) ve The Hunt'in "Classics of YYYY"
+# koleksiyonu (rankit_hunt) ayni sayiyi okur.
+CLASSIC_SHARE = 0.65
+
 
 def streak_for(conn, user_id: int, tz_offset_minutes: int = 0) -> dict:
     """Ardisik geceler (§7.2).
@@ -295,9 +333,14 @@ def streak_for(conn, user_id: int, tz_offset_minutes: int = 0) -> dict:
     """
     rated_days: set[str] = set()
     for row in conn.execute(
-        """SELECT e.created_at, m.starts_at
+        # Puanin VERILDIGI an (rated_at), kaydin olusturuldugu an degil: gece
+        # yildizsiz kaydedilip gunler sonra puanlanan mac o geceyi saymaz.
+        # rated_at'i olmayan eski satirlar icin onceki davranis (created_at).
+        """SELECT COALESCE(e.rated_at, e.created_at) created_at, m.starts_at
            FROM rankit_diary_entries e JOIN rankit_matches m ON m.id=e.match_id
-           WHERE e.user_id=?""",
+           -- BUILD §12.1: seri YALNIZCA gecesinde puanlamayla uzar. Yildizsiz
+           -- izleme kaydi bir puan degil (CODE.md Adim 2) ve geceyi saymaz.
+           WHERE e.user_id=? AND e.rating IS NOT NULL""",
         (user_id,),
     ):
         started = _as_dt(row["starts_at"])
@@ -336,6 +379,9 @@ def streak_for(conn, user_id: int, tz_offset_minutes: int = 0) -> dict:
         "current": current,
         "best": max(best, current),
         "rated_nights": len(rated_days),
+        # Bu RankIt gecesi zaten sayildi mi (bu gece oynanan bir maci bu gece
+        # puanladin mi). 3j'nin "seri risk altinda" satiri buna bakar.
+        "tonight_counted": today in rated_days,
         "followed_competitions": followed_competition_count(conn, user_id) if followed else 0,
         # Takip yoksa dinlenme kurali uygulanamaz; arayuz bunu soyleyebilsin.
         "rest_nights_enforced": bool(followed),

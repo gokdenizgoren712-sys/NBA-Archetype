@@ -5,14 +5,25 @@ from pathlib import Path
 DB_PATH = Path(os.environ.get("DB_PATH", str(Path(__file__).parent.parent / "data" / "app.db")))
 
 def get_conn():
-    conn = sqlite3.connect(str(DB_PATH))
+    # timeout + busy_timeout: bir yazici baskasini beklerken HEMEN hata vermesin.
+    # Varsayilan 5sn yeterli gorunuyordu ama rollback-journal modunda OKUYAN bir
+    # baglanti YAZANI blokluyor ve SQLite kilitlenme ihtimalinde beklemeden
+    # SQLITE_BUSY donuyor -- bu yuzden WAL de sart (init_db).
+    conn = sqlite3.connect(str(DB_PATH), timeout=15)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
+    conn.execute("PRAGMA busy_timeout = 15000")
     return conn
 
 def init_db():
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     with get_conn() as conn:
+        # WAL: okuyanlar yazani bloklamiyor. Bu bir DOSYA ayari, bir kez
+        # yazilir ve kalir. Gerekcesi olculdu (2026-09-23): `GET /collections`
+        # koleksiyonlari TEMBEL olusturuyor (INSERT OR IGNORE) ve iki istek
+        # ust uste gelince -- React StrictMode'un cift cagrisi bile yetiyor --
+        # "database is locked" ile **500** donuyordu. Ekran o yuzden bos kaldi.
+        conn.execute("PRAGMA journal_mode = WAL")
         conn.executescript("""
         CREATE TABLE IF NOT EXISTS users (
             id               INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -710,6 +721,51 @@ def init_db():
             PRIMARY KEY (list_id, user_id)
         );
 
+        -- The Hunt (2m / 2n): koleksiyonlar URUNUN (§24), listeler kullanicinin.
+        -- curated: sahibin admin ucundan kurdugu secki (maclar elle,
+        -- declared_total tarihi aciklanmamis fiksturu de sayar). club_season /
+        -- classics_year: veriden kurulan kural koleksiyonlari, satir yalnizca
+        -- kimlik icin (uyeleri sorgudan). Bkz. api/rankit_hunt.py.
+        CREATE TABLE IF NOT EXISTS rankit_collections (
+            id             INTEGER PRIMARY KEY AUTOINCREMENT,
+            kind           TEXT NOT NULL CHECK(kind IN ('curated','club_season','classics_year')),
+            title          TEXT,
+            subtitle       TEXT,
+            sport          TEXT,
+            season         TEXT,
+            competition_id INTEGER REFERENCES rankit_competitions(id) ON DELETE CASCADE,
+            team_id        INTEGER REFERENCES rankit_teams(id) ON DELETE CASCADE,
+            year           INTEGER,
+            declared_total INTEGER,
+            opens_note     TEXT,
+            reward         TEXT,
+            active         INTEGER NOT NULL DEFAULT 1,
+            updated_by     INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            created_at     TEXT DEFAULT (datetime('now'))
+        );
+
+        CREATE TABLE IF NOT EXISTS rankit_collection_items (
+            collection_id INTEGER NOT NULL REFERENCES rankit_collections(id) ON DELETE CASCADE,
+            match_id      INTEGER NOT NULL REFERENCES rankit_matches(id) ON DELETE CASCADE,
+            PRIMARY KEY (collection_id, match_id)
+        );
+
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_rankit_collection_club
+            ON rankit_collections(competition_id, team_id) WHERE kind='club_season';
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_rankit_collection_year
+            ON rankit_collections(year) WHERE kind='classics_year';
+        CREATE INDEX IF NOT EXISTS idx_rankit_collection_match ON rankit_collection_items(match_id);
+
+        -- "@mara closed a collection" (7a / 2q): bir kullanicinin bir
+        -- koleksiyonu tamamladigi an. Puan kaldirilip koleksiyon eksik kalirsa
+        -- satir silinir (bkz. rankit_hunt.sync_completions).
+        CREATE TABLE IF NOT EXISTS rankit_collection_completions (
+            user_id       INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            collection_id INTEGER NOT NULL REFERENCES rankit_collections(id) ON DELETE CASCADE,
+            completed_at  TEXT DEFAULT (datetime('now')),
+            PRIMARY KEY (user_id, collection_id)
+        );
+
         CREATE INDEX IF NOT EXISTS idx_rankit_notify ON rankit_notifications(user_id, read_at, created_at DESC);
         CREATE INDEX IF NOT EXISTS idx_rankit_player_stats ON rankit_player_stats(competition_id, season, stat, rank);
         CREATE INDEX IF NOT EXISTS idx_rankit_comments_entry ON rankit_review_comments(entry_id, created_at);
@@ -739,6 +795,60 @@ def init_db():
             except Exception:
                 pass
         conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_rankit_provider_match ON rankit_matches(provider, provider_match_id)")
+        # 2f "result + events": golun / kartin hangi takima ait oldugu. Eski
+        # satirlarda NULL; bir sonraki yoklamada saglayicinin isHome'uyla dolar.
+        try:
+            conn.execute("ALTER TABLE rankit_moments ADD COLUMN side TEXT")
+        except Exception:
+            pass
+        # Beklenen isi (2h/16c): izleme listesine ekleyenin "bunu ne kadar
+        # istiyorsun" okumasi, 1-5 isi basamagi. NULL = okuma vermedi; listede
+        # olmak tek basina okuma degil. Bkz. rankit.set_appetite. Ekleme
+        # idempotent: sutun varsa ALTER sessizce atlanir.
+        try:
+            conn.execute("ALTER TABLE rankit_watchlist ADD COLUMN appetite INTEGER")
+        except Exception:
+            pass
+        # Kart basina toplam (izleyen/okuma) mac uzerinden sayiliyor; birincil
+        # anahtar (user_id, match_id) bu sorguya yaramaz.
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_rankit_watchlist_match ON rankit_watchlist(match_id)")
+        # Uydurma kulup renklerini yeni palete tasi (sahibin karari, 2026-09-21).
+        # Katalog senkronu yalnizca guncel sezonu taradigi icin, yalniz gecen
+        # sezonda kalan kulupler (kume dusenler) eski -- bazilari altin --
+        # rengini koruyordu. YALNIZCA rengi eski hash paletinin o ada verdigi
+        # renk olan takimlar: gercek renkler (NBA_COLORS, elle girilenler)
+        # eslesmez, dokunulmaz. Idempotent: tasindiktan sonra eslesme kalmaz.
+        # Puanlamanin ANI ve istemcinin kayit kimligi. rated_at: yildiz ilk
+        # verildiginde yazilir, kaldirilinca NULL; seri buna bakar (bkz.
+        # rankit_rank.streak_for). Eski satirlara dokunulmaz -- NULL iken seri
+        # onceki gibi created_at'i kullanir, kimsenin serisi degismez.
+        # client_entry_id: cevrimdisi kuyrugun tekrar gonderdigi kayit ikinci
+        # satir dogurmasin (HANDOFF §4.10). Kullanici basina tekil.
+        # skin: kaydin koleksiyon kartini ve paylasim gorselini boyayan skin
+        # (BUILD §4.2); NULL = Default.
+        for col in ("rated_at", "client_entry_id", "skin"):
+            try:
+                conn.execute(f"ALTER TABLE rankit_diary_entries ADD COLUMN {col} TEXT")
+            except Exception:
+                pass
+        conn.execute("""CREATE UNIQUE INDEX IF NOT EXISTS idx_rankit_diary_client
+            ON rankit_diary_entries(user_id, client_entry_id) WHERE client_entry_id IS NOT NULL""")
+        # Kadro satirlari (15d / 15b): oyuncu kimligi (POTM/respect oyu),
+        # mevki, oyuna giris/cikis dakikasi, kimin yerine girdigi. Eski
+        # satirlarda NULL; bir sonraki kadro yenilemesinde dolar.
+        for col, dfn in [("player_id", "INTEGER"), ("position", "TEXT"),
+                         ("position_code", "INTEGER"), ("sub_in", "INTEGER"),
+                         ("sub_out", "INTEGER"), ("replaced", "TEXT")]:
+            try:
+                conn.execute(f"ALTER TABLE rankit_match_lineup_players ADD COLUMN {col} {dfn}")
+            except Exception:
+                pass
+        from .rankit_colors import club_color, legacy_club_color
+        for team_id, team_name, team_color in conn.execute(
+                "SELECT id,name,color FROM rankit_teams").fetchall():
+            if team_color and team_color.upper() == legacy_club_color(team_name):
+                conn.execute("UPDATE rankit_teams SET color=? WHERE id=?",
+                             (club_color(team_name), team_id))
         # Eski crest_url verisini yeni bağımsız logo tablosuna bir kez taşı.
         conn.execute("""INSERT OR IGNORE INTO rankit_team_logos(team_id,logo_url,source)
             SELECT id,crest_url,'legacy' FROM rankit_teams
@@ -747,11 +857,15 @@ def init_db():
         # §6.1: bir yanit BIR KISIYE yoneliktir ve o handle yaziyla degil
         # yanit EYLEMIYLE uretilir. Yuvalama tek seviye, o yuzden agac
         # degil duz liste + "kime" sutunu.
-        for col, dfn in [("reply_to_user_id", "INTEGER")]:
+        # client_id: istemcinin yanita verdigi kimlik -- sonucu belirsiz bir
+        # gonderimin tekrari ikinci yanit dogurmasin (§5.4, HANDOFF §4.10).
+        for col, dfn in [("reply_to_user_id", "INTEGER"), ("client_id", "TEXT")]:
             try:
                 conn.execute(f"ALTER TABLE rankit_review_comments ADD COLUMN {col} {dfn}")
             except Exception:
                 pass
+        conn.execute("""CREATE UNIQUE INDEX IF NOT EXISTS idx_rankit_comment_client
+            ON rankit_review_comments(user_id, client_id) WHERE client_id IS NOT NULL""")
         # SIRA ONEMLI: bu doldurma ALTER'DAN SONRA. Once yazilmisti ve TEMIZ
         # bir veritabaninda init_db "no such column: reply_to_user_id" ile
         # patliyordu -- gelistirme veritabaninda sutun zaten vardi, o yuzden

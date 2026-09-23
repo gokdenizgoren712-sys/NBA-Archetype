@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import argparse
 import difflib
-import hashlib
 import json
 import re
 import sys
@@ -74,15 +73,16 @@ USER_CONTENT_MATCH_IDS = """
     UNION SELECT match_id FROM rankit_potm_votes
     UNION SELECT match_id FROM rankit_respect_votes
     UNION SELECT match_id FROM rankit_watchlist
+    UNION SELECT match_id FROM rankit_collection_items
     UNION SELECT match_id FROM rankit_list_items
     UNION SELECT match_id FROM rankit_watchalong_messages
     UNION SELECT target_id FROM rankit_favorites WHERE target_type='match'
 """
 
 
-def _color(name: str) -> str:
-    palette = ["#FFB11B", "#3FB08C", "#7B61FF", "#D34E4E", "#1D78B5", "#C65FA5"]
-    return palette[int(hashlib.md5(name.encode("utf-8")).hexdigest()[:4], 16) % len(palette)]
+# Yer tutucu kulup rengi: palet ve secim TEK yerde (api/rankit_colors.py).
+# Sahibin karari (2026-09-21): 12 renkli palet, ileride duzenlenecek.
+from api.rankit_colors import CLUB_PALETTE, club_color as _color  # noqa: E402,F401
 
 
 def _team_key(name: str) -> str:

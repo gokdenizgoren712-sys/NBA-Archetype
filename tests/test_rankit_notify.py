@@ -60,6 +60,25 @@ def conn():
     c.execute("INSERT INTO rankit_competitions VALUES(5,'Football','Premier League','2026-27')")
     # Ayni turnuvanin GECEN sezonu: sezon turnuvadan bagimsiz (sahibin karari).
     c.execute("INSERT INTO rankit_competitions VALUES(4,'Football','Premier League','2025-26')")
+    # The Hunt (api/rankit_hunt.py) bu sutunlari ve tablolari okuyor: 3f'nin
+    # "bir mac kala kapaniyor" durumu artik koleksiyondan (§24), listeden degil.
+    c.executescript(
+        """
+        ALTER TABLE rankit_diary_entries ADD COLUMN classic INTEGER DEFAULT 0;
+        ALTER TABLE rankit_teams ADD COLUMN name TEXT;
+        ALTER TABLE rankit_teams ADD COLUMN color TEXT;
+        CREATE TABLE rankit_collections(
+            id INTEGER PRIMARY KEY AUTOINCREMENT, kind TEXT NOT NULL, title TEXT, subtitle TEXT,
+            sport TEXT, season TEXT, competition_id INTEGER, team_id INTEGER, year INTEGER,
+            declared_total INTEGER, opens_note TEXT, reward TEXT, active INTEGER NOT NULL DEFAULT 1,
+            updated_by INTEGER, created_at TEXT DEFAULT (datetime('now')));
+        CREATE TABLE rankit_collection_items(collection_id INTEGER, match_id INTEGER,
+                                             PRIMARY KEY(collection_id, match_id));
+        CREATE UNIQUE INDEX idx_c_club ON rankit_collections(competition_id, team_id) WHERE kind='club_season';
+        CREATE UNIQUE INDEX idx_c_year ON rankit_collections(year) WHERE kind='classics_year';
+        UPDATE rankit_teams SET name = CASE id WHEN 10 THEN 'Arsenal' WHEN 11 THEN 'Tottenham' END;
+        """
+    )
     return c
 
 
@@ -95,6 +114,20 @@ def test_okundu_yalnizca_olaylari_kapatir(conn):
     assert len(out["items"]) == 1
 
 
+def test_classic_puanlamadigin_maca_dair_gosterilmez(conn):
+    """Classic damgasi bir HUKUM (BUILD §3). Maci puanlamamis birine dair
+    olan olay akista gorunmez (BUILD §15); puanladiktan sonra gorunur."""
+    conn.execute("INSERT INTO rankit_matches VALUES(200,5,'2026-09-10T19:00:00','finished',10,11)")
+    N.notify(conn, 1, "classic", actor_id=2, match_id=200)
+    assert N.feed(conn, 1)["items"] == []
+    # Yildizsiz izleme kaydi da puan degil.
+    conn.execute("INSERT INTO rankit_diary_entries(user_id,match_id,rating) VALUES(1,200,NULL)")
+    assert N.feed(conn, 1)["items"] == []
+    conn.execute("INSERT INTO rankit_diary_entries(user_id,match_id,rating) VALUES(1,200,4.5)")
+    items = N.feed(conn, 1)["items"]
+    assert [i["kind"] for i in items] == ["classic"]
+
+
 def test_bildirim_yazilamamasi_cagirani_dusurmez(conn):
     """Kanca respect vermeyi ya da yorum birakmayi asla bozmamali."""
     conn.execute("DROP TABLE rankit_notifications")
@@ -117,12 +150,14 @@ def _tonight():
     return max(opens, now - timedelta(hours=2))
 
 
-def _seed_hot(conn, *, rating, watchlisted=True, when=None, rated_by_user=False):
+def _seed_hot(conn, *, rating, watchlisted=True, when=None, rated_by_user=False, raters=20):
     at = when or _tonight()
     conn.execute("""INSERT INTO rankit_matches
         VALUES(100,5,?, 'finished',10,11)""", (at.isoformat(sep="T"),))
-    # Toplulugun puani: baska kullanicilardan.
-    conn.execute("INSERT INTO rankit_diary_entries(user_id,match_id,rating) VALUES(2,100,?)", (rating,))
+    # Toplulugun puani: baska kullanicilardan. BUILD §5.5 -- isi ancak 20
+    # gercek puanla var; eskiden TEK puan sicak sayiliyordu.
+    conn.executemany("INSERT INTO rankit_diary_entries(user_id,match_id,rating) VALUES(?,100,?)",
+                     [(2 + i, rating) for i in range(raters)])
     if rated_by_user:
         conn.execute("INSERT INTO rankit_diary_entries(user_id,match_id,rating) VALUES(1,100,4.0)")
     if watchlisted:
@@ -134,8 +169,19 @@ def test_sicak_mac_uyarisi_esik_ustunde(conn):
     out = N.feed(conn, 1)
     assert out["states"] == 1
     hot = out["items"][0]
-    assert hot["kind"] == "hot_match" and hot["rating"] == 4.6
+    assert hot["kind"] == "hot_match"
+    # BUILD §15: puanlamadigin maca dair bildirim puani TASIMAZ. "Running hot"
+    # sayisiz da dogru; 4.6 yanitta olsaydi arayuz gizlese bile sizardi.
+    assert "rating" not in hot
     assert hot["reason"] == "watchlist"
+    # 3f metni tam adlarla ("Arsenal vs Tottenham is the highest-rated...").
+    assert hot["match"] == "Arsenal vs Tottenham" and hot["match_short"] == "ARS vs TOT"
+
+
+def test_yirmi_puan_olmadan_sicak_mac_yok(conn):
+    """BUILD §5.5: 19 puanla isi yok, dolayisiyla "running hot" da yok."""
+    _seed_hot(conn, rating=4.9, raters=19)
+    assert N.feed(conn, 1)["states"] == 0
 
 
 def test_soguk_mac_uyari_uretmez(conn):
@@ -196,44 +242,73 @@ def test_durum_okundu_sayilmaz(conn):
 
 # ── Kapanmaya bir mac kalan koleksiyon ───────────────────────────────────────
 
-def _seed_list(conn, total, rated, owner=1):
-    conn.execute("INSERT INTO rankit_lists VALUES(3,?,'Every London Derby','2026-09-01')", (owner,))
+def _seed_collection(conn, total, rated, declared=None):
+    """Sahibin seckisi (The Hunt): `total` bilinen mac, `rated`'i puanli."""
+    cur = conn.execute("""INSERT INTO rankit_collections(kind,title,declared_total)
+                          VALUES('curated','Every London Derby',?)""", (declared,))
     for i in range(total):
         mid = 200 + i
         conn.execute("INSERT INTO rankit_matches VALUES(?,5,?,'finished',10,11)",
                      (mid, (utcnow() - timedelta(days=30)).isoformat(sep="T")))
-        conn.execute("INSERT INTO rankit_list_items VALUES(3,?)", (mid,))
+        conn.execute("INSERT INTO rankit_collection_items VALUES(?,?)", (cur.lastrowid, mid))
         if i < rated:
             conn.execute("INSERT INTO rankit_diary_entries(user_id,match_id,rating) VALUES(1,?,4.0)", (mid,))
+    return cur.lastrowid
+
+
+def _closing(conn):
+    return [i for i in N.feed(conn, 1)["items"] if i["kind"] == "collection"]
 
 
 def test_bir_mac_kala_uyari(conn):
-    _seed_list(conn, total=12, rated=11)
-    out = N.feed(conn, 1)
-    item = [i for i in out["items"] if i["kind"] == "collection"][0]
-    assert item["rated"] == 11 and item["total"] == 12
-    assert item["match"]            # kalan macin adi yazilabilmeli
+    cid = _seed_collection(conn, total=12, rated=11)
+    item = _closing(conn)[0]
+    assert item["collected"] == 11 and item["total"] == 12
+    assert item["collection_id"] == cid and item["collection_title"] == "Every London Derby"
+    assert item["match"] == "Arsenal vs Tottenham" and item["match_short"] == "ARS vs TOT"
+    assert item["viewer_rated"] is False                                     # kalan mac, puansiz
 
 
-def test_kaydedilen_liste_de_uyarir(conn):
-    """Baskasinin listesi, KAYDETTIYSEN. Bu dal once olu idi: rankit_follows'ta
-    target_type='list' araniyordu ama o tablonun CHECK kisiti 'list'i hic
-    kabul etmiyordu."""
-    _seed_list(conn, total=4, rated=3, owner=2)
-    assert not [i for i in N.feed(conn, 1)["items"] if i["kind"] == "collection"]
-    conn.execute("INSERT INTO rankit_list_saves VALUES(3,1)")
-    assert [i for i in N.feed(conn, 1)["items"] if i["kind"] == "collection"]
+def test_liste_bir_mac_kala_uyarmaz(conn):
+    """§24: liste kullanicinin rafi, tamamlanacak bir sey degil. Eskiden bu
+    durum listelerden uretiliyordu."""
+    conn.execute("INSERT INTO rankit_lists VALUES(3,1,'My derbies','2026-09-01')")
+    for i in range(4):
+        conn.execute("INSERT INTO rankit_matches VALUES(?,5,?,'finished',10,11)",
+                     (300 + i, (utcnow() - timedelta(days=30)).isoformat(sep="T")))
+        conn.execute("INSERT INTO rankit_list_items VALUES(3,?)", (300 + i,))
+        if i < 3:
+            conn.execute("INSERT INTO rankit_diary_entries(user_id,match_id,rating) VALUES(1,?,4.0)", (300 + i,))
+    assert _closing(conn) == []
 
 
 def test_iki_mac_kala_uyari_yok(conn):
-    """"Bir mac kala" tam olarak BIR demek; yoksa liste hep uyarir."""
-    _seed_list(conn, total=12, rated=10)
-    assert [i for i in N.feed(conn, 1)["items"] if i["kind"] == "collection"] == []
+    """"Bir mac kala" tam olarak BIR demek; yoksa koleksiyon hep uyarir."""
+    _seed_collection(conn, total=12, rated=10)
+    assert _closing(conn) == []
 
 
 def test_kapanmis_koleksiyon_uyarmaz(conn):
-    _seed_list(conn, total=12, rated=12)
-    assert [i for i in N.feed(conn, 1)["items"] if i["kind"] == "collection"] == []
+    _seed_collection(conn, total=12, rated=12)
+    assert _closing(conn) == []
+
+
+def test_planlanmamis_fikstur_kaldiysa_bir_mac_kala_denmez(conn):
+    """12'lik seckinin 11 maci biliniyor ve hepsi puanli: kalan tek mac henuz
+    tarihsiz -- "Crystal Palace vs Arsenal, Sunday" diye bir satir kurulamaz."""
+    _seed_collection(conn, total=11, rated=11, declared=12)
+    assert _closing(conn) == []
+
+
+def test_olaylar_izleyenin_puanini_tasir(conn):
+    """13a'nin spoiler derecesi istemcide: puanladigin maca dair olay tam
+    metin, puanlamadigina dair olan skor saklanarak."""
+    conn.execute("INSERT INTO rankit_matches VALUES(400,5,'2026-09-01T19:00:00Z','finished',10,11)")
+    conn.execute("INSERT INTO rankit_diary_entries(user_id,match_id,rating) VALUES(1,400,4.0)")
+    N.notify(conn, 1, "broadcast", match_id=400)
+    N.notify(conn, 1, "follow", actor_id=2)
+    items = {i["kind"]: i for i in N.feed(conn, 1)["items"]}
+    assert items["broadcast"]["viewer_rated"] is True and items["follow"]["viewer_rated"] is None
 
 
 def test_gecen_sezonu_takip_eden_bu_sezon_da_uyarilir(conn):

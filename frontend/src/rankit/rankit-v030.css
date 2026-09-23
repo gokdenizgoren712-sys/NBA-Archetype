@@ -1,24 +1,24 @@
 /* RankIt 0.3.0 — maç detay ekranında bilgi, topluluk ve günlük hiyerarşisi. */
 .ri-v03-hero{position:relative;margin:-1px -20px 0;padding:8px 20px 18px;overflow:hidden;background:radial-gradient(circle at 12% 48%,color-mix(in srgb,var(--detail-home) 20%,transparent),transparent 34%),radial-gradient(circle at 88% 48%,color-mix(in srgb,var(--detail-away) 20%,transparent),transparent 34%),linear-gradient(180deg,#17191c,#101113);border-bottom:1px solid var(--ri-line)}
 .ri-v03-hero:after{content:"";position:absolute;inset:0;pointer-events:none;opacity:.08;background:repeating-linear-gradient(68deg,transparent 0 10px,#fff 10px 11px,transparent 11px 24px)}
-.ri-v03-hero .ri-detail-kicker{position:relative;z-index:1;margin:0 34px 18px;display:flex;align-items:center;justify-content:space-between;text-align:left}.ri-v03-hero .ri-detail-kicker b{font:700 7px var(--font-logo);letter-spacing:.13em;color:var(--ri-green);border:1px solid rgba(63,176,140,.27);border-radius:999px;padding:4px 7px}.ri-v03-hero .ri-detail-kicker span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ri-v03-hero .ri-detail-kicker{position:relative;z-index:1;margin:0 34px 18px;display:flex;align-items:center;justify-content:space-between;text-align:left}.ri-v03-hero .ri-detail-kicker b{font:700 9px var(--font-logo);letter-spacing:.13em;color:var(--ri-green);border:1px solid rgba(63,176,140,.27);border-radius:999px;padding:4px 7px}.ri-v03-hero .ri-detail-kicker span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ri-v03-hero .ri-detail-kicker.live b{color:#ff5b63;border-color:rgba(255,65,78,.48);background:rgba(255,65,78,.1);box-shadow:0 0 14px rgba(255,65,78,.16)}
-.ri-v03-hero .ri-detail-teams{position:relative;z-index:1;grid-template-columns:minmax(0,1fr) 92px minmax(0,1fr);gap:5px}.ri-v03-team{min-width:0;display:grid;grid-template-rows:90px 17px 15px;justify-items:center;align-items:center;gap:0}.ri-v03-team .ri-team-mark{width:66px;height:66px;margin:0}.ri-v03-team>strong{font:800 14px var(--font-logo)}.ri-v03-team>small{width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;color:#73767a;font-size:8px}.ri-v03-score{height:122px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}.ri-v03-score>small{font-size:8px;color:#777}.ri-v03-score>strong{min-height:44px;display:grid;place-items:center;font:800 25px var(--font-logo);color:#fff}.ri-v03-score>span{font:700 7px var(--font-logo);letter-spacing:.1em;color:#555}
+.ri-v03-hero .ri-detail-teams{position:relative;z-index:1;grid-template-columns:minmax(0,1fr) 92px minmax(0,1fr);gap:5px}.ri-v03-team{min-width:0;display:grid;grid-template-rows:90px 17px 15px;justify-items:center;align-items:center;gap:0}.ri-v03-team .ri-team-mark{width:66px;height:66px;margin:0}.ri-v03-team>strong{font:800 14px var(--font-logo)}.ri-v03-team>small{width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;color:#73767a;font-size:9px}.ri-v03-score{height:122px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}.ri-v03-score>small{font-size:9px;color:#777}.ri-v03-score>strong{min-height:44px;display:grid;place-items:center;font:800 25px var(--font-logo);color:#fff}.ri-v03-score>span{font:700 9px var(--font-logo);letter-spacing:.1em;color:#555}
 .ri-detail-sheet>.ri-detail-tabs{position:sticky;top:-22px;z-index:4;margin:0 -20px 17px;padding:5px 20px 0;background:rgba(15,16,18,.94);backdrop-filter:blur(15px)}
-.ri-v03-community-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:10px}.ri-v03-community-stats>div{min-width:0;padding:11px 6px;border:1px solid var(--ri-line);border-radius:13px;background:#111214;display:grid;grid-template-columns:auto auto;align-items:center;justify-content:center;gap:2px 6px}.ri-v03-community-stats svg{color:var(--ri-gold)}.ri-v03-community-stats strong{font:800 17px var(--font-logo)}.ri-v03-community-stats span{grid-column:1/-1;text-align:center;color:#5e6165;font:700 6px var(--font-logo);letter-spacing:.12em}
-.ri-v03-consensus{border:1px solid rgba(255,177,27,.18);border-radius:16px;background:linear-gradient(145deg,rgba(255,177,27,.055),#111214);padding:12px;margin-bottom:19px}.ri-v03-potm{display:flex;align-items:center;gap:9px}.ri-v03-potm>svg{color:var(--ri-gold)}.ri-v03-potm>span{display:flex;flex:1;flex-direction:column}.ri-v03-potm small{font:700 6.5px var(--font-logo);letter-spacing:.13em;color:#696b6e}.ri-v03-potm strong{font:800 13px var(--font-logo)}.ri-v03-potm>b{font:800 10px var(--font-logo);color:var(--ri-gold)}.ri-v03-tag-cloud{display:flex;gap:6px;overflow-x:auto;margin-top:11px;padding-top:10px;border-top:1px solid var(--ri-line);scrollbar-width:none}.ri-v03-tag-cloud>span{flex:none;border:1px solid var(--ri-line);border-radius:999px;padding:6px 8px;color:#777;font-size:8px}.ri-v03-tag-cloud>span b{margin-left:5px;color:#aaa}.ri-v03-tag-cloud>span.dominant{border-color:rgba(255,177,27,.35);color:var(--ri-gold);background:rgba(255,177,27,.06)}
-.ri-v03-log-head{display:flex;align-items:end;justify-content:space-between;margin:4px 1px 10px}.ri-v03-log-head small{font:700 7px var(--font-logo);letter-spacing:.14em;color:var(--ri-gold)}.ri-v03-log-head h3{font:800 20px/1 var(--font-logo);margin:4px 0 0}.ri-v03-log-head>b{font:700 7px var(--font-logo);color:var(--ri-green);border:1px solid rgba(63,176,140,.3);border-radius:999px;padding:5px 8px}
-.ri-v03-votes{padding:0;overflow:hidden}.ri-v03-vote-trigger{width:100%;min-height:56px;border:0;background:transparent;color:#ddd;padding:10px 12px;display:grid;grid-template-columns:20px minmax(0,1fr) auto;align-items:center;gap:8px;text-align:left}.ri-v03-vote-trigger+ .ri-match-player-groups,.ri-v03-vote-trigger.respect{border-top:1px solid var(--ri-line)}.ri-v03-vote-trigger>svg{color:var(--ri-gold)}.ri-v03-vote-trigger.respect>svg{color:var(--ri-green)}.ri-v03-vote-trigger>span{min-width:0;display:flex;flex-direction:column}.ri-v03-vote-trigger small{color:#65676a;font:700 6.5px var(--font-logo);letter-spacing:.12em}.ri-v03-vote-trigger strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:700 11px var(--font-logo)}.ri-v03-vote-trigger>b{font:700 7px var(--font-logo);color:var(--ri-gold)}.ri-v03-vote-trigger.respect>b{color:var(--ri-green)}.ri-v03-votes>.ri-match-player-groups{padding:0 10px 10px;margin:0}
+.ri-v03-community-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-bottom:10px}.ri-v03-community-stats>div{min-width:0;padding:11px 6px;border:1px solid var(--ri-line);border-radius:13px;background:#111214;display:grid;grid-template-columns:auto auto;align-items:center;justify-content:center;gap:2px 6px}.ri-v03-community-stats svg{color:var(--ri-gold)}.ri-v03-community-stats strong{font:800 17px var(--font-logo)}.ri-v03-community-stats span{grid-column:1/-1;text-align:center;color:#5e6165;font:700 9px var(--font-logo);letter-spacing:.12em}
+.ri-v03-consensus{border:1px solid rgba(255,177,27,.18);border-radius:16px;background:linear-gradient(145deg,rgba(255,177,27,.055),#111214);padding:12px;margin-bottom:19px}.ri-v03-potm{display:flex;align-items:center;gap:9px}.ri-v03-potm>svg{color:var(--ri-gold)}.ri-v03-potm>span{display:flex;flex:1;flex-direction:column}.ri-v03-potm small{font:700 9px var(--font-logo);letter-spacing:.13em;color:#696b6e}.ri-v03-potm strong{font:800 13px var(--font-logo)}.ri-v03-potm>b{font:800 10px var(--font-logo);color:var(--ri-gold)}.ri-v03-tag-cloud{display:flex;gap:6px;overflow-x:auto;margin-top:11px;padding-top:10px;border-top:1px solid var(--ri-line);scrollbar-width:none}.ri-v03-tag-cloud>span{flex:none;border:1px solid var(--ri-line);border-radius:999px;padding:6px 8px;color:#777;font-size:9px}.ri-v03-tag-cloud>span b{margin-left:5px;color:#aaa}.ri-v03-tag-cloud>span.dominant{border-color:rgba(255,177,27,.35);color:var(--ri-gold);background:rgba(255,177,27,.06)}
+.ri-v03-log-head{display:flex;align-items:end;justify-content:space-between;margin:4px 1px 10px}.ri-v03-log-head small{font:700 9px var(--font-logo);letter-spacing:.14em;color:var(--ri-gold)}.ri-v03-log-head h3{font:800 20px/1 var(--font-logo);margin:4px 0 0}.ri-v03-log-head>b{font:700 9px var(--font-logo);color:var(--ri-green);border:1px solid rgba(63,176,140,.3);border-radius:999px;padding:5px 8px}
+.ri-v03-votes{padding:0;overflow:hidden}.ri-v03-vote-trigger{width:100%;min-height:56px;border:0;background:transparent;color:#ddd;padding:10px 12px;display:grid;grid-template-columns:20px minmax(0,1fr) auto;align-items:center;gap:8px;text-align:left}.ri-v03-vote-trigger+ .ri-match-player-groups,.ri-v03-vote-trigger.respect{border-top:1px solid var(--ri-line)}.ri-v03-vote-trigger>svg{color:var(--ri-gold)}.ri-v03-vote-trigger.respect>svg{color:var(--ri-green)}.ri-v03-vote-trigger>span{min-width:0;display:flex;flex-direction:column}.ri-v03-vote-trigger small{color:#65676a;font:700 9px var(--font-logo);letter-spacing:.12em}.ri-v03-vote-trigger strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:700 11px var(--font-logo)}.ri-v03-vote-trigger>b{font:700 9px var(--font-logo);color:var(--ri-gold)}.ri-v03-vote-trigger.respect>b{color:var(--ri-green)}.ri-v03-votes>.ri-match-player-groups{padding:0 10px 10px;margin:0}
 @media(max-width:370px){.ri-v03-team .ri-team-mark{width:58px;height:58px}.ri-v03-hero .ri-detail-teams{grid-template-columns:minmax(0,1fr) 78px minmax(0,1fr)}.ri-v03-community-stats strong{font-size:15px}}
 
-.ri-day-empty{width:100%;min-height:180px;border:1px dashed var(--ri-line);border-radius:20px;background:#101113;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#555}.ri-day-empty svg{color:var(--ri-gold)}.ri-day-empty strong{margin-top:8px;color:#aaa;font:700 12px var(--font-logo)}.ri-day-empty span{margin-top:4px;color:#555;font-size:8px}
+.ri-day-empty{width:100%;min-height:180px;border:1px dashed var(--ri-line);border-radius:20px;background:#101113;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#555}.ri-day-empty svg{color:var(--ri-gold)}.ri-day-empty strong{margin-top:8px;color:#aaa;font:700 12px var(--font-logo)}.ri-day-empty span{margin-top:4px;color:#555;font-size:9px}
 
 /* Turnuva yüzeyi yalnızca maç kartı başlığından açılır. */
 .ri-match-top>button{border:0;background:transparent;padding:0;color:inherit;font:inherit;letter-spacing:inherit;text-transform:inherit;text-align:left}.ri-match-top>button:not(:disabled){color:#d5d5d5;text-decoration:underline;text-decoration-color:rgba(255,177,27,.35);text-underline-offset:3px}.ri-match-top>button:disabled{opacity:1}
-.ri-competition-sheet{padding-bottom:34px}.ri-competition-head{padding:9px 19px 16px;border-bottom:1px solid var(--ri-line);background:radial-gradient(circle at 15% 0,rgba(255,177,27,.12),transparent 44%)}.ri-competition-head small{font:700 8px var(--font-logo);letter-spacing:.12em;color:var(--ri-gold);text-transform:uppercase}.ri-competition-head h2{margin:5px 0 3px;font:800 25px var(--font-logo);color:#f1f1f1}.ri-competition-head span{font-size:9px;color:#737373}.ri-competition-tabs{grid-template-columns:1.2fr .9fr 1.25fr;position:sticky;top:0;z-index:4;background:rgba(11,12,14,.96);backdrop-filter:blur(12px)}.ri-competition-tabs button{font-size:8px;white-space:nowrap}
-.ri-competition-fixtures{display:grid;gap:7px;padding:12px 14px}.ri-competition-fixtures>button{width:100%;min-height:58px;border:1px solid var(--ri-line);border-radius:13px;background:#111214;color:#ddd;padding:10px;display:grid;grid-template-columns:1fr auto 15px;gap:8px;align-items:center;text-align:left}.ri-competition-fixtures>button>span{min-width:0;display:grid;gap:3px}.ri-competition-fixtures small{font:700 7px var(--font-logo);letter-spacing:.08em;color:#777;text-transform:uppercase}.ri-competition-fixtures strong{font:700 11px var(--font-logo);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ri-competition-fixtures strong b{color:#666;font-weight:600;margin:0 3px}.ri-competition-fixtures time{font:700 8px var(--font-logo);color:var(--ri-gold);white-space:nowrap}
-.ri-competition-table{padding:12px 14px}.ri-competition-table>header,.ri-competition-table>div:not(.ri-empty-state){display:grid;grid-template-columns:22px minmax(0,1fr) 25px 31px 31px;align-items:center;gap:5px;min-height:38px;border-bottom:1px solid rgba(255,255,255,.055);font-size:9px;color:#8a8a8a}.ri-competition-table>header{min-height:28px;font:700 7px var(--font-logo);letter-spacing:.08em;color:#555;text-transform:uppercase}.ri-competition-table>div>strong{display:flex;align-items:center;gap:7px;min-width:0;color:#d8d8d8}.ri-competition-table .ri-team-mark{width:25px;height:25px;flex:0 0 25px}.ri-competition-table .ri-team-mark img{width:72%;height:72%}.ri-competition-table>div>strong>b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:700 9px var(--font-logo)}.ri-competition-table>div>span:last-child{color:var(--ri-gold);font-weight:800}
-.ri-popular-players{display:grid;gap:7px;padding:12px 14px}.ri-popular-players>button{border:1px solid var(--ri-line);border-radius:13px;background:#111214;color:#ddd;min-height:58px;padding:8px;display:grid;grid-template-columns:20px 38px minmax(0,1fr) auto;align-items:center;gap:8px;text-align:left}.ri-popular-players>button>b{font:800 10px var(--font-logo);color:var(--ri-gold);text-align:center}.ri-popular-players>button>img,.ri-popular-players>button>span{width:36px;height:36px;border-radius:50%;object-fit:cover;background:#1c1d20;display:grid;place-items:center;font:700 9px var(--font-logo)}.ri-popular-players>button>div{min-width:0;display:grid;gap:2px}.ri-popular-players>button>div strong{font:700 10px var(--font-logo);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ri-popular-players>button>div small{font-size:8px;color:#696969}.ri-popular-players>button>em{font:700 7px var(--font-logo);font-style:normal;color:#777;white-space:nowrap}
+.ri-competition-sheet{padding-bottom:34px}.ri-competition-head{padding:9px 19px 16px;border-bottom:1px solid var(--ri-line);background:radial-gradient(circle at 15% 0,rgba(255,177,27,.12),transparent 44%)}.ri-competition-head small{font:700 9px var(--font-logo);letter-spacing:.12em;color:var(--ri-gold);text-transform:uppercase}.ri-competition-head h2{margin:5px 0 3px;font:800 25px var(--font-logo);color:#f1f1f1}.ri-competition-head span{font-size:9px;color:#737373}.ri-competition-tabs{grid-template-columns:1.2fr .9fr 1.25fr;position:sticky;top:0;z-index:4;background:rgba(11,12,14,.96);backdrop-filter:blur(12px)}.ri-competition-tabs button{font-size:9px;white-space:nowrap}
+.ri-competition-fixtures{display:grid;gap:7px;padding:12px 14px}.ri-competition-fixtures>button{width:100%;min-height:58px;border:1px solid var(--ri-line);border-radius:13px;background:#111214;color:#ddd;padding:10px;display:grid;grid-template-columns:minmax(0,1fr) auto 15px;gap:8px;align-items:center;text-align:left}.ri-competition-fixtures>button>span{min-width:0;display:grid;gap:3px}.ri-competition-fixtures small{font:700 9px var(--font-logo);letter-spacing:.08em;color:#777;text-transform:uppercase}.ri-competition-fixtures strong{font:700 11px var(--font-logo);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ri-competition-fixtures strong b{color:#666;font-weight:600;margin:0 3px}.ri-competition-fixtures time{font:700 9px var(--font-logo);color:var(--ri-gold);white-space:nowrap}
+.ri-competition-table{padding:12px 14px}.ri-competition-table>header,.ri-competition-table>div:not(.ri-empty-state){display:grid;grid-template-columns:22px minmax(0,1fr) 25px 31px 31px;align-items:center;gap:5px;min-height:38px;border-bottom:1px solid rgba(255,255,255,.055);font-size:9px;color:#8a8a8a}.ri-competition-table>header{min-height:28px;font:700 9px var(--font-logo);letter-spacing:.08em;color:#555;text-transform:uppercase}.ri-competition-table>div>strong{display:flex;align-items:center;gap:7px;min-width:0;color:#d8d8d8}.ri-competition-table .ri-team-mark{width:25px;height:25px;flex:0 0 25px}.ri-competition-table .ri-team-mark img{width:72%;height:72%}.ri-competition-table>div>strong>b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:700 9px var(--font-logo)}.ri-competition-table>div>span:last-child{color:var(--ri-gold);font-weight:800}
+.ri-popular-players{display:grid;gap:7px;padding:12px 14px}.ri-popular-players>button{border:1px solid var(--ri-line);border-radius:13px;background:#111214;color:#ddd;min-height:58px;padding:8px;display:grid;grid-template-columns:20px 38px minmax(0,1fr) auto;align-items:center;gap:8px;text-align:left}.ri-popular-players>button>b{font:800 10px var(--font-logo);color:var(--ri-gold);text-align:center}.ri-popular-players>button>img,.ri-popular-players>button>span{width:36px;height:36px;border-radius:50%;object-fit:cover;background:#1c1d20;display:grid;place-items:center;font:700 9px var(--font-logo)}.ri-popular-players>button>div{min-width:0;display:grid;gap:2px}.ri-popular-players>button>div strong{font:700 10px var(--font-logo);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ri-popular-players>button>div small{font-size:9px;color:#696969}.ri-popular-players>button>em{font:700 9px var(--font-logo);font-style:normal;color:#777;white-space:nowrap}
 
 /* ==========================================================================
    0.5.2 — bildirilen uc gorsel hata + home kart geometrisi.
@@ -35,9 +35,16 @@
    Halka silinmiyor, hapin kendisine tasiniyor: odak gostergesi korunuyor,
    ic ice iki altin cerceve gitmis oluyor. */
 .rankit-app .ri-floating-search > input:focus-visible,
-.rankit-app .ri-search input:focus-visible{outline:0}
-.rankit-app .ri-floating-search:focus-within{border-color:rgba(255,177,27,.5);box-shadow:0 12px 36px rgba(0,0,0,.6),0 0 0 3px rgba(255,177,27,.15)}
-.rankit-app .ri-search:focus-within{border-color:rgba(255,177,27,.42);box-shadow:0 0 0 3px rgba(255,177,27,.12)}
+.rankit-app .ri-search input:focus-visible,
+.rankit-app .ri-find-field input:focus-visible{outline:0}
+/* Halkanin hapa tasinma karari (yukaridaki not) korunuyor; YALNIZ rengi
+   degisti: §26 odak gostergesini altin birakmiyor, yoksa arama kutusu
+   odaklandigi anda bolgenin tek altin isaretini uzerine aliyor. */
+.rankit-app .ri-floating-search:focus-within{border-color:rgba(236,237,237,.5);box-shadow:0 12px 36px rgba(0,0,0,.6),0 0 0 3px rgba(236,237,237,.18)}
+.rankit-app .ri-search:focus-within{border-color:rgba(236,237,237,.42);box-shadow:0 0 0 3px rgba(236,237,237,.15)}
+/* 3e arama sayfasi da ayni: yuvarlak hapin ICINDE koseli beyaz bir kutu
+   ciziliyordu (olculdu, 2026-09-23). Halka hapa. */
+.rankit-app .ri-find-field:focus-within{border-color:rgba(236,237,237,.42);box-shadow:0 0 0 3px rgba(236,237,237,.15)}
 
 /* [2] Hero kartindaki kalkan kartin kenarini kesiyordu.
    62px'lik kalkan 45 derece donunce 87.7px yer kapliyor, ama sutunu 61px'ti;
@@ -46,7 +53,7 @@
    kaldirilmiyor — sutun dengesi ve boyut donmus ayak izine gore kuruluyor.
    Orta sutun sabit px: icinde yalnizca saat + VS var, fr ile buyumesi
    gereksiz yere kanatlardan yer caliyordu. */
-.rankit-app .ri-hero-carousel .ri-match-art{grid-template-columns:1fr 64px 1fr}
+.rankit-app .ri-hero-carousel .ri-match-art{grid-template-columns:minmax(0,1fr) 64px minmax(0,1fr)}
 .rankit-app .ri-hero-carousel .ri-team-mark{width:48px;height:48px}
 
 /* [3] Sheet kapatma butonu hero'nun altinda kaliyordu.
@@ -97,10 +104,10 @@
    73.5px yer kapliyor, sutunu 52.2px — her iki yandan 9.8px kirpiliyordu.
    Kart dar oldugu icin cozum kalkani kucultmek; 52px'in 12'si zaten
    gorunmuyordu, yani gercekte kaybedilen boyut sanildigindan az. */
-.rankit-app .ri-discover-grid .ri-match-art{grid-template-columns:1fr 42px 1fr}
+.rankit-app .ri-discover-grid .ri-match-art{grid-template-columns:minmax(0,1fr) 42px minmax(0,1fr)}
 .rankit-app .ri-discover-grid .ri-team-mark{width:38px;height:38px;border-radius:12px 12px 14px 14px}
 .rankit-app .ri-discover-grid .ri-versus strong{font-size:19px}
-.rankit-app .ri-discover-grid .ri-versus small{font-size:8px}
+.rankit-app .ri-discover-grid .ri-versus small{font-size:9px}
 
 /* --------------------------------------------------------------------------
    0.5.2 — olculebilir arayuz borclari (tarayicida denetimle bulundu, goz
@@ -113,7 +120,7 @@
    Discover karti dar oldugu icin orta sutun da 82px'ten kisiliyor —
    165px'lik kartin yarisini skor kutusuna vermek gereksizdi. */
 .rankit-app .ri-score-band > div{min-width:0}
-.rankit-app .ri-discover-grid .ri-score-band{grid-template-columns:1fr 46px 1fr}
+.rankit-app .ri-discover-grid .ri-score-band{grid-template-columns:minmax(0,1fr) 46px minmax(0,1fr)}
 
 /* Lig butonu 36x13 pikseldi — WCAG 2.5.8'in 24px tabanini bile gecmiyor,
    parmakla isabet ettirmek sans isi. Serit 37px yuksek, buton artik
@@ -130,3 +137,700 @@
 .rankit-app .ri-filter-pills button{font-size:10px;min-height:38px}
 .rankit-app .ri-filter-heading small{font-size:9px}
 .rankit-app .ri-filter-group > span{font-size:9px}
+/* Kaynak: RankIt Redesign.dc.html #15d; mobil mevcut stil katmaninda. */
+.ri-live-lineup{margin:16px 0 0;color:#eceded}.ri-live-lineup-tabs{display:flex;gap:4px;background:#121315;border-radius:10px;padding:4px}.ri-live-lineup-tabs button{flex:1;min-width:0;min-height:38px;border:0;border-radius:7px;background:transparent;color:#9aa0a6;font:700 12px/1 var(--font-logo,Rajdhani,sans-serif);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}.ri-live-lineup-tabs button[aria-selected="true"]{background:rgba(255,255,255,.1);color:#eceded}
+.ri-live-lineup-label{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:16px 2px 9px;font:700 9px/1 var(--font-logo,Rajdhani,sans-serif);letter-spacing:.14em;color:#7f868b}.ri-live-lineup-label span{color:#9aa0a6;font-size:11px;letter-spacing:.05em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ri-live-lineup-card{border-radius:14px;background:#151618;border:1px solid rgba(255,255,255,.09);padding:6px 14px 10px}.ri-live-lineup-row{display:flex;align-items:center;gap:11px;min-height:38px}.ri-live-lineup-row+.ri-live-lineup-row{border-top:1px solid rgba(255,255,255,.07)}.ri-live-lineup-row b{flex:0 0 34px;font:700 12px/1 var(--font-logo,Rajdhani,sans-serif);color:#7f868b}.ri-live-lineup-row strong{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:700 12.5px/1 var(--font-logo,Rajdhani,sans-serif)}.ri-live-lineup-row small{flex:none;max-width:45%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#7f868b;font-size:11px}.ri-live-lineup-row.came-on b{color:#d43a63}
+.ri-live-lineup-note{border:1px dashed rgba(255,255,255,.14);background:#121315;border-radius:14px;padding:14px 15px;margin:14px 0;color:#9aa0a6;font-size:12px;line-height:1.45}.ri-live-lineup-cta{width:100%;min-height:48px;border:0;border-radius:10px;background:#ffb11b;color:#17120a;font:700 13px/1 var(--font-logo,Rajdhani,sans-serif);letter-spacing:.04em;cursor:pointer}
+
+/* 2f: maç bittikten sonra doğrulanmış olaylar, ev/deplasman tarafıyla. */
+.ri-match-events{margin:18px 0 0}.ri-match-event-list{border:1px solid rgba(255,255,255,.09);border-radius:14px;background:#151618;padding:8px 12px}.ri-match-event-teams{display:flex;justify-content:space-between;gap:12px;padding:4px 0 10px;color:#9aa0a6;font:700 10px/1 var(--font-logo);letter-spacing:.08em}.ri-match-event{display:grid;grid-template-columns:minmax(0,1fr) 38px minmax(0,1fr);align-items:center;gap:8px;min-height:42px;padding:7px 0;border-top:1px solid rgba(255,255,255,.07)}.ri-match-event>b{text-align:center;color:#c9cccd;font:700 11px/1 var(--font-logo);font-variant-numeric:tabular-nums}.ri-match-event-detail{display:flex;align-items:center;gap:6px;min-width:0;color:#c9cccd}.ri-match-event-detail svg{flex:none;color:#9aa0a6}.ri-match-event-detail span{min-width:0;overflow-wrap:anywhere;font:500 11px/1.3 var(--font-sans)}.ri-match-event.away .ri-match-event-detail:last-child{justify-content:flex-end}.ri-match-event.away .ri-match-event-detail:last-child span{order:-1;text-align:right}
+.ri-detail-actions .ri-review-cta.secondary{min-height:44px;font-size:11px;white-space:nowrap}
+
+/* BUILD §9 / 2h: Community'de maç öncesi kişisel okuma, puanlama değil.
+   Isı renkleri eylem düğmesi olarak kullanılmaz; seçili durum sayı + kenarlık. */
+.ri-appetite-entry{margin:18px 0;border:1px solid rgba(255,255,255,.09);border-radius:18px;background:#151618;padding:18px;color:#eceded}
+.ri-appetite-entry .ri-block-head{display:flex;justify-content:space-between;gap:12px;font:700 9px/1 var(--font-logo);letter-spacing:.14em;color:#7f868b}
+.ri-appetite-entry h2{text-align:left;margin:22px 0 8px;font:700 21px/1.1 var(--font-logo)}
+.ri-appetite-entry p{margin:0;color:#9aa0a6;font:400 12px/1.5 var(--font-sans)}
+.ri-appetite-choices{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px;margin:20px 0 12px}
+.ri-appetite-choices button{min-width:0;min-height:48px;border:1px solid rgba(255,255,255,.14);border-radius:10px;background:#121315;color:#c9cccd;font:700 17px/1 var(--font-logo);cursor:pointer}
+.ri-appetite-choices button[aria-pressed="true"]{border-color:#eceded;background:rgba(255,255,255,.12);color:#fff}
+.ri-appetite-choices button:focus-visible{outline:2px solid var(--ri-focus);outline-offset:2px}
+.ri-appetite-choices button:disabled{cursor:wait;opacity:.65}
+.ri-appetite-entry .ri-appetite-note{margin-top:12px;color:#9aa0a6}
+.ri-appetite-entry .ri-appetite-error{margin-top:12px;color:#f5402e}
+/* 15d: canlı kaynak dört yoklamadır yenilenmediyse kırmızı tazelik iddiası yok. */
+.ri-v03-hero .ri-detail-kicker.live.is-stale b{color:#c9cccd;border-color:rgba(255,255,255,.2);background:rgba(255,255,255,.07);box-shadow:none}
+.ri-crowd-empty{margin:10px 0 2px;color:#9aa0a6;font:400 12px/1.5 var(--font-sans)}
+.ri-reviews-count{color:#7f868b;font:400 12px/1 var(--font-sans)}
+
+/* ==========================================================================
+   §6 dokunma hedefi: "Every target >= 44x44. Filter pills 48."
+   Olculdu (375x812): spor pill'leri 34, "Hide scores" 16.5, "See all" /
+   "Activity" 16.5, bildirim zili 19x19. Iki ayri carem var ve ikisi ayni
+   sey degil:
+     (a) min-height  -> ogenin KENDISI buyuyor. Satirin yuksekligini
+         degistirmesi sorun olmayan yerlerde (pill'ler, bolum basligi).
+     (b) ::after hit alani -> gorsel boyut kucuk kalir, yalniz tiklama alani
+         44'e cikar. Yapisan baslik gibi her pikseli sayilan yerlerde.
+         Tasma komsu dokunulabilir ogeye DEGMEMELI: asagidaki iki kullanimda
+         tasan ~14px, kapsayicinin kendi padding'i icinde kaliyor.
+   ========================================================================== */
+.rankit-app .ri-sport-scroll button,
+.rankit-app .ri-diary-filters button,
+.rankit-app .ri-catalog-filters button,
+.rankit-app .ri-filter-panel button:not(.ri-filter-reset),
+.rankit-app .ri-filter-redesign .ri-filter-pills button{
+  min-height:48px;display:inline-flex;align-items:center;justify-content:center}
+.rankit-app .ri-sport-scroll button,.rankit-app .ri-diary-filters button{padding:0 16px}
+.rankit-app .ri-catalog-filters button,
+.rankit-app .ri-filter-panel button:not(.ri-filter-reset){padding:0 13px}
+/* Bolum basligindaki metin baglantisi: satirin altina hizali kaliyor, yalniz
+   44'e yukseliyor. Basligin kendisi en fazla 7px uzuyor, ortusme yok. */
+.rankit-app .ri-section-head button{min-height:44px;min-width:44px;display:inline-flex;align-items:flex-end;justify-content:flex-end;padding:0 0 1px}
+/* Gorsel olarak kucuk kalanlar: yalniz hit alani. */
+.rankit-app .ri-hide-score,
+.rankit-app .ri-header-tools>button,
+.rankit-app .ri-filter-redesign .ri-filter-reset{position:relative}
+.rankit-app .ri-hide-score::after,
+.rankit-app .ri-header-tools>button::after,
+.rankit-app .ri-filter-redesign .ri-filter-reset::after{
+  content:"";position:absolute;left:50%;top:50%;width:max(100%,44px);height:44px;
+  transform:translate(-50%,-50%)}
+/* Ayni kural, geri kalan ekranlar (Discover / Profile / mac karti).
+   Kart geometrisi §2'de kilitli oldugu icin kartin ICINDEKI iki kucuk
+   kontrol buyutulmuyor, yalniz hit alani aciliyor (~4-8px tasma kartin
+   kendi dokunma alanina denk geliyor; iOS'un yaptigi takas). */
+.rankit-app .ri-catalog-selects select,
+.rankit-app .ri-filter-panel select,
+.rankit-app .ri-filter-redesign select{height:auto;min-height:44px}
+.rankit-app .ri-detail-tabs button,
+.rankit-app button.ri-load-more{min-height:44px}
+/* DIKKAT: .ri-card-share zaten position:absolute (rankit-next.css) ve
+   .ri-classic gunluk kartinda absolute konumlaniyor — ikisine de position
+   YAZILMIYOR, cunku absolute da ::after icin kapsayici blok kurar. Yalniz
+   statik olan .ri-match-top>button relative yapiliyor. */
+.rankit-app .ri-match-top>button{position:relative}
+.rankit-app .ri-match-top>button::after,
+.rankit-app .ri-card-share::after{
+  content:"";position:absolute;left:50%;top:50%;width:max(100%,44px);height:44px;
+  transform:translate(-50%,-50%)}
+
+/* 3j: gece durumu tek satir. Isi rengi degil, metin — §5.5 isi olcegi
+   yalniz puan sayisindan gelir, seri durumu isi degildir. */
+.rankit-app .ri-quick-note{margin:9px 3px 0;font:400 11px/1.45 var(--font-sans);color:#9aa0a6}
+.rankit-app .ri-quick-note.at-risk{color:#eceded}
+
+/* Kesilmis liste kendi kesildigini soyler (§5.4 / HANDOFF §4.10). Bir eylem
+   degil, bir bilgi: tiklanacak bir sey yok, o yuzden dugme gibi durmuyor. */
+.rankit-app .ri-find-truncated,
+.rankit-app .ri-alerts-truncated{margin:10px 2px 2px;color:#7f868b;font:400 12px/1.45 var(--font-sans)}
+
+/* ==========================================================================
+   Ekran 15c — inceleme yazma. Görsel kaynak: RankIt Redesign.dc.html#15c,
+   davranış BUILD §11.1. Tipografi tahtadan birebir alındı:
+     baslik      Rajdhani 700 13px/1
+     mac satiri  Outfit 400 12px/1
+     puan        Outfit 400 11.5px/1      · CLASSIC  Rajdhani 700 9px/1
+     metin       Outfit 400 13px/1.65
+     etiketler   Rajdhani 700 9px/1       · sayac    Outfit 400 11.5px/1
+     dugme       Rajdhani 700 13px/1
+   ========================================================================== */
+.rankit-app .ri-composer{position:absolute;inset:0;z-index:30;display:flex;flex-direction:column;
+  background:#090a0b}
+.rankit-app .ri-composer-head{flex:none;display:flex;align-items:center;gap:12px;height:64px;
+  padding:0 16px;border-bottom:1px solid var(--ri-line)}
+.rankit-app .ri-composer-head button{width:44px;height:44px;display:grid;place-items:center;
+  border:0;background:none;color:#c9cccd;margin-left:-10px}
+.rankit-app .ri-composer-head h1{margin:0;font:700 13px/1 var(--font-logo);letter-spacing:.04em}
+.rankit-app .ri-composer-body{flex:1;min-height:0;overflow-y:auto;padding:18px 16px 0;
+  display:flex;flex-direction:column}
+.rankit-app .ri-composer-match{margin:0;font:400 12px/1 var(--font-sans);color:#9aa0a6}
+.rankit-app .ri-composer-rating{display:flex;align-items:center;gap:9px;margin:7px 0 0;
+  font:400 11.5px/1 var(--font-sans);color:#c9cccd}
+.rankit-app .ri-composer-classic{font:700 9px/1 var(--font-logo);letter-spacing:.13em;
+  color:var(--ri-gold);border:1px solid rgba(255,177,27,.4);border-radius:999px;padding:5px 8px}
+/* Metin alani: kartin degil, KISININ sesi (§1.5 Outfit). */
+.rankit-app .ri-composer-input{flex:1;min-height:180px;resize:none;margin:16px 0 0;padding:14px;
+  border:1px solid var(--ri-line);border-radius:14px;background:#101113;color:#eceded;
+  font:400 13px/1.65 var(--font-sans);outline:none}
+.rankit-app .ri-composer-input::placeholder{color:#5f6469}
+.rankit-app .ri-composer-input:focus-visible{outline:2px solid var(--ri-focus);outline-offset:2px}
+.rankit-app .ri-composer-meter{display:flex;align-items:baseline;justify-content:space-between;
+  gap:12px;margin:9px 1px 0}
+.rankit-app .ri-composer-meter span{font:700 9px/1.3 var(--font-logo);letter-spacing:.13em;color:#5f6469}
+.rankit-app .ri-composer-meter b{font:400 11.5px/1 var(--font-sans);color:#9aa0a6;
+  font-variant-numeric:tabular-nums;white-space:nowrap}
+.rankit-app .ri-composer-shield{margin:18px 0;padding:14px;border:1px dashed rgba(255,255,255,.14);
+  border-radius:14px;background:#121315}
+.rankit-app .ri-composer-shield span{display:block;font:700 9px/1 var(--font-logo);
+  letter-spacing:.14em;color:#7f868b;margin-bottom:8px}
+.rankit-app .ri-composer-shield p{margin:0;font:400 11.5px/1.5 var(--font-sans);color:#9aa0a6}
+.rankit-app .ri-composer-shield b{color:#c9cccd;font-weight:700}
+.rankit-app .ri-composer-foot{flex:none;padding:12px 16px calc(12px + env(safe-area-inset-bottom));
+  border-top:1px solid var(--ri-line);background:rgba(9,10,11,.96)}
+/* Bu ekranin tek altini: birincil eylem (§1.2 bolge basina bir altin). */
+.rankit-app .ri-composer-save{width:100%;min-height:52px;border:0;border-radius:13px;
+  background:var(--ri-gold);color:#17120a;font:700 13px/1 var(--font-logo);letter-spacing:.04em}
+.rankit-app .ri-review-trigger strong{white-space:normal;overflow:hidden;display:-webkit-box;
+  -webkit-line-clamp:2;-webkit-box-orient:vertical}
+
+/* 2c — Discover üstündeki The Hunt özeti. Yüzde iri, cümle yanında. */
+.rankit-app .ri-hunt-summary{display:flex;align-items:center;gap:14px;margin:0 0 14px;padding:14px 16px;
+  border:1px solid var(--ri-line);border-radius:17px;background:#111214}
+.rankit-app .ri-hunt-summary>strong{font:800 25px/1 var(--font-logo);color:#eceded;
+  font-variant-numeric:tabular-nums;flex:none}
+.rankit-app .ri-hunt-summary>span{min-width:0;display:flex;flex-direction:column;gap:4px}
+.rankit-app .ri-hunt-summary small{font:700 9px/1 var(--font-logo);letter-spacing:.14em;color:var(--ri-gold)}
+.rankit-app .ri-hunt-summary b{font:400 12px/1.4 var(--font-sans);color:#9aa0a6;font-weight:400}
+
+/* 2a başlık — tahtadan iki düzeltme (RankIt Redesign.dc.html#2a).
+   §1.2 "bölge başına en fazla bir altın": başlıkta hem marka alt satırı hem
+   bildirim noktası altındı, yani iki tane. Tahta ikisini de altın DEĞİL
+   yapıyor — marka alt satırı ink-4, okunmamış noktası heat-5. Altın bütçesi
+   böylece bu bölgede serbest kalıyor (alt navigasyondaki elmas kullanıyor). */
+.rankit-app .ri-brand small{color:#7f868b}
+.rankit-app .ri-header i{background:#f5402e;box-shadow:none}
+
+/* ==========================================================================
+   Activity → Diary — 2d (timeline, ısı şeridi) ve 2e (raf). Ölçüler tahtadan.
+     başlık     "Activity" Rajdhani 700 31px; sağda TIMELINE|SHELF (2e)
+     sekmeler   Friends / Diary sola yaslı, 26px aralık, 13px .06em;
+                seçili altın + 2px iç alt çizgi (2d)
+     sayım      9px .14em #7f868b; sağda "Newest" 11px .06em #9aa0a6 (2e)
+     filtre barı sahibin kararı 2026-09-23: "Newest" açar; seçenekler 48px (§6)
+     şerit      #121315 kart, 18px yarıçap, 16px iç; 28 çubuk 36px, 2px aralık
+     satır      72px; gün 21px + hafta günü 9px; başlık 13px; 11px yıldız
+     raf        iki sütun, 13px aralık; kart 200px, çerçevesiz
+   ========================================================================== */
+.rankit-app .ri-activity-title{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;padding-bottom:13px}
+.rankit-app .ri-activity-title h1{margin:0;line-height:1}
+/* 2e toggle: 32px görünür, 44px dokunma (::after). Altın değil — tahtada nötr. */
+.rankit-app .ri-view-toggle{flex:none;display:flex;background:#121315;border:1px solid rgba(255,255,255,.09);border-radius:999px;padding:3px}
+.rankit-app .ri-view-toggle button{position:relative;width:auto;height:32px;padding:0 13px;border-radius:999px;background:none;
+  color:#7f868b;font:700 10px/1 var(--font-logo);letter-spacing:.1em;white-space:nowrap}
+.rankit-app .ri-view-toggle button::after{content:"";position:absolute;inset:-6px 0}
+.rankit-app .ri-view-toggle button.active{background:rgba(255,255,255,.1);color:#eceded}
+.rankit-app .ri-segment.is-tabs{display:flex;gap:26px;margin:0;border-bottom:1px solid rgba(255,255,255,.09)}
+.rankit-app .ri-segment.is-tabs button{min-height:44px;display:flex;align-items:flex-end;padding:0 0 13px;
+  color:#7f868b;font:700 13px/1 var(--font-logo);letter-spacing:.06em}
+.rankit-app .ri-segment.is-tabs button.active{color:var(--ri-gold);box-shadow:inset 0 -2px 0 var(--ri-gold)}
+.rankit-app .ri-segment.is-tabs button.active::after{content:none}
+.rankit-app .ri-diary-meta{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:8px}
+.rankit-app .ri-diary-meta>span{min-width:0;font:700 9px/1 var(--font-logo);letter-spacing:.14em;color:#7f868b;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rankit-app .ri-diary-sort{flex:none;min-height:44px;display:inline-flex;align-items:center;gap:4px;padding:0 0 0 12px;
+  border:0;background:none;color:#9aa0a6;font:700 11px/1 var(--font-logo);letter-spacing:.06em}
+.rankit-app .ri-diary-sort svg{color:#7f868b;transition:transform .16s ease}
+.rankit-app .ri-diary-sort.is-open{color:#eceded}
+.rankit-app .ri-diary-sort.is-open svg{transform:rotate(180deg)}
+/* Filtre barı: sayfanın üstündeki pill'lerin yerine. Sessiz bir segment —
+   altın ve parıltı yok; her seçenek yine 48px (§6 "filter pills 48"). */
+.rankit-app .ri-dbar{margin:0 0 14px;padding:12px;border-radius:14px;background:#121315;border:1px solid rgba(255,255,255,.09);
+  animation:riDbarIn .16s ease-out both}
+@keyframes riDbarIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.rankit-app .ri-dbar p{margin:0 0 8px;font:700 9px/1 var(--font-logo);letter-spacing:.14em;color:#7f868b}
+.rankit-app .ri-dbar .ri-diary-filters+p{margin-top:14px}
+.rankit-app .ri-dbar .ri-diary-filters{display:flex;gap:3px;padding:3px;overflow:visible;border-radius:12px;background:#0c0d0f}
+.rankit-app .ri-dbar .ri-diary-filters button{flex:1 1 0;min-width:0;min-height:48px;padding:0 6px;border:0;border-radius:9px;
+  background:none;box-shadow:none;transform:none;color:#7f868b;font:700 11px/1 var(--font-logo);letter-spacing:.06em}
+.rankit-app .ri-dbar .ri-diary-filters button.active{background:rgba(255,255,255,.1);color:#eceded;box-shadow:none;transform:none}
+/* 2d ısı şeridi. Boş gece %22 ve .07; kaydı olup topluluk ısısı olmayan
+   gece (§5.5) nötr — renk uydurulmaz. */
+.rankit-app .ri-dstrip{margin:14px 0 18px;padding:16px;border-radius:18px;background:#121315;border:1px solid rgba(255,255,255,.09)}
+.rankit-app .ri-dstrip header{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:13px}
+.rankit-app .ri-dstrip header span{font:700 9px/1 var(--font-logo);letter-spacing:.14em;color:#7f868b}
+.rankit-app .ri-dstrip header strong{font:700 11px/1 var(--font-logo);letter-spacing:.06em;color:#9aa0a6}
+.rankit-app .ri-dstrip>div{display:flex;align-items:flex-end;gap:2px;height:36px}
+.rankit-app .ri-dstrip>div>i{flex:1;min-width:0;border-radius:2px;background:rgba(255,255,255,.07)}
+.rankit-app .ri-dstrip>div>i[data-logged]{background:rgba(255,255,255,.3)}
+.rankit-app .ri-dstrip p{margin:9px 0 0;font:400 12px/1.5 var(--font-sans);color:#7f868b}
+.rankit-app .ri-dmonth{display:flex;align-items:center;gap:13px;padding:4px 0 13px}
+.rankit-app .ri-dtimeline>div+div .ri-dmonth{padding-top:22px}
+.rankit-app .ri-dmonth span{font:700 13px/1 var(--font-logo);letter-spacing:.1em;text-transform:uppercase;color:#c9cccd;white-space:nowrap}
+.rankit-app .ri-dmonth i{flex:1;height:1px;background:rgba(255,255,255,.09)}
+.rankit-app .ri-drow{display:flex;align-items:center;gap:13px;min-height:72px;border-bottom:1px solid rgba(255,255,255,.09);cursor:pointer}
+.rankit-app .ri-drow-date{width:30px;flex:none;text-align:center}
+.rankit-app .ri-drow-date b{display:block;font:700 21px/1 var(--font-logo);color:#eceded}
+.rankit-app .ri-drow-date small{display:block;margin-top:3px;font:700 9px/1 var(--font-logo);letter-spacing:.14em;color:#7f868b}
+.rankit-app .ri-drow-text{flex:1;min-width:0}
+.rankit-app .ri-drow-text strong{display:block;font:700 13px/1 var(--font-logo);letter-spacing:.02em;color:#eceded;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rankit-app .ri-drow-text>span{display:flex;align-items:center;gap:8px;margin-top:7px}
+.rankit-app .ri-drow-classic{width:11px;height:11px;flex:none;transform:rotate(45deg);border-radius:3px 3px 4px 4px;background:var(--ri-gold)}
+.rankit-app .ri-drow-heat{width:4px;height:36px;flex:none;border-radius:2px;background:rgba(255,255,255,.12)}
+.rankit-app .ri-dstars{display:inline-flex;gap:2px}
+.rankit-app .ri-dstar{position:relative;width:11px;height:11px;color:rgba(255,255,255,.2)}
+.rankit-app .ri-dstar svg{display:block}
+.rankit-app .ri-dstar>span{position:absolute;inset:0;width:var(--fill);overflow:hidden;color:#eceded}
+/* Günlükteki listeler: 3h'in satır dili. */
+.rankit-app .ri-dlists{display:grid;gap:10px;margin-top:4px}
+.rankit-app .ri-dlists button{display:flex;align-items:center;gap:13px;min-height:68px;padding:0 14px;border-radius:14px;
+  background:#151618;border:1px solid rgba(255,255,255,.09);color:inherit;text-align:left}
+.rankit-app .ri-dlists span{flex:1;min-width:0}
+.rankit-app .ri-dlists strong{display:block;font:700 13px/1 var(--font-logo);letter-spacing:.02em;color:#eceded;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rankit-app .ri-dlists small{display:block;margin-top:6px;font:400 12px/1 var(--font-sans);color:#9aa0a6}
+.rankit-app .ri-dlists svg{flex:none;color:#7f868b}
+/* 2e raf: eski .ri-diary-cards>div kutusu (gradyan, kenarlık, çizgi dokusu,
+   kesik) yeni kartın ETRAFINA ikinci bir çerçeve çiziyordu. Kart kendi
+   kesiğini taşıyor; yuva yalnız dokunma alanı. 200px TABAN, sabit değil:
+   basketbol skoru iki satır ve sabit 200'de ısı satırı kesiliyordu (ölçüldü). */
+.rankit-app .ri-diary-cards.is-redesign{gap:13px;padding:4px 0 20px}
+.rankit-app .ri-diary-cards.is-redesign>div{display:block;min-height:200px;height:auto;padding:0;border:0;border-radius:14px;
+  background:none;box-shadow:none;clip-path:none;overflow:visible;transition:none}
+.rankit-app .ri-diary-cards.is-redesign>div::after{content:none}
+.rankit-app .ri-diary-cards.is-redesign>div:active{transform:none}
+.rankit-app :is(.ri-view-toggle button,.ri-segment.is-tabs button,.ri-diary-sort,.ri-dbar button,.ri-drow,.ri-dlists button):focus-visible{
+  outline:2px solid var(--ri-focus);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){
+  .rankit-app .ri-dbar{animation:none}
+  .rankit-app .ri-diary-sort svg{transition:none}
+}
+
+/* ==========================================================================
+   The Hunt — 2m dizin + 2n koleksiyon. Görsel kaynak RankIt Redesign.dc.html
+   #2m/#2n; tipografi tahtadan ölçüldü:
+     göz        Rajdhani 700 9px .14em  #7f868b
+     başlık     Rajdhani 700 31px .02em #eceded
+     özet yüzde Rajdhani 700 18px (70px halka, 7px iç)
+     satır başl Rajdhani 700 13px .02em
+     satır alt  Outfit 400 12px          #9aa0a6
+     satır yüz. Rajdhani 700 13px (48px halka, 5px iç)
+     sıradaki   Outfit 400 12px, üstte hairline
+     ödül       Rajdhani 700 9px .14em  altın (tahtadaki tek altın)
+   Yığın: MemberProfile gibi absolute; maç sayfası (fixed z:20) üstte açılır.
+   ========================================================================== */
+/* z 10: uygulama basligi (5) ve alt navigasyonun (7) USTUNDE -- yoksa kendi
+   geri dugmeli basligi uygulama basliginin altinda kaliyordu (olculdu) --
+   ama mac sayfasinin (.ri-sheet-wrap, z 20) ALTINDA: buradan acilan mac
+   bu ekranin uzerine gelir. */
+.rankit-app .ri-hunt{position:absolute;inset:0;z-index:10;display:flex;flex-direction:column;
+  background:#090a0b;color:#eceded}
+.rankit-app .ri-hunt-head{flex:none;height:64px;display:flex;align-items:center;padding:0 16px;
+  border-bottom:1px solid var(--ri-line)}
+.rankit-app .ri-hunt-head button{width:44px;height:44px;margin-left:-10px;display:grid;place-items:center;
+  border:0;background:none;color:#c9cccd}
+.rankit-app .ri-hunt-body{flex:1;min-height:0;overflow-y:auto;padding:22px 16px 32px}
+.rankit-app .ri-hunt-eyebrow{margin:0;font:700 9px/1 var(--font-logo);letter-spacing:.14em;color:#7f868b}
+.rankit-app .ri-hunt-title{margin:8px 0 18px;font:700 31px/1 var(--font-logo);letter-spacing:.02em}
+.rankit-app .ri-hunt-ring{position:relative;display:grid;place-items:center;flex:none}
+.rankit-app .ri-hunt-ring>i{position:absolute;inset:0;border-radius:999px}
+.rankit-app .ri-hunt-ring>span{position:relative;font-family:var(--font-logo);font-weight:700;line-height:1;
+  font-variant-numeric:tabular-nums}
+.rankit-app .ri-hunt-summary-card{display:flex;align-items:center;gap:16px;padding:16px;margin-bottom:14px;
+  border-radius:18px;background:#121315;border:1px solid var(--ri-line)}
+.rankit-app .ri-hunt-summary-card strong{display:block;font:700 13px/1 var(--font-logo);letter-spacing:.02em}
+.rankit-app .ri-hunt-summary-card p{margin:7px 0 0;font:400 12px/1.5 var(--font-sans);color:#9aa0a6;text-wrap:pretty}
+.rankit-app .ri-hunt-list{display:flex;flex-direction:column;gap:9px}
+.rankit-app .ri-hunt-row{width:100%;text-align:left;padding:16px;border-radius:18px;background:#151618;
+  border:1px solid var(--ri-line);color:inherit;font:inherit}
+.rankit-app .ri-hunt-row:disabled{cursor:default}
+.rankit-app .ri-hunt-row-top{display:flex;align-items:center;justify-content:space-between;gap:13px}
+.rankit-app .ri-hunt-row-top>span{min-width:0;display:flex;flex-direction:column}
+.rankit-app .ri-hunt-row strong{font:700 13px/1 var(--font-logo);letter-spacing:.02em}
+.rankit-app .ri-hunt-row small{margin-top:6px;font:400 12px/1.3 var(--font-sans);color:#9aa0a6}
+.rankit-app .ri-hunt-row.is-closed strong{color:#9aa0a6}
+.rankit-app .ri-hunt-row small.is-note{font-size:12px;line-height:1.5;color:#7f868b;text-wrap:pretty}
+.rankit-app .ri-hunt-extra{margin:13px 0 0;padding-top:13px;border-top:1px solid var(--ri-line);
+  font:400 12px/1 var(--font-sans);color:#9aa0a6}
+.rankit-app .ri-hunt-extra.is-reward{font:700 9px/1 var(--font-logo);letter-spacing:.14em;color:var(--ri-gold)}
+.rankit-app .ri-hunt-extra.is-done{color:var(--ri-green)}
+
+/* 2n */
+.rankit-app .ri-coll-head{display:flex;align-items:center;gap:16px}
+.rankit-app .ri-coll-count{flex:none;display:flex;flex-direction:column;align-items:center;min-width:64px}
+.rankit-app .ri-coll-count strong{font:700 44px/1 var(--font-logo);font-variant-numeric:tabular-nums}
+.rankit-app .ri-coll-count span{margin-top:4px;font:700 9px/1 var(--font-logo);letter-spacing:.14em;color:#7f868b}
+.rankit-app .ri-coll-title{margin:6px 0 0;font:700 25px/1.05 var(--font-logo);letter-spacing:.02em;text-wrap:balance}
+.rankit-app .ri-coll-sentence{margin:16px 0 22px;font:400 13px/1.55 var(--font-sans);color:#c9cccd;text-wrap:pretty}
+.rankit-app .ri-coll-section{display:flex;align-items:baseline;justify-content:space-between;margin:18px 2px 9px}
+.rankit-app .ri-coll-section span{font:700 9px/1 var(--font-logo);letter-spacing:.14em;color:#7f868b}
+.rankit-app .ri-coll-section small{font:400 11px/1 var(--font-sans);color:#7f868b}
+.rankit-app .ri-coll-rows{border-radius:14px;background:#151618;border:1px solid var(--ri-line);overflow:hidden}
+.rankit-app .ri-coll-row{width:100%;min-height:48px;display:flex;align-items:center;justify-content:space-between;
+  gap:12px;padding:0 14px;border:0;background:none;color:#eceded;text-align:left;font:inherit}
+.rankit-app .ri-coll-row+.ri-coll-row{border-top:1px solid rgba(255,255,255,.07)}
+.rankit-app .ri-coll-row strong{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font:700 13px/1 var(--font-logo);letter-spacing:.02em}
+.rankit-app .ri-coll-row b{font:700 13px/1 var(--font-logo);font-variant-numeric:tabular-nums;color:#c9cccd}
+.rankit-app .ri-coll-row small{flex:none;font:400 12px/1 var(--font-sans);color:#9aa0a6}
+.rankit-app .ri-coll-row.is-open{color:#eceded}
+.rankit-app .ri-coll-row.is-open svg{color:#7f868b}
+.rankit-app .ri-coll-next{width:100%;margin-top:18px;padding:16px;display:flex;flex-direction:column;gap:6px;
+  text-align:left;border-radius:18px;background:#151618;border:1px solid rgba(255,255,255,.14);color:#eceded}
+.rankit-app .ri-coll-next small{font:700 9px/1 var(--font-logo);letter-spacing:.14em;color:#c9cccd}
+.rankit-app .ri-coll-next strong{font:700 17px/1.1 var(--font-logo);letter-spacing:.02em}
+.rankit-app .ri-coll-note{margin:18px 2px 0;padding:14px;border:1px dashed rgba(255,255,255,.14);border-radius:14px;
+  font:400 12px/1.5 var(--font-sans);color:#9aa0a6}
+.rankit-app .ri-hunt-row:focus-visible,.rankit-app .ri-coll-row:focus-visible,
+.rankit-app .ri-coll-next:focus-visible{outline:2px solid var(--ri-focus);outline-offset:2px}
+
+/* ==========================================================================
+   6c — Discover filtre çekmecesi, SOLDAN. RankIt Redesign.dc.html#6c'den:
+   perde rgba(0,0,0,.55) · çekmece sol 0, 288px (en fazla %85), #1a1b1e,
+   sağ hairline, gölge 18px 0 44px -16px · başlık 64px "Filters" 13px .1em
+   · göz 9px .14em #7f868b · pill 48px, 0 16px, 999, Rajdhani 700 12px .06em
+   · ısı izi 8px rampa, başparmak 28px #eceded + 3px #1a1b1e · alt düğme
+   48px, radius 10, altın, Rajdhani 700 13px .06em.
+   z 15: başlık (5), navigasyon (7) ve Hunt (10) üstünde — tahtada tab bar
+   da perdenin altında. Maç sayfası (20) buradan açılmaz, çakışma yok.
+   ========================================================================== */
+.rankit-app .ri-drawer-scrim{position:absolute;inset:0;z-index:15;background:rgba(0,0,0,.55);
+  animation:riDrawerFade .2s ease both}
+.rankit-app .ri-drawer{position:absolute;left:0;top:0;bottom:0;width:288px;max-width:85%;display:flex;flex-direction:column;
+  background:#1a1b1e;border-right:1px solid var(--ri-line);box-shadow:18px 0 44px -16px rgba(0,0,0,.75);
+  padding-top:env(safe-area-inset-top,0px);animation:riDrawerIn .26s cubic-bezier(.2,.8,.25,1) both}
+@keyframes riDrawerIn{from{transform:translateX(-100%)}to{transform:none}}
+@keyframes riDrawerFade{from{opacity:0}to{opacity:1}}
+@media (prefers-reduced-motion:reduce){.rankit-app .ri-drawer,.rankit-app .ri-drawer-scrim{animation:none}}
+.rankit-app .ri-drawer-head{flex:none;height:64px;display:flex;align-items:center;justify-content:space-between;
+  padding:0 18px;border-bottom:1px solid var(--ri-line)}
+.rankit-app .ri-drawer-head span{font:700 13px/1 var(--font-logo);letter-spacing:.1em;text-transform:uppercase;color:#eceded}
+.rankit-app .ri-drawer-head button{width:44px;height:44px;margin-right:-11px;display:grid;place-items:center;
+  border:0;background:none;color:#c9cccd}
+.rankit-app .ri-drawer-body{flex:1;min-height:0;overflow-y:auto;padding:18px}
+.rankit-app .ri-drawer-eyebrow{margin:0 0 13px;font:700 9px/1 var(--font-logo);letter-spacing:.14em;color:#7f868b}
+.rankit-app .ri-drawer-pills{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:26px}
+.rankit-app .ri-drawer-pills button{height:48px;padding:0 16px;display:flex;align-items:center;border:0;border-radius:999px;
+  background:#121315;color:#c9cccd;font:700 12px/1 var(--font-logo);letter-spacing:.06em}
+.rankit-app .ri-drawer-pills button.on{background:var(--ri-gold);color:#17120a}
+/* Isı kaydırıcısı: yerel range, görünüm tahtadan. 44px dokunma yüksekliği
+   izin kendisinden (8px) bağımsız. */
+.rankit-app .ri-drawer-heat{height:44px;display:flex;align-items:center}
+.rankit-app .ri-drawer-heat input{width:100%;height:8px;margin:0;-webkit-appearance:none;appearance:none;border-radius:5px;
+  background:linear-gradient(90deg,#2f5480,#5b4fa8,#9a3f96,#d43a63,#f5402e);outline:none;cursor:pointer}
+.rankit-app .ri-drawer-heat input::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:28px;height:28px;
+  border-radius:999px;background:#eceded;border:3px solid #1a1b1e;cursor:pointer}
+.rankit-app .ri-drawer-heat input::-moz-range-thumb{width:28px;height:28px;border-radius:999px;background:#eceded;
+  border:3px solid #1a1b1e;cursor:pointer}
+.rankit-app .ri-drawer-heat input:focus-visible{outline:2px solid var(--ri-focus);outline-offset:2px}
+.rankit-app .ri-drawer-sentence{margin:0 0 26px;font:400 12px/1.5 var(--font-sans);color:#9aa0a6}
+.rankit-app .ri-drawer-sentence b{font-weight:500}
+.rankit-app .ri-drawer-selects{display:grid;gap:9px}
+.rankit-app .ri-drawer-selects label{display:grid;gap:6px}
+.rankit-app .ri-drawer-selects span{font:400 11px/1 var(--font-sans);color:#9aa0a6}
+.rankit-app .ri-drawer-selects select{min-height:44px;padding:0 12px;border-radius:10px;border:1px solid var(--ri-line);
+  background:#121315;color:#eceded;font:400 13px/1 var(--font-sans)}
+.rankit-app .ri-drawer-foot{flex:none;display:flex;align-items:center;gap:9px;
+  padding:18px 18px calc(18px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--ri-line)}
+.rankit-app .ri-drawer-show{flex:1;height:48px;border:0;border-radius:10px;background:var(--ri-gold);color:#17120a;
+  font:700 13px/1 var(--font-logo);letter-spacing:.06em}
+.rankit-app .ri-drawer-show:disabled{background:#121315;color:#7f868b}
+.rankit-app .ri-drawer-clear{flex:none;min-height:44px;padding:0 4px;border:0;background:none;color:#9aa0a6;
+  font:700 11px/1 var(--font-logo);letter-spacing:.08em;text-transform:uppercase}
+.rankit-app .ri-drawer-pills button:focus-visible,.rankit-app .ri-drawer-show:focus-visible,
+.rankit-app .ri-drawer-clear:focus-visible,.rankit-app .ri-drawer-head button:focus-visible{outline:2px solid var(--ri-focus);outline-offset:2px}
+
+/* 2c başlık satırı: "Discover" + sağda filtre tetikleyicisi (6c'de ikon
+   filtre aktifken altın). Sayı rozeti etkin filtre adedini söylüyor. */
+.rankit-app .ri-discover-title{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+.rankit-app .ri-filter-trigger{position:relative;flex:none;width:44px;height:44px;margin-right:-8px;display:grid;place-items:center;
+  border:0;border-radius:12px;background:none;color:#c9cccd}
+.rankit-app .ri-filter-trigger.is-active{color:var(--ri-gold)}
+.rankit-app .ri-filter-trigger b{position:absolute;top:5px;right:4px;min-width:16px;height:16px;padding:0 4px;border-radius:999px;
+  display:grid;place-items:center;background:var(--ri-gold);color:#17120a;font:700 9px/1 var(--font-logo)}
+.rankit-app .ri-filter-trigger:focus-visible{outline:2px solid var(--ri-focus);outline-offset:2px}
+.rankit-app .ri-discover-count{flex:none;font:700 9px/1 var(--font-logo);letter-spacing:.14em;color:#7f868b;white-space:nowrap}
+
+/* ==========================================================================
+   2j — Skin secici. Kaynak `RankIt Redesign.dc.html#2j` + `#4d`.
+     baslik     64px; kapat 44x44; SELECT SKIN Rajdhani 700 13px .1em
+     sekmeler   #1a1b1e kutu, 4px ic; sekme 44px (§6; tahta 40)
+     izgara     3 sutun, 13px bosluk; karo 126px, 14px yaricap, 12px kesik
+     kilitli    #151618 + zemin .3 + perde rgba(9,10,11,.5) + kilit + kosul 7.5px
+     ad         Rajdhani 700 11px .06em; secili altin, kilitli #7f868b
+     eylem      48px altin "Apply {Name}"
+   Skin yalniz karoyu boyar; ekranin kendisi uygulama kabugu (§4.2).
+   ========================================================================== */
+.rankit-app .ri-skins{position:fixed;inset:0;z-index:30;display:flex;flex-direction:column;
+  background:#0c0d0f;color:#eceded}
+.rankit-app .ri-skins-head{flex:none;height:64px;display:grid;grid-template-columns:44px 1fr 44px;
+  align-items:center;padding:0 15px}
+.rankit-app .ri-skins-head button{width:44px;height:44px;display:grid;place-items:center;border:0;
+  background:none;color:#c9cccd;border-radius:12px}
+.rankit-app .ri-skins-head h1{margin:0;text-align:center;font:700 13px/1 var(--font-logo);letter-spacing:.1em;
+  text-transform:uppercase;color:#eceded}
+.rankit-app .ri-skins-body{flex:1;min-height:0;overflow-y:auto;padding:0 26px 18px}
+.rankit-app .ri-skins-tabs{display:flex;gap:4px;padding:4px;margin-bottom:18px;border-radius:10px;
+  background:#1a1b1e;border:1px solid rgba(255,255,255,.09)}
+.rankit-app .ri-skins-tabs button{flex:1;height:44px;border:0;border-radius:8px;background:none;
+  font:700 12px/1 var(--font-logo);letter-spacing:.06em;color:#7f868b;font-variant-numeric:tabular-nums}
+.rankit-app .ri-skins-tabs button.on{background:rgba(255,255,255,.1);color:#eceded}
+.rankit-app .ri-skins-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}
+.rankit-app .ri-skin-tile{display:block;min-width:0;padding:0;border:0;background:none;text-align:center;
+  color:inherit;border-radius:14px}
+.rankit-app .ri-skin-thumb,.rankit-app .ri-skin-locked{position:relative;height:126px;border-radius:14px;
+  overflow:hidden;text-align:left}
+.rankit-app .ri-skin-thumb{clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px))}
+/* Kenar bir UST katman: kenarlik kutusu katmanlari iceri itip zemini cerceve
+   gibi gosteriyordu (olculdu). Ink zemini ekranla ayni renk (#0c0d0f) -- ince
+   cizgi olmadan karo gorunmuyor; secilince 2px altin (tahta). */
+.rankit-app .ri-skin-thumb::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.09)}
+.rankit-app .ri-skin-tile.is-selected .ri-skin-thumb::after{box-shadow:inset 0 0 0 2px var(--ri-gold)}
+.rankit-app .ri-skin-thumb.is-stub{clip-path:none}
+.rankit-app .ri-skin-thumb>i{position:absolute;inset:0;pointer-events:none}
+.rankit-app .ri-skin-thumb>i.ri-skin-tear{inset:auto 0 auto 0;height:0;border-top:1px dashed}
+.rankit-app .ri-skin-eyebrow{position:relative;display:block;padding:9px 10px 0;overflow:hidden;white-space:nowrap;
+  text-overflow:ellipsis;font:700 7px/1 var(--font-logo);letter-spacing:.12em;text-transform:uppercase}
+.rankit-app .ri-skin-eyebrow.is-ruled{margin:0 10px;padding:9px 0 6px;border-bottom:1px solid;font-size:6.5px;letter-spacing:.16em}
+.rankit-app .ri-skin-score{position:absolute;left:10px;bottom:9px;font:700 22px/1 var(--font-logo);white-space:nowrap}
+.rankit-app .ri-skin-report{position:relative;display:block;padding:11px 10px 0;font:700 19px/1.05 var(--font-logo)}
+.rankit-app .ri-skin-locked{background:#151618;border:1px solid rgba(255,255,255,.09)}
+.rankit-app .ri-skin-locked>i{position:absolute;inset:0;opacity:.3}
+.rankit-app .ri-skin-locked>div{position:absolute;inset:0;display:grid;place-items:center;align-content:center;gap:7px;
+  background:rgba(9,10,11,.5);color:#9aa0a6;text-align:center}
+.rankit-app .ri-skin-locked>div>span{font:700 7.5px/1.4 var(--font-logo);letter-spacing:.1em}
+.rankit-app .ri-skin-name{display:block;margin-top:9px;font:700 11px/1 var(--font-logo);letter-spacing:.06em;color:#c9cccd;
+  overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.rankit-app .ri-skin-tile.is-selected .ri-skin-name{color:var(--ri-gold)}
+.rankit-app .ri-skin-tile.is-locked .ri-skin-name{color:#7f868b}
+.rankit-app .ri-skin-tile:focus-visible,.rankit-app .ri-skins-tabs button:focus-visible,
+.rankit-app .ri-skins-head button:focus-visible,.rankit-app .ri-skins-apply:focus-visible{outline:2px solid var(--ri-focus);outline-offset:2px}
+.rankit-app .ri-skins-note{margin:18px 0 0;padding:13px 14px;border-radius:14px;background:#1a1b1e;
+  border:1px solid rgba(255,255,255,.09);font:400 12px/1.5 var(--font-sans);color:#9aa0a6;text-wrap:pretty}
+.rankit-app .ri-skins-empty{margin:24px 0;text-align:center;font:400 13px/1.5 var(--font-sans);color:#9aa0a6}
+.rankit-app .ri-skins-foot{flex:none;padding:0 26px 26px}
+.rankit-app .ri-skins-failure{margin:0 0 10px;font:400 12px/1.45 var(--font-sans);color:#f08a7a;text-align:center}
+.rankit-app .ri-skins-apply{width:100%;height:48px;border:0;border-radius:10px;background:var(--ri-gold);color:#17120a;
+  font:700 13px/1 var(--font-logo);letter-spacing:.06em}
+.rankit-app .ri-skins-apply:disabled{opacity:.55}
+
+/* 6a dorduncu satir — "TURF UNLOCKED ... Use it" (6a / 4i: "the unlock is
+   a row, not a modal"). Tahtadaki cerceve rgba(255,177,27,.42). */
+.rankit-app .ri-result-unlock{display:flex;align-items:center;gap:13px;margin:11px 0 0;padding:13px 15px;
+  border-radius:14px;background:#121315;border:1px solid rgba(255,177,27,.42);text-align:left}
+.rankit-app .ri-result-unlock .ri-unlock-swatch{position:relative;width:38px;height:48px;flex:none;border-radius:6px;overflow:hidden;
+  clip-path:polygon(0 0,calc(100% - 7px) 0,100% 7px,100% 100%,7px 100%,0 calc(100% - 7px))}
+.rankit-app .ri-result-unlock .ri-unlock-swatch>i{position:absolute;inset:0}
+.rankit-app .ri-result-unlock .ri-unlock-swatch>b{position:absolute;top:3.5px;right:-1.5px;width:9.9px;height:1px;
+  background:var(--ri-gold);transform:rotate(45deg)}
+.rankit-app .ri-result-unlock>div:nth-child(2){flex:1;min-width:0}
+.rankit-app .ri-result-unlock strong{display:block;font:700 9px/1 var(--font-logo);letter-spacing:.13em;color:var(--ri-gold)}
+.rankit-app .ri-result-unlock p{margin:7px 0 0;font:400 11.5px/1.45 var(--font-sans);color:#9aa0a6;text-wrap:pretty}
+.rankit-app .ri-result-unlock button{flex:none;min-height:44px;padding:0 4px;border:0;background:none;
+  font:700 11px/1 var(--font-logo);letter-spacing:.09em;text-transform:uppercase;color:#c9cccd}
+.rankit-app .ri-result-unlock button:focus-visible{outline:2px solid var(--ri-focus);outline-offset:2px}
+
+/* 2n — bu kulup sezonunu bitirmek ligin skinini acar. */
+.rankit-app .ri-coll-reward{display:flex;align-items:center;gap:12px;margin:0 0 20px;padding:11px 13px;border-radius:12px;
+  background:#121315;border:1px solid var(--ri-line)}
+.rankit-app .ri-coll-reward>i{position:relative;width:26px;height:33px;flex:none;border-radius:5px;opacity:.6;
+  clip-path:polygon(0 0,calc(100% - 5px) 0,100% 5px,100% 100%,5px 100%,0 calc(100% - 5px))}
+.rankit-app .ri-coll-reward span{font:700 9px/1.4 var(--font-logo);letter-spacing:.14em;color:#9aa0a6}
+.rankit-app .ri-coll-reward.is-owned span{color:#7f868b}
+
+/* ==========================================================================
+   2a / 2b — spoiler kalkanı. Tahta: açıkken YEŞİL halka (rgba(63,176,140,.14)
+   zemin, .45 kenar, #3fb08c dış hat ikon) — altın değil; başlığın altın
+   bütçesi alt navigasyondaki elmasta (§1.2). Altında 56px durum satırı ve
+   46×28 yeşil anahtar.
+   ========================================================================== */
+.rankit-app .ri-shield{border-radius:999px;border:1px solid transparent}
+.rankit-app .ri-shield.on{color:#3fb08c;background:rgba(63,176,140,.14);border-color:rgba(63,176,140,.45)}
+.rankit-app .ri-shield-row{display:flex;align-items:center;gap:13px;height:56px;margin:14px 0 4px;padding:0 14px;
+  border-radius:14px;background:#121315;border:1px solid rgba(255,255,255,.09);color:#3fb08c}
+.rankit-app .ri-shield-row svg{flex:none}
+.rankit-app .ri-shield-row span{flex:1;min-width:0}
+.rankit-app .ri-shield-row strong{display:block;font:700 13px/1 var(--font-logo);letter-spacing:.02em;color:#eceded}
+.rankit-app .ri-shield-row small{display:block;margin-top:5px;font:400 12px/1 var(--font-sans);color:#9aa0a6}
+.rankit-app .ri-shield-row button{position:relative;flex:none;width:46px;height:28px;padding:3px;border:0;border-radius:999px;
+  background:#3fb08c;display:flex;justify-content:flex-end}
+.rankit-app .ri-shield-row button::after{content:"";position:absolute;inset:-8px -2px}
+.rankit-app .ri-shield-row button i{width:22px;height:22px;border-radius:999px;background:#0c0d0f}
+.rankit-app .ri-shield-row button:focus-visible{outline:2px solid var(--ri-focus);outline-offset:2px}
+
+/* ==========================================================================
+   2a — Home: hero'nun altındaki gün listesi ve etiket satırları.
+     etiket satırı  9px .14em #7f868b + 11px .06em #9aa0a6 bağlantı
+     satır          64px, #151618, 14px yarıçap; canlıda solda 3px ısı-5 çizgi,
+                    5px nabız noktası; başlık Rajdhani 700 13px; sağda "Join"
+   ========================================================================== */
+.rankit-app .ri-home-hero{margin-top:4px}
+.rankit-app .ri-label-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:4px 0 0}
+.rankit-app .ri-label-row span{font:700 9px/1 var(--font-logo);letter-spacing:.14em;color:#7f868b}
+.rankit-app .ri-label-row button{min-height:44px;padding:0 0 0 12px;border:0;background:none;color:#9aa0a6;
+  font:700 11px/1 var(--font-logo);letter-spacing:.06em}
+.rankit-app .ri-tonight-list{display:grid;gap:10px}
+.rankit-app .ri-tonight-row{position:relative;display:flex;align-items:center;gap:13px;min-height:64px;padding:0 16px 0 10px;
+  border-radius:14px;background:#151618;border:1px solid rgba(255,255,255,.09);color:inherit;text-align:left;overflow:hidden}
+.rankit-app .ri-tonight-row.is-live::before{content:"";position:absolute;left:0;top:13px;bottom:13px;width:3px;
+  border-radius:0 3px 3px 0;background:#f5402e}
+.rankit-app .ri-tonight-row>span{flex:1;min-width:0}
+.rankit-app .ri-tonight-row strong{display:block;font:700 13px/1 var(--font-logo);letter-spacing:.02em;color:#eceded;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rankit-app .ri-tonight-row small{display:flex;align-items:center;gap:6px;margin-top:6px;font:700 9px/1 var(--font-logo);
+  letter-spacing:.14em;color:#7f868b}
+.rankit-app .ri-tonight-row.is-live small{color:#f5402e}
+.rankit-app .ri-tonight-row small i{width:5px;height:5px;border-radius:999px;background:#f5402e;animation:riLiveDot 1.4s ease-in-out infinite}
+@keyframes riLiveDot{0%,100%{opacity:1}50%{opacity:.25}}
+.rankit-app .ri-tonight-row b{flex:none;font:700 11px/1 var(--font-logo);letter-spacing:.06em;color:#9aa0a6}
+.rankit-app :is(.ri-tonight-row,.ri-label-row button):focus-visible{outline:2px solid var(--ri-focus);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){.rankit-app .ri-tonight-row small i{animation:none}}
+
+/* 2a karusel noktalari: aktif 18x4 BEYAZ cubuk, digerleri 4x4 .2 -- altin
+   degil (bolgenin altini alt navigasyondaki elmasta, §1.2). */
+.rankit-app .ri-carousel-dots{margin-top:5px}
+.rankit-app .ri-carousel-dots button::after{height:4px;border-radius:2px;background:rgba(255,255,255,.2)}
+.rankit-app .ri-carousel-dots button.active::after{width:18px;background:#eceded;box-shadow:none}
+
+/* ==========================================================================
+   2q — Friends: akış bir raf. Ölçüler tahtadan.
+   ========================================================================== */
+.rankit-app .ri-ffeed{display:grid;gap:13px;padding:18px 0 8px}
+.rankit-app .ri-fcard{border-radius:18px;background:#151618;border:1px solid rgba(255,255,255,.09);overflow:hidden;cursor:pointer}
+.rankit-app .ri-fcard.is-collection{padding:14px;cursor:default}
+.rankit-app .ri-fcard-head{display:flex;align-items:center;gap:10px;padding:14px 14px 13px}
+.rankit-app .ri-fcard.is-collection .ri-fcard-head{padding:0}
+.rankit-app .ri-fcard-avatar{width:31px;height:31px;flex:none;border-radius:999px;display:grid;place-items:center;
+  background:linear-gradient(140deg,#2c3035,#16181b);border:1px solid rgba(255,255,255,.09);
+  font:700 10px/1 var(--font-logo);letter-spacing:.06em;color:#c9cccd}
+.rankit-app .ri-fcard-who{flex:1;min-width:0}
+.rankit-app .ri-fcard-who strong{display:block;font:700 12px/1 var(--font-logo);letter-spacing:.02em;color:#eceded;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rankit-app .ri-fcard-who small{display:block;margin-top:5px;font:400 12px/1 var(--font-sans);color:#7f868b}
+.rankit-app .ri-fcard-card{padding:0 14px;min-width:0}
+.rankit-app .ri-fcard-card>[data-match-card]{min-height:174px}
+.rankit-app .ri-fcard-review{margin:0;padding:13px 14px 0;font:400 12px/1.5 var(--font-sans);color:#c9cccd;text-wrap:pretty}
+.rankit-app .ri-fcard-gate{padding:0 14px 14px}
+.rankit-app .ri-fcard-actions{display:flex;align-items:center;gap:18px;padding:9px 14px 13px}
+.rankit-app .ri-fcard-actions>span{display:flex;align-items:center;gap:7px;height:44px;font:700 12px/1 var(--font-logo);color:#9aa0a6}
+.rankit-app .ri-fcard-respect{flex:none;width:13px;height:13px;transform:rotate(45deg);border:1.5px solid #9aa0a6;
+  border-radius:3.8px 3.8px 4.4px 4.4px}
+.rankit-app .ri-fcard-closed{display:flex;align-items:center;gap:13px;margin-top:13px;padding-top:13px;border-top:1px solid rgba(255,255,255,.09)}
+.rankit-app .ri-fcard-closed p{margin:0;font:400 12px/1.5 var(--font-sans);color:#c9cccd;text-wrap:pretty}
+.rankit-app .ri-fcard-closed strong{font-weight:500;color:#eceded}
+.rankit-app .ri-fcard-ring{position:relative;width:40px;height:40px;flex:none;display:grid;place-items:center}
+.rankit-app .ri-fcard-ring i{position:absolute;inset:0;border-radius:999px}
+.rankit-app .ri-fcard-ring i+i{inset:4px;background:#151618}
+.rankit-app .ri-fcard-ring b{position:relative;font:700 11px/1 var(--font-logo);color:#eceded}
+.rankit-app .ri-fcard:focus-visible{outline:2px solid var(--ri-focus);outline-offset:2px}
+
+/* 3f bildirim avatari: `.ri-alert-body>span` (0,1,1) avatarin kendi grid
+   kuralini (0,1,0) eziyor, bas harfler dairenin sol ustune diziliyordu
+   (olculdu). Halka da ayni kuraldan etkileniyordu. */
+.rankit-app .ri-alert-body>.ri-alert-face{display:grid;place-items:center;gap:0}
+.rankit-app .ri-alert-body>.ri-alert-ring{display:block}
+/* useDialog acilista paneli (tabIndex=-1) PROGRAMATIK odakliyor, tarayici
+   varsayilan `outline:auto` ciziyordu: Alerts'in altinda beyaz bir cizgi
+   (olculdu). Panel bir kontrol degil; halka icindeki kontrollerde kaliyor. */
+.rankit-app [role="dialog"][tabindex="-1"]:focus{outline:none}
+
+/* ==========================================================================
+   2i — yarışma sayfası: başlık, sekmeler, puan tablosu. Tahtadan:
+     başlık   9px .14em #7f868b / 31px / Outfit 12px #9aa0a6 — sola yaslı, altın yok
+     sekmeler sola yaslı, 26px aralık, 13px .06em; seçili altın + 2px iç çizgi
+     tablo    52px satır, 31px kulüp elması (44px kutu), ad 13px, P/GD 12px
+              #c9cccd, PTS 15px #eceded (altın değil)
+   Eski 0.3.0 stilleri (ortalanmış hero, altın eyebrow, 9px sekme, 25px arma
+   halkası, altın PTS) burada eziliyor.
+   ========================================================================== */
+.rankit-app .ri-competition-sheet{background:#1a1b1e}
+.rankit-app .ri-competition-head{padding:4px 44px 0 0;border:0;background:none;text-align:left}
+.rankit-app .ri-competition-head small{display:block;font:700 9px/1 var(--font-logo);letter-spacing:.14em;color:#7f868b}
+.rankit-app .ri-competition-head h2{margin:9px 0 0;text-align:left;font:700 31px/1 var(--font-logo);letter-spacing:.02em;color:#eceded}
+.rankit-app .ri-competition-head span{display:block;margin-top:9px;font:400 12px/1 var(--font-sans);color:#9aa0a6}
+.rankit-app .ri-competition-tabs{display:flex;gap:26px;margin:0 -20px;padding:18px 20px 0;background:#1a1b1e;
+  border-bottom:1px solid rgba(255,255,255,.09);backdrop-filter:none}
+.rankit-app .ri-competition-tabs button{flex:none;min-height:44px;display:flex;align-items:flex-end;padding:0 0 13px;border:0;
+  background:none;color:#7f868b;font:700 13px/1 var(--font-logo);letter-spacing:.06em;white-space:nowrap}
+.rankit-app .ri-competition-tabs button.active{color:var(--ri-gold);box-shadow:inset 0 -2px 0 var(--ri-gold)}
+.rankit-app .ri-competition-tabs button::after{content:none}
+.rankit-app .ri-competition-table{padding:0}
+.rankit-app .ri-competition-table>header,
+.rankit-app .ri-competition-table>div:not(.ri-empty-state){grid-template-columns:24px minmax(0,1fr) 28px 34px 34px;gap:0}
+.rankit-app .ri-competition-table>header{min-height:0;padding:13px 0 9px;border:0;font:700 9px/1 var(--font-logo);
+  letter-spacing:.14em;color:#7f868b}
+.rankit-app .ri-competition-table>header>strong{padding-left:44px;font:inherit;color:inherit}
+.rankit-app .ri-competition-table>header>span:nth-child(3),
+.rankit-app .ri-competition-table>header>span:nth-child(4),
+.rankit-app .ri-competition-table>div>span:nth-child(3),
+.rankit-app .ri-competition-table>div>span:nth-child(4){text-align:center}
+.rankit-app .ri-competition-table>header>span:last-child,
+.rankit-app .ri-competition-table>div>span:last-child{text-align:right}
+.rankit-app .ri-competition-table>div:not(.ri-empty-state){min-height:52px;border-top:1px solid rgba(255,255,255,.09);border-bottom:0}
+.rankit-app .ri-competition-table>div>span{font:700 12px/1 var(--font-logo);color:#c9cccd}
+.rankit-app .ri-competition-table>div>span:first-child{font-size:13px;color:#eceded}
+.rankit-app .ri-competition-table>div>span:last-child{font-size:15px;font-weight:700;color:#eceded}
+.rankit-app .ri-competition-table>div>strong{gap:0;color:#eceded}
+.rankit-app .ri-competition-table>div>strong>[data-shield-footprint]{width:44px!important;height:44px!important}
+.rankit-app .ri-competition-table>div>strong>b{font:700 13px/1 var(--font-logo);letter-spacing:.02em;color:#eceded}
+
+/* 2a / 4g kelime markasi: "RANK" + altin "IT" (iki tahtada da). */
+.rankit-app .ri-brand strong span,.ri-first-brand strong span{color:var(--ri-gold,#ffb11b)}
+.ri-first-brand{flex-direction:row;gap:10px}
+.ri-first-brand>span{display:flex;flex-direction:column;align-items:flex-start;gap:5px}
+.ri-first-brand strong{font:700 21px/1 var(--font-logo);letter-spacing:.03em;color:#eceded}
+
+/* ==========================================================================
+   2f / 2g / 15a — maç sayfasının başı. Tahta: düz #1a1b1e zemin (çizgili
+   kart-hero değil), kapat SOLDA, eyebrow gri ve ortada, iki elmas + durum hapı
+   + 46px skor, "Arsenal vs Tottenham" 13px, tarih satırı Outfit 12px; diğer
+   sekmelerde kompakt satır; sekmeler sola yaslı, 26px aralık.
+   ========================================================================== */
+.rankit-app .ri-match-sheet{background:#1a1b1e}
+.rankit-app .ri-match-sheet>.ri-sheet-close{left:9px;right:auto;top:18px;width:44px;height:44px;border:0;background:none;color:#c9cccd}
+.rankit-app .ri-match-sheet .ri-v03-hero.is-2f{margin:0 -20px;padding:6px 20px 18px;background:none;overflow:visible}
+.rankit-app .ri-match-sheet .ri-v03-hero.is-2f::after{content:none}
+.rankit-app .ri-match-sheet .is-2f .ri-detail-kicker{margin:0 44px 16px;display:block;text-align:center;
+  font:700 9px/1.4 var(--font-logo);letter-spacing:.14em;text-transform:uppercase;color:#7f868b}
+.rankit-app .ri-match-sheet .is-2f .ri-kicker-comp{color:inherit;text-align:center;text-transform:inherit}
+.rankit-app .ri-match-sheet .is-2f .ri-detail-teams{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:8px}
+.rankit-app .ri-match-sheet .is-2f .ri-v03-team{display:grid;place-items:center;grid-template-rows:none}
+.rankit-app .ri-match-sheet .is-2f .ri-v03-score{height:auto;gap:10px}
+.rankit-app .ri-match-sheet .is-2f .ri-v03-score>strong{min-height:0;font:700 46px/1 var(--font-logo);color:#fff}
+.rankit-app .ri-status-pill{display:inline-flex;align-items:center;height:26px;padding:0 10px;border-radius:999px;
+  background:rgba(0,0,0,.42);border:1px solid rgba(255,255,255,.14);font:700 9px/1 var(--font-logo);letter-spacing:.14em;color:#eceded;white-space:nowrap}
+.rankit-app .ri-status-pill.live{color:#f5402e;border-color:rgba(245,64,46,.45)}
+.rankit-app .ri-status-pill.live.is-stale{color:#c9cccd;border-color:rgba(255,255,255,.2)}
+.rankit-app .ri-v03-names{margin-top:14px;text-align:center}
+.rankit-app .ri-v03-names strong{display:block;font:700 13px/1.2 var(--font-logo);letter-spacing:.02em;color:#eceded}
+.rankit-app .ri-v03-names small{display:block;margin-top:6px;font:400 12px/1.3 var(--font-sans);color:#9aa0a6}
+/* X (44px, ust 18) ile ayni satir: kompakt blok tutamacin altindan 16px yukari
+   cekiliyor, merkezler hizali (olculdu: 41 / 41). */
+.rankit-app .ri-sheet-compact{min-height:44px;margin-top:-16px;padding:0 0 0 44px;display:flex;flex-direction:column;justify-content:center}
+.rankit-app .ri-sheet-compact strong{font:700 14px/1.1 var(--font-logo);letter-spacing:.02em;color:#eceded;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rankit-app .ri-sheet-compact small{margin-top:5px;font:400 12px/1 var(--font-sans);color:#9aa0a6}
+.rankit-app .ri-match-sheet>.ri-detail-tabs{display:flex;gap:26px;margin:0 -20px 17px;padding:14px 20px 0;background:#1a1b1e;
+  backdrop-filter:none;border-bottom:1px solid rgba(255,255,255,.09)}
+.rankit-app .ri-match-sheet>.ri-detail-tabs button{flex:none;min-height:44px;display:flex;align-items:flex-end;gap:6px;padding:0 0 13px;
+  color:#7f868b;font:700 13px/1 var(--font-logo);letter-spacing:.06em}
+.rankit-app .ri-match-sheet>.ri-detail-tabs button.active{color:var(--ri-gold);box-shadow:inset 0 -2px 0 var(--ri-gold)}
+.rankit-app .ri-match-sheet>.ri-detail-tabs button.active::after{content:none}
+/* 2f: rozet sekme yazisinin YANINDA ("Companion [LIVE]"), ustune binmiyor.
+   Taban kural eski ortali duzen icin mutlak konumluydu. */
+.rankit-app .ri-match-sheet>.ri-detail-tabs .ri-tab-badge{position:static;height:16px;min-width:0;padding:0 5px;border-radius:4px;
+  align-self:flex-end;margin-bottom:-1px;font:700 9px/16px var(--font-logo);letter-spacing:.1em;background:rgba(245,64,46,.14);color:#f5402e}
+.rankit-app .ri-match-sheet>.ri-detail-tabs .ri-tab-badge:not(.live){background:rgba(255,255,255,.1);color:#c9cccd}
+
+/* 3d POTM cetveli: # · oyuncu · WON · SHARE OF VOTES (çubuk + yüzde). */
+.rankit-app .ri-leaderboard-head.is-potm,.rankit-app .ri-leaderboard-row.is-potm{grid-template-columns:24px 44px minmax(0,1fr) 34px 64px;gap:0}
+.rankit-app .ri-leaderboard-head.is-potm>span:nth-child(3){text-align:center}
+.rankit-app .ri-leaderboard-head.is-potm>span:last-child{text-align:right;line-height:1.3}
+.rankit-app .ri-leaderboard-row.is-potm .ri-leaderboard-value{text-align:center}
+.rankit-app .ri-leaderboard-share{display:flex;flex-direction:column;align-items:flex-end;gap:5px}
+.rankit-app .ri-leaderboard-share>b{font:700 11px/1 var(--font-logo);color:#eceded;font-variant-numeric:tabular-nums}
+.rankit-app .ri-leaderboard-share>i{display:block;width:62px;height:4px;border-radius:2px;background:rgba(255,255,255,.12);overflow:hidden}
+.rankit-app .ri-leaderboard-share>i>i{display:block;height:100%;border-radius:2px;background:#c9cccd}
+.rankit-app .ri-leaderboard-share.is-few{font:700 9px/1.6 var(--font-logo);letter-spacing:.14em;color:#7f868b;text-align:right}
+.rankit-app .ri-leaderboard-note strong{font-weight:500;color:#eceded}
+
+/* ==========================================================================
+   3j — altın elmasın açtığı hızlı puanlama. Tahta: gri eyebrow, satırlar
+   64px KART (#151618, 14px yarıçap), seriyi koruyan satır altın kenar + altın
+   "Keeps your streak alive", "Last 7 days" kapalı kart, sayaç gri.
+   ========================================================================== */
+.rankit-app .ri-quick-sheet .ri-rank-head small{color:#7f868b;letter-spacing:.14em}
+.rankit-app .ri-quick-sheet .ri-quick-row{min-height:64px;margin-top:10px;padding:0 14px;gap:13px;border:1px solid rgba(255,255,255,.09);
+  border-radius:14px;background:#151618}
+.rankit-app .ri-quick-sheet .ri-quick-group>small+.ri-quick-row,.rankit-app .ri-quick-sheet .ri-quick-note+.ri-quick-row{margin-top:0}
+.rankit-app .ri-quick-sheet .ri-quick-note{margin:0 3px 10px}
+.rankit-app .ri-quick-sheet .ri-quick-row small{font:400 12px/1.2 var(--font-sans);color:#9aa0a6}
+.rankit-app .ri-quick-sheet .ri-quick-row.is-streak{border-color:rgba(255,177,27,.55)}
+.rankit-app .ri-quick-sheet .ri-quick-row em{color:var(--ri-gold);font-weight:400}
+.rankit-app .ri-quick-sheet .ri-quick-row>svg:last-child{color:#9aa0a6}
+.rankit-app .ri-quick-sheet .ri-quick-count{color:#9aa0a6;font:700 12px/1 var(--font-logo)}
+.rankit-app .ri-quick-sheet .ri-quick-row:focus-visible{outline:2px solid var(--ri-focus);outline-offset:2px}

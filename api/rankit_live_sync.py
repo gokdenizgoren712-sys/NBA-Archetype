@@ -6,6 +6,7 @@ claim kaydı birden fazla worker'ın aynı işi eşzamanlı çalıştırmasını
 """
 from __future__ import annotations
 
+import os
 import threading
 import time
 
@@ -23,6 +24,21 @@ FOTMOB_LEAGUES = {
     "UEFA Conference League": [(10216, "uefa"), (10615, "qualifying")],
 }
 JOB_NAME = "rankit_live_scores"
+
+# FotMob canli dakikayi yon isaretleriyle veriyor ("73" + U+200E + U+2019 +
+# U+200E). Gorunmez isaretler ekran okuyucunun okudugu metne ve kopyalanan
+# metne sizar, tipografik tirnak da "73 right single quotation mark" diye
+# okunur. Dakika "73'", "45+2'", "HT" bicimine indirgenir.
+_BIDI_MARKS = dict.fromkeys(map(ord, "\u200e\u200f\u202a\u202b\u202c\u202d\u202e\u2066\u2067\u2068\u2069"))
+_PRIMES = str.maketrans({"\u2019": "'", "\u2018": "'", "\u2032": "'", "\u02bc": "'"})
+
+
+def clean_minute(value) -> str | None:
+    if value is None:
+        return None
+    text = str(value).translate(_BIDI_MARKS).translate(_PRIMES)
+    text = "".join(text.split())
+    return text or None
 
 
 def _claim() -> bool:
@@ -185,8 +201,67 @@ def _lineup_targets(conn):
     ).fetchall()
 
 
-def _store_lineup(conn, match_id: int, team_id: int, side: str, block: dict) -> None:
-    """Bir takımın 11'ini, yedeklerini, dizilişini ve teknik direktörünü yazar."""
+FOTMOB_PLAYER_IMAGE = "https://images.fotmob.com/image_resources/playerimages/{}.png"
+
+
+def _lineup_player_id(conn, team_id: int, person: dict):
+    """Kadrodaki oyuncuyu rankit_players'a bagla -- POTM ve respect oyu ancak
+    boyle verilebilir (BUILD §10.2: secici maçta oynayanlari listeler).
+
+    Anahtar (sport, name): katalog senkronu da (rankit_sync._player) boyle
+    eslestiriyor; ayni adli iki oyuncu tek satira duser (bilinen sinir).
+    Gorsel yalnizca bossa doldurulur: FotMob'un kendi oyuncu gorseli (§2.9
+    POTM varyanti gorsel istiyor).
+    """
+    name = (person.get("name") or "").strip()
+    if not name:
+        return None
+    provider_id = person.get("id")
+    image = FOTMOB_PLAYER_IMAGE.format(provider_id) if provider_id else None
+    conn.execute(
+        """INSERT INTO rankit_players(sport,team_id,name,shirt_no,image_url)
+           VALUES('Football',?,?,?,?)
+           ON CONFLICT(sport,name) DO UPDATE SET team_id=excluded.team_id,
+             shirt_no=COALESCE(excluded.shirt_no, rankit_players.shirt_no),
+             image_url=COALESCE(rankit_players.image_url, excluded.image_url)""",
+        (team_id, name, person.get("shirtNumber"), image))
+    return conn.execute("SELECT id FROM rankit_players WHERE sport='Football' AND name=?",
+                        (name,)).fetchone()["id"]
+
+
+def _substitution_minutes(person: dict):
+    """(oyuna girdigi dakika, ciktigi dakika) -- performance.substitutionEvents."""
+    sub_in = sub_out = None
+    for event in ((person.get("performance") or {}).get("substitutionEvents") or []):
+        minute = event.get("time")
+        if not isinstance(minute, (int, float)):
+            continue
+        if event.get("type") == "subIn" and sub_in is None:
+            sub_in = int(minute)
+        elif event.get("type") == "subOut" and sub_out is None:
+            sub_out = int(minute)
+    return sub_in, sub_out
+
+
+def _swap_map(events: list) -> dict:
+    """Giren oyuncunun saglayici kimligi -> yerine girdigi oyuncunun adi.
+    Kaynak maç olaylari: "Substitution" olayinin `swap` = [giren, cikan]."""
+    swaps = {}
+    for event in events or []:
+        if str(event.get("type") or "").lower() != "substitution":
+            continue
+        pair = event.get("swap") or []
+        if len(pair) == 2 and (pair[0] or {}).get("id") and (pair[1] or {}).get("name"):
+            swaps[str(pair[0]["id"])] = pair[1]["name"]
+    return swaps
+
+
+def _store_lineup(conn, match_id: int, team_id: int, side: str, block: dict, swaps=None) -> None:
+    """Bir takımın 11'ini, yedeklerini, dizilişini ve teknik direktörünü yazar.
+
+    Oyuncu basina: oy icin rankit_players kimligi, mevki (olculmus kaba etiket
+    + FotMob'un ham kodu), oyuna giris/cikis dakikasi, kimin yerine girdigi.
+    """
     starters = block.get("starters") or []
     subs = block.get("subs") or []
     if not starters:
@@ -206,14 +281,41 @@ def _store_lineup(conn, match_id: int, team_id: int, side: str, block: dict) -> 
                  (match_id, team_id))
     rows = [("start", i, p) for i, p in enumerate(starters)]
     rows += [("bench", i, p) for i, p in enumerate(subs)]
+    values = []
+    for role, order, p in rows:
+        if not (p.get("name") or "").strip():
+            continue
+        sub_in, sub_out = _substitution_minutes(p)
+        code = p.get("positionId")
+        values.append((match_id, team_id, p.get("id"), p.get("name") or "",
+                       p.get("shirtNumber"), role, order,
+                       _lineup_player_id(conn, team_id, p),
+                       _position_label([code]) if code is not None else None, code,
+                       sub_in, sub_out, (swaps or {}).get(str(p.get("id")))))
     conn.executemany(
         """INSERT OR IGNORE INTO rankit_match_lineup_players
-             (match_id,team_id,provider_player_id,name,shirt_no,role,ord)
-           VALUES(?,?,?,?,?,?,?)""",
-        [(match_id, team_id, p.get("id"), p.get("name") or "",
-          p.get("shirtNumber"), role, order)
-         for role, order, p in rows if (p.get("name") or "").strip()],
-    )
+             (match_id,team_id,provider_player_id,name,shirt_no,role,ord,
+              player_id,position,position_code,sub_in,sub_out,replaced)
+           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)""", values)
+
+
+def _store_lineups_from(conn, target: dict, content: dict) -> int:
+    """Bir matchDetails yanitindan iki takimin kadrosunu yazar; kac takim.
+    Kadro dongusu (15 dk) ve canli olay dongusu (45 sn) ayni yolu kullanir."""
+    lineup = (content or {}).get("lineup") if isinstance(content, dict) else None
+    if not isinstance(lineup, dict):
+        return 0
+    events = (((content.get("matchFacts") or {}).get("events") or {}).get("events") or [])
+    swaps = _swap_map(events)
+    stored = 0
+    for side, key, team_id in (("home", "homeTeam", target["home_team_id"]),
+                               ("away", "awayTeam", target["away_team_id"])):
+        block = lineup.get(key) or {}
+        if not team_id or not block.get("starters"):
+            continue
+        _store_lineup(conn, target["id"], team_id, side, block, swaps)
+        stored += 1
+    return stored
 
 
 def _store_moments(conn, match_id: int, events: list) -> None:
@@ -238,11 +340,16 @@ def _store_moments(conn, match_id: int, events: list) -> None:
             label = f"{'Red card' if card == 'red' else 'Yellow card'} - {who}"
         else:
             continue
-        rows.append((match_id, int(minute), k, label, who))
+        side = "home" if e.get("isHome") is True else "away" if e.get("isHome") is False else None
+        rows.append((match_id, int(minute), k, label, who, side))
     if rows:
+        # Taraf sonradan eklendi: eski satir ayni olayla tekrar gelirse tarafi
+        # tamamlanir, baska bir sey degismez.
         conn.executemany(
-            """INSERT OR IGNORE INTO rankit_moments(match_id,minute,kind,label,detail)
-               VALUES(?,?,?,?,?)""", rows)
+            """INSERT INTO rankit_moments(match_id,minute,kind,label,detail,side)
+               VALUES(?,?,?,?,?,?)
+               ON CONFLICT(match_id,minute,kind,label) DO UPDATE SET
+                 side=COALESCE(rankit_moments.side, excluded.side)""", rows)
 
 
 def refresh_lineups() -> dict:
@@ -268,7 +375,7 @@ def refresh_lineups() -> dict:
             )
             if response.status_code != 200:
                 continue
-            lineup = ((response.json().get("content") or {}).get("lineup") or {})
+            content = response.json().get("content") or {}
         except Exception:
             continue
         # Anlar AYNI yanitta geliyor (matchFacts.events) — kadro icin zaten
@@ -282,15 +389,8 @@ def refresh_lineups() -> dict:
             with get_conn() as conn:
                 _store_moments(conn, target["id"], events)
 
-        pairs = (("home", "homeTeam", target["home_team_id"]),
-                 ("away", "awayTeam", target["away_team_id"]))
         with get_conn() as conn:
-            for side, key, team_id in pairs:
-                block = lineup.get(key) or {}
-                if not team_id or not block.get("starters"):
-                    continue
-                _store_lineup(conn, target["id"], team_id, side, block)
-                stored += 1
+            stored += _store_lineups_from(conn, target, content)
         time.sleep(0.4)  # sağlayıcıya nazik ol
     return {"checked": len(targets), "stored": stored}
 
@@ -328,7 +428,7 @@ def _claim_events() -> bool:
 
 def _live_targets(conn):
     return conn.execute(
-        f"""SELECT m.id, m.provider_match_id,
+        f"""SELECT m.id, m.provider_match_id, m.home_team_id, m.away_team_id,
                    (SELECT COUNT(*) FROM rankit_companion_presence p WHERE p.match_id=m.id)
                  + (SELECT COUNT(*) FROM rankit_watchlist w WHERE w.match_id=m.id) AS watchers
             FROM rankit_matches m
@@ -388,9 +488,13 @@ def refresh_live_events() -> dict:
                 args += [home.strip(), away.strip()]
             if live_time:
                 sets.append("live_minute=?")
-                args.append(str(live_time))
+                args.append(clean_minute(live_time))
             if status.get("finished"):
                 sets.append("status='finished'")
+            # Kadro da AYNI yanitta: 15d oyuna girenleri dakikasiyla gosteriyor.
+            # 15 dakikalik kadro dongusu mac bitince durur ve son dakika
+            # degisikliklerini kaciriyordu; bu dongu her 45 sn'de yeniler.
+            _store_lineups_from(conn, t, content)
             conn.execute(f"UPDATE rankit_matches SET {','.join(sets)} WHERE id=?",
                          (*args, t["id"]))
         time.sleep(0.3)   # saglayiciya nazik ol
@@ -658,7 +762,18 @@ def _worker() -> None:
         time.sleep(60)
 
 
+def background_jobs_enabled() -> bool:
+    """Sunucunun arka plan islerine TEK anahtar (katalog, canli skor/olay,
+    logo doldurma). RANKIT_BACKGROUND_JOBS=0 hepsini kapatir; tanimsizsa
+    acik -- canli sunucunun davranisi degismez. Testler kapatir
+    (tests/conftest.py): aksi halde thread'ler test sirasinda gercek
+    saglayicilara gidip test veritabanina yaziyordu."""
+    return os.environ.get("RANKIT_BACKGROUND_JOBS", "1") != "0"
+
+
 def start_rankit_live_sync() -> None:
+    if not background_jobs_enabled():
+        return
     # Olaylar icin AYRI worker: kadro/fikstur 15 dakikada bir yeterli ama
     # canli olaylar degil. Ikisi ayri claim satiri kullaniyor.
     threading.Thread(target=_events_worker, name="rankit-live-events", daemon=True).start()

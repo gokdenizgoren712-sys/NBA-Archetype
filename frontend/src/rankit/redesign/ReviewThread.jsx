@@ -9,10 +9,14 @@
  *     içeri girmez; o yüzden veri bir ağaç değil, "kime" sütunlu düz liste.
  *   * Sıra EN ÇOK RESPECT, en yeni değil.
  */
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { X, CornerUpLeft } from "lucide-react";
 import { rankitApi } from "../rankitApi";
-import { SkeletonRows, Loading } from "./States";
+import { SkeletonRows, Loading, ErrorState } from "./States";
+import { useResource } from "./useResource";
+import { useDialog } from "./useDialog";
+import { reviewerFromStorage, isOwnContent } from "./reviewIdentity";
+import { createReplyAttempts } from "./replyAttempt";
 
 const INK = "#eceded";
 const INK_3 = "#9aa0a6";
@@ -37,7 +41,7 @@ function RespectMark({ on, size = 12 }) {
   }} />;
 }
 
-function Reply({ row, onRespect, onReply }) {
+function Reply({ row, onRespect, onReply, reviewer }) {
   return (
     <article className="ri-reply">
       <div className="ri-reply-who">
@@ -53,7 +57,8 @@ function Reply({ row, onRespect, onReply }) {
       </p>
       <div className="ri-reply-acts">
         <button type="button" onClick={() => onRespect(row)} aria-pressed={!!row.respected}
-          aria-label={row.respected ? "Take back your respect" : "Respect this reply"}>
+          disabled={isOwnContent(row, reviewer)}
+          aria-label={isOwnContent(row, reviewer) ? "Your reply · respect count" : row.respected ? "Take back your respect" : "Respect this reply"}>
           <RespectMark on={row.respected} /> {row.respect || ""}
         </button>
         <button type="button" onClick={() => onReply(row.username)}>
@@ -65,53 +70,50 @@ function Reply({ row, onRespect, onReply }) {
 }
 
 export default function ReviewThread({ entryId, onClose }) {
-  const [loaded, setLoaded] = useState({ id: null, data: null });
+  const reviewer = reviewerFromStorage(localStorage);
+  const [replyAttempts] = useState(createReplyAttempts);
+  const { data, error, loading, reload: load } = useResource(entryId,
+    () => rankitApi.reviewThread(entryId, -new Date().getTimezoneOffset()));
+  const [revealedId, setRevealedId] = useState(null);
+  const [actionError, setActionError] = useState("");
   const [draft, setDraft] = useState("");
   const [replyTo, setReplyTo] = useState(null);
   const [sending, setSending] = useState(false);
 
-  const load = () => {
-    const tz = -new Date().getTimezoneOffset();
-    rankitApi.reviewThread(entryId, tz)
-      .then((d) => setLoaded({ id: entryId, data: d }))
-      .catch(() => setLoaded({ id: entryId, data: null }));
-  };
-  useEffect(load, [entryId]);
-
-  useEffect(() => {
-    const onKey = (e) => e.key === "Escape" && onClose();
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
-  const data = loaded.id === entryId ? loaded.data : null;
+  const dialog = useDialog({ onClose, label: "Review thread" });
 
   const respectReply = async (row) => {
-    try { await rankitApi.respectComment(row.id); load(); } catch { /* yok say */ }
+    if (isOwnContent(row, reviewer)) return;
+    try { await rankitApi.respectComment(row.id, !row.respected); load(); } catch { /* yok say */ }
   };
 
   const send = async () => {
     const text = draft.trim();
     if (!text || sending) return;
+    const target = replyTo?.id ?? null;
+    const clientId = replyAttempts.forSend(entryId, text, target);
     setSending(true);
     try {
       // Adres burada geciyor — kullanicinin yazdigi metinde degil.
-      await rankitApi.addComment(entryId, text, replyTo?.id);
+      await rankitApi.addComment(entryId, text, target, clientId);
+      replyAttempts.confirmed(entryId, text, target);
       setDraft(""); setReplyTo(null); load();
-    } catch { /* gonderilemedi, taslak duruyor */ }
+    } catch { setActionError("Could not send. Your reply is still here."); }
     finally { setSending(false); }
   };
 
   const review = data?.review;
+  const hidden = !!review?.spoiler && revealedId !== entryId;
 
   return (
     <div className="ri-sheet-wrap" onClick={onClose}>
-      <section className="ri-detail-sheet" onClick={(e) => e.stopPropagation()}
-        role="dialog" aria-modal="true" aria-label="Review thread">
+      <section {...dialog} className="ri-detail-sheet" onClick={(e) => e.stopPropagation()}>
         <div className="ri-sheet-grab" aria-hidden="true" />
         <button className="ri-sheet-close" onClick={onClose} aria-label="Close"><X size={19} /></button>
 
-        {!data && <Loading label="Loading the thread"><SkeletonRows count={3} height={84}/></Loading>}
+        {error && <ErrorState error={error} onRetry={load}/>}
+        {loading && !data && <Loading label="Loading the thread"><SkeletonRows count={3} height={84}/></Loading>}
+        {actionError && <p role="alert">{actionError}</p>}
 
         {review && <>
           <div className="ri-rank-head">
@@ -125,28 +127,28 @@ export default function ReviewThread({ entryId, onClose }) {
               <span className="ri-rank-chip">Rank {review.rank}</span>
               {review.on_the_night && <em>rated on the night</em>}
             </div>
-            <p>{review.review}</p>
-            {!!review.tags?.length && (
+            {hidden ? <button className="ri-spoiler-gate" onClick={() => setRevealedId(entryId)}>Contains spoilers — reveal this discussion</button> : <p>{review.review}</p>}
+            {!hidden && !!review.tags?.length && (
               <div className="ri-thread-tags">
                 {review.tags.map((t) => <span key={t}>{t}</span>)}
               </div>
             )}
             <div className="ri-reply-acts">
-              <button type="button" aria-pressed={review.respected}
-                onClick={async () => { try { await rankitApi.likeReview(review.id); load(); } catch { /* yok say */ } }}
-                aria-label={review.respected ? "Take back your respect" : "Respect this review"}>
+              <button type="button" aria-pressed={review.respected} disabled={isOwnContent(review, reviewer)}
+                onClick={async () => { if (isOwnContent(review, reviewer)) return; try { await rankitApi.likeReview(review.id, !review.respected); load(); } catch { /* yok say */ } }}
+                aria-label={isOwnContent(review, reviewer) ? "Your review · respect count" : review.respected ? "Take back your respect" : "Respect this review"}>
                 <RespectMark on={review.respected} size={13} /> {review.respect || ""} RESPECT
               </button>
             </div>
           </article>
 
-          <div className="ri-chip-title" style={{ marginTop: 18 }}>
+          {!hidden && <><div className="ri-chip-title" style={{ marginTop: 18 }}>
             {data.replies.length} {data.replies.length === 1 ? "REPLY" : "REPLIES"}
             <span>Most respected</span>
           </div>
 
           {data.replies.map((r) => (
-            <Reply key={r.id} row={r} onRespect={respectReply}
+            <Reply key={r.id} row={r} reviewer={reviewer} onRespect={respectReply}
               onReply={(handle) => setReplyTo({ handle, id: r.user_id })} />
           ))}
           {!data.replies.length && (
@@ -169,7 +171,7 @@ export default function ReviewThread({ entryId, onClose }) {
                 <CornerUpLeft size={15} />
               </button>
             </div>
-          </div>
+          </div></>}
         </>}
       </section>
     </div>

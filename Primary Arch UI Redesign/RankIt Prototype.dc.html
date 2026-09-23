@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Outfit:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0b0c0d;font-family:Outfit,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:#ffb11b;text-decoration:none}
+a:hover{color:#ffe9b0}
+*{box-sizing:border-box}
+.rk::-webkit-scrollbar{width:0;height:0;display:none}
+.rk{scrollbar-width:none}
+@keyframes ember{0%,100%{opacity:.6}50%{opacity:1}}
+@keyframes livedot{0%,100%{opacity:1}50%{opacity:.25}}
+@keyframes sheetUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+@keyframes toastIn{from{opacity:0;transform:translate(-50%,14px)}to{opacity:1;transform:translate(-50%,0)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</helmet>
+
+<div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;gap:18px;padding:44px 20px 56px">
+
+<div style="text-align:center;max-width:520px">
+<div style="font:700 9px/1 Rajdhani,sans-serif;letter-spacing:.14em;color:#7f868b">RANKIT · BY PRIMARY ARCH</div>
+<div style="font:700 21px/1.2 Rajdhani,sans-serif;letter-spacing:.02em;color:#eceded;margin-top:9px">Tap-through prototype</div>
+<div style="font:400 12px/1.6 Outfit,sans-serif;color:#9aa0a6;margin-top:8px;text-wrap:pretty">Same card component as the board. Switch tabs, open the collectible, rate it, stamp a Classic, change the skin. The shield hides every score and heat reading at once.</div>
+</div>
+
+<div style="position:relative;width:375px;height:812px;flex:none;border-radius:40px;overflow:hidden;background:#090a0b;border:1px solid rgba(255,255,255,.14);box-shadow:0 14px 34px rgba(0,0,0,.28);display:flex;flex-direction:column">
+
+<dc-import name="StatusBar" hint-size="100%,44px"></dc-import>
+
+<sc-if value="{{ isHome }}" hint-placeholder-val="{{ true }}">
+<div style="flex:1;min-height:0;display:flex;flex-direction:column">
+  <div style="height:64px;display:flex;align-items:center;justify-content:space-between;padding:0 26px;flex:none">
+    <div style="display:flex;align-items:center;gap:10px;min-width:0">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style="flex:none"><mask id="rkPro"><rect width="24" height="24" fill="#fff"/><g transform="translate(12 12.6) scale(.6) translate(-12 -12.4)"><path d="M12 2l3 6.9 7.5.7-5.6 5 1.6 7.4L12 18.2 5.5 22l1.6-7.4-5.6-5 7.5-.7z" fill="#000"/></g></mask><path d="M0 0H16.5L24 7.5V24H7.5L0 16.5Z" fill="#ffb11b" mask="url(#rkPro)"/></svg>
+      <div style="min-width:0">
+        <div style="font:700 21px/1 Rajdhani,sans-serif;letter-spacing:.03em;color:#eceded">RANK<span style="color:#ffb11b">IT</span></div>
+        <div style="font:700 9px/1 Rajdhani,sans-serif;letter-spacing:.14em;color:#7f868b;margin-top:5px">BY PRIMARY ARCH</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <div onClick="{{ toggleSpoiler }}" style="width:44px;height:44px;display:grid;place-items:center;border-radius:999px;background:{{ shieldBg }};border:1px solid {{ shieldLine }};cursor:pointer">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="{{ shieldInk }}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 5 5.6v5.9c0 4.3 2.9 8 7 9.5 4.1-1.5 7-5.2 7-9.5V5.6z"/></svg>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;height:44px;padding:0 13px 0 9px;border-radius:999px;background:#121315;border:1px solid rgba(255,255,255,.09)">
+        <div style="position:relative;width:26px;height:26px;display:grid;place-items:center">
+          <div style="position:absolute;inset:0;border-radius:999px;background:conic-gradient(from -90deg,#f5402e 0turn,#d43a63 .58turn,rgba(255,255,255,.1) .58turn)"></div>
+          <div style="position:absolute;inset:3px;border-radius:999px;background:#121315"></div>
+          <span style="position:relative;font:700 12px/1 Rajdhani,sans-serif;color:#eceded">{{ streak }}</span>
+        </div>
+        <span style="font:700 9px/1 Rajdhani,sans-serif;letter-spacing:.14em;color:#c9cccd">NIGHTS</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="rk" style="flex:1;min-height:0;overflow-y:auto;padding-bottom:73px">
+    <div style="display:flex;gap:13px;padding:0 26px 18px">
+      <div style="flex:none;width:60px;text-align:center">
+        <div style="position:relative;width:56px;height:56px;margin:0 auto">
+          <div style="position:absolute;inset:0;border-radius:999px;background:conic-gradient(from -40deg,#f5402e,#d43a63,#9a3f96,#f5402e)"></div>
+          <div style="position:absolute;inset:2.5px;border-radius:999px;background:#090a0b"></div>
+          <div style="position:absolute;inset:5px;border-radius:999px;background:linear-gradient(140deg,#3fb08c,#1d5a48)"></div>
+        </div>
+        <div style="font:700 10px/1 Rajdhani,sans-serif;letter-spacing:.06em;color:#c9cccd;margin-top:8px">deniz</div>
+      </div>
+      <div style="flex:none;width:60px;text-align:center">
+        <div style="position:relative;width:56px;height:56px;margin:0 auto">
+          <div style="position:absolute;inset:0;border-radius:999px;background:conic-gradient(from -40deg,#5b4fa8,#9a3f96,#5b4fa8)"></div>
+          <div style="position:absolute;inset:2.5px;border-radius:999px;background:#090a0b"></div>
+          <div style="position:absolute;inset:5px;border-radius:999px;background:linear-gradient(140deg,#8b6fc4,#3b2a5c)"></div>
+        </div>
+        <div style="font:700 10px/1 Rajdhani,sans-serif;letter-spacing:.06em;color:#c9cccd;margin-top:8px">mara</div>
+      </div>
+      <div style="flex:none;width:60px;text-align:center">
+        <div style="position:relative;width:56px;height:56px;margin:0 auto">
+          <div style="position:absolute;inset:0;border-radius:999px;background:rgba(255,255,255,.1)"></div>
+          <div style="position:absolute;inset:2.5px;border-radius:999px;background:#090a0b"></div>
+          <div style="position:absolute;inset:5px;border-radius:999px;background:linear-gradient(140deg,#2f5480,#141f33)"></div>
+        </div>
+        <div style="font:700 10px/1 Rajdhani,sans-serif;letter-spacing:.06em;color:#7f868b;margin-top:8px">arda</div>
+      </div>
+      <div style="flex:none;width:60px;text-align:center">
+        <div style="width:56px;height:56px;margin:0 auto;border-radius:999px;border:1px dashed rgba(255,255,255,.18);display:grid;place-items:center">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7f868b" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        </div>
+        <div style="font:700 10px/1 Rajdhani,sans-serif;letter-spacing:.06em;color:#7f868b;margin-top:8px">find</div>
+      </div>
+    </div>
+
+    <div style="padding:0 26px">
+      <div style="{{ heroWrapStyle }}">
+        <dc-import name="MatchCard" comp="Premier League · MW 4" homeAbbr="ARS" awayAbbr="TOT" awayCrestInk="{{ awayCrestInk }}" homeShort="Arsenal" awayShort="Tottenham" homeScore="3" awayScore="1" heat="4.6" classic="{{ classicFlag }}" spoiler="{{ spoilerFlag }}" ratings="2,481 ratings" footNote="{{ skinName }}" artHeight="150" scoreSize="52" hint-size="100%,334px"></dc-import>
+      </div>
+      <div onClick="{{ openMatch }}" style="margin-top:13px;height:48px;border-radius:10px;background:#ffb11b;display:flex;align-items:center;justify-content:center;cursor:pointer">
+        <span style="font:700 13px/1 Rajdhani,sans-serif;letter-spacing:.06em;color:#17120a">{{ heroCta }}</span>
+      </div>
+    </div>
+
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 26px 13px">
+      <span style="font:700 9px/1 Rajdhani,sans-serif;letter-spacing:.14em;color:#7f868b">TONIGHT · 4 MATCHES</span>
+      <span style="font:700 11px/1 Rajdhani,sans-serif;letter-spacing:.06em;color:#9aa0a6">See all</span>
+    </div>
+    <div style="padding:0 26px 18px">
+      <div onClick="{{ joinLive }}" style="position:relative;height:64px;border-radius:14px;background:#151618;border:1px solid rgba(255,255,255,.09);display:flex;align-items:center;padding:0 16px;gap:13px;overflow:hidden;cursor:pointer">
+        <div style="position:absolute;left:0;top:13px;bottom:13px;width:3px;background:#f5402e;border-radius:0 3px 3px 0"></div>
+        <div style="width:45px;height:45px;display:grid;place-items:center;flex:none"><div style="width:32px;height:32px;transform:rotate(45deg);border-radius:11px 11px 12px 12px;background:linear-gradient(135deg,#0d3b8f,#071e4a);border:1px solid rgba(255,255,255,.14)"></div></div>
+        <div style="flex:1;min-width:0">
+          <div style="font:700 13px/1 Rajdhani,sans-serif;letter-spacing:.02em;color:#eceded">Chelsea vs Sporting CP</div>
+          <div style="display:flex;align-items:center;gap:6px;margin-top:6px">
+            <div style="width:5px;height:5px;border-radius:999px;background:#f5402e;animation:livedot 1.4s ease-in-out infinite"></div>
+            <span style="font:700 9px/1 Rajdhani,sans-serif;letter-spacing:.14em;color:#f5402e">LIVE · 73'</span>
+          </div>
+        </div>
+        <span style="font:700 11px/1 Rajdhani,sans-serif;letter-spacing:.06em;color:#9aa0a6;flex:none">Join</span>
+      </div>
+    </div>
+  </div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isDiscover }}">
+<div style="flex:1;min-height:0;display:flex;flex-direction:column">
+  <div style="height:64px;display:flex;align-items:flex-end;padding:0 26px 13px;flex:none">
+    <div style="font:700 31px/1 Rajdhani,sans-serif;letter-spacing:.02em;color:#eceded">Discover</div>
+  </div>
+  <div class="rk" style="flex:1;min-height:0;overflow-y:auto;padding-bottom:73px">
+    <div style="display:flex;gap:8px;padding:0 26px 18px">
+      <div style="height:44px;padding:0 16px;display:flex;align-items:center;border-radius:999px;background:#ffb11b;font:700 12px Rajdhani,sans-serif;letter-spacing:.06em;color:#17120a">Football</div>
+      <div style="height:44px;padding:0 16px;display:flex;align-items:center;border-radius:999px;background:#121315;font:700 12px Rajdhani,sans-serif;letter-spacing:.06em;color:#9aa0a6">Basketball</div>
+      <div style="height:44px;padding:0 16px;display:flex;align-items:center;gap:8px;border-radius:999px;background:#121315;font:700 12px Rajdhani,sans-serif;letter-spacing:.06em;color:#9aa0a6">
+        <div style="width:6px;height:6px;border-radius:999px;background:#f5402e;animation:livedot 1.6s ease-in-out infinite"></div>Live
+      </div>
+    </div>
+    <div style="padding:0 26px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:13px">
+      <div style="--home:#3b1f5e;--away:#7a1d2b;min-width:0;--crest:44px;height:212px">
+        <dc-import name="MatchCard" comp="LaLiga" homeAbbr="BET" awayAbbr="VAL" homeShort="Real Betis" awayShort="Valencia" homeScore="2" awayScore="2" heat="3.8" spoiler="{{ spoilerFlag }}" ratings="612" artHeight="104" scoreSize="30" hint-size="100%,212px"></dc-import>
+      </div>
+      <div style="--home:#0d3b6b;--away:#f5a300;min-width:0;--crest:44px;height:212px">
+        <dc-import name="MatchCard" comp="NBA" homeAbbr="OKC" awayAbbr="DEN" awayCrestInk="#17120a" homeShort="Thunder" awayShort="Nuggets" homeScore="118" awayScore="115" heat="4.7" spoiler="{{ spoilerFlag }}" ratings="1,204" artHeight="104" scoreSize="24" hint-size="100%,212px"></dc-import>
+      </div>
+      <div style="--home:#1f6a3f;--away:#8a1538;min-width:0;--crest:44px;height:212px">
+        <dc-import name="MatchCard" comp="Serie A" homeAbbr="NAP" awayAbbr="TOR" homeShort="Napoli" awayShort="Torino" homeScore="0" awayScore="0" heat="1.6" spoiler="{{ spoilerFlag }}" ratings="308" artHeight="104" scoreSize="30" hint-size="100%,212px"></dc-import>
+      </div>
+      <div style="--home:#0d3b8f;--away:#1f6a3f;min-width:0;--crest:44px;height:212px">
+        <dc-import name="MatchCard" comp="Champions League" statusLabel="IN 2 DAYS" finished="false" homeAbbr="CHE" awayAbbr="SPO" homeShort="Chelsea" awayShort="Sporting" kickoff="20:00" heat="3.4" heatLabel="EXPECTED" ratings="1,204 want it" artHeight="104" hint-size="100%,212px"></dc-import>
+      </div>
+    </div>
+  </div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isActivity }}">
+<div style="flex:1;min-height:0;display:flex;flex-direction:column">
+  <div style="height:64px;display:flex;align-items:flex-end;padding:0 26px 13px;flex:none">
+    <div style="font:700 31px/1 Rajdhani,sans-serif;letter-spacing:.02em;color:#eceded">Activity</div>
+  </div>
+  <div class="rk" style="flex:1;min-height:0;overflow-y:auto;padding-bottom:73px">
+    <div style="display:flex;gap:26px;padding:0 26px;border-bottom:1px solid rgba(255,255,255,.09)">
+      <div style="padding-bottom:13px;font:700 13px/1 Rajdhani,sans-serif;letter-spacing:.06em;color:#7f868b">Friends</div>
+      <div style="padding-bottom:13px;font:700 13px/1 Rajdhani,sans-serif;letter-spacing:.06em;color:#ffb11b;box-shadow:inset 0 -2px 0 #ffb11b">Diary</div>
+    </div>
+    <div style="margin:18px 26px;border-radius:18px;background:#121315;border:1px solid rgba(255,255,255,.09);padding:16px">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:13px">
+        <span style="font:700 9px/1 Rajdhani,sans-serif;letter-spacing:.14em;color:#7f868b">STREAK · {{ streak }} NIGHTS</span>
+        <span style="font:400 12px/1 Outfit,sans-serif;color:#9aa0a6">Best 21</span>
+      </div>
+      <div style="display:flex;gap:5px">
+        <div style="flex:1;height:24px;border-radius:5px;background:#5b4fa8"></div><div style="flex:1;height:24px;border-radius:5px;background:#9a3f96"></div><div style="flex:1;height:24px;border-radius:5px;background:#d43a63"></div><div style="flex:1;height:24px;border-radius:5px;background:#f5402e"></div><div style="flex:1;height:24px;border-radius:5px;background:#d43a63"></div><div style="flex:1;height:24px;border-radius:5px;background:#9a3f96"></div><div style="flex:1;height:24px;border-radius:5px;background:{{ streakTodayBg }};animation:ember 2.6s ease-in-out infinite"></div>
+      </div>
+      <div style="font:400 12px/1.5 Outfit,sans-serif;color:#9aa0a6;margin-top:13px;text-wrap:pretty">{{ streakNote }}</div>
+    </div>
+    <div style="padding:0 26px">
+      <div onClick="{{ openMatch }}" style="display:flex;align-items:center;gap:13px;height:72px;border-bottom:1px solid rgba(255,255,255,.09);cursor:pointer">
+        <div style="width:30px;text-align:center;flex:none"><div style="font:700 21px/1 Rajdhani,sans-serif;color:#eceded">14</div><div style="font:700 9px/1 Rajdhani,sans-serif;letter-spacing:.14em;color:#7f868b;margin-top:3px">SUN</div></div>
+        <div style="position:relative;width:52px;height:44px;flex:none">
+          <div style="position:absolute;left:0;top:6px;width:32px;height:32px;transform:rotate(45deg);border-radius:11px 11px 12px 12px;background:linear-gradient(135deg,#c8202f,#6d0f18);border:1px solid rgba(255,255,255,.14)"></div>
+          <div style="position:absolute;right:0;top:6px;width:32px;height:32px;transform:rotate(45deg);border-radius:11px 11px 12px 12px;background:linear-gradient(135deg,#e9ecf2,#9aa2b4);border:1px solid rgba(255,255,255,.14)"></div>
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="font:700 13px/1 Rajdhani,sans-serif;letter-spacing:.02em;color:#eceded;filter:{{ scoreBlur }}">Arsenal 3–1 Tottenham</div>
+          <div style="font:400 12px/1 Outfit,sans-serif;color:#9aa0a6;margin-top:6px">{{ diaryNote }}</div>
+        </div>
+        <div style="width:4px;height:36px;border-radius:2px;background:#f5402e;flex:none"></div>
+      </div>
+    </div>
+  </div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isProfile }}">
+<div style="flex:1;min-height:0;display:flex;flex-direction:column">
+  <div style="height:64px;display:flex;align-items:flex-end;padding:0 26px 13px;flex:none">
+    <div style="font:700 31px/1 Rajdhani,sans-serif;letter-spacing:.02em;color:#eceded">Profile</div>
+  </div>
+  <div class="rk" style="flex:1;min-height:0;overflow-y:auto;padding-bottom:73px">
+    <div style="position:relative;margin:0 26px 18px;border-radius:22px;clip-path:polygon(0 0,calc(100% - 22px) 0,100% 22px,100% 100%,22px 100%,0 calc(100% - 22px));background:linear-gradient(155deg,#231a3d,#0f0c17);padding:22px 18px;overflow:hidden">
+      <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 22% 20%,rgba(155,63,150,.34),transparent 58%)"></div>
+      <div style="position:relative;display:flex;align-items:center;gap:18px">
+        <div style="width:85px;height:85px;display:grid;place-items:center;flex:none">
+          <div style="width:60px;height:60px;transform:rotate(45deg);border-radius:18px 18px 21px 21px;background:linear-gradient(140deg,#d43a63,#7a1d43);border:1px solid rgba(255,255,255,.24);display:grid;place-items:center">
+            <span style="transform:rotate(-45deg);font:700 21px/1 Rajdhani,sans-serif;color:#fff">04</span>
+          </div>
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="font:700 9px/1 Rajdhani,sans-serif;letter-spacing:.14em;color:rgba(255,255,255,.66)">RANK 4 OF 7</div>
+          <div style="font:700 21px/1 Rajdhani,sans-serif;letter-spacing:.02em;color:#fff;margin-top:9px">Terrace Regular</div>
+          <div style="font:400 12px/1 Outfit,sans-serif;color:rgba(255,255,255,.7);margin-top:9px">@selin · {{ logged }} matches</div>
+        </div>
+      </div>
+    </div>
+    <div style="padding:0 26px 13px;font:700 9px/1 Rajdhani,sans-serif;letter-spacing:.14em;color:#7f868b">PERSONALISATION</div>
+    <div style="margin:0 26px;border-radius:14px;background:#151618;border:1px solid rgba(255,255,255,.09);overflow:hidden">
+      <div onClick="{{ toggleSpoiler }}" style="min-height:56px;display:flex;align-items:center;padding:13px 16px;gap:13px;cursor:pointer">
+        <div style="flex:1;min-width:0">
+          <div style="font:700 13px/1 Rajdhani,sans-serif;letter-spacing:.02em;color:#eceded">Hide scores by default</div>
+          <div style="font:400 12px/1 Outfit,sans-serif;color:#9aa0a6;margin-top:6px">{{ spoilerHint }}</div>
+        </div>
+        <div style="width:46px;height:28px;border-radius:999px;background:{{ toggleBg }};padding:3px;display:flex;justify-content:{{ toggleJustify }};flex:none">
+          <div style="width:22px;height:22px;border-radius:999px;background:#0c0d0f"></div>
+        </div>
+      </div>
+      <div onClick="{{ openSkins }}" style="min-height:56px;display:flex;align-items:center;padding:13px 16px;gap:13px;border-top:1px solid rgba(255,255,255,.09);cursor:pointer">
+        <span style="flex:1;font:700 13px/1 Rajdhani,sans-serif;letter-spacing:.02em;color:#eceded">Collectible skin</span>
+        <span style="font:700 12px/1 Rajdhani,sans-serif;letter-spacing:.06em;color:#9aa0a6">{{ skinName }}</span>
+      </div>
+      <div style="min-height:56px;display:flex;align-items:center;padding:13px 16px;gap:13px;border-top:1px solid rgba(255,255,255,.09)">
+        <span style="flex:1;font:700 13px/1 Rajdhani,sans-serif;letter-spacing:.02em;color:#eceded">Broadcast country</span>
+        <span style="font:400 12px/1 Outfit,sans-serif;color:#9aa0a6">United Kingdom</span>
+      </div>
+    </div>
+  </div>
+</div>
+</sc-if>
+
+<div style="position:absolute;left:0;right:0;bottom:0;height:73px;background:rgba(9,10,11,.86);backdrop-filter:blur(18px);border-top:1px solid rgba(255,255,255,.09);display:flex;align-items:center;justify-content:space-between;padding:0 8px">
+  <div onClick="{{ goHome }}" style="flex:1;height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;cursor:pointer">
+    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="{{ homeInk }}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V21h13V9.5"/></svg>
+    <span style="font:700 9.5px/1 Rajdhani,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:{{ homeInk }}">Home</span>
+  </div>
+  <div onClick="{{ goDiscover }}" style="flex:1;height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;cursor:pointer">
+    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="{{ discoverInk }}" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-4.2-4.2"/></svg>
+    <span style="font:700 9.5px/1 Rajdhani,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:{{ discoverInk }}">Discover</span>
+  </div>
+  <div style="width:60px;flex:none"></div>
+  <div onClick="{{ goActivity }}" style="flex:1;height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;cursor:pointer">
+    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="{{ activityInk }}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2.5-6 4 12 2.5-6h5"/></svg>
+    <span style="font:700 9.5px/1 Rajdhani,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:{{ activityInk }}">Activity</span>
+  </div>
+  <div onClick="{{ goProfile }}" style="flex:1;height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;cursor:pointer">
+    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="{{ profileInk }}" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="8.5" r="3.7"/><path d="M5 20.5c1.2-3.6 3.8-5.2 7-5.2s5.8 1.6 7 5.2"/></svg>
+    <span style="font:700 9.5px/1 Rajdhani,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:{{ profileInk }}">Profile</span>
+  </div>
+  <div onClick="{{ openMatch }}" style="position:absolute;left:50%;bottom:26px;transform:translateX(-50%);width:60px;height:60px;display:grid;place-items:center;cursor:pointer">
+    <div style="width:46px;height:46px;transform:rotate(45deg);border-radius:18px 18px 21px 21px;background:linear-gradient(140deg,#ffe9b0,#ffb11b 55%,#e08f00);display:grid;place-items:center;box-shadow:0 0 22px rgba(255,177,27,.35)">
+      <span style="transform:rotate(-45deg);font:700 10px/1 Rajdhani,sans-serif;letter-spacing:.14em;color:#17120a">RANK</span>
+    </div>
+  </div>
+</div>
+
+<sc-if value="{{ sheetMatch }}">
+<div style="position:absolute;inset:0;background:rgba(0,0,0,.55)">
+  <div style="position:absolute;left:0;right:0;top:30px;bottom:0;background:#1a1b1e;border-radius:27px 27px 0 0;box-shadow:0 -22px 80px #000;display:flex;flex-direction:column;overflow:hidden;animation:sheetUp .2s cubic-bezier(.22,.9,.3,1)">
+    <div style="display:flex;justify-content:center;padding:10px 0 0;flex:none"><div style="width:38px;height:4px;border-radius:2px;background:rgba(255,255,255,.24)"></div></div>
+    <div style="display:flex;align-items:center;gap:13px;padding:8px 20px 13px 4px;flex:none">
+      <div onClick="{{ closeSheet }}" style="width:44px;height:44px;display:grid;place-items:center;flex:none;cursor:pointer">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#c9cccd" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font:700 13px/1 Rajdhani,sans-serif;letter-spacing:.02em;color:#eceded;filter:{{ scoreBlur }}">Arsenal 3–1 Tottenham</div>
+        <div style="font:400 12px/1 Outfit,sans-serif;color:#9aa0a6;margin-top:6px">14 Sep 2026 · Emirates Stadium</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:26px;padding:0 20px;border-bottom:1px solid rgba(255,255,255,.09);flex:none">
+      <div onClick="{{ showMatchTab }}" style="padding-bottom:13px;font:700 13px/1 Rajdhani,sans-serif;letter-spacing:.06em;color:{{ tabMatchInk }};box-shadow:{{ tabMatchLine }};cursor:pointer">Match</div>
+      <div onClick="{{ showCommunityTab }}" style="padding-bottom:13px;font:700 13px/1 Rajdhani,sans-serif;letter-spacing:.06em;color:{{ tabCommunityInk }};box-shadow:{{ tabCommunityLine }};cursor:pointer">Community</div>
+    </div>
+
+    <div class="rk" style="flex:1;min-height:0;overflow-y:auto">
+      <sc-if value="{{ onMatchTab }}">
+      <div style="padding:18px 20px 26px">
+        <div style="font:400 12px/1.5 Outfit,sans-serif;color:#c9cccd;text-wrap:pretty">Two red cards, a disallowed goal and a north London crowd that never sat down. Arsenal took it in the last twenty minutes.</div>
+        <div style="margin-top:18px;border-radius:14px;background:#151618;border:1px solid rgba(255,255,255,.09);padding:14px">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <span style="font:700 9px/1 Rajdhani,sans-serif;letter-spacing:.14em;color:#7f868b">WATCH IN UNITED KINGDOM</span>
+            <span style="font:700 9px/1 Rajdhani,sans-serif;letter-spacing:.14em;color:#3fb08c">CONFIRMED</span>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:13px;flex-wrap:wrap">
+            <div style="height:44px;padding:0 13px;display:flex;align-items:center;border-radius:10px;background:#0c0d0f;border:1px solid rgba(63,176,140,.32);font:700 12px Rajdhani,sans-serif;color:#eceded">Sky Sports Main Event</div>
+            <div style="height:44px;padding:0 13px;display:flex;align-items:center;border-radius:10px;background:#0c0d0f;border:1px solid rgba(63,176,140,.32);font:700 12px Rajdhani,sans-serif;color:#eceded">Sky Go</div>
+          </div>
+        </div>
+        <div style="margin-top:18px;border-radius:14px;background:#151618;border:1px solid rgba(255,255,255,.09);overflow:hidden">
+          <div style="display:flex;align-items:center;gap:13px;padding:13px 14px;border-bottom:1px solid rgba(255,255,255,.09)">
+            <div style="width:31px;height:31px;display:grid;place-items:center;flex:none"><div style="width:22px;height:22px;transform:rotate(45deg);border-radius:7px 7px 8px 8px;background:linear-gradient(135deg,#c8202f,#6d0f18);border:1px solid rgba(255,255,255,.14)"></div></div>
+            <div style="flex:1;min-width:0">
+              <div style="font:700 13px/1 Rajdhani,sans-serif;letter-spacing:.02em;color:#eceded">Arsenal</div>
+              <div style="font:400 12px/1 Outfit,sans-serif;color:#9aa0a6;margin-top:5px">Mikel Arteta</div>
+            </div>
+            <div style="height:28px;padding:0 10px;display:flex;align-items:center;border-radius:8px;background:#0c0d0f;border:1px solid rgba(255,255,255,.09);font:700 12px Rajdhani,sans-serif;letter-spacing:.1em;color:#c9cccd">4-3-3</div>
+          </div>
+          <div style="padding:13px 14px;display:flex;flex-direction:column;gap:11px">
+            <div style="display:flex;align-items:center;gap:13px"><span style="width:18px;font:700 12px/1 Rajdhani,sans-serif;color:#7f868b">1</span><span style="font:700 12px/1 Rajdhani,sans-serif;color:#eceded">Raya</span></div>
+            <div style="display:flex;align-items:center;gap:13px"><span style="width:18px;font:700 12px/1 Rajdhani,sans-serif;color:#7f868b">4</span><span style="font:700 12px/1 Rajdhani,sans-serif;color:#eceded">White</span></div>
+            <div style="display:flex;align-items:center;gap:13px"><span style="width:18px;font:700 12px/1 Rajdhani,sans-serif;color:#7f868b">6</span><span style="font:700 12px/1 Rajdhani,sans-serif;color:#eceded">Gabriel</span></div>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ onCommunityTab }}">
+      <div style="padding:18px 20px 26px">
+        <div style="border-radius:18px;background:#151618;border:1px solid rgba(255,255,255,.09);padding:18px">
+          <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:18px">
+            <span style="font:700 9px/1 Rajdhani,sans-serif;letter-spacing:.14em;color:#7f868b">YOUR ENTRY</span>
+            <span style="font:700 9px/1 Rajdhani,sans-serif;letter-spacing:.14em;color:{{ loggedInk }}">{{ loggedLabel }}</span>
+          </div>
+          <div style="display:flex;justify-content:center">
+            <div style="position:relative;height:44px;display:flex;align-items:center">
+              <div style="display:flex;gap:7px">
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="rgba(255,255,255,.16)"><path d="M12 2l3 6.9 7.5.7-5.6 5 1.6 7.4L12 18.2 5.5 22l1.6-7.4-5.6-5 7.5-.7z"/></svg><svg width="36" height="36" viewBox="0 0 24 24" fill="rgba(255,255,255,.16)"><path d="M12 2l3 6.9 7.5.7-5.6 5 1.6 7.4L12 18.2 5.5 22l1.6-7.4-5.6-5 7.5-.7z"/></svg><svg width="36" height="36" viewBox="0 0 24 24" fill="rgba(255,255,255,.16)"><path d="M12 2l3 6.9 7.5.7-5.6 5 1.6 7.4L12 18.2 5.5 22l1.6-7.4-5.6-5 7.5-.7z"/></svg><svg width="36" height="36" viewBox="0 0 24 24" fill="rgba(255,255,255,.16)"><path d="M12 2l3 6.9 7.5.7-5.6 5 1.6 7.4L12 18.2 5.5 22l1.6-7.4-5.6-5 7.5-.7z"/></svg><svg width="36" height="36" viewBox="0 0 24 24" fill="rgba(255,255,255,.16)"><path d="M12 2l3 6.9 7.5.7-5.6 5 1.6 7.4L12 18.2 5.5 22l1.6-7.4-5.6-5 7.5-.7z"/></svg>
+              </div>
+              <div style="position:absolute;left:0;top:0;bottom:0;overflow:hidden;width:{{ starWidth }};pointer-events:none">
+                <div style="display:flex;gap:7px">
+                  <svg width="36" height="36" viewBox="0 0 24 24" fill="#eceded" style="flex:none"><path d="M12 2l3 6.9 7.5.7-5.6 5 1.6 7.4L12 18.2 5.5 22l1.6-7.4-5.6-5 7.5-.7z"/></svg><svg width="36" height="36" viewBox="0 0 24 24" fill="#eceded" style="flex:none"><path d="M12 2l3 6.9 7.5.7-5.6 5 1.6 7.4L12 18.2 5.5 22l1.6-7.4-5.6-5 7.5-.7z"/></svg><svg width="36" height="36" viewBox="0 0 24 24" fill="#eceded" style="flex:none"><path d="M12 2l3 6.9 7.5.7-5.6 5 1.6 7.4L12 18.2 5.5 22l1.6-7.4-5.6-5 7.5-.7z"/></svg><svg width="36" height="36" viewBox="0 0 24 24" fill="#eceded" style="flex:none"><path d="M12 2l3 6.9 7.5.7-5.6 5 1.6 7.4L12 18.2 5.5 22l1.6-7.4-5.6-5 7.5-.7z"/></svg><svg width="36" height="36" viewBox="0 0 24 24" fill="#eceded" style="flex:none"><path d="M12 2l3 6.9 7.5.7-5.6 5 1.6 7.4L12 18.2 5.5 22l1.6-7.4-5.6-5 7.5-.7z"/></svg>
+                </div>
+              </div>
+              <div style="position:absolute;inset:0;display:flex">
+                <div onClick="{{ r05 }}" style="width:24px;cursor:pointer"></div><div onClick="{{ r10 }}" style="width:19px;cursor:pointer"></div>
+                <div onClick="{{ r15 }}" style="width:24px;cursor:pointer"></div><div onClick="{{ r20 }}" style="width:19px;cursor:pointer"></div>
+                <div onClick="{{ r25 }}" style="width:24px;cursor:pointer"></div><div onClick="{{ r30 }}" style="width:19px;cursor:pointer"></div>
+                <div onClick="{{ r35 }}" style="width:24px;cursor:pointer"></div><div onClick="{{ r40 }}" style="width:19px;cursor:pointer"></div>
+                <div onClick="{{ r45 }}" style="width:24px;cursor:pointer"></div><div onClick="{{ r50 }}" style="width:19px;cursor:pointer"></div>
+              </div>
+            </div>
+          </div>
+          <div style="text-align:center;font:400 12px/1 Outfit,sans-serif;color:#9aa0a6;margin-top:13px">{{ ratingLabel }}</div>
+          <div onClick="{{ toggleClassic }}" style="margin-top:18px;min-height:76px;border-radius:10px;background:{{ classicBg }};border:1px solid {{ classicLine }};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:13px;cursor:pointer">
+            <div style="transform:rotate(-9deg);border:1px solid {{ stampOuter }};border-radius:7px;padding:3px">
+              <div style="border:1px solid {{ stampInner }};border-radius:5px;padding:5px 12px 6px;text-align:center">
+                <div style="font:700 16px/1 Rajdhani,sans-serif;letter-spacing:.2em;text-indent:.2em;color:{{ classicInk }}">CLASSIC</div>
+                <div style="font:700 9px/1 Rajdhani,sans-serif;letter-spacing:.22em;text-indent:.22em;color:{{ stampSub }};margin-top:4px">RANKIT SELECT</div>
+              </div>
+            </div>
+            <span style="font:400 12px/1 Outfit,sans-serif;color:#9aa0a6">{{ classicLabel }}</span>
+          </div>
+        </div>
+
+        <div style="margin-top:13px;border-radius:18px;background:#151618;border:1px solid rgba(255,255,255,.09);padding:18px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:13px">
+            <span style="font:700 9px/1 Rajdhani,sans-serif;letter-spacing:.14em;color:#7f868b">TAGS &amp; REVIEW</span>
+            <span style="font:400 12px/1 Outfit,sans-serif;color:#7f868b">{{ tagCount }} of 3</span>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px">
+            <div onClick="{{ tagEnd }}" style="height:44px;padding:0 16px;display:flex;align-items:center;border-radius:999px;background:{{ tagEndBg }};border:1px solid {{ tagEndLine }};font:700 12px Rajdhani,sans-serif;letter-spacing:.06em;color:{{ tagEndInk }};cursor:pointer">End-to-end</div>
+            <div onClick="{{ tagAtmos }}" style="height:44px;padding:0 16px;display:flex;align-items:center;border-radius:999px;background:{{ tagAtmosBg }};border:1px solid {{ tagAtmosLine }};font:700 12px Rajdhani,sans-serif;letter-spacing:.06em;color:{{ tagAtmosInk }};cursor:pointer">Atmosphere</div>
+            <div onClick="{{ tagRef }}" style="height:44px;padding:0 16px;display:flex;align-items:center;border-radius:999px;background:{{ tagRefBg }};border:1px solid {{ tagRefLine }};font:700 12px Rajdhani,sans-serif;letter-spacing:.06em;color:{{ tagRefInk }};cursor:pointer">Refereeing</div>
+            <div onClick="{{ tagComeback }}" style="height:44px;padding:0 16px;display:flex;align-items:center;border-radius:999px;background:{{ tagComebackBg }};border:1px solid {{ tagComebackLine }};font:700 12px Rajdhani,sans-serif;letter-spacing:.06em;color:{{ tagComebackInk }};cursor:pointer">Comeback</div>
+          </div>
+          <div style="margin-top:13px;padding:14px;border-radius:10px;background:#0c0d0f;border:1px solid rgba(255,255,255,.09);min-height:72px;font:400 12px/1.5 Outfit,sans-serif;color:#7f868b">Write about the night.</div>
+        </div>
+
+        <div onClick="{{ save }}" style="margin-top:18px;height:48px;border-radius:10px;background:{{ saveBg }};border:1px solid {{ saveLine }};display:flex;align-items:center;justify-content:center;cursor:pointer">
+          <span style="font:700 13px/1 Rajdhani,sans-serif;letter-spacing:.06em;color:{{ saveInk }}">{{ saveLabel }}</span>
+        </div>
+        <div onClick="{{ openSkins }}" style="height:44px;display:flex;align-items:center;justify-content:center;margin-top:6px;cursor:pointer">
+          <span style="font:700 12px/1 Rajdhani,sans-serif;letter-spacing:.06em;color:#9aa0a6">Change the skin — {{ skinName }}</span>
+        </div>
+      </div>
+      </sc-if>
+    </div>
+  </div>
+</div>
+</sc-if>
+
+<sc-if value="{{ sheetSkins }}">
+<div style="position:absolute;inset:0;background:rgba(0,0,0,.6)">
+  <div style="position:absolute;left:0;right:0;bottom:0;top:170px;background:#1a1b1e;border-radius:27px 27px 0 0;box-shadow:0 -22px 80px #000;overflow:hidden;animation:sheetUp .2s cubic-bezier(.22,.9,.3,1)">
+    <div style="display:flex;justify-content:center;padding:10px 0 0"><div style="width:38px;height:4px;border-radius:2px;background:rgba(255,255,255,.24)"></div></div>
+    <div style="height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 15px">
+      <div onClick="{{ closeSkins }}" style="width:44px;height:44px;display:grid;place-items:center;cursor:pointer">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#c9cccd" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </div>
+      <div style="font:700 13px/1 Rajdhani,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:#eceded">Select skin</div>
+      <div style="width:44px"></div>
+    </div>
+    <div style="padding:13px 26px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr);gap:13px">
+      <div onClick="{{ skinDefault }}" style="cursor:pointer">
+        <div style="position:relative;height:112px;border-radius:14px;clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px));background:linear-gradient(155deg,color-mix(in oklab,#c8202f 44%,#151618),#151618 54%,color-mix(in oklab,#e9ecf2 30%,#151618));border:2px solid {{ selDefault }};overflow:hidden">
+          <div style="position:absolute;inset:0;background:repeating-linear-gradient(68deg,rgba(255,255,255,.055) 0 2px,transparent 2px 11px)"></div>
+          <div style="position:absolute;left:10px;bottom:9px;font:700 20px/1 Rajdhani,sans-serif;color:#fff">3–1</div>
+        </div>
+        <div style="font:700 11px/1 Rajdhani,sans-serif;letter-spacing:.06em;color:#c9cccd;margin-top:9px;text-align:center">Default</div>
+      </div>
+      <div onClick="{{ skinBroadsheet }}" style="cursor:pointer">
+        <div style="position:relative;height:112px;border-radius:14px;clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px));background:#e8e4d9;border:2px solid {{ selBroadsheet }};overflow:hidden">
+          <div style="position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(0,0,0,.045) 0 1px,transparent 1px 4px)"></div>
+          <div style="position:relative;padding:9px 10px;font:700 6.5px/1 Rajdhani,sans-serif;letter-spacing:.16em;color:#5c554a;border-bottom:1px solid rgba(0,0,0,.28)">MATCH REPORT</div>
+          <div style="position:absolute;left:10px;bottom:9px;font:700 17px/1.05 Rajdhani,sans-serif;color:#17120a">ARS 3<br>TOT 1</div>
+        </div>
+        <div style="font:700 11px/1 Rajdhani,sans-serif;letter-spacing:.06em;color:#c9cccd;margin-top:9px;text-align:center">Broadsheet</div>
+      </div>
+      <div onClick="{{ skinHolo }}" style="cursor:pointer">
+        <div style="position:relative;height:112px;border-radius:14px;clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px));background:linear-gradient(150deg,#1b2440,#0b0f1c);border:2px solid {{ selHolo }};overflow:hidden">
+          <div style="position:absolute;inset:0;background:radial-gradient(circle at 30% 20%,rgba(155,120,255,.5),transparent 45%),radial-gradient(circle at 75% 70%,rgba(60,220,200,.42),transparent 45%),radial-gradient(circle at 55% 95%,rgba(255,110,180,.4),transparent 45%)"></div>
+          <div style="position:absolute;inset:0;background:repeating-linear-gradient(68deg,rgba(255,255,255,.12) 0 1px,transparent 1px 6px)"></div>
+          <div style="position:absolute;left:10px;bottom:9px;font:700 20px/1 Rajdhani,sans-serif;color:#fff">3–1</div>
+        </div>
+        <div style="font:700 11px/1 Rajdhani,sans-serif;letter-spacing:.06em;color:#c9cccd;margin-top:9px;text-align:center">Holofoil</div>
+      </div>
+      <div onClick="{{ skinEmber }}" style="cursor:pointer">
+        <div style="position:relative;height:112px;border-radius:14px;clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px));background:linear-gradient(165deg,#2f5480,#5b4fa8 38%,#9a3f96 66%,#f5402e);border:2px solid {{ selEmber }};overflow:hidden">
+          <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 120%,rgba(255,255,255,.3),transparent 55%)"></div>
+          <div style="position:absolute;left:10px;bottom:9px;font:700 24px/1 Rajdhani,sans-serif;color:#fff">3–1</div>
+        </div>
+        <div style="font:700 11px/1 Rajdhani,sans-serif;letter-spacing:.06em;color:#c9cccd;margin-top:9px;text-align:center">Ember</div>
+      </div>
+      <div onClick="{{ skinInk }}" style="cursor:pointer">
+        <div style="position:relative;height:112px;border-radius:14px;clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px));background:#0c0d0f;border:2px solid {{ selInk }};overflow:hidden">
+          <div style="position:absolute;left:0;right:0;top:52%;transform:translateY(-50%);text-align:center;font:700 32px/1 Rajdhani,sans-serif;color:#eceded">3.1</div>
+        </div>
+        <div style="font:700 11px/1 Rajdhani,sans-serif;letter-spacing:.06em;color:#c9cccd;margin-top:9px;text-align:center">Ink</div>
+      </div>
+      <div onClick="{{ skinGilt }}" style="cursor:pointer">
+        <div style="position:relative;height:112px;border-radius:14px;clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px));background:linear-gradient(150deg,#3b2d0c,#17120a);border:2px solid {{ selGilt }};overflow:hidden">
+          <div style="position:absolute;inset:0;background:repeating-linear-gradient(68deg,rgba(255,177,27,.14) 0 2px,transparent 2px 9px)"></div>
+          <div style="position:absolute;left:10px;bottom:9px;font:700 20px/1 Rajdhani,sans-serif;color:#ffb11b">3–1</div>
+        </div>
+        <div style="font:700 11px/1 Rajdhani,sans-serif;letter-spacing:.06em;color:#c9cccd;margin-top:9px;text-align:center">Gilt</div>
+      </div>
+    </div>
+  </div>
+</div>
+</sc-if>
+
+<sc-if value="{{ toastOn }}">
+<div style="position:absolute;left:50%;bottom:96px;transform:translateX(-50%);height:44px;padding:0 18px;display:flex;align-items:center;gap:10px;border-radius:999px;background:#1a1b1e;border:1px solid rgba(63,176,140,.4);box-shadow:0 14px 34px rgba(0,0,0,.28);animation:toastIn .2s ease-out;white-space:nowrap">
+  <div style="width:7px;height:7px;border-radius:999px;background:#3fb08c"></div>
+  <span style="font:700 12px/1 Rajdhani,sans-serif;letter-spacing:.02em;color:#eceded">{{ toastText }}</span>
+</div>
+</sc-if>
+
+</div>
+
+<div style="display:flex;flex-wrap:wrap;justify-content:center;gap:8px;max-width:520px">
+<div style="height:32px;padding:0 13px;display:flex;align-items:center;border-radius:999px;background:#151618;border:1px solid rgba(255,255,255,.09);font:700 11px Rajdhani,sans-serif;letter-spacing:.06em;color:#9aa0a6">Log the match</div>
+<div style="height:32px;padding:0 13px;display:flex;align-items:center;border-radius:999px;background:#151618;border:1px solid rgba(255,255,255,.09);font:700 11px Rajdhani,sans-serif;letter-spacing:.06em;color:#9aa0a6">Stamp a Classic</div>
+<div style="height:32px;padding:0 13px;display:flex;align-items:center;border-radius:999px;background:#151618;border:1px solid rgba(255,255,255,.09);font:700 11px Rajdhani,sans-serif;letter-spacing:.06em;color:#9aa0a6">Change the skin</div>
+<div style="height:32px;padding:0 13px;display:flex;align-items:center;border-radius:999px;background:#151618;border:1px solid rgba(255,255,255,.09);font:700 11px Rajdhani,sans-serif;letter-spacing:.06em;color:#9aa0a6">Toggle the shield</div>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;spoilerDefault&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Behaviour&quot;},&quot;skin&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Default&quot;,&quot;Broadsheet&quot;,&quot;Holofoil&quot;,&quot;Ember&quot;,&quot;Ink&quot;,&quot;Gilt&quot;],&quot;default&quot;:&quot;Default&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Collectible&quot;}}">
+const SKINS = {
+  Default: { home: "#c8202f", away: "#e9ecf2", awayInk: "#101318", base: "#151618", ink: "#eceded", eyebrow: "#9aa0a6", score: "#fff", sheen: "repeating-linear-gradient(68deg,rgba(255,255,255,.055) 0 2px,transparent 2px 11px)", wash: "none", footer: "rgba(9,10,11,.5)", footerLine: "rgba(255,255,255,.09)", badge: "rgba(0,0,0,.42)", badgeLine: "rgba(255,255,255,.14)", notch: "rgba(255,255,255,.22)" },
+  Broadsheet: { home: "#d8d3c6", away: "#cfc9ba", awayInk: "#17120a", base: "#e8e4d9", ink: "#17120a", eyebrow: "#5c554a", score: "#17120a", sheen: "repeating-linear-gradient(0deg,rgba(0,0,0,.045) 0 1px,transparent 1px 5px)", wash: "none", footer: "rgba(0,0,0,.06)", footerLine: "rgba(0,0,0,.22)", badge: "rgba(0,0,0,.06)", badgeLine: "rgba(0,0,0,.28)", notch: "rgba(0,0,0,.3)" },
+  Holofoil: { home: "#6b5bd6", away: "#3cdcc8", awayInk: "#0b1420", base: "#101828", ink: "#fff", eyebrow: "rgba(255,255,255,.85)", score: "#fff", sheen: "repeating-linear-gradient(68deg,rgba(255,255,255,.11) 0 1px,transparent 1px 7px)", wash: "radial-gradient(circle at 28% 18%,rgba(155,120,255,.5),transparent 46%),radial-gradient(circle at 78% 62%,rgba(60,220,200,.42),transparent 46%),radial-gradient(circle at 52% 98%,rgba(255,110,180,.42),transparent 46%)", footer: "rgba(9,10,11,.5)", footerLine: "rgba(255,255,255,.22)", badge: "rgba(0,0,0,.35)", badgeLine: "rgba(255,255,255,.24)", notch: "rgba(255,255,255,.3)" },
+  Ember: { home: "#2f5480", away: "#f5402e", awayInk: "#fff", base: "#9a3f96", ink: "#fff", eyebrow: "rgba(255,255,255,.85)", score: "#fff", sheen: "repeating-linear-gradient(68deg,rgba(255,255,255,.07) 0 2px,transparent 2px 11px)", wash: "radial-gradient(ellipse at 50% 118%,rgba(255,255,255,.28),transparent 52%)", footer: "rgba(9,10,11,.42)", footerLine: "rgba(255,255,255,.24)", badge: "rgba(0,0,0,.3)", badgeLine: "rgba(255,255,255,.26)", notch: "rgba(255,255,255,.3)" },
+  Ink: { home: "#1a1b1e", away: "#1a1b1e", awayInk: "#eceded", base: "#0c0d0f", ink: "#eceded", eyebrow: "#7f868b", score: "#eceded", sheen: "none", wash: "none", footer: "rgba(255,255,255,.03)", footerLine: "rgba(255,255,255,.16)", badge: "rgba(255,255,255,.05)", badgeLine: "rgba(255,255,255,.16)", notch: "rgba(255,255,255,.16)" },
+  Gilt: { home: "#6b5210", away: "#3b2d0c", awayInk: "#ffe9b0", base: "#17120a", ink: "#ffe9b0", eyebrow: "#ffb11b", score: "#ffb11b", sheen: "repeating-linear-gradient(68deg,rgba(255,177,27,.14) 0 2px,transparent 2px 9px)", wash: "none", footer: "rgba(9,10,11,.5)", footerLine: "rgba(255,177,27,.32)", badge: "rgba(0,0,0,.4)", badgeLine: "rgba(255,177,27,.32)", notch: "#ffb11b" }
+};
+
+const LABELS = {
+  0: "Tap the stars to rate", 0.5: "0.5 · Not worth the evening", 1: "1 · Poor", 1.5: "1.5 · Poor",
+  2: "2 · Watchable", 2.5: "2.5 · Watchable", 3: "3 · Good night", 3.5: "3.5 · Good night",
+  4: "4 · One to remember", 4.5: "4.5 · One to remember", 5: "5 · All-timer"
+};
+
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = {
+      tab: "home", sheet: null, matchTab: "match",
+      rating: 0, classic: false, tags: [], skin: null, spoiler: null,
+      save: "idle", toast: null, streak: 12, logged: 142
+    };
+  }
+
+  componentWillUnmount() {
+    clearTimeout(this._saveT);
+    clearTimeout(this._toastT);
+  }
+
+  get skinName() { return this.state.skin ?? this.props.skin ?? "Default"; }
+  get spoiler() { return this.state.spoiler ?? this.props.spoilerDefault ?? false; }
+
+  flash(text) {
+    clearTimeout(this._toastT);
+    this.setState({ toast: text });
+    this._toastT = setTimeout(() => this.setState({ toast: null }), 2200);
+  }
+
+  setRating = (v) => this.setState({ rating: v, save: this.state.save === "saved" ? "dirty" : this.state.save });
+
+  toggleTag = (t) => {
+    const has = this.state.tags.indexOf(t) !== -1;
+    if (!has && this.state.tags.length >= 3) { this.flash("Three tags is the limit"); return; }
+    this.setState((s) => ({
+      tags: has ? s.tags.filter((x) => x !== t) : s.tags.concat([t]),
+      save: s.save === "saved" ? "dirty" : s.save
+    }));
+  };
+
+  tagStyle(t) {
+    const on = this.state.tags.indexOf(t) !== -1;
+    return {
+      bg: on ? "rgba(255,255,255,.12)" : "#121315",
+      line: on ? "rgba(255,255,255,.28)" : "rgba(255,255,255,.09)",
+      ink: on ? "#eceded" : "#9aa0a6"
+    };
+  }
+
+  save = () => {
+    if (this.state.rating === 0) { this.flash("Give it stars first"); return; }
+    if (this.state.save === "saving") return;
+    this.setState({ save: "saving" });
+    clearTimeout(this._saveT);
+    this._saveT = setTimeout(() => {
+      const first = this.state.save !== "dirty";
+      this.setState((s) => ({
+        save: "saved",
+        streak: first ? s.streak + 1 : s.streak,
+        logged: first ? s.logged + 1 : s.logged
+      }));
+      this.flash(first ? "Logged · streak now " + (this.state.streak + 1) + " nights" : "Entry updated");
+    }, 800);
+  };
+
+  renderVals() {
+    const st = this.state;
+    const sk = SKINS[this.skinName] || SKINS.Default;
+    const spoiler = this.spoiler;
+    const ink = (t) => (st.tab === t ? "#ffb11b" : "#7f868b");
+    const saveMap = {
+      idle: { label: "Log this match", bg: "#ffb11b", ink: "#17120a", line: "#ffb11b" },
+      dirty: { label: "Update log", bg: "#ffb11b", ink: "#17120a", line: "#ffb11b" },
+      saving: { label: "Saving…", bg: "#2a2c30", ink: "#c9cccd", line: "rgba(255,255,255,.14)" },
+      saved: { label: "Saved to diary", bg: "#20231f", ink: "#3fb08c", line: "rgba(63,176,140,.45)" }
+    };
+    const sv = saveMap[st.save] || saveMap.idle;
+    const tE = this.tagStyle("end"), tA = this.tagStyle("atmos"), tR = this.tagStyle("ref"), tC = this.tagStyle("come");
+    const sel = (n) => (this.skinName === n ? "#ffb11b" : "rgba(255,255,255,.1)");
+
+    return {
+      isHome: st.tab === "home", isDiscover: st.tab === "discover",
+      isActivity: st.tab === "activity", isProfile: st.tab === "profile",
+      homeInk: ink("home"), discoverInk: ink("discover"),
+      activityInk: ink("activity"), profileInk: ink("profile"),
+      goHome: () => this.setState({ tab: "home", sheet: null }),
+      goDiscover: () => this.setState({ tab: "discover", sheet: null }),
+      goActivity: () => this.setState({ tab: "activity", sheet: null }),
+      goProfile: () => this.setState({ tab: "profile", sheet: null }),
+
+      heroWrapStyle: "height:334px;--home:" + sk.home + ";--away:" + sk.away + ";--crest:62px;--card-base:" + sk.base +
+        ";--card-ink:" + sk.ink + ";--card-eyebrow:" + sk.eyebrow + ";--card-score:" + sk.score +
+        ";--card-sheen:" + sk.sheen + ";--card-wash:" + sk.wash + ";--card-footer-bg:" + sk.footer +
+        ";--card-footer-line:" + sk.footerLine + ";--card-badge-bg:" + sk.badge +
+        ";--card-badge-line:" + sk.badgeLine + ";--card-notch:" + sk.notch,
+      awayCrestInk: sk.awayInk,
+      skinName: this.skinName.toUpperCase(),
+      classicFlag: st.classic, spoilerFlag: spoiler,
+      scoreBlur: spoiler ? "blur(9px)" : "none",
+      heroCta: st.save === "saved" ? "Open your entry" : "Rate this match",
+      streak: st.streak, logged: st.logged,
+      streakTodayBg: st.save === "saved" ? "#f5402e" : "rgba(255,255,255,.08)",
+      streakNote: st.save === "saved" ? "Tonight is in. One rating on the night keeps it alive." : "Rate a match tonight to keep it alive.",
+      diaryNote: st.save === "saved" ? "Logged · " + (LABELS[st.rating] || "") : "Not logged yet",
+
+      toggleSpoiler: () => {
+        const next = !this.spoiler;
+        this.setState({ spoiler: next });
+        this.flash(next ? "Spoiler shield on" : "Spoiler shield off");
+      },
+      shieldBg: spoiler ? "rgba(63,176,140,.14)" : "#121315",
+      shieldLine: spoiler ? "rgba(63,176,140,.45)" : "rgba(255,255,255,.09)",
+      shieldInk: spoiler ? "#3fb08c" : "#c9cccd",
+      toggleBg: spoiler ? "#3fb08c" : "rgba(255,255,255,.14)",
+      toggleJustify: spoiler ? "flex-end" : "flex-start",
+      spoilerHint: spoiler ? "Scores and heat are blurred" : "Scores are visible",
+
+      sheetMatch: st.sheet === "match", sheetSkins: st.sheet === "skins",
+      openMatch: () => this.setState({ sheet: "match", matchTab: "community" }),
+      closeSheet: () => this.setState({ sheet: null }),
+      openSkins: () => this.setState({ sheet: "skins" }),
+      closeSkins: () => this.setState({ sheet: "match" }),
+      joinLive: () => this.flash("Live companion — screen 2o on the board"),
+
+      onMatchTab: st.matchTab === "match", onCommunityTab: st.matchTab === "community",
+      showMatchTab: () => this.setState({ matchTab: "match" }),
+      showCommunityTab: () => this.setState({ matchTab: "community" }),
+      tabMatchInk: st.matchTab === "match" ? "#ffb11b" : "#7f868b",
+      tabCommunityInk: st.matchTab === "community" ? "#ffb11b" : "#7f868b",
+      tabMatchLine: st.matchTab === "match" ? "inset 0 -2px 0 #ffb11b" : "none",
+      tabCommunityLine: st.matchTab === "community" ? "inset 0 -2px 0 #ffb11b" : "none",
+
+      starWidth: (st.rating / 5) * 100 + "%",
+      ratingLabel: LABELS[st.rating] || LABELS[0],
+      r05: () => this.setRating(0.5), r10: () => this.setRating(1),
+      r15: () => this.setRating(1.5), r20: () => this.setRating(2),
+      r25: () => this.setRating(2.5), r30: () => this.setRating(3),
+      r35: () => this.setRating(3.5), r40: () => this.setRating(4),
+      r45: () => this.setRating(4.5), r50: () => this.setRating(5),
+
+      toggleClassic: () => {
+        const next = !st.classic;
+        this.setState((s) => ({ classic: next, save: s.save === "saved" ? "dirty" : s.save }));
+        if (next) this.flash("Instant Classic stamped");
+      },
+      classicBg: st.classic ? "rgba(255,177,27,.14)" : "#121315",
+      classicLine: st.classic ? "rgba(255,177,27,.5)" : "rgba(255,255,255,.09)",
+      classicInk: st.classic ? "#ffb11b" : "#9aa0a6",
+      classicMark: st.classic ? "#ffb11b" : "rgba(255,255,255,.22)",
+      stampOuter: st.classic ? "rgba(255,177,27,.85)" : "rgba(255,255,255,.16)",
+      stampInner: st.classic ? "rgba(255,177,27,.45)" : "rgba(255,255,255,.1)",
+      stampSub: st.classic ? "rgba(255,177,27,.75)" : "#7f868b",
+      classicLabel: st.classic ? "Stamped — tap to remove" : "Tap to stamp this match",
+
+      tagCount: st.tags.length,
+      tagEnd: () => this.toggleTag("end"), tagAtmos: () => this.toggleTag("atmos"),
+      tagRef: () => this.toggleTag("ref"), tagComeback: () => this.toggleTag("come"),
+      tagEndBg: tE.bg, tagEndLine: tE.line, tagEndInk: tE.ink,
+      tagAtmosBg: tA.bg, tagAtmosLine: tA.line, tagAtmosInk: tA.ink,
+      tagRefBg: tR.bg, tagRefLine: tR.line, tagRefInk: tR.ink,
+      tagComebackBg: tC.bg, tagComebackLine: tC.line, tagComebackInk: tC.ink,
+
+      save: this.save,
+      saveLabel: sv.label, saveBg: sv.bg, saveInk: sv.ink, saveLine: sv.line,
+      loggedLabel: st.save === "saved" ? "SAVED" : st.save === "dirty" ? "UNSAVED CHANGES" : "NOT LOGGED",
+      loggedInk: st.save === "saved" ? "#3fb08c" : "#7f868b",
+
+      skinDefault: () => this.setState({ skin: "Default", sheet: "match" }),
+      skinBroadsheet: () => this.setState({ skin: "Broadsheet", sheet: "match" }),
+      skinHolo: () => this.setState({ skin: "Holofoil", sheet: "match" }),
+      skinEmber: () => this.setState({ skin: "Ember", sheet: "match" }),
+      skinInk: () => this.setState({ skin: "Ink", sheet: "match" }),
+      skinGilt: () => this.setState({ skin: "Gilt", sheet: "match" }),
+      selDefault: sel("Default"), selBroadsheet: sel("Broadsheet"), selHolo: sel("Holofoil"),
+      selEmber: sel("Ember"), selInk: sel("Ink"), selGilt: sel("Gilt"),
+
+      toastOn: !!st.toast, toastText: st.toast || ""
+    };
+  }
+}
+</script>
+</body>
+</html>

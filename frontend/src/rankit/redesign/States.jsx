@@ -198,6 +198,24 @@ export function EmptyState({ title, body, action, onAction }) {
   );
 }
 
+/* Hata bos sonuc degildir. Son basarili icerik bunun yaninda kalabilir. */
+export function ErrorState({ error, onRetry, title, body }) {
+  /* §5.4 uc ayri hata: cevrimdisi (tekrar dene), 401 (yeniden giris), diger
+     (tekrar dene). 401'de "Retry" sunmak bos bir soz — ayni istek ayni sonucu
+     verir; kullaniciya yapmasi gereken sey soylenmeli. Bu yuzden o dalda
+     eylem YOK, yerine nereye gidecegi yaziyor. */
+  const needsSignIn = error?.status === 401;
+  return <div role="alert">
+    <EmptyState
+      title={title || (needsSignIn ? "Sign in to see this"
+        : error?.offline ? "Connection unavailable" : "Could not load this view")}
+      body={body ?? (needsSignIn ? "This view belongs to your account. Open Profile to sign in — nothing you saved is lost."
+        : error?.offline ? "Previously loaded content stays available. Reconnect and try again."
+        : "Your data has not been removed. Please try again.")}
+      action={needsSignIn ? undefined : "Retry"} onAction={needsSignIn ? undefined : onRetry}/>
+  </div>;
+}
+
 /* 3l — listenin sonu. */
 export function EndOfList({ count }) {
   return (

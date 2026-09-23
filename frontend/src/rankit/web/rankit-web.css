@@ -12,7 +12,7 @@
   --riw-filter: 216px;
   --riw-gap: 18px;
   display: grid;
-  grid-template-columns: var(--riw-rail) 1fr;
+  grid-template-columns: var(--riw-rail) minmax(0, 1fr);
   height: 100%;
   min-height: 0;
   background: var(--ri-bg, #0b0c0e);
@@ -41,7 +41,7 @@
 .riw-brand strong { font: 800 15px/1 var(--font-logo); letter-spacing: .04em; }
 .riw-brand small {
   display: block; margin-top: 3px;
-  font: 700 7px/1 var(--font-logo); letter-spacing: .16em; color: #6f7376;
+  font: 700 9px/1 var(--font-logo); letter-spacing: .16em; color: #6f7376;
 }
 
 .riw-nav { display: flex; flex-direction: column; gap: 2px; padding-top: 14px; }
@@ -100,15 +100,15 @@
 .riw-head p { margin: 0; font-size: 12px; color: #7d8184; }
 .riw-head .riw-count { margin-left: auto; font-size: 11px; color: #6f7376; }
 
-.riw-main { display: grid; grid-template-columns: var(--riw-filter) 1fr; gap: var(--riw-gap); padding: 0 26px 40px; }
-.riw-main.solo { grid-template-columns: 1fr; }
+.riw-main { display: grid; grid-template-columns: var(--riw-filter) minmax(0, 1fr); gap: var(--riw-gap); min-width: 0; padding: 0 26px 40px; }
+.riw-main.solo { grid-template-columns: minmax(0, 1fr); }
 
 /* ── Ayakta duran filtre rayı ────────────────────────────────────────────── */
 
 .riw-filters { position: sticky; top: 78px; align-self: start; display: grid; gap: 16px; }
 .riw-fgroup > span {
   display: block; margin: 0 0 7px 2px;
-  font: 700 7.5px var(--font-logo); letter-spacing: .14em; color: #5f6265;
+  font: 700 9px var(--font-logo); letter-spacing: .14em; color: #5f6265;
 }
 .riw-fgroup > div { display: flex; flex-wrap: wrap; gap: 5px; }
 .riw-fgroup button {
@@ -126,14 +126,15 @@
   border: 1px solid var(--ri-line, rgba(255, 255, 255, .08));
   background: #0c0d0f; color: #a9acae; font-size: 10px; outline: none;
 }
-.riw-fgroup select:focus-visible { border-color: rgba(255, 177, 27, .45); }
+.riw-fgroup select:focus-visible { border-color: rgba(236, 237, 237, .45); }
 
 /* ── Duvar ───────────────────────────────────────────────────────────────── */
 
 .riw-wall {
   display: grid; gap: 14px; min-width: 0;
-  grid-template-columns: repeat(auto-fill, minmax(268px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
 }
+.riw-wall > *, .riw-wall .ri-match-card { min-width: 0; }
 .riw-wall .ri-match-card { cursor: pointer; }
 
 .riw-more { display: block; margin: 22px auto 0; }
@@ -236,7 +237,7 @@
 .riw-body::-webkit-scrollbar { width: 10px }
 .riw-body::-webkit-scrollbar-thumb { background: #24262a; border-radius: 99px; border: 3px solid #0b0c0e }
 .riw-body::-webkit-scrollbar-thumb:hover { background: #34373c }
-.riw :focus-visible { outline: 2px solid rgba(255, 177, 27, .65); outline-offset: 2px; border-radius: 6px }
+.riw :focus-visible { outline: 2px solid var(--ri-focus); outline-offset: 2px; border-radius: 6px }
 .riw [class*="score"], .riw .riw-count { font-variant-numeric: tabular-nums }
 
 /* ── Dar ekran: ray üstte yatay şeride düşer ─────────────────────────────── */
@@ -298,7 +299,7 @@
   border: 1px solid var(--ri-line, rgba(255, 255, 255, .08)); background: #0c0d0f;
   color: #6f7376;
 }
-.riw-rank-search:focus-within { border-color: rgba(255, 177, 27, .45); }
+.riw-rank-search:focus-within { border-color: rgba(236, 237, 237, .45); }
 .riw-rank-search input {
   flex: 1; min-width: 0; border: 0; outline: 0; background: none;
   color: #ddd; font-size: 12.5px;
@@ -307,14 +308,14 @@
 
 .riw-rank-results { display: grid; gap: 5px; margin-top: 14px; max-height: 52vh; overflow-y: auto; }
 .riw-rank-results > button {
-  display: grid; grid-template-columns: 1fr auto; gap: 2px 10px;
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; min-width: 0;
   padding: 11px 13px; border-radius: 12px; text-align: left;
   border: 1px solid var(--ri-line, rgba(255, 255, 255, .08));
   background: #101113; color: #b8babc;
   transition: background .14s ease, border-color .14s ease;
 }
 .riw-rank-results > button:hover { background: #16171a; border-color: rgba(255, 177, 27, .32); }
-.riw-rank-comp { font: 700 7.5px var(--font-logo); letter-spacing: .13em; color: #6f7376; text-transform: uppercase; }
+.riw-rank-comp { font: 700 9px var(--font-logo); letter-spacing: .13em; color: #6f7376; text-transform: uppercase; }
 .riw-rank-date { grid-row: 1 / 3; align-self: center; font-size: 10px; color: #5f6265; font-variant-numeric: tabular-nums; }
 .riw-rank-teams { font: 600 12.5px var(--font-sans); color: #e2e4e5; }
 .riw-rank-teams b { color: var(--ri-gold, #FFB11B); margin: 0 5px; font-variant-numeric: tabular-nums; }
@@ -574,17 +575,17 @@
 .riw-facts em { grid-column: 1 / -1; justify-self: end; font: 400 10px/1.4 var(--font-sans); font-style: normal; color: #9aa0a6; }
 
 .riw-community-stats {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; margin-top: 4px;
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; margin-top: 4px;
 }
 .riw-community-stats > div {
   display: flex; flex-direction: column; align-items: center; gap: 4px;
   padding: 14px 8px; border-radius: 15px;
   border: 1px solid var(--ri-line, rgba(255, 255, 255, .08));
   background: rgba(255, 255, 255, .02);
-  color: var(--ri-gold, #FFB11B);
+  color: var(--ri-gold, #FFB11B); min-width: 0;
 }
 .riw-community-stats strong { font: 800 19px var(--font-logo); color: #eceded; }
-.riw-community-stats span { font: 700 8.5px var(--font-logo); letter-spacing: .14em; color: #9aa0a6; }
+.riw-community-stats span { font: 700 9px var(--font-logo); letter-spacing: .14em; color: #9aa0a6; }
 
 .riw-tagcloud { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 16px; }
 .riw-tagcloud span {
@@ -601,7 +602,7 @@
 .riw-merge-note { margin-top: 10px; font-size: 11px; }
 
 @media (max-width: 1080px) {
-  .riw-main { grid-template-columns: 1fr; }
+  .riw-main { grid-template-columns: minmax(0, 1fr); }
   .riw-filters { position: static; }
   .riw-fgroup > div { overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; }
 }
@@ -614,7 +615,7 @@
 
      Download üstteki şeritte kalıyor: sürekli basılan bir şey değil, alt
      bardaki beş yeri daraltması anlamsız olurdu. */
-  .riw { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+  .riw { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
 
   .riw-rail {
     flex-direction: row; align-items: center; gap: 10px;
@@ -630,7 +631,7 @@
   /* Nav raydan çıkıp ekranın dibine sabitleniyor. */
   .riw-nav {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
-    display: grid; grid-template-columns: repeat(5, 1fr);
+    display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 0; padding: 9px 10px calc(9px + env(safe-area-inset-bottom));
     background: rgba(13, 14, 15, .94);
     backdrop-filter: blur(20px);
@@ -668,6 +669,9 @@
 @media (prefers-reduced-motion: reduce) {
   .riw-inspect-wrap, .riw-inspect, .riw-skeleton, .riw-chip { animation-duration: .001ms; animation-iteration-count: 1; }
   .riw-chip:hover { transform: none; }
+  /* Cekmece transform ile kayiyor: telefondaki `.rankit-app *` battaniyesinin
+     web karsiligi yok, o yuzden tek tek yaziliyor. */
+  .riw-drawer { transition-duration: .001ms; }
 }
 
 /* Uzun takim adlari skor bandini iki satira itiyordu ("HEBC Hamburg",
@@ -696,7 +700,7 @@
 .riw-set-group { margin-bottom: 18px; }
 .riw-set-group > span {
   display: block; margin: 0 0 7px 2px;
-  font: 700 7.5px var(--font-logo); letter-spacing: .14em; color: #5f6265;
+  font: 700 9px var(--font-logo); letter-spacing: .14em; color: #5f6265;
 }
 
 .riw-set-row {
@@ -728,7 +732,7 @@
 .riw-review-actions button:hover:not(:disabled) { color: #dcdedf; border-color: rgba(255, 255, 255, .18); }
 .riw-review-actions button.on { color: var(--ri-gold); border-color: rgba(255, 177, 27, .34); }
 .riw-review-actions button:disabled { opacity: .5; cursor: default; }
-.riw-review-actions button:focus-visible { outline: 2px solid var(--ri-gold); outline-offset: 2px; }
+.riw-review-actions button:focus-visible { outline: 2px solid var(--ri-focus); outline-offset: 2px; }
 
 /* Spoiler: sunucu metni zaten gönderiyor, okuyucu kendi kararını versin. */
 .riw-spoiler { border: 1px dashed rgba(255, 255, 255, .22); border-radius: 8px; background: transparent; color: #9aa0a6; font: inherit; padding: 7px 10px; cursor: pointer; width: 100%; text-align: left; }
@@ -743,29 +747,29 @@
    sayfa değiştirmiyor — üstüne bir çekmece açıyor. Kendi rengini getirmiyor. */
 .riw-linkish { border: 0; background: none; padding: 0; font: inherit; color: inherit; cursor: pointer; text-decoration: underline; text-decoration-color: rgba(255, 177, 27, .34); text-underline-offset: 3px; }
 .riw-linkish:hover { text-decoration-color: var(--ri-gold); }
-.riw-linkish:focus-visible { outline: 2px solid var(--ri-gold); outline-offset: 2px; border-radius: 3px; }
+.riw-linkish:focus-visible { outline: 2px solid var(--ri-focus); outline-offset: 2px; border-radius: 3px; }
 
 /* Kadro / popüler oyuncu çipleri (varlık çekmecesi) */
 .riw-entity-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
 .riw-entity-chips button { display: inline-flex; align-items: center; gap: 5px; min-height: 30px; padding: 5px 10px; border: 1px solid var(--ri-line); border-radius: 999px; background: transparent; color: #c8ccd0; font-size: 11px; cursor: pointer; }
 .riw-entity-chips button:hover { border-color: rgba(255, 177, 27, .3); color: #fff; }
-.riw-entity-chips button:focus-visible { outline: 2px solid var(--ri-gold); outline-offset: 2px; }
+.riw-entity-chips button:focus-visible { outline: 2px solid var(--ri-focus); outline-offset: 2px; }
 .riw-entity-chips button b { color: var(--ri-gold); font: 700 9px var(--font-logo); }
 
 /* Yeni liste kurma satırı (Discover › Lists) */
 .riw-list-new { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; padding: 12px 14px; border: 1px solid var(--ri-line); border-radius: 14px; background: rgba(255, 255, 255, .02); }
 .riw-list-new input[type="text"], .riw-list-new > input { flex: 1 1 220px; min-width: 0; height: 38px; padding: 0 12px; border: 1px solid var(--ri-line); border-radius: 10px; background: #0c0d0f; color: #e8e9ea; font-size: 13px; }
 .riw-list-new > input::placeholder { color: #6d7276; }
-.riw-list-new > input:focus-visible { outline: 2px solid var(--ri-gold); outline-offset: 1px; }
+.riw-list-new > input:focus-visible { outline: 2px solid var(--ri-focus); outline-offset: 2px; }
 .riw-list-new label { display: inline-flex; align-items: center; gap: 6px; color: #9aa0a6; font-size: 12px; white-space: nowrap; }
 .riw-list-new button { display: inline-flex; align-items: center; gap: 6px; min-height: 38px; padding: 0 16px; border: 0; border-radius: 10px; background: var(--ri-gold); color: #15100a; font: 700 12px var(--font-logo); letter-spacing: .04em; cursor: pointer; }
 .riw-list-new button:disabled { opacity: .45; cursor: default; }
-.riw-list-new button:focus-visible { outline: 2px solid var(--ri-gold); outline-offset: 2px; }
+.riw-list-new button:focus-visible { outline: 2px solid var(--ri-focus); outline-offset: 2px; }
 
 /* Liste kartları artık tıklanabilir */
 .ri-list-stack article[role="button"] { cursor: pointer; }
 .ri-list-stack article[role="button"]:hover { border-color: rgba(255, 177, 27, .28); }
-.ri-list-stack article[role="button"]:focus-visible { outline: 2px solid var(--ri-gold); outline-offset: 2px; }
+.ri-list-stack article[role="button"]:focus-visible { outline: 2px solid var(--ri-focus); outline-offset: 2px; }
 
 /* ── Turnuva: puan tablosu ───────────────────────────────────────────────────
    Renkler DESIGN.md metin token'ları: #eceded / #c9cccd / #9aa0a6 / #7f868b.
@@ -773,7 +777,7 @@
    tablonun okunma sebebini yok eder. */
 .riw-table-wrap { overflow-x: auto; margin-top: 4px; }
 .riw-table { width: 100%; border-collapse: collapse; font-size: 12.5px; font-variant-numeric: tabular-nums; }
-.riw-table th { position: sticky; top: 0; background: #0f1012; text-align: left; font: 700 8.5px var(--font-logo); letter-spacing: .13em; color: #7f868b; padding: 8px 6px; border-bottom: 1px solid var(--ri-line); }
+.riw-table th { position: sticky; top: 0; background: #0f1012; text-align: left; font: 700 9px var(--font-logo); letter-spacing: .13em; color: #7f868b; padding: 8px 6px; border-bottom: 1px solid var(--ri-line); }
 .riw-table td { padding: 9px 6px; border-bottom: 1px solid var(--ri-line); color: #c9cccd; }
 .riw-table th.num, .riw-table td.num { text-align: right; width: 1%; white-space: nowrap; }
 .riw-table td.rank { color: #7f868b; font: 700 11px var(--font-logo); }
@@ -783,9 +787,9 @@
 /* Oyuncu satırı: isim + takım + NEDEN listede olduğu. Sadece isim basmak
    "popular" kelimesini desteklemiyordu. */
 .riw-player-rows { display: flex; flex-direction: column; margin-top: 4px; }
-.riw-player-row { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 10px; width: 100%; padding: 10px 4px; border: 0; border-bottom: 1px solid var(--ri-line); background: none; text-align: left; cursor: pointer; }
+.riw-player-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 10px; width: 100%; min-width: 0; padding: 10px 4px; border: 0; border-bottom: 1px solid var(--ri-line); background: none; text-align: left; cursor: pointer; }
 .riw-player-row:hover { background: rgba(255, 255, 255, .025); }
-.riw-player-row:focus-visible { outline: 2px solid var(--ri-gold); outline-offset: -2px; }
+.riw-player-row:focus-visible { outline: 2px solid var(--ri-focus); outline-offset: -2px; }
 .riw-player-name { color: #eceded; font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .riw-player-team { color: #9aa0a6; font-size: 11px; white-space: nowrap; }
 .riw-player-stat { color: var(--ri-gold); font: 700 9px var(--font-logo); letter-spacing: .06em; white-space: nowrap; }
@@ -795,12 +799,12 @@
 .riw-weeks button { flex: 0 0 auto; min-width: 34px; min-height: 34px; padding: 0 8px; border: 1px solid var(--ri-line); border-radius: 9px; background: transparent; color: #9aa0a6; font: 700 11px var(--font-logo); font-variant-numeric: tabular-nums; cursor: pointer; }
 .riw-weeks button:hover { color: #eceded; border-color: rgba(255, 255, 255, .2); }
 .riw-weeks button.on { color: #15100a; background: var(--ri-gold); border-color: var(--ri-gold); }
-.riw-weeks button:focus-visible { outline: 2px solid var(--ri-gold); outline-offset: 2px; }
+.riw-weeks button:focus-visible { outline: 2px solid var(--ri-focus); outline-offset: 2px; }
 
 /* Oylama listesi takıma göre gruplu: alfabetik tek duvarda kimin hangi takımda
    olduğu görünmüyordu. */
 .riw-vote-team + .riw-vote-team { margin-top: 10px; }
-.riw-vote-team > small { display: block; font: 700 8.5px var(--font-logo); letter-spacing: .13em; color: #7f868b; margin-bottom: 6px; }
+.riw-vote-team > small { display: block; font: 700 9px var(--font-logo); letter-spacing: .13em; color: #7f868b; margin-bottom: 6px; }
 
 /* Ekran 3e web cercevesi. Bilesen ortak; burasi yalnizca katmanin kutusu.
    Telefonda tam ekran, webde ortalanmis bir panel -- ayni isaretleme. */
@@ -812,4 +816,4 @@
   padding:0 12px;border:1px solid var(--ri-line);border-radius:999px;background:#121315;color:#9aa0a6;
   font:700 12px var(--font-logo);letter-spacing:.06em;text-align:left}
 .riw-search-trigger:hover{color:#eceded;border-color:rgba(255,255,255,.18)}
-.riw-search-trigger:focus-visible{outline:2px solid var(--ri-gold);outline-offset:2px}
+.riw-search-trigger:focus-visible{outline:2px solid var(--ri-focus);outline-offset:2px}

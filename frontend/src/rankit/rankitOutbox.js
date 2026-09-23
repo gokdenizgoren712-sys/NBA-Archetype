@@ -4,75 +4,56 @@
  * when you're back." Bu dosya o sözün kendisi. Önceden çevrimdışı bir
  * kaydetme sadece başarısız oluyordu ve puan kayboluyordu.
  *
- * Üç kural:
- *   * Yalnızca AĞ hatası kuyruğa girer (rankitApi `error.offline`). Sunucunun
- *     REDDETTİĞİ bir puan (422, 409) kuyrukta bekletilmez — tekrar denemek
- *     aynı cevabı alır; kullanıcıya söylenir ve düşer.
- *   * Maç başına TEK kayıt: aynı maçı çevrimdışıyken iki kez kaydetmek son
- *     hâlini yükler, ikisini değil.
+ * Kurallar:
+ *   * Her kayıt ağ isteğinden ÖNCE hesap bazında kalıcılaştırılır. HTTP
+ *     reddi de saklanır; otomatik tekrar döngüsüne girmez ve başarı sayılmaz.
+ *   * Maç başına son revizyon tutulur; eski isteğin cevabı yeni taslağı silemez.
+ *   * Diary / POTM / respect ayrı onaylanır. Kısmi kayıtta biten adım tekrarlanmaz.
+ *     Sonucu belirsiz rewatch körlemesine yeniden gönderilmez.
  *   * Puanın ANI telefonda damgalanır (rated_at). Sunucu bunu dar bir
  *     pencerede kabul ediyor (rankit_rank.accepted_rated_at): gece yapılıp
  *     ertesi gün yüklenen puan o gecenin serisini ve ödülünü korur.
  */
 import { rankitApi } from "./rankitApi";
+import { createRatingQueue } from "./ratingQueue";
 
 const EVENT = "rankit:outbox";
 
-function key() {
+export function ratingAccount() {
   let userId = "guest";
   try { userId = JSON.parse(localStorage.getItem("nba_arch_user"))?.id || "guest"; } catch { /* misafir */ }
-  return `rankit:outbox:${userId}`;
+  return userId;
 }
 
+const queue = createRatingQueue({
+  storage: { getItem: key => localStorage.getItem(key), setItem: (key, value) => localStorage.setItem(key, value) },
+  account: ratingAccount, api: rankitApi,
+  changed: () => window.dispatchEvent(new CustomEvent(EVENT)),
+});
 export function outbox() {
-  try { return JSON.parse(localStorage.getItem(key())) || []; } catch { return []; }
+  try { return queue.read(); } catch { return []; }
 }
 
-function save(items) {
-  try { localStorage.setItem(key(), JSON.stringify(items)); } catch { /* depolama dolu: bu oturumda bellekte kalmaz, soylenir */ }
-  window.dispatchEvent(new CustomEvent(EVENT, { detail: items.length }));
-}
+export const queueRating = payload => queue.enqueue(payload);
+export const flushOutbox = options => queue.flush(options);
 
-export function queueRating({ diary, matchId, potmId, respectIds }) {
-  const items = outbox().filter((item) => item.matchId !== matchId);
-  items.push({
-    matchId, potmId: potmId || null, respectIds: respectIds || [],
-    diary: { ...diary, rated_at: new Date().toISOString() },
-    queuedAt: Date.now(),
-  });
-  save(items);
-  return items.length;
-}
-
-let flushing = null;
-
-/* Sırayla yükler. İlk AĞ hatasında durur (hâlâ çevrimdışıyız); reddedilen
-   kaydı düşürür ve sayar. Aynı anda iki flush çalışmaz. */
-export function flushOutbox() {
-  if (flushing) return flushing;
-  flushing = (async () => {
-    let sent = 0, rejected = 0;
-    for (const item of outbox()) {
-      try {
-        await rankitApi.log(item.diary);
-        await Promise.all([
-          item.potmId ? rankitApi.potm(item.matchId, item.potmId) : Promise.resolve(),
-          rankitApi.respect(item.matchId, item.respectIds || []),
-        ]);
-        sent += 1;
-      } catch (error) {
-        if (error?.offline) break;
-        rejected += 1;
-      }
-      save(outbox().filter((x) => x.matchId !== item.matchId));
-    }
-    return { sent, rejected, left: outbox().length };
-  })().finally(() => { flushing = null; });
-  return flushing;
+export async function saveRating(payload) {
+  // Once kalici kayit; diary/POTM/respect adimlari ayri izlenir.
+  const user = ratingAccount();
+  const item = queue.enqueue(payload);
+  const uploaded = await queue.flush({ retryFailed: true });
+  if (ratingAccount() !== user) throw new Error("The account changed. Your changes remain with the original account.");
+  const remaining = queue.read().find(x => x.revision === item.revision);
+  if (remaining && remaining.state !== "pending") {
+    throw new Error(remaining.state === "auth-required" ? "Sign in again to upload your saved rating."
+      : remaining.state === "uncertain" ? "Check your diary before retrying this rewatch. Your draft is safe."
+      : "Your changes are on this phone, but could not be fully uploaded. Retry when ready.");
+  }
+  return { queued: !!remaining, receipt: uploaded.receipts?.find(x => x.revision === item.revision)?.receipt || null };
 }
 
 export function onOutboxChange(listener) {
-  const handler = (event) => listener(event.detail ?? outbox().length);
+  const handler = () => listener(outbox().length);
   window.addEventListener(EVENT, handler);
   return () => window.removeEventListener(EVENT, handler);
 }

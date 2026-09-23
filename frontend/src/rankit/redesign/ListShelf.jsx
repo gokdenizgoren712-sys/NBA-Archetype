@@ -23,10 +23,12 @@ import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { ChevronLeft, Plus, Bookmark, X } from "lucide-react";
 import { rankitApi } from "../rankitApi";
-import { SkeletonRows, Loading, EndOfList } from "./States";
+import { hidesScore, readPrefs } from "../rankitPrefs";
+import { SkeletonRows, Loading, EndOfList, ErrorState } from "./States";
 import { CrestPair } from "./MatchCard";
-import { inkFor } from "./heat";
+import { communityHeat, communityRatingCount, communityVerdictCovered, inkFor, MIN_COMMUNITY_RATINGS } from "./heat";
 import { useBackClose } from "./backStack";
+import { useDialog } from "./useDialog";
 
 const INK = "#eceded";
 const INK_3 = "#9aa0a6";
@@ -51,30 +53,48 @@ function RespectMark({ on, size = 14 }) {
   }} />;
 }
 
-function Item({ match, index, ranked, onOpen }) {
+function Item({ match, index, ranked, onOpen, hideScores }) {
+  const [communityRevealed, setCommunityRevealed] = useState(false);
+  const [scoreRevealed, setScoreRevealed] = useState(false);
   const at = new Date(match.starts_at);
   const played = match.status === "finished";
   const mine = match.my_rating;
+  const hidden = hidesScore(hideScores, match) && !scoreRevealed;
+  const verdictCovered = communityVerdictCovered(match, { revealed: communityRevealed });
+  const rating = played ? communityHeat(match) : null;
+  const count = played ? communityRatingCount(match) : null;
   return (
-    <button type="button" className="ri-shelf-item" onClick={() => onOpen(match)}>
+    <div role="button" tabIndex={0} className="ri-shelf-item" onClick={event => { if (!event.target.closest("button")) onOpen(match); }}
+      onKeyDown={event => { if (!event.target.closest("button") && ["Enter", " "].includes(event.key)) { event.preventDefault(); onOpen(match); } }}>
       {ranked && <span className="ri-shelf-rank">{index + 1}</span>}
       <CrestPair home={match.home} away={match.away} />
       <span className="ri-shelf-text">
         <strong>
           {match.home.name || match.home.short}
-          {played && match.score ? ` ${match.score} ` : " vs "}
+          {played && match.score && !hidden ? ` ${match.score} ` : " vs "}
           {match.away.name || match.away.short}
         </strong>
         <small>
           {Number.isNaN(at.getTime()) ? "" : MONTH.format(at)}
           {mine != null ? ` · your ${stars(mine)}` : ""}
         </small>
+        {verdictCovered && !hidden && <small>Rate it first — then see whether the room agreed with you.</small>}
       </span>
-      {match.community_rating != null && (
-        <i style={{ background: inkFor(match.community_rating) }}
-          title={`Community ${match.community_rating}`} />
-      )}
-    </button>
+      {hidden ? (
+        <button type="button" className="ri-shelf-heat" onClick={event => { event.stopPropagation(); setScoreRevealed(true); }}
+          aria-label="Reveal match result" style={{ border: 0, background: "none", color: "#ffb11b", padding: 0, cursor: "pointer" }}>TAP TO REVEAL</button>
+      ) : verdictCovered ? (
+        <button type="button" className="ri-shelf-heat" onClick={event => { event.stopPropagation(); setCommunityRevealed(true); }}
+          style={{ border: 0, background: "none", color: "#ffb11b", padding: 0, cursor: "pointer" }}
+          aria-label="Reveal community verdict anyway">REVEAL ANYWAY</button>
+      ) : !hidden && rating !== null ? (
+        <span className="ri-shelf-heat" aria-label={`Community ${rating.toFixed(1)}`}>
+          <i style={{ background: inkFor(rating) }} aria-hidden="true" />{rating.toFixed(1)}
+        </span>
+      ) : !hidden && played && count !== null && count < MIN_COMMUNITY_RATINGS ? (
+        <span className="ri-shelf-heat">TOO FEW RATINGS</span>
+      ) : null}
+    </div>
   );
 }
 
@@ -95,6 +115,8 @@ function DiaryPicker({ listId, inList, onAdded, onClose }) {
     finally { setBusy(null); }
   };
 
+  const picker = useDialog({ onClose, label: "Add from your diary" });
+
   // Ayni mac defterde birden cok kez olabilir (rewatch); bir kez gosterilir.
   const seen = new Set(inList);
   const rows = (entries || []).filter((e) => {
@@ -105,8 +127,7 @@ function DiaryPicker({ listId, inList, onAdded, onClose }) {
 
   return (
     <div className="ri-sheet-wrap" onClick={onClose}>
-      <section className="ri-rank-sheet" onClick={(e) => e.stopPropagation()}
-        role="dialog" aria-modal="true" aria-label="Add from your diary">
+      <section {...picker} className="ri-rank-sheet" onClick={(e) => e.stopPropagation()}>
         <div className="ri-sheet-grab" aria-hidden="true" />
         <div className="ri-rank-head">
           <div><small>ADD TO LIST</small><h2>From your diary</h2></div>
@@ -131,7 +152,7 @@ function DiaryPicker({ listId, inList, onAdded, onClose }) {
   );
 }
 
-export default function ListShelf({ listId, onClose, onOpenMatch, onOpenMember }) {
+export default function ListShelf({ listId, onClose, onOpenMatch, onOpenMember, hideScores = readPrefs().hideScores }) {
   const [loaded, setLoaded] = useState({ id: null, data: null });
   const [picking, setPicking] = useState(false);
   useBackClose(onClose);
@@ -139,25 +160,27 @@ export default function ListShelf({ listId, onClose, onOpenMatch, onOpenMember }
   const load = useCallback(() => {
     rankitApi.list(listId)
       .then((d) => setLoaded({ id: listId, data: d }))
-      .catch(() => setLoaded({ id: listId, data: { missing: true } }));
+      .catch(error => setLoaded(previous => ({ id:listId,
+        data: [403,404].includes(error.status) ? {missing:true} : previous.id === listId ? previous.data : null,
+        error: [403,404].includes(error.status) ? null : error })));
   }, [listId]);
   useEffect(load, [load]);
 
-  useEffect(() => {
-    const onKey = (e) => e.key === "Escape" && !picking && onClose();
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onClose, picking]);
-
+  // "!picking" gerekmiyor: defter secici de bir dialog, yigindaki en ust o
+  // oldugu icin Escape once ONU kapatiyor (bkz. useDialog).
   const data = loaded.id === listId ? loaded.data : null;
   const list = data?.list;
+  const dialog = useDialog({ onClose, label: list?.title || "List" });
 
   const toggle = async (call, key, countKey) => {
     const before = { [key]: data[key], [countKey]: data[countKey] };
     setLoaded((v) => ({ ...v, data: { ...v.data, [key]: !before[key],
       [countKey]: before[countKey] + (before[key] ? -1 : 1) } }));
     try {
-      const r = await call(listId);
+      // §5.4: istenen durum acikca gidiyor. `before[key]` ekranin o anki
+      // hali oldugu icin istenen onun tersi; belirsiz kalan bir istegin
+      // tekrari durumu geri cevirmesin.
+      const r = await call(listId, !before[key]);
       setLoaded((v) => ({ ...v, data: { ...v.data, ...r } }));
     } catch {
       setLoaded((v) => ({ ...v, data: { ...v.data, ...before } }));
@@ -166,12 +189,13 @@ export default function ListShelf({ listId, onClose, onOpenMatch, onOpenMember }
 
   const host = document.querySelector(".rankit-app");
   const screen = (
-    <div className="ri-shelf" role="dialog" aria-modal="true" aria-label={list?.title || "List"}>
+    <div {...dialog} className="ri-shelf">
       <div className="ri-shelf-head">
         <button type="button" onClick={onClose} aria-label="Back"><ChevronLeft size={16} /></button>
       </div>
       <div className="ri-shelf-body">
-        {!data && <Loading label="Loading the list"><SkeletonRows count={4} height={68}/></Loading>}
+        {loaded.error && <ErrorState error={loaded.error} onRetry={load}/>}
+        {!data && !loaded.error && <Loading label="Loading the list"><SkeletonRows count={4} height={68}/></Loading>}
         {data?.missing && (
           <div className="ri-empty-state"><strong>This list is not available</strong>
             <span style={{ color: INK_3 }}>It may be private, or it was removed.</span></div>
@@ -201,7 +225,7 @@ export default function ListShelf({ listId, onClose, onOpenMatch, onOpenMember }
 
           <div className="ri-shelf-items">
             {data.matches.map((m, i) => (
-              <Item key={m.id} match={m} index={i} ranked={!!list.ranked} onOpen={onOpenMatch} />
+              <Item key={m.id} match={m} index={i} ranked={!!list.ranked} onOpen={onOpenMatch} hideScores={hideScores} />
             ))}
             {!!data.matches.length && <EndOfList count={data.matches.length} />}
             {!data.matches.length && !data.is_owner && (

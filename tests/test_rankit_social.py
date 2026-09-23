@@ -42,6 +42,215 @@ def who(uid):
     return {"sub": str(uid)}
 
 
+def test_people_lists_are_own_account_scoped_and_search_is_literal(db):
+    with DB.get_conn() as c:
+        c.executemany("INSERT INTO rankit_follows(user_id,target_type,target_id) VALUES(?,?,?)",
+                      [(1,'user',2),(1,'team',1),(3,'user',1),(2,'user',3)])
+    following = RK.rankit_people(user=who(1))
+    assert following['counts'] == {'following': 1, 'followers': 1}
+    assert [r['id'] for r in following['people']] == [2]
+    assert RK.rankit_people(q='@FRI', user=who(1))['total'] == 1
+    assert RK.rankit_people(q='%', user=who(1))['total'] == 0
+    followers = RK.rankit_people(kind='followers', user=who(1))
+    assert [r['id'] for r in followers['people']] == [3]
+    assert followers['people'][0]['follows_you'] is True
+    assert followers['people'][0]['following'] is False
+    assert [r['id'] for r in RK.rankit_people(user=who(2))['people']] == [3]
+
+
+@pytest.mark.parametrize('kwargs', [{'kind':'all'}, {'limit':0}, {'limit':51}, {'offset':-1}, {'q':'a'*101}])
+def test_people_invalid_filters(db, kwargs):
+    with pytest.raises(HTTPException) as error:
+        RK.rankit_people(user=who(1), **kwargs)
+    assert error.value.status_code == 422
+
+
+def test_people_requires_login_and_follow_is_idempotent(db):
+    for action in [lambda: RK.rankit_people(user=None),
+                   lambda: RK.rankit_set_user_follow(2, RK.UserFollowIn(following=True), user=None)]:
+        with pytest.raises(HTTPException) as error:
+            action()
+        assert error.value.status_code == 401
+    with DB.get_conn() as c:
+        c.execute("INSERT INTO rankit_follows(user_id,target_type,target_id) VALUES(2,'user',1)")
+    for _ in range(2):
+        assert RK.rankit_set_user_follow(2, RK.UserFollowIn(following=True), who(1)) == {'following': True, 'follows_you': True}
+    assert RK.rankit_member_detail(2, who(1))['follows_you'] is True
+    with DB.get_conn() as c:
+        assert c.execute("SELECT COUNT(*) FROM rankit_notifications WHERE user_id=2 AND kind='follow'").fetchone()[0] == 1
+    for _ in range(2):
+        assert RK.rankit_set_user_follow(2, RK.UserFollowIn(following=False), who(1)) == {'following': False, 'follows_you': True}
+    assert RK.rankit_people(user=who(1))['total'] == 0
+
+
+@pytest.mark.parametrize('target,status', [(1,422),(99999,404)])
+def test_people_reject_self_or_missing_target(db, target, status):
+    with pytest.raises(HTTPException) as error:
+        RK.rankit_set_user_follow(target, RK.UserFollowIn(following=True), who(1))
+    assert error.value.status_code == status
+
+
+def test_people_sorts_before_pagination_and_matches_member_overlap(db):
+    with DB.get_conn() as c:
+        c.executemany("INSERT INTO rankit_follows(user_id,target_type,target_id) VALUES(1,'user',?)", [(2,),(3,)])
+    for mid in range(1, 11):
+        _rate(1, mid, 4, 'private')  # izleyenin kendi puani kullanilabilir
+        _rate(2, mid, 2)
+        _rate(3, mid, 4, 'followers')
+    first = RK.rankit_people(limit=1, user=who(1))
+    assert first['people'][0]['id'] == 3  # alfabetik friend once degil
+    assert first['people'][0]['overlap'] == RK.rankit_member_detail(3, who(1))['overlap']
+    second = RK.rankit_people(limit=1, offset=first['next_offset'], user=who(1))
+    assert first['total'] == second['total'] == 2
+    assert second['people'][0]['id'] == 2 and second['next_offset'] is None
+    assert RK.rankit_people(offset=9, user=who(1))['total'] == 2
+
+
+def test_people_private_entries_and_unfollow_visibility(db):
+    with DB.get_conn() as c:
+        c.executemany("INSERT INTO rankit_follows(user_id,target_type,target_id) VALUES(?,'user',?)", [(1,2),(2,1)])
+    for mid in range(1, 10):
+        _rate(1, mid, 4)
+        _rate(2, mid, 4, 'followers')
+    _rate(1, 10, 4)
+    _rate(2, 10, 1, 'private')
+    row = RK.rankit_people(user=who(1))['people'][0]
+    assert row['matches'] == row['overlap']['shared'] == 9
+    assert row['overlap']['pct'] is None and row['overlap']['bias'] is None
+    _rate(2, 10, 4)  # public onuncu mac esigi acar
+    _rate(2, 1, 1, 'private')  # gizli rewatch onceki gorunur puani ezmez
+    row = RK.rankit_people(user=who(1))['people'][0]
+    assert row['overlap']['pct'] == 1 and row['matches'] == 10
+    RK.rankit_set_user_follow(2, RK.UserFollowIn(following=False), who(1))
+    row = RK.rankit_people(kind='followers', user=who(1))['people'][0]
+    assert row['matches'] == row['overlap']['shared'] == 1
+    assert row['overlap']['pct'] is None
+
+
+def test_people_excludes_banned_users(db):
+    with DB.get_conn() as c:
+        c.execute("INSERT INTO rankit_follows(user_id,target_type,target_id) VALUES(1,'user',2)")
+        c.execute("UPDATE users SET is_banned=1 WHERE id=2")
+    assert RK.rankit_people(user=who(1))['counts']['following'] == 0
+    assert RK.rankit_profile(user=who(1))['stats']['following_people'] == 0
+    with pytest.raises(HTTPException) as error:
+        RK.rankit_set_user_follow(2, RK.UserFollowIn(following=True), who(1))
+    assert error.value.status_code == 404
+
+
+def test_find_people_suggests_only_real_shared_history_and_searches_handles(db):
+    # friend ile ortak gecmis var; stranger acik aramada bulunur ama oneride yok.
+    for mid in range(1, 11):
+        _rate(1, mid, 4)
+        _rate(2, mid, 4)
+    suggested = RK.rankit_discover_people(user=who(1))
+    assert [row['id'] for row in suggested['people']] == [2]
+    assert suggested['people'][0]['overlap']['pct'] == 1
+    assert suggested['primary_arch_connections'] is None
+    found = RK.rankit_discover_people(q='@STRAN', user=who(1))
+    assert [row['id'] for row in found['people']] == [3]
+    assert found['people'][0]['overlap']['pct'] is None
+    assert RK.rankit_discover_people(q='%', user=who(1))['total'] == 0
+
+
+def test_find_people_visibility_relationship_and_exact_handle_order(db):
+    with DB.get_conn() as c:
+        c.execute("INSERT INTO users(id,email,username,hashed_password) VALUES(4,'friendship@t','friendship','x')")
+        c.execute("INSERT INTO rankit_follows(user_id,target_type,target_id) VALUES(2,'user',1)")
+    for mid in range(1, 11):
+        _rate(1, mid, 4)
+        _rate(2, mid, 4, 'followers')  # viewer takip etmiyor: gorunmez
+        _rate(4, mid, 2)
+    rows = RK.rankit_discover_people(q='friend', user=who(1))['people']
+    assert [row['username'] for row in rows] == ['friend', 'friendship']
+    assert rows[0]['follows_you'] is True and rows[0]['following'] is False
+    assert rows[0]['overlap']['shared'] == 0
+    RK.rankit_set_user_follow(2, RK.UserFollowIn(following=True), who(1))
+    friend = RK.rankit_discover_people(q='friend', user=who(1))['people'][0]
+    assert friend['following'] is True and friend['overlap']['pct'] == 1
+
+
+@pytest.mark.parametrize('kwargs', [{'limit':0}, {'limit':51}, {'offset':-1}, {'q':'a'*101}])
+def test_find_people_rejects_invalid_search(db, kwargs):
+    with pytest.raises(HTTPException) as error:
+        RK.rankit_discover_people(user=who(1), **kwargs)
+    assert error.value.status_code == 422
+    with pytest.raises(HTTPException) as error:
+        RK.rankit_discover_people(user=None)
+    assert error.value.status_code == 401
+
+
+def test_profile_counts_people_separately_and_returns_only_owned_lists(db):
+    with DB.get_conn() as c:
+        c.executemany("INSERT INTO rankit_follows(user_id,target_type,target_id) VALUES(?,?,?)",
+                      [(1,'user',2),(1,'team',1),(1,'competition',1),(3,'user',1),(2,'team',1)])
+        c.executemany("INSERT INTO rankit_lists(user_id,title,visibility) VALUES(?,?,?)",
+                      [(1,'My private shelf','private'),(1,'My public shelf','public'),(2,'Someone else','public')])
+        c.executemany("INSERT INTO rankit_diary_entries(user_id,match_id,watched_date,review,visibility) VALUES(?,1,'2026-08-01',?,?)",
+                      [(1,'My private review','private'),(1,'  ','public'),(2,'Not mine','public')])
+    result = RK.rankit_profile(user=who(1))
+    assert result['stats']['following'] == 3  # eski sozlesme korunur
+    assert result['stats']['following_people'] == 1
+    assert result['stats']['followers'] == 1
+    assert result['stats']['reviews'] == 1
+    assert result['stats']['matches'] == 1
+    assert result['stats']['diary_count'] == 2
+    assert {row['title'] for row in result['owned_lists']} == {'My private shelf','My public shelf'}
+    assert len(RK.rankit_profile(user=who(2))['owned_lists']) == 1
+    empty = RK.rankit_profile(user=who(3))
+    assert empty['stats']['classics'] == 0
+    assert empty['stats']['reviews'] == 0
+    assert empty['owned_lists'] == []
+
+
+def test_standing_counts_all_awards_not_last_50_and_is_account_scoped(db):
+    with DB.get_conn() as c:
+        for i in range(65):
+            c.execute("""INSERT INTO rankit_points(user_id,kind,points,subject_type,subject_id)
+                         VALUES(1,'respect',2,'review',?)""", (i + 1,))
+        c.execute("""INSERT INTO rankit_points(user_id,kind,points,subject_type,subject_id)
+                     VALUES(2,'respect',2,'review',900)""")
+    result = RK.rankit_rank_view(user=who(1), tz_offset=180)
+    assert len(result['ledger']) == 50
+    respect = next(r for r in result['breakdown'] if r['kind'] == 'respect')
+    assert respect['count'] == 65 and respect['points'] == 130
+    assert result['rank']['points'] == 130
+    assert result['username'] == 'owner'
+    assert all(r['count'] == 0 for r in result['breakdown'] if r['kind'] != 'respect')
+
+
+def test_standing_passes_local_timezone_and_rejects_invalid_offset(db, monkeypatch):
+    offsets = []
+    monkeypatch.setattr(RK.rankit_rank, 'streak_for', lambda conn, uid, tz: offsets.append(tz) or {'current': 0})
+    RK.rankit_rank_view(user=who(1), tz_offset=-330)
+    assert offsets == [-330]
+    with pytest.raises(HTTPException) as err:
+        RK.rankit_rank_view(user=who(1), tz_offset=841)
+    assert err.value.status_code == 422
+
+
+def test_review_pagination_total_and_followed_priority(db):
+    with DB.get_conn() as c:
+        c.execute("INSERT INTO rankit_follows(user_id,target_type,target_id) VALUES(1,'user',2)")
+        for i in range(65):
+            c.execute("""INSERT INTO rankit_diary_entries(user_id,match_id,watched_date,rating,review,visibility)
+                VALUES(3,1,'2026-08-01',4,?,'public')""", (f"Review {i}",))
+        friend = c.execute("""INSERT INTO rankit_diary_entries(user_id,match_id,watched_date,rating,review,visibility)
+            VALUES(2,1,'2026-08-01',3,'Friend review','public')""").lastrowid
+        c.execute("INSERT INTO rankit_review_likes(user_id,entry_id) VALUES(1,?)", (friend,))
+        c.execute("""INSERT INTO rankit_diary_entries(user_id,match_id,watched_date,rating,review,visibility)
+            VALUES(3,1,'2026-08-01',1,'Private review','private')""")
+    first = RK.rankit_match_reviews(1, limit=60, user=who(1))
+    second = RK.rankit_match_reviews(1, offset=first['next_offset'], user=who(1))
+    assert first['total'] == second['total'] == 66
+    assert first['followed'][0]['id'] == friend
+    assert first['followed'][0]['respected'] == 1
+    ids1 = {r['id'] for r in first['followed'] + first['everyone']}
+    ids2 = {r['id'] for r in second['followed'] + second['everyone']}
+    assert len(ids1) == 60 and len(ids2) == 6 and not ids1 & ids2
+    assert second['next_offset'] is None
+
+
 def _list(visibility):
     with DB.get_conn() as c:
         cur = c.execute("INSERT INTO rankit_lists(user_id,title,visibility) VALUES(1,'L',?)", (visibility,))
@@ -104,13 +313,13 @@ def test_ortaklik_taban_altinda_yuzde_vermez(db):
 
 
 def test_ortaklik_yarim_yildiz_tolerans_ve_egilim(db):
-    # 6 ortak mac: 4'u yarim yildiz icinde, 2'si uzak. Sahip hep daha SOGUK.
-    pairs = [(4.0, 4.5), (3.0, 3.5), (2.5, 3.0), (4.0, 4.0), (1.0, 3.0), (2.0, 4.0)]
+    # 10 ortak mac: 8'i yarim yildiz icinde, 2'si uzak. Sahip daha SOGUK.
+    pairs = [(4.0, 4.5), (3.0, 3.5), (2.5, 3.0), (4.0, 4.0), (1.0, 3.0), (2.0, 4.0)] + [(4.0, 4.5)] * 4
     for mid, (theirs, mine) in enumerate(pairs, start=1):
         _rate(1, mid, theirs); _rate(2, mid, mine)
     ov = RK.rankit_member_detail(1, who(2))["overlap"]
-    assert ov["shared"] == 6 and ov["agree"] == 4
-    assert ov["pct"] == round(4 / 6, 3)
+    assert ov["shared"] == 10 and ov["agree"] == 8
+    assert ov["pct"] == 0.8
     assert ov["bias"] < 0, "sahip izleyenden soguk puanliyor; egilim negatif olmali"
 
 
@@ -312,15 +521,24 @@ def test_gecen_sezon_takibi_secicide_guncel_satiri_isaretler(db):
     assert RK.rankit_onboarding_save(RK.OnboardIn(competitions=[1]), who(2))["following_sources"] == 1
 
 
-def test_kuyruktan_gelen_puan_telefondaki_ani_tasir(db):
+@pytest.mark.parametrize("upload_hour", [7, 15])
+def test_kuyruktan_gelen_puan_telefondaki_ani_tasir(db, monkeypatch, upload_hour):
     """Ekran 3l: cevrimdisi yapilip sonra yuklenen puan. created_at yukleme
     ani olsaydi seri o geceyi kaybederdi; telefonun ani (dar pencerede)
     kayda yaziliyor."""
     from datetime import datetime, timedelta, timezone
     from api import rankit_rank as R
-    now = datetime.now(timezone.utc).replace(tzinfo=None)
-    night = R.rankit_day(now - timedelta(days=1), 0)
-    kick = datetime.fromisoformat(f"{night}T20:00:00")
+    # RankIt gunu 11:00'de doner. Gercek saatten "dun" turetmek sabah
+    # iki gece oncesini secip 24 saatlik kabul penceresini asiyordu.
+    now = datetime(2026, 9, 13, upload_hour, tzinfo=timezone.utc)
+
+    class Clock(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return now.astimezone(tz) if tz else now.replace(tzinfo=None)
+
+    monkeypatch.setattr(R, "datetime", Clock)
+    kick = datetime(2026, 9, 12, 20)
     rated = kick + timedelta(hours=2, minutes=30)
     with DB.get_conn() as c:
         c.execute("""INSERT INTO rankit_matches(id,sport,competition_id,season,starts_at,status,
@@ -332,6 +550,30 @@ def test_kuyruktan_gelen_puan_telefondaki_ani_tasir(db):
         created = c.execute("SELECT created_at FROM rankit_diary_entries WHERE user_id=2 AND match_id=90").fetchone()[0]
         assert created == rated.strftime("%Y-%m-%d %H:%M:%S")
         assert R.streak_for(c, 2)["current"] >= 1
+
+
+def test_collectible_rewatch_edit_keeps_identity_and_does_not_award_twice(db):
+    first = RK.rankit_log(RK.DiaryIn(match_id=1, rating=4, is_rewatch=True), who(2))
+    updated = RK.rankit_update_entry(first["entry_id"], RK.DiaryIn(match_id=1, rating=5, review="Edited", is_rewatch=True), who(2))
+    assert updated["entry_id"] == first["entry_id"]
+    assert updated["updated"] is True
+    assert updated["diary_entries_delta"] == 0
+    assert updated["points_awarded"] == 0
+    assert updated["streak_delta"] == 0
+    with DB.get_conn() as c:
+        rows = c.execute("SELECT rating,review,is_rewatch FROM rankit_diary_entries WHERE user_id=2 AND match_id=1").fetchall()
+    assert len(rows) == 1 and rows[0]["rating"] == 5
+    assert rows[0]["review"] == "Edited" and rows[0]["is_rewatch"] == 1
+
+
+def test_collectible_edit_rejects_other_owner_and_wrong_match(db):
+    first = RK.rankit_log(RK.DiaryIn(match_id=1, rating=4), who(2))
+    for uid, match_id in [(3, 1), (2, 2)]:
+        with pytest.raises(HTTPException) as error:
+            RK.rankit_update_entry(first["entry_id"], RK.DiaryIn(match_id=match_id, rating=1), who(uid))
+        assert error.value.status_code == 404
+    with DB.get_conn() as c:
+        assert c.execute("SELECT rating FROM rankit_diary_entries WHERE id=?", (first["entry_id"],)).fetchone()[0] == 4
 
 
 def test_pencere_disindaki_an_puani_dusurmez(db):

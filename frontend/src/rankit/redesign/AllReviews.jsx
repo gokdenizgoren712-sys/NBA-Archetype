@@ -10,7 +10,9 @@
 import { useEffect, useState } from "react";
 import { X, MessageCircle } from "lucide-react";
 import { rankitApi } from "../rankitApi";
-import { SkeletonRows, Loading, EmptyState, EndOfList } from "./States";
+import { SkeletonRows, Loading, EmptyState, EndOfList, ErrorState } from "./States";
+import { useDialog } from "./useDialog";
+import { reviewerFromStorage, isOwnContent } from "./reviewIdentity";
 
 const SORTS = [
   ["respected", "Most respected"],
@@ -51,18 +53,22 @@ function RespectMark({ on, size = 11 }) {
   );
 }
 
-function Row({ row, onOpenThread }) {
+function Row({ row, onOpenThread, reviewer }) {
   const [respect, setRespect] = useState(row.respect || 0);
-  const [given, setGiven] = useState(false);
+  const [given, setGiven] = useState(!!row.respected);
+  const [busy, setBusy] = useState(false);
   const [shown, setShown] = useState(false);
 
   const give = async () => {
+    if (busy || isOwnContent(row, reviewer)) return;
+    setBusy(true);
     const before = { respect, given };
     setGiven(!given); setRespect(respect + (given ? -1 : 1));
     try {
-      const r = await rankitApi.likeReview(row.id);
+      const r = await rankitApi.likeReview(row.id, !given);
       setGiven(r.liked); setRespect(r.likes);
     } catch { setGiven(before.given); setRespect(before.respect); }
+    finally { setBusy(false); }
   };
 
   return (
@@ -73,6 +79,7 @@ function Row({ row, onOpenThread }) {
         {row.on_the_night && <em>on the night</em>}
         <small>{ago(row.created_at)}</small>
       </div>
+      {row.rating != null && <div className="ri-review-rating" aria-label={`${row.rating} out of 5 stars`}>★ {row.rating} / 5</div>}
       {row.review && (
         row.spoiler && !shown
           ? <button type="button" className="ri-spoiler-gate" onClick={() => setShown(true)}>
@@ -81,50 +88,55 @@ function Row({ row, onOpenThread }) {
           : <p>{row.review}</p>
       )}
       <div className="ri-review-acts">
-        <button type="button" onClick={give} aria-pressed={given}
-          aria-label={given ? "Take back your respect" : "Respect this review"}>
+        <button type="button" onClick={give} aria-pressed={given} disabled={busy || isOwnContent(row, reviewer)}
+          aria-label={isOwnContent(row, reviewer) ? "Your review · respect count" : given ? "Take back your respect" : "Respect this review"}>
           <RespectMark on={given} /> {respect || ""}
         </button>
         <button type="button" onClick={() => onOpenThread?.(row.id)}>
           <MessageCircle size={13} /> {row.replies || ""}
         </button>
-        <span className="ri-review-read" onClick={() => onOpenThread?.(row.id)}
-          role="button" tabIndex={0}
-          onKeyDown={(e) => { if (e.key === "Enter") onOpenThread?.(row.id); }}>Read</span>
+        <button type="button" className="ri-review-read" onClick={() => onOpenThread?.(row.id)}>Read</button>
       </div>
     </article>
   );
 }
 
 export default function AllReviews({ matchId, title, onClose, onOpenThread }) {
+  const reviewer = reviewerFromStorage(localStorage);
   const [sort, setSort] = useState("respected");
   // Yuklenen sirayi VERIYLE BIRLIKTE tutuyoruz: "hangi sira yukleniyor"
   // boyle turetiliyor ve efektin basinda state sifirlamak gerekmiyor
   // (react-hooks/set-state-in-effect).
   const [loaded, setLoaded] = useState({ sort: null, data: null });
+  const [offset, setOffset] = useState(0);
+  const [retry, setRetry] = useState(0);
 
   useEffect(() => {
     let alive = true;
     const tz = -new Date().getTimezoneOffset();
-    rankitApi.matchReviews(matchId, sort, tz)
-      .then((d) => alive && setLoaded({ sort, data: d }))
-      .catch(() => alive && setLoaded({ sort, data: { total: 0, followed: [], everyone: [] } }));
+    rankitApi.matchReviews(matchId, sort, tz, offset)
+      .then(d => {
+        if (!alive) return;
+        setLoaded(previous => {
+          const merge = kind => [...new Map([...(offset && previous.sort === sort && previous.id === matchId ? previous.data?.[kind] || [] : []), ...(d[kind] || [])].map(row => [row.id, row])).values()];
+          return { sort, id: matchId, offset, retry, data: {...d, followed:merge("followed"), everyone:merge("everyone")}, error:null };
+        });
+      })
+      .catch(error => alive && setLoaded(previous => ({...previous, sort, id:matchId, offset, retry,
+        data: previous.sort === sort && previous.id === matchId ? previous.data : null, error})));
     return () => { alive = false; };
-  }, [matchId, sort]);
+  }, [matchId, sort, offset, retry]);
 
   // null => hala yukleniyor (ya da baska bir siranin sonucu duruyor)
-  const data = loaded.sort === sort ? loaded.data : null;
+  const data = loaded.sort === sort && loaded.id === matchId ? loaded.data : null;
+  const pending = loaded.sort !== sort || loaded.id !== matchId || loaded.offset !== offset || loaded.retry !== retry;
+  const error = !pending ? loaded.error : null;
 
-  useEffect(() => {
-    const onKey = (e) => e.key === "Escape" && onClose();
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  const dialog = useDialog({ onClose, label: "All reviews" });
 
   return (
     <div className="ri-sheet-wrap" onClick={onClose}>
-      <section className="ri-detail-sheet" onClick={(e) => e.stopPropagation()}
-        role="dialog" aria-modal="true" aria-label="All reviews">
+      <section {...dialog} className="ri-detail-sheet" onClick={(e) => e.stopPropagation()}>
         <div className="ri-sheet-grab" aria-hidden="true" />
         <button className="ri-sheet-close" onClick={onClose} aria-label="Close"><X size={19} /></button>
 
@@ -139,32 +151,34 @@ export default function AllReviews({ matchId, title, onClose, onOpenThread }) {
           {SORTS.map(([key, label]) => (
             <button key={key} role="tab" aria-selected={sort === key}
               className={sort === key ? "active" : undefined}
-              onClick={() => setSort(key)}>{label}</button>
+              onClick={() => {setSort(key);setOffset(0);}}>{label}</button>
           ))}
         </div>
 
-        {!data && <Loading label="Loading reviews"><SkeletonRows count={3} height={92}/></Loading>}
+        {error && <ErrorState error={error} onRetry={()=>setRetry(value=>value+1)}/>}
+        {pending && !data && <Loading label="Loading reviews"><SkeletonRows count={3} height={92}/></Loading>}
 
         {!!data?.followed?.length && (
           <div className="ri-quick-group">
             <small>PEOPLE YOU FOLLOW · {data.followed.length}</small>
-            {data.followed.map((r) => <Row key={r.id} row={r} onOpenThread={onOpenThread} />)}
+            {data.followed.map((r) => <Row key={r.id} row={r} reviewer={reviewer} onOpenThread={onOpenThread} />)}
           </div>
         )}
 
         {!!data?.everyone?.length && (
           <div className="ri-quick-group">
             <small>{data.followed?.length ? "EVERYONE ELSE" : "ALL REVIEWS"}</small>
-            {data.everyone.map((r) => <Row key={r.id} row={r} onOpenThread={onOpenThread} />)}
+            {data.everyone.map((r) => <Row key={r.id} row={r} reviewer={reviewer} onOpenThread={onOpenThread} />)}
           </div>
         )}
         {/* Listenin sonu yalnizca HEPSI geldiyse: uc bir ust sinirla kesiyor
             ve "total" ayri donuyor. Kesilmis listede "that's all" yalan olur. */}
-        {!!data?.total && (data.followed?.length || 0) + (data.everyone?.length || 0) >= data.total && (
+        {data?.next_offset != null && <button className="ri-load-more" disabled={pending} onClick={()=>setOffset(data.next_offset)}>{pending ? "Loading…" : "Load more reviews"}</button>}
+        {!pending && !error && data?.next_offset === null && !!data?.total && (data.followed?.length || 0) + (data.everyone?.length || 0) >= data.total && (
           <EndOfList count={data.total} />
         )}
 
-        {data && !data.total && (
+        {!pending && !error && data && !data.total && (
           <EmptyState title="No reviews yet" body="Write the first one and it shows up here for everyone."
             action="Write the first one" onAction={onClose} />
         )}

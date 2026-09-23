@@ -6,7 +6,10 @@
  * Uydurulan hiçbir alan yok: karşılığı olmayan prop boş geçiliyor ve kart
  * onu çizmiyor.
  */
-import { hidesScore } from "../rankitPrefs";
+import { hidesScore } from "../rankitPrefs.js";
+import { communityHeat, communityRatingCount, expectedHeat, expectedInterestCount, hasCommunityVerdict, hasOwnRating } from "./heat.js";
+import { broadcastLabel } from "./broadcastLabel.js";
+import { liveFreshness } from "./liveFreshness.js";
 
 
 /* 3 harfli rozet. Kısa ad zaten kısaysa onu kullan, değilse sesli harfleri
@@ -57,23 +60,41 @@ function fitScore(base, homeScore, awayScore, cardWidth, crestSize) {
 
 export function toMatchCardProps(match, opts = {}) {
   if (!match) return null;
-  const { hideScores = false, compact = false, scoreSize, cardWidth, crestSize } = opts;
+  const { hideScores = false, compact = false, scoreSize, cardWidth, crestSize,
+          nowMs = Date.now() } = opts;
   const finished = match.status === "finished";
+  const hasScore = finished || match.status === "live";
 
   /* Skor STRING olarak geçer (§2.5): "112–108" biçimlendirilmemeli.
      Uygulama tek bir `score` dizesi tutuyor, kart iki parça istiyor. */
   const parts = String(match.score || "").split(/\s*[–-]\s*/);
-  const homeScore = finished && parts.length === 2 ? parts[0] : "";
-  const awayScore = finished && parts.length === 2 ? parts[1] : "";
+  const homeScore = hasScore && parts.length === 2 ? parts[0] : "";
+  const awayScore = hasScore && parts.length === 2 ? parts[1] : "";
 
   /* Isı = topluluk puanı. İkisi de 0-5 ve ikisi de "kalabalık bu maçı nasıl
      buldu" sorusunu cevaplıyor; ayrı bir ısı metriği arka uçta YOK. Puan
      yoksa satır hiç çizilmiyor (heat 0). */
-  const heat = Number(match.communityRating) || 0;
+  // Beklenen ilgi (2h/16c) ayrı bir sinyal; maç öncesine bitmiş maçın
+  // topluluk hükmünü taşımıyoruz. Backend okuma sayısını ayrı döndürüyor.
+  const stale = liveFreshness(match, nowMs) === "stale";
+  const heat = finished ? communityHeat(match) : null;
+  const ratingCount = finished ? communityRatingCount(match) : null;
+  const plannedHeat = !finished && match.status !== "live" ? expectedHeat(match) : null;
+  const plannedCount = !finished && match.status !== "live" ? expectedInterestCount(match) : null;
 
   return {
     comp: [match.competition, match.stage].filter(Boolean).join(" · "),
     finished,
+    status: match.status,
+    sport: match.sport,
+    /* B7 / 15d: canli kaynak dort yoklamayi (3 dk) kacirdiysa kart "LIVE"
+       diyemez — o an dogru oldugunu iddia eden bir skorun yaninda duruyor.
+       Isaret notr: "DELAYED", sicak renk yok. Skor kaldiriliyor DEGIL (bilinen
+       son skor hala bilgi), yalniz tazelik iddiasi kaldiriliyor. */
+    liveStale: stale,
+    statusLabel: (stale ? "DELAYED"
+      : ({live:"LIVE", upcoming:"UPCOMING", finished:"FULL TIME", postponed:"POSTPONED", cancelled:"CANCELLED"})[match.status])
+      || "TO BE CONFIRMED",
     homeAbbr: abbr(match.home), awayAbbr: abbr(match.away),
     homeShort: match.home?.short || match.home?.name || "",
     awayShort: match.away?.short || match.away?.name || "",
@@ -85,15 +106,21 @@ export function toMatchCardProps(match, opts = {}) {
     awayCrestInk: crestInk(match.away?.color),
     homeCrestUrl: match.home?.crest_url || "",
     awayCrestUrl: match.away?.crest_url || "",
-    heat,
-    classic: !!match.instantClassic,
+    heat: heat ?? 0,
+    expectedHeat: plannedHeat ?? 0,
+    expectedRatingCount: plannedCount,
+    heatLabel: plannedCount !== null ? "EXPECTED" : "",
+    ratingCount,
+    hasVerdict: finished && hasCommunityVerdict(match),
+    userRated: hasOwnRating(match),
+    classic: finished && !!match.instantClassic,
     // 3g "Keep hiding until I rate" — kural rankitPrefs'te tek yerde;
     // burada tekrar yazilsaydi bir ekranda acik bir ekranda kapali olurdu.
     spoiler: hidesScore(hideScores, match),
-    ratings: match.ratings ? `${Number(match.ratings).toLocaleString()} ratings` : "",
+    ratings: ratingCount !== null ? `${ratingCount.toLocaleString()} ratings` : "",
     /* Ayak sol tarafı: damga yokken yayın/aşama bilgisi. Kart tarihi
        tekrar etmiyor — üst şerit zaten yazıyor. */
-    footNote: finished ? (match.dominantTag || "") : (match.broadcaster || ""),
+    footNote: finished ? (match.dominantTag || "") : broadcastLabel(match),
     compact,
     // Taban punto çağrı yerinden gelir (preset), hane sayısına göre kısılır.
     ...(scoreSize ? { scoreSize: fitScore(scoreSize, homeScore, awayScore, cardWidth, crestSize) } : null),
@@ -109,7 +136,7 @@ export function toMatchCardProps(match, opts = {}) {
 export function diaryToMatchCardProps(entry, opts = {}) {
   if (!entry) return null;
   const score = entry.home_score == null ? null : `${entry.home_score} – ${entry.away_score}`;
-  return toMatchCardProps({
+  const props = toMatchCardProps({
     id: entry.match_id,
     competition: entry.competition,
     sport: entry.sport,
@@ -121,6 +148,11 @@ export function diaryToMatchCardProps(entry, opts = {}) {
     // Rafta gosterilen isi KULLANICININ kendi puani, toplulugunki degil:
     // burasi kendi gunlugun, kalabaligin ortalamasi degil.
     communityRating: entry.rating,
-    instantClassic: !!entry.classic,
+    my_rating: entry.rating,
   }, opts);
+  return { ...props, ratingKind: "personal", heat: Number(entry.rating) || 0,
+    // 2j: kaydin skini kartin kendisini boyar (defter, raf); yoksa varsayilan.
+    skin: entry.skin || entry.their_skin || "default",
+    heatLabel: "YOUR RATING", classic: !!entry.classic,
+    ratings: entry.classic ? "YOUR CLASSIC" : "YOUR DIARY" };
 }

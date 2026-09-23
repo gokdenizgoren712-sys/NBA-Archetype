@@ -19,15 +19,21 @@
  * hepsi izleyenin GÖREBİLDİĞİ kayıtlardan (bkz. api/rankit.py
  * _visible_entries_sql). Aksi hâlde "57'de 41 uyum" gizli puanları ele verir.
  */
-import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { ChevronLeft } from "lucide-react";
 import { rankitApi } from "../rankitApi";
-import { SkeletonRows, Loading } from "./States";
+import { hidesScore } from "../rankitPrefs";
+import { SkeletonRows, Loading, ErrorState } from "./States";
 import RedesignMatchCard from "./MatchCard";
 import { toMatchCardProps } from "./toMatchCardProps";
 import { RAMP, heatSteps } from "./heat";
 import { useBackClose } from "./backStack";
+import { useDialog } from "./useDialog";
+import { useResource } from "./useResource";
+import { ratingAccount } from "../rankitOutbox";
+import RelationshipButton from "./RelationshipButton";
+import { useRelationshipRevision } from "./useRelationshipRevision";
+import { overlapPercent } from "./relationshipState";
 
 const INK_3 = "#9aa0a6";
 
@@ -53,62 +59,43 @@ function stars(r) {
 
 /* Ham _match_dict -> kart. Kabuklarin kendi adaptorleri var (fromApiMatch /
    toCard); bu ekran ikisine de baglanmasin diye burada. */
-function shelfCard(m) {
+function shelfCard(m, hideScores) {
   const props = toMatchCardProps({
     ...m,
     communityRating: m.community_rating,
     instantClassic: m.instant_classic,
     dominantTag: m.dominant_tag,
-  }, { compact: true, scoreSize: 24, cardWidth: 155, crestSize: 32 });
+  }, { compact: true, scoreSize: 24, cardWidth: 155, crestSize: 32, hideScores });
   // Rafta damga ve yildizlar ONUN; isi toplulugun (tasarim: ARS 4.6 isi,
   // bes yildiz).
-  return { ...props, classic: !!m.their_classic, ratings: stars(m.their_rating) };
+  return { ...props, hasVerdict: props.hasVerdict || Number(m.their_rating) > 0 || !!m.their_classic,
+    ratingKind: "member", classic: !!m.their_classic, ratings: stars(m.their_rating) };
 }
 
-export default function MemberProfile({ memberId, onClose, onOpenMatch }) {
-  const [loaded, setLoaded] = useState({ id: null, data: null });
-  const [busy, setBusy] = useState(false);
+export default function MemberProfile({ memberId, onClose, onOpenMatch, embedded = false, hideScores: hideScoresPref = false }) {
+  const revision = useRelationshipRevision();
+  const resource = useResource(`member:${ratingAccount()}:${memberId}:${revision}`, async () => {
+    try { return await rankitApi.member(memberId); }
+    catch (error) { if ([403,404].includes(error.status)) return { missing: true }; throw error; }
+  });
   useBackClose(onClose);
-
-  const load = useCallback(() => {
-    rankitApi.member(memberId)
-      .then((d) => setLoaded({ id: memberId, data: d }))
-      .catch(() => setLoaded({ id: memberId, data: { missing: true } }));
-  }, [memberId]);
-  useEffect(load, [load]);
-
-  useEffect(() => {
-    const onKey = (e) => e.key === "Escape" && onClose();
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
-  const data = loaded.id === memberId ? loaded.data : null;
+  const data = resource.data;
   const member = data?.member;
-
-  const follow = async () => {
-    if (busy) return;
-    setBusy(true);
-    const was = data.following;
-    setLoaded((v) => ({ ...v, data: { ...v.data, following: !was } }));
-    try {
-      const r = await rankitApi.follow({ target_type: "user", target_id: memberId, notify: false });
-      setLoaded((v) => ({ ...v, data: { ...v.data, following: r.following } }));
-    } catch {
-      setLoaded((v) => ({ ...v, data: { ...v.data, following: was } }));
-    } finally { setBusy(false); }
-  };
+  const dialog = useDialog({ onClose, label: member ? `@${member.username}` : "Profile" });
 
   const ov = data?.overlap;
+  const pct = overlapPercent(ov);
   const host = document.querySelector(".rankit-app");
   const screen = (
-    <div className="ri-member" role="dialog" aria-modal="true" aria-label={member ? `@${member.username}` : "Profile"}>
+    <div {...dialog} className="ri-member">
       <div className="ri-member-head">
         <button type="button" onClick={onClose} aria-label="Back"><ChevronLeft size={16} /></button>
         {member && <strong>@{member.username}</strong>}
       </div>
       <div className="ri-member-body">
-        {!data && <Loading label="Loading the profile"><SkeletonRows count={3} height={72}/></Loading>}
+        {resource.error && <ErrorState error={resource.error} onRetry={resource.reload}
+          body={resource.error.offline && !data ? 'Reconnect to load this profile. Private visibility must be checked online.' : undefined}/>}
+        {!data && !resource.error && <Loading label="Loading the profile"><SkeletonRows count={3} height={72}/></Loading>}
         {data?.missing && <div className="ri-empty-state"><strong>This profile is not available</strong></div>}
         {member && <>
           <div className="ri-member-id">
@@ -121,10 +108,7 @@ export default function MemberProfile({ memberId, onClose, onOpenMatch }) {
           </div>
 
           {!data.is_self && (
-            <button type="button" className={`ri-member-follow${data.following ? " on" : ""}`}
-              aria-pressed={!!data.following} disabled={busy} onClick={follow}>
-              {data.following ? "Following" : "Follow"}
-            </button>
+            <RelationshipButton memberId={memberId} username={member.username} following={data.following} followsYou={data.follows_you}/>
           )}
 
           <div className="ri-member-stats">
@@ -138,12 +122,12 @@ export default function MemberProfile({ memberId, onClose, onOpenMatch }) {
               <div className="ri-chip-title">
                 TASTE OVERLAP
                 {/* §1 — sayi rengin yaninda. Taban altinda yuzde yok. */}
-                {ov.pct != null && (
+                {pct != null && (
                   <b style={{ color: RAMP[overlapStep(ov.pct) - 1] }}>{Math.round(ov.pct * 100)}%</b>
                 )}
               </div>
               <div className="ri-member-overlap-card">
-                {ov.pct != null ? <>
+                {pct != null ? <>
                   <div className="ri-member-bars" aria-hidden="true">
                     {heatSteps(overlapStep(ov.pct)).map((c, i) => <span key={i} style={{ background: c }} />)}
                   </div>
@@ -156,7 +140,7 @@ export default function MemberProfile({ memberId, onClose, onOpenMatch }) {
                     {ov.shared
                       ? `${ov.shared} match${ov.shared === 1 ? "" : "es"} rated by both of you so far — `
                       : "No matches rated by both of you yet — "}
-                    the comparison opens at {ov.min_shared}.
+                    the comparison opens at {Math.max(10, ov.min_shared || 10)}.
                   </p>
                 )}
               </div>
@@ -171,8 +155,8 @@ export default function MemberProfile({ memberId, onClose, onOpenMatch }) {
                   <div key={m.entry_id} className="ri-card-slot" role="button" tabIndex={0}
                     aria-label={`${m.home.short} vs ${m.away.short}`}
                     onClick={() => onOpenMatch(m)}
-                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpenMatch(m); } }}>
-                    <RedesignMatchCard {...shelfCard(m)} crestSize={32} cut={14} />
+                    onKeyDown={(e) => { if (!e.target.closest("button") && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onOpenMatch(m); } }}>
+                    <RedesignMatchCard {...shelfCard(m, hidesScore(hideScoresPref, m))} crestSize={32} cut={14} />
                   </div>
                 ))}
               </div>
@@ -185,5 +169,5 @@ export default function MemberProfile({ memberId, onClose, onOpenMatch }) {
       </div>
     </div>
   );
-  return host ? createPortal(screen, host) : screen;
+  return host && !embedded ? createPortal(screen, host) : screen;
 }
