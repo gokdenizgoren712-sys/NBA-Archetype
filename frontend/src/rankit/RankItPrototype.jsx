@@ -816,7 +816,9 @@ function ReviewFeed({ reviews, onRefresh }) {
     const optimistic = { liked: !previous.liked, likes: Math.max(0, previous.likes + (previous.liked ? -1 : 1)) };
     setReactions(v => ({ ...v, [review.id]: optimistic }));
     setBusyLikes(v => [...v, review.id]);
-    rankitHaptics.selection();
+    // `selection` diye bir cagri YOK (select / impact / success): TypeError
+    // try'dan once atiyor, respect istegi hic gitmiyordu (0.3.0'dan beri).
+    rankitHaptics.select();
     try {
       const result = await rankitApi.likeReview(review.id, optimistic.liked);
       setReactions(v => ({ ...v, [review.id]: result }));
