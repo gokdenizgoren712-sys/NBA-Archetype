@@ -11,7 +11,7 @@
  */
 import { Star } from "lucide-react";
 import { CrestPair } from "./MatchCard";
-import { dayParts, heatStrip, monthLabel, rowHeat, rowTitle, SHOW, sortsFor } from "./diaryView";
+import { dayParts, heatStrip, monthLabel, rowHeat, rowTitle, rowVerdict, SHOW, sortsFor } from "./diaryView";
 
 /* 2d yıldızları: mürekkep, altın değil (altın bu bölgede Classic elmasının). */
 export function DiaryStars({ value = 0 }) {
@@ -40,6 +40,7 @@ export function DiaryHeatStrip({ entries, today }) {
 function TimelineRow({ e, hidden, onOpen }) {
   const { day, weekday } = dayParts(e.watched_date);
   const heat = rowHeat(e);
+  const verdict = rowVerdict(e);
   const title = rowTitle(e, hidden);
   return <div className="ri-drow" role="button" tabIndex={0} aria-label={`Open ${title}`}
     onClick={() => onOpen({ id: e.match_id })}
@@ -51,7 +52,13 @@ function TimelineRow({ e, hidden, onOpen }) {
       <strong>{title}</strong>
       <span><DiaryStars value={e.rating} />{!!e.classic && !hidden && <i className="ri-drow-classic" aria-label="Your Classic" role="img" />}</span>
     </span>
-    <i className="ri-drow-heat" aria-hidden="true" style={heat ? { background: heat } : null} />
+    {/* §6 "Heat never as colour alone — the number ships with it, always":
+        tahta (2d) yalniz cubuk ciziyor; BUILD tahtanin ustunde. Isi yoksa
+        (§5.5) sayi da yok. */}
+    <span className="ri-drow-heat">
+      {verdict != null && <b aria-label={`Community heat ${verdict.toFixed(1)}`}>{verdict.toFixed(1)}</b>}
+      <i aria-hidden="true" style={heat ? { background: heat } : null} />
+    </span>
   </div>;
 }
 

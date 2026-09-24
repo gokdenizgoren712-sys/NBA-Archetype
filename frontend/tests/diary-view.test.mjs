@@ -62,12 +62,14 @@ test("2d isi seridi: boy senin yildizin, renk topluluk isisi — isi yoksa renk 
     E(1, "2026-09-23", 5, { community_rating: 4.6 }),
     E(2, "2026-09-23", 2),
     E(3, "2026-09-20", 3),                          // topluluk isisi yok (§5.5)
+    E(5, "2026-09-18", null, { community_rating: 4.2 }), // yildizsiz: hukum kapali (§3.1)
     E(4, "2026-08-01", 5, { community_rating: 3 }), // 28 gecenin disinda
   ], today);
   assert.equal(strip.nights.length, 28);
   assert.equal(strip.nights[27].date, "2026-09-23");
   assert.equal(strip.nights[0].date, "2026-08-27");
-  assert.equal(strip.logged, 2);
+  assert.equal(strip.logged, 3);
+  assert.equal(strip.nights[22].color, null, "yildizsiz gecede topluluk rengi yok");
   assert.deepEqual([strip.nights[27].height, strip.nights[27].color], [100, "#f5402e"], "gecenin en yuksek puanlisi");
   assert.equal(strip.nights[24].color, null, "20 puanin altinda renk uydurulmaz");
   assert.equal(strip.nights[24].height, 60);
@@ -81,8 +83,9 @@ test("2d satiri: gun + hafta gunu, 'Arsenal 3–1 Tottenham', skor gizliyse 'vs'
   const e = { home_short: "Arsenal", away_short: "Tottenham", home_score: 3, away_score: 1 };
   assert.equal(rowTitle(e), "Arsenal 3–1 Tottenham");
   assert.equal(rowTitle(e, true), "Arsenal vs Tottenham");
-  assert.equal(rowHeat({ community_rating: null }), null);
-  assert.equal(rowHeat({ community_rating: 2.6 }), "#9a3f96");
+  assert.equal(rowHeat({ rating: 4, community_rating: null }), null);
+  assert.equal(rowHeat({ rating: 4, community_rating: 2.6 }), "#9a3f96");
+  assert.equal(rowHeat({ rating: null, community_rating: 4.6 }), null, "§3.1: yildizsiz kayitta hukum kapali");
 });
 
 test("kaynak: filtreler sayfanin ustunde degil, 'Newest' barinda", () => {

@@ -39,6 +39,8 @@
   border-bottom: 1px solid var(--ri-line, rgba(255, 255, 255, .08));
 }
 .riw-brand strong { font: 800 15px/1 var(--font-logo); letter-spacing: .04em; }
+/* 4i: RANK murekkep, IT altin -- bolgedeki tek altin. Kilidin olculeri 7a ile (Asama 15). */
+.riw-brand strong span { color: var(--ri-gold, #ffb11b); }
 .riw-brand small {
   display: block; margin-top: 3px;
   font: 700 9px/1 var(--font-logo); letter-spacing: .16em; color: #6f7376;
@@ -817,3 +819,9 @@
   font:700 12px var(--font-logo);letter-spacing:.06em;text-align:left}
 .riw-search-trigger:hover{color:#eceded;border-color:rgba(255,255,255,.18)}
 .riw-search-trigger:focus-visible{outline:2px solid var(--ri-focus);outline-offset:2px}
+
+/* Asama 13 — §6 44px, ortak bilesen: hukum kapisinin metin dugmesi (MatchCard
+   ve CommunityVerdictGate). Web rankit-v030.css'i yuklemedigi icin kural burada
+   da. Gorsel boyut ayni; dokunma alani ::after. */
+.riw .ri-gate-action{position:relative}
+.riw .ri-gate-action::after{content:"";position:absolute;left:-6px;right:-6px;top:50%;height:44px;transform:translateY(-50%)}

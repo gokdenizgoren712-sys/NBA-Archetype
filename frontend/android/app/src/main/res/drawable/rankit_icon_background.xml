@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Altin zemin: linear-gradient(150deg,#ffe9b0,#ffb11b 52%,#e08f00) (BUILD §7.2).
+     Egim gorunen 72dp kareye gore hesaplandi (18..90), 108'in tamamina degil;
+     yoksa maske ortadaki tek tonu gosterirdi. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path android:pathData="M0,0H108V108H0Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="29.41"
+                android:startY="11.41"
+                android:endX="78.59"
+                android:endY="96.59">
+                <item android:offset="0" android:color="#FFFFE9B0" />
+                <item android:offset="0.52" android:color="#FFFFB11B" />
+                <item android:offset="1" android:color="#FFE08F00" />
+            </gradient>
+        </aapt:attr>
+    </path>
+</vector>

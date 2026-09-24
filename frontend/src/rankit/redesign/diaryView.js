@@ -113,7 +113,7 @@ export function heatStrip(entries = [], today = new Date()) {
     nights.push({
       date, logged: true, stars,
       height: Math.max(STRIP_FLOOR, Math.round((stars / 5) * 100)),
-      color: best.community_rating != null ? inkFor(best.community_rating) : null,
+      color: rowHeat(best),
     });
   }
   return { nights, logged: nights.filter((n) => n.logged).length };
@@ -144,7 +144,14 @@ export function rowTitle(e, hidden = false) {
   return `${home} ${e.home_score}–${e.away_score} ${away}`;
 }
 
-/* Satırın sağındaki 4px çubuk: topluluk ısısı ya da nötr. */
+/* Satırın sağındaki 4px çubuk: topluluk ısısı ya da nötr. §3.1: yıldızsız
+   izleme kaydında topluluğun hükmü KAPALI ("Rate it first") — renk de sayı da
+   yok. §5.5: 20 puanın altında ısı yok. */
+export function rowVerdict(e) {
+  return e.rating != null && e.community_rating != null ? Number(e.community_rating) : null;
+}
+
 export function rowHeat(e) {
-  return e.community_rating != null ? inkFor(e.community_rating) : null;
+  const v = rowVerdict(e);
+  return v != null ? inkFor(v) : null;
 }

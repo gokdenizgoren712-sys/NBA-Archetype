@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- RankIt isareti (BUILD §7.2, 4i): kart silueti, puan yildizi oyulmus.
+     24 izgaradaki yol evenOdd ile; vektorde maske yok. Gorunen 72dp alanda
+     %62.5 = 45dp (tahtadaki 96'lik ikonda 60), 66dp guvenli dairenin icinde. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:translateX="31.5"
+        android:translateY="31.5"
+        android:scaleX="1.875"
+        android:scaleY="1.875">
+        <path
+            android:fillColor="#17120A"
+            android:fillType="evenOdd"
+            android:pathData="M0,0H16.5L24,7.5V24H7.5L0,16.5Z M12,6.36L13.8,10.5L18.3,10.92L14.94,13.92L15.9,18.36L12,16.08L8.1,18.36L9.06,13.92L5.7,10.92L10.2,10.5Z" />
+    </group>
+</vector>

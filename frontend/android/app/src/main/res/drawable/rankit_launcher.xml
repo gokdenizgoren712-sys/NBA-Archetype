@@ -1,22 +1,35 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- API 24-25 duz launcher ikonu (26+ drawable-anydpi-v26/rankit_launcher.xml).
+     4i "APP ICON / GOLD GROUND": altin kare, yaricap 21/96, isaret #17120A,
+     karenin %62.5'i. Eski 12-gen + R madalyonu ve teal kural 4i ile emekli. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <path
-        android:fillColor="#090A0B"
-        android:pathData="M0,0H108V108H0Z" />
-    <path
-        android:fillColor="@android:color/transparent"
-        android:strokeColor="#FFB11B"
-        android:strokeWidth="5"
-        android:strokeLineJoin="round"
-        android:pathData="M54,13 L75,18.6 L89.4,33 L95,54 L89.4,75 L75,89.4 L54,95 L33,89.4 L18.6,75 L13,54 L18.6,33 L33,18.6 Z" />
-    <path
-        android:fillColor="#FFB11B"
-        android:pathData="M38,32 H58 C71,32 78,39 78,50 C78,58 73.7,64 66.5,66.5 L80,80 H67 L55.3,68 H49 V80 H38 Z M49,42 V58 H57.5 C63.5,58 67,55.2 67,50 C67,44.8 63.5,42 57.5,42 Z" />
-    <path
-        android:fillColor="#00A3AF"
-        android:pathData="M25,84 H83 V88 H25 Z" />
+    <path android:pathData="M27,6H81A21,21 0,0 1,102 27V81A21,21 0,0 1,81 102H27A21,21 0,0 1,6 81V27A21,21 0,0 1,27 6Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="21.22"
+                android:startY="-2.78"
+                android:endX="86.78"
+                android:endY="110.78">
+                <item android:offset="0" android:color="#FFFFE9B0" />
+                <item android:offset="0.52" android:color="#FFFFB11B" />
+                <item android:offset="1" android:color="#FFE08F00" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <group
+        android:translateX="24"
+        android:translateY="24"
+        android:scaleX="2.5"
+        android:scaleY="2.5">
+        <path
+            android:fillColor="#17120A"
+            android:fillType="evenOdd"
+            android:pathData="M0,0H16.5L24,7.5V24H7.5L0,16.5Z M12,6.36L13.8,10.5L18.3,10.92L14.94,13.92L15.9,18.36L12,16.08L8.1,18.36L9.06,13.92L5.7,10.92L10.2,10.5Z" />
+    </group>
 </vector>

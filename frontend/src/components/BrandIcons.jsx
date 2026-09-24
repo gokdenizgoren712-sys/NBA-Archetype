@@ -4,16 +4,42 @@
  * (12-gen logo + 24x24 sadeleştirilmiş nav ikonları, stroke-width 1.5).
  * Uydurma ikon YOK — tek kaynak referans HTML'leri.
  */
+import { useId } from "react";
 
-/* ── Ana Logo: 12-gen (Dodecagon) — 12 arketip ────────────────────── */
+/* ── Ana Logo: 12-gen (Dodecagon) — 12 arketip ──────────────────────
+   RankIt 4i ile iki onayli degisiklik (isaret yeniden cizilmedi):
+   * Kural 1 birim iceride: M 6 24 H 42 (eskiden 4-44). Tam genislikte uclar
+     halkanin sol/sag koselerine oturuyor, halka "kesik" okunuyordu.
+   * 24px'in altinda cizgi formu dagiliyor (16px'te 1.33px). Orada dolu
+     insa: altin 12-gen, dikisler ve kural BOSLUK olarak oyulur, teal kural
+     ustune geri cizilir. Bosluk 16px'te 3'e genisler (delik cizgiden fazla
+     yer ister). Mavi ve kirmizi negatif alana doner. */
+const DODECAGON = "24,4 34,6.7 41.3,14 44,24 41.3,34 34,41.3 24,44 14,41.3 6.7,34 4,24 6.7,14 14,6.7";
+const SEAM_L = "M 14 6.7 C 22 18 22 30 14 41.3";
+const SEAM_R = "M 34 6.7 C 26 18 26 30 34 41.3";
+const RULE = "M 6 24 H 42";
+
 export function Logo({ size = 32, dashed = false }) {
+  const maskId = `pa-solid-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
+  if (size < 24) {
+    const gap = size <= 16 ? 6 : 5.2;
+    return (
+      <svg width={size} height={size} viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <mask id={maskId}>
+          <rect width="48" height="48" fill="#fff" />
+          {[SEAM_L, SEAM_R, RULE].map((d) => <path key={d} d={d} stroke="#000" strokeWidth={gap} strokeLinecap="round" />)}
+        </mask>
+        <polygon points={DODECAGON} fill="#FFB11B" mask={`url(#${maskId})`} />
+        <path d={RULE} stroke="#00A3AF" strokeWidth="4" strokeLinecap="round" />
+      </svg>
+    );
+  }
   return (
     <svg width={size} height={size} viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <polygon points="24,4 34,6.7 41.3,14 44,24 41.3,34 34,41.3 24,44 14,41.3 6.7,34 4,24 6.7,14 14,6.7"
-        stroke="#FFB11B" strokeWidth="4" strokeLinejoin="round" />
-      <path d="M 14 6.7 C 22 18 22 30 14 41.3" stroke="#1d428a" strokeWidth="4" strokeLinecap="round" />
-      <path d="M 34 6.7 C 26 18 26 30 34 41.3" stroke="#c8102e" strokeWidth="4" strokeLinecap="round" />
-      <path d="M 4 24 H 44" stroke="#00A3AF" strokeWidth="4" strokeLinecap="round"
+      <polygon points={DODECAGON} stroke="#FFB11B" strokeWidth="4" strokeLinejoin="round" />
+      <path d={SEAM_L} stroke="#1d428a" strokeWidth="4" strokeLinecap="round" />
+      <path d={SEAM_R} stroke="#c8102e" strokeWidth="4" strokeLinecap="round" />
+      <path d={RULE} stroke="#00A3AF" strokeWidth="4" strokeLinecap="round"
         strokeDasharray={dashed ? "4 4" : undefined} />
     </svg>
   );

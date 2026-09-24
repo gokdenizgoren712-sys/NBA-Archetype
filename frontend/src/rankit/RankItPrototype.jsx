@@ -15,6 +15,7 @@ import { broadcastLabel } from "./redesign/broadcastLabel";
 import { appetiteOpen, appetiteValue, nextAppetite } from "./redesign/appetite";
 import { liveFreshness } from "./redesign/liveFreshness";
 import { playedPlayers } from "./redesign/playedPlayers";
+import { RankItMark } from "./redesign/BrandMark";
 import PlayersPicker from "./redesign/PlayersPicker";
 import ReviewComposer from "./redesign/ReviewComposer";
 import HuntIndex from "./redesign/Hunt";
@@ -115,14 +116,6 @@ function loadRankitHome(sport = "All") {
   const day = rankitDayContext();
   const region = resolveBroadcastCountry();
   return rankitApi.home(sport, day.start, day.end, region.supported ? region.code : "");
-}
-
-function RankItMark({ size = 28 }) {
-  return <svg width={size} height={size} viewBox="0 0 48 48" fill="none" aria-label="RankIt">
-    <polygon points="24,3 34.5,5.8 42.2,13.5 45,24 42.2,34.5 34.5,42.2 24,45 13.5,42.2 5.8,34.5 3,24 5.8,13.5 13.5,5.8" stroke="#FFB11B" strokeWidth="3" strokeLinejoin="round"/>
-    <path d="M16 35V13h10.2c6 0 9.4 3.2 9.4 8.2 0 3.7-2 6.4-5.4 7.5L36 35h-6.6l-7-8.3h3.3c2.7 0 4.2-1.7 4.2-4.7 0-2.8-1.6-4.3-4.5-4.3h-3.7V35H16Z" fill="url(#rankit-r)"/>
-    <defs><linearGradient id="rankit-r" x1="16" y1="13" x2="36" y2="35"><stop stopColor="#FFE09A"/><stop offset="1" stopColor="#FFB11B"/></linearGradient></defs>
-  </svg>;
 }
 
 function SheetHandle({ onClose }) {
@@ -1625,7 +1618,7 @@ export default function RankItPrototype({ nativeBack = false, accountAction, acc
   if (collectible) return <CollectibleResult result={collectible} hideScores={hideScores} onSkinApplied={skinApplied}
     onDone={()=>setCollectible(null)} onEdit={()=>{setDetail(collectibleEditMatch(collectible));setCollectible(null);}}/>;
   return <div className={`rankit-app${headerHidden ? " header-hidden" : ""}${networkState === "offline" ? " is-offline" : ""}${RANKIT_NEW_CARD && tab === "Profile" ? " ri-profile6-mode" : ""}`}>
-    <header className="ri-header"><div className="ri-brand"><RankItMark size={29}/><div><strong aria-label="RankIt">RANK<span>IT</span></strong><small>BY PRIMARY ARCH</small></div></div>
+    <header className="ri-header"><div className="ri-brand"><RankItMark size={24}/><div><strong aria-label="RankIt">RANK<span>IT</span></strong><small>BY PRIMARY ARCH</small></div></div>
       <div className="ri-header-tools">
         {/* Ekran 2a: seri halkası ve spoiler kalkanı başlıkta, bildirimin solunda. */}
         {RANKIT_NEW_CARD && <StreakRing nights={streakNights}/>}

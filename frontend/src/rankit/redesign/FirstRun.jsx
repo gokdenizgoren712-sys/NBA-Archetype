@@ -35,10 +35,11 @@ const GREEN = "#3fb08c";
 export function ConnectScreen({ mark, busy, error, onConnect, onCreate, onBrowse }) {
   return (
     <main className="ri-first ri-first-connect">
-      {/* 4g: yatay kilit -- isaret + "RANK" / altin "IT" + "BY PRIMARY ARCH". */}
+      {/* 4g: isaret 24 + "RANK" / altin "IT" yan yana (9px), "BY PRIMARY ARCH"
+          altinda ortali (7px). */}
       <div className="ri-first-brand">
-        {mark}
-        <span><strong aria-label="RankIt">RANK<span>IT</span></strong><small>BY PRIMARY ARCH</small></span>
+        <span>{mark}<strong aria-label="RankIt">RANK<span>IT</span></strong></span>
+        <small>BY PRIMARY ARCH</small>
       </div>
 
       <div className="ri-first-arch">

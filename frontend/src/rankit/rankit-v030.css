@@ -290,7 +290,13 @@
    bildirim noktası altındı, yani iki tane. Tahta ikisini de altın DEĞİL
    yapıyor — marka alt satırı ink-4, okunmamış noktası heat-5. Altın bütçesi
    böylece bu bölgede serbest kalıyor (alt navigasyondaki elmas kullanıyor). */
-.rankit-app .ri-brand small{color:#7f868b}
+/* 2a / BUILD §7.2 uygulama basligi kilidi: isaret 24, aralik 10, kelime 21
+   Rajdhani 700 .03em, altinda BY PRIMARY ARCH 9px .14em. Eski isaretin altin
+   parlamasi 4i ile gitti (tahtada yok). */
+.rankit-app .ri-brand{gap:10px;min-width:0}
+.rankit-app .ri-brand>svg{filter:none}
+.rankit-app .ri-brand strong{font:700 21px/1 var(--font-logo);letter-spacing:.03em;color:#eceded}
+.rankit-app .ri-brand small{font:700 9px/1 var(--font-logo);letter-spacing:.14em;color:#7f868b;margin-top:5px}
 .rankit-app .ri-header i{background:#f5402e;box-shadow:none}
 
 /* ==========================================================================
@@ -359,7 +365,9 @@
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rankit-app .ri-drow-text>span{display:flex;align-items:center;gap:8px;margin-top:7px}
 .rankit-app .ri-drow-classic{width:11px;height:11px;flex:none;transform:rotate(45deg);border-radius:3px 3px 4px 4px;background:var(--ri-gold)}
-.rankit-app .ri-drow-heat{width:4px;height:36px;flex:none;border-radius:2px;background:rgba(255,255,255,.12)}
+.rankit-app .ri-drow-heat{flex:none;display:flex;align-items:center;gap:7px}
+.rankit-app .ri-drow-heat>b{font:700 11px/1 var(--font-logo);color:#9aa0a6;font-variant-numeric:tabular-nums}
+.rankit-app .ri-drow-heat>i{width:4px;height:36px;border-radius:2px;background:rgba(255,255,255,.12)}
 .rankit-app .ri-dstars{display:inline-flex;gap:2px}
 .rankit-app .ri-dstar{position:relative;width:11px;height:11px;color:rgba(255,255,255,.2)}
 .rankit-app .ri-dstar svg{display:block}
@@ -499,9 +507,15 @@
 /* Isı kaydırıcısı: yerel range, görünüm tahtadan. 44px dokunma yüksekliği
    izin kendisinden (8px) bağımsız. */
 .rankit-app .ri-drawer-heat{height:44px;display:flex;align-items:center}
-.rankit-app .ri-drawer-heat input{width:100%;height:8px;margin:0;-webkit-appearance:none;appearance:none;border-radius:5px;
-  background:linear-gradient(90deg,#2f5480,#5b4fa8,#9a3f96,#d43a63,#f5402e);outline:none;cursor:pointer}
-.rankit-app .ri-drawer-heat input::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:28px;height:28px;
+/* Asama 13 (§6 44px): GIRDI 44px, iz 8px cizimde. Eskiden girdinin kendisi
+   8px'ti -- izin ustune/altina dokunmak kaydiriciya gitmiyordu (olculdu). */
+.rankit-app .ri-drawer-heat input{width:100%;height:44px;margin:0;-webkit-appearance:none;appearance:none;
+  background:transparent;outline:none;cursor:pointer}
+.rankit-app .ri-drawer-heat input::-webkit-slider-runnable-track{height:8px;border-radius:5px;
+  background:linear-gradient(90deg,#2f5480,#5b4fa8,#9a3f96,#d43a63,#f5402e)}
+.rankit-app .ri-drawer-heat input::-moz-range-track{height:8px;border-radius:5px;
+  background:linear-gradient(90deg,#2f5480,#5b4fa8,#9a3f96,#d43a63,#f5402e)}
+.rankit-app .ri-drawer-heat input::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:28px;height:28px;margin-top:-10px;
   border-radius:999px;background:#eceded;border:3px solid #1a1b1e;cursor:pointer}
 .rankit-app .ri-drawer-heat input::-moz-range-thumb{width:28px;height:28px;border-radius:999px;background:#eceded;
   border:3px solid #1a1b1e;cursor:pointer}
@@ -760,8 +774,8 @@
 
 /* 2a / 4g kelime markasi: "RANK" + altin "IT" (iki tahtada da). */
 .rankit-app .ri-brand strong span,.ri-first-brand strong span{color:var(--ri-gold,#ffb11b)}
-.ri-first-brand{flex-direction:row;gap:10px}
-.ri-first-brand>span{display:flex;flex-direction:column;align-items:flex-start;gap:5px}
+.ri-first-brand{flex-direction:column;align-items:center;gap:7px}
+.ri-first-brand>span{display:flex;align-items:center;gap:9px}
 .ri-first-brand strong{font:700 21px/1 var(--font-logo);letter-spacing:.03em;color:#eceded}
 
 /* ==========================================================================
@@ -834,3 +848,24 @@
 .rankit-app .ri-quick-sheet .ri-quick-row>svg:last-child{color:#9aa0a6}
 .rankit-app .ri-quick-sheet .ri-quick-count{color:#9aa0a6;font:700 12px/1 var(--font-logo)}
 .rankit-app .ri-quick-sheet .ri-quick-row:focus-visible{outline:2px solid var(--ri-focus);outline-offset:2px}
+
+/* ==========================================================================
+   Asama 13 — §6 "Every target >= 44x44". Gorsel boyut ayni; dokunma alani
+   ::before / ::after ile genisliyor (bu dosyanin [b] kalibi). Olculdu:
+   hukum kapisi dugmesi 92x14, kisa sekmeler 32-36px genis, maç basligindaki
+   yarisma baglantisi 106x12, "Community ›" 64x15, 34px kapat dugmeleri.
+   ========================================================================== */
+.rankit-app .ri-gate-action,.rankit-app .ri-kicker-comp,.rankit-app .ri-timeline button{position:relative}
+.rankit-app .ri-gate-action::after,.rankit-app .ri-kicker-comp::after,.rankit-app .ri-timeline button::after{
+  content:"";position:absolute;left:-6px;right:-6px;top:50%;height:44px;transform:translateY(-50%)}
+.rankit-app :is(.ri-segment.is-tabs,.ri-competition-tabs,.ri-match-sheet>.ri-detail-tabs) button{position:relative}
+.rankit-app :is(.ri-segment.is-tabs,.ri-competition-tabs,.ri-match-sheet>.ri-detail-tabs) button::before{
+  content:"";position:absolute;top:0;bottom:0;left:50%;width:max(100%,44px);transform:translateX(-50%)}
+.rankit-app .ri-sheet-close::after,.rankit-app .ri-rank-head button::after{content:"";position:absolute;inset:-5px}
+
+/* Asama 13 — §5.3 "Cached cards dim to 62%" ve 3l: KARTIN TAMAMI .62. Eski
+   kural (rankit.css) yalniz arma gorsellerini soldurunca kart tam parlak
+   kaliyordu (olculdu: kart 1, arma .62). Icteki gorseller sifirlaniyor ki
+   iki kez solmasin. */
+.rankit-app.is-offline :is(.ri-card-slot,.ri-hero-slot,.ri-tonight-row,.ri-drow,.ri-fcard,.ri-coll-row){opacity:.62}
+.rankit-app.is-offline :is(.ri-card-slot,.ri-hero-slot) img{opacity:1}

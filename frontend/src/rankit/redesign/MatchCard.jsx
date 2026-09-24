@@ -210,7 +210,7 @@ export default function MatchCard(props) {
       <span style={{ color: t.eyebrow, fontSize: compact ? 9 : 11, lineHeight: 1.25, fontFamily: "Outfit,system-ui,sans-serif" }}>
         Rate it first — then see whether the room agreed with you.
       </span>
-      <button type="button" onClick={event => { event.stopPropagation(); setCommunityRevealed(true); }}
+      <button type="button" className="ri-gate-action" onClick={event => { event.stopPropagation(); setCommunityRevealed(true); }}
         style={{ justifySelf: "start", padding: 0, border: 0, background: "none", color: t.gold, font: "700 10px Rajdhani,system-ui,sans-serif", letterSpacing: ".12em", cursor: "pointer" }}>
         REVEAL ANYWAY
       </button>

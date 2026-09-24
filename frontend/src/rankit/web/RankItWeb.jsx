@@ -113,7 +113,7 @@ function Rail({ user, onRank, onSearch }) {
       <div className="riw-brand">
         <RankItMark size={26} />
         <div>
-          <strong>RANKIT</strong>
+          <strong aria-label="RankIt">RANK<span>IT</span></strong>
           <small>BY PRIMARY ARCH</small>
         </div>
       </div>

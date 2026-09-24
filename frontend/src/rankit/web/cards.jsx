@@ -13,22 +13,9 @@ export { formatWhen } from "../formatWhen";
 // masaüstünde yer olduğu için skor ile topluluk puanı aynı anda görünüyor.
 // Ortak olan dil, davranış değil.
 
-export function RankItMark({ size = 26 }) {
-  // Primary Arch'ın 12-geni, içinde R. Marka işareti telefonda da bu.
-  const r = size / 2;
-  const points = Array.from({ length: 12 }, (_, i) => {
-    const a = (Math.PI / 6) * i - Math.PI / 2;
-    return `${(r + r * 0.97 * Math.cos(a)).toFixed(2)},${(r + r * 0.97 * Math.sin(a)).toFixed(2)}`;
-  }).join(" ");
-  return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true">
-      <polygon points={points} fill="none" stroke="var(--ri-gold, #FFB11B)" strokeWidth="1.4" />
-      <text x="50%" y="50%" textAnchor="middle" dominantBaseline="central"
-        fill="var(--ri-gold, #FFB11B)"
-        style={{ font: `800 ${size * 0.46}px var(--font-logo)` }}>R</text>
-    </svg>
-  );
-}
+// RankIt isareti: telefonla TEK bilesen (BUILD §7.2, 4i). Eski 12-gen + R
+// madalyonu 4i ile emekli oldu.
+export { RankItMark } from "../redesign/BrandMark";
 
 /** Yarım yıldız. Salt okunur (onChange yoksa) ya da seçilebilir. */
 export function Stars({ value = 0, onChange, compact = false }) {

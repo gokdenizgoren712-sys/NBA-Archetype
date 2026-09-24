@@ -5,6 +5,7 @@ import { Browser } from "@capacitor/browser";
 import RankItPrototype from "./RankItPrototype";
 import { API_ROOT, rankitApi, rankitMe, rankitMobileExchange } from "./rankitApi";
 import { ConnectScreen, FollowPicker } from "./redesign/FirstRun";
+import { RankItMark } from "./redesign/BrandMark";
 import "./rankit.css";
 import "./rankit-mobile.css";
 
@@ -16,13 +17,6 @@ const GUEST_KEY = "rankit_guest";
 
 function readUser() {
   try { return JSON.parse(localStorage.getItem(USER_KEY)); } catch { return null; }
-}
-
-function MobileMark({ size = 68 }) {
-  return <svg width={size} height={size} viewBox="0 0 48 48" fill="none" aria-label="RankIt">
-    <polygon points="24,3 34.5,5.8 42.2,13.5 45,24 42.2,34.5 34.5,42.2 24,45 13.5,42.2 5.8,34.5 3,24 5.8,13.5 13.5,5.8" stroke="#FFB11B" strokeWidth="2.4" strokeLinejoin="round"/>
-    <path d="M16 35V13h10.2c6 0 9.4 3.2 9.4 8.2 0 3.7-2 6.4-5.4 7.5L36 35h-6.6l-7-8.3h3.3c2.7 0 4.2-1.7 4.2-4.7 0-2.8-1.6-4.3-4.5-4.3h-3.7V35H16Z" fill="#FFB11B"/>
-  </svg>;
 }
 
 export default function RankItMobileApp() {
@@ -94,8 +88,8 @@ export default function RankItMobileApp() {
     return () => { alive = false; };
   }, [user]);
 
-  if (checking || (user && firstRun === null)) return <main className="ri-mobile-auth"><div className="ri-auth-loading"><MobileMark/><span>Checking your Primary Arch account…</span></div></main>;
-  if (!user && !guest) return <ConnectScreen mark={<MobileMark size={24}/>} busy={authBusy} error={authError}
+  if (checking || (user && firstRun === null)) return <main className="ri-mobile-auth"><div className="ri-auth-loading"><RankItMark size={68} label="RankIt"/><span>Checking your Primary Arch account…</span></div></main>;
+  if (!user && !guest) return <ConnectScreen mark={<RankItMark size={24}/>} busy={authBusy} error={authError}
     onConnect={startWebAuth} onCreate={startSignup} onBrowse={browseAsGuest}/>;
   if (user && firstRun) return <FollowPicker onDone={() => setFirstRun(false)}/>;
   return <div className="ri-mobile-shell">

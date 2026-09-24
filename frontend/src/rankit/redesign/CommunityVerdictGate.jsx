@@ -8,7 +8,7 @@ export default function CommunityVerdictGate({ spoiler = false, onReveal, action
       <span style={{ color: "#c9cccd", font: "400 12px/1.45 Outfit,system-ui,sans-serif" }}>
         {message || (spoiler ? "CONTAINS SPOILERS · TAP TO SHOW" : "Rate it first — then see whether the room agreed with you.")}
       </span>
-      <button type="button" onClick={onReveal} style={{ justifySelf: "start", border: 0, background: "none", color: "#ffb11b", padding: 0, font: "700 11px Rajdhani,system-ui,sans-serif", letterSpacing: ".12em", cursor: "pointer" }}>
+      <button type="button" className="ri-gate-action" onClick={onReveal} style={{ justifySelf: "start", border: 0, background: "none", color: "#ffb11b", padding: 0, font: "700 11px Rajdhani,system-ui,sans-serif", letterSpacing: ".12em", cursor: "pointer" }}>
         {actionLabel}
       </button>
     </div>
