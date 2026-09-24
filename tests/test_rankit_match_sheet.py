@@ -157,3 +157,77 @@ def test_live_events_loop_keeps_the_lineup_current(db, monkeypatch):
     assert out["polled"] == 1
     home = next(l for l in client().get("/api/rankit/matches/1").json()["lineups"] if l["side"] == "home")
     assert {p["name"]: p["sub_in"] for p in home["bench"]}["Trossard"] == 70
+
+
+# ── Onarim: 80b6fa0 oncesi yazilmis kadro ────────────────────────────────────
+# Canlida (2026-09-24) bitmis maclarin kadrosu oyuncu kimligi ve oyuna giris
+# dakikasi olmadan yazilmisti; kadro dongusu bitmis maci bir daha sormadigi
+# icin POTM / respect secicisi o maclarda bos kaliyordu.
+
+def _stale_lineup(match_id=1, days_ago=5):
+    with DB.get_conn() as c:
+        c.execute("""UPDATE rankit_matches SET provider_match_id='5868065',
+                     starts_at=strftime('%Y-%m-%dT%H:%M:%SZ','now',?) WHERE id=?""",
+                  (f"-{days_ago} days", match_id))
+        c.execute("""INSERT INTO rankit_match_lineups(match_id,team_id,side,formation,confirmed_at)
+                     VALUES(?,1,'home','4-3-3',datetime('now')),(?,2,'away','4-2-3-1',datetime('now'))""",
+                  (match_id, match_id))
+        for team, role, order, name in [(1, "start", 0, "Raya"), (1, "start", 1, "White"),
+                                        (1, "start", 2, "Saka"), (1, "bench", 0, "Trossard"),
+                                        (1, "bench", 1, "Unused Keeper"), (2, "start", 0, "Vicario")]:
+            c.execute("""INSERT INTO rankit_match_lineup_players(match_id,team_id,name,role,ord)
+                         VALUES(?,?,?,?,?)""", (match_id, team, name, role, order))
+
+
+def _fake_fotmob(monkeypatch):
+    import sys
+    import types
+
+    class Response:
+        status_code = 200
+
+        def json(self):
+            return {"content": CONTENT}
+
+    fake = types.ModuleType("curl_cffi")
+    fake.requests = types.SimpleNamespace(get=lambda *a, **k: Response())
+    monkeypatch.setitem(sys.modules, "curl_cffi", fake)
+    monkeypatch.setattr(LS.time, "sleep", lambda s: None)
+
+
+def test_finished_match_with_an_unlinked_lineup_is_fetched_again(db, monkeypatch):
+    _stale_lineup()
+    with DB.get_conn() as c:
+        assert [r["id"] for r in LS._lineup_targets(c)] == [1]
+    # Onarim oncesi: kadro gorunuyor ama secici bos (kullanicinin gordugu).
+    home = next(l for l in client().get("/api/rankit/matches/1").json()["lineups"] if l["side"] == "home")
+    assert all(p["player_id"] is None for p in home["starters"] + home["bench"])
+
+    _fake_fotmob(monkeypatch)
+    assert LS.refresh_lineups() == {"checked": 1, "stored": 2}
+    home = next(l for l in client().get("/api/rankit/matches/1").json()["lineups"] if l["side"] == "home")
+    assert all(p["player_id"] for p in home["starters"] + home["bench"])
+    assert {p["name"]: p["played"] for p in home["bench"]} == {"Trossard": True, "Unused Keeper": False}
+
+    api = client()
+    api.post("/api/rankit/diary", json={"match_id": 1, "rating": 4.0})
+    assert api.post("/api/rankit/matches/1/potm", json={"player_id": player_id("Trossard")}).status_code == 200
+    assert api.put("/api/rankit/matches/1/respect", json={"player_ids": [player_id("Raya")]}).status_code == 200
+    # Bagli kadro bir daha sorulmaz.
+    with DB.get_conn() as c:
+        assert LS._lineup_targets(c) == []
+
+
+def test_lineup_repair_is_bounded_and_yields_to_the_live_window(db, monkeypatch):
+    _stale_lineup(match_id=1, days_ago=LS.LINEUP_REPAIR_DAYS + 2)
+    with DB.get_conn() as c:
+        assert LS._lineup_targets(c) == []           # pencere disi: kalici hata sonsuza dek sorulmaz
+        c.execute("UPDATE rankit_matches SET starts_at=strftime('%Y-%m-%dT%H:%M:%SZ','now','-3 days') WHERE id=1")
+        c.execute("""UPDATE rankit_matches SET provider_match_id='999', status='upcoming',
+                     starts_at=strftime('%Y-%m-%dT%H:%M:%SZ','now','+1 hours') WHERE id=2""")
+    monkeypatch.setattr(LS, "LINEUP_BATCH", 1)
+    with DB.get_conn() as c:
+        assert [r["id"] for r in LS._lineup_targets(c)] == [2]   # yaklasan mac once
+    monkeypatch.setattr(LS, "LINEUP_BATCH", 2)
+    with DB.get_conn() as c:
+        assert [r["id"] for r in LS._lineup_targets(c)] == [2, 1]

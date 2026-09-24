@@ -692,7 +692,11 @@ export function MatchDetail({ match, hideScores, onClose, onSave, onResult, onTo
               <span><small>PLAYER OF THE MATCH &amp; RESPECT</small><strong>{selectedPotm?.name || "Choose a player"}{selectedRespect.length ? ` · ${selectedRespect.map(p => p.name).join(" · ")}` : ""}</strong></span>
               <b>CHOOSE</b>
             </button>
-          </div> : <p className="ri-companion-note">Player picks open when a confirmed match lineup is available.</p>}
+          </div> : <p className="ri-companion-note">{match.lineups?.length
+            // Kadro gorunuyor ama oyunculara henuz bagli degil (saglayicidan yeniden cekiliyor):
+            // "kadro gelince acilir" demek ekrandaki kadroyla celisirdi.
+            ? "Player picks open once this lineup is linked to players."
+            : "Player picks open when a confirmed match lineup is available."}</p>}
           <button disabled={cta.disabled} aria-busy={cta.busy}
             className={`ri-review-cta${cta.state === "saved" ? " saved" : ""}${cta.busy ? " is-busy" : ""}`} onClick={saveLog}>
             {/* §5: donen cark yok. Mesgul durum metinle ve aria-busy ile. */}

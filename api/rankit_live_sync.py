@@ -181,10 +181,14 @@ def _refresh_nba(season: str) -> int:
 LINEUP_LOOKAHEAD_HOURS = 3
 LINEUP_LOOKBACK_HOURS = 4
 LINEUP_BATCH = 30
+# Onarim penceresi: kadro toplama 2026-09-05'te basladi; bu pencere hepsini
+# kapsiyor. Saglayicinin kalici olarak kadrosuz dondurdugu bir mac sonsuza
+# dek her turda sorulmasin diye sinirli.
+LINEUP_REPAIR_DAYS = 45
 
 
 def _lineup_targets(conn):
-    return conn.execute(
+    targets = conn.execute(
         f"""SELECT m.id, m.provider_match_id, m.home_team_id, m.away_team_id
             FROM rankit_matches m
             WHERE m.provider='fotmob' AND m.provider_match_id IS NOT NULL
@@ -199,6 +203,26 @@ def _lineup_targets(conn):
             ORDER BY m.starts_at
             LIMIT {LINEUP_BATCH}"""
     ).fetchall()
+    # Onarim: 80b6fa0 oncesi kod kadroyu oyuncu kimligi (player_id) ve
+    # oyuna giris dakikasi olmadan yaziyordu. Yukaridaki kosul bitmis maci
+    # bir daha sormadigi icin o maclarda POTM / respect secicisi bos
+    # kaliyordu (secici yalniz kimligi olan oynayanlari listeler, §10.2).
+    # Yeni kod her satiri bagliyor; bagsiz satir = eski yazim = yeniden cek.
+    # Pencerenin artan yerini doldurur, canli / yaklasan maclardan calmaz.
+    room = LINEUP_BATCH - len(targets)
+    if room > 0:
+        targets += conn.execute(
+            f"""SELECT m.id, m.provider_match_id, m.home_team_id, m.away_team_id
+                FROM rankit_matches m
+                WHERE m.provider='fotmob' AND m.provider_match_id IS NOT NULL
+                  AND m.status='finished'
+                  AND datetime(m.starts_at) >= datetime('now','-{LINEUP_REPAIR_DAYS} days')
+                  AND EXISTS(SELECT 1 FROM rankit_match_lineup_players p
+                             WHERE p.match_id=m.id AND p.player_id IS NULL)
+                ORDER BY m.starts_at DESC
+                LIMIT ?""", (room,)
+        ).fetchall()
+    return targets
 
 
 FOTMOB_PLAYER_IMAGE = "https://images.fotmob.com/image_resources/playerimages/{}.png"
