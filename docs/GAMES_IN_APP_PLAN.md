@@ -5,10 +5,12 @@
 **Kapsam:** YALNIZCA Android uygulaması (RankIt by Primary Arch). Web'de oyuna
 zaten `/basketball/game` ve `/football/game` üzerinden gidiliyor; web'e bir şey
 eklenmiyor.
+**Görsel taslak:** https://claude.ai/artifact/PBwC8t3avTM54srcmYjP8y (ekranlar 1–7,
+yol haritası, mimari sınır — Games by Primary Arch tuvali).
 
 ## 1. İstek
 
-Sitedeki basketbol ve futbol oyunu (Lineup Builder / Custom XI) RankIt uygulamasının
+Sitedeki basketbol ve futbol oyunu (basketbol: Lineup Builder, futbol: Squad Builder) RankIt uygulamasının
 içinde oynanabilsin. Giriş noktası: **Discover** sayfasında, **The Hunt** damgasının
 yanında **Games by Primary Arch** tuşu.
 
