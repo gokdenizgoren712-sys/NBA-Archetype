@@ -71,7 +71,8 @@ function Ring({ done, total, size = 34 }) {
   );
 }
 
-function Sentence({ item, rated }) {
+/* Web 14b bildirim menüsü de aynı cümleleri kurar (Aşama 17) — tek kaynak. */
+export function AlertSentence({ item, rated }) {
   const who = <strong>@{item.actor}</strong>;
   switch (item.kind) {
     case "respect":
@@ -131,7 +132,7 @@ function Alert({ item, ratedMatchIds, onOpenMatch, onOpenList, onOpenCollection 
           : item.kind === "broadcast" ? <span className="ri-alert-face" aria-hidden="true"><Tv size={16} /></span>
           : <Avatar name={item.actor} />}
         <span>
-          <p><Sentence item={item} rated={ratedMatchIds?.has(Number(item.match_id))} /></p>
+          <p><AlertSentence item={item} rated={ratedMatchIds?.has(Number(item.match_id))} /></p>
           {item.created_at && <small>{ago(item.created_at)}</small>}
         </span>
       </button>

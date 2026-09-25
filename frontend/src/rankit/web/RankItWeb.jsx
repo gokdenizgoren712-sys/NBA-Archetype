@@ -1,14 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
-  Compass, Activity as ActivityIcon, List as ListIcon, CircleUserRound,
-  Smartphone, X, ChevronLeft, ChevronRight, FileText, Plus, Search,
-  SlidersHorizontal, MessageSquare, EyeOff, Radio, Bookmark, Heart,
+  Compass, X, ChevronLeft, ChevronRight, Search,
+  MessageSquare, Heart,
 } from "lucide-react";
 import { SEO } from "../../hooks/useSEO";
 import { useAuth } from "../../contexts/AuthContext";
 import { rankitApi } from "../rankitApi";
-import { BROADCAST_COUNTRIES, hidesScore, readPrefs, writePrefs, resolveBroadcastCountry, localeCountry } from "../rankitPrefs";
+import { hidesScore, readPrefs, writePrefs, resolveBroadcastCountry } from "../rankitPrefs";
 import { WallCard, Stars, formatWhen } from "./cards";
 import { WebHeader, WebRail, PhoneTabs } from "./WebShell";
 import { useShellData } from "./useShellData";
@@ -17,15 +16,32 @@ import Inspector from "./Inspector";
 import CollectibleOverlay from "./CollectibleOverlay";
 import QuickRate from "./QuickRate";
 import { CardHoverContext, useCardHover } from "./cardHover";
+import ShelfPage from "./ShelfPage";
+import HeatMapPage from "./HeatMapPage";
+import ReviewsPage from "./ReviewsPage";
+import CompetitionPage from "./CompetitionPage";
+import ClubInspector from "./ClubInspector";
+import SearchPage from "./SearchPage";
+import ProfilePage from "./ProfilePage";
+import PeoplePage from "./PeoplePage";
+import ListsPage from "./ListsPage";
+import HuntPage from "./HuntPage";
+import ActivityPage from "./ActivityPage";
+import DiscoverFilters from "./DiscoverFilters";
+import NotificationsMenu from "./NotificationsMenu";
+import WelcomePage from "./WelcomePage";
+import SkinPage from "./SkinPage";
+import { WallSkeleton } from "./Skeletons";
+import { useNetwork } from "./useNetwork";
+import { PageHead, SortBar } from "./PageParts";
+import { DISCOVER_SORTS, activeFilterCount, discoverEmpty, discoverEyebrow, discoverFilters, discoverParams } from "./pagesView";
 import { rankitDayContext, tonightLabel, tonightRows } from "../redesign/homeTonight";
-import CompetitionMatches from "../redesign/CompetitionMatches";
-import SearchSheet from "../redesign/SearchSheet";
-import CompetitionPlayers from "../redesign/CompetitionPlayers";
 import CommunityVerdictGate from "../redesign/CommunityVerdictGate";
 import { communityVerdictCovered } from "../redesign/heat";
 import "../rankit.css";
 import "./rankit-web.css";
 import "./rankit-inspector.css";
+import "./rankit-pages.css";
 
 // ── RankIt web yüzeyi ────────────────────────────────────────────────────────
 // Görsel dünya telefondan devralınıyor; masaüstünün getirdiği tek şey aynı anda
@@ -73,46 +89,13 @@ function toCard(m) {
   };
 }
 
-/* Günlük satırı maç satırıyla AYNI şekle sahip değil: /diary sorgusu düz
-   sütunlar döndürüyor (home_name, home_short, … ) ve `id` alanı MAÇIN değil
-   GÜNLÜK KAYDININ id'si. toCard'ı doğrudan bu satıra uygulamak takım adlarını
-   undefined bırakıyor, skoru yok ediyor (bitmiş maç "VS" gösteriyor) ve kart
-   tıklanınca yanlış maçı açıyordu. Bu yüzden ayrı bir çevirici. */
-function diaryToCard(e) {
-  const when = formatWhen(e.starts_at);
-  const score = e.home_score == null ? null : `${e.home_score} – ${e.away_score}`;
-  return {
-    id: e.match_id,
-    // Yeniden izleme aynı maçın ikinci kaydı: duvarın anahtarı MAÇ değil KAYIT
-    // (aynı maç iki kez = iki kart; anahtar çakışıyordu, konsolda ölçüldü).
-    key: `entry-${e.id}`,
-    competition: e.competition || "",
-    sport: e.sport,
-    status: e.status,
-    date: when.full || e.watched_date || "",
-    time: when.time,
-    home: { name: e.home_name, short: e.home_short, color: e.home_color, crest_url: e.home_crest },
-    away: { name: e.away_name, short: e.away_short, color: e.away_color, crest_url: e.away_crest },
-    score,
-    myRating: e.rating,
-    instantClassic: !!e.classic,
-    diary: true,
-    raw: e,
-  };
-}
-
 /* ── Duvar ────────────────────────────────────────────────────────────────── */
 
 function Wall({ matches, loading, error, onOpen, empty, hideScores = false }) {
   // Hata varken iskelet göstermek sonsuz parıltı demekti: yükleme dalı hatayı
   // render etmeden dönüyordu ve başarısız bir istek asla kullanıcıya ulaşmıyordu.
-  if (loading && !error) {
-    return (
-      <div className="riw-wall">
-        {Array.from({ length: 8 }).map((_, i) => <div key={i} className="riw-skeleton" />)}
-      </div>
-    );
-  }
+  // 8d: iskelet kartın gerçek geometrisiyle — veri gelince sayfa zıplamaz.
+  if (loading && !error) return <WallSkeleton />;
   return (
     <div className="riw-wall">
       {error && <div className="riw-note">{error}</div>}
@@ -274,7 +257,7 @@ function HomeView({ onOpenMatch, hideScores, ratedMatchIds, accountId, refreshTo
       {!data && !err && (
         <section className="riw-tonight" aria-busy="true" aria-label="Loading tonight">
           <div className="riw-label-row"><h2>{day.daytime ? "TODAY" : "TONIGHT"}</h2></div>
-          <div className="riw-carousel">{[0, 1, 2].map((i) => <div key={i} className="riw-skeleton" />)}</div>
+          <WallSkeleton count={3} className="riw-carousel" />
         </section>
       )}
 
@@ -325,87 +308,12 @@ function HomeView({ onOpenMatch, hideScores, ratedMatchIds, accountId, refreshTo
    olan kendi sınıfını kullanıyor ve web o dosyayı YÜKLEMİYOR. Burada
    webin kendi Wall'u kullanılıyor — hem stilsiz kalmıyor hem geniş ekranda
    zaten daha doğru. (Aynı tuzağa .ri-live-tag'de düşülmüştü.) */
+// Turnuva 8c sayfası, kulüp 12a Inspector'ı, liste 12b sayfası — çekmecede
+// oyuncu ve üye kaldı.
 const ENTITY_LOADER = {
-  competition: rankitApi.competition,
   player: rankitApi.player,
-  team: rankitApi.team,
   member: rankitApi.member,
-  list: rankitApi.list,
 };
-
-/* Turnuva gövdesi: Table / Players / Matches.
-   Önceki hali 30 ismi alfabetik bir duvar olarak basıyordu — ne takım ne
-   istatistik, yani "popular" kelimesini destekleyen hiçbir şey ekranda yoktu.
-   Veri zaten geliyordu (team_name, appearances, potm_votes), gösterilmiyordu. */
-function CompetitionBody({ id, data, onOpenMatch, onOpenEntity }) {
-  const [tab, setTab] = useState("table");
-  const standings = data.standings || [];
-
-  return (
-    <>
-      <div className="ri-detail-tabs" role="tablist" aria-label="Competition">
-        {[["table", "Table"], ["matches", "Matches"], ["players", "Players"]].map(([key, label]) => (
-          <button key={key} role="tab" aria-selected={tab === key}
-            className={tab === key ? "active" : undefined}
-            onClick={() => setTab(key)}>{label}</button>
-        ))}
-      </div>
-
-      {tab === "table" && (
-        standings.length ? (
-          <div className="riw-table-wrap">
-            <table className="riw-table">
-              <thead>
-                <tr>
-                  <th className="num">#</th><th>Team</th>
-                  <th className="num">P</th><th className="num">W</th>
-                  <th className="num">D</th><th className="num">L</th>
-                  <th className="num">GD</th><th className="num pts">Pts</th>
-                </tr>
-              </thead>
-              <tbody>
-                {standings.map((row, i) => (
-                  <tr key={row.team_id}>
-                    <td className="num rank">{i + 1}</td>
-                    <td>
-                      <button type="button" className="riw-linkish"
-                        onClick={() => onOpenEntity?.("team", row.team_id)}>
-                        {row.short_name || row.name}
-                      </button>
-                    </td>
-                    <td className="num">{row.played}</td>
-                    <td className="num">{row.won}</td>
-                    <td className="num">{row.drawn}</td>
-                    <td className="num">{row.lost}</td>
-                    <td className="num">{row.gd > 0 ? `+${row.gd}` : row.gd}</td>
-                    <td className="num pts">{row.points}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : <Empty icon={ListIcon} title="No table yet"
-              note="Standings appear once results are in for this season." />
-      )}
-
-      {/* 3d — sezon cetveli. Eskiden burada POTM/Respect oylarina gore
-          siralanmis bir "popular players" listesi vardi; 3d baska bir sey
-          istiyor ve bilesenin kendi basligi bunu soyluyor. */}
-      {tab === "players" && (
-        <CompetitionPlayers competitionId={id}
-          onOpenPlayer={(pid) => onOpenEntity?.("player", pid)} />
-      )}
-
-      {/* 3c — hafta seridi + gun gun fikstur kartlari. Telefonla AYNI bilesen. */}
-      {tab === "matches" && (
-        <CompetitionMatches competitionId={id}
-          matchweeks={data.matchweeks || []} fixtures={data.fixtures || []}
-          onOpenMatch={(m) => onOpenMatch(m.id)} />
-      )}
-    </>
-  );
-}
-
 
 function EntityDrawer({ kind, id, onClose, onOpenMatch, onOpenEntity, hideScores, ratedMatchIds }) {
   const { isLoggedIn } = useAuth();
@@ -524,25 +432,6 @@ function EntityDrawer({ kind, id, onClose, onOpenMatch, onOpenEntity, hideScores
               )
             )}
 
-            {kind === "competition" && (
-              <CompetitionBody id={id} data={data}
-                onOpenMatch={onOpenMatch} onOpenEntity={onOpenEntity} />
-            )}
-
-            {/* Takım kadrosu: oyuncuya geçiş buradan. */}
-            {kind === "team" && !!data.players?.length && (
-              <div className="ri-squad-preview">
-                <div className="ri-chip-title">SQUAD <span>{data.players.length}</span></div>
-                <div className="riw-entity-chips">
-                  {data.players.map((pl) => (
-                    <button key={pl.id} type="button" onClick={() => onOpenEntity("player", pl.id)}>
-                      {pl.shirt_no && <b>{pl.shirt_no}</b>}{pl.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
             {kind === "member" && !!data.entries?.length && (
               <div className="riw-review-list">
                 {data.entries.slice(0, 8).map((e) => (
@@ -553,10 +442,10 @@ function EntityDrawer({ kind, id, onClose, onOpenMatch, onOpenEntity, hideScores
               </div>
             )}
 
-            {kind !== "competition" && !!matches.length && (
+            {!!matches.length && (
               <>
                 <div className="ri-chip-title" style={{ marginTop: 16 }}>
-                  {kind === "competition" ? "FIXTURES" : "MATCHES"} <span>{matches.length}</span>
+                  MATCHES <span>{matches.length}</span>
                 </div>
                 <Wall matches={matches} loading={false} error=""
                   onOpen={(m) => onOpenMatch(m.id)} empty={null}
@@ -645,146 +534,67 @@ function RankSheet({ onClose, onPick, hideScores }) {
 
 /* ── Bölümler ─────────────────────────────────────────────────────────────── */
 
-function useCatalog(filters) {
-  const [state, setState] = useState({ matches: [], total: 0, loading: true, error: "" });
-  const [offset, setOffset] = useState(0);
-
-  useEffect(() => { setOffset(0); }, [filters.sport, filters.competition, filters.season, filters.status]);
+/* 8a — Discover duvarı. Süzgeçler rayda (DiscoverFilters, §23.1 — çekmece
+   yok); durum adreste, ray ile duvar aynı kaynağı okur. Sıralar görünür
+   (Hottest / Soonest / Most reviewed). Ray ≤1080'de çekildiği için (Aşama
+   18'e kadar) aynı süzgeçler başlıkta açılır bir kutuda da var. */
+function DiscoverView({ filters, onChange, onFacets, tabs, onOpenMatch, hideScores }) {
+  const key = JSON.stringify(filters);
+  const [state, setState] = useState({ key: null, matches: [], total: 0, error: "" });
+  const [loadingMore, setLoadingMore] = useState(false);
 
   useEffect(() => {
     let alive = true;
-    setState((s) => ({ ...s, loading: offset === 0, error: "" }));
-    rankitApi.catalog({ ...filters, limit: 24, offset })
+    rankitApi.catalog({ ...filters, limit: 24, offset: 0, facets: true })
       .then((d) => {
         if (!alive) return;
-        const rows = (d.matches || []).map(toCard);
-        setState((s) => ({
-          matches: offset === 0 ? rows : [...s.matches, ...rows],
-          total: d.total || 0, loading: false, error: "",
-        }));
+        setState({ key, matches: (d.matches || []).map(toCard), total: d.total || 0, error: "" });
+        onFacets(d.facets || null);
       })
-      .catch((e) => alive && setState((s) => ({ ...s, loading: false, error: String(e.message || e) })));
+      .catch((e) => alive && setState({ key, matches: [], total: 0, error: String(e.message || e) }));
     return () => { alive = false; };
-  }, [filters, offset]);
+  }, [key, filters, onFacets]);
 
-  return { ...state, more: () => setOffset((o) => o + 24), canLoadMore: state.matches.length < state.total };
-}
-
-function Catalog({ title, note, meta, tabs, onOpenMatch, hideScores }) {
-  const [sport, setSport] = useState("All");
-  const [competition, setCompetition] = useState("All");
-  const [season, setSeason] = useState("All");
-  const [status, setStatus] = useState("All");
-  const [filterOpen, setFilterOpen] = useState(false);
-
-  const filters = useMemo(() => ({ sport, competition, season, status }),
-    [sport, competition, season, status]);
-  const { matches, total, loading, error, more, canLoadMore } = useCatalog(filters);
-
-  const comps = (meta?.competitions || [])
-    .filter((c) => sport === "All" || c.sport === sport);
-
-  const active = [sport, competition, season, status].filter((v) => v !== "All").length;
-  const clear = () => { setSport("All"); setCompetition("All"); setSeason("All"); setStatus("All"); };
-
-  useEffect(() => {
-    const onKey = (e) => e.key === "Escape" && setFilterOpen(false);
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, []);
+  const ready = state.key === key;
+  const more = async () => {
+    if (loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const d = await rankitApi.catalog({ ...filters, limit: 24, offset: state.matches.length });
+      setState((s) => ({ ...s, matches: [...s.matches, ...(d.matches || []).map(toCard)] }));
+    } catch { /* düğme kalır */ }
+    finally { setLoadingMore(false); }
+  };
+  const active = activeFilterCount(filters);
 
   return (
-    <>
-      <header className="riw-head">
-        <h1>{title}</h1>
-        <p>{note}</p>
-        <span className="riw-count">
-          {loading ? "…" : `${matches.length} of ${total.toLocaleString()}`}
-        </span>
-      </header>
-      {tabs}
-
-      {/* Filtreler artık ayakta duran bir ray değil, Players sayfasındaki gibi
-          soldan açılan yarı saydam bir panel: duvar tüm genişliği kullanıyor
-          ve filtreler yalnızca ihtiyaç duyulduğunda yer kaplıyor. */}
-      <div className="riw-toolbar">
-        <button className={`riw-filter-btn${active ? " on" : ""}`}
-          onClick={() => setFilterOpen(true)} aria-expanded={filterOpen}>
-          <SlidersHorizontal size={13} />
-          Filters
-          {active > 0 && <span className="riw-filter-badge">{active}</span>}
-        </button>
-        {active > 0 && (
-          <button className="riw-filter-btn" onClick={clear}>Clear</button>
-        )}
-        {/* "Hide scores" burada ikinci kez vardı; kalkan artık her sayfada
-            başlıkta (7a) — aynı ayar iki yerde durmaz (2a düzeltmesiyle aynı). */}
-      </div>
-
-      {filterOpen && <div className="riw-scrim" onClick={() => setFilterOpen(false)} />}
-      <aside className={`riw-drawer${filterOpen ? " open" : ""}`}
-        aria-hidden={!filterOpen} aria-label="Filters">
-        <header>
-          <span>FILTERS</span>
-          <button onClick={() => setFilterOpen(false)} aria-label="Close filters"><X size={14} /></button>
-        </header>
-
-        <div className="riw-drawer-body">
-          <div className="riw-fgroup">
-            <span>SPORT</span>
-            <div>
-              {["All", "Football", "Basketball"].map((s) => (
-                <button key={s} className={sport === s ? "on" : undefined} aria-pressed={sport === s}
-                  onClick={() => { setSport(s); setCompetition("All"); }}>{s}</button>
-              ))}
-            </div>
-          </div>
-          <div className="riw-fgroup">
-            <span>STATUS</span>
-            <div>
-              {[["All", "All"], ["upcoming", "Upcoming"], ["live", "Live"], ["finished", "Finished"]].map(([v, label]) => (
-                <button key={v} className={status === v ? "on" : undefined} aria-pressed={status === v}
-                  onClick={() => setStatus(v)}>{label}</button>
-              ))}
-            </div>
-          </div>
-          <div className="riw-fgroup">
-            <label htmlFor="riw-comp">COMPETITION</label>
-            <select id="riw-comp" value={competition} onChange={(e) => setCompetition(e.target.value)}>
-              <option value="All">All competitions</option>
-              {comps.map((c) => (
-                <option key={`${c.name}-${c.season}`} value={c.name}>
-                  {c.name} ({c.match_count})
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="riw-fgroup">
-            <label htmlFor="riw-season">SEASON</label>
-            <select id="riw-season" value={season} onChange={(e) => setSeason(e.target.value)}>
-              <option value="All">All seasons</option>
-              {(meta?.seasons || []).map((s) => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </div>
-        </div>
-
-        {active > 0 && (
-          <footer>
-            <button onClick={clear}>Clear {active} filter{active > 1 ? "s" : ""}</button>
-          </footer>
-        )}
-      </aside>
-
-      <div className="riw-main solo">
-        <Wall matches={matches} loading={loading} error={error} hideScores={hideScores}
+    <div className="riw-page riw-discover">
+      <PageHead eyebrow={ready ? discoverEyebrow(state.total, filters) : "DISCOVER"} title="Discover">
+        <SortBar label="Sort the wall" value={filters.sort} onChange={(sort) => onChange({ sort })} options={DISCOVER_SORTS} />
+      </PageHead>
+      <div className="riw-discover-tabs">{tabs}</div>
+      <details className="riw-discover-inline">
+        <summary>Filters{active ? ` · ${active}` : ""}</summary>
+        <DiscoverFilters filters={filters} onChange={onChange} facets={null} idPrefix="inline" />
+      </details>
+      <div className="riw-main solo riw-discover-wall">
+        <Wall matches={ready ? state.matches : []} loading={!ready} error={ready ? state.error : ""} hideScores={hideScores}
           onOpen={(m) => onOpenMatch(m.id)}
-          empty={<Empty icon={Compass} title="Nothing matches those filters"
-            note="Try a wider competition or season — the catalog covers two seasons." />} />
-        {canLoadMore && !loading && (
-          <button className="ri-load-more riw-more" onClick={more}>Load more</button>
+          empty={(() => {
+            const e = discoverEmpty(filters);
+            return (
+              <div className="riw-empty-one">
+                <strong>{e.title}</strong>
+                <p>{e.note}</p>
+                {e.action && <button type="button" onClick={() => onChange(e.action.patch)}>{e.action.label}</button>}
+              </div>
+            );
+          })()} />
+        {ready && state.matches.length < state.total && (
+          <button className="ri-load-more riw-more" onClick={more} disabled={loadingMore}>{loadingMore ? "Loading…" : "Load more"}</button>
         )}
       </div>
-    </>
+    </div>
   );
 }
 
@@ -792,311 +602,19 @@ function Catalog({ title, note, meta, tabs, onOpenMatch, hideScores }) {
    TOPLULUK (başkalarının kayıtları ve yorumları) ve SENİN GÜNLÜĞÜN. Sayfanın
    adı "Activity" olmasına rağmen tek gösterdiği kendi kayıtlarındı; başka
    kimsenin yorumu web'de hiçbir yerde görünmüyordu. */
-function ActivityView({ onOpenMatch, refreshToken, onOpenEntity, hideScores, ratedMatchIds }) {
-  const { isLoggedIn } = useAuth();
-  const [tab, setTab] = useState("community");
-  const [rows, setRows] = useState(null);
-  const [feed, setFeed] = useState(null);
-  const [err, setErr] = useState("");
-
-  const load = useCallback(() => {
-    if (!isLoggedIn) { setRows([]); return; }
-    rankitApi.diary()
-      .then((d) => setRows((d.entries || []).map(diaryToCard)))
-      .catch((e) => { setErr(String(e.message || e)); setRows([]); });
-  }, [isLoggedIn]);
-  // refreshToken: kökteki denetçi bir kayıt kaydettiğinde artıyor. Activity
-  // ekranda değilken de kaydedebilirsin (Home/Discover'dan) — mount olduğunda
-  // TEK seferlik `load` yetmiyordu, geri dönünce günlük bayat kalıyordu.
-  useEffect(load, [load, refreshToken]);
-
-  useEffect(() => {
-    let alive = true;
-    rankitApi.home("All")
-      .then((d) => alive && setFeed(d.activity || []))
-      .catch(() => alive && setFeed([]));
-    return () => { alive = false; };
-  }, []);
-
-  // Watchlist telefonda vardı, webde yoktu. refreshToken'a bağlı: denetçiden
-  // bir maç izleme listesine eklenince bu sekme bayat kalmasın.
-  const [watch, setWatch] = useState(null);
-  useEffect(() => {
-    if (!isLoggedIn) return undefined;
-    let alive = true;
-    rankitApi.watchlist()
-      .then((d) => alive && setWatch((d.matches || []).map(toCard)))
-      .catch(() => alive && setWatch([]));
-    return () => { alive = false; };
-  }, [isLoggedIn, refreshToken]);
-  // Girişsizken istek atmıyoruz; "boş liste" durumu state'ten değil buradan
-  // türetiliyor, yoksa efekt içinde setState gerekirdi.
-  const watchRows = isLoggedIn ? watch : [];
-
-  const tabs = (
-    <div className="riw-tabs" role="tablist" aria-label="Activity">
-      {[["community", "Community"], ["diary", "Your diary"], ["watchlist", "Watchlist"]].map(([key, label]) => (
-        <button key={key} role="tab" aria-selected={tab === key}
-          className={tab === key ? "on" : undefined} onClick={() => setTab(key)}>{label}</button>
-      ))}
-    </div>
-  );
-
-  return (
-    <>
-      <header className="riw-head">
-        <h1>Activity</h1>
-        <p>{tab === "community"
-          ? "What other members are watching and writing."
-          : tab === "watchlist"
-          ? "Matches you marked to watch. They stay here until you log them."
-          : "Everything you have logged, newest first."}</p>
-        {tab === "diary" && rows && <span className="riw-count">{rows.length} entries</span>}
-      </header>
-      {tabs}
-
-      <div className="riw-main solo">
-        {tab === "community" ? (
-          <div className="riw-review-list">
-            {feed === null && <p className="ri-entity-loading">Loading…</p>}
-            {feed?.map((r) => <ReviewRow key={r.id} row={r} onOpen={onOpenMatch} onOpenEntity={onOpenEntity} ratedMatchIds={ratedMatchIds} hideScores={hideScores} />)}
-            {feed && !feed.length && (
-              <Empty icon={MessageSquare} title="No public reviews yet"
-                note="Reviews members choose to make public show up here." />
-            )}
-          </div>
-        ) : tab === "watchlist" ? (
-          <Wall matches={watchRows || []} loading={isLoggedIn && watch === null} error="" hideScores={hideScores}
-            onOpen={(m) => onOpenMatch(m.id)}
-            empty={<Empty icon={Bookmark}
-              title={isLoggedIn ? "Nothing on the watchlist" : "Sign in to keep a watchlist"}
-              note="Open any upcoming match and add it — it waits here until kick-off." />} />
-        ) : (
-          <Wall matches={rows || []} loading={rows === null} error={err} hideScores={hideScores}
-            onOpen={(m) => onOpenMatch(m.id)}
-            empty={<Empty icon={ActivityIcon}
-              title={isLoggedIn ? "No entries yet" : "Sign in to keep a diary"}
-              note={isLoggedIn
-                ? "Rate a match from Home or Discover and it lands here."
-                : "Your diary follows your Primary Arch account, so it is the same on the phone."} />} />
-        )}
-      </div>
-    </>
-  );
-}
-
-function Lists({ tabs, onOpenEntity }) {
-  const { isLoggedIn } = useAuth();
-  const [lists, setLists] = useState(null);
-  // Liste OLUŞTURMA telefonda vardı, webde yoktu. Maç seçmeden boş bir liste
-  // açılıyor; maçlar sonradan denetçideki "Add to list" ile ekleniyor, çünkü
-  // web'de bir listeyi doldurmanın doğal yeri maçın kendisi.
-  const [title, setTitle] = useState("");
-  const [ranked, setRanked] = useState(false);
-  const [creating, setCreating] = useState(false);
-  const [version, setVersion] = useState(0);
-
-  const create = async () => {
-    const t = title.trim();
-    if (!t || creating) return;
-    setCreating(true);
-    try {
-      await rankitApi.createList({ title: t, ranked, match_ids: [] });
-      setTitle(""); setRanked(false); setVersion((v) => v + 1);
-    } catch { /* hata: başlık duruyor, tekrar denenebilir */ }
-    finally { setCreating(false); }
-  };
-  useEffect(() => {
-    if (!isLoggedIn) { setLists([]); return; }
-    rankitApi.lists().then((d) => setLists(d.lists || [])).catch(() => setLists([]));
-  }, [isLoggedIn, version]);
-
-  return (
-    <>
-      <header className="riw-head">
-        <h1>Discover</h1>
-        <p>Collections you have made, ranked or not.</p>
-        {lists && <span className="riw-count">{lists.length}</span>}
-      </header>
-      {tabs}
-      <div className="riw-main solo">
-        {isLoggedIn && (
-          <div className="riw-list-new">
-            <input value={title} onChange={(e) => setTitle(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && create()}
-              maxLength={100} aria-label="New list title" placeholder="Name a new list" />
-            <label>
-              <input type="checkbox" checked={ranked} onChange={(e) => setRanked(e.target.checked)} />
-              Ranked
-            </label>
-            <button onClick={create} disabled={creating || !title.trim()}>
-              <Plus size={14} /> {creating ? "Creating…" : "Create"}
-            </button>
-          </div>
-        )}
-        <div className="ri-list-stack">
-          {(lists || []).map((l) => (
-            <article key={l.id} role="button" tabIndex={0}
-              onClick={() => onOpenEntity?.("list", l.id)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpenEntity?.("list", l.id); }
-              }}
-              aria-label={`Open list ${l.title}`}>
-              <ListIcon size={18} />
-              <div>
-                <strong>{l.title}</strong>
-                <span>{l.match_count} matches · {l.ranked ? "Ranked" : "Unranked"}</span>
-              </div>
-            </article>
-          ))}
-          {lists && !lists.length && (
-            <Empty icon={ListIcon}
-              title={isLoggedIn ? "No lists yet" : "Sign in to build lists"}
-              note="A list is any set of matches worth keeping together — a season, a rivalry, a run of finals." />
-          )}
-        </div>
-      </div>
-    </>
-  );
-}
-
-function Profile({ hideScores, onToggleScores }) {
-  const { isLoggedIn, user } = useAuth();
-  const [tab, setTab] = useState("overview");
-  const [prefs, setPrefs] = useState(readPrefs);
-  const setPref = (patch) => setPrefs(writePrefs(patch));
-  const [data, setData] = useState(null);
-  const [build, setBuild] = useState(undefined);   // undefined = yükleniyor
-
-  useEffect(() => {
-    if (isLoggedIn) rankitApi.profile().then(setData).catch(() => setData(null));
-  }, [isLoggedIn]);
-
-  // Yayın bilgisi girişten bağımsız: sürümü görmek için hesap gerekmiyor.
-  useEffect(() => {
-    fetch("/api/rankit/releases/latest", { cache: "no-store" })
-      .then((r) => r.json()).then((d) => setBuild(d.release || null))
-      .catch(() => setBuild(null));
-  }, []);
-
-  const s = data?.stats || {};
-  return (
-    <>
-      <header className="riw-head">
-        <h1>{isLoggedIn ? `@${user?.username}` : "Profile"}</h1>
-        <p>{isLoggedIn ? "Your record across both sports." : "Sign in to keep a diary."}</p>
-      </header>
-      <div className="riw-tabs" role="tablist" aria-label="Profile">
-        {[["overview", "Overview"], ["settings", "Settings"]].map(([key, label]) => (
-          <button key={key} role="tab" aria-selected={tab === key}
-            className={tab === key ? "on" : undefined} onClick={() => setTab(key)}>{label}</button>
-        ))}
-      </div>
-
-      <div className="riw-main solo">
-        {tab === "overview" && (isLoggedIn ? (
-          <div className="ri-entity-stats">
-            <div><strong>{s.matches ?? 0}</strong><span>matches</span></div>
-            <div><strong>{s.classics ?? 0}</strong><span>classics</span></div>
-            <div><strong>{s.diary_count ?? 0}</strong><span>diary entries</span></div>
-            <div><strong>{s.watchlist ?? 0}</strong><span>watchlist</span></div>
-            <div><strong>{s.favorites ?? 0}</strong><span>favourites</span></div>
-            <div><strong>{s.lists ?? 0}</strong><span>lists</span></div>
-          </div>
-        ) : (
-          <Empty icon={CircleUserRound} title="Not signed in"
-            note="RankIt uses your Primary Arch account — the same one that owns your squads and lineups." />
-        ))}
-
-        {tab === "settings" && (
-        <section className="riw-settings">
-          <div className="riw-set-group">
-            <span>PERSONALISATION</span>
-
-            <label className="riw-set-row" htmlFor="riw-country">
-              <Radio size={16} />
-              <div>
-                <strong>Broadcast country</strong>
-                <small>
-                  {prefs.broadcastCountry === "auto"
-                    ? (localeCountry()
-                        ? `Following your browser — ${localeCountry()}`
-                        : "Your browser's region has no coverage data yet")
-                    : "Which country's listings to show on a match"}
-                </small>
-              </div>
-              <select id="riw-country" value={prefs.broadcastCountry}
-                onChange={(e) => setPref({ broadcastCountry: e.target.value })}>
-                <option value="auto">Auto</option>
-                {BROADCAST_COUNTRIES.map((c) => (
-                  <option key={c.code} value={c.code}>{c.label}</option>
-                ))}
-              </select>
-            </label>
-
-            <label className="riw-set-row" htmlFor="riw-hide">
-              <EyeOff size={16} />
-              <div>
-                <strong>Hide scores by default</strong>
-                <small>Cards and drawers open blurred until you choose to look.</small>
-              </div>
-              <input id="riw-hide" type="checkbox" checked={hideScores}
-                onChange={onToggleScores} />
-            </label>
-
-            <label className="riw-set-row" htmlFor="riw-motion">
-              <SlidersHorizontal size={16} />
-              <div>
-                <strong>Reduce motion</strong>
-                <small>Turns off card entrance animations without changing your OS setting.</small>
-              </div>
-              <input id="riw-motion" type="checkbox" checked={prefs.reduceMotion}
-                onChange={(e) => setPref({ reduceMotion: e.target.checked })} />
-            </label>
-          </div>
-
-          <div className="riw-set-group">
-            <span>ANDROID APP</span>
-            <Link to="/rankit/download" className="riw-set-row">
-              <Smartphone size={16} />
-              <div>
-                <strong>Update RankIt</strong>
-                <small>
-                  {build === undefined ? "Checking for a build…"
-                    : build ? `${build.version_name} · ${(build.size_bytes / 1048576).toFixed(1)} MB`
-                    : "No build published yet"}
-                </small>
-              </div>
-              <ChevronRight size={15} />
-            </Link>
-          </div>
-
-          <div className="riw-set-group">
-            <span>LEGAL</span>
-            {[["/privacy-policy", "Privacy policy"],
-              ["/terms-of-service", "Terms of service"],
-              ["/contact", "Contact"],
-              ["/affiliate-disclosure", "Affiliate disclosure"]].map(([to, label]) => (
-              <Link key={to} to={to} className="riw-set-row">
-                <FileText size={16} />
-                <div><strong>{label}</strong></div>
-                <ChevronRight size={15} />
-              </Link>
-            ))}
-          </div>
-        </section>
-        )}
-      </div>
-    </>
-  );
-}
-
 /* ── Kabuk ────────────────────────────────────────────────────────────────── */
+
+// Tahtalarda ray yalnız bu iki yüzeyde (7a, 8a, 14b, 8d); diğer her sayfa tam
+// genişlik — 7f'nin yedi sütunu, 7g'nin 38 haftası ancak böyle sığar.
+const RAIL_SECTIONS = new Set(["home", "discover"]);
+// 14a: ilk kurulum hesap başına bir kez sorulur; aynı oturumda ana sayfaya her
+// dönüşte yeniden sorgulanmasın.
+const onboardingChecked = new Set();
 
 export default function RankItWeb({ section = "home" }) {
   const { user, isLoggedIn } = useAuth();
+  const params = useParams();
   const navigate = useNavigate();
-  const [meta, setMeta] = useState(null);
   const [hideScores, setHideScores] = useState(() => readPrefs().hideScores);
   const [ratedMatchIds, setRatedMatchIds] = useState(new Set());
   const visibleRatedMatchIds = isLoggedIn ? ratedMatchIds : new Set();
@@ -1117,10 +635,21 @@ export default function RankItWeb({ section = "home" }) {
   const urlQuery = section === "search" ? (searchParams.get("q") || "") : "";
   const [draft, setDraft] = useState({ section, value: urlQuery });
   const query = draft.section === section ? draft.value : urlQuery;
+  const searchTab = section === "search" ? (searchParams.get("tab") || "all") : "all";
+  const peopleTab = section === "people" ? (searchParams.get("tab") || "following") : "following";
+  const profileView = section === "profile" ? searchParams.get("view") : null;
+  const activityScope = section === "activity" && searchParams.get("scope") === "mutuals" ? "mutuals" : "following";
+  // 8a: Discover süzgeçleri adreste; ray ve duvar aynı nesneyi okur.
+  const discoverKey = section === "discover" ? searchParams.toString() : "";
+  const discoverState = useMemo(() => discoverFilters(new URLSearchParams(discoverKey)), [discoverKey]);
+  const setDiscover = (patch) => setSearchParams(discoverParams({ ...discoverState, ...patch }), { replace: true });
+  const [discoverFacets, setDiscoverFacets] = useState(null);
+  const searchParamsFor = (q, tab) => ({ ...(q.trim() ? { q } : {}), ...(tab && tab !== "all" ? { tab } : {}) });
   const onQuery = (value) => {
     setDraft({ section, value });
-    if (section === "search") setSearchParams(value.trim() ? { q: value } : {}, { replace: true });
+    if (section === "search") setSearchParams(searchParamsFor(value, searchTab), { replace: true });
   };
+  const onSearchTab = (tab) => setSearchParams(searchParamsFor(urlQuery, tab), { replace: true });
   const onSearch = (term) => {
     if (!term) return;
     setDraft({ section: "search", value: term });
@@ -1138,18 +667,30 @@ export default function RankItWeb({ section = "home" }) {
   // Bir kayıt kaydedildiğinde günlüğü tazelemesi gereken görünümler buna
   // abone: hangi sekmede olursa olsun, artan sayaç yeniden çekmeyi tetikler.
   const [logVersion, setLogVersion] = useState(0);
+  // 8d: çevrimdışında kartlar söner; bağlantı dönünce kuyruk yüklenir ve
+  // günlüğe bağlı görünümler tazelenir.
+  const network = useNetwork(() => setLogVersion((v) => v + 1));
 
   // Varlık çekmecesi (turnuva/oyuncu/takım/üye/liste). Maç denetçisinden AYRI
   // bir katman: bir maçtan oyuncuya, oyuncudan takımına geçilebilsin ve geri
   // dönüldüğünde maç taslağı hâlâ yerinde dursun.
   const [entity, setEntity] = useState(null);
-  const openEntity = useCallback((kind, id) => setEntity({ kind, id }), []);
+  // 12a: kulüp bir bakış — Inspector yuvasında açılır, açık maç taslağı
+  // küçülüp köşede bekler. 8c: turnuva kendi sayfası (§23.2).
+  const [clubId, setClubId] = useState(null);
+  const openEntity = useCallback((kind, id) => {
+    if (kind === "competition") { setEntity(null); setClubId(null); navigate(`/rankit/competition/${id}`); return; }
+    if (kind === "team") { setEntity(null); setInspectMinimized(true); setClubId(id); return; }
+    if (kind === "list") { setEntity(null); setClubId(null); navigate(`/rankit/lists/${id}`); return; }
+    setEntity({ kind, id });
+  }, [navigate]);
   const closeEntity = useCallback(() => setEntity(null), []);
+  const closeClub = useCallback(() => setClubId(null), []);
 
-  const openMatch = useCallback((id) => { setInspectId(id); setInspectMinimized(false); }, []);
+  const openMatch = useCallback((id) => { setClubId(null); setInspectId(id); setInspectMinimized(false); }, []);
   const closeMatch = useCallback(() => { setInspectId(null); setInspectMinimized(false); }, []);
   const minimizeMatch = useCallback(() => setInspectMinimized(true), []);
-  const restoreMatch = useCallback(() => setInspectMinimized(false), []);
+  const restoreMatch = useCallback(() => { setClubId(null); setInspectMinimized(false); }, []);
   // Küçültme çipinin özeti (etiket + taslak puanı) Inspector'dan gelir.
   const [inspectDraft, setInspectDraft] = useState(null);
 
@@ -1182,12 +723,9 @@ export default function RankItWeb({ section = "home" }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [isLoggedIn, hovered]);
 
-  // Lists artık gezinme değil, Discover'ın ikinci sekmesi. /rankit/lists eski
-  // bağlantıları kırmasın diye duruyor ve doğrudan o sekmeyi açıyor.
-  const [discoverTab, setDiscoverTab] = useState(section === "lists" ? "lists" : "matches");
-  useEffect(() => { setDiscoverTab(section === "lists" ? "lists" : "matches"); }, [section]);
+  // 12b: Lists kendi sayfası (/rankit/lists). Telefonun alt beşlisinde yer
+  // olmadığı için Discover'ın ikinci sekmesi ona götürür.
 
-  useEffect(() => { rankitApi.meta().then(setMeta).catch(() => setMeta(null)); }, []);
   useEffect(() => {
     if (!isLoggedIn) return undefined;
     let alive = true;
@@ -1200,62 +738,97 @@ export default function RankItWeb({ section = "home" }) {
   const discoverTabs = (
     <div className="riw-tabs" role="tablist" aria-label="Discover">
       {[["matches", "Matches"], ["lists", "Lists"]].map(([key, label]) => (
-        <button key={key} role="tab" aria-selected={discoverTab === key}
-          className={discoverTab === key ? "on" : undefined}
-          onClick={() => {
-            setDiscoverTab(key);
-            navigate(key === "lists" ? "/rankit/lists" : "/rankit/discover",
-                     { replace: true });
-          }}>
+        <button key={key} role="tab" aria-selected={key === "matches"}
+          className={key === "matches" ? "on" : undefined}
+          onClick={() => { if (key === "lists") navigate("/rankit/lists"); }}>
           {label}
         </button>
       ))}
     </div>
   );
 
-  const discover = discoverTab === "lists"
-    ? <Lists tabs={discoverTabs} onOpenEntity={openEntity} />
-    : <Catalog meta={meta} title="Discover" tabs={discoverTabs} onOpenMatch={openMatch} hideScores={hideScores}
-        note="Filter down to a competition, a season or a state of play." />;
+  const discover = <DiscoverView filters={discoverState} onChange={setDiscover} onFacets={setDiscoverFacets}
+    tabs={discoverTabs} onOpenMatch={openMatch} hideScores={hideScores} />;
 
   const { rank, hunt, clubs } = useShellData(accountId, logVersion);
+
+  // 14a: kurulumu bitmemiş hesap ana sayfaya geldiğinde karşılama ekranına
+  // (telefonun 4h'si gibi; bayrak sunucuda, yeni cihazda yeniden sormaz).
+  useEffect(() => {
+    if (!isLoggedIn || section !== "home" || onboardingChecked.has(accountId)) return undefined;
+    let alive = true;
+    rankitApi.onboarding("").then((d) => {
+      onboardingChecked.add(accountId);
+      if (alive && d && d.done === false) navigate("/rankit/welcome", { replace: true });
+    }).catch(() => {});
+    return () => { alive = false; };
+  }, [isLoggedIn, section, accountId, navigate]);
 
   const body = {
     home: <HomeView onOpenMatch={openMatch} hideScores={hideScores} ratedMatchIds={visibleRatedMatchIds}
       accountId={accountId} refreshToken={logVersion} onOpenEntity={openEntity} />,
     discover,
-    lists: discover,
-    activity: <ActivityView onOpenMatch={openMatch} refreshToken={logVersion} onOpenEntity={openEntity} hideScores={hideScores} ratedMatchIds={visibleRatedMatchIds} />,
-    profile: <Profile hideScores={hideScores} onToggleScores={toggleScores} />,
-    // 11c'nin tam sonuç sayfası (sekmeler, sayılar, "hottest first") Aşama
-    // 17'de. O zamana kadar sonuçlar telefonla ortak 3e bileşeninden,
-    // duvarın içinde — başlıktaki alan sorgunun tek girişi.
-    search: (
-      <>
-        <header className="riw-head">
-          <h1>Search</h1>
-          <p>{urlQuery.trim().length >= 2 ? `Results for “${urlQuery.trim()}”` : "Type at least two letters in the search field above."}</p>
-        </header>
-        <div className="riw-main solo">
-          <SearchSheet embedded query={urlQuery} hideScores={hideScores}
-            onOpenMatch={(m) => openMatch(m.id)} onOpenEntity={openEntity} />
-        </div>
-      </>
-    ),
+    lists: <ListsPage listId={params.listId ? Number(params.listId) : null} hideScores={hideScores} onOpenMatch={openMatch} />,
+    hunt: <HuntPage collectionId={params.collectionId || null} hideScores={hideScores} onOpenMatch={openMatch} />,
+    people: <PeoplePage tab={peopleTab} onTab={(t) => setSearchParams(t === "following" ? {} : { tab: t }, { replace: true })}
+      onOpenMember={(id) => openEntity("member", id)} />,
+    activity: <ActivityPage scope={activityScope} onScope={(v) => setSearchParams(v === "mutuals" ? { scope: v } : {}, { replace: true })}
+      streak={rank?.streak?.current || 0} refreshToken={logVersion} hideScores={hideScores} onOpenMatch={openMatch} onOpenEntity={openEntity} />,
+    profile: <ProfilePage rank={rank} hunt={hunt} view={profileView} onView={(v) => setSearchParams(v ? { view: v } : {})}
+      hideScores={hideScores} onToggleScores={toggleScores} onOpenMatch={openMatch} />,
+    shelf: <ShelfPage key={params.memberId || "me"} memberId={params.memberId ? Number(params.memberId) : null}
+      user={user} isLoggedIn={isLoggedIn} hideScores={hideScores} onOpenMatch={openMatch} />,
+    heat: <HeatMapPage key={params.competitionId} competitionId={Number(params.competitionId)} />,
+    card: <SkinPage key={params.entryId} entryId={Number(params.entryId)} hideScores={hideScores} />,
+    competition: <CompetitionPage key={params.competitionId} competitionId={Number(params.competitionId)}
+      hideScores={hideScores} onOpenMatch={openMatch} onOpenEntity={openEntity} />,
+    reviews: <ReviewsPage key={params.matchId} matchId={Number(params.matchId)} isLoggedIn={isLoggedIn}
+      hideScores={hideScores} onOpenMatch={openMatch} />,
+    // 11c — başlıktaki alan sorgunun tek girişi; sekme de adreste.
+    search: <SearchPage query={urlQuery} tab={searchTab} onTab={onSearchTab} hideScores={hideScores}
+      onOpenMatch={openMatch} onOpenEntity={openEntity} />,
   }[section];
 
-  const docked = !!inspectId && !inspectMinimized;
+  // 14a tek ekran: başlık da ray da yok (tahta) — vaat solda, seçimler sağda.
+  if (section === "welcome") {
+    return (
+      <div className="riw riw-welcome-root">
+        <SEO title="Welcome to RankIt" description="Rate one match. The rest builds itself." path="/rankit/welcome" />
+        <WelcomePage hideScores={hideScores} onToggleScores={toggleScores} />
+      </div>
+    );
+  }
+
+  const docked = (!!inspectId && !inspectMinimized) || !!clubId;
+  const withRail = RAIL_SECTIONS.has(section);
   return (
     <CardHoverContext.Provider value={setHovered}>
-    <div className={`riw${docked ? " has-inspector" : ""}`}>
+    <div className={`riw${docked ? " has-inspector" : ""}${withRail ? "" : " no-rail"}${network.online ? "" : " is-offline"}`}>
       <SEO title="RankIt — rate the matches you watch"
         description="A social diary for football and basketball. Rate matches, keep a record, follow people whose taste you recognise."
         path="/rankit" />
       <WebHeader user={user} isLoggedIn={isLoggedIn} hideScores={hideScores} onToggleScores={toggleScores}
-        nights={rank?.streak?.current || 0} query={query} onQuery={onQuery} onSearch={onSearch} />
-      <WebRail isLoggedIn={isLoggedIn} rank={rank} hunt={hunt} clubs={clubs} onOpenEntity={openEntity} />
+        nights={rank?.streak?.current || 0} query={query} onQuery={onQuery} onSearch={onSearch}
+        bell={isLoggedIn ? <NotificationsMenu key={accountId} hideScores={hideScores} onOpenMatch={openMatch} /> : null} />
+      {withRail && (section === "discover"
+        ? <aside className="riw-rail riw-filter-rail" aria-label="Filters">
+            <DiscoverFilters filters={discoverState} facets={discoverFacets} onChange={setDiscover} />
+          </aside>
+        : <WebRail isLoggedIn={isLoggedIn} rank={rank} hunt={hunt} clubs={clubs} onOpenEntity={openEntity} />)}
       <main className="riw-body">{body}</main>
       <PhoneTabs onRank={() => setRankOpen(true)} />
+      {(!network.online || network.queued > 0) && (
+        <div className={`riw-offline${network.online ? " is-queued" : ""}`} role="status">
+          {network.online ? (
+            <>
+              <strong>{network.queued} saved {network.queued === 1 ? "rating" : "ratings"} waiting to upload</strong>
+              <button type="button" onClick={network.retry}>Retry</button>
+            </>
+          ) : (
+            <><strong>You're offline</strong><span>Your rating is saved here and will upload when you reconnect.</span></>
+          )}
+        </div>
+      )}
 
       {rankOpen && (
         <RankSheet hideScores={hideScores} onClose={() => setRankOpen(false)}
@@ -1268,6 +841,13 @@ export default function RankItWeb({ section = "home" }) {
             onClose={closeMatch} onMinimize={minimizeMatch} onOpenEntity={openEntity}
             onDraftChange={setInspectDraft} onCollectible={showCollectible}
             onLogged={() => setLogVersion((v) => v + 1)} />
+        </div>
+      )}
+      {clubId && (
+        <div className="riw-insp-dock">
+          <ClubInspector key={clubId} id={clubId} hideScores={hideScores} onClose={closeClub}
+            onBackToMatch={inspectId ? restoreMatch : undefined} onOpenMatch={openMatch} onOpenEntity={openEntity}
+            onSeeAll={(name) => { setClubId(null); navigate(`/rankit/search?q=${encodeURIComponent(name)}&tab=matches`); }} />
         </div>
       )}
       {inspectId && inspectMinimized && (
@@ -1289,7 +869,8 @@ export default function RankItWeb({ section = "home" }) {
       {collectible && (
         <CollectibleOverlay result={collectible} rank={rank} hideScores={hideScores}
           onDone={() => setCollectible(null)}
-          onEdit={() => { const id = collectible.match.id; setCollectible(null); openMatch(id); }} />
+          onEdit={() => { const id = collectible.match.id; setCollectible(null); openMatch(id); }}
+          onSkin={(entryId) => { setCollectible(null); navigate(`/rankit/card/${entryId}`); }} />
       )}
       {shortcutNote && (
         <div role="status" className="ri-action-toast" onAnimationEnd={() => setShortcutNote("")}>{shortcutNote}</div>

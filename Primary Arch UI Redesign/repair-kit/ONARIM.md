@@ -1410,3 +1410,114 @@ Profil kimlik satırı `0 following · 1 followers` yazıyordu; `9a` sekmeleri d
 - **Test:** yeni `frontend/tests/stage16-web-inspector.test.mjs` (11); `visibility-policy.test.mjs` web kuralı yeni dosyaya yönlendirildi (sözleşme aynı: skoru açmak hükmü açmaz, kapı ikisini açar). **Mutasyon:** otomatik kayda `rating` eklemek, canlı hero'nun hükmü de açması, Classic yüzdesi eşiğini kaldırmak, respect'i kalbe döndürmek, 11a'ya kalabalık puanı koymak, davet düğmesini yıldızsız etkin bırakmak → yeşil kontrole karşı hepsi **kırmızı**, dosyalar bayt-aynı. Frontend **179/179**, Vite build geçti; ESLint: yeni dosyalar temiz, `RankItWeb.jsx` HEAD'in 7'sinden 5'e.
 - **Ertelenen:** 7e Skin → 11b (Aşama 17); 7c "All N ›" → 7h (Aşama 17); ≤1080 panel davranışı Aşama 18; Discover duvarı kayıttan sonra kendi kendine tazelenmiyor (eski davranış, kartta kişisel puan zaten yok). Commit / push yapılmadı.
 - **Ortam:** kopya DB, tahta klasörü, token silindi; `launch.json` bayt-aynı (sha `5d564097…`); gerçek DB'de QA verisi yok (14 günlük satırı).
+
+#### Aşama 17 — masaüstüne özel ve kalan web ekranları / 2026-09-25
+
+- **Kapsam:** ONARIM §17'nin on altı ekranı, dört partide: `7f` · `7g` · `7h` (masaüstünün kazandıkları), `8c` · `12a` · `11c`, `8b` + `10a` · `12b` · `12c`, `11d` · `8a` · `14b` · `14a` · `11b` · `8d`. Web HTML'indeki 29 ekran kodunun tamamı artık bir sayfaya ya da yüzeye bağlı. Kaynak önceliği CODE.md §2: BUILD → Redesign → Web tahtası → ONARIM.
+- **Kabuk ve yönlendirme:**
+  - Ray yalnız ana sayfa ve Discover'da (tahtalar); diğer her sayfa tam genişlik (`.riw.no-rail`).
+  - `App.jsx` sabit bir rota kümesi yerine `/rankit` önekini RankIt web yüzeyi sayıyor; sıradan sayfalar (`/rankit/app`, `download`, `mobile-auth`, `_preview`) açıkça dışarıda.
+  - Yeni rotalar: `shelf` (+ `member/:id/shelf`), `competition/:id` (+ `/heat`), `match/:id/reviews`, `people`, `lists/:id`, `hunt/:id`, `welcome`, `card/:entryId`.
+  - `openEntity`: turnuva → 8c sayfası, kulüp → 12a Inspector'ı, liste → 12b; çekmecede yalnız oyuncu ve üye kaldı.
+  - Eski sekmeli `Catalog` / `Lists` / `Profile` / `ActivityView` ve çekmecedeki `CompetitionBody` kaldırıldı; ortak saf kurallar `web/pagesView.js`'te.
+- **7f raf:**
+  - 1440'ta yedi sütun, kart 174 (telefonun `profileShelf` kompakt düzeni).
+  - Sıralar görünür, açılır liste değil; 100'erlik sayfa.
+  - §3.1: başkasının rafında maçı puanlamadıysan onun puanı, Classic'i ve topluluk sayısı kapalı. Kart onun skiniyle çizilir; üstte neden söylenir.
+  - Kişisel puan başkasınınsa "YOU" değil "RATED" (`MatchCard` `ratingOwner`, geriye uyumlu).
+- **7g ısı haritası:**
+  - 132 + N sütun, hücre 20, aralık 3; lejant zorunlu.
+  - 20 altı kesikli, uydurma renk yok; her hücrenin okunur etiketi var (§6).
+  - Dar ekranda ızgara kendi kutusunda yana kayar ve klavyeyle odaklanır.
+  - Haftasız turnuva sayfanın kendisinde söylenir.
+- **7h okuma:**
+  - Sol 392: kart, üç etiket, dağılım.
+  - Sağda iki sütun; 13px/1.65 metin kesilmez, paragraflar korunur.
+  - §3.1 kapısı: sayfa ve kart TEK karar (`MatchCard` `communityRevealed` / `onCommunityReveal`).
+  - Inspector "All N ›" okumaya gider ve paneli küçültür (taslak köşede bekler).
+- **8c turnuva:**
+  - Tablo (596) ve hafta yan yana; AVG HEAT sütunu, 20 altında TOO FEW.
+  - Basketbolda W · L · DIFF.
+  - Hafta şeridi beşli pencere + oklar.
+  - **BUILD tahtanın üstünde:** 30'luk haftalar 4 yerine 14 aralıkla, hedefler 44 ve üst üste binmiyor.
+  - Takip düğmesi yok: uç turnuva için `following` döndürmüyor; eski çekmece hep "Follow" yazıyordu.
+- **12a kulüp Inspector'da:**
+  - Kahraman, sezon kutusu, en sıcak maçlar, NEXT ("counts toward The 38"); kadro altta, erişim kaybolmasın diye.
+  - Açık maç küçülür; geri oku ona döner; Escape yalnız kulübü kapatır.
+  - **Aşama 16 kusuru düzeltildi:** küçük Inspector klavyeyi dinlemeye devam ediyordu (Escape köşedeki taslağı da kapatırdı).
+  - Raydaki `.riw-club-row` ile ad çakışması bulundu, 12a sınıfı `.riw-club-line`.
+- **11c arama:**
+  - Tek istek (`match_sort=hottest`); sekme sayıları uçtan (gerçek toplamlar).
+  - Sekme adreste; "showing 20 of N" dürüstçe.
+  - Kulüp, kişi (§13.4), liste ve oyuncu satırları (oyuncu sekmesi telefonun 3e'si oyuncu aradığı için).
+  - Kök sınıfı başlıktaki `.riw-search` ile çakışıyordu (340'a sıkışırdı) → `.riw-results`.
+- **8b profil:**
+  - 340 sol sütun: kimlik, kademe kartı (RANK N OF 7, TIERS ile testli), watched / classics / streak, Lists / The Hunt / Your reviews.
+  - Sağda son beş kart + RECENT ENTRIES.
+  - Dişli ayarları açar: Aşama 15'in Settings'i aynen, `SettingsPanel.jsx`.
+  - **BUILD §13.2 tahtanın üstünde:** "96 followers" sayısı yok; takipçi listesine erişim var.
+- **10a kişiler:**
+  - Uyuma göre sıralı liste, çubuk + yüzde; on ortak maçtan azsa "Too few to compare" (§13.3).
+  - Dört ilişki durumu, altın yalnız iki eylemde (§13.4).
+  - Sağda uyum önerileri, eğilim cümlesi.
+  - Takipçi listesinin BOYU da bir takipçi sayısı — yazılmıyor.
+  - "14 people you know" yok: uç null.
+- **12b listeler / 12c av (§24, bileşenler ayrı):**
+  - 12b: yazar, Share (özel listede yok), Edit (başlık, açıklama, görünürlük, sıralı), rated çubuğu; başkasının listesinde Respect / Save; New.
+  - 12c: halka, ödül skini, THE FULL GRID — toplanan kart → oynanmış-puansız (kesikli) → sıradaki (kırmızı) → kalanlar.
+  - `MatchTile`: kart olmayan maç ısı / skor taşımaz.
+- **11d etkinlik:**
+  - Akış solda (following / mutuals, ReviewArticle ile aynı respect ve iplik).
+  - Sağda 28 gecelik günlük şeridi (boy yıldız, renk topluluk ısısı, 20 altı nötr), TONIGHT canlı maçlar, WATCHLIST.
+  - Aşama 15'in Watchlist sekmesi buraya taşındı, kaybolmadı. §3.1 kapısı akışta.
+- **8a Discover:**
+  - Süzgeçler RAYDA, sayılarıyla (`/catalog?facets=true`); çekmece kaldırıldı (§23.1).
+  - Durum adreste; sıralar Hottest / Soonest / Most reviewed; ısı tabanı rampalı sürgü.
+  - **§6 tahtanın üstünde:** 36'lık satır yerine 40 + 4 aralık (44 adım).
+  - ≤1080'de ray çekili olduğu için (Aşama 18'e kadar) aynı süzgeçler başlıkta açılır.
+- **14b bildirimler:**
+  - Başlıkta zil + açılır menü.
+  - HEAT ALERTS (anahtar gerçek ayar `alerts_running_hot`) · SOCIAL · COLLECTIONS.
+  - Satır tam yüzeyi açar (12c / 12b / Inspector / takipçiler).
+  - Cümleler telefonun 13a'sından (`AlertSentence` dışa açıldı).
+  - §15: kalkan açıkken puanlamadığın maçın adı düşer.
+  - **Tahtadan bilinçli sapma:** sıcak maç satırı tahtada "is running hot"; telefonun 13a'sı puanlanmamış maçta ısıyı hüküm sayıp "has finished" diyor — iki yüzey aynı söylesin diye 13a. Tahtadaki "UNRATED · NO SCORE" çipleri derece açıklaması, ürün metni değil.
+- **14a ilk kurulum:**
+  - Tek ekran, başlıksız; vaat solda, seçimler sağda.
+  - Hesap e-postası; takip çipleri + Search; kalkan anahtarı.
+  - Üçüncü çizgi yalnız kalkana dokununca yanar: tahtada kalkan açık ama çizgi sönük.
+  - Skip ve iki eylem kurulumu kapatır (`POST /onboarding`).
+  - Kurulumu bitmemiş hesap ana sayfaya gelince bir kez `/rankit/welcome`'a gider.
+- **11b skin:**
+  - Sol 452: telefonun 2j karosu; kilitli karo koşul gösterir, önizleme değil.
+  - Sağda seçili skinle kart ve raf kartı canlı; Apply → `PUT /diary/{id}` yalnız skin.
+  - 7e'nin pasif Skin düğmesi artık buraya gider (kuyruktaki kayıtta pasif, nedeniyle).
+  - Paylaşım görseli (2k/2l) henüz yok: Share bağlantı paylaşır, oran düğmesi / indirme gösterilmez.
+- **8d durumlar:**
+  - Tüm iskeletler telefonun `SkeletonCard`'ı: duvar 315, raf 174.
+  - Discover boş durumu TEK eylem ("Lower it to 3.0"; 1.0 altında "Remove the minimum heat" — döngü yok).
+  - Çevrimdışında kartlar %62, durum bandı.
+  - **Kusur düzeltildi:** web'de kuyruk yalnız bir sonraki kayıtta boşalıyordu, "will upload when you reconnect" sözü tutulmuyordu. `useNetwork` bağlantı dönünce yüklüyor; bekleyen varsa "N saved ratings waiting to upload · Retry".
+- **Backend:** `/activity` öğelerine `respected` (izleyen respect vermiş mi) — 11d'deki düğme kendi durumunu bilsin. Yeni test `test_activity_items_know_whether_you_respected_them`. `tests/test_rankit_*` **253/253**.
+- **Tarayıcıda (gerçek DB'nin kopyası + yalnız kopyaya tohum: 24 sentetik puanlayıcı, uzun incelemeler, takipler; 1440 / 1000 / 390):**
+  - On altı ekranın hepsi tahtalara karşı ölçüldü.
+  - Görünür hedeflerde 44 altı **0**; bulunanlar düzeltildi: "All N ›" 43, raf girdisi 42, Discover "Load more" 35.
+  - 390'da yatay taşma 0; bildirim menüsü 16px kenarla.
+  - Liste oluştur / düzenle / özel yap, onboarding kaydı, ısı anahtarı, skin uygula, çevrimdışı ↔ çevrimiçi yalnız kopyada denendi.
+- **Test:** yeni `frontend/tests/stage17-web-pages.test.mjs` (41 test). Eski sözleşmeler yeni yerlerine yönlendirildi:
+  - `stage15` rota / arama / kayıt anahtarı;
+  - `visibility` kuralları aynı.
+- **Mutasyon:** 51 kural tek tek kırıldı (4 parti: 10 + 14 + 13 + 14), backend `respected` 1. Yeşil kontrole karşı hepsi **kırmızı**, dosyalar bayt-aynı (sha).
+- **Sonuç:**
+  - Frontend **220/220**, Vite build geçti.
+  - ESLint: `RankItWeb.jsx` 5 → **0** (eski efekt-içi setState'ler kalktı), toplam 14 → 9 (hepsi dokunulmamış dosyalarda).
+- **Ertelenen:**
+  - Kademe kartının chevron'u (§14 → 2p Standing) web'de tasarlanmadı, satır statik.
+  - 11b paylaşım görseli (2k/2l).
+  - ≤1080 ray / panel (Aşama 18).
+  - Oyuncu ve üye hâlâ eski çekmecede (tahtası yok).
+  - Commit / push yapılmadı.
+- **Ortam:**
+  - Kopya DB, token ve tahta klasörü silindi.
+  - `launch.json` bayt-aynı (sha `5d564097…`).
+  - Gerçek DB'de QA verisi yok (14 günlük satırı, 0 QA kullanıcısı).

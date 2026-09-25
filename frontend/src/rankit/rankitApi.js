@@ -85,9 +85,15 @@ export const rankitApi = {
   home: (sport = "All", windowStart = "", windowEnd = "", country = "") => request(`/home?sport=${encodeURIComponent(sport)}${windowStart ? `&window_start=${encodeURIComponent(windowStart)}` : ""}${windowEnd ? `&window_end=${encodeURIComponent(windowEnd)}` : ""}${country ? `&country=${encodeURIComponent(country)}` : ""}`),
   // 6c: min_heat TUM katalogda sunucuda uygulanir, `total` gercek sayi (cekmecenin
   // "Show N matches" dugmesi buradan). Yoksa parametre hic gonderilmez.
-  catalog: ({ sport = "All", competition = "All", season = "All", status = "All", minHeat = null, limit = 60, offset = 0 } = {}) => request(`/catalog?sport=${encodeURIComponent(sport)}&competition=${encodeURIComponent(competition)}&season=${encodeURIComponent(season)}&status=${encodeURIComponent(status)}${Number.isFinite(minHeat) ? `&min_heat=${minHeat}` : ""}&limit=${limit}&offset=${offset}`),
+  // 8a: sort nearest|hottest|soonest|reviewed; facets=true raydaki secenek sayilarini da getirir.
+  catalog: ({ sport = "All", competition = "All", season = "All", status = "All", minHeat = null, limit = 60, offset = 0, sort = null, facets = false } = {}) => request(`/catalog?sport=${encodeURIComponent(sport)}&competition=${encodeURIComponent(competition)}&season=${encodeURIComponent(season)}&status=${encodeURIComponent(status)}${Number.isFinite(minHeat) ? `&min_heat=${minHeat}` : ""}&limit=${limit}&offset=${offset}${sort ? `&sort=${encodeURIComponent(sort)}` : ""}${facets ? "&facets=true" : ""}`),
   meta: () => request("/meta"),
   competition: id => request(`/competitions/${id}`),
+  // 7g sezon isi haritasi: kulup x mac haftasi; `available:false` = haftasiz turnuva.
+  competitionHeatmap: id => request(`/competitions/${id}/heatmap`),
+  // 7f raf: sort newest|rating|classics|competition; memberId yoksa kendi rafin.
+  shelf: ({ memberId = null, sort = "newest", limit = 100, offset = 0 } = {}) =>
+    request(`/shelf?sort=${encodeURIComponent(sort)}&limit=${limit}&offset=${offset}${memberId ? `&member_id=${memberId}` : ""}`),
   // Bir turnuvanin TEK haftasi: sezon 380 mac olabiliyor, hepsi
   // turnuva detayina sigmaz. Detay yalnizca hafta ozetini tasir.
   competitionMatches: (id, stage) => request(`/competitions/${id}/matches?stage=${encodeURIComponent(stage || "")}`),
@@ -120,13 +126,18 @@ export const rankitApi = {
   discoverPeople: ({ q = '', offset = 0, limit = 20 } = {}) =>
     request(`/people/discover?q=${encodeURIComponent(q)}&offset=${offset}&limit=${limit}`),
   setUserFollow,
-  search: (q, kind = "All", status = "All") => request(`/search?q=${encodeURIComponent(q)}&kind=${encodeURIComponent(kind)}&status=${encodeURIComponent(status)}`),
+  // 11c: matchSort=hottest ("MATCHES · HOTTEST FIRST"); yanit `counts` gercek toplamlar.
+  search: (q, kind = "All", status = "All", matchSort = "relevance") => request(`/search?q=${encodeURIComponent(q)}&kind=${encodeURIComponent(kind)}&status=${encodeURIComponent(status)}${matchSort !== "relevance" ? `&match_sort=${encodeURIComponent(matchSort)}` : ""}`),
   diary: () => request("/diary"),
   // Eski sunucu PUT'u tanimiyorsa 404 ile guvenle durur; rewatch'i POST'la kopyalama.
   log: value => value.entry_id ? request(`/diary/${value.entry_id}`, body("PUT", value)) : request("/diary", body("POST", value)),
   profile: () => request("/profile"),
   lists: () => request("/lists"),
   createList: value => request("/lists", body("POST", value)),
+  // 12b Edit: gonderilmeyen alan degismez (ListUpdateIn).
+  updateList: (id, value) => request(`/lists/${id}`, body("PUT", value)),
+  // 12b sol sutun: kendi listelerin (gizliler dahil) + baskalarindan kaydettiklerin.
+  listsMine: () => request("/lists/mine"),
   list: id => request(`/lists/${id}`),
   addListItem: (id, value) => request(`/lists/${id}/items`, body("POST", value)),
   // Ekran 3h. Kalp DEGIL respect (§6.1); kaydetmek ayri tabloda.
@@ -164,8 +175,10 @@ export const rankitApi = {
   // Ekran 3j — altin elmasin actigi sey. Genel arama degil: bu gecenin
   // puanlanmamislari + son yedi gunun yakalanmamislari.
   // Ekran 5c — tum incelemeler. sort: respected | newest | lowest
-  matchReviews: (matchId, sort = "respected", tzOffset = 0, offset = 0) =>
-    request(`/matches/${matchId}/reviews?sort=${encodeURIComponent(sort)}&tz_offset=${tzOffset}&offset=${offset}`),
+  // 7h: scope=following (Following sekmesi) — yanit `top_tags`, `spread`,
+  // `community_rating` (20 puanla) da tasir.
+  matchReviews: (matchId, sort = "respected", tzOffset = 0, offset = 0, scope = "all") =>
+    request(`/matches/${matchId}/reviews?sort=${encodeURIComponent(sort)}&tz_offset=${tzOffset}&offset=${offset}${scope !== "all" ? `&scope=${encodeURIComponent(scope)}` : ""}`),
   rank: (tzOffset = -new Date().getTimezoneOffset()) => request(`/rank?tz_offset=${tzOffset}`),
   quickRate: (tzOffset = 0) => request(`/quick-rate?tz_offset=${tzOffset}`),
   companion: matchId => request(`/matches/${matchId}/companion`),

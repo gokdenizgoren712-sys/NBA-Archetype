@@ -66,7 +66,7 @@ function shade(hex, factor = 0.45) {
 
 /* ── Başlık ───────────────────────────────────────────────────────────────── */
 
-export function WebHeader({ user, isLoggedIn, hideScores, onToggleScores, nights, query, onQuery, onSearch }) {
+export function WebHeader({ user, isLoggedIn, hideScores, onToggleScores, nights, query, onQuery, onSearch, bell = null }) {
   const field = useRef(null);
 
   // `/` aramaya odaklar (§21) — yazı yazılan bir yerde değilken.
@@ -123,6 +123,8 @@ export function WebHeader({ user, isLoggedIn, hideScores, onToggleScores, nights
           onClick={onToggleScores}>
           <Shield size={17} strokeWidth={1.8} aria-hidden="true" />
         </button>
+        {/* 14b: bildirimler başlıkta açılır menü (Aşama 17). */}
+        {isLoggedIn && bell}
         {isLoggedIn && (
           <div className="riw-streak" role="img"
             aria-label={active ? `Streak: ${nights} ${nights === 1 ? "night" : "nights"}` : "No streak yet"}>

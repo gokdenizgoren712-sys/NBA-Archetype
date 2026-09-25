@@ -300,7 +300,7 @@ function CrowdVerdict({ detail }) {
 }
 
 function CommunityTab({ detail, phase, draft, setDraft, isLoggedIn, scoreHidden, revealed, onReveal,
-                        playerOptions, onOpenPlayers, onCompose }) {
+                        playerOptions, onOpenPlayers, onCompose, onMinimize }) {
   if (!isFinished(phase)) {
     return (
       <div className="riw-insp-stack">
@@ -398,7 +398,10 @@ function CommunityTab({ detail, phase, draft, setDraft, isLoggedIn, scoreHidden,
               <>
                 <div className="riw-insp-row riw-insp-row-label">
                   <Eyebrow>MOST RESPECTED</Eyebrow>
-                  <span className="riw-insp-count">{(detail.review_count || detail.reviews.length).toLocaleString()} reviews</span>
+                  {/* 7c "All 318 ›" → 7h iki sütunlu okuma. */}
+                  <Link to={`/rankit/match/${detail.id}/reviews`} className="riw-insp-all" onClick={onMinimize}>
+                    All {(detail.review_count || detail.reviews.length).toLocaleString()} ›
+                  </Link>
                 </div>
                 <div className="riw-insp-reviews">
                   {detail.reviews.slice(0, 3).map((r) => <ReviewArticle key={r.id} row={r} isLoggedIn={isLoggedIn} />)}
@@ -630,6 +633,9 @@ export default function Inspector({ id, hideScores, onClose, onMinimize, onLogge
     const onKey = (event) => {
       if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
       if (document.querySelector('[aria-modal="true"]')) return;
+      // Küçültülmüş panel DOM'da kalır ama klavyeyi dinlemez: yoksa 12a
+      // kulübünde basılan Escape, köşede bekleyen taslağı da kapatırdı.
+      if (panel.current?.closest("[hidden]")) return;
       const target = event.target;
       const typing = target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName));
       if (event.key === "Escape") {
@@ -728,7 +734,8 @@ export default function Inspector({ id, hideScores, onClose, onMinimize, onLogge
                 <CommunityTab detail={detail} phase={phase} draft={draft} setDraft={setDraft} isLoggedIn={isLoggedIn}
                   scoreHidden={scoreHidden} revealed={communityRevealed}
                   onReveal={() => { setScoreRevealed(true); setCommunityRevealed(true); }}
-                  playerOptions={playerOptions} onOpenPlayers={() => setPlayersOpen(true)} onCompose={() => setComposing(true)} />
+                  playerOptions={playerOptions} onOpenPlayers={() => setPlayersOpen(true)} onCompose={() => setComposing(true)}
+                  onMinimize={onMinimize} />
               )}
               {tab === "Companion" && (
                 <div className="riw-insp-companion">

@@ -135,7 +135,12 @@ export function CrestPair({ home, away, side = 22 }) {
 
 export default function MatchCard(props) {
   const [revealed, setRevealed] = useState(false);
-  const [communityRevealed, setCommunityRevealed] = useState(false);
+  const [ownReveal, setOwnReveal] = useState(false);
+  /* 7h: kartın durduğu sayfanın da bir kapısı var — ikisi tek karar. Sayfa
+     açtıysa kart açık (`communityRevealed`), kart açtıysa sayfaya haber
+     verir (`onCommunityReveal`). Verilmezse kart kendi başına, eskisi gibi. */
+  const communityRevealed = ownReveal || props.communityRevealed === true;
+  const setCommunityRevealed = (value) => { setOwnReveal(value); if (value) props.onCommunityReveal?.(); };
   const {
     comp = "", statusLabel, homeAbbr = "", awayAbbr = "",
     homeShort, awayShort, homeScore = "", awayScore = "", kickoff = "",
@@ -319,7 +324,8 @@ export default function MatchCard(props) {
             {heatOn && (
               <div style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
                 <HeatBars steps={steps} gap={3} height={4} rest={t.rest} />
-                <span title={props.ratingKind === "personal" ? "Your rating" : "Community rating"} style={{ fontSize: 10, fontWeight: 700, color: heatInk, flex: "none" }}>{props.ratingKind === "personal" ? "YOU " : ""}{heatText}</span>
+                {/* 7f başkasının rafı: kişisel puan ONUN — "YOU" değil (ratingOwner="member"). */}
+                <span title={personalHeat ? (props.ratingOwner === "member" ? "Their rating" : "Your rating") : "Community rating"} style={{ fontSize: 10, fontWeight: 700, color: heatInk, flex: "none" }}>{personalHeat ? (props.ratingOwner === "member" ? "RATED " : "YOU ") : ""}{heatText}</span>
               </div>
             )}
             {(tooFewRatings && !spoiler && !verdictCovered || tooFewExpected) && (

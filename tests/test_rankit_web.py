@@ -154,3 +154,17 @@ def test_closing_a_collection_reaches_the_feed_and_leaves_it_when_undone(db):
     assert closed[0]["collection"]["title"] == "Two derbies" and closed[0]["collection"]["collected"] == 2
     friend.put(f"/api/rankit/diary/{last['entry_id']}", json={"match_id": 2, "rating": None})
     assert not [i for i in client().get("/api/rankit/activity").json()["items"] if i["kind"] == "collection"]
+
+
+def test_activity_items_know_whether_you_respected_them(db):
+    """11d: akistaki respect dugmesi kendi durumunu bilir (web ReviewArticle)."""
+    follow(ME, FRIEND)
+    entry = client(FRIEND).post("/api/rankit/diary", json={"match_id": 2, "rating": 4.0, "review": "Tense"}).json()
+    item = client().get("/api/rankit/activity").json()["items"][0]
+    assert item["respected"] is False and item["respect"] == 0
+    client().post(f"/api/rankit/reviews/{entry['entry_id']}/like", json={"on": True})
+    item = client().get("/api/rankit/activity").json()["items"][0]
+    assert item["respected"] is True and item["respect"] == 1
+    other = client(MUTUAL)
+    follow(MUTUAL, FRIEND)
+    assert other.get("/api/rankit/activity").json()["items"][0]["respected"] is False

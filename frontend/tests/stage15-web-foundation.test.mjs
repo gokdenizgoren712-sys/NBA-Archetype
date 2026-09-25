@@ -31,10 +31,8 @@ test("§17 arama gerçek bir alan: `/` odaklar, Enter sonuç sayfası, modal yok
   assert.match(w, /navigate\(`\/rankit\/search\?q=\$\{encodeURIComponent\(term\)\}`\)/);
   assert.doesNotMatch(w, /findOpen|riw-find-wrap/);
   assert.match(src("App.jsx"), /<Route path="\/rankit\/search"\s+element=\{<RankItWeb section="search" \/>\} \/>/);
-  // Sonuçlar duvarın içinde: gömülü aramada dialog ve odak tuzağı kapalı.
-  const sheet = src("rankit", "redesign", "SearchSheet.jsx");
-  assert.match(sheet, /useDialog\(\{ onClose, label: "Search", active: !embedded \}\)/);
-  assert.match(w, /<SearchSheet embedded query=\{urlQuery\}/);
+  // Aşama 17: sonuçlar 11c'nin tam sayfası (SearchPage) — modal değil.
+  assert.match(w, /search: <SearchPage query=\{urlQuery\}/);
 });
 
 test("§17 ray: YOUR STANDING · THE HUNT · FOLLOWING, kulüp Inspector'da açılır", () => {
@@ -68,9 +66,12 @@ test("iki yüzey tek eşleme: fromApiMatch ve RankIt günü paylaşılıyor", ()
 test("7a sitenin üst barı RankIt web rotalarında çekilir; /rankit/app kapsam dışı", () => {
   const app = src("App.jsx");
   assert.match(app, /if \(isRankItWeb\(location\.pathname\)\) return null;/);
-  const routes = app.match(/const RANKIT_WEB_ROUTES = new Set\(\[([\s\S]*?)\]\);/)[1];
-  assert.doesNotMatch(routes, /rankit\/app/);
-  assert.match(routes, /"\/rankit\/search"/);
+  // Aşama 17: sabit küme yerine /rankit öneki; sıradan sayfalar açıkça dışarıda.
+  const plain = app.match(/const RANKIT_PLAIN_PAGES = \[([\s\S]*?)\];/)[1];
+  for (const page of ["/rankit/app", "/rankit/download", "/rankit/mobile-auth", "/rankit/_preview"]) {
+    assert.match(plain, new RegExp(`"${page}"`));
+  }
+  assert.match(app, /if \(path !== "\/rankit" && !path\.startsWith\("\/rankit\/"\)\) return false;/);
 });
 
 test("§25 ≤820: telefonun beşlisi altta, Rank ortada (2026-09-02 kararı)", () => {
@@ -91,7 +92,10 @@ test("§6 hedefler: 38'lik gezinme, 40'lık arama, 30'luk oklar ve kısa kullan�
 });
 
 test("günlük duvarı: anahtar KAYIT, maç değil (yeniden izleme iki kart)", () => {
-  const w = web();
-  assert.match(w, /key: `entry-\$\{e\.id\}`/);
-  assert.match(w, /<WallCard key=\{m\.key \?\? m\.id\}/);
+  // Aşama 17: web'in günlük duvarı 7f rafı (ve 8b'nin raf önizlemesi) oldu —
+  // aynı kural orada: her kayıt bir kart, anahtar kaydın id'si.
+  for (const f of ["ShelfPage.jsx", "ProfilePage.jsx"]) {
+    assert.match(src("rankit", "web", f), /key=\{(card|c)\.entry\?\.id \|\| (card|c)\.id\}/, f);
+  }
+  assert.match(web(), /<WallCard key=\{m\.key \?\? m\.id\}/);
 });

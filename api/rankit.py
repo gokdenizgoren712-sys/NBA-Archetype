@@ -3792,6 +3792,7 @@ def rankit_activity(scope: Literal["following", "mutuals"] = "following",
                    EXISTS(SELECT 1 FROM rankit_diary_entries v WHERE v.user_id=:uid
                           AND v.match_id=e.match_id AND v.rating IS NOT NULL) viewer_rated,
                    (SELECT COUNT(*) FROM rankit_review_likes l WHERE l.entry_id=e.id) respect,
+                   EXISTS(SELECT 1 FROM rankit_review_likes l WHERE l.entry_id=e.id AND l.user_id=:uid) respected,
                    (SELECT COUNT(*) FROM rankit_review_comments c JOIN users cu ON cu.id=c.user_id
                     WHERE c.entry_id=e.id AND cu.is_banned=0) replies
             FROM rankit_diary_entries e JOIN users u ON u.id=e.user_id
@@ -3831,7 +3832,8 @@ def rankit_activity(scope: Literal["following", "mutuals"] = "following",
                 "skin": r["skin"] or "default",
                 "rating": r["rating"], "classic": bool(r["classic"]),
                 "review": row["review"], "spoiler": row["spoiler"], "review_withheld": row["review_withheld"],
-                "respect": r["respect"], "replies": r["replies"],
+                # 11d: akıştaki respect düğmesi kendi durumunu bilsin (web ReviewArticle).
+                "respect": r["respect"], "respected": bool(r["respected"]), "replies": r["replies"],
                 "on_the_night": _on_the_night(r, tz_offset), "viewer_rated": bool(r["viewer_rated"]),
             })
         for r in conn.execute(f"""

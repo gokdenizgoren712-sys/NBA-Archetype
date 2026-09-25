@@ -52,7 +52,8 @@ export function SkinThumb({ id, card }) {
   </div>;
 }
 
-function LockedTile({ id, lines }) {
+/* Web 11b da aynı kilitli karoyu çizer (Aşama 17). */
+export function LockedTile({ id, lines }) {
   return <div className="ri-skin-locked">
     <i style={{ background: lockSwatch(id) }} />
     <div>{LOCK}<span>{lines.map((line, i) => <span key={line}>{i > 0 && <br />}{line}</span>)}</span></div>

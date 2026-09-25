@@ -29,8 +29,10 @@ function Delta({ value, label, delta, tone }) {
   );
 }
 
-export default function CollectibleOverlay({ result, rank, hideScores, onDone, onEdit }) {
+export default function CollectibleOverlay({ result, rank, hideScores, onDone, onEdit, onSkin }) {
   const { match, entry, queued, cardNumber, collection, deltas } = result;
+  // 11b (Aşama 17): skin web'de seçiliyor; kuyruktaki kayıt eşitlenene kadar id yok.
+  const entryId = result.receipt?.entry_id || entry.entryId || null;
   const heading = useRef(null);
   const [notice, setNotice] = useState("");
   const [sharing, setSharing] = useState(false);
@@ -91,12 +93,13 @@ export default function CollectibleOverlay({ result, rank, hideScores, onDone, o
             {/* §4.1: altın bir kez — Classic damgalıysa kartın hairline'ında,
                 değilse birincil eylemde. Web'de birincil eylem yok; altın kartta. */}
             <button type="button" onClick={share} disabled={sharing || queued} aria-busy={sharing}><Share2 size={17} aria-hidden="true" />SHARE</button>
-            <button type="button" disabled aria-describedby="riw-moment-skin-note">
+            <button type="button" onClick={() => onSkin?.(entryId)} disabled={!entryId || queued || !onSkin}
+              aria-describedby={!entryId || queued ? "riw-moment-skin-note" : undefined}>
               <span className="riw-moment-swatches" aria-hidden="true"><i /><i /><i /></span>SKIN
             </button>
             <button type="button" onClick={onEdit} disabled={!result.canEdit}><Edit3 size={17} aria-hidden="true" />EDIT</button>
           </div>
-          <p id="riw-moment-skin-note" className="riw-moment-fine">Skins are chosen in the RankIt app for now; your card keeps the skin you pick there.</p>
+          {(!entryId || queued) && <p id="riw-moment-skin-note" className="riw-moment-fine">Skins open once this entry has synced.</p>}
           <button type="button" className="riw-moment-back" onClick={onDone}>Back to tonight <kbd>Esc</kbd></button>
           <p className="riw-moment-fine" role="status">{notice}</p>
         </div>

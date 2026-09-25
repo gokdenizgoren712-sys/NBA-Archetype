@@ -3,7 +3,7 @@
    nesneden çizilsin, kart kuralları (ısı eşiği, kalkan, Classic) bir yüzeyde
    açık öbüründe kapalı kalmasın diye. Aşama 15'e kadar RankItPrototype.jsx'in
    içindeydi. */
-import { formatWhen } from "./formatWhen";
+import { formatWhen } from "./formatWhen.js";
 
 export function fromApiMatch(m) {
   if (!m) return m;

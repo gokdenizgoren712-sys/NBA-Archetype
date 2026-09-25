@@ -112,21 +112,23 @@ function sportOf(pathname) {
    çekiliyor, yoksa üst üste iki başlık olurdu. Primary Arch'a dönüş RankIt
    rayının dibinde. /rankit/download ve /rankit/mobile-auth sıradan sayfalar,
    /rankit/app telefon prototipi — onlar kapsam dışı. */
-const RANKIT_WEB_ROUTES = new Set([
-  "/rankit", "/rankit/discover", "/rankit/activity", "/rankit/lists", "/rankit/profile", "/rankit/search",
-]);
-const RANKIT_APP_ROUTES = new Set([...RANKIT_WEB_ROUTES, "/rankit/app"]);
+/* Aşama 17: RankIt'in kendi sayfaları çoğaldı (raf, ısı haritası, okuma,
+   turnuva, profil…) ve dinamik adresler taşıyor — sabit bir küme yerine
+   /rankit altındaki her şey, sıradan sayfalar dışında. */
+const RANKIT_PLAIN_PAGES = ["/rankit/app", "/rankit/download", "/rankit/mobile-auth", "/rankit/_preview"];
 
 function cleanPath(pathname) {
   return pathname.replace(/\/+$/, "") || "/";
 }
 
-function isRankItApp(pathname) {
-  return RANKIT_APP_ROUTES.has(cleanPath(pathname));
+function isRankItWeb(pathname) {
+  const path = cleanPath(pathname);
+  if (path !== "/rankit" && !path.startsWith("/rankit/")) return false;
+  return !RANKIT_PLAIN_PAGES.some((page) => path === page || path.startsWith(`${page}/`));
 }
 
-function isRankItWeb(pathname) {
-  return RANKIT_WEB_ROUTES.has(cleanPath(pathname));
+function isRankItApp(pathname) {
+  return isRankItWeb(pathname) || cleanPath(pathname) === "/rankit/app";
 }
 
 function navFor(pathname) {
@@ -359,8 +361,20 @@ function AppInner() {
               <Route path="/rankit/discover"          element={<RankItWeb section="discover" />} />
               <Route path="/rankit/activity"          element={<RankItWeb section="activity" />} />
               <Route path="/rankit/lists"             element={<RankItWeb section="lists" />} />
+              <Route path="/rankit/lists/:listId"     element={<RankItWeb section="lists" />} />
+              <Route path="/rankit/hunt"              element={<RankItWeb section="hunt" />} />
+              <Route path="/rankit/hunt/:collectionId" element={<RankItWeb section="hunt" />} />
+              <Route path="/rankit/people"            element={<RankItWeb section="people" />} />
+              <Route path="/rankit/welcome"           element={<RankItWeb section="welcome" />} />
+              <Route path="/rankit/card/:entryId"     element={<RankItWeb section="card" />} />
               <Route path="/rankit/profile"           element={<RankItWeb section="profile" />} />
               <Route path="/rankit/search"            element={<RankItWeb section="search" />} />
+              {/* Aşama 17 — rayı olmayan masaüstü sayfaları (7f · 7g · 7h). */}
+              <Route path="/rankit/shelf"             element={<RankItWeb section="shelf" />} />
+              <Route path="/rankit/member/:memberId/shelf" element={<RankItWeb section="shelf" />} />
+              <Route path="/rankit/competition/:competitionId" element={<RankItWeb section="competition" />} />
+              <Route path="/rankit/competition/:competitionId/heat" element={<RankItWeb section="heat" />} />
+              <Route path="/rankit/match/:matchId/reviews" element={<RankItWeb section="reviews" />} />
               {/* Telefon arayüzü: APK bunu paketliyor, web'de de açılabilir kalsın. */}
               <Route path="/rankit/app"               element={<RankItPrototype />} />
               <Route path="/rankit/_preview/match-card" element={<MatchCardPreview />} />
