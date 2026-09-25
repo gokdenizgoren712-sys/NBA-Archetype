@@ -1,32 +1,31 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Compass, Activity as ActivityIcon, List as ListIcon, CircleUserRound,
-  Smartphone, Star, X, Minus, ChevronLeft, ChevronRight, FileText, Plus, Search,
-  SlidersHorizontal, MessageSquare, Award, EyeOff, Radio, Send, Bookmark, Heart,
+  Smartphone, X, ChevronLeft, ChevronRight, FileText, Plus, Search,
+  SlidersHorizontal, MessageSquare, EyeOff, Radio, Bookmark, Heart,
 } from "lucide-react";
 import { SEO } from "../../hooks/useSEO";
 import { useAuth } from "../../contexts/AuthContext";
-import { rankitApi, rankitSocketUrl } from "../rankitApi";
+import { rankitApi } from "../rankitApi";
 import { BROADCAST_COUNTRIES, hidesScore, readPrefs, writePrefs, resolveBroadcastCountry, localeCountry } from "../rankitPrefs";
-import { WallCard, Stars, TeamMark, formatWhen } from "./cards";
+import { WallCard, Stars, formatWhen } from "./cards";
 import { WebHeader, WebRail, PhoneTabs } from "./WebShell";
 import { useShellData } from "./useShellData";
 import FollowFeed from "./FollowFeed";
+import Inspector from "./Inspector";
+import CollectibleOverlay from "./CollectibleOverlay";
+import QuickRate from "./QuickRate";
+import { CardHoverContext, useCardHover } from "./cardHover";
 import { rankitDayContext, tonightLabel, tonightRows } from "../redesign/homeTonight";
 import CompetitionMatches from "../redesign/CompetitionMatches";
 import SearchSheet from "../redesign/SearchSheet";
 import CompetitionPlayers from "../redesign/CompetitionPlayers";
-import { ratingField } from "../redesign/ratingField";
 import CommunityVerdictGate from "../redesign/CommunityVerdictGate";
-import ExpectedHeat from "../redesign/ExpectedHeat";
-import { playedPlayers } from "../redesign/playedPlayers";
-import PlayersPicker from "../redesign/PlayersPicker";
-import { reviewerFromStorage, isOwnContent } from "../redesign/reviewIdentity";
-import { createReplyAttempts } from "../redesign/replyAttempt";
-import { communityHeat, communityVerdictCovered } from "../redesign/heat";
+import { communityVerdictCovered } from "../redesign/heat";
 import "../rankit.css";
 import "./rankit-web.css";
+import "./rankit-inspector.css";
 
 // ── RankIt web yüzeyi ────────────────────────────────────────────────────────
 // Görsel dünya telefondan devralınıyor; masaüstünün getirdiği tek şey aynı anda
@@ -317,547 +316,6 @@ function HomeView({ onOpenMatch, hideScores, ratedMatchIds, accountId, refreshTo
   );
 }
 
-/* ── Denetçi ──────────────────────────────────────────────────────────────── */
-
-function Inspector({ id, minimized, hideScores, onClose, onMinimize, onRestore, onLogged, onOpenEntity }) {
-  const { isLoggedIn } = useAuth();
-  const [detail, setDetail] = useState(null);
-  const [err, setErr] = useState("");
-  const [rating, setRating] = useState(0);
-  /* §5.4: puan alani yalniz KULLANICI dokunduysa gidiyor. Uc "alan yok" ile
-     "alan null"u ayiriyor; null puani SILER. Detay yanitindan once (ya da
-     yanit gelmediyse) rating hala 0 oldugu icin, sadece inceleme yazip
-     kaydeden kullanicinin sunucudaki puani siliniyordu. Yeni kayitta alanin
-     yoklugu da null demek (uc: `not existing` dalinda body.rating None), o
-     yuzden ayrica gondermeye gerek yok. */
-  const [ratingTouched, setRatingTouched] = useState(false);
-  const rate = value => { setRatingTouched(true); setRating(value); };
-  const [communityRevealed, setCommunityRevealed] = useState(false);
-  const [scoreRevealed, setScoreRevealed] = useState(false);
-  const [review, setReview] = useState("");
-  // Classic damgası webde HİÇ yoktu: telefonda puanlamanın yanındaki en
-  // belirgin hareket, webde puan kaydedilebiliyor ama "bu bir klasikti"
-  // denemiyordu.
-  const [classic, setClassic] = useState(false);
-  const [state, setState] = useState("idle");
-  // Telefonla aynı varsayılan: bitmiş maçta önce topluluk, oynanmamışta künye.
-  const [tab, setTab] = useState("Match");
-  // Telefonda olup webde olmayan yetenekler (bkz. PRODUCT.md parite sözleşmesi).
-  const [watchlisted, setWatchlisted] = useState(false);
-  const [favorited, setFavorited] = useState(false);
-  const [potmId, setPotmId] = useState(null);
-  const [respect, setRespect] = useState([]);
-  const [playersOpen, setPlayersOpen] = useState(false);
-  const [voteBusy, setVoteBusy] = useState(false);
-  const voteBusyRef = useRef(false);
-  const [broadcast, setBroadcast] = useState(null);
-  const [busy, setBusy] = useState("");
-  const [notice, setNotice] = useState(null);
-  // "Bu maçı listeme ekle" — addListItem ucu arka uçta vardı ama HİÇBİR yüzey
-  // çağırmıyordu: iki yüzey de yalnızca önceden seçilmiş maçlarla liste
-  // kurabiliyordu. Listeler tembel yükleniyor, açılınca.
-  const [myLists, setMyLists] = useState(null);
-  const [listOpen, setListOpen] = useState(false);
-
-  useEffect(() => {
-    let alive = true;
-    rankitApi.match(id)
-      .then((d) => {
-        if (!alive) return;
-        setDetail(d); setRating(d.my_rating || 0); setRatingTouched(false); setReview(d.my_review || ""); setCommunityRevealed(false); setScoreRevealed(false);
-        setClassic(!!d.my_classic);
-        setWatchlisted(!!d.watchlisted); setFavorited(!!d.favorited);
-        setPotmId(d.my_potm_id || null); setRespect(d.my_respect_ids || []);
-        setTab(d.status === "finished" ? "Community" : "Match");
-      })
-      .catch((e) => alive && setErr(String(e.message || e)));
-    return () => { alive = false; };
-  }, [id]);
-
-  // Yayın bilgisi ayrı uçtan gelir: kural tablosu turnuva+ülke başına çözülür,
-  // maç satırında yalnızca serbest metin `broadcaster` var.
-  // Ülke artık sabit "TR" değil: tercihten, yoksa tarayıcı dilinden. Kapsam
-  // dışı bir ülkede hiç sormuyoruz — başka bir ülkenin yayıncısını göstermek
-  // "veri yok" demekten daha kötü.
-  const country = useMemo(() => resolveBroadcastCountry(), []);
-  useEffect(() => {
-    // Kapsam dışıysa istek atmıyoruz; "veri yok" durumu state'ten değil
-    // country.supported'dan türetiliyor, yoksa efekt içinde setState gerekirdi.
-    if (!country.supported) return undefined;
-    let alive = true;
-    rankitApi.broadcasts(id, country.code)
-      .then((b) => alive && setBroadcast(b))
-      .catch(() => alive && setBroadcast(null));
-    return () => { alive = false; };
-  }, [id, country]);
-
-  useEffect(() => {
-    // Küçükken Escape'in kapatacak "aktif" bir diyalog yok — chip modal değil,
-    // arkasındaki sayfa tamamen kullanılabilir durumda.
-    if (minimized) return;
-    const onKey = (e) => e.key === "Escape" && onClose();
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onClose, minimized]);
-
-  // Kaydettikten sonra puanı değiştirince buton "Saved" olarak kalıyordu:
-  // kullanıcı kaydedilmemiş bir değişikliği kaydedilmiş sanıp kapatıyordu.
-  useEffect(() => { setState((s) => (s === "saved" ? "idle" : s)); }, [rating, review, classic]);
-
-  // İyimser güncelleme + hata halinde geri alma: telefondaki davranışın aynısı.
-  // id yalnızca React key'i: değişince toast animasyonu baştan oynar. Date.now()
-  // yerine sayaç — saf, ve arka arkaya iki aynı mesajda da farklı key üretiyor.
-  const flash = (message, tone = "success") =>
-    setNotice((n) => ({ message, tone, id: (n?.id || 0) + 1 }));
-
-  const toggleWatchlist = async () => {
-    if (busy) return;
-    const previous = watchlisted;
-    setWatchlisted(!previous); setBusy("watchlist");
-    try {
-      const r = await rankitApi.toggleWatchlist(id, !previous);
-      setWatchlisted(r.watchlisted);
-      flash(r.watchlisted ? "Added to your watchlist" : "Removed from your watchlist");
-    } catch {
-      setWatchlisted(previous); flash("Watchlist could not be updated", "error");
-    } finally { setBusy(""); }
-  };
-
-  const toggleFavorite = async () => {
-    if (busy) return;
-    const previous = favorited;
-    setFavorited(!previous); setBusy("favorite");
-    try {
-      const r = await rankitApi.favorite({ target_type: "match", target_id: id }, !previous);
-      setFavorited(r.favorited);
-      flash(r.favorited ? "Added to your favourites" : "Removed from your favourites");
-    } catch {
-      setFavorited(previous); flash("Favourite could not be updated", "error");
-    } finally { setBusy(""); }
-  };
-
-  const choosePotm = async (playerId) => {
-    if (voteBusyRef.current || playerId === potmId) return;
-    voteBusyRef.current = true; setVoteBusy(true);
-    const previous = potmId;
-    const previousRespect = respect;
-    setPotmId(playerId);
-    // POTM ve Respect aynı oyuncuyu iki kez saymamalı — telefondaki kural.
-    setRespect((v) => v.filter((x) => x !== playerId));
-    try { await rankitApi.potm(id, playerId); flash("Player of the Match saved"); }
-    catch { setPotmId(previous); setRespect(previousRespect); flash("Vote could not be saved", "error"); }
-    finally { voteBusyRef.current = false; setVoteBusy(false); }
-  };
-
-  const toggleRespect = async (playerId) => {
-    if (voteBusyRef.current || playerId === potmId) return;
-    const previous = respect;
-    const next = respect.includes(playerId)
-      ? respect.filter((x) => x !== playerId)
-      : respect.length < 2 ? [...respect, playerId] : respect;
-    if (next === respect) return;
-    voteBusyRef.current = true; setVoteBusy(true);
-    setRespect(next);
-    try { await rankitApi.respect(id, next); }
-    catch { setRespect(previous); flash("Vote could not be saved", "error"); }
-    finally { voteBusyRef.current = false; setVoteBusy(false); }
-  };
-
-  const openLists = async () => {
-    const next = !listOpen;
-    setListOpen(next);
-    if (next && myLists === null) {
-      try { setMyLists((await rankitApi.lists()).lists || []); }
-      catch { setMyLists([]); }
-    }
-  };
-
-  const addToList = async (listId, listTitle) => {
-    setListOpen(false);
-    try {
-      await rankitApi.addListItem(listId, { match_id: id });
-      flash(`Added to ${listTitle}`);
-    } catch { flash("Could not add to that list", "error"); }
-  };
-
-  const save = () => {
-    setState("saving");
-    rankitApi.log({ match_id: id, ...ratingField({ touched: ratingTouched, hasEntry: true, rating }), review, classic })
-      .then(() => { setState("saved"); setDetail(previous => ({ ...previous, my_rating: rating || null })); onLogged?.(); })
-      .catch((e) => { setState("error"); setErr(String(e.message || e)); });
-  };
-
-  const finished = detail?.status === "finished";
-  const scoreHidden = hidesScore(hideScores, { ...detail, my_rating: rating }) && !scoreRevealed;
-  const verdictCovered = communityVerdictCovered({ ...detail, my_rating: rating }, { revealed: communityRevealed });
-  const communityHidden = scoreHidden || verdictCovered;
-  const when = formatWhen(detail?.starts_at);
-  // Oylama listesi alfabetik tek bir duvardı: "Adam Smith" hangi takımda
-  // belli olmuyordu ve aynı 30 isim POTM ve Respect için arka arkaya iki kez
-  // basılıyordu. Telefon takıma göre grupluyor, web gruplamıyordu.
-  const playerOptions = useMemo(() => playedPlayers(detail?.lineups), [detail?.lineups]);
-
-  // Küçültülmüşken tam çekmece hiç DOM'da değil — sadece köşedeki taslak
-  // çipi. Bileşenin kendisi (ve içindeki rating/review state'i) mount'ta
-  // kalıyor, sadece BU dal render ediliyor; küçültüp büyütünce taslağın
-  // kaybolmaması bunun için şart.
-  if (minimized) {
-    const label = detail
-      ? `${detail.home?.short || detail.home?.name || "?"} vs ${detail.away?.short || detail.away?.name || "?"}`
-      : "Loading…";
-    return (
-      <div className="riw-chip" role="button" tabIndex={0} onClick={onRestore}
-        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onRestore(); } }}
-        aria-label={`Resume rating ${label}`}>
-        {detail && (
-          <div className="riw-chip-crests">
-            <TeamMark team={detail.home} /><TeamMark team={detail.away} />
-          </div>
-        )}
-        <div className="riw-chip-copy">
-          <strong>{label}</strong>
-          <small>{rating > 0 ? `Draft · ${rating}★` : "Tap to resume"}</small>
-        </div>
-        <button type="button" className="riw-chip-close" aria-label="Discard and close"
-          onClick={(e) => { e.stopPropagation(); onClose(); }}><X size={13} /></button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="riw-inspect-wrap" onClick={onClose}>
-      <section className="riw-inspect" onClick={(e) => e.stopPropagation()}
-        role="dialog" aria-modal="true" aria-label="Match">
-        <div className="ri-sheet-grab" aria-hidden="true" />
-        <div className="riw-sheet-actions">
-          {/* Outlook'un taslak penceresi gibi: kapatmak SİLMEK, küçültmek
-              ARA VERMEK. Puanlama yarım kalmışken kapatma tuşuna basmak
-              taslağı yok ediyordu — artık ikisi ayrı. */}
-          <button onClick={onMinimize} className="ri-sheet-close" aria-label="Minimize"><Minus size={16} /></button>
-          <button onClick={onClose} className="ri-sheet-close" aria-label="Close"><X size={16} /></button>
-        </div>
-
-        {!detail && !err && (
-          <p className="ri-entity-loading">Loading match…</p>
-        )}
-        {err && <div className="riw-note">{err}</div>}
-
-        {detail && (
-          <>
-            <div className="ri-detail-kicker">
-              <small>{detail.competition || detail.competition_name} · {detail.season}
-                {detail.stage ? ` · ${detail.stage}` : ""}</small>
-            </div>
-
-            {/* Armalar telefonda maçın kimliği; burada da olmalı. */}
-            <div className="ri-detail-teams riw-detail-teams">
-              <div>
-                <TeamMark team={detail.home} />
-                <strong>{detail.home?.short || detail.home?.name}</strong>
-              </div>
-              <div>
-                <small>{scoreHidden && finished ? "PLAYED" : finished ? "FULL TIME" : when.time || detail.status?.toUpperCase()}</small>
-                {/* §3.1: skoru gormek ile odanin hukmunu gormek IKI AYRI karar.
-                    "Rate it first — then see whether the room agreed with you"
-                    cumlesi skor acildiktan SONRA da duruyor. Telefon zaten boyle
-                    davraniyordu (yalniz setRevealed); web burada ikisini birden
-                    aciyordu — ayni politikanin iki yuzeyde farkli davranmasi. */}
-                {scoreHidden ? <button type="button" className="ri-card-reveal" onClick={() => setScoreRevealed(true)}>Reveal match</button>
-                  : <strong>{detail.score || "VS"}</strong>}
-                <small>{when.date}</small>
-              </div>
-              <div>
-                <TeamMark team={detail.away} />
-                <strong>{detail.away?.short || detail.away?.name}</strong>
-              </div>
-            </div>
-
-            {/* Telefondaki Match/Community ayrımı — webde hiç yoktu. */}
-            <div className="ri-detail-tabs" role="tablist" aria-label="Match">
-              {["Match", "Community", "Watchalong"].map((name) => (
-                <button key={name} role="tab" aria-selected={tab === name}
-                  className={tab === name ? "active" : undefined}
-                  onClick={() => setTab(name)}>{name}</button>
-              ))}
-            </div>
-
-            {tab === "Watchalong" ? (
-              <WatchalongPanel matchId={detail.id} isLoggedIn={isLoggedIn} />
-            ) : tab === "Match" ? (
-              <>
-                {!scoreHidden && detail.summary && <p className="ri-summary">{detail.summary}</p>}
-                {detail.status === "upcoming" && <ExpectedHeat match={detail}/>}
-                <div className="riw-facts">
-                  <div><span>KICK-OFF</span><strong>{when.full || "—"}</strong></div>
-                  <div>
-                    <span>COMPETITION</span>
-                    {detail.competition_id ? (
-                      <strong><button type="button" className="riw-linkish"
-                        onClick={() => onOpenEntity?.("competition", detail.competition_id)}>
-                        {detail.competition || "—"}
-                      </button></strong>
-                    ) : <strong>{detail.competition || "—"}</strong>}
-                  </div>
-                  {/* Eskiden veri yoksa satır hiç basılmıyordu — sonuç: "yayın
-                      göremiyoruz" şikayeti, çünkü çoğu maçta broadcaster boş
-                      ve özellik hiç KEŞFEDİLEMİYORDU. Telefon boşken bile
-                      "pending" yazıyor; web artık aynısını yapıyor. */}
-                  <div>
-                    <span>BROADCAST{country.supported && country.code ? ` · ${country.code}` : ""}</span>
-                    <strong>
-                      {country.supported && broadcast?.channels?.length
-                        ? broadcast.channels.map((c) => c.name).join(" · ")
-                        : !country.supported
-                        ? "Not covered in your region yet"
-                        : detail.broadcaster || "Details pending"}
-                    </strong>
-                    {/* Kuraldan mı gelmiş yoksa maça özel doğrulanmış mı — bu
-                        ayrım kullanıcı için önemli: yayın hakları sezon içinde
-                        değişiyor ve tarihsiz bir kayıt bir süre sonra yalan olur. */}
-                    {!country.supported ? (
-                      <em>Pick a country under Profile &rsaquo; Settings</em>
-                    ) : broadcast?.confidence === "typical" ? (
-                      <em>Typical coverage — check before kick-off</em>
-                    ) : null}
-                  </div>
-                  {detail.potm && !communityHidden && (
-                    <div><span>COMMUNITY POTM</span><strong>{detail.potm.name}</strong></div>
-                  )}
-                </div>
-                {!finished && (
-                  <p className="riw-quiet">This match has not been played yet.</p>
-                )}
-
-                {/* Doğrulanmış kadro: sağlayıcının o maça özel açıkladığı 11,
-                    yedekler, diziliş ve teknik direktör. Sezon kadrosundan AYRI
-                    alan (`lineups` vs `players`) — "gerçek ilk 11 mi bilmiyoruz"
-                    şikayetinin cevabı bu ayrım. Yoksa hiç gösterilmiyor. */}
-                {!!detail.lineups?.length && (
-                  <div className="ri-lineup">
-                    <div className="ri-lineup-title">
-                      <span>CONFIRMED LINEUP</span>
-                      {detail.lineups[0].confirmed_at && (
-                        <em>Lineups can change until kick-off</em>
-                      )}
-                    </div>
-                    <div className="ri-lineup-grid">
-                      {detail.lineups.map((side) => (
-                        <section key={side.team_id} className="ri-lineup-side">
-                          <div className="ri-lineup-head">
-                            <strong>{side.team}</strong>
-                            {side.formation && (
-                              <span className="ri-lineup-formation">{side.formation}</span>
-                            )}
-                            {side.coach && (
-                              <span className="ri-lineup-coach"><b>Manager</b>{side.coach}</span>
-                            )}
-                          </div>
-                          <div className="ri-lineup-list">
-                            {side.starters.map((p, i) => (
-                              <span key={`s-${i}`}>
-                                <b>{p.shirt_no ?? ""}</b><i>{p.name}</i>
-                              </span>
-                            ))}
-                          </div>
-                          {!!side.bench?.length && (
-                            <div className="ri-lineup-bench">
-                              <small>BENCH · {side.bench.length}</small>
-                              <div className="ri-lineup-list">
-                                {side.bench.map((p, i) => (
-                                  <span key={`b-${i}`}>
-                                    <b>{p.shirt_no ?? ""}</b><i>{p.name}</i>
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </section>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* "Gerçek ilk 11 mi bilmiyoruz" — haklı: bu SEZON KADROSU,
-                    doğrulanmış maç kadrosu değil (CLAUDE.md'de kayıtlı bir
-                    kısıt). Telefon bunu hiç gizlemiyor, adı zaten "SEASON
-                    SQUADS" — burada da "Starting XI" YAZMIYORUZ, aynı dürüst
-                    etiket. */}
-                {!detail.lineups?.length && !!detail.players?.length && (
-                  <div className="ri-squad-preview">
-                    <div className="ri-chip-title">SEASON SQUAD <span>{detail.players.length}</span></div>
-                    <div>
-                      {[detail.home, detail.away].map((team) => (
-                        <section key={team?.short || team?.name}>
-                          <header>
-                            <TeamMark team={team} />
-                            {team?.id ? (
-                              <strong><button type="button" className="riw-linkish"
-                                onClick={() => onOpenEntity?.("team", team.id)}>
-                                {team?.short || team?.name}
-                              </button></strong>
-                            ) : <strong>{team?.short || team?.name}</strong>}
-                          </header>
-                          <div>
-                            {detail.players
-                              .filter((p) => p.team === (team?.short || team?.name))
-                              .map((p) => (
-                                <span key={p.id}>
-                                  {p.shirt_no && <b>{p.shirt_no}</b>}
-                                  <button type="button" className="riw-linkish"
-                                    onClick={() => onOpenEntity?.("player", p.id)}>{p.name}</button>
-                                </span>
-                              ))}
-                          </div>
-                        </section>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {isLoggedIn ? (
-                  <div className="ri-detail-actions">
-                    {!finished && (
-                      <button className={`ri-review-cta${watchlisted ? " saved" : ""}`}
-                        disabled={busy === "watchlist"} onClick={toggleWatchlist}>
-                        <Bookmark size={16} fill={watchlisted ? "currentColor" : "none"} />
-                        {watchlisted ? "In your watchlist" : "Add to watchlist"}
-                      </button>
-                    )}
-                    <button className={`ri-review-cta secondary${favorited ? " saved" : ""}`}
-                      disabled={busy === "favorite"} onClick={toggleFavorite}>
-                      <Heart size={16} fill={favorited ? "currentColor" : "none"} />
-                      {favorited ? "Favourite" : "Add to favourites"}
-                    </button>
-                    <button className="ri-review-cta secondary" onClick={openLists}
-                      aria-expanded={listOpen}>
-                      <ListIcon size={16} /> Add to list
-                    </button>
-                  </div>
-                ) : (
-                  <p className="riw-quiet">
-                    <Link to="/login?next=/rankit" style={{ color: "var(--ri-gold, #FFB11B)" }}>Sign in</Link>{" "}
-                    to keep this match in your watchlist.
-                  </p>
-                )}
-
-                {listOpen && (
-                  <div className="riw-entity-chips">
-                    {myLists === null && <span className="riw-quiet">Loading…</span>}
-                    {myLists?.map((l) => (
-                      <button key={l.id} type="button" onClick={() => addToList(l.id, l.title)}>
-                        <ListIcon size={12} />{l.title}
-                      </button>
-                    ))}
-                    {myLists?.length === 0 && (
-                      <span className="riw-quiet">No lists yet — make one under Discover &rsaquo; Lists.</span>
-                    )}
-                  </div>
-                )}
-              </>
-            ) : (
-              <>
-                {communityHidden && <CommunityVerdictGate spoiler={scoreHidden} onReveal={() => { setScoreRevealed(true); setCommunityRevealed(true); }} />}
-                {!communityHidden && <div className="riw-community-stats">
-                  <div>
-                    <Star size={14} fill="currentColor" />
-                    <strong>{communityHeat(detail)?.toFixed(1) ?? "—"}</strong>
-                    <span>COMMUNITY</span>
-                  </div>
-                  <div>
-                    <MessageSquare size={14} />
-                    <strong>{detail.review_count ?? 0}</strong>
-                    <span>REVIEWS</span>
-                  </div>
-                  <div>
-                    <Award size={14} />
-                    <strong>{detail.classic_count ?? 0}</strong>
-                    <span>CLASSICS</span>
-                  </div>
-                </div>}
-
-                {!communityHidden && !!detail.tags?.length && (
-                  <div className="riw-tagcloud">
-                    {detail.tags.slice(0, 6).map((t) => (
-                      <span key={t.tag}>{t.tag}<b>{t.count}</b></span>
-                    ))}
-                  </div>
-                )}
-
-                {finished ? (
-                  isLoggedIn ? (
-                    <>
-                      <div className="ri-rating-panel">
-                        <small>{rating > 0 ? "YOUR RATING" : "HOW WAS IT?"}</small>
-                        <Stars value={rating} onChange={rate} />
-                        {rating > 0 && <button type="button" onClick={() => setClassic((v) => !v)}
-                          aria-pressed={classic}
-                          className={`ri-classic${classic ? " active" : ""}`}>
-                          <span>CLASSIC</span><small>RANKIT SELECT</small>
-                        </button>}
-                      </div>
-                      {rating <= 0 && <p className="ri-unrated-hint">Tags, players and a review open once there is a rating.</p>}
-                      {/* POTM + Respect: telefonda vardı, webde yoktu. Aynı kural —
-                          bir oyuncu ikisinde birden olamaz, respect en fazla iki kişi. */}
-                      {Number(detail.my_rating) > 0 && playerOptions.length > 0 && (
-                        <div className="ri-vote-block">
-                          <button type="button" className="ri-players-trigger" onClick={() => setPlayersOpen(true)}>
-                            <span><small>PLAYERS · POTM &amp; RESPECT</small><strong>{playerOptions.find((p) => p.id === potmId)?.name || "Choose a player"}{respect.length ? ` · ${respect.length} respect` : ""}</strong></span>
-                            <b>CHOOSE</b>
-                          </button>
-                        </div>
-                      )}
-                      {rating > 0 && <><textarea className="ri-review-input" rows="3" maxLength={4000}
-                        aria-label="Your review"
-                        value={review} onChange={(e) => setReview(e.target.value)}
-                        placeholder="Write an optional review…" />
-                      <button className="ri-review-cta" onClick={save} disabled={state === "saving"}>
-                        {state === "saving" ? "Saving…"
-                          : state === "saved" ? "Saved to your diary"
-                          : detail.my_watched_date ? "Update diary entry" : "Save to diary"}
-                      </button></>}
-                      {detail.my_watched_date && (
-                        <p className="riw-quiet riw-merge-note">
-                          Your Classic stamp, tags and visibility stay as you set them in the app.
-                        </p>
-                      )}
-                    </>
-                  ) : (
-                    <p className="riw-quiet">
-                      <Link to="/login?next=/rankit" style={{ color: "var(--ri-gold, #FFB11B)" }}>Sign in</Link>{" "}
-                      to rate this match and keep it in your diary.
-                    </p>
-                  )
-                ) : (
-                  <p className="riw-quiet">Ratings open when the match finishes.</p>
-                )}
-
-                {!communityHidden && <div className="ri-review-feed">
-                  {detail.reviews?.slice(0, 8).map((r) => (
-                    <ReviewArticle key={r.id} row={r} isLoggedIn={isLoggedIn} />
-                  ))}
-                  {!detail.reviews?.length && (
-                    <Empty icon={MessageSquare} title="No reviews yet"
-                      note="Write the first one — it shows up here for everyone." />
-                  )}
-                </div>}
-              </>
-            )}
-          </>
-        )}
-        {notice && (
-          <div key={notice.id} role="status" className={`ri-action-toast ${notice.tone}`}
-            onAnimationEnd={() => setNotice(null)}>{notice.message}</div>
-        )}
-        {playersOpen && playerOptions.length > 0 && <PlayersPicker variant="web" players={playerOptions}
-          potmId={potmId} respectIds={respect} onPotm={choosePotm} onRespect={toggleRespect} busy={voteBusy}
-          onClose={() => setPlayersOpen(false)}
-          matchLabel={`${detail?.home?.short || detail?.home?.name || "Home"} vs ${detail?.away?.short || detail?.away?.name || "Away"}`} />}
-      </section>
-    </div>
-  );
-}
-
-
 /* ── Varlık çekmecesi: turnuva / oyuncu / takım / üye / liste ─────────────────
    Beş uç da arka uçta vardı ve telefon hepsini kullanıyordu; web hiçbirini
    çağırmıyordu. Telefonun EntityDetail'inin karşılığı, aynı .ri-entity-*
@@ -1117,194 +575,6 @@ function EntityDrawer({ kind, id, onClose, onOpenMatch, onOpenEntity, hideScores
    Üçü de telefonda vardı, webde yoktu (likeReview / comments / addComment).
    Yorumlar TEMBEL yükleniyor: bir maçta sekiz inceleme var ve hiçbirine
    bakılmadan sekiz istek atmanın anlamı yok. */
-function ReviewArticle({ row, isLoggedIn }) {
-  const ownReview = isOwnContent(row, reviewerFromStorage(localStorage));
-  const [replyAttempts] = useState(createReplyAttempts);
-  const [liked, setLiked] = useState(!!row.liked);
-  const [likes, setLikes] = useState(row.likes || 0);
-  const [open, setOpen] = useState(false);
-  const [comments, setComments] = useState(null);
-  const [draft, setDraft] = useState("");
-  const [sending, setSending] = useState(false);
-  // Spoiler webde "uygulamada aç" diyordu, oysa sunucu metni zaten gönderiyor:
-  // okuyucuyu sahip olduğumuz içerik için başka bir yüzeye göndermek yerine
-  // kendi kararını vermesine izin veriyoruz.
-  const [spoilerShown, setSpoilerShown] = useState(false);
-
-  const toggleLike = async () => {
-    if (!isLoggedIn || ownReview) return;
-    const before = { liked, likes };
-    setLiked(!liked); setLikes(likes + (liked ? -1 : 1));
-    try {
-      const r = await rankitApi.likeReview(row.id, !liked);
-      setLiked(r.liked); setLikes(r.likes);
-    } catch { setLiked(before.liked); setLikes(before.likes); }
-  };
-
-  const openComments = async () => {
-    const next = !open;
-    setOpen(next);
-    if (next && comments === null) {
-      try { setComments((await rankitApi.comments(row.id)).comments || []); }
-      catch { setComments([]); }
-    }
-  };
-
-  const send = async () => {
-    const text = draft.trim();
-    if (!text || sending) return;
-    const clientId = replyAttempts.forSend(row.id, text);
-    setSending(true);
-    try {
-      await rankitApi.addComment(row.id, text, null, clientId);
-      replyAttempts.confirmed(row.id, text);
-      setComments((await rankitApi.comments(row.id)).comments || []);
-      setDraft("");
-    } catch { /* gönderilemedi: taslak duruyor, kullanıcı tekrar deneyebilir */ }
-    finally { setSending(false); }
-  };
-
-  return (
-    <article>
-      <div>
-        <strong style={{ font: "700 11px var(--font-logo)" }}>@{row.username}</strong>
-        <Stars value={row.rating || 0} compact />
-      </div>
-      {row.review && (
-        row.spoiler && !spoilerShown ? (
-          <p>
-            <button type="button" className="riw-spoiler" onClick={() => setSpoilerShown(true)}>
-              Contains spoilers — tap to read
-            </button>
-          </p>
-        ) : <p>{row.review}</p>
-      )}
-      <div className="riw-review-actions">
-        <button type="button" className={liked ? "on" : undefined} onClick={toggleLike}
-          disabled={!isLoggedIn || ownReview} aria-pressed={liked}
-          aria-label={ownReview ? "Your review · respect count" : liked ? "Remove your like" : "Like this review"}>
-          <Heart size={13} fill={liked ? "currentColor" : "none"} /> {likes || ""}
-        </button>
-        <button type="button" onClick={openComments} aria-expanded={open} disabled={!!row.spoiler && !spoilerShown}>
-          <MessageSquare size={13} /> {row.comments || ""}
-        </button>
-      </div>
-      {open && (
-        <div className="riw-comments">
-          {comments === null && <span className="riw-quiet">Loading…</span>}
-          {comments?.map((c) => (
-            <p key={c.id}><strong>@{c.username}</strong><span>{c.content}</span></p>
-          ))}
-          {comments?.length === 0 && <span className="riw-quiet">No replies yet.</span>}
-          {isLoggedIn ? (
-            <div className="ri-chat-compose">
-              <input value={draft} onChange={(e) => setDraft(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && send()}
-                aria-label="Reply to this review" placeholder="Write a reply" />
-              <button onClick={send} disabled={sending || !draft.trim()} aria-label="Send reply">
-                <Send size={14} />
-              </button>
-            </div>
-          ) : (
-            <span className="riw-quiet">
-              <Link to="/login?next=/rankit" style={{ color: "var(--ri-gold, #FFB11B)" }}>Sign in</Link> to reply.
-            </span>
-          )}
-        </div>
-      )}
-    </article>
-  );
-}
-
-
-/* ── Watchalong: maç sırasında canlı sohbet ───────────────────────────────────
-   Backend'de baştan beri vardı (REST geçmiş + /ws/watchalong soketi) ve
-   telefonda da vardı; web'de HİÇ yoktu. Telefondaki panelin aynısı, aynı
-   .ri-watchalong-* sınıflarıyla (bunlar rankit.css'te, yani web zaten
-   yüklüyor). Fark: web'de oturum açmamış ziyaretçi de odayı OKUYABİLİR,
-   sadece yazamaz — telefondan farklı olarak burada girişsiz gezinme normal. */
-function WatchalongPanel({ matchId, isLoggedIn }) {
-  const [messages, setMessages] = useState([]);
-  const [draft, setDraft] = useState("");
-  const [connected, setConnected] = useState(false);
-  const socketRef = useRef(null);
-  const logRef = useRef(null);
-  useEffect(() => {
-    let alive = true;
-    rankitApi.watchalong(matchId).then((d) => { if (alive) setMessages(d.messages || []); }).catch(() => {});
-    // Soket girişsiz kullanıcıyı 4401 ile kapatıyor (api/rankit.py). Bağlantıyı
-    // hiç açmamak, her anonim ziyarette başarısız olacak bir el sıkışma
-    // denemesinden ve sonsuza dek "Connecting…" yazan yanıltıcı bir durumdan
-    // daha dürüst — geçmiş yine de REST'ten okunuyor, oda okunabilir kalıyor.
-    if (!isLoggedIn) return () => { alive = false; };
-    const token = localStorage.getItem("nba_arch_token") || "";
-    let ws;
-    try {
-      ws = new WebSocket(rankitSocketUrl(`/api/rankit/ws/watchalong/${matchId}?token=${encodeURIComponent(token)}`));
-    } catch { return () => { alive = false; }; }
-    socketRef.current = ws;
-    ws.onopen = () => setConnected(true);
-    ws.onclose = () => setConnected(false);
-    ws.onerror = () => setConnected(false);
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.message) setMessages((v) => [...v, data.message]);
-      } catch { /* bicimsiz kare yok sayilir */ }
-    };
-    return () => { alive = false; ws.close(); };
-  }, [matchId, isLoggedIn]);
-  // Yeni mesaj gelince en alta kaydir; sohbet yukarida takili kalmasin.
-  useEffect(() => {
-    const el = logRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
-  }, [messages]);
-  const send = () => {
-    const text = draft.trim();
-    if (!text || socketRef.current?.readyState !== WebSocket.OPEN) return;
-    socketRef.current.send(JSON.stringify({ content: text }));
-    setDraft("");
-  };
-  return (
-    <div className="ri-watchalong-live">
-      <div className="ri-watchalong-card">
-        <Radio size={22} />
-        <div>
-          <small>LIVE WATCHALONG</small>
-          <strong>{!isLoggedIn ? "Read-only — sign in to post" : connected ? "Community room connected" : "Connecting…"}</strong>
-          <span>React together without turning RankIt into a score app.</span>
-        </div>
-      </div>
-      <div className="ri-chat-log" ref={logRef}>
-        {messages.map((m) => (
-          <p key={m.id}><strong>@{m.username}</strong><span>{m.content}</span></p>
-        ))}
-        {!messages.length && (
-          <Empty icon={Radio} title="Nobody has said anything yet"
-            note="Be the first — messages show up live for everyone watching." />
-        )}
-      </div>
-      {isLoggedIn ? (
-        <div className="ri-chat-compose">
-          <input value={draft} onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && send()}
-            aria-label="Message the watchalong room"
-            placeholder="Say something about the match" />
-          <button onClick={send} disabled={!connected || !draft.trim()} aria-label="Send message">
-            <Send size={15} />
-          </button>
-        </div>
-      ) : (
-        <p className="riw-quiet">
-          <Link to="/login?next=/rankit" style={{ color: "var(--ri-gold, #FFB11B)" }}>Sign in</Link>{" "}
-          to join the conversation.
-        </p>
-      )}
-    </div>
-  );
-}
-
-
 /* ── Rank: puanlanacak maçı bul ───────────────────────────────────────────────
    Telefondaki orta düğmenin karşılığı. Duvarda maçı aramak "önce filtrele,
    sonra bul" demek; buradaki iş tek bir maçı hatırlayıp puanlamak, o yüzden
@@ -1880,6 +1150,37 @@ export default function RankItWeb({ section = "home" }) {
   const closeMatch = useCallback(() => { setInspectId(null); setInspectMinimized(false); }, []);
   const minimizeMatch = useCallback(() => setInspectMinimized(true), []);
   const restoreMatch = useCallback(() => setInspectMinimized(false), []);
+  // Küçültme çipinin özeti (etiket + taslak puanı) Inspector'dan gelir.
+  const [inspectDraft, setInspectDraft] = useState(null);
+
+  // 7e koleksiyon anı ve 11a hızlı puanlama — ikisi de duvarın üstünde.
+  const [collectible, setCollectible] = useState(null);
+  const [quick, setQuick] = useState(null);
+  const [shortcutNote, setShortcutNote] = useState("");
+  const showCollectible = (result) => {
+    setQuick(null); setInspectId(null); setInspectMinimized(false); setCollectible(result);
+  };
+
+  // §20: R, üstünde durulan (ya da odaktaki) duvar kartını puanlar.
+  const [hovered, setHovered] = useCardHover();
+  useEffect(() => {
+    const onKey = (event) => {
+      if (event.key !== "r" && event.key !== "R") return;
+      if (event.metaKey || event.ctrlKey || event.altKey || event.defaultPrevented) return;
+      const target = event.target;
+      if (target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))) return;
+      if (document.querySelector('[aria-modal="true"]')) return;
+      const card = hovered.current;
+      if (!card?.raw || card.diary) return;
+      event.preventDefault();
+      // §9.1: yıldızlar tam zamanda açılır — öncesinde R bir şey puanlamaz.
+      if (card.raw.status !== "finished") { setShortcutNote("Ratings open at full time."); return; }
+      if (!isLoggedIn) { setShortcutNote("Sign in to rate matches."); return; }
+      setQuick(card.raw);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isLoggedIn, hovered]);
 
   // Lists artık gezinme değil, Discover'ın ikinci sekmesi. /rankit/lists eski
   // bağlantıları kırmasın diye duruyor ve doğrudan o sekmeyi açıyor.
@@ -1943,8 +1244,10 @@ export default function RankItWeb({ section = "home" }) {
     ),
   }[section];
 
+  const docked = !!inspectId && !inspectMinimized;
   return (
-    <div className="riw">
+    <CardHoverContext.Provider value={setHovered}>
+    <div className={`riw${docked ? " has-inspector" : ""}`}>
       <SEO title="RankIt — rate the matches you watch"
         description="A social diary for football and basketball. Rate matches, keep a record, follow people whose taste you recognise."
         path="/rankit" />
@@ -1958,11 +1261,38 @@ export default function RankItWeb({ section = "home" }) {
         <RankSheet hideScores={hideScores} onClose={() => setRankOpen(false)}
           onPick={(id) => { setRankOpen(false); openMatch(id); }} />
       )}
+      {/* Küçültülmüşken panel DOM'da kalır (taslak yaşasın), yalnız gizli. */}
       {inspectId && (
-        <Inspector id={inspectId} minimized={inspectMinimized} hideScores={hideScores}
-          onClose={closeMatch} onMinimize={minimizeMatch} onRestore={restoreMatch}
-          onOpenEntity={openEntity}
-          onLogged={() => setLogVersion((v) => v + 1)} />
+        <div className="riw-insp-dock" hidden={inspectMinimized}>
+          <Inspector key={inspectId} id={inspectId} hideScores={hideScores}
+            onClose={closeMatch} onMinimize={minimizeMatch} onOpenEntity={openEntity}
+            onDraftChange={setInspectDraft} onCollectible={showCollectible}
+            onLogged={() => setLogVersion((v) => v + 1)} />
+        </div>
+      )}
+      {inspectId && inspectMinimized && (
+        <div className="riw-chip" role="button" tabIndex={0} onClick={restoreMatch}
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); restoreMatch(); } }}
+          aria-label={`Resume ${inspectDraft?.label || "the match"}`}>
+          <div className="riw-chip-copy">
+            <strong>{inspectDraft?.label || "Loading…"}</strong>
+            <small>{inspectDraft?.rating > 0 ? `Draft · ${inspectDraft.rating.toFixed(1)}★` : "Tap to resume"}</small>
+          </div>
+          <button type="button" className="riw-chip-close" aria-label="Close the Inspector"
+            onClick={(e) => { e.stopPropagation(); closeMatch(); }}><X size={13} /></button>
+        </div>
+      )}
+      {quick && (
+        <QuickRate match={quick} hideScores={hideScores} onClose={() => setQuick(null)}
+          onLogged={() => setLogVersion((v) => v + 1)} onCollectible={showCollectible} />
+      )}
+      {collectible && (
+        <CollectibleOverlay result={collectible} rank={rank} hideScores={hideScores}
+          onDone={() => setCollectible(null)}
+          onEdit={() => { const id = collectible.match.id; setCollectible(null); openMatch(id); }} />
+      )}
+      {shortcutNote && (
+        <div role="status" className="ri-action-toast" onAnimationEnd={() => setShortcutNote("")}>{shortcutNote}</div>
       )}
       {entity && (
         <EntityDrawer key={`${entity.kind}-${entity.id}`} kind={entity.kind} id={entity.id}
@@ -1970,5 +1300,6 @@ export default function RankItWeb({ section = "home" }) {
           hideScores={hideScores} ratedMatchIds={visibleRatedMatchIds} />
       )}
     </div>
+    </CardHoverContext.Provider>
   );
 }

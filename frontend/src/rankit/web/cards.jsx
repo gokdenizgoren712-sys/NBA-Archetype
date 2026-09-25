@@ -1,7 +1,9 @@
+import { useContext } from "react";
 import { Star } from "lucide-react";
 import SharedMatchCard from "../redesign/MatchCard";
 import { diaryToMatchCardProps, toMatchCardProps } from "../redesign/toMatchCardProps";
 import { fromApiMatch } from "../matchModel";
+import { CardHoverContext } from "./cardHover";
 export { formatWhen } from "../formatWhen";
 
 // ── Web yüzeyinin kart parçaları ─────────────────────────────────────────────
@@ -84,14 +86,22 @@ export function TeamMark({ team }) {
 const WALL = { scoreSize: 46, cardWidth: 320, crestSize: 56 };
 
 export function WallCard({ card, onOpen, hideScores = false }) {
+  // §20: kök, R kısayolu için üstünde durulan kartı bilmeli (fare ya da odak).
+  const hover = useContext(CardHoverContext);
   const opts = { ...WALL, hideScores };
   const props = card.diary ? diaryToMatchCardProps(card.raw, opts) : toMatchCardProps(fromApiMatch(card.raw || card), opts);
   const open = () => onOpen(card);
   return (
     <div className="riw-card-slot" role="button" tabIndex={0}
+      onMouseEnter={() => hover?.(card)} onMouseLeave={() => hover?.(null)}
+      onFocus={(event) => { if (event.target === event.currentTarget) hover?.(card); }}
+      onBlur={(event) => { if (event.target === event.currentTarget) hover?.(null); }}
       aria-label={`${card.home?.name || card.home?.short} versus ${card.away?.name || card.away?.short}`}
       onClick={(event) => { if (!event.target.closest("button")) open(); }}
       onKeyDown={(event) => {
+        // R: kök (window) dinleyicisinden ÖNCE bu kartı işaretle — odak
+        // olayı gelmemiş olsa da klavyedeki kart puanlanır.
+        if (event.key === "r" || event.key === "R") hover?.(card);
         if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); open(); }
       }}>
       <SharedMatchCard {...props} artHeight={132} crestSize={56} cut={22} />

@@ -39,3 +39,17 @@ export function collectibleShareText(result) {
   // Kullanicinin acik paylasma eylemi; skor, review ve oyuncu oylari disari cikmaz.
   return `${match.home.name} vs ${match.away.name} · ${match.competition}\n${entry.rating ? `My rating: ${entry.rating}/5` : 'In my diary'}${entry.classic ? ' · My Classic' : ''}\nRankIt by Primary Arch`;
 }
+
+/* 7e web katmanının cümlesi. */
+const WORDS = ["", "One star", "Two stars", "Three stars", "Four stars", "Five stars"];
+
+/* "Five stars, stamped a Classic. It's on your shelf and in tonight's
+   streak." — yalnız gerçekten olan kısımlar. Seri ancak uç seriyi
+   ilerlettiğini söylediyse cümleye girer. */
+export function collectibleSentence(entry, streakDelta) {
+  const r = Number(entry?.rating) || 0;
+  const stars = r ? (Number.isInteger(r) ? WORDS[r] : `${r} stars`) : "Logged without stars";
+  const classic = entry?.classic ? ", stamped a Classic" : "";
+  const tail = streakDelta > 0 ? "It's on your shelf and in tonight's streak." : "It's on your shelf.";
+  return `${stars}${classic}. ${tail}`;
+}

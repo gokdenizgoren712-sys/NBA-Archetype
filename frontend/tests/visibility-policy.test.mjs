@@ -18,7 +18,8 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const RANKIT = join(dirname(fileURLToPath(import.meta.url)), "..", "src", "rankit");
-const web = readFileSync(join(RANKIT, "web", "RankItWeb.jsx"), "utf8");
+// Asama 16: web'in mac paneli RankItWeb.jsx'ten web/Inspector.jsx'e tasindi.
+const web = readFileSync(join(RANKIT, "web", "Inspector.jsx"), "utf8");
 const phone = readFileSync(join(RANKIT, "RankItPrototype.jsx"), "utf8");
 
 /** "Reveal match" dugmesinin onClick govdesi. */
@@ -31,8 +32,17 @@ function revealMatchHandler(src) {
   return src.slice(from, to);
 }
 
+/* Web'de skor iki yerde acilir: kartin KENDI "reveal" dugmesi (yalniz kartin
+   yerel durumu — Inspector'in hukum durumuna erisimi yok) ve canli hero'nun
+   "Reveal score"u. Ikincisinin isleyicisi yalniz skoru acmali. */
+function revealScoreHandler(src) {
+  const at = src.indexOf("<LiveHero detail={detail} scoreHidden={scoreHidden}");
+  assert.notEqual(at, -1, "canli hero bulunamadi");
+  return src.slice(at, src.indexOf("/>", at));
+}
+
 test("§3.1: skoru acmak odanin hukmunu ACMIYOR — web", () => {
-  const handler = revealMatchHandler(web);
+  const handler = revealScoreHandler(web);
   assert.match(handler, /setScoreRevealed\(true\)/, "skor acilmiyor");
   assert.doesNotMatch(handler, /setCommunityRevealed/,
     "skor acan dugme topluluk hukmunu de aciyor (§3.1 iki ayri karar)");

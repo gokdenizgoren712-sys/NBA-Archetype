@@ -8,6 +8,7 @@ import {
 import { rankitApi } from "./rankitApi";
 import { readPrefs, writePrefs, resolveBroadcastCountry, hidesScore } from "./rankitPrefs";
 import { fromApiMatch } from "./matchModel";
+import { entryTagOptions } from "./redesign/entryTags";
 import { communityHeat, communityRatingCount, communityVerdictCovered, hasCommunityVerdict, heatSteps, NAMES, MIN_COMMUNITY_RATINGS } from "./redesign/heat";
 import CommunityVerdictGate from "./redesign/CommunityVerdictGate";
 import ExpectedHeat from "./redesign/ExpectedHeat";
@@ -369,9 +370,7 @@ export function MatchDetail({ match, hideScores, onClose, onSave, onResult, onTo
   // sözleşmesi tek yönlü değil (bkz. rankit/PRODUCT.md).
   const [myLists, setMyLists] = useState(null);
   const [listOpen, setListOpen] = useState(false);
-  const tagOptions = match.sport === "Football"
-    ? ["Nail-biter", "Great Atmosphere", "Comeback", "Penalty Drama", "Goal Fest", "Tactical Battle", "Upset", "Late Winner", "Derby Energy"]
-    : ["Nail-biter", "Great Atmosphere", "Comeback", "Overtime", "Clutch Performance", "Shootout", "Defensive Masterclass", "Upset", "Buzzer Beater"];
+  const tagOptions = entryTagOptions(match.sport);
   const seasonPlayers = match.players || [];
   const playerOptions = playedPlayers(match.lineups);
   const visibleTags = showMoreTags ? tagOptions : tagOptions.slice(0,5);

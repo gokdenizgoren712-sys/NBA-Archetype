@@ -638,6 +638,11 @@ def _match_dict(conn, row, uid: Optional[int] = None) -> dict:
         "my_watched_date": mine["watched_date"] if mine else None,
         "my_skin": (mine["skin"] or "default") if mine else None,
         "my_potm_id": my_potm_id, "my_respect_ids": my_respect,
+        # 15z panelde "saves as you type": otomatik kayit PUT /diary/{id} ile
+        # YALNIZ inceleme metnini yazar (rating alani gitmez, puan korunur).
+        # Kimlik olmadan istemci "maçin son kaydi"na yazmak zorunda kalirdi;
+        # yeniden izleme varken bu yanlis kayit olabilir.
+        "my_entry_id": mine["id"] if mine else None,
         "watchlisted": watchlisted, "favorited": favorited,
         "expected_heat": expected_heat, "expected_rating_count": expected_rating_count,
         "watchlist_count": watchlist_count, "my_appetite": my_appetite,

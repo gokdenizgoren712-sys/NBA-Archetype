@@ -117,11 +117,13 @@ def test_one_match_through_all_five_phases(db):
     assert companion["room_open"] is False and companion["badge"] is None
     assert api.post(f"/api/rankit/matches/{M}/pulse", json={"value": 4}).status_code == 409
     assert api.post(f"/api/rankit/matches/{M}/potm", json={"player_id": player("Raya")}).status_code == 403
-    assert match["my_rating"] is None
+    assert match["my_rating"] is None and match["my_entry_id"] is None
 
     # ── Full time, rated (7b / 7c) ───────────────────────────────────────────
     saved = api.post("/api/rankit/diary", json={"match_id": M, "rating": 4.0, "tz_offset": 0}).json()
-    assert saved["ok"] and client().get(f"/api/rankit/matches/{M}").json()["my_rating"] == 4.0
+    rated = client().get(f"/api/rankit/matches/{M}").json()
+    assert saved["ok"] and rated["my_rating"] == 4.0
+    assert rated["my_entry_id"] == saved["entry_id"]    # 15z otomatik kaydi bu kaydi hedefler
     assert api.post(f"/api/rankit/matches/{M}/potm", json={"player_id": player("Raya")}).status_code == 200
     assert api.post(f"/api/rankit/matches/{M}/potm", json={"player_id": player("Trossard")}).status_code == 422  # oynamadi
     for uid in range(2, 22):
