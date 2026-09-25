@@ -7,7 +7,7 @@ import {
   Star, Trophy, Users, X, Shield} from "lucide-react";
 import { rankitApi } from "./rankitApi";
 import { readPrefs, writePrefs, resolveBroadcastCountry, hidesScore } from "./rankitPrefs";
-import { formatWhen } from "./formatWhen";
+import { fromApiMatch } from "./matchModel";
 import { communityHeat, communityRatingCount, communityVerdictCovered, hasCommunityVerdict, heatSteps, NAMES, MIN_COMMUNITY_RATINGS } from "./redesign/heat";
 import CommunityVerdictGate from "./redesign/CommunityVerdictGate";
 import ExpectedHeat from "./redesign/ExpectedHeat";
@@ -37,7 +37,7 @@ import { createReplyAttempts } from "./redesign/replyAttempt";
 // Faz 2 — redesign kartı bayrak arkasında; kapalıyken hiçbir şey değişmiyor.
 import { RANKIT_NEW_CARD } from "./redesign/flags";
 import RedesignMatchCard, { Shield as CrestDiamond, CrestPair } from "./redesign/MatchCard";
-import { tonightRows, tonightLabel, tonightStatus } from "./redesign/homeTonight";
+import { rankitDayContext, tonightRows, tonightLabel, tonightStatus } from "./redesign/homeTonight";
 import { competitionEyebrow, competitionSub } from "./redesign/competitionHead";
 import { toMatchCardProps, diaryToMatchCardProps } from "./redesign/toMatchCardProps";
 import StreakRing from "./redesign/StreakRing";
@@ -71,46 +71,6 @@ const SPORTS = ["All", "Basketball", "Football", "Olympics"];
 const TABS = [
   ["Home", Home], ["Discover", Compass], ["Rank", Plus], ["Activity", Users], ["Profile", CircleUserRound],
 ];
-
-function fromApiMatch(m) {
-  if (!m) return m;
-  const { date: fullDate, time, full } = formatWhen(m.starts_at);
-  return {
-    ...m,
-    // `date` tam dize olarak KALIYOR: fikstür listesi ve bildirimlerde tek
-    // zaman referansı o. Kart ve maç sayfası ise parçaları ayrı kullanır,
-    // yoksa aynı kartta saat iki, maç sayfasında tarih iki kez yazılıyordu.
-    date: full,
-    dateOnly: fullDate,
-    time,
-    communityRating: m.community_rating,
-    ratings: m.rating_count || 0,
-    reviewCount: m.review_count || 0,
-    reviews: Array.isArray(m.reviews) ? m.reviews : [],
-    player: m.potm?.name,
-    playerNo: m.potm?.shirt_no,
-    instantClassic: m.instant_classic,
-    dominantTag: m.dominant_tag,
-    friends: [],
-  };
-}
-
-function rankitDayContext(now = new Date()) {
-  const start = new Date(now);
-  start.setHours(11, 0, 0, 0);
-  if (now < start) start.setDate(start.getDate() - 1);
-  const end = new Date(start);
-  end.setDate(end.getDate() + 1);
-  const hour = now.getHours();
-  const daytime = hour >= 5 && hour < 17;
-  return {
-    start: start.toISOString(),
-    end: end.toISOString(),
-    daytime,
-    eyebrow: daytime ? "YOUR DAY" : "YOUR NIGHT",
-    title: daytime ? "Today on RankIt" : "Tonight on RankIt",
-  };
-}
 
 function loadRankitHome(sport = "All") {
   const day = rankitDayContext();

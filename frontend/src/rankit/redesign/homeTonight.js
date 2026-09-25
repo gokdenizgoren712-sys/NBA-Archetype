@@ -10,6 +10,25 @@ import { liveFreshness } from "./liveFreshness.js";
 
 const ORDER = { live: 0, upcoming: 1, finished: 2 };
 
+/* RankIt günü 11:00'den 11:00'e (yerel saat). Telefon ve web ana sayfası
+   AYNI pencereyi soruyor; gündüz etiketi "TODAY", gece "TONIGHT". */
+export function rankitDayContext(now = new Date()) {
+  const start = new Date(now);
+  start.setHours(11, 0, 0, 0);
+  if (now < start) start.setDate(start.getDate() - 1);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 1);
+  const hour = now.getHours();
+  const daytime = hour >= 5 && hour < 17;
+  return {
+    start: start.toISOString(),
+    end: end.toISOString(),
+    daytime,
+    eyebrow: daytime ? "YOUR DAY" : "YOUR NIGHT",
+    title: daytime ? "Today on RankIt" : "Tonight on RankIt",
+  };
+}
+
 /* Canlı önce (şu an olan), sonra başlama saati, en sonda bitenler. */
 export function tonightRows(matches = []) {
   return [...matches].sort((a, b) => (ORDER[a.status] ?? 3) - (ORDER[b.status] ?? 3)

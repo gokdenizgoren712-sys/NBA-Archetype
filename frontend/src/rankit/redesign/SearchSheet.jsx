@@ -112,8 +112,13 @@ function MatchResult({ match, hideScores, onOpen }) {
   );
 }
 
-export default function SearchSheet({ initialQuery = "", hideScores = readPrefs().hideScores, onClose, onOpenMatch, onOpenEntity }) {
-  const [query, setQuery] = useState(initialQuery);
+/* `embedded`: web'in sonuç sayfası (11c'ye kadar). Sorgu başlıktaki alandan
+   gelir (`query`); dialog, kendi alanı ve odak tuzağı yok — duvarın içinde
+   sıradan bir bölüm. Telefonda her zaman sheet. */
+export default function SearchSheet({ initialQuery = "", query: outerQuery = "", embedded = false,
+  hideScores = readPrefs().hideScores, onClose, onOpenMatch, onOpenEntity }) {
+  const [ownQuery, setQuery] = useState(initialQuery);
+  const query = embedded ? outerQuery : ownQuery;
   // Sonucu SORGUSUYLA birlikte tutuyoruz: "hangi sorgu yükleniyor" böyle
   // türetiliyor ve efektin başında state sıfırlamak gerekmiyor.
   const [loaded, setLoaded] = useState({ q: "", data: EMPTY });
@@ -133,7 +138,7 @@ export default function SearchSheet({ initialQuery = "", hideScores = readPrefs(
     return () => { alive = false; clearTimeout(timer); };
   }, [term, retry]);
 
-  const dialog = useDialog({ onClose, label: "Search" });
+  const dialog = useDialog({ onClose, label: "Search", active: !embedded });
 
   const data = term.length < 2 ? EMPTY : (loaded.q === term ? loaded.data : null);
   const error = term.length >= 2 && loaded.q === term ? loaded.error : null;
@@ -142,8 +147,8 @@ export default function SearchSheet({ initialQuery = "", hideScores = readPrefs(
     : 0), [data]);
 
   return (
-    <div {...dialog} className="ri-find">
-      <div className="ri-find-bar">
+    <div {...(embedded ? { role: "region", "aria-label": "Search results" } : dialog)} className={`ri-find${embedded ? " is-embedded" : ""}`}>
+      {!embedded && <div className="ri-find-bar">
         <label className="ri-find-field">
           <Search size={16} aria-hidden="true" />
           <input ref={field} autoFocus value={query} aria-label="Search RankIt"
@@ -158,10 +163,10 @@ export default function SearchSheet({ initialQuery = "", hideScores = readPrefs(
           )}
         </label>
         <button type="button" className="ri-find-cancel" onClick={onClose}>Cancel</button>
-      </div>
+      </div>}
 
       <div className="ri-find-body">
-        {term.length < 2 && (
+        {term.length < 2 && !embedded && (
           <p className="ri-find-hint">Type a club, a competition, or a collection.</p>
         )}
         {error && <ErrorState error={error} onRetry={() => {setLoaded({q:"",data:null});setRetry(value=>value+1);}}/>}

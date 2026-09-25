@@ -19,22 +19,13 @@ import { useResource } from "./useResource";
 import { useDialog } from "./useDialog";
 import { useBackClose } from "./backStack";
 import { ErrorState, Loading, SkeletonRows } from "./States";
-import { RAMP } from "./heat";
 import { lockSwatch } from "./skins";
 import {
-  huntPercent, collectionPercent, collectionExtra, collectionSentence, unscheduledNote, dayLabel, timeLabel,
+  ringFill, huntPercent, collectionPercent, collectionExtra, collectionSentence, unscheduledNote, dayLabel, timeLabel,
 } from "./huntSummary";
 
-const RING_OFF = "rgba(255,255,255,.08)";
-
-/* Tahtadaki halka: ısı rampası ilerleme noktasına kadar, gerisi sönük.
-   Rampa renkleri ilerlemeyle birlikte ısınıyor (tahta böyle çiziyor). */
 function ProgressRing({ pct, size = 48, inset = 5, fontSize = 13, label, hole = "#151618" }) {
-  const p = Math.max(0, Math.min(100, Number(pct) || 0)) / 100;
-  const stops = RAMP.slice(0, Math.max(2, Math.ceil(p * RAMP.length)));
-  const fill = p > 0
-    ? `conic-gradient(from -90deg,${stops.map((c, i) => `${c} ${(i / (stops.length - 1)) * p}turn`).join(",")},${RING_OFF} ${p}turn)`
-    : RING_OFF;
+  const fill = ringFill(pct);
   return <div className="ri-hunt-ring" style={{ width: size, height: size }} aria-hidden="true">
     <i style={{ background: fill }} />
     <i style={{ inset, background: hole }} />

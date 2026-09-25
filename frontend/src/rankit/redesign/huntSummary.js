@@ -8,6 +8,21 @@
  * yazıyor). Burada hiçbir sayı türetilmiyor, yalnız cümleye çevriliyor.
  */
 
+import { RAMP } from "./heat.js";
+
+const RING_OFF = "rgba(255,255,255,.08)";
+
+/* Tahtadaki halka: ısı rampası ilerleme noktasına kadar, gerisi sönük.
+   Rampa renkleri ilerlemeyle birlikte ısınıyor (tahta böyle çiziyor).
+   Telefonun Hunt halkaları (2m/2n) ve web rayı (7a THE HUNT) aynı dolgu. */
+export function ringFill(pct) {
+  const p = Math.max(0, Math.min(100, Number(pct) || 0)) / 100;
+  const stops = RAMP.slice(0, Math.max(2, Math.ceil(p * RAMP.length)));
+  return p > 0
+    ? `conic-gradient(from -90deg,${stops.map((c, i) => `${c} ${(i / (stops.length - 1)) * p}turn`).join(",")},${RING_OFF} ${p}turn)`
+    : RING_OFF;
+}
+
 // Tahta küçük sayıyı kelimeyle yazıyor ("two are one night from closing").
 const WORDS = ["", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"];
 

@@ -1,17 +1,12 @@
-import { useState } from "react";
 import { Star } from "lucide-react";
-import { hidesScore } from "../rankitPrefs";
-import { communityHeat, communityRatingCount, communityVerdictCovered, MIN_COMMUNITY_RATINGS } from "../redesign/heat";
+import SharedMatchCard from "../redesign/MatchCard";
+import { diaryToMatchCardProps, toMatchCardProps } from "../redesign/toMatchCardProps";
+import { fromApiMatch } from "../matchModel";
 export { formatWhen } from "../formatWhen";
 
 // ── Web yüzeyinin kart parçaları ─────────────────────────────────────────────
 //
 // Tarih ve saat mobil kartla aynı ortak formatWhen kaynağından gelir.
-
-// Telefonun kartıyla AYNI CSS'i (ri-match-card ve ailesi) kullanıyor, ama aynı
-// bileşen değil: telefonda kart sayfa açıyor, duvarda denetçiye yazıyor, ve
-// masaüstünde yer olduğu için skor ile topluluk puanı aynı anda görünüyor.
-// Ortak olan dil, davranış değil.
 
 // RankIt isareti: telefonla TEK bilesen (BUILD §7.2, 4i). Eski 12-gen + R
 // madalyonu 4i ile emekli oldu.
@@ -77,85 +72,29 @@ export function TeamMark({ team }) {
   );
 }
 
-export function MatchCard({ match, onOpen, hideScores = false }) {
-  const [communityRevealed, setCommunityRevealed] = useState(false);
-  const finished = match.status === "finished";
-  const live = match.status === "live";
-  const rating = finished ? communityHeat(match) : null;
-  const count = finished ? communityRatingCount(match) : null;
-  // Skor gizleme telefonda ürünün imzası: maçı henüz izlememiş biri siteye
-  // girip sonucu görmesin diye. Webde hiç yoktu — masaüstünde açan bir üye
-  // dün geceyi puanlamaya gelirken sonucu kapıda öğreniyordu.
-  const blur = hidesScore(hideScores, match);
-  const verdictCovered = communityVerdictCovered(match, { revealed: communityRevealed });
+/* Duvar kartı — telefonla AYNI MatchCard (redesign/MatchCard.jsx), BUILD
+   §18'in 320 ön ayarıyla: crest 56, sanat 132, skor 46. Aşama 15'e kadar
+   webin kendi kartı vardı (aynı CSS, farklı bileşen); skinler, ısı eşiği,
+   kalkan ve hüküm kapısı iki yüzeyde ayrı ayrı yazılıyordu ve ayrışıyordu.
+   Kartı çizen tek bileşen artık ikisinde de aynı; web yalnız yuvayı veriyor
+   (tıklayınca sayfa değil denetçi).
 
+   `card` web satırı (toCard / diaryToCard): `raw` API satırıdır. Günlük
+   satırı ayrı şekilde geliyor, kendi çeviricisinden geçer (kişisel puan). */
+const WALL = { scoreSize: 46, cardWidth: 320, crestSize: 56 };
+
+export function WallCard({ card, onOpen, hideScores = false }) {
+  const opts = { ...WALL, hideScores };
+  const props = card.diary ? diaryToMatchCardProps(card.raw, opts) : toMatchCardProps(fromApiMatch(card.raw || card), opts);
+  const open = () => onOpen(card);
   return (
-    <article
-      className={`ri-match-card${finished && match.instantClassic && !blur && !verdictCovered ? " instant" : ""}`}
-      onClick={() => onOpen(match)}
-      onKeyDown={(e) => { if (!e.target.closest("button") && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onOpen(match); } }}
-      tabIndex={0} role="button"
-      aria-label={`${match.home.name || match.home.short} versus ${match.away.name || match.away.short}`}
-      style={{ "--home": match.home?.color, "--away": match.away?.color }}>
-      <div className="ri-card-holo" />
-
-      <div className="ri-match-top">
-        <span>{match.competition}</span>
-        {live ? <span className="ri-live-tag">LIVE</span>
-          : blur ? <span className="ri-live-date">PLAYED</span>
-          : verdictCovered ? <span className="ri-live-date">FULL TIME</span>
-          : rating !== null ? (
-            <span className="ri-community-rating">
-              <Star size={11} fill="currentColor" /> {rating.toFixed(1)}
-            </span>
-          ) : <span className="ri-live-date">{finished && count !== null && count < MIN_COMMUNITY_RATINGS ? "TOO FEW RATINGS" : match.date}</span>}
-      </div>
-
-      <div className="ri-match-art">
-        <div className="ri-team-side home"><TeamMark team={match.home} /></div>
-        <div className="ri-versus">
-          {/* Skoru olan maçta skor, olmayanda VS — puanlanmamış bir maça
-              sıfır yazmak, oynanmamışı oynanmış gibi göstermek olurdu.
-              VS'nin üstündeki satır eskiden "VERSUS" yazıyordu: altındaki
-              "VS"i kelimesi kelimesine tekrar eden, hiçbir şey söylemeyen bir
-              etiket. Yerini maçın saati aldı — okuyucunun gerçekten ihtiyacı
-              olan tek bilgi. */}
-          {finished && match.score
-            ? <strong className={blur ? "ri-blur" : undefined} aria-label={blur ? "Score hidden" : undefined}>{blur ? "—" : match.score}</strong>
-            : <>{match.time && <small>{match.time}</small>}<strong>VS</strong></>}
-        </div>
-        <div className="ri-team-side away"><TeamMark team={match.away} /></div>
-      </div>
-
-      <div className="ri-score-band">
-        <span>{match.home?.short || match.home?.name}</span>
-        <span />
-        <span>{match.away?.short || match.away?.name}</span>
-      </div>
-
-      <div className="ri-match-foot">
-        {/* Eskiden burası, maç bitmemişse tam tarihi ÜÇÜNCÜ kez yazıyordu
-            (üst şeritte ve ortadaki VS'nin üstünde zaten var). Telefonun
-            kendi kartı bu satırı hiç tarih için kullanmıyor — yayın bilgisi
-            için kullanıyor. Aynı desen: gerçekten yeni bir bilgi, tekrar
-            değil. */}
-        {typeof match.myRating === "number" && match.myRating > 0 ? (
-          <Stars value={match.myRating} compact />
-        ) : finished ? (
-          <span style={{ fontSize: 9, color: "#7f868b" }}>Not logged</span>
-        ) : (
-          <span style={{ fontSize: 9, color: "#7f868b" }}>
-            {match.broadcaster ? `Watch on ${match.broadcaster}` : "Broadcast details pending"}
-          </span>
-        )}
-        <span>
-          {finished && match.dominantTag && !blur && !verdictCovered ? match.dominantTag
-            : match.stage || (match.reviews ? `${match.reviews} reviews` : "")}
-        </span>
-      </div>
-      {verdictCovered && !blur && <button type="button" className="ri-spoiler-gate" onClick={(event) => { event.stopPropagation(); setCommunityRevealed(true); }}>
-        Rate it first — then see whether the room agreed with you. <b>REVEAL ANYWAY</b>
-      </button>}
-    </article>
+    <div className="riw-card-slot" role="button" tabIndex={0}
+      aria-label={`${card.home?.name || card.home?.short} versus ${card.away?.name || card.away?.short}`}
+      onClick={(event) => { if (!event.target.closest("button")) open(); }}
+      onKeyDown={(event) => {
+        if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); open(); }
+      }}>
+      <SharedMatchCard {...props} artHeight={132} crestSize={56} cut={22} />
+    </div>
   );
 }

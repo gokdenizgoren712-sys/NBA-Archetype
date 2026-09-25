@@ -106,15 +106,27 @@ function sportOf(pathname) {
 
 /* RankIt kendi sol rayını taşıyor (riw-rail). Sitenin ikon rayı da açık
    kalınca ekranda yan yana ÜÇ gezinme oluyordu: üst bar + Primary Arch rayı +
-   RankIt rayı. RankIt'in içindeyken gezinme RankIt'indir — site rayı çekilir,
-   üst bar ortak kimlik olarak kalır. /rankit/download ve /rankit/mobile-auth
-   sıradan sayfalar, onlar kapsam dışı. */
-const RANKIT_APP_ROUTES = new Set([
-  "/rankit", "/rankit/discover", "/rankit/activity", "/rankit/lists", "/rankit/profile", "/rankit/app",
+   RankIt rayı. RankIt'in içindeyken gezinme RankIt'indir — site rayı çekilir.
+   Aşama 15 (7a, BUILD §17): RankIt'in 78px başlığı kimliği ("BY PRIMARY
+   ARCH") ve hesabı (avatar / Sign in) taşıyor; sitenin 48px üst barı da
+   çekiliyor, yoksa üst üste iki başlık olurdu. Primary Arch'a dönüş RankIt
+   rayının dibinde. /rankit/download ve /rankit/mobile-auth sıradan sayfalar,
+   /rankit/app telefon prototipi — onlar kapsam dışı. */
+const RANKIT_WEB_ROUTES = new Set([
+  "/rankit", "/rankit/discover", "/rankit/activity", "/rankit/lists", "/rankit/profile", "/rankit/search",
 ]);
+const RANKIT_APP_ROUTES = new Set([...RANKIT_WEB_ROUTES, "/rankit/app"]);
+
+function cleanPath(pathname) {
+  return pathname.replace(/\/+$/, "") || "/";
+}
 
 function isRankItApp(pathname) {
-  return RANKIT_APP_ROUTES.has(pathname.replace(/\/+$/, "") || "/");
+  return RANKIT_APP_ROUTES.has(cleanPath(pathname));
+}
+
+function isRankItWeb(pathname) {
+  return RANKIT_WEB_ROUTES.has(cleanPath(pathname));
 }
 
 function navFor(pathname) {
@@ -160,6 +172,7 @@ function TopBar({ onMenu }) {
   const navigate = useNavigate();
   const location = useLocation();
   const sport = sportOf(location.pathname);
+  if (isRankItWeb(location.pathname)) return null;
 
 
   return (
@@ -347,6 +360,7 @@ function AppInner() {
               <Route path="/rankit/activity"          element={<RankItWeb section="activity" />} />
               <Route path="/rankit/lists"             element={<RankItWeb section="lists" />} />
               <Route path="/rankit/profile"           element={<RankItWeb section="profile" />} />
+              <Route path="/rankit/search"            element={<RankItWeb section="search" />} />
               {/* Telefon arayüzü: APK bunu paketliyor, web'de de açılabilir kalsın. */}
               <Route path="/rankit/app"               element={<RankItPrototype />} />
               <Route path="/rankit/_preview/match-card" element={<MatchCardPreview />} />

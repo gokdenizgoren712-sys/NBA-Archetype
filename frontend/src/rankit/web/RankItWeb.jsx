@@ -1,15 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, NavLink, useParams, useNavigate } from "react-router-dom";
+import { Link, useParams, useNavigate, useSearchParams } from "react-router-dom";
 import {
-  Home, Compass, Activity as ActivityIcon, List as ListIcon, CircleUserRound,
+  Compass, Activity as ActivityIcon, List as ListIcon, CircleUserRound,
   Smartphone, Star, X, Minus, ChevronLeft, ChevronRight, FileText, Plus, Search,
-  SlidersHorizontal, MessageSquare, Award, Eye, EyeOff, Radio, Send, Bookmark, Heart,
+  SlidersHorizontal, MessageSquare, Award, EyeOff, Radio, Send, Bookmark, Heart,
 } from "lucide-react";
 import { SEO } from "../../hooks/useSEO";
 import { useAuth } from "../../contexts/AuthContext";
 import { rankitApi, rankitSocketUrl } from "../rankitApi";
 import { BROADCAST_COUNTRIES, hidesScore, readPrefs, writePrefs, resolveBroadcastCountry, localeCountry } from "../rankitPrefs";
-import { MatchCard, Stars, RankItMark, TeamMark, formatWhen } from "./cards";
+import { WallCard, Stars, TeamMark, formatWhen } from "./cards";
+import { WebHeader, WebRail, PhoneTabs } from "./WebShell";
+import { useShellData } from "./useShellData";
+import FollowFeed from "./FollowFeed";
+import { rankitDayContext, tonightLabel, tonightRows } from "../redesign/homeTonight";
 import CompetitionMatches from "../redesign/CompetitionMatches";
 import SearchSheet from "../redesign/SearchSheet";
 import CompetitionPlayers from "../redesign/CompetitionPlayers";
@@ -32,17 +36,6 @@ import "./rankit-web.css";
 //
 // Download rayın beşlisine DAHİL DEĞİL, dibinde ve kendi çizgisinin altında:
 // ürüne girmenin değil, ürünü almanın yolu.
-
-// Telefonun TABS dizisiyle AYNI sıra: Rank ortada. Alt bar beş yer taşır ve
-// ortadaki bir gezinme değil bir EYLEM — puanlanacak maçı aramak. Lists o yeri
-// işgal ediyordu, Discover'ın içine sekme olarak taşındı.
-const SECTIONS = [
-  { to: "/rankit", end: true, Icon: Home, label: "Home" },
-  { to: "/rankit/discover", Icon: Compass, label: "Discover" },
-  { rank: true, Icon: Plus, label: "Rank" },
-  { to: "/rankit/activity", Icon: ActivityIcon, label: "Activity" },
-  { to: "/rankit/profile", Icon: CircleUserRound, label: "Profile" },
-];
 
 /* Sunucu maçı zengin bir satır olarak veriyor; kart onun yüzeyi. */
 function toCard(m) {
@@ -91,6 +84,9 @@ function diaryToCard(e) {
   const score = e.home_score == null ? null : `${e.home_score} – ${e.away_score}`;
   return {
     id: e.match_id,
+    // Yeniden izleme aynı maçın ikinci kaydı: duvarın anahtarı MAÇ değil KAYIT
+    // (aynı maç iki kez = iki kart; anahtar çakışıyordu, konsolda ölçüldü).
+    key: `entry-${e.id}`,
     competition: e.competition || "",
     sport: e.sport,
     status: e.status,
@@ -101,64 +97,9 @@ function diaryToCard(e) {
     score,
     myRating: e.rating,
     instantClassic: !!e.classic,
+    diary: true,
     raw: e,
   };
-}
-
-/* ── Ray ──────────────────────────────────────────────────────────────────── */
-
-function Rail({ user, onRank, onSearch }) {
-  return (
-    <aside className="riw-rail">
-      <div className="riw-brand">
-        <RankItMark size={26} />
-        <div>
-          <strong aria-label="RankIt">RANK<span>IT</span></strong>
-          <small>BY PRIMARY ARCH</small>
-        </div>
-      </div>
-
-      {/* Web'de global arama HIC yoktu -- yalnizca "Rank a match" sheet'inin
-          kendi mac aramasi vardi. 3e iki yuzeye birden gidiyor (parite
-          sozlesmesi), o yuzden raya kendi girisi geliyor. */}
-      <button type="button" className="riw-search-trigger" onClick={onSearch}>
-        <Search size={15} /> <span>Search</span>
-      </button>
-
-      <nav className="riw-nav">
-        {SECTIONS.map(({ to, end, Icon, label, rank }) => (
-          rank ? (
-            <button key={label} type="button" className="rank" onClick={onRank}>
-              <span className="riw-rank-gem"><Icon size={22} /></span>
-              <span>{label}</span>
-            </button>
-          ) : (
-            <NavLink key={to} to={to} end={end}
-              className={({ isActive }) => (isActive ? "on" : undefined)}>
-              <Icon size={16} /> <span>{label}</span>
-            </NavLink>
-          )
-        ))}
-      </nav>
-
-      <div className="riw-rail-foot">
-        {/* Uygulamayı almak/güncellemek gezinme değil — alt bar en fazla beş
-            birincil yer taşımalı ve altıncısı Settings'e gider. Profile'da. */}
-        {user ? (
-          <div className="riw-account">
-            Signed in as <b>@{user.username}</b>
-          </div>
-        ) : (
-          <div className="riw-account">
-            <Link to="/login?next=/rankit" style={{ color: "var(--ri-gold, #FFB11B)" }}>
-              Sign in
-            </Link>{" "}
-            to rate and keep a diary.
-          </div>
-        )}
-      </div>
-    </aside>
-  );
 }
 
 /* ── Duvar ────────────────────────────────────────────────────────────────── */
@@ -176,7 +117,7 @@ function Wall({ matches, loading, error, onOpen, empty, hideScores = false }) {
   return (
     <div className="riw-wall">
       {error && <div className="riw-note">{error}</div>}
-      {matches.map((m) => <MatchCard key={m.id} match={m} onOpen={onOpen} hideScores={hideScores} />)}
+      {matches.map((m) => <WallCard key={m.key ?? m.id} card={m} onOpen={onOpen} hideScores={hideScores} />)}
       {!matches.length && !error && empty}
     </div>
   );
@@ -200,6 +141,9 @@ function Empty({ icon: Icon, title, note }) {
 function useCarousel(count) {
   const ref = useRef(null);
   const [index, setIndex] = useState(0);
+  // 7a üç kartı yan yana gösteriyor: son üçlü göründüğünde index son karta
+  // varmadan kaydırma biter. "İleri" oku orada kapanmalı.
+  const [maxed, setMaxed] = useState(false);
 
   useEffect(() => {
     const el = ref.current;
@@ -212,6 +156,7 @@ function useCarousel(count) {
       const step = child.getBoundingClientRect().width + parseFloat(getComputedStyle(el).columnGap || 0);
       if (step <= 0) return;
       setIndex(Math.max(0, Math.min(count - 1, Math.round(el.scrollLeft / step))));
+      setMaxed(el.scrollLeft + el.clientWidth >= el.scrollWidth - 2);
     };
     const onScroll = () => { if (!frame) frame = requestAnimationFrame(read); };
     el.addEventListener("scroll", onScroll, { passive: true });
@@ -232,40 +177,33 @@ function useCarousel(count) {
     el.scrollTo({ left: child.offsetLeft - el.offsetLeft, behavior: "smooth" });
   };
 
-  return { ref, index, goTo, atStart: index <= 0, atEnd: index >= count - 1 };
+  return { ref, index, goTo, atStart: index <= 0, atEnd: maxed || index >= count - 1 };
 }
 
-function Carousel({ items, hideScores, onOpen }) {
+/* 7a "TONIGHT · 4 MATCHES": etiket satırı + sağda 30px iki ok, altında
+   yan yana üç kart. Noktalar yok (tahtada yok); kaydırma, ok ve klavye
+   tek doğruyu paylaşıyor. */
+function Carousel({ items, label, hideScores, onOpen }) {
   const { ref, index, goTo, atStart, atEnd } = useCarousel(items.length);
   return (
-    <div className="riw-carousel-wrap">
+    <section className="riw-tonight" aria-label={label}>
+      <div className="riw-label-row">
+        <h2>{label}</h2>
+        {items.length > 1 && (
+          <div className="riw-arrows">
+            <button type="button" onClick={() => goTo(index - 1)} disabled={atStart} aria-label="Previous match"><ChevronLeft size={13} /></button>
+            <button type="button" onClick={() => goTo(index + 1)} disabled={atEnd} aria-label="Next match"><ChevronRight size={13} /></button>
+          </div>
+        )}
+      </div>
       <div className="riw-carousel" ref={ref}
         onKeyDown={(e) => {
           if (e.key === "ArrowRight") { e.preventDefault(); goTo(index + 1); }
           if (e.key === "ArrowLeft") { e.preventDefault(); goTo(index - 1); }
         }}>
-        {items.map((m) => (
-          <MatchCard key={m.id} match={m} hideScores={hideScores} onOpen={onOpen} />
-        ))}
+        {items.map((m) => <WallCard key={m.id} card={m} hideScores={hideScores} onOpen={onOpen} />)}
       </div>
-
-      {items.length > 1 && (
-        <>
-          <button className="riw-carousel-arrow prev" onClick={() => goTo(index - 1)}
-            disabled={atStart} aria-label="Previous match"><ChevronLeft size={18} /></button>
-          <button className="riw-carousel-arrow next" onClick={() => goTo(index + 1)}
-            disabled={atEnd} aria-label="Next match"><ChevronRight size={18} /></button>
-
-          <div className="riw-carousel-dots" role="tablist" aria-label="Tonight's matches">
-            {items.map((m, i) => (
-              <button key={m.id} type="button" role="tab" aria-selected={index === i}
-                aria-label={`Match ${i + 1} of ${items.length}`}
-                className={index === i ? "active" : undefined} onClick={() => goTo(i)} />
-            ))}
-          </div>
-        </>
-      )}
-    </div>
+    </section>
   );
 }
 
@@ -307,86 +245,75 @@ function ReviewRow({ row, onOpen, onOpenEntity, ratedMatchIds, hideScores = fals
 }
 
 /* ── Home ─────────────────────────────────────────────────────────────────────
-   Home, Discover'ın bir kopyası değil. Discover KATALOG: filtrele, ara, bul.
-   Home ise telefondaki gibi BU GECE — yakındaki birkaç maç ve topluluğun ne
-   dediği. İkisi de aynı <Catalog> bileşenini render ettiği için beş gezinme
-   yerinden ikisi birebir aynı sayfayı açıyordu; sunucunun /home ucu (hero
-   kartlar + son herkese açık yorumlar) hiç çağrılmıyordu bile. */
-function HomeView({ onOpenMatch, hideScores, onToggleScores, ratedMatchIds }) {
-  const [sport, setSport] = useState("All");
+   Ekran 7a. Home KATALOG değil (Discover o): bu RankIt günü — telefonla AYNI
+   pencere (11:00–11:00, `rankitDayContext`), canlı önce — ve takip
+   ettiklerinin ne dediği. Oturum yoksa takip akışı yok; yerine herkese açık
+   incelemeler (telefonun 2a'daki "POPULAR ACROSS RANKIT"i). Spor çipleri ve
+   "Hide scores" düğmesi 7a'da yok: kalkan başlıkta, filtre Discover'da. */
+function HomeView({ onOpenMatch, hideScores, ratedMatchIds, accountId, refreshToken, onOpenEntity }) {
   const [data, setData] = useState(null);
   const [err, setErr] = useState("");
+  const [day] = useState(() => rankitDayContext());
 
   useEffect(() => {
     let alive = true;
-    setData(null); setErr("");
-    rankitApi.home(sport)
+    const region = resolveBroadcastCountry();
+    rankitApi.home("All", day.start, day.end, region.supported ? region.code : "")
       .then((d) => alive && setData(d))
       .catch((e) => alive && setErr(String(e.message || e)));
     return () => { alive = false; };
-  }, [sport]);
+  }, [day]);
 
-  const cards = (data?.matches || []).map(toCard);
-  const hero = cards.slice(0, 6);
+  const tonight = tonightRows(data?.matches || []).map(toCard);
   const activity = data?.activity || [];
+  const label = tonightLabel(tonight.length, day.daytime);
 
   return (
-    <>
-      <header className="riw-head">
-        <h1>Tonight on RankIt</h1>
-        <p>The matches closest to now, and what people made of them.</p>
-      </header>
+    <div className="riw-home">
+      {err && <div className="riw-note">{err}</div>}
 
-      <div className="riw-home-controls">
-        <div className="riw-chips">
-          {["All", "Football", "Basketball"].map((s) => (
-            <button key={s} className={sport === s ? "on" : undefined}
-              aria-pressed={sport === s} onClick={() => setSport(s)}>{s}</button>
-          ))}
-        </div>
-        <button className={`riw-hide${hideScores ? " on" : ""}`}
-          aria-pressed={hideScores} onClick={onToggleScores}>
-          {hideScores ? <EyeOff size={14} /> : <Eye size={14} />}
-          {hideScores ? "Scores hidden" : "Hide scores"}
-        </button>
-      </div>
+      {!data && !err && (
+        <section className="riw-tonight" aria-busy="true" aria-label="Loading tonight">
+          <div className="riw-label-row"><h2>{day.daytime ? "TODAY" : "TONIGHT"}</h2></div>
+          <div className="riw-carousel">{[0, 1, 2].map((i) => <div key={i} className="riw-skeleton" />)}</div>
+        </section>
+      )}
 
-      <div className="riw-main solo">
-        {err && <div className="riw-note">{err}</div>}
+      {data && (tonight.length
+        ? <Carousel items={tonight} label={label} hideScores={hideScores} onOpen={(x) => onOpenMatch(x.id)} />
+        : (
+          <section className="riw-tonight">
+            <div className="riw-label-row"><h2>{label}</h2></div>
+            <Empty icon={Compass} title="No matches in this RankIt day"
+              note="A RankIt day runs 11:00 to 11:00. Nothing is scheduled in this one yet — Discover has the full catalog." />
+          </section>
+        ))}
 
-        {!data && !err && (
-          <div className="riw-wall">
-            {Array.from({ length: 6 }).map((_, i) => <div key={i} className="riw-skeleton" />)}
+      {accountId != null ? (
+        <section className="riw-home-section">
+          <div className="riw-label-row">
+            <h2>FROM PEOPLE YOU FOLLOW</h2>
+            <Link to="/rankit/activity" className="riw-label-link">All activity ›</Link>
           </div>
-        )}
-
-        {data && (
-          <>
-            {!!hero.length && (
-              <Carousel items={hero} hideScores={hideScores} onOpen={(x) => onOpenMatch(x.id)} />
+          <FollowFeed accountId={accountId} refreshToken={refreshToken} hideScores={hideScores}
+            onOpenMatch={onOpenMatch} onOpenEntity={onOpenEntity} />
+        </section>
+      ) : data && (
+        <section className="riw-home-section">
+          <div className="riw-label-row">
+            <h2>POPULAR ACROSS RANKIT</h2>
+            <Link to="/rankit/activity" className="riw-label-link">Activity ›</Link>
+          </div>
+          <div className="riw-review-list">
+            {activity.map((r) => <ReviewRow key={r.id} row={r} onOpen={onOpenMatch} onOpenEntity={onOpenEntity} ratedMatchIds={ratedMatchIds} hideScores={hideScores} />)}
+            {!activity.length && (
+              <Empty icon={MessageSquare} title="No reviews yet"
+                note="Be the first to write one — open a finished match and rate it." />
             )}
-            {!hero.length && (
-              <Empty icon={Compass} title="No matches in this window"
-                note="Try another sport, or open Discover for the full catalog." />
-            )}
-
-            <section className="riw-section">
-              <header className="riw-section-head">
-                <small>POPULAR ACROSS RANKIT</small>
-                <h2>Community reviews</h2>
-              </header>
-              <div className="riw-review-list">
-                {activity.map((r) => <ReviewRow key={r.id} row={r} onOpen={onOpenMatch} ratedMatchIds={ratedMatchIds} hideScores={hideScores} />)}
-                {!activity.length && (
-                  <Empty icon={MessageSquare} title="No reviews yet"
-                    note="Be the first to write one — open a finished match and rate it." />
-                )}
-              </div>
-            </section>
-          </>
-        )}
-      </div>
-    </>
+          </div>
+        </section>
+      )}
+    </div>
   );
 }
 
@@ -1473,7 +1400,7 @@ function useCatalog(filters) {
   return { ...state, more: () => setOffset((o) => o + 24), canLoadMore: state.matches.length < state.total };
 }
 
-function Catalog({ title, note, meta, tabs, onOpenMatch, hideScores, onToggleScores }) {
+function Catalog({ title, note, meta, tabs, onOpenMatch, hideScores }) {
   const [sport, setSport] = useState("All");
   const [competition, setCompetition] = useState("All");
   const [season, setSeason] = useState("All");
@@ -1520,12 +1447,8 @@ function Catalog({ title, note, meta, tabs, onOpenMatch, hideScores, onToggleSco
         {active > 0 && (
           <button className="riw-filter-btn" onClick={clear}>Clear</button>
         )}
-        <div className="riw-toolbar-gap" />
-        <button className={`riw-hide${hideScores ? " on" : ""}`}
-          aria-pressed={hideScores} onClick={onToggleScores}>
-          {hideScores ? <EyeOff size={14} /> : <Eye size={14} />}
-          {hideScores ? "Scores hidden" : "Hide scores"}
-        </button>
+        {/* "Hide scores" burada ikinci kez vardı; kalkan artık her sayfada
+            başlıkta (7a) — aynı ayar iki yerde durmaz (2a düzeltmesiyle aynı). */}
       </div>
 
       {filterOpen && <div className="riw-scrim" onClick={() => setFilterOpen(false)} />}
@@ -1913,7 +1836,26 @@ export default function RankItWeb({ section = "home" }) {
     writePrefs({ hideScores: next });
   };
   const [rankOpen, setRankOpen] = useState(false);
-  const [findOpen, setFindOpen] = useState(false);
+  // Kabuğun verisi hesaba bağlı: çıkışta ya da hesap değişince bir önceki
+  // kişinin kademesi bir an bile görünmesin.
+  const accountId = isLoggedIn ? (user?.id ?? user?.username ?? "me") : null;
+
+  // §17 arama alanı: sorgu /rankit/search?q= adresinde yaşıyor (11c), başka
+  // bir bölümde yazılan taslak ise o bölüme ait — bölüm değişince alan
+  // boşalır, sonuç sayfasına gelince adresteki sorguyu gösterir.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlQuery = section === "search" ? (searchParams.get("q") || "") : "";
+  const [draft, setDraft] = useState({ section, value: urlQuery });
+  const query = draft.section === section ? draft.value : urlQuery;
+  const onQuery = (value) => {
+    setDraft({ section, value });
+    if (section === "search") setSearchParams(value.trim() ? { q: value } : {}, { replace: true });
+  };
+  const onSearch = (term) => {
+    if (!term) return;
+    setDraft({ section: "search", value: term });
+    navigate(`/rankit/search?q=${encodeURIComponent(term)}`);
+  };
 
   // Denetçi artık KÖKTE, tek örnek — Catalog/ActivityView/HomeView'ün her biri
   // kendi "open" state'i ve kendi <Inspector>'ını taşıyordu. Küçültme özelliği
@@ -1972,15 +1914,33 @@ export default function RankItWeb({ section = "home" }) {
 
   const discover = discoverTab === "lists"
     ? <Lists tabs={discoverTabs} onOpenEntity={openEntity} />
-    : <Catalog meta={meta} title="Discover" tabs={discoverTabs} onOpenMatch={openMatch} hideScores={hideScores} onToggleScores={toggleScores}
+    : <Catalog meta={meta} title="Discover" tabs={discoverTabs} onOpenMatch={openMatch} hideScores={hideScores}
         note="Filter down to a competition, a season or a state of play." />;
 
+  const { rank, hunt, clubs } = useShellData(accountId, logVersion);
+
   const body = {
-    home: <HomeView onOpenMatch={openMatch} hideScores={hideScores} onToggleScores={toggleScores} ratedMatchIds={visibleRatedMatchIds} />,
+    home: <HomeView onOpenMatch={openMatch} hideScores={hideScores} ratedMatchIds={visibleRatedMatchIds}
+      accountId={accountId} refreshToken={logVersion} onOpenEntity={openEntity} />,
     discover,
     lists: discover,
     activity: <ActivityView onOpenMatch={openMatch} refreshToken={logVersion} onOpenEntity={openEntity} hideScores={hideScores} ratedMatchIds={visibleRatedMatchIds} />,
     profile: <Profile hideScores={hideScores} onToggleScores={toggleScores} />,
+    // 11c'nin tam sonuç sayfası (sekmeler, sayılar, "hottest first") Aşama
+    // 17'de. O zamana kadar sonuçlar telefonla ortak 3e bileşeninden,
+    // duvarın içinde — başlıktaki alan sorgunun tek girişi.
+    search: (
+      <>
+        <header className="riw-head">
+          <h1>Search</h1>
+          <p>{urlQuery.trim().length >= 2 ? `Results for “${urlQuery.trim()}”` : "Type at least two letters in the search field above."}</p>
+        </header>
+        <div className="riw-main solo">
+          <SearchSheet embedded query={urlQuery} hideScores={hideScores}
+            onOpenMatch={(m) => openMatch(m.id)} onOpenEntity={openEntity} />
+        </div>
+      </>
+    ),
   }[section];
 
   return (
@@ -1988,23 +1948,15 @@ export default function RankItWeb({ section = "home" }) {
       <SEO title="RankIt — rate the matches you watch"
         description="A social diary for football and basketball. Rate matches, keep a record, follow people whose taste you recognise."
         path="/rankit" />
-      <Rail user={user} onRank={() => setRankOpen(true)} onSearch={() => setFindOpen(true)} />
-      <div className="riw-body">{body}</div>
+      <WebHeader user={user} isLoggedIn={isLoggedIn} hideScores={hideScores} onToggleScores={toggleScores}
+        nights={rank?.streak?.current || 0} query={query} onQuery={onQuery} onSearch={onSearch} />
+      <WebRail isLoggedIn={isLoggedIn} rank={rank} hunt={hunt} clubs={clubs} onOpenEntity={openEntity} />
+      <main className="riw-body">{body}</main>
+      <PhoneTabs onRank={() => setRankOpen(true)} />
 
       {rankOpen && (
         <RankSheet hideScores={hideScores} onClose={() => setRankOpen(false)}
           onPick={(id) => { setRankOpen(false); openMatch(id); }} />
-      )}
-      {/* 3e -- telefonla AYNI bileşen; çerçeveyi kabuk veriyor. */}
-      {findOpen && (
-        <div className="ri-sheet-wrap riw-find-wrap" onClick={() => setFindOpen(false)}>
-          <section className="riw-find" onClick={(e) => e.stopPropagation()}
-            role="dialog" aria-modal="true" aria-label="Search RankIt">
-            <SearchSheet hideScores={hideScores} onClose={() => setFindOpen(false)}
-              onOpenMatch={(m) => { setFindOpen(false); openMatch(m.id); }}
-              onOpenEntity={(kind, id) => { setFindOpen(false); openEntity(kind, id); }} />
-          </section>
-        </div>
       )}
       {inspectId && (
         <Inspector id={inspectId} minimized={inspectMinimized} hideScores={hideScores}
