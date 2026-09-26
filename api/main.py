@@ -88,12 +88,7 @@ def _send_email(to: str, subject: str, html: str):
 
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=list(dict.fromkeys([SITE_URL, *MOBILE_ORIGINS])) if IS_PROD else ["*"],
-    allow_methods=["GET", "POST", "DELETE", "PUT"],
-    allow_headers=["Authorization", "Content-Type"],
-)
+# CORS en DIŞTA kayıtlı — aşağıda, http middleware'lerinden SONRA (bkz. not).
 
 # Çok-oyunculu draft odaları (oda REST + WebSocket) — api/game_ws.py
 from .game_ws import router as _game_ws_router
@@ -183,6 +178,23 @@ async def rate_limit(request: Request, call_next):
             return JSONResponse({"detail": "Too many requests"}, status_code=429,
                                 headers={"Retry-After": str(RL_WINDOW)})
     return await call_next(request)
+
+
+# CORS en dışta olmalı: Starlette'te en SON eklenen middleware en dıştakidir.
+# Önceden CORS bu http middleware'lerinden önce ekleniyordu, yani rate
+# limiter'ın 429'u CORS'tan geçmeden dönüyordu — başlıksız. Site API'ye aynı
+# kökenden gittiği için etkilenmiyordu; RankIt uygulaması (https://localhost,
+# çapraz köken) 429'u OKUYAMIYOR, "ağ hatası" görüyordu: Rewrite History'nin
+# 29 takımlık lig kurulumu (leagueSim.js 429'da Retry-After kadar bekleyip
+# yeniden dener) uygulamada hiç yeniden denemeden düşüyordu (2026-09-26,
+# Games by Primary Arch uçtan uca testinde yakalandı). Yan fayda: tarayıcının
+# preflight (OPTIONS) istekleri artık rate limit sayacına girmeden cevaplanır.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=list(dict.fromkeys([SITE_URL, *MOBILE_ORIGINS])) if IS_PROD else ["*"],
+    allow_methods=["GET", "POST", "DELETE", "PUT"],
+    allow_headers=["Authorization", "Content-Type"],
+)
 
 
 # ─── İsim eşleştirme: aksan/büyük-küçük harf duyarsız ──────────────────────────
