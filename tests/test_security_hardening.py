@@ -280,3 +280,27 @@ def test_security_headers(client, app_mod, monkeypatch):
     r = client.post("/api/csp-report", content=b'{"csp-report": {"violated-directive": "img-src"}}',
                     headers={"Content-Type": "application/csp-report"})
     assert r.status_code == 204
+
+
+# ── Admin atama (davet kodunun yerine panelden) ──────────────────────────────
+
+def test_admins_can_grant_and_revoke_admin_from_the_panel(client):
+    _, admin_token, admin_id = _register(client)
+    _, user_token, user_id = _register(client)
+    with _db() as conn:
+        conn.execute("UPDATE users SET role='admin' WHERE id=?", (admin_id,))
+    patch = lambda tok, uid, body: client.patch(f"/api/admin/users/{uid}", json=body, headers=_auth(tok))
+
+    # Admin olmayan kimseye rol veremez, kendine de
+    assert patch(user_token, user_id, {"role": "admin"}).status_code == 403
+    # Admin başkasını admin yapar; yeni admin hemen (yeniden giriş olmadan) içeride
+    assert patch(admin_token, user_id, {"role": "admin"}).status_code == 200
+    assert client.get("/api/admin/users", headers=_auth(user_token)).status_code == 200
+    # Kendi yetkini kaldıramaz, kendini banlayamaz; geçersiz rol reddedilir
+    assert patch(admin_token, admin_id, {"role": "user"}).status_code == 400
+    assert patch(admin_token, admin_id, {"is_banned": 1}).status_code == 400
+    assert patch(admin_token, user_id, {"role": "owner"}).status_code == 400
+    # Geri alınınca aynı token'la anında dışarıda
+    assert patch(admin_token, user_id, {"role": "user"}).status_code == 200
+    assert client.get("/api/admin/users", headers=_auth(user_token)).status_code == 403
+    assert patch(admin_token, 10**9, {"role": "admin"}).status_code == 404

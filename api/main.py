@@ -3052,6 +3052,7 @@ class LoginBody(BaseModel):
 
 class PatchUserBody(BaseModel):
     is_banned: int = None
+    role: Optional[str] = None   # "user" | "admin" — davet kodunun yerine panelden atama
 
 class ForgotBody(BaseModel):
     email: str
@@ -3490,9 +3491,31 @@ def admin_list_users(_user=Depends(require_admin)):
 
 @app.patch("/api/admin/users/{user_id}")
 def admin_patch_user(user_id: int, body: PatchUserBody, _user=Depends(require_admin)):
-    if body.is_banned is not None:
-        with get_conn() as conn:
+    """Ban ve rol. Rolü yalnız zaten admin olan biri değiştirebilir (require_admin
+    rolü DB'den okur); kendi yetkini kaldıramazsın, son admin düşürülemez —
+    panel kimsesiz kalmasın. Her değişiklik denetim için loglanır."""
+    actor = int(_user["sub"])
+    with get_conn() as conn:
+        target = conn.execute("SELECT id, role, username FROM users WHERE id=?", (user_id,)).fetchone()
+        if not target:
+            raise HTTPException(404, "User not found")
+        if body.is_banned is not None:
+            if user_id == actor and body.is_banned:
+                raise HTTPException(400, "You can't ban your own account")
             conn.execute("UPDATE users SET is_banned=? WHERE id=?", (body.is_banned, user_id))
+            logging.warning("ADMIN AUDIT: user %s set is_banned=%s on user %s", actor, body.is_banned, user_id)
+        if body.role is not None and body.role != target["role"]:
+            if body.role not in ("user", "admin"):
+                raise HTTPException(400, "Role must be 'user' or 'admin'")
+            if body.role == "user":
+                if user_id == actor:
+                    raise HTTPException(400, "You can't remove your own admin role")
+                admins = conn.execute("SELECT COUNT(*) FROM users WHERE role='admin' AND is_banned=0").fetchone()[0]
+                if admins <= 1:
+                    raise HTTPException(400, "At least one admin must remain")
+            conn.execute("UPDATE users SET role=? WHERE id=?", (body.role, user_id))
+            logging.warning("ADMIN AUDIT: user %s set role=%s on user %s (%s)",
+                            actor, body.role, user_id, target["username"])
     return {"ok": True}
 
 # /all must come BEFORE /{user_id} — otherwise FastAPI tries int("all") → 422

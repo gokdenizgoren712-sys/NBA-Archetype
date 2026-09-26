@@ -3,9 +3,12 @@
 
 NEDEN GEREKLİ
 ─────────────
-Admin atamanın TEK yolu bu betik: sitedeki "admin invite code" ucu
-(/api/auth/promote) 2026-09 güvenlik çalışmasında kaldırıldı — kod internetten
-sınırsız denenebiliyordu. `require_admin` rolü her istekte veritabanından okur.
+Sitedeki "admin invite code" ucu (/api/auth/promote) 2026-09 güvenlik
+çalışmasında kaldırıldı — kod internetten sınırsız denenebiliyordu. Artık:
+- Günlük yol: bir admin, admin panelinde (Admin → Users) "Make admin" /
+  "Remove admin" ile atar (PATCH /api/admin/users/{id} {"role": ...}).
+- Bu betik: İLK admini atamak ya da panele erişen admin kalmadığında kurtarmak.
+`require_admin` rolü her istekte veritabanından okur.
 
 - Yerelde: yerel DB'de test kullanıcıları var, hiçbiri admin değil; lokalde
   `/admin/photo-layout` gibi sayfalar bunun için açılmıyor.
