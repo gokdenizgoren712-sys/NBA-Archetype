@@ -23,7 +23,10 @@ const ordinal = (n) => {
 };
 const hex = (p) => (p >= 72 ? ACC : p >= 40 ? "#F2C14E" : "#E8654C");
 
-export default function FootballLeaderboard({ limit = 25 }) {
+// fill=true: ızgara hücresini doldurur ve liste panel içinde kayar — sahayla
+// aynı alt hatta biter, satırı uzatmaz (basketbolun LeaderboardPanel'iyle aynı
+// numara, .g-hud-fill).
+export default function FootballLeaderboard({ limit = 25, fill = false }) {
   const [shape, setShape] = useState("");
   const [data, setData] = useState(null);
   const [err, setErr] = useState(null);
@@ -36,7 +39,8 @@ export default function FootballLeaderboard({ limit = 25 }) {
   }, [shape, limit]);
 
   return (
-    <div className="g-panel p-4" style={{ "--accent": ACC, "--accent-line": `${ACC}44` }}>
+    <div className={`g-panel p-4${fill ? " g-hud-fill" : ""}`}
+      style={{ "--accent": ACC, "--accent-line": `${ACC}44` }}>
       <span className="aura-blob" style={{ "--slot-color": ACC, left: "20%", top: -46,
         width: 260, height: 140, opacity: 0.14 }} />
 
@@ -71,7 +75,10 @@ export default function FootballLeaderboard({ limit = 25 }) {
       )}
 
       {data?.entries?.length > 0 && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 5, marginTop: 14 }}>
+        // fill modunda liste kendi içinde kayar; yoksa uzun tablo paneli
+        // (ve onunla birlikte sahayı) aşağı doğru uzatırdı.
+        <div className={fill ? "flex-1 min-h-0 overflow-y-auto pr-0.5" : ""}
+          style={{ display: "flex", flexDirection: "column", gap: 5, marginTop: 14 }}>
           {data.entries.map((e, i) => {
             const p = e.percentile;
             return (

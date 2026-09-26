@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { api } from "../../api";
 import { SEO } from "../../hooks/useSEO";
+import useMediaQuery from "../../hooks/useMediaQuery";
 import { useAuth } from "../../contexts/AuthContext";
 import Pitch from "../../game/football/Pitch";
 import { FORMATIONS, SHAPE_KEYS, allSlots, BENCH_COUNT } from "../../game/football/formations";
@@ -350,6 +351,12 @@ export default function FootballGame() {
 
   // Draft sürüyor mu? (kurulum + çark + seçim). complete/pick_manager rapor.
   const playing = phase !== "complete";
+  // Sabit yükseklikli "kokpit" düzeni yalnızca geniş ekranda. Telefonda saha,
+  // kalan YÜKSEKLİĞE göre ölçeklenemez (kapsayıcının kesin yüksekliği yok,
+  // height:100% sıfıra çöker) — orada genişliğe göre ölçekleniyor ve sayfa
+  // normal şekilde kayıyor.
+  const wide = useMediaQuery("(min-width: 900px)");
+  const cockpit = playing && wide;
   // Giriş blokları (anlatım, kalibrasyon uyarısı, çark havuzu) yalnızca
   // kurulum ekranına ait: çark ilk kez döndüğü an oyun başlamış demektir.
   const setupScreen = !chosen && filledCount === 0;
@@ -370,7 +377,7 @@ export default function FootballGame() {
   );
 
   return (
-    <div className={`relative ${playing ? "h-full flex flex-col overflow-hidden" : "h-full overflow-y-auto"}`}>
+    <div className={`fb-play${cockpit ? " cockpit" : ""}`}>
       <SEO title="Football — Spin & Build"
         description="Spin for a club and a season, draft eighteen, and see whether the XI fits."
         path="/football/game" noindex />
@@ -380,7 +387,7 @@ export default function FootballGame() {
           kurulum sabit yükseklikte, iki sütun kalan alanı doldurur, uzun
           listeler kendi panellerinin içinde kayar. Kadro bitince (complete)
           ekran bir rapora dönüşüyor, orada kaydırma serbest. */}
-      <div className={`relative max-w-[1500px] w-full mx-auto p-4 ${playing ? "flex-1 min-h-0 flex flex-col gap-3" : "space-y-4"}`}>
+      <div className={`relative max-w-[1500px] w-full mx-auto p-4 ${cockpit ? "flex-1 min-h-0 flex flex-col gap-3" : "space-y-4"}`}>
         {/* ── HEADER DOCK — basketbol oyunundaki yapının aynısı:
             solda kimlik + ilerleme, ortada diziliş, sagda durum. ── */}
         <div className={`g-dock${setupScreen ? "" : " thin"}`}
@@ -490,13 +497,12 @@ export default function FootballGame() {
           {filledCount > 0 && <button onClick={reset} className="aura-pill-btn">Reset</button>}
         </div>
 
-        <div className={`grid gap-3 ${playing ? "flex-1 min-h-0" : ""}`}
-          style={{ gridTemplateColumns: "minmax(420px,1.35fr) minmax(330px,1fr)", alignItems: "stretch" }}>
+        <div className={`fb-hud ${cockpit ? "flex-1 min-h-0" : ""}`}>
 
           {/* SAHA */}
           {/* Saha — basketbol tarafındaki kort paneliyle aynı kabuk:
               nokta matrisi zemin + mono teknik başlık. */}
-          <div className={`g-court-panel ${playing ? "flex flex-col min-h-0" : ""}`}>
+          <div className={`g-court-panel ${cockpit ? "flex flex-col min-h-0" : ""}`}>
             <div className="g-dotgrid" />
             <div className="flex items-center justify-between gap-2 mb-3">
               <span className="g-mono" style={{ color: ACCENT }}>// {shape}</span>
@@ -505,9 +511,9 @@ export default function FootballGame() {
                 {filledCount}/{slots.length} filled
               </span>
             </div>
-            <div className={playing ? "flex-1 min-h-0 flex items-center justify-center" : ""}>
+            <div className={cockpit ? "flex-1 min-h-0 flex items-center justify-center" : ""}>
               <Pitch shape={shape} squad={squad} onSlotClick={onSlotClick}
-                moveSrc={moveSrc} pickingFor={pickingFor} fill={playing} />
+                moveSrc={moveSrc} pickingFor={pickingFor} fill={cockpit} />
             </div>
 
             {/* Yedek kulübesi */}
@@ -546,7 +552,7 @@ export default function FootballGame() {
           </div>
 
           {/* ÇARK / SEÇİM */}
-          <div className={`g-panel p-4 ${playing ? "flex flex-col min-h-0 overflow-y-auto" : ""}`}>
+          <div className={`g-panel p-4 ${cockpit ? "flex flex-col min-h-0 overflow-y-auto" : ""}`}>
             {phase === "pick_manager" ? (
               <>
                 <div className="g-label mb-2">
@@ -798,6 +804,14 @@ export default function FootballGame() {
                 )}
               </>
             )}
+          </div>
+
+          {/* ÜÇÜNCÜ SÜTUN — draft sürerken de kovalanan sayı görünsün.
+              Yalnızca 1460px üstünde açılıyor (bkz. .fb-hud): daha dar bir
+              ekranda sahayı ve havuzu daraltarak yer açmak, oynanan şeyi
+              tabelaya feda etmek olurdu. */}
+          <div className="fb-board">
+            <FootballLeaderboard limit={15} fill />
           </div>
         </div>
 

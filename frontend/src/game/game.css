@@ -938,3 +938,33 @@
   /* Dar ekranda son iki stat düşer — isim ve arketip okunur kalsın */
   .g-rr-stat:nth-last-of-type(-n+2) { display: none; }
 }
+
+/* ── Futbol oyun ızgarası ────────────────────────────────────────────────────
+   Önceden satır içi `minmax(420px,1.35fr) minmax(330px,1fr)` idi. Satır içi
+   stil medya sorgusu alamadığı için bu iki sütun HER genişlikte zorlanıyordu:
+   375px'lik bir telefonda ızgara 750px hesaplıyor, üstteki overflow:hidden de
+   taşmayı gizliyordu — yani havuz paneli (oyuncuyu seçtiğin yer) tamamen ekran
+   dışında kalıyor, oyun telefonda oynanamıyordu.
+
+   Telefonda tek sütun, tablette saha+havuz, geniş ekranda üçüncü sütunda
+   leaderboard. */
+.fb-hud { display: grid; gap: 12px; grid-template-columns: 1fr; align-items: stretch; }
+.fb-hud > .fb-board { display: none; }
+
+@media (min-width: 900px) {
+  .fb-hud { grid-template-columns: minmax(380px, 1.35fr) minmax(300px, 1fr); }
+}
+/* Leaderboard ancak saha ve havuzu daraltmadan sığdığı genişlikte açılıyor —
+   draftın kendisi kovalanan sayıdan önce gelir. */
+@media (min-width: 1460px) {
+  .fb-hud { grid-template-columns: minmax(400px, 1.25fr) minmax(300px, .95fr) minmax(270px, .85fr); }
+  .fb-hud > .fb-board { display: block; position: relative; min-height: 0; }
+}
+
+/* Oyun ekranı: masaüstünde ekrana sığan sabit yükseklikli "kokpit" (saha
+   büyüsün diye), telefonda normal akış + dikey kaydırma. Kokpit modunu dar
+   ekranda da uygulamak, sığmayan içeriği kırpmak demekti. */
+.fb-play { position: relative; height: 100%; overflow-y: auto; }
+@media (min-width: 900px) {
+  .fb-play.cockpit { display: flex; flex-direction: column; overflow: hidden; }
+}
