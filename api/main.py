@@ -5025,15 +5025,32 @@ def get_refresh_status(user=Depends(require_admin)):
 # ─── Frontend statik dosyaları (build sonrası) ────────────────────────────────
 
 frontend_dist = ROOT / "frontend" / "dist"
+
+
+def _spa_file(dist: Path, full_path: str) -> Path:
+    """İstenen yol dist'in İÇİNDE gerçek bir dosyaysa onu, değilse index.html.
+
+    Önceden `dist / full_path` doğrudan sunuluyordu: "/..%2F..%2Fdata%2Fapp.db"
+    (uvicorn %2F'yi çözer) ya da "//etc/hostname" (mutlak yol birleştirmede
+    dist'i siler) ile sunucudaki HER dosya okunabiliyordu — kullanıcı DB'si
+    dahil. Yol çözülüp (symlink ve .. dahil) dist altında kaldığı doğrulanıyor.
+    """
+    index = dist / "index.html"
+    try:
+        root = dist.resolve()
+        candidate = (dist / full_path.lstrip("/")).resolve()
+    except (OSError, ValueError):
+        return index
+    if candidate != root and candidate.is_relative_to(root) and candidate.is_file():
+        return candidate
+    return index
+
+
 if frontend_dist.exists():
     # Catch-all: React Router path'lerini index.html'e yönlendir (SPA routing)
     @app.get("/{full_path:path}", include_in_schema=False)
     async def spa_fallback(full_path: str):
-        index = frontend_dist / "index.html"
-        file_path = frontend_dist / full_path
-        if file_path.exists() and file_path.is_file():
-            return FileResponse(str(file_path))
-        return FileResponse(str(index))
+        return FileResponse(str(_spa_file(frontend_dist, full_path)))
 
     # assets/ AYRICA kontrol ediliyor: `vite build` işe başlarken dist'i
     # boşaltıyor, o aralıkta API açılırsa StaticFiles "directory does not
