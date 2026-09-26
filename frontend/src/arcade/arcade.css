@@ -387,8 +387,10 @@
 .arc-tile[aria-checked="true"] { border: 1.5px solid var(--arc-gold); background: rgba(255, 177, 27, .12); color: var(--arc-gold); }
 .arc-tile span { font: 600 12px/1 var(--font-logo); color: var(--arc-muted); }
 .arc-record { font: 700 48px/1 var(--font-logo); }
-.arc-progress { height: 6px; border-radius: 3px; background: #222428; overflow: hidden; }
-.arc-progress i { display: block; height: 6px; border-radius: 3px; background: var(--arc-gold); transition: width .1s linear; }
+.arc-progress { display: block; height: 6px; border-radius: 3px; background: #222428; overflow: hidden; }
+/* width değil transform: ilerleme her maçta değişiyor, layout'u yeniden hesaplatmasın.
+   Köşeleri kapsayıcı kırpıyor (scaleX yuvarlaklığı ezmesin diye i düz). */
+.arc-progress i { display: block; height: 6px; background: var(--arc-gold); transform-origin: left center; transition: transform .1s linear; }
 .arc-game { display: flex; align-items: center; gap: 12px; padding: 9px 12px; border-radius: 12px; background: #121212; }
 .arc-wl { flex: none; width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; font: 700 12px/1 var(--font-logo); }
 .arc-wl.w { background: rgba(63, 176, 140, .16); color: var(--arc-green); }

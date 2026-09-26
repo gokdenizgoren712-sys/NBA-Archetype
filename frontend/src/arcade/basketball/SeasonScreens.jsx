@@ -150,7 +150,7 @@ function LeagueProgress({ progress }) {
   return (
     <div role="status" className="arc-stack" style={{ gap: 8, width: "100%" }}>
       <div className="arc-cta" style={{ background: "#2a2210", color: "var(--arc-gold)" }}>Building the league · {built} / {total}</div>
-      <span className="arc-progress"><i style={{ width: `${Math.round((built / total) * 100)}%` }} /></span>
+      <span className="arc-progress"><i style={{ transform: `scaleX(${total ? Math.min(1, built / total) : 0})` }} /></span>
     </div>
   );
 }
@@ -323,7 +323,7 @@ export function SeasonScreen({ season, era, onBack, onLeaderboard }) {
                 </div>
                 <span className="arc-small arc-num" style={{ fontFamily: "var(--font-logo)", fontWeight: 700, letterSpacing: ".08em" }}>GAME {season.revealGames} / {n}</span>
               </div>
-              <span className="arc-progress"><i style={{ width: `${(season.revealGames / Math.max(1, n)) * 100}%` }} /></span>
+              <span className="arc-progress"><i style={{ transform: `scaleX(${Math.min(1, season.revealGames / Math.max(1, n))})` }} /></span>
               {rh && season.shownReal.length > 0 && <span className="arc-small">Real {sched?.team} at this point: <b className="arc-num" style={{ color: "var(--arc-text-2)" }}>{season.shownRealWins}–{season.shownRealLosses}</b></span>}
               {season.revealGames >= n && !r.madePlayoffs && <span className="arc-small arc-err">Missed the playoffs — needed {Math.ceil(n / 2)} wins.</span>}
             </section>
