@@ -16,7 +16,7 @@
  */
 import { useEffect, useRef } from "react";
 import { Link, NavLink } from "react-router-dom";
-import { Activity as ActivityIcon, CircleUserRound, Compass, Home, Plus, Search, Shield } from "lucide-react";
+import { Activity as ActivityIcon, CircleUserRound, Compass, Home, LogIn, Menu, Plus, Search, Shield, SlidersHorizontal } from "lucide-react";
 import { RankItMark } from "../redesign/BrandMark";
 import { collectionPercent, ringFill } from "../redesign/huntSummary";
 import { RAMP } from "../redesign/heat";
@@ -66,7 +66,8 @@ function shade(hex, factor = 0.45) {
 
 /* ── Başlık ───────────────────────────────────────────────────────────────── */
 
-export function WebHeader({ user, isLoggedIn, hideScores, onToggleScores, nights, query, onQuery, onSearch, bell = null }) {
+export function WebHeader({ user, isLoggedIn, hideScores, onToggleScores, nights, query, onQuery, onSearch, bell = null,
+  searching = false, menuKind = "rail", onMenu }) {
   const field = useRef(null);
 
   // `/` aramaya odaklar (§21) — yazı yazılan bir yerde değilken.
@@ -86,7 +87,7 @@ export function WebHeader({ user, isLoggedIn, hideScores, onToggleScores, nights
   const active = nights > 0;
   const progress = Math.min(1, (nights || 0) / 7);
   return (
-    <header className="riw-top">
+    <header className={`riw-top${searching ? " is-searching" : ""}`}>
       <Link to="/rankit" className="riw-lockup" aria-label="RankIt home">
         <RankItMark size={26} />
         <span><strong>RANK<span>IT</span></strong><small>BY PRIMARY ARCH</small></span>
@@ -118,6 +119,15 @@ export function WebHeader({ user, isLoggedIn, hideScores, onToggleScores, nights
       </form>
 
       <div className="riw-top-end">
+        {/* §25 ≤820: telefonun başlığı gibi — arama kendi ekranı (simge), ray
+            menüde (Discover'da süzgeçler). Genişte ikisi de gizli. */}
+        <Link to="/rankit/search" className="riw-top-icon riw-search-btn" aria-label="Search"><Search size={18} aria-hidden="true" /></Link>
+        {onMenu && (
+          <button type="button" className="riw-top-icon riw-menu-btn" aria-haspopup="dialog" onClick={onMenu}
+            aria-label={menuKind === "filters" ? "Filters" : "Your RankIt — standing, the Hunt, clubs"}>
+            {menuKind === "filters" ? <SlidersHorizontal size={18} aria-hidden="true" /> : <Menu size={18} aria-hidden="true" />}
+          </button>
+        )}
         <button type="button" className={`riw-shield${hideScores ? " on" : ""}`} aria-pressed={hideScores}
           aria-label="Spoiler shield" title={hideScores ? "Scores, heat and reviews hidden" : "Hide scores"}
           onClick={onToggleScores}>
@@ -149,7 +159,7 @@ function RailLabel({ children }) {
   return <h2 className="riw-rail-label">{children}</h2>;
 }
 
-export function WebRail({ isLoggedIn, rank, hunt, clubs, onOpenEntity }) {
+export function WebRail({ isLoggedIn, rank, hunt, clubs, onOpenEntity, sheet = false }) {
   const tier = rank?.rank;
   const collections = (hunt?.collections || []).filter(c => c.status !== "not_open" && Number(c.total) > 0);
   // Açık olanlar önce (kapanmaya en yakın), bitenler sonra.
@@ -161,13 +171,13 @@ export function WebRail({ isLoggedIn, rank, hunt, clubs, onOpenEntity }) {
   const moreClubs = Math.max(0, (clubs || []).length - clubRows.length);
 
   return (
-    <aside className="riw-rail" aria-label="Your RankIt">
+    <aside className={`riw-rail${sheet ? " is-sheet" : ""}`} aria-label="Your RankIt">
       {isLoggedIn ? (
         <>
           <section>
             <RailLabel>YOUR STANDING</RailLabel>
             {tier ? (
-              <Link to="/rankit/profile" className="riw-standing"
+              <Link to="/rankit/profile" className="riw-standing" title={`${tier.name} · ${tier.points.toLocaleString()} pts`}
                 aria-label={`Your standing: ${tier.name}, ${tier.points.toLocaleString()} points`}>
                 <span className="riw-standing-emblem" aria-hidden="true"><b>{String(tier.tier).padStart(2, "0")}</b></span>
                 <span className="riw-standing-copy">
@@ -184,12 +194,16 @@ export function WebRail({ isLoggedIn, rank, hunt, clubs, onOpenEntity }) {
             {hunt && !huntRows.length && <p className="riw-rail-note">Follow a club to start a season collection.</p>}
             {!!huntRows.length && (
               <ul className="riw-rail-list">
+                {/* Aşama 17'den beri koleksiyonun kendi ızgarası var (12c). */}
                 {huntRows.map((c) => (
-                  <li key={c.id} className={`riw-hunt-row${c === huntRows[0] ? " is-lead" : ""}`}
-                    aria-label={`${huntTitle(c)}, ${c.collected} of ${c.total} collected`}>
-                    <span className="riw-hunt-ring" aria-hidden="true" style={{ "--fill": ringFill(collectionPercent(c)) }} />
-                    <span className="riw-rail-name">{huntTitle(c)}</span>
-                    <small aria-hidden="true">{c.collected}/{c.total}</small>
+                  <li key={c.id}>
+                    <Link to={`/rankit/hunt/${c.id}`} className={`riw-hunt-row${c === huntRows[0] ? " is-lead" : ""}`}
+                      title={`${huntTitle(c)} · ${c.collected}/${c.total}`}
+                      aria-label={`${huntTitle(c)}, ${c.collected} of ${c.total} collected`}>
+                      <span className="riw-hunt-ring" aria-hidden="true" style={{ "--fill": ringFill(collectionPercent(c)) }} />
+                      <span className="riw-rail-name">{huntTitle(c)}</span>
+                      <small aria-hidden="true">{c.collected}/{c.total}</small>
+                    </Link>
                   </li>
                 ))}
               </ul>
@@ -205,7 +219,7 @@ export function WebRail({ isLoggedIn, rank, hunt, clubs, onOpenEntity }) {
                 {/* §23 / 12a: kulüp bir hedef değil bir bakış — Inspector'da açılır. */}
                 {clubRows.map((club) => (
                   <li key={club.id}>
-                    <button type="button" className="riw-club-row" onClick={() => onOpenEntity("team", club.id)}>
+                    <button type="button" className="riw-club-row" title={club.name} onClick={() => onOpenEntity("team", club.id)}>
                       <span className="riw-club-mark" aria-hidden="true"
                         style={{ background: `linear-gradient(135deg,${club.color || "#3a3f47"},${shade(club.color)})` }} />
                       <span className="riw-rail-name">{club.name}</span>
@@ -221,14 +235,14 @@ export function WebRail({ isLoggedIn, rank, hunt, clubs, onOpenEntity }) {
         <section className="riw-rail-guest">
           <RailLabel>YOUR RANKIT</RailLabel>
           <p>Sign in with your Primary Arch account to keep a standing, chase collections and follow clubs.</p>
-          <Link to="/login?next=/rankit" className="riw-rail-cta">Sign in</Link>
+          <Link to="/login?next=/rankit" className="riw-rail-cta" title="Sign in"><LogIn size={16} aria-hidden="true" /><span>Sign in</span></Link>
         </section>
       )}
 
       {/* Sitenin üst barı RankIt'in içinde çekiliyor (7a'da yok); Primary
           Arch'a dönüş yolu burada kalıyor. */}
       <div className="riw-rail-foot">
-        <Link to="/" className="riw-home-link">Primary Arch</Link>
+        <Link to="/" className="riw-home-link" title="Primary Arch"><Home size={16} aria-hidden="true" /><span>Primary Arch</span></Link>
       </div>
     </aside>
   );

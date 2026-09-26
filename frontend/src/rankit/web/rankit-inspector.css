@@ -462,14 +462,11 @@
 .riw-club-primary { background: var(--ri-gold, #ffb11b); border: 0; color: #17120a; }
 
 @media (max-width: 1080px) {
-  /* Aşama 18'e kadar ara hâl: panel duvarın üstüne biner (ray zaten çekili). */
-  .riw.has-inspector { grid-template-columns: minmax(0, 1fr); }
-  .riw-insp-dock { position: fixed; top: var(--riw-top); right: 0; bottom: 0; z-index: 40; width: min(468px, 100%); }
+  /* Panel 820'ye kadar yerleşik kalır; 820'de alt sayfa (rankit-responsive.css). */
   .riw-moment-stage { flex-direction: column; gap: 32px; padding: 72px 16px 32px; }
   .riw-moment-card, .riw-moment-copy { width: min(452px, 100%); }
 }
 @media (max-width: 820px) {
-  .riw-insp-dock { width: 100%; }
   .riw-quick-foot { flex-wrap: wrap; }
 }
 @media (prefers-reduced-motion: reduce) {
