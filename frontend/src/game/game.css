@@ -968,3 +968,18 @@
 @media (min-width: 900px) {
   .fb-play.cockpit { display: flex; flex-direction: column; overflow: hidden; }
 }
+
+/* ── Yedek kulübesi şeridi (futbol) ──────────────────────────────────────────
+   7 yedek 4 sütunlu bir ızgarada 4+3 diziliyordu: ikinci satır sola yaslanıp
+   sağda tek bir boşluk bırakıyor, kadro eksikmiş gibi duruyordu.
+
+   Geniş ekranda gerçek bir yedek kulübesi gibi TEK SIRA yedi. Dar ekranda yedi
+   sütun 41px'e düşüp soyadları okunmaz hâle geldiği için dörde iniyor — ama
+   artan satır ortalanıyor, yani boşluk sağda bir eksik gibi değil, iki yanda
+   simetrik duruyor. Genişlikler her satırda aynı (flex-grow yok). */
+.fb-bench { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; }
+.fb-bench > * { flex: 0 0 calc((100% - 3 * 4px) / 4); min-width: 0; }
+
+@media (min-width: 1100px) {
+  .fb-bench > * { flex: 0 0 calc((100% - 6 * 4px) / 7); }
+}

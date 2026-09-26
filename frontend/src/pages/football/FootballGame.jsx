@@ -519,7 +519,7 @@ export default function FootballGame() {
             {/* Yedek kulübesi */}
             <div className="g-bench-strip" style={{ display: "block" }}>
               <div className="g-label mb-2">Bench · {BENCH_COUNT}</div>
-              <div className="grid gap-1" style={{ gridTemplateColumns: "repeat(4,1fr)" }}>
+              <div className="fb-bench">
                 {slots.filter(s => s.bench).map(s => {
                   const p = squad[s.id];
                   return (
