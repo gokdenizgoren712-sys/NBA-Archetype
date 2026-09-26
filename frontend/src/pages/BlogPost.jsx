@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
+import DOMPurify from "dompurify";
 import { SEO } from "../hooks/useSEO";
 
 export default function BlogPost() {
@@ -89,10 +90,12 @@ export default function BlogPost() {
           )}
         </p>
 
-        {/* Article body — TipTap HTML output */}
+        {/* Article body — TipTap HTML output. Sunucu da temizliyor (nh3); burada
+            ikinci kat: HTML'e script/olay özniteliği sızarsa okuyanın oturumu
+            (localStorage'daki token) çalınırdı. */}
         <div
           className="prose-nba"
-          dangerouslySetInnerHTML={{ __html: article.content }}
+          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(article.content || "", { USE_PROFILES: { html: true } }) }}
           style={{ color: "var(--text-primary)" }}
         />
 

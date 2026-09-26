@@ -6,7 +6,11 @@ yerel gelistirmede ise seed_rankit() deterministik bir demo katalogu kurar.
 """
 from __future__ import annotations
 
+import html
+import logging
 import os
+import threading
+import time
 import re
 from datetime import date, datetime, timedelta, timezone
 from typing import Literal, Optional
@@ -14,12 +18,13 @@ from typing import Literal, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, Field
 
-from .auth import get_optional_user, require_admin, _decode, _is_banned
+from .auth import get_optional_user, require_admin, verify_token
 from .db import get_conn
 from . import rankit_rank
 from . import rankit_notify
 from . import rankit_hunt
 from .rankit_live_sync import clean_minute
+from . import moderation_words
 
 router = APIRouter(prefix="/api/rankit", tags=["RankIt"])
 IS_PROD = bool(os.environ.get("RAILWAY_ENVIRONMENT") or os.environ.get("RENDER") == "true" or os.environ.get("IS_PROD") == "true")
@@ -321,6 +326,9 @@ class ListItemIn(BaseModel):
 
 
 WATCHALONG_CONNECTIONS: dict[tuple[int, str], list[WebSocket]] = {}
+# Baglantinin sahibi: mesaj, gonderenle alici arasinda engel varsa o aliciya
+# gonderilmez (B3). Anahtar soket nesnesinin kendisi.
+WATCHALONG_UIDS: dict[WebSocket, int] = {}
 # Companion odasinda SU AN kim var: mac -> {kullanici: acik baglanti sayisi}.
 # 15d "312 in the room" bundan; ayni kullanicinin iki sekmesi bir kisidir.
 # Surec ici bellek: tek surec (Railway) icin dogru; cok surecte her surec
@@ -351,6 +359,65 @@ def _actor_id(user, conn) -> int:
     if not IS_PROD:
         return _demo_user_id(conn)
     raise HTTPException(status_code=401, detail="Sign in to use RankIt")
+
+
+# ── Moderasyon filtreleri (docs/RANKIT_STORE_BLOCKERS_PLAN.md B3) ───────────
+# Kullanici icerigi gosteren HER sorgu bu ikisinden gecer. Gizlenen icerik
+# (sikayet esigi ya da admin) herkesten kalkar; engel IKI YONLU: ben onu ya
+# da o beni engellediyse birbirimizin icerigini ve profilini gormeyiz.
+# Toplam sayilar (isi ortalamasi, puan sayisi) BILINCLI olarak etkilenmez:
+# engel kisiyi ve icerigi gizler, puan istatistigi ortak kalir.
+
+def _not_hidden_sql(alias: str) -> str:
+    return f"{alias}.hidden_at IS NULL"
+
+
+def _not_blocked_sql(user_col: str, viewer: Optional[int]) -> str:
+    """viewer SQL'e tamsayi olarak gomulur (int() ile): ? yerlesimi her
+    cagirandaki parametre sirasini degistirirdi. Misafirde filtre yok."""
+    if not viewer:
+        return "1=1"
+    v = int(viewer)
+    return f"""NOT EXISTS(SELECT 1 FROM rankit_blocks bl WHERE
+        (bl.blocker_id={v} AND bl.blocked_id={user_col})
+        OR (bl.blocker_id={user_col} AND bl.blocked_id={v}))"""
+
+
+def _blocked_between(conn, a: Optional[int], b: Optional[int]) -> bool:
+    if not a or not b or a == b:
+        return False
+    return bool(conn.execute(
+        """SELECT 1 FROM rankit_blocks WHERE (blocker_id=? AND blocked_id=?)
+           OR (blocker_id=? AND blocked_id=?)""", (a, b, b, a)).fetchone())
+
+
+# B4: kullanici basina dakikada en cok 5 yeni inceleme / 5 yanit. Sayac
+# veritabaninda (zaman damgali satirlar): surec yeniden baslasa da ya da
+# ikinci bir surec olsa da ayni sinir.
+UGC_PER_MINUTE = 5
+
+
+def _check_ugc_text(text: Optional[str], *, allow_links: bool = True) -> None:
+    why = moderation_words.problem(text, allow_links=allow_links)
+    if why:
+        raise HTTPException(422, why)
+
+
+def _check_ugc_rate(conn, count_sql: str, uid: int) -> None:
+    if conn.execute(count_sql, (uid,)).fetchone()[0] >= UGC_PER_MINUTE:
+        raise HTTPException(429, "You're posting too fast — wait a minute and try again.",
+                            headers={"Retry-After": "60"})
+
+
+def _mask_hidden_review(item: dict, uid: Optional[int]) -> dict:
+    """Gizlenen incelemenin METNI yaniti terk etmez (puani kalir). Yazar
+    kendi metnini gorur; `review_hidden` ona sebebini soyler."""
+    hidden = bool(item.pop("hidden_at", None))
+    if hidden and item.get("user_id") != uid:
+        item["review"] = ""
+        hidden = False
+    item["review_hidden"] = hidden
+    return item
 
 
 def seed_rankit() -> None:
@@ -530,9 +597,11 @@ def _match_dict(conn, row, uid: Optional[int] = None) -> dict:
     # incelemeleri gosterir (rankit_match_reviews). Gizli/takipci incelemeleri
     # saymak, linkin acmadigi bir sayi vaat ediyordu.
     # Banli hesabin incelemesi 5c'de listelenmiyor; sayi da onu vaat etmez.
-    review_count = conn.execute("""SELECT COUNT(*) n FROM rankit_diary_entries e
+    # Gizlenen ve engelli iliskideki incelemeler de (5c ile ayni suzgec).
+    review_count = conn.execute(f"""SELECT COUNT(*) n FROM rankit_diary_entries e
         JOIN users u ON u.id=e.user_id
-        WHERE e.match_id=? AND e.visibility='public' AND e.review<>'' AND u.is_banned=0""", (mid,)).fetchone()["n"]
+        WHERE e.match_id=? AND e.visibility='public' AND e.review<>'' AND u.is_banned=0
+          AND {_not_hidden_sql('e')} AND {_not_blocked_sql('e.user_id', uid)}""", (mid,)).fetchone()["n"]
     # Classic yuzdesi PUANLAYANLAR uzerinden: yildizsiz izleme kaydi bir hukum
     # degil, paydayi sulandirmamali (sahibin karari, 2026-09-21). n boylece
     # rating_count ile ayni kume.
@@ -772,7 +841,7 @@ def rankit_home(
                 if card["status"] in ("upcoming", "live"):
                     card["broadcast"] = _broadcasts_for(conn, card["id"], wanted)
         # Akis bir OZET: spoiler isaretli metin burada tasinmaz (bkz. _mask_spoiler_text).
-        activity_rows = conn.execute("""SELECT e.id,e.review,e.spoiler,e.rating,e.created_at,u.username,u.id user_id,m.id match_id,
+        activity_rows = conn.execute(f"""SELECT e.id,e.review,e.spoiler,e.rating,e.created_at,u.username,u.id user_id,m.id match_id,
             EXISTS(SELECT 1 FROM rankit_diary_entries v WHERE v.user_id=? AND v.match_id=e.match_id
                    AND v.rating IS NOT NULL) viewer_rated,
             h.short_name home_short,h.name home_name,a.short_name away_short,a.name away_name
@@ -780,6 +849,7 @@ def rankit_home(
             JOIN rankit_matches m ON m.id=e.match_id JOIN rankit_teams h ON h.id=m.home_team_id
             JOIN rankit_teams a ON a.id=m.away_team_id
             WHERE e.visibility='public' AND e.review<>'' AND u.is_banned=0
+              AND {_not_hidden_sql('e')} AND {_not_blocked_sql('e.user_id', uid)}
             ORDER BY e.id DESC LIMIT 8""", (uid or -1,)).fetchall()
         return {"matches": cards, "activity": [_mask_spoiler_text(dict(r), uid) for r in activity_rows],
                 "day": {"start": day_from, "end": day_to, "matches": day_matches}}
@@ -915,7 +985,8 @@ def rankit_catalog(
                           CASE WHEN m.status IN ('live','upcoming') THEN julianday(m.starts_at) END ASC,
                           julianday(m.starts_at) DESC, m.id""",
             "reviewed": """ ORDER BY (SELECT COUNT(*) FROM rankit_diary_entries e JOIN users u ON u.id=e.user_id
-                          WHERE e.match_id=m.id AND e.visibility='public' AND e.review<>'' AND u.is_banned=0) DESC,
+                          WHERE e.match_id=m.id AND e.visibility='public' AND e.review<>'' AND u.is_banned=0
+                          AND e.hidden_at IS NULL) DESC,
                           m.starts_at DESC, m.id""",
         }[sort]
         rows = conn.execute(MATCH_SELECT + base + order + " LIMIT ? OFFSET ?", (*args, limit, offset)).fetchall()
@@ -1700,13 +1771,14 @@ def rankit_match(match_id: int, user=Depends(get_optional_user)):
         else:
             result["events"] = None
             result["events_checked"] = False
-        result["reviews"] = [dict(r) for r in conn.execute("""SELECT e.id,e.rating,e.review,e.watched_date,e.classic,e.spoiler,u.username,
+        result["reviews"] = [dict(r) for r in conn.execute(f"""SELECT e.id,e.user_id,e.rating,e.review,e.watched_date,e.classic,e.spoiler,u.username,
             (SELECT COUNT(*) FROM rankit_review_likes l WHERE l.entry_id=e.id) likes,
             EXISTS(SELECT 1 FROM rankit_review_likes l WHERE l.entry_id=e.id AND l.user_id=?) liked,
             (SELECT COUNT(*) FROM rankit_review_comments c JOIN users cu ON cu.id=c.user_id
-             WHERE c.entry_id=e.id AND cu.is_banned=0) comments
+             WHERE c.entry_id=e.id AND cu.is_banned=0 AND c.hidden_at IS NULL) comments
             FROM rankit_diary_entries e JOIN users u ON u.id=e.user_id
             WHERE e.match_id=? AND e.visibility='public' AND e.review<>'' AND u.is_banned=0
+              AND {_not_hidden_sql('e')} AND {_not_blocked_sql('e.user_id', uid)}
             ORDER BY likes DESC,e.id DESC""", (uid or -1, match_id)).fetchall()]
         return result
 
@@ -1779,13 +1851,16 @@ def rankit_search(q: str = Query(default="", max_length=80), kind: str = "All",
             LEFT JOIN rankit_team_logos l ON l.team_id=t.id
             WHERE t.name LIKE ? ESCAPE '\\' OR t.short_name LIKE ? ESCAPE '\\' LIMIT 21""", (uid, term, term)).fetchall()] if kind in ("All", "Teams") else []
         # Banli hesap aramada cikmaz (/people ile ayni kural).
-        members = [dict(r) for r in conn.execute("SELECT id,username FROM users WHERE username LIKE ? ESCAPE '\\' AND username NOT LIKE 'rankit_demo' AND is_banned=0 LIMIT 21", (term,)).fetchall()] if kind in ("All", "Members") else []
+        members = [dict(r) for r in conn.execute(f"""SELECT id,username FROM users WHERE username LIKE ? ESCAPE '\\'
+            AND username NOT LIKE 'rankit_demo' AND is_banned=0 AND {_not_blocked_sql('users.id', uid)}
+            LIMIT 21""", (term,)).fetchall()] if kind in ("All", "Members") else []
         # 3e koleksiyon satırı: halka "7 of 12", altyazı da EŞLEŞME SEBEBİ
         # ("includes Arsenal"). Sebebi yazabilmek için listeler artık yalnızca
         # başlıkla değil, İÇERDİKLERİ kulüple de eşleşiyor — "arsenal" yazan
         # biri "Every London Derby"yi başlıktan asla bulamazdı.
-        lists_where = """WHERE l.visibility='public'
+        lists_where = f"""WHERE l.visibility='public'
               AND NOT EXISTS(SELECT 1 FROM users bu WHERE bu.id=l.user_id AND bu.is_banned=1)
+              AND {_not_hidden_sql('l')} AND {_not_blocked_sql('l.user_id', uid)}
               AND (l.title LIKE ? ESCAPE '\\' OR EXISTS(
               SELECT 1 FROM rankit_list_items i JOIN rankit_matches m ON m.id=i.match_id
               JOIN rankit_teams t ON t.id IN (m.home_team_id, m.away_team_id)
@@ -1793,7 +1868,7 @@ def rankit_search(q: str = Query(default="", max_length=80), kind: str = "All",
         lists_total = conn.execute("SELECT COUNT(*) FROM rankit_lists l " + lists_where,
                                    (term, term)).fetchone()[0] if kind in ("All", "Lists") else 0
         # 11c liste satiri: "Every London Derby · 12 matches · by @selin".
-        lists = [dict(r) for r in conn.execute("""SELECT l.id,l.title,l.description,l.ranked,
+        lists = [dict(r) for r in conn.execute(f"""SELECT l.id,l.title,l.description,l.ranked,
             (SELECT username FROM users WHERE id=l.user_id) username,
             (SELECT COUNT(*) FROM rankit_list_items i WHERE i.list_id=l.id) total,
             (SELECT COUNT(DISTINCT i.match_id) FROM rankit_list_items i
@@ -1805,6 +1880,7 @@ def rankit_search(q: str = Query(default="", max_length=80), kind: str = "All",
             FROM rankit_lists l
             WHERE l.visibility='public'
               AND NOT EXISTS(SELECT 1 FROM users bu WHERE bu.id=l.user_id AND bu.is_banned=1)
+              AND {_not_hidden_sql('l')} AND {_not_blocked_sql('l.user_id', uid)}
               AND (l.title LIKE ? ESCAPE '\\' OR EXISTS(
               SELECT 1 FROM rankit_list_items i JOIN rankit_matches m ON m.id=i.match_id
               JOIN rankit_teams t ON t.id IN (m.home_team_id, m.away_team_id)
@@ -1854,8 +1930,9 @@ def rankit_search(q: str = Query(default="", max_length=80), kind: str = "All",
             counts["players"] = conn.execute("SELECT COUNT(*) FROM rankit_players WHERE name LIKE ? ESCAPE '\\'",
                                              (term,)).fetchone()[0]
         if kind in ("All", "Members"):
-            counts["members"] = conn.execute("""SELECT COUNT(*) FROM users WHERE username LIKE ? ESCAPE '\\'
-                AND username NOT LIKE 'rankit_demo' AND is_banned=0""", (term,)).fetchone()[0]
+            counts["members"] = conn.execute(f"""SELECT COUNT(*) FROM users WHERE username LIKE ? ESCAPE '\\'
+                AND username NOT LIKE 'rankit_demo' AND is_banned=0
+                AND {_not_blocked_sql('users.id', uid)}""", (term,)).fetchone()[0]
         if kind in ("All", "Lists"):
             counts["lists"] = lists_total
         if kind in ("All", "Collections"):
@@ -2222,6 +2299,19 @@ def rankit_member_detail(member_id: int, user=Depends(get_optional_user)):
         if not member:
             raise HTTPException(404, "Member not found")
         uid = int(user["sub"]) if user else (None if IS_PROD else _demo_user_id(conn))
+        # Engel: beni engelleyenin profili yok (banli hesap gibi 404). Benim
+        # engellediğim kisinin profili yalniz "You blocked @x · Unblock" icin
+        # acilir -- icerigi, istatistigi, rafi gelmez.
+        if uid and uid != member_id:
+            if conn.execute("SELECT 1 FROM rankit_blocks WHERE blocker_id=? AND blocked_id=?",
+                            (member_id, uid)).fetchone():
+                raise HTTPException(404, "Member not found")
+            if conn.execute("SELECT 1 FROM rankit_blocks WHERE blocker_id=? AND blocked_id=?",
+                            (uid, member_id)).fetchone():
+                return {"member": dict(member), "blocked": True, "stats": None,
+                        "following": False, "follows_you": False,
+                        "entries": [], "entries_has_more": False, "rank": None,
+                        "overlap": None, "shelf": [], "is_self": False}
         seen = _visible_entries_sql()
         vis = (member_id, uid or -1, uid or -1, member_id)
         stats = conn.execute(f"""SELECT COUNT(*) diary_count,COUNT(DISTINCT match_id) matches,
@@ -2230,7 +2320,7 @@ def rankit_member_detail(member_id: int, user=Depends(get_optional_user)):
                 SELECT MAX(e.id) FROM rankit_diary_entries e
                 WHERE {seen} AND e.rating IS NOT NULL GROUP BY e.match_id)) avg_rating
             FROM rankit_diary_entries e WHERE {seen}""", (*vis, *vis)).fetchone()
-        entries = [_mask_spoiler_text(dict(r), uid) for r in conn.execute(f"""SELECT e.id,e.user_id,e.match_id,e.rating,e.review,e.spoiler,
+        entries = [_mask_hidden_review(_mask_spoiler_text(dict(r), uid), uid) for r in conn.execute(f"""SELECT e.id,e.user_id,e.match_id,e.rating,e.review,e.spoiler,e.hidden_at,
             EXISTS(SELECT 1 FROM rankit_diary_entries v WHERE v.user_id=? AND v.match_id=e.match_id
                    AND v.rating IS NOT NULL) viewer_rated,
             e.watched_date,e.classic,
@@ -2296,7 +2386,8 @@ def rankit_member_detail(member_id: int, user=Depends(get_optional_user)):
                               "their_rating": r["rating"], "their_classic": bool(r["classic"]),
                               "their_skin": r["skin"] or "default"})
 
-        return {"member": dict(member), "stats": dict(stats), "following": followed, "follows_you": follows_you,
+        return {"member": dict(member), "blocked": False, "stats": dict(stats),
+                "following": followed, "follows_you": follows_you,
                 "entries": entries, "entries_has_more": entries_has_more,
                 "rank": rank, "overlap": overlap, "shelf": shelf,
                 "is_self": bool(uid and uid == member_id)}
@@ -2333,7 +2424,9 @@ def rankit_people(kind: str = "following", q: str = "", offset: int = 0,
                     AND f.target_type='user' AND f.target_id=u.id) following,
                 EXISTS(SELECT 1 FROM rankit_follows f WHERE f.user_id=u.id
                     AND f.target_type='user' AND f.target_id=:uid) follows_you
-            FROM users u WHERE u.id<>:uid AND u.is_banned=0),
+            FROM users u WHERE u.id<>:uid AND u.is_banned=0
+                AND NOT EXISTS(SELECT 1 FROM rankit_blocks bl WHERE (bl.blocker_id=:uid AND bl.blocked_id=u.id)
+                               OR (bl.blocker_id=u.id AND bl.blocked_id=:uid))),
         candidates AS (SELECT * FROM related WHERE
             ((:kind='following' AND following) OR (:kind='followers' AND follows_you))
             AND instr(lower(username),:q)>0)
@@ -2398,6 +2491,8 @@ def rankit_discover_people(q: str = "", offset: int = 0, limit: int = 20,
                     AND f.target_type='user' AND f.target_id=:uid) follows_you
             FROM users u WHERE u.id<>:uid AND u.is_banned=0
                 AND u.username NOT LIKE 'rankit_demo%'
+                AND NOT EXISTS(SELECT 1 FROM rankit_blocks bl WHERE (bl.blocker_id=:uid AND bl.blocked_id=u.id)
+                               OR (bl.blocker_id=u.id AND bl.blocked_id=:uid))
                 AND (:q='' OR instr(lower(u.username),:q)>0)),
         visible AS (
             SELECT e.* FROM rankit_diary_entries e JOIN candidates c ON c.id=e.user_id
@@ -2450,6 +2545,10 @@ def rankit_set_user_follow(member_id: int, body: UserFollowIn, user=Depends(get_
         conn.execute("BEGIN IMMEDIATE")
         if not conn.execute("SELECT 1 FROM users WHERE id=? AND is_banned=0", (member_id,)).fetchone():
             raise HTTPException(404, "Member not found")
+        # Engelli iliskide takip yok (iki yon de): engel takipleri siler,
+        # takip de engeli dolanamaz.
+        if body.following and _blocked_between(conn, uid, member_id):
+            raise HTTPException(404, "Member not found")
         if body.following:
             added = conn.execute("INSERT OR IGNORE INTO rankit_follows(user_id,target_type,target_id) VALUES(?,'user',?)", (uid, member_id))
             if added.rowcount:
@@ -2479,6 +2578,8 @@ def rankit_shelf(member_id: Optional[int] = Query(default=None, gt=0),
             viewer = int(user["sub"]) if user else (None if IS_PROD else _demo_user_id(conn))
             owner = member_id
             if not conn.execute("SELECT 1 FROM users WHERE id=? AND is_banned=0", (owner,)).fetchone():
+                raise HTTPException(404, "Member not found")
+            if _blocked_between(conn, viewer, owner):
                 raise HTTPException(404, "Member not found")
         seen = _visible_entries_sql()
         vis = (owner, viewer or -1, viewer or -1, owner)
@@ -2528,7 +2629,7 @@ def rankit_diary(view: str = "watched", user=Depends(get_optional_user)):
             COALESCE((SELECT logo_url FROM rankit_team_logos WHERE team_id=a.id),a.crest_url) away_crest,
             (SELECT COUNT(*) FROM rankit_review_likes l WHERE l.entry_id=e.id) respect,
             (SELECT COUNT(*) FROM rankit_review_comments rc JOIN users ru ON ru.id=rc.user_id
-             WHERE rc.entry_id=e.id AND ru.is_banned=0) replies
+             WHERE rc.entry_id=e.id AND ru.is_banned=0 AND rc.hidden_at IS NULL) replies
             FROM rankit_diary_entries e JOIN rankit_matches m ON m.id=e.match_id
             JOIN rankit_competitions c ON c.id=m.competition_id JOIN rankit_teams h ON h.id=m.home_team_id
             JOIN rankit_teams a ON a.id=m.away_team_id WHERE e.user_id=? """ + only_reviews + """
@@ -2621,6 +2722,18 @@ def rankit_log(body: DiaryIn, user=Depends(get_optional_user)):
                     or not new_tags <= stored_tags
                     or (body.classic and not stored_classic)):
                 raise HTTPException(422, "Rate the match first")
+        # B4: yeni ya da degisen inceleme metni filtreden gecer. ILK KEZ
+        # yayimlanan inceleme dakikada 5 ile sinirli; ayni metni duzenlemek
+        # (yazarken otomatik kayit) sayilmaz.
+        new_text = body.review.strip() if body.review is not None else None
+        prior_text = (conn.execute("SELECT review FROM rankit_diary_entries WHERE id=?",
+                                   (existing["id"],)).fetchone()["review"] or "") if existing else ""
+        publishing = bool(new_text) and not prior_text
+        if new_text and new_text != prior_text:
+            _check_ugc_text(new_text)
+        if publishing:
+            _check_ugc_rate(conn, """SELECT COUNT(*) FROM rankit_diary_entries
+                WHERE user_id=? AND reviewed_at>datetime('now','-60 seconds')""", uid)
         # 2j: kilitli skin kazanilmadan, Gilt Classic olmayan kartta secilemez.
         if body.skin is not None and SKIN_RULES[body.skin] is not None:
             rule = SKIN_RULES[body.skin]
@@ -2680,6 +2793,8 @@ def rankit_log(body: DiaryIn, user=Depends(get_optional_user)):
             if rated_at is not None:
                 conn.execute("UPDATE rankit_diary_entries SET created_at=? WHERE id=?",
                              (rated_at.strftime("%Y-%m-%d %H:%M:%S"), entry_id))
+        if publishing:
+            conn.execute("UPDATE rankit_diary_entries SET reviewed_at=datetime('now') WHERE id=?", (entry_id,))
         # Classic damgasi kalkarsa Gilt da kalkar: Gilt yalniz Classic kartta.
         conn.execute("UPDATE rankit_diary_entries SET skin=NULL WHERE id=? AND skin='gilt' AND classic=0",
                      (entry_id,))
@@ -2851,6 +2966,8 @@ def rankit_follow(body: FollowIn, user=Depends(get_optional_user)):
                     raise HTTPException(422, "You cannot follow yourself")
                 if not conn.execute("SELECT 1 FROM users WHERE id=? AND is_banned=0", (body.target_id,)).fetchone():
                     raise HTTPException(404, "Member not found")
+                if _blocked_between(conn, uid, int(body.target_id)):
+                    raise HTTPException(404, "Member not found")
             else:
                 table = {"team": "rankit_teams", "player": "rankit_players",
                          "competition": "rankit_competitions"}[body.target_type]
@@ -2865,11 +2982,16 @@ def rankit_follow(body: FollowIn, user=Depends(get_optional_user)):
 
 
 @router.get("/lists")
-def rankit_lists():
+def rankit_lists(user=Depends(get_optional_user)):
     with get_conn() as conn:
-        rows = conn.execute("""SELECT l.*,u.username,(SELECT COUNT(*) FROM rankit_list_items i WHERE i.list_id=l.id) match_count
+        uid = int(user["sub"]) if user else None
+        rows = conn.execute(f"""SELECT l.id,l.user_id,l.title,l.description,l.ranked,l.visibility,
+            l.created_at,l.updated_at,u.username,
+            (SELECT COUNT(*) FROM rankit_list_items i WHERE i.list_id=l.id) match_count
             FROM rankit_lists l JOIN users u ON u.id=l.user_id
-            WHERE l.visibility='public' AND u.is_banned=0 ORDER BY l.updated_at DESC""").fetchall()
+            WHERE l.visibility='public' AND u.is_banned=0
+              AND {_not_hidden_sql('l')} AND {_not_blocked_sql('l.user_id', uid)}
+            ORDER BY l.updated_at DESC""").fetchall()
         return {"lists": [dict(r) for r in rows]}
 
 
@@ -2877,6 +2999,8 @@ def rankit_lists():
 def create_rankit_list(body: ListIn, user=Depends(get_optional_user)):
     with get_conn() as conn:
         uid = _actor_id(user, conn)
+        _check_ugc_text(body.title)
+        _check_ugc_text(body.description)
         # Olmayan mac kimligi eskiden FK hatasiyla 500 donuyordu.
         _require_matches(conn, list(dict.fromkeys(body.match_ids)))
         cur = conn.execute("INSERT INTO rankit_lists(user_id,title,description,ranked,visibility) VALUES(?,?,?,?,?)", (uid, body.title.strip(), body.description.strip(), int(body.ranked), body.visibility))
@@ -2927,6 +3051,8 @@ def rankit_update_list(list_id: int, body: ListUpdateIn, user=Depends(get_option
     with get_conn() as conn:
         uid = _actor_id(user, conn)
         _require_list_owner(conn, list_id, uid)
+        _check_ugc_text(body.title)
+        _check_ugc_text(body.description)
         sets, args = [], []
         if body.title is not None:
             sets.append("title=?"); args.append(body.title.strip())
@@ -2988,6 +3114,9 @@ def _require_list_access(conn, list_id: int, uid: Optional[int]):
     if not row:
         raise HTTPException(404, "List not found")
     owner = int(row["user_id"])
+    # Gizlenen liste yalniz sahibine acik; engelli iliskide liste yok.
+    if uid != owner and (row["hidden_at"] or _blocked_between(conn, uid, owner)):
+        raise HTTPException(404, "List not found")
     if row["visibility"] == "public" or uid == owner:
         return row
     if row["visibility"] == "followers" and uid and conn.execute(
@@ -3016,6 +3145,7 @@ def rankit_my_lists(user=Depends(get_optional_user)):
             u.username, {counts} FROM rankit_list_saves sv JOIN rankit_lists l ON l.id=sv.list_id
             JOIN users u ON u.id=l.user_id
             WHERE sv.user_id=:uid AND l.user_id<>:uid AND u.is_banned=0
+              AND {_not_hidden_sql('l')} AND {_not_blocked_sql('l.user_id', uid)}
               AND (l.visibility='public' OR (l.visibility='followers' AND EXISTS(
                    SELECT 1 FROM rankit_follows f WHERE f.user_id=:uid AND f.target_type='user'
                    AND f.target_id=l.user_id)))
@@ -3037,7 +3167,9 @@ def rankit_list_detail(list_id: int, user=Depends(get_optional_user)):
                              (list_id,)).fetchone()["n"]
         mine = lambda sql: bool(uid and conn.execute(sql, (list_id, uid)).fetchone())
         return {
-            "list": dict(row),
+            # Gizlenmisse bunu yalniz sahibi gorur (_require_list_access).
+            "list": {**{k: row[k] for k in row.keys() if k not in ("hidden_at", "hidden_reason")},
+                     "hidden": bool(row["hidden_at"])},
             # uid ile: "your 5★" satiri izleyenin kendi puanindan geliyor.
             "matches": [_match_dict(conn, m, uid) for m in items],
             "respect": respect,
@@ -3098,6 +3230,7 @@ def add_rankit_list_item(list_id: int, body: ListItemIn, user=Depends(get_option
             raise HTTPException(404, "List not found")
         if int(owner["user_id"]) != uid:
             raise HTTPException(403, "You can only edit your own list")
+        _check_ugc_text(body.note)
         _require_matches(conn, [body.match_id])
         conn.execute("UPDATE rankit_lists SET updated_at=datetime('now') WHERE id=?", (list_id,))
         pos = conn.execute("SELECT COALESCE(MAX(position),0)+1 p FROM rankit_list_items WHERE list_id=?", (list_id,)).fetchone()["p"]
@@ -3229,9 +3362,13 @@ def _sync_review_respect(conn, entry_id: int, author_id: int) -> None:
 
 def _require_review_access(conn, entry_id: int, uid: Optional[int] = None):
     # Banli hesabin incelemesi listelerden dustugu gibi kendi yuzeyinde de yok.
-    entry = conn.execute("""SELECT e.user_id,e.visibility,e.review,e.spoiler,u.is_banned
+    entry = conn.execute("""SELECT e.user_id,e.visibility,e.review,e.spoiler,e.hidden_at,u.is_banned
         FROM rankit_diary_entries e JOIN users u ON u.id=e.user_id WHERE e.id=?""", (entry_id,)).fetchone()
     if not entry or not entry["review"] or entry["is_banned"]:
+        raise HTTPException(404, "Review not found")
+    # Gizlenen inceleme yalniz yazarina acik; engelli iliskide inceleme yok
+    # (respect, yanit ve sikayet de bu kapidan gecer).
+    if uid != entry["user_id"] and (entry["hidden_at"] or _blocked_between(conn, uid, entry["user_id"])):
         raise HTTPException(404, "Review not found")
     if entry["visibility"] == "public" or uid == entry["user_id"]:
         return entry
@@ -3246,8 +3383,10 @@ def review_comments(entry_id: int, user=Depends(get_optional_user)):
     with get_conn() as conn:
         uid = int(user["sub"]) if user else (None if IS_PROD else _demo_user_id(conn))
         entry = _require_review_access(conn, entry_id, uid)
-        rows = conn.execute("""SELECT c.id,c.content,c.created_at,u.username FROM rankit_review_comments c
-            JOIN users u ON u.id=c.user_id WHERE c.entry_id=? AND u.is_banned=0 ORDER BY c.id""", (entry_id,)).fetchall()
+        rows = conn.execute(f"""SELECT c.id,c.user_id,c.content,c.created_at,u.username FROM rankit_review_comments c
+            JOIN users u ON u.id=c.user_id WHERE c.entry_id=? AND u.is_banned=0
+              AND {_not_hidden_sql('c')} AND {_not_blocked_sql('c.user_id', uid)}
+            ORDER BY c.id""", (entry_id,)).fetchall()
         # Spoiler isaretli incelemenin yanitlari da spoiler: ayni maci konusuyorlar.
         return {"comments": [{**dict(r), "spoiler": bool(entry["spoiler"])} for r in rows]}
 
@@ -3266,6 +3405,10 @@ def add_review_comment(entry_id: int, body: ReviewCommentIn, user=Depends(get_op
                 if int(seen["entry_id"]) != entry_id:
                     raise HTTPException(409, "This reply id belongs to another review")
                 return {"ok": True, "comment_id": seen["id"], "duplicate": True}
+        # B4: kufur/hakaret ve baglanti yok; dakikada en cok 5 yanit.
+        _check_ugc_text(body.content, allow_links=False)
+        _check_ugc_rate(conn, """SELECT COUNT(*) FROM rankit_review_comments
+            WHERE user_id=? AND created_at>datetime('now','-60 seconds')""", uid)
         # Adres varsayilani INCELEMENIN YAZARI: bir yanit her zaman birine
         # yoneliktir, ve hicbir sey secilmediyse yoneldigi kisi yazardir.
         author = int(entry["user_id"])
@@ -3291,18 +3434,24 @@ def add_review_comment(entry_id: int, body: ReviewCommentIn, user=Depends(get_op
 @router.get("/matches/{match_id}/watchalong")
 def watchalong_history(match_id: int, room: str = "community",
                        before_id: Optional[int] = Query(default=None, gt=0),
-                       limit: int = Query(default=100, ge=1, le=200)):
+                       limit: int = Query(default=100, ge=1, le=200),
+                       user=Depends(get_optional_user)):
     """Oda gecmisi. 6d "Read the thread": gecenin TUM konusmasi okunabilir --
     eskiden yalniz son 100 mesaj donuyordu (Codex frontend kaydi, 6d arsivi).
     Sayfalar geriye dogru: `before_id` verilirse ondan onceki mesajlar;
     `has_more` daha eskisi var mi, `next_before_id` bir sonraki istek icin.
     Mesajlar her sayfada eskiden yeniye."""
     with get_conn() as conn:
-        where, args = "w.match_id=? AND w.room=?", [match_id, room[:40]]
+        uid = int(user["sub"]) if user else None
+        # Gizlenen mesaj arsivde de yok; engelli iliskideki kisinin mesaji
+        # izleyene hic gelmez. user_id: istemcinin Report / Block eylemi icin.
+        where = (f"w.match_id=? AND w.room=? AND u.is_banned=0 AND {_not_hidden_sql('w')}"
+                 f" AND {_not_blocked_sql('w.user_id', uid)}")
+        args = [match_id, room[:40]]
         if before_id is not None:
             where += " AND w.id<?"
             args.append(before_id)
-        rows = conn.execute(f"""SELECT w.id,w.content,w.created_at,u.username FROM rankit_watchalong_messages w
+        rows = conn.execute(f"""SELECT w.id,w.user_id,w.content,w.created_at,u.username FROM rankit_watchalong_messages w
             JOIN users u ON u.id=w.user_id WHERE {where} ORDER BY w.id DESC LIMIT ?""", (*args, limit + 1)).fetchall()
         has_more = len(rows) > limit
         page = list(reversed(rows[:limit]))
@@ -3370,16 +3519,17 @@ def _accrue_room_seconds(conn, uid: int, match_id: int, joined_at: datetime, lef
     return added
 
 
+WATCHALONG_RATE_LIMIT, WATCHALONG_RATE_WINDOW = 5, 10.0
+
+
 @router.websocket("/ws/watchalong/{match_id}")
 async def rankit_watchalong_socket(ws: WebSocket, match_id: int, room: str = "community"):
     token = ws.query_params.get("token", "")
     uid = None
     if token:
         try:
-            payload = _decode(token)
-            candidate = int(payload["sub"])
-            if not _is_banned(candidate):
-                uid = candidate
+            # imza + ban + token sürümü; geçmezse misafir değil, kapı kapalı
+            uid = int(verify_token(token)["sub"])
         except Exception:
             uid = None
     with get_conn() as conn:
@@ -3396,27 +3546,47 @@ async def rankit_watchalong_socket(ws: WebSocket, match_id: int, room: str = "co
     await ws.accept()
     key = (match_id, room[:40])
     WATCHALONG_CONNECTIONS.setdefault(key, []).append(ws)
+    WATCHALONG_UIDS[ws] = uid
     joined_at = datetime.now(timezone.utc).replace(tzinfo=None)
     present = ROOM_USERS.setdefault(match_id, {})
     present[uid] = present.get(uid, 0) + 1
     with get_conn() as conn:
         _join_room(conn, uid, match_id)
+    sent_at: list[float] = []   # bu bağlantının son mesaj zamanları (sel koruması)
     try:
         while True:
             payload = await ws.receive_json()
+            if not isinstance(payload, dict):
+                continue
             content = str(payload.get("content", "")).strip()[:300]
             if not content:
+                continue
+            # Bağlantı başına 10 sn'de en çok 5 mesaj: HTTP istek sınırı
+            # WebSocket'i kapsamıyor, tek istemci odayı mesaj seliyle boğabiliyordu.
+            now_ts = time.monotonic()
+            sent_at = [t for t in sent_at if now_ts - t < WATCHALONG_RATE_WINDOW]
+            if len(sent_at) >= WATCHALONG_RATE_LIMIT:
+                await ws.send_json({"type": "error", "error": "You're sending messages too fast — wait a moment.",
+                                    "client_id": str(payload.get("client_id", ""))[:64]})
+                continue
+            sent_at.append(now_ts)
+            # Kufur/hakaret ve baglanti (spam'in ana yolu) sohbette yok.
+            problem = moderation_words.problem(content, allow_links=False)
+            if problem:
+                await ws.send_json({"type": "error", "error": problem,
+                                    "client_id": str(payload.get("client_id", ""))[:64]})
                 continue
             with get_conn() as conn:
                 match = conn.execute("SELECT status FROM rankit_matches WHERE id=?", (match_id,)).fetchone()
                 if not match or match["status"] not in ("upcoming", "live"):
-                    await ws.send_json({"type": "error", "error": "This room is now read-only.", "client_id": payload.get("client_id")})
+                    await ws.send_json({"type": "error", "error": "This room is now read-only.", "client_id": str(payload.get("client_id", ""))[:64]})
                     continue
                 cur = conn.execute("INSERT INTO rankit_watchalong_messages(match_id,user_id,room,content) VALUES(?,?,?,?)", (match_id, uid, key[1], content))
-                message = {"id": cur.lastrowid, "username": username, "content": content, "created_at": "now"}
-            for peer in list(WATCHALONG_CONNECTIONS.get(key, [])):
+                message = {"id": cur.lastrowid, "user_id": uid, "username": username, "content": content, "created_at": "now"}
+                peers = _watchalong_recipients(conn, key, uid)
+            for peer in peers:
                 try:
-                    await peer.send_json({"type": "message", "message": message, "client_id": payload.get("client_id")})
+                    await peer.send_json({"type": "message", "message": message, "client_id": str(payload.get("client_id", ""))[:64]})
                 except Exception:
                     if peer in WATCHALONG_CONNECTIONS.get(key, []):
                         WATCHALONG_CONNECTIONS[key].remove(peer)
@@ -3425,6 +3595,7 @@ async def rankit_watchalong_socket(ws: WebSocket, match_id: int, room: str = "co
     finally:
         if ws in WATCHALONG_CONNECTIONS.get(key, []):
             WATCHALONG_CONNECTIONS[key].remove(ws)
+        WATCHALONG_UIDS.pop(ws, None)
         present = ROOM_USERS.get(match_id, {})
         if present.get(uid, 0) <= 1:
             present.pop(uid, None)
@@ -3436,6 +3607,16 @@ async def rankit_watchalong_socket(ws: WebSocket, match_id: int, room: str = "co
                                      datetime.now(timezone.utc).replace(tzinfo=None))
         except Exception:
             pass    # sure yazilamamasi baglantiyi kapatmayi bozmamali
+
+
+def _watchalong_recipients(conn, key, sender: int) -> list:
+    """Odadaki baglantilardan mesaji alacaklar: gonderenle arasinda (iki
+    yonlu) engel olanlar haric. Gonderen kendi yankisini her zaman alir."""
+    shunned = {r[0] for r in conn.execute(
+        """SELECT blocked_id FROM rankit_blocks WHERE blocker_id=?
+           UNION SELECT blocker_id FROM rankit_blocks WHERE blocked_id=?""", (sender, sender))}
+    return [peer for peer in list(WATCHALONG_CONNECTIONS.get(key, []))
+            if WATCHALONG_UIDS.get(peer) not in shunned]
 
 
 class PresenceIn(BaseModel):
@@ -3632,7 +3813,7 @@ def rankit_review_thread(entry_id: int, tz_offset: int = 0, user=Depends(get_opt
         _require_review_access(conn, entry_id, uid)
 
         row = conn.execute("""
-            SELECT e.id,e.user_id,e.rating,e.review,e.classic,e.spoiler,e.created_at,
+            SELECT e.id,e.user_id,e.rating,e.review,e.classic,e.spoiler,e.created_at,e.hidden_at,
                    e.rated_at, e.is_rewatch, """ + NIGHT_AWARD_SQL + """,
                    u.username, m.id match_id, m.starts_at,
                    ht.name home_name, at.name away_name, m.home_score, m.away_score,
@@ -3652,7 +3833,7 @@ def rankit_review_thread(entry_id: int, tz_offset: int = 0, user=Depends(get_opt
         tags = [r["tag"] for r in conn.execute(
             "SELECT tag FROM rankit_entry_tags WHERE entry_id=?", (entry_id,))]
 
-        replies = [dict(r) for r in conn.execute("""
+        replies = [dict(r) for r in conn.execute(f"""
             SELECT c.id, c.content, c.created_at, c.user_id, u.username,
                    t.username reply_to,
                    (SELECT COUNT(*) FROM rankit_comment_respect k WHERE k.comment_id=c.id) respect,
@@ -3662,6 +3843,7 @@ def rankit_review_thread(entry_id: int, tz_offset: int = 0, user=Depends(get_opt
             JOIN users u ON u.id=c.user_id
             LEFT JOIN users t ON t.id=c.reply_to_user_id
             WHERE c.entry_id=? AND u.is_banned=0
+              AND {_not_hidden_sql('c')} AND {_not_blocked_sql('c.user_id', uid)}
             ORDER BY respect DESC, c.id ASC""", (uid or -1, entry_id))]
         for r in replies:
             # §6.1: yazarin kendi yanitlari AUTHOR isareti tasir.
@@ -3677,6 +3859,8 @@ def rankit_review_thread(entry_id: int, tz_offset: int = 0, user=Depends(get_opt
                 # Sahiplik sunucudan: istemci kullanici adindan eslemek zorunda
                 # kalmasin (kendi incelemene respect yok, Faz 7).
                 "user_id": row["user_id"], "is_mine": bool(uid and int(row["user_id"]) == uid),
+                # Yalniz yazar gizlenmis incelemesine ulasir; bunu ona soyler.
+                "hidden": bool(row["hidden_at"]),
                 "rating": row["rating"], "review": row["review"],
                 "classic": bool(row["classic"]), "spoiler": bool(row["spoiler"]),
                 "created_at": row["created_at"],
@@ -3704,9 +3888,10 @@ def rankit_comment_respect(comment_id: int, user=Depends(get_optional_user), bod
         # Eskiden hicbir kontrol yoktu: goremedigin (gizli / takipcilere acik)
         # bir incelemenin yanitina respect verilebiliyor, kendi yanitina respect
         # verilebiliyor, var olmayan yanit kimligi 500 donduruyordu.
-        comment = conn.execute("""SELECT c.entry_id,c.user_id,u.is_banned FROM rankit_review_comments c
+        comment = conn.execute("""SELECT c.entry_id,c.user_id,c.hidden_at,u.is_banned FROM rankit_review_comments c
             JOIN users u ON u.id=c.user_id WHERE c.id=?""", (comment_id,)).fetchone()
-        if not comment or comment["is_banned"]:
+        if (not comment or comment["is_banned"] or comment["hidden_at"]
+                or _blocked_between(conn, uid, int(comment["user_id"]))):
             raise HTTPException(404, "Reply not found")
         _require_review_access(conn, int(comment["entry_id"]), uid)
         if int(comment["user_id"]) == uid:
@@ -3751,16 +3936,18 @@ def rankit_match_reviews(match_id: int, sort: str = "respected",
         # 7h "Following" sekmesi: yalniz takip ettiklerinin incelemeleri.
         only_followed = ("""AND EXISTS(SELECT 1 FROM rankit_follows f WHERE f.user_id=:viewer
                             AND f.target_type='user' AND f.target_id=e.user_id)""" if scope == "following" else "")
+        moderated = f"AND {_not_hidden_sql('e')} AND {_not_blocked_sql('e.user_id', uid)}"
         total = conn.execute(f"""SELECT COUNT(*) n FROM rankit_diary_entries e
             JOIN users u ON u.id=e.user_id
-            WHERE e.match_id=:match AND e.visibility='public' AND e.review<>'' AND u.is_banned=0 {only_followed}""",
+            WHERE e.match_id=:match AND e.visibility='public' AND e.review<>'' AND u.is_banned=0
+              {moderated} {only_followed}""",
             {"match": match_id, "viewer": uid or -1}).fetchone()["n"]
         rows = conn.execute(f"""
             SELECT e.id, e.user_id, e.rating, e.review, e.classic, e.spoiler,
                    e.created_at, e.rated_at, e.is_rewatch, m.starts_at, u.username, {NIGHT_AWARD_SQL},
                    (SELECT COUNT(*) FROM rankit_review_likes l WHERE l.entry_id=e.id) respect,
                    (SELECT COUNT(*) FROM rankit_review_comments c JOIN users cu ON cu.id=c.user_id
-                    WHERE c.entry_id=e.id AND cu.is_banned=0) replies,
+                    WHERE c.entry_id=e.id AND cu.is_banned=0 AND c.hidden_at IS NULL) replies,
                    EXISTS(SELECT 1 FROM rankit_review_likes l WHERE l.entry_id=e.id AND l.user_id=?) respected,
                    EXISTS(SELECT 1 FROM rankit_follows f
                           WHERE f.user_id=? AND f.target_type='user' AND f.target_id=e.user_id) followed
@@ -3768,7 +3955,7 @@ def rankit_match_reviews(match_id: int, sort: str = "respected",
             JOIN users u ON u.id=e.user_id
             JOIN rankit_matches m ON m.id=e.match_id
             WHERE e.match_id=? AND e.visibility='public' AND e.review<>'' AND u.is_banned=0
-              {only_followed.replace(":viewer", str(int(uid or -1)))}
+              {moderated} {only_followed.replace(":viewer", str(int(uid or -1)))}
             ORDER BY followed DESC, {order} LIMIT ? OFFSET ?""", (uid or -1, uid or -1, match_id, limit, offset)).fetchall()
 
         followed, everyone = [], []
@@ -3822,8 +4009,9 @@ def rankit_activity(scope: Literal["following", "mutuals"] = "following",
     """
     with get_conn() as conn:
         uid = _actor_id(user, conn)
-        people = """SELECT f.target_id FROM rankit_follows f JOIN users u ON u.id=f.target_id
-            WHERE f.user_id=:uid AND f.target_type='user' AND u.is_banned=0 AND u.id<>:uid"""
+        people = f"""SELECT f.target_id FROM rankit_follows f JOIN users u ON u.id=f.target_id
+            WHERE f.user_id=:uid AND f.target_type='user' AND u.is_banned=0 AND u.id<>:uid
+              AND {_not_blocked_sql('u.id', uid)}"""
         if scope == "mutuals":
             people += """ AND EXISTS(SELECT 1 FROM rankit_follows b WHERE b.user_id=f.target_id
                           AND b.target_type='user' AND b.target_id=:uid)"""
@@ -3831,7 +4019,7 @@ def rankit_activity(scope: Literal["following", "mutuals"] = "following",
         params = {"uid": uid, "want": want}
         entries = conn.execute(f"""
             SELECT e.id, e.user_id, u.username, e.match_id, e.rating, e.classic, e.review, e.spoiler,
-                   e.is_rewatch, e.rated_at, e.created_at, m.starts_at, m.status,
+                   e.hidden_at, e.is_rewatch, e.rated_at, e.created_at, m.starts_at, m.status,
                    m.home_score, m.away_score, {NIGHT_AWARD_SQL},
                    COALESCE(e.rated_at, e.created_at) at, e.skin, m.sport, m.stage, co.name competition,
                    h.name home_name, h.short_name home_short, a.name away_name, a.short_name away_short,
@@ -3843,12 +4031,12 @@ def rankit_activity(scope: Literal["following", "mutuals"] = "following",
                    (SELECT COUNT(*) FROM rankit_review_likes l WHERE l.entry_id=e.id) respect,
                    EXISTS(SELECT 1 FROM rankit_review_likes l WHERE l.entry_id=e.id AND l.user_id=:uid) respected,
                    (SELECT COUNT(*) FROM rankit_review_comments c JOIN users cu ON cu.id=c.user_id
-                    WHERE c.entry_id=e.id AND cu.is_banned=0) replies
+                    WHERE c.entry_id=e.id AND cu.is_banned=0 AND c.hidden_at IS NULL) replies
             FROM rankit_diary_entries e JOIN users u ON u.id=e.user_id
             JOIN rankit_matches m ON m.id=e.match_id JOIN rankit_competitions co ON co.id=m.competition_id
             JOIN rankit_teams h ON h.id=m.home_team_id JOIN rankit_teams a ON a.id=m.away_team_id
             WHERE e.user_id IN ({people}) AND e.visibility IN ('public','followers')
-              AND (e.rating IS NOT NULL OR e.review<>'')
+              AND (e.rating IS NOT NULL OR (e.review<>'' AND e.hidden_at IS NULL))
             ORDER BY at DESC, e.id DESC LIMIT :want""", params).fetchall()
         # 2q: kayit bir koleksiyon karti olarak cizilir (akis bir raf). Kartin
         # isisi TOPLULUGUN -- kart kurali, §5.5 20 puanin altinda yok.
@@ -3863,7 +4051,7 @@ def rankit_activity(scope: Literal["following", "mutuals"] = "following",
                     GROUP BY e.match_id""", ids).fetchall()}
         items = []
         for r in entries:
-            row = _mask_spoiler_text(dict(r), uid)
+            row = _mask_hidden_review(_mask_spoiler_text(dict(r), uid), uid)
             avg, n = heats.get(int(r["match_id"]), (None, 0))
             items.append({
                 "kind": "entry", "id": f"e{r['id']}", "at": r["at"], "entry_id": r["id"],
@@ -4074,3 +4262,304 @@ def rankit_profile(user=Depends(get_optional_user)):
             FROM rankit_lists l WHERE l.user_id=? ORDER BY l.updated_at DESC,l.id DESC""", (uid,)).fetchall()
         return {"user": dict(u), "stats": {**dict(stats), **extra}, "owned_lists": [dict(row) for row in owned_lists],
                 "favorite_matches": [_match_dict(conn, row, uid) for row in favorite_rows]}
+
+
+# ── Sikayet, engel, moderasyon kuyrugu (docs/RANKIT_STORE_BLOCKERS_PLAN.md B2) ──
+# Magaza sarti (Apple 1.2, Play UGC): icerik sikayeti + zamaninda yanit,
+# kotuye kullananin engellenmesi. Yanit taahhudu 24 saat: bir hedef 3 farkli
+# kisiden acik sikayet alirsa admin beklemeden gizlenir (admin geri acar).
+# Esige yalniz 24 saatten eski hesaplar sayilir: yeni acilmis uc hesapla
+# birinin incelemesini susturmak ucuz olmasin.
+
+REPORT_TARGETS = ("review", "comment", "list", "message", "user")
+REPORT_REASONS = ("spam", "harassment", "hate", "sexual", "spoiler", "other")
+REPORTS_PER_HOUR = 20
+AUTO_HIDE_REPORTERS = 3
+AUTO_HIDE_MIN_ACCOUNT_HOURS = 24
+# Hesap gizlenmez, banlanir: 'user' hedefinin tablosu yok.
+HIDEABLE = {"review": "rankit_diary_entries", "comment": "rankit_review_comments",
+            "list": "rankit_lists", "message": "rankit_watchalong_messages"}
+ADMIN_ALERTS_PER_DAY = 20
+_ALERTS_SENT: dict[str, int] = {}
+# Testler sahte gonderici takar; None iken main._send_email (Brevo) kullanilir.
+ALERT_SENDER = None
+
+
+class ReportIn(BaseModel):
+    target_type: Literal["review", "comment", "list", "message", "user"]
+    target_id: int = Field(gt=0)
+    reason: Literal["spam", "harassment", "hate", "sexual", "spoiler", "other"]
+    note: str = Field(default="", max_length=300)
+
+
+class ReportActionIn(BaseModel):
+    action: Literal["hide", "unhide", "dismiss", "delete", "ban"]
+
+
+def _report_target(conn, target_type: str, target_id: int, uid: int) -> tuple[int, str]:
+    """(icerigin sahibi, sikayet anindaki metin). Hedef yoksa ya da
+    sikayet eden onu goremiyorsa 404 -- goremedigin seyi sikayet edemezsin."""
+    if target_type == "review":
+        entry = _require_review_access(conn, target_id, uid)
+        return int(entry["user_id"]), entry["review"] or ""
+    if target_type == "comment":
+        row = conn.execute("""SELECT c.user_id,c.entry_id,c.content,c.hidden_at,u.is_banned
+            FROM rankit_review_comments c JOIN users u ON u.id=c.user_id WHERE c.id=?""",
+                           (target_id,)).fetchone()
+        if not row or row["is_banned"] or row["hidden_at"]:
+            raise HTTPException(404, "Reply not found")
+        _require_review_access(conn, int(row["entry_id"]), uid)
+        return int(row["user_id"]), row["content"]
+    if target_type == "list":
+        row = _require_list_access(conn, target_id, uid)
+        return int(row["user_id"]), f"{row['title']}\n{row['description'] or ''}".strip()
+    if target_type == "message":
+        row = conn.execute("""SELECT w.user_id,w.content,w.hidden_at,u.is_banned
+            FROM rankit_watchalong_messages w JOIN users u ON u.id=w.user_id WHERE w.id=?""",
+                           (target_id,)).fetchone()
+        if not row or row["is_banned"] or row["hidden_at"]:
+            raise HTTPException(404, "Message not found")
+        return int(row["user_id"]), row["content"]
+    row = conn.execute("SELECT id,username FROM users WHERE id=? AND is_banned=0", (target_id,)).fetchone()
+    if not row:
+        raise HTTPException(404, "Member not found")
+    return int(row["id"]), row["username"]
+
+
+def _maybe_auto_hide(conn, target_type: str, target_id: int) -> bool:
+    table = HIDEABLE.get(target_type)
+    if not table:
+        return False
+    reporters = conn.execute("""SELECT COUNT(DISTINCT r.reporter_id) FROM rankit_reports r
+        JOIN users u ON u.id=r.reporter_id
+        WHERE r.target_type=? AND r.target_id=? AND r.status='open' AND u.is_banned=0
+          AND datetime(u.created_at) <= datetime('now', ?)""",
+        (target_type, target_id, f"-{AUTO_HIDE_MIN_ACCOUNT_HOURS} hours")).fetchone()[0]
+    if reporters < AUTO_HIDE_REPORTERS:
+        return False
+    cur = conn.execute(f"""UPDATE {table} SET hidden_at=datetime('now'), hidden_reason='reports'
+        WHERE id=? AND hidden_at IS NULL""", (target_id,))
+    return bool(cur.rowcount)
+
+
+def _alert_admin(target_type: str, target_id: int, reason: str, snapshot: str) -> None:
+    """Hedefin ILK sikayetinde admin'e e-posta (ADMIN_ALERT_EMAIL). Gunde en
+    cok ADMIN_ALERTS_PER_DAY; esikte bir kez "kuyrukta daha fazlasi var"
+    denir, sonrasi yalniz kuyrukta. Gonderim arka planda: sikayet yaniti
+    e-posta servisini beklemez."""
+    to = os.environ.get("ADMIN_ALERT_EMAIL", "").strip()
+    if not to:
+        return
+    day = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    sent = _ALERTS_SENT.get(day, 0)
+    if sent > ADMIN_ALERTS_PER_DAY:
+        return
+    _ALERTS_SENT.clear()
+    _ALERTS_SENT[day] = sent + 1
+    site = os.environ.get("SITE_URL", "https://primaryarch.net").rstrip("/")
+    if sent == ADMIN_ALERTS_PER_DAY:
+        subject = "RankIt: more reports are waiting"
+        lines = ["Today's alert limit is reached. New reports are in the queue only."]
+    else:
+        subject = f"RankIt report: {target_type} #{target_id} ({reason})"
+        lines = [f"A {target_type} was reported for {reason}.", f"Content: {snapshot[:500]}"]
+    body = ("<p>" + "<br>".join(html.escape(line) for line in lines)
+            + f'</p><p><a href="{html.escape(site)}/admin/reports">Open the report queue</a></p>')
+
+    def send():
+        try:
+            sender = ALERT_SENDER
+            if sender is None:
+                from .main import _send_email as sender
+            sender(to, subject, body)
+        except Exception as exc:  # e-posta dusse de sikayet kaydedildi
+            logging.error("Report alert failed: %s", exc)
+
+    threading.Thread(target=send, daemon=True).start()
+
+
+@router.post("/reports")
+def rankit_report(body: ReportIn, user=Depends(get_optional_user)):
+    """Icerik ya da hesap sikayeti. Ayni kisi ayni seyi bir kez sikayet eder
+    (tekrar 200 + duplicate: sonucu belirsiz istegin tekrari guvenli)."""
+    if not user:
+        raise HTTPException(401, "Sign in to report")
+    with get_conn() as conn:
+        uid = _actor_id(user, conn)
+        conn.execute("BEGIN IMMEDIATE")
+        owner, snapshot = _report_target(conn, body.target_type, body.target_id, uid)
+        if owner == uid:
+            raise HTTPException(422, "You can't report your own content")
+        if conn.execute("""SELECT 1 FROM rankit_reports WHERE reporter_id=? AND target_type=?
+                           AND target_id=?""", (uid, body.target_type, body.target_id)).fetchone():
+            return {"ok": True, "duplicate": True, "hidden": False}
+        recent = conn.execute("""SELECT COUNT(*) FROM rankit_reports WHERE reporter_id=?
+            AND created_at>datetime('now','-1 hour')""", (uid,)).fetchone()[0]
+        if recent >= REPORTS_PER_HOUR:
+            raise HTTPException(429, "You've sent a lot of reports — try again later.",
+                                headers={"Retry-After": "3600"})
+        conn.execute("""INSERT INTO rankit_reports(reporter_id,target_type,target_id,target_user_id,
+            reason,note,snapshot) VALUES(?,?,?,?,?,?,?)""",
+            (uid, body.target_type, body.target_id, owner, body.reason,
+             body.note.strip(), (snapshot or "")[:2000]))
+        first = conn.execute("""SELECT COUNT(*) FROM rankit_reports WHERE target_type=? AND target_id=?""",
+                             (body.target_type, body.target_id)).fetchone()[0] == 1
+        hidden = _maybe_auto_hide(conn, body.target_type, body.target_id)
+    logging.info("RANKIT REPORT: %s %s by user %s (%s)%s", body.target_type, body.target_id,
+                 uid, body.reason, " - auto-hidden" if hidden else "")
+    if first:
+        _alert_admin(body.target_type, body.target_id, body.reason, snapshot or "")
+    return {"ok": True, "duplicate": False, "hidden": hidden}
+
+
+@router.put("/people/{member_id}/block")
+def rankit_block(member_id: int, user=Depends(get_optional_user)):
+    """Engel: iki yondeki takip silinir; birbirinizin icerigini, profilini ve
+    bildirimlerini gormezsiniz, o sana yanit yazamaz / seni takip edemez."""
+    if not user:
+        raise HTTPException(401, "Sign in to block people")
+    with get_conn() as conn:
+        uid = _actor_id(user, conn)
+        if member_id == uid:
+            raise HTTPException(422, "You cannot block yourself")
+        if not conn.execute("SELECT 1 FROM users WHERE id=?", (member_id,)).fetchone():
+            raise HTTPException(404, "Member not found")
+        conn.execute("INSERT OR IGNORE INTO rankit_blocks(blocker_id,blocked_id) VALUES(?,?)", (uid, member_id))
+        conn.execute("""DELETE FROM rankit_follows WHERE target_type='user'
+            AND ((user_id=? AND target_id=?) OR (user_id=? AND target_id=?))""",
+                     (uid, member_id, member_id, uid))
+        return {"blocked": True}
+
+
+@router.delete("/people/{member_id}/block")
+def rankit_unblock(member_id: int, user=Depends(get_optional_user)):
+    if not user:
+        raise HTTPException(401, "Sign in to manage blocked accounts")
+    with get_conn() as conn:
+        uid = _actor_id(user, conn)
+        conn.execute("DELETE FROM rankit_blocks WHERE blocker_id=? AND blocked_id=?", (uid, member_id))
+        return {"blocked": False}
+
+
+@router.get("/blocks")
+def rankit_blocked_accounts(user=Depends(get_optional_user)):
+    """Settings -> PRIVACY -> Blocked accounts. Yalniz senin engellediklerin;
+    seni kimin engelledigi soylenmez."""
+    if not user:
+        raise HTTPException(401, "Sign in to manage blocked accounts")
+    with get_conn() as conn:
+        uid = _actor_id(user, conn)
+        rows = conn.execute("""SELECT u.id,u.username,b.created_at blocked_at FROM rankit_blocks b
+            JOIN users u ON u.id=b.blocked_id WHERE b.blocker_id=?
+            ORDER BY b.created_at DESC, u.username COLLATE NOCASE""", (uid,)).fetchall()
+        return {"blocked": [dict(r) for r in rows]}
+
+
+def _target_live(conn, target_type: str, target_id: int) -> dict:
+    """Kuyruktaki hedefin SU ANKI hali: silinmis mi, gizli mi, nerede."""
+    if target_type == "user":
+        row = conn.execute("SELECT username,is_banned FROM users WHERE id=?", (target_id,)).fetchone()
+        return {"exists": bool(row), "text": row["username"] if row else None,
+                "hidden": bool(row and row["is_banned"]), "match_id": None, "entry_id": None}
+    sql = {
+        "review": "SELECT review text,hidden_at,match_id,id entry_id FROM rankit_diary_entries WHERE id=?",
+        "comment": """SELECT c.content text,c.hidden_at,e.match_id,c.entry_id FROM rankit_review_comments c
+                      JOIN rankit_diary_entries e ON e.id=c.entry_id WHERE c.id=?""",
+        "list": "SELECT title||char(10)||COALESCE(description,'') text,hidden_at,NULL match_id,NULL entry_id FROM rankit_lists WHERE id=?",
+        "message": "SELECT content text,hidden_at,match_id,NULL entry_id FROM rankit_watchalong_messages WHERE id=?",
+    }[target_type]
+    row = conn.execute(sql, (target_id,)).fetchone()
+    exists = bool(row) and (target_type != "review" or bool(row["text"]))
+    return {"exists": exists, "text": (row["text"] or "").strip() if exists else None,
+            "hidden": bool(row and row["hidden_at"]),
+            "match_id": row["match_id"] if row else None, "entry_id": row["entry_id"] if row else None}
+
+
+@router.get("/admin/reports")
+def rankit_admin_reports(status: Literal["open", "actioned", "dismissed"] = "open",
+                         limit: int = Query(100, ge=1, le=200), user=Depends(require_admin)):
+    """Moderasyon kuyrugu: hedefe gore gruplu, sebep sayilari ve notlarla.
+    En cok sikayet alan ustte, esitlikte en eski."""
+    with get_conn() as conn:
+        groups = conn.execute("""SELECT target_type,target_id,MIN(id) report_id,COUNT(*) reports,
+                MIN(created_at) first_at,MAX(created_at) last_at,MAX(target_user_id) owner_id
+            FROM rankit_reports WHERE status=? GROUP BY target_type,target_id
+            ORDER BY reports DESC, first_at ASC LIMIT ?""", (status, limit)).fetchall()
+        items = []
+        for g in groups:
+            key = (status, g["target_type"], g["target_id"])
+            reasons = {r["reason"]: r["n"] for r in conn.execute(
+                """SELECT reason,COUNT(*) n FROM rankit_reports WHERE status=? AND target_type=?
+                   AND target_id=? GROUP BY reason ORDER BY n DESC""", key)}
+            notes = [dict(r) for r in conn.execute(
+                """SELECT r.note,r.created_at,u.username reporter FROM rankit_reports r
+                   JOIN users u ON u.id=r.reporter_id WHERE r.status=? AND r.target_type=?
+                   AND r.target_id=? AND r.note<>'' ORDER BY r.id DESC LIMIT 5""", key)]
+            snapshot = conn.execute("""SELECT snapshot FROM rankit_reports WHERE status=? AND target_type=?
+                AND target_id=? ORDER BY id DESC LIMIT 1""", key).fetchone()["snapshot"]
+            owner = conn.execute("SELECT id,username,is_banned FROM users WHERE id=?",
+                                 (g["owner_id"],)).fetchone() if g["owner_id"] else None
+            items.append({
+                "report_id": g["report_id"], "target_type": g["target_type"], "target_id": g["target_id"],
+                "reports": g["reports"], "first_at": g["first_at"], "last_at": g["last_at"],
+                "reasons": reasons, "notes": notes, "snapshot": snapshot,
+                "owner": dict(owner) if owner else None,
+                "live": _target_live(conn, g["target_type"], g["target_id"]),
+            })
+        counts = {r["status"]: r["n"] for r in conn.execute(
+            """SELECT status, COUNT(DISTINCT target_type||':'||target_id) n
+               FROM rankit_reports GROUP BY status""")}
+        return {"status": status, "items": items,
+                "counts": {s: counts.get(s, 0) for s in ("open", "actioned", "dismissed")}}
+
+
+@router.post("/admin/reports/{report_id}/action")
+def rankit_admin_report_action(report_id: int, body: ReportActionIn, user=Depends(require_admin)):
+    """Eylem hedefin TUM acik sikayetlerine uygulanir.
+      hide    icerik gizlenir, sikayetler 'actioned'
+      unhide  icerik geri acilir (sikayet durumu degismez; hatayi geri almak icin)
+      dismiss ihlal yok: sikayetler 'dismissed', esikle gizlenmisse geri acilir
+      delete  icerik kalici silinir (incelemede yalniz METIN; puan kalir)
+      ban     icerigin sahibi banlanir (tum yuzeylerden duser), sikayetler 'actioned'"""
+    actor = int(user["sub"])
+    with get_conn() as conn:
+        report = conn.execute("SELECT target_type,target_id,target_user_id FROM rankit_reports WHERE id=?",
+                              (report_id,)).fetchone()
+        if not report:
+            raise HTTPException(404, "Report not found")
+        kind, tid = report["target_type"], int(report["target_id"])
+        owner = tid if kind == "user" else report["target_user_id"]
+        table = HIDEABLE.get(kind)
+        if body.action in ("hide", "unhide", "delete") and not table:
+            raise HTTPException(422, "Accounts can only be dismissed or banned")
+        status = None
+        if body.action == "hide":
+            conn.execute(f"""UPDATE {table} SET hidden_at=COALESCE(hidden_at, datetime('now')),
+                hidden_reason='admin' WHERE id=?""", (tid,))
+            status = "actioned"
+        elif body.action == "unhide":
+            conn.execute(f"UPDATE {table} SET hidden_at=NULL, hidden_reason=NULL WHERE id=?", (tid,))
+        elif body.action == "dismiss":
+            if table:
+                conn.execute(f"""UPDATE {table} SET hidden_at=NULL, hidden_reason=NULL
+                    WHERE id=? AND hidden_reason='reports'""", (tid,))
+            status = "dismissed"
+        elif body.action == "delete":
+            if kind == "review":
+                conn.execute("""UPDATE rankit_diary_entries SET review='', hidden_at=NULL, hidden_reason=NULL
+                    WHERE id=?""", (tid,))
+            else:
+                conn.execute(f"DELETE FROM {table} WHERE id=?", (tid,))
+            status = "actioned"
+        elif body.action == "ban":
+            if not owner:
+                raise HTTPException(404, "Account not found")
+            if int(owner) == actor:
+                raise HTTPException(400, "You can't ban your own account")
+            conn.execute("UPDATE users SET is_banned=1 WHERE id=?", (owner,))
+            status = "actioned"
+        if status:
+            conn.execute("""UPDATE rankit_reports SET status=?, handled_by=?, handled_at=datetime('now')
+                WHERE target_type=? AND target_id=? AND status='open'""", (status, actor, kind, tid))
+    logging.warning("ADMIN AUDIT: user %s %s %s %s (report %s)", actor, body.action, kind, tid, report_id)
+    return {"ok": True, "action": body.action}

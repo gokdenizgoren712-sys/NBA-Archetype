@@ -883,11 +883,30 @@ def init_db():
             ("is_banned",     "INTEGER NOT NULL DEFAULT 0"),
             ("reset_token",   "TEXT"),
             ("reset_expires", "TEXT"),
+            # 2026-09 güvenlik: şifre değişince artar, eski JWT'ler düşer
+            ("token_version", "INTEGER NOT NULL DEFAULT 0"),
+            # E-postanın sahibi kanıtlandı mı (Google ya da sıfırlama bağlantısı)
+            ("email_verified", "INTEGER NOT NULL DEFAULT 0"),
+            # Kabul edilen kullanım şartları sürümü (main.TERMS_VERSION); NULL = eski hesap
+            ("terms_version", "TEXT"),
         ]:
             try:
                 conn.execute(f"ALTER TABLE users ADD COLUMN {col} {dfn}")
             except Exception:
                 pass
+        # PKCE (2026-09): uygulamanın gönderdiği doğrulayıcı özeti. Doluysa kod
+        # yalnız o doğrulayıcıyla takas edilir (rankit:// bağlantısını yakalayan
+        # başka bir uygulama kodu kullanamaz).
+        try:
+            conn.execute("ALTER TABLE mobile_auth_codes ADD COLUMN challenge TEXT")
+        except Exception:
+            pass
+        # Google'la açılan hesapların şifresi yok; e-postaları Google'ca doğrulanmış.
+        conn.execute("UPDATE users SET email_verified=1 WHERE hashed_password='' AND email_verified=0")
+        # Sıfırlama token'ı artık yalnız SHA-256 özetiyle (64 hex) saklanıyor;
+        # eskiden düz metin yazılmış olanlar geçersiz — temizle.
+        conn.execute("""UPDATE users SET reset_token=NULL, reset_expires=NULL
+                        WHERE reset_token IS NOT NULL AND length(reset_token) != 64""")
         # v3.5: sezon simülasyonu sonuçları + oyun modu
         for col, dfn in [
             ("wins",          "INTEGER"),
@@ -964,5 +983,53 @@ def init_db():
         try:
             conn.execute("ALTER TABLE football_h2h_rooms ADD COLUMN "
                          "flow TEXT NOT NULL DEFAULT 'submit'")
+        except Exception:
+            pass
+
+        # ── RankIt moderasyonu (mağaza şartı, docs/RANKIT_STORE_BLOCKERS_PLAN.md B1) ──
+        # Şikâyet: aynı kişi aynı şeyi bir kez şikâyet eder. target_user_id
+        # içeriğin sahibi (gruplama ve ban için); snapshot şikâyet anındaki
+        # metin — içerik sonradan değişse de admin neyin şikâyet edildiğini görür.
+        # İçerik sahibi hesabını silerse şikâyetleri de gider (CASCADE).
+        conn.execute("""CREATE TABLE IF NOT EXISTS rankit_reports (
+            id             INTEGER PRIMARY KEY AUTOINCREMENT,
+            reporter_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            target_type    TEXT NOT NULL CHECK(target_type IN ('review','comment','list','message','user')),
+            target_id      INTEGER NOT NULL,
+            target_user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            reason         TEXT NOT NULL CHECK(reason IN ('spam','harassment','hate','sexual','spoiler','other')),
+            note           TEXT,
+            snapshot       TEXT,
+            status         TEXT NOT NULL DEFAULT 'open' CHECK(status IN ('open','actioned','dismissed')),
+            created_at     TEXT DEFAULT (datetime('now')),
+            handled_by     INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            handled_at     TEXT,
+            UNIQUE(reporter_id, target_type, target_id)
+        )""")
+        conn.execute("""CREATE INDEX IF NOT EXISTS idx_rankit_reports_target
+            ON rankit_reports(target_type, target_id, status)""")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_rankit_reports_status ON rankit_reports(status, created_at)")
+        # Engel iki yönlü okunur (ben onu ya da o beni engellediyse birbirimizi
+        # görmeyiz); satır tek yönlü yazılır.
+        conn.execute("""CREATE TABLE IF NOT EXISTS rankit_blocks (
+            blocker_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            blocked_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            created_at TEXT DEFAULT (datetime('now')),
+            PRIMARY KEY(blocker_id, blocked_id)
+        )""")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_rankit_blocks_blocked ON rankit_blocks(blocked_id)")
+        # Gizleme: içerik silinmez, görünmez olur (admin geri açabilir).
+        # İncelemede yalnız METİN gizlenir, puan istatistiklerde kalır.
+        for table in ("rankit_diary_entries", "rankit_review_comments",
+                      "rankit_lists", "rankit_watchalong_messages"):
+            for col in ("hidden_at", "hidden_reason"):
+                try:
+                    conn.execute(f"ALTER TABLE {table} ADD COLUMN {col} TEXT")
+                except Exception:
+                    pass
+        # İnceleme metninin İLK yayımlandığı an: yeni inceleme hız sınırı buna
+        # bakar (yazarken otomatik kayıt / düzenleme sayılmaz).
+        try:
+            conn.execute("ALTER TABLE rankit_diary_entries ADD COLUMN reviewed_at TEXT")
         except Exception:
             pass

@@ -17,6 +17,8 @@ import { useResource } from "./useResource";
 import { useDialog } from "./useDialog";
 import { reviewerFromStorage, isOwnContent } from "./reviewIdentity";
 import { createReplyAttempts } from "./replyAttempt";
+import ContentActions from "./ContentActions";
+import { useBlockedAuthors } from "./blockedAuthors";
 
 const INK = "#eceded";
 const INK_3 = "#9aa0a6";
@@ -48,6 +50,7 @@ function Reply({ row, onRespect, onReply, reviewer }) {
         <strong>@{row.username}</strong>
         {row.is_author && <b className="ri-author-mark">AUTHOR</b>}
         <small>{ago(row.created_at)}</small>
+        <ContentActions type="comment" id={row.id} author={{ id: row.user_id, username: row.username }} />
       </div>
       <p>
         {/* Önek metnin parçası DEĞİL, ayrı bir işaret — kullanıcı silemez,
@@ -71,6 +74,7 @@ function Reply({ row, onRespect, onReply, reviewer }) {
 
 export default function ReviewThread({ entryId, onClose }) {
   const reviewer = reviewerFromStorage(localStorage);
+  const isBlocked = useBlockedAuthors();
   const [replyAttempts] = useState(createReplyAttempts);
   const { data, error, loading, reload: load } = useResource(entryId,
     () => rankitApi.reviewThread(entryId, -new Date().getTimezoneOffset()));
@@ -104,6 +108,9 @@ export default function ReviewThread({ entryId, onClose }) {
 
   const review = data?.review;
   const hidden = !!review?.spoiler && revealedId !== entryId;
+  // Yazari bu oturumda engellendiyse inceleme yeniden yukleme beklemeden kalkar.
+  const authorBlocked = !!review && isBlocked(review.user_id);
+  const replies = (data?.replies || []).filter((row) => !isBlocked(row.user_id));
 
   return (
     <div className="ri-sheet-wrap" onClick={onClose}>
@@ -115,7 +122,13 @@ export default function ReviewThread({ entryId, onClose }) {
         {loading && !data && <Loading label="Loading the thread"><SkeletonRows count={3} height={84}/></Loading>}
         {actionError && <p role="alert">{actionError}</p>}
 
-        {review && <>
+        {authorBlocked && (
+          <div className="ri-blocked-note" role="status">
+            <p>You blocked @{review.username}. Their review and replies are hidden.</p>
+          </div>
+        )}
+
+        {review && !authorBlocked && <>
           <div className="ri-rank-head">
             <div><small>REVIEW</small><h2>{data.match.title}</h2></div>
           </div>
@@ -126,7 +139,12 @@ export default function ReviewThread({ entryId, onClose }) {
               {/* §7.3: incelemenin yaninda yalnizca KADEME, ilerleme yok. */}
               <span className="ri-rank-chip">Rank {review.rank}</span>
               {review.on_the_night && <em>rated on the night</em>}
+              <ContentActions type="review" id={review.id} author={{ id: review.user_id, username: review.username }} />
             </div>
+            {/* Yalniz yazar gizlenmis incelemesine ulasir (sunucu digerlerine 404). */}
+            {review.hidden && (
+              <p className="ri-mod-copy" role="status">Hidden after reports. Only you can see it while we review it.</p>
+            )}
             {hidden ? <button className="ri-spoiler-gate" onClick={() => setRevealedId(entryId)}>Contains spoilers — reveal this discussion</button> : <p>{review.review}</p>}
             {!hidden && !!review.tags?.length && (
               <div className="ri-thread-tags">
@@ -143,15 +161,15 @@ export default function ReviewThread({ entryId, onClose }) {
           </article>
 
           {!hidden && <><div className="ri-chip-title" style={{ marginTop: 18 }}>
-            {data.replies.length} {data.replies.length === 1 ? "REPLY" : "REPLIES"}
+            {replies.length} {replies.length === 1 ? "REPLY" : "REPLIES"}
             <span>Most respected</span>
           </div>
 
-          {data.replies.map((r) => (
+          {replies.map((r) => (
             <Reply key={r.id} row={r} reviewer={reviewer} onRespect={respectReply}
               onReply={(handle) => setReplyTo({ handle, id: r.user_id })} />
           ))}
-          {!data.replies.length && (
+          {!replies.length && (
             <p className="ri-companion-note">Nobody has replied yet.</p>
           )}
 

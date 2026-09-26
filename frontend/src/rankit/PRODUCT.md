@@ -180,6 +180,28 @@ the bench and the coach; the NBA and EuroLeague providers are not wired for it,
 so basketball still falls back to the season squad. A match with no announced
 lineup returns an empty list rather than a season squad presented as one.
 
+## Games by Primary Arch — a guest in the app, not a RankIt feature
+
+Since 2026-09-26 the Android app carries **Games by Primary Arch**: Primary
+Arch's Lineup Builder, rebuilt for the phone, opened from a tile beside The Hunt
+on Discover. It is a guest module that RankIt hosts, not part of the diary:
+
+- **App only.** The web already reaches the game at `/basketball/game`; nothing
+  is added to the RankIt web surface. It is **outside the parity contract** —
+  it does not use `rankitApi`, so `src/audit_rankit_surfaces.py` does not count
+  it, and it must not appear in the web-debt table above.
+- **Its own code.** It lives in `frontend/src/arcade/`, loads lazily, and styles
+  under `.arc-*`. RankIt touches it in exactly two places: the Discover tile and
+  the shell state that opens it.
+- **One engine with the web.** The game's rules sit in shared hooks
+  (`game/useLineupDraft.js`, `game/useSeasonSim.js`) used by both the web page
+  and the app, because both post to the same leaderboard.
+- **Scope.** Basketball first; football (Squad Builder) later. No Same Screen
+  mode on the phone. Guests play the whole game; only posting a score asks for
+  an account.
+
+The full plan, screens and phases: `docs/GAMES_IN_APP_PLAN.md`.
+
 ## Owner decisions
 
 Answers to product questions raised during the redesign. Each one changed
@@ -187,6 +209,10 @@ code; the date is when it was given.
 
 | Date | Question | Decision |
 |---|---|---|
+| 2026-09-25 | Should the Primary Arch games be playable inside the app? | Yes, as a separate guest module opened from Discover beside The Hunt. App only — the web already links to the game. |
+| 2026-09-26 | Squeeze the site's game onto the phone, or redesign it? | Redesign for the phone; keep the rules in one engine shared with the web. |
+| 2026-09-26 | Which modes ship in the app? | Basketball Single Player (Classic and Salary Cap) with the rotation editor and Rewrite History. With a Friend and Online Opponent later. **No Same Screen** — the phone is too small for two players. Football later. |
+| 2026-09-26 | Can guests play? | Yes. Only posting to the leaderboard needs an account; a finished guest result waits on the device through sign-in. |
 | 2026-09-12 | `3i` draws a chat bubble beside *Following*, but RankIt has no messaging | Left out. No DMs. |
 | 2026-09-12 | `4g` promises "Your diary stays private until you share a card"; entries default to public | Keep public by default. The screen says what is true: you choose visibility per entry. |
 | 2026-09-12 | How follows shape the home | Three tiers, each ordered by nearness to now: **1)** followed clubs' matches *on that RankIt day*, **2)** followed leagues' matches (same day), **3)** everything else. Ordering, never a filter. |

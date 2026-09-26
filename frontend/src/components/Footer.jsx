@@ -12,6 +12,7 @@ export default function Footer() {
       <span>© {new Date().getFullYear()} Primary Arch</span>
       <Link to="/privacy-policy" className="hover:underline" style={{ color: "var(--text-faint)" }}>Privacy</Link>
       <Link to="/terms-of-service" className="hover:underline" style={{ color: "var(--text-faint)" }}>Terms</Link>
+      <Link to="/community-guidelines" className="hover:underline" style={{ color: "var(--text-faint)" }}>Community Guidelines</Link>
       <Link to="/contact" className="hover:underline" style={{ color: "var(--text-faint)" }}>Contact</Link>
       <Link to="/affiliate-disclosure" className="hover:underline" style={{ color: "var(--text-faint)" }}>Affiliate Disclosure</Link>
     </footer>

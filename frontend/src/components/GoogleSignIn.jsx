@@ -61,6 +61,12 @@ export default function GoogleSignIn({ successPath = null }) {
         <div className="flex-1 h-px" style={{ background: "var(--border)" }} />
       </div>
       <div ref={btnRef} className="w-full flex justify-center" />
+      {/* Google ile ilk giriş hesabı açar: kabul bu satırla (api/main.py TERMS_VERSION). */}
+      <p className="text-xs mt-2 text-center leading-relaxed" style={{ color: "var(--text-muted)" }}>
+        By continuing with Google you agree to the{" "}
+        <a href="/terms-of-service" className="underline">Terms of Service</a> and{" "}
+        <a href="/community-guidelines" className="underline">Community Guidelines</a>.
+      </p>
       {error && <p className="text-sm text-red-400 mt-2 text-center">{error}</p>}
     </div>
   );

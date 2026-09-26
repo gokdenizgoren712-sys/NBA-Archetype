@@ -13,13 +13,11 @@ function authFetch(path, token, opts = {}) {
 }
 
 export default function Profile() {
-  const { token, user, isLoggedIn, logout, login } = useAuth();
+  const { token, user, isLoggedIn, logout } = useAuth();
   const navigate = useNavigate();
   const [data, setData]   = useState(null);
   const [tab, setTab]     = useState("players");
   const [loading, setLoading] = useState(true);
-  const [promoteCode, setPromoteCode] = useState("");
-  const [promoteErr, setPromoteErr]   = useState("");
 
   useEffect(() => {
     if (!isLoggedIn) { navigate("/login"); return; }
@@ -29,20 +27,6 @@ export default function Profile() {
   const removePlayer = async (id) => {
     await authFetch(`/profile/saved-players/${id}`, token, { method: "DELETE" });
     setData(d => ({ ...d, saved_players: d.saved_players.filter(p => p.id !== id) }));
-  };
-
-  const promoteToAdmin = async () => {
-    setPromoteErr("");
-    try {
-      const res = await authFetch("/auth/promote", token, {
-        method: "POST",
-        body: JSON.stringify({ email: "", password: promoteCode }),
-      });
-      const d = await res.json();
-      if (!res.ok) throw new Error(d.detail || "Failed");
-      login(d.token, d.user);
-      window.location.href = "/admin/articles";
-    } catch (e) { setPromoteErr(e.message); }
   };
 
   const removeLineup = async (id) => {
@@ -96,30 +80,10 @@ export default function Profile() {
             </button>
           </div>
         </div>
-
-        {/* Admin promotion — only for non-admin users */}
-        {data.user?.role !== "admin" && (
-          <div className="mb-6 p-4 rounded-xl" style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
-            <p className="text-xs mb-2 font-medium" style={{ color: "var(--text-muted)" }}>Have an admin invite code?</p>
-            <div className="flex gap-2">
-              <input
-                type="password"
-                value={promoteCode}
-                onChange={e => setPromoteCode(e.target.value)}
-                placeholder="Admin invite code"
-                className="flex-1 px-3 py-1.5 rounded-[8px] text-sm outline-none"
-                style={{ background: "var(--bg-surface)", color: "var(--text-primary)", border: "1px solid var(--border)" }}
-              />
-              <button
-                onClick={promoteToAdmin}
-                disabled={!promoteCode}
-                className="px-3 py-1.5 rounded-[8px] font-logo text-sm font-bold uppercase tracking-wide bg-yamabuki text-darkBg hover:bg-white transition-colors disabled:opacity-50">
-                Upgrade
-              </button>
-            </div>
-            {promoteErr && <p className="text-xs mt-1" style={{ color: "var(--danger)" }}>{promoteErr}</p>}
-          </div>
-        )}
+        {/* Hesap silme ayrı sayfada (Play Console bağlantısı da o): /account/delete */}
+        <p className="-mt-3 mb-6 text-right">
+          <Link to="/account/delete" className="text-xs underline" style={{ color: "var(--text-muted)" }}>Delete account</Link>
+        </p>
 
         {/* Tabs */}
         <div className="flex gap-1 mb-4 border-b" style={{ borderColor: "var(--border)" }}>

@@ -20,6 +20,7 @@ import { rankitApi } from "../rankitApi";
 import SharedMatchCard from "../redesign/MatchCard";
 import MatchTile from "./MatchTile";
 import { compactCardProps, dateEyebrow, listProgress, ownedListLine, savedListLine } from "./pagesView";
+import ContentActions from "../redesign/ContentActions";
 
 // Görünürlük etiketi (§13.2 taraması bir `followers:` anahtarını sayaç sanmasın diye çift dizisi).
 const VISIBILITY = new Map([["public", "PUBLIC"], ["followers", "FOLLOWERS ONLY"], ["private", "PRIVATE"]]);
@@ -150,6 +151,7 @@ function Detail({ listId, isLoggedIn, hideScores, onOpenMatch, onChanged }) {
           <p className="riw-page-eyebrow">LIST BY @{String(list.username || "").toUpperCase()} · {VISIBILITY.get(list.visibility) || "PUBLIC"}{list.ranked ? " · RANKED" : ""}</p>
           <h1 id="riw-list-title">{list.title}</h1>
           {list.description && <p className="riw-lists-desc">{list.description}</p>}
+          {list.hidden && <p className="riw-lists-desc" role="status">Hidden after reports. Only you can see it while we review it.</p>}
         </div>
         <div className="riw-sortbar" role="group" aria-label="List actions">
           {list.visibility !== "private" && <button type="button" onClick={share}><Share2 size={14} aria-hidden="true" /> Share</button>}
@@ -157,6 +159,7 @@ function Detail({ listId, isLoggedIn, hideScores, onOpenMatch, onChanged }) {
           {!data.is_owner && isLoggedIn && <>
             <button type="button" aria-pressed={!!s.respected} onClick={() => toggle("respect")}>{s.respected ? "Respected" : "Respect"}</button>
             <button type="button" aria-pressed={!!s.saved} onClick={() => toggle("save")}>{s.saved ? "Saved" : "Save"}</button>
+            <ContentActions type="list" id={list.id} author={{ id: list.user_id, username: list.username }} />
           </>}
         </div>
       </div>

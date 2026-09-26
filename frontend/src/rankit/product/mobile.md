@@ -89,6 +89,20 @@ collided with the crests. The emptiness was a proportion problem.
 on this surface, with the design constraints a redesign must respect. Written
 to be handed to a designer (or a design tool) without further context.
 
+## Games by Primary Arch (guest module)
+
+The app hosts Primary Arch's Lineup Builder as a separate module — see
+"Games by Primary Arch" in [../PRODUCT.md](../PRODUCT.md) and the full plan in
+`docs/GAMES_IN_APP_PLAN.md`. On this surface that means:
+
+| | |
+|---|---|
+| Entry | A tile beside The Hunt on Discover (`.ri-discover-gates`); alone on the row when The Hunt has nothing to show |
+| Code | `frontend/src/arcade/` — lazy chunk, only in the packaged app (`VITE_RANKIT_MOBILE`) |
+| Root class | `.arc-surface`, full screen above the RankIt shell; no bottom nav inside |
+| Back button | Registers with `useBackClose`; steps back through the module's own screens, closes at its home |
+| Parity | Not counted — app-only by the owner's decision (2026-09-25) |
+
 ## Releases are cut on request, not per feature
 
 The user calls the release. Work accumulates on both surfaces, and when they say
@@ -112,6 +126,41 @@ across alphas or the update will not install over the previous one.
 The user uploads it at `primaryarch.net/admin/rankit-builds` — that step needs an
 admin session and is theirs, not ours. Give them the version name, version code,
 channel, release notes and the SHA-256 to check against.
+
+### Release signing (before Play Store / a wide audience)
+
+Alphas are debug-signed, and a debug build is debuggable: anyone with USB
+access to a phone can inspect the WebView and read the session token. Before
+the app goes to the Play Store or a wide audience, cut **release** builds with
+an upload key. The build is already wired for it (2026-09-26 security work):
+
+1. Generate the key once, on the owner's machine, and back it up somewhere
+   safe (password manager + offline copy). Losing it means no more updates
+   under the same app id outside Play App Signing.
+
+   ```
+   keytool -genkeypair -v -keystore frontend/android/rankit-upload.jks -alias rankit-upload -keyalg RSA -keysize 4096 -validity 10000
+   ```
+
+2. Create `frontend/android/keystore.properties` (gitignored, never commit):
+
+   ```
+   storeFile=rankit-upload.jks
+   storePassword=...
+   keyAlias=rankit-upload
+   keyPassword=...
+   ```
+
+3. Build with `gradlew.bat bundleRelease` (Play) or `assembleRelease` (APK).
+   Without the file, release stays unsigned and the debug alpha flow is unchanged.
+
+Switching keys means testers uninstall the debug-signed alpha once; the new
+key's installs update normally after that. Do it together with the move to
+the Play Store.
+
+The app also opts out of Android backups (`allowBackup="false"`,
+`res/xml/data_extraction_rules.xml`): the WebView's session token must not
+travel to a Drive backup or a device transfer. A new phone signs in again.
 
 ## Backlog, in order
 

@@ -5,6 +5,7 @@ import { Logo, GameIcon, NBAIcon, GLeagueIcon, NCAAIcon, EuroLeagueIcon,
          GlossaryIcon, AdminIcon, RefreshIcon } from "./components/BrandIcons";
 import { RankItMark } from "./rankit/redesign/BrandMark";
 import Footer from "./components/Footer";
+import TermsBanner from "./components/TermsBanner";
 
 // Route sayfaları LAZY — her biri kendi chunk'ına bölünür. Ağır lib'ler böylece
 // initial bundle'dan çıkar: tiptap→ArticleEditor chunk'ı, recharts→paylaşılan radar
@@ -32,11 +33,13 @@ const RankItDownload = lazy(() => import("./pages/RankItDownload"));
 const PhotoLayout     = lazy(() => import("./pages/admin/PhotoLayout"));
 const CorrectionList = lazy(() => import("./pages/admin/CorrectionList"));
 const LineupModeration = lazy(() => import("./pages/admin/LineupModeration"));
+const AdminReports   = lazy(() => import("./pages/admin/Reports"));
 const GLeague        = lazy(() => import("./pages/GLeague"));
 const NCAAPage       = lazy(() => import("./pages/NCAAPage"));
 const EuroLeaguePage = lazy(() => import("./pages/EuroLeaguePage"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const ResetPassword  = lazy(() => import("./pages/ResetPassword"));
+const AccountDelete  = lazy(() => import("./pages/AccountDelete"));
 const PlayerProfile  = lazy(() => import("./pages/PlayerProfile"));
 const SportSelect    = lazy(() => import("./pages/SportSelect"));
 const FootballPlayers = lazy(() => import("./pages/football/FootballPlayers"));
@@ -56,6 +59,7 @@ const RankItWeb = lazy(() => import("./rankit/web/RankItWeb"));
 const RankItMobileAuth = lazy(() => import("./pages/RankItMobileAuth"));
 const PrivacyPolicy      = lazy(() => import("./pages/legal/PrivacyPolicy"));
 const TermsOfService     = lazy(() => import("./pages/legal/TermsOfService"));
+const CommunityGuidelines = lazy(() => import("./pages/legal/CommunityGuidelines"));
 const ContactDisclaimer  = lazy(() => import("./pages/legal/ContactDisclaimer"));
 const AffiliateDisclosure = lazy(() => import("./pages/legal/AffiliateDisclosure"));
 import { ThemeProvider } from "./contexts/ThemeContext";
@@ -460,6 +464,7 @@ function AppInner() {
               {/* Auth extras */}
               <Route path="/forgot-password"          element={<ForgotPassword />} />
               <Route path="/reset-password"           element={<ResetPassword />} />
+              <Route path="/account/delete"           element={<AccountDelete />} />
               {/* Admin */}
               <Route path="/admin"                    element={<Navigate to="/admin/articles" replace />} />
               <Route path="/admin/articles"           element={<ArticleList />} />
@@ -468,12 +473,14 @@ function AppInner() {
               <Route path="/admin/users"              element={<UserList />} />
               <Route path="/admin/corrections"        element={<CorrectionList />} />
               <Route path="/admin/lineups"            element={<LineupModeration />} />
+              <Route path="/admin/reports"            element={<AdminReports />} />
               <Route path="/admin/photo-layout"       element={<PhotoLayout />} />
               <Route path="/admin/rankit-broadcasts"  element={<RankItBroadcasts />} />
               <Route path="/admin/rankit-builds"      element={<RankItReleases />} />
               {/* Legal — taslak, bkz. pages/legal/LegalPageLayout.jsx notu */}
               <Route path="/privacy-policy"           element={<PrivacyPolicy />} />
               <Route path="/terms-of-service"         element={<TermsOfService />} />
+              <Route path="/community-guidelines"     element={<CommunityGuidelines />} />
               <Route path="/contact"                  element={<ContactDisclaimer />} />
               <Route path="/affiliate-disclosure"     element={<AffiliateDisclosure />} />
             </Routes>
@@ -481,6 +488,7 @@ function AppInner() {
           </main>
         </div>
 
+        <TermsBanner />
         <Footer />
 
         <MobileDrawer open={menuOpen} onClose={() => setMenuOpen(false)} />

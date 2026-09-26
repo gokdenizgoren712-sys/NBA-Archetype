@@ -1,0 +1,99 @@
+# Her push ve PR'da: testler, iki build + sır bekçisi, bağımlılık açıkları ve
+# tüm geçmişte sır taraması (güvenlik planı Faz 4, 2026-09-26).
+# Main'e push Railway'de oto-deploy ediyor; bu iş akışı deploy'u durdurmaz —
+# kırmızıyken main'e gitmemek için GitHub'da branch protection açılmalı.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements.txt pytest
+      - name: pytest (geçici DB, arka plan işleri kapalı)
+        env:
+          DB_PATH: ${{ runner.temp }}/ci.db
+          RANKIT_BACKGROUND_JOBS: "0"
+        run: python -m pytest tests -q
+
+  frontend:
+    name: Frontend tests, builds, secret guard
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: node --test tests/*.test.mjs tests/*.test.js
+      # Her derleme ayrı ayrı: sır bekçisi paketi tarar, check-build kanalını
+      # denetler (site: viewport-fit yok; APK: Update var; mağaza: Update/APK yok).
+      - run: npm run build
+      - run: node --test tests/no-secrets-in-bundle.test.mjs
+      - run: node scripts/check-build.mjs site
+      - run: npm run build:rankit-mobile
+      - run: node --test tests/no-secrets-in-bundle.test.mjs
+      - run: node scripts/check-build.mjs sideload
+      - run: npm run build:rankit-store
+      - run: node --test tests/no-secrets-in-bundle.test.mjs
+      - run: node scripts/check-build.mjs store
+
+  audit:
+    name: Dependency advisories
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: npm audit (üretim bağımlılıkları, high ve üstü)
+        working-directory: frontend
+        run: npm audit --omit=dev --audit-level=high
+      - name: pip-audit
+        run: pip install pip-audit && pip-audit -r requirements.txt
+
+  secrets:
+    name: Secret scan (full history)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: gitleaks (sürüm ve SHA-256 sabit)
+        env:
+          GITLEAKS_VERSION: "8.28.0"
+          GITLEAKS_SHA256: "a65b5253807a68ac0cafa4414031fd740aeb55f54fb7e55f386acb52e6a840eb"
+        run: |
+          curl -sSL -o gitleaks.tgz "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${GITLEAKS_SHA256}  gitleaks.tgz" | sha256sum -c -
+          tar xzf gitleaks.tgz gitleaks
+          ./gitleaks git --no-banner --redact --config .gitleaks.toml .

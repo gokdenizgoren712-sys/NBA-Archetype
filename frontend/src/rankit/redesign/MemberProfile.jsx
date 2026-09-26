@@ -19,9 +19,10 @@
  * hepsi izleyenin GÖREBİLDİĞİ kayıtlardan (bkz. api/rankit.py
  * _visible_entries_sql). Aksi hâlde "57'de 41 uyum" gizli puanları ele verir.
  */
+import { useState } from "react";
 import { createPortal } from "react-dom";
 import { ChevronLeft } from "lucide-react";
-import { rankitApi } from "../rankitApi";
+import { rankitApi, announceBlock } from "../rankitApi";
 import { hidesScore } from "../rankitPrefs";
 import { SkeletonRows, Loading, ErrorState } from "./States";
 import RedesignMatchCard from "./MatchCard";
@@ -34,6 +35,23 @@ import { ratingAccount } from "../rankitOutbox";
 import RelationshipButton from "./RelationshipButton";
 import { useRelationshipRevision } from "./useRelationshipRevision";
 import { overlapPercent } from "./relationshipState";
+import ContentActions from "./ContentActions";
+
+/* Engelledigin kisinin profili yalniz bu kadar (sunucu icerik gondermez). */
+function BlockedNote({ memberId, username }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const unblock = async () => {
+    setBusy(true); setError("");
+    try { await rankitApi.unblock(memberId); announceBlock(memberId, false); }
+    catch { setError("Could not unblock. Try again."); setBusy(false); }
+  };
+  return <div className="ri-blocked-note" role="status">
+    <p>You blocked @{username}. You won&apos;t see each other&apos;s reviews, replies, lists or chat messages.</p>
+    <button type="button" onClick={unblock} disabled={busy} aria-busy={busy}>{busy ? "Unblocking…" : `Unblock @${username}`}</button>
+    {error && <p className="ri-mod-error" role="alert">{error}</p>}
+  </div>;
+}
 
 const INK_3 = "#9aa0a6";
 
@@ -91,13 +109,18 @@ export default function MemberProfile({ memberId, onClose, onOpenMatch, embedded
       <div className="ri-member-head">
         <button type="button" onClick={onClose} aria-label="Back"><ChevronLeft size={16} /></button>
         {member && <strong>@{member.username}</strong>}
+        {member && !data.is_self && !data.blocked && (
+          <ContentActions type="user" id={member.id} author={{ id: member.id, username: member.username }}
+            className="ri-member-more" />
+        )}
       </div>
       <div className="ri-member-body">
         {resource.error && <ErrorState error={resource.error} onRetry={resource.reload}
           body={resource.error.offline && !data ? 'Reconnect to load this profile. Private visibility must be checked online.' : undefined}/>}
         {!data && !resource.error && <Loading label="Loading the profile"><SkeletonRows count={3} height={72}/></Loading>}
         {data?.missing && <div className="ri-empty-state"><strong>This profile is not available</strong></div>}
-        {member && <>
+        {member && data.blocked && <BlockedNote memberId={memberId} username={member.username} />}
+        {member && !data.blocked && <>
           <div className="ri-member-id">
             <span className="ri-member-avatar" aria-hidden="true">{member.username.slice(0, 2).toUpperCase()}</span>
             <div>

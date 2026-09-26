@@ -11,7 +11,7 @@ function authFetch(path, token, opts = {}) {
 }
 
 export default function UserList() {
-  const { token, isAdmin, isLoggedIn } = useAuth();
+  const { token, isAdmin, isLoggedIn, user: me } = useAuth();
   const navigate = useNavigate();
   const [users, setUsers]     = useState([]);
   const [loading, setLoading] = useState(true);
@@ -30,6 +30,26 @@ export default function UserList() {
       body: JSON.stringify({ is_banned: u.is_banned ? 0 : 1 }),
     });
     setUsers(prev => prev.map(x => x.id === u.id ? { ...x, is_banned: u.is_banned ? 0 : 1 } : x));
+  };
+
+  // Admin atama (davet kodunun yerine): yalnız adminler görür, sunucu da
+  // rolü DB'den denetler; kendi yetkini kaldıramaz, son admini düşüremezsin.
+  const toggleRole = async (u) => {
+    const next = u.role === "admin" ? "user" : "admin";
+    const ask = next === "admin"
+      ? `Make ${u.username} an admin? They will be able to manage users, articles and releases.`
+      : `Remove admin rights from ${u.username}?`;
+    if (!confirm(ask)) return;
+    const r = await authFetch(`/admin/users/${u.id}`, token, {
+      method: "PATCH",
+      body: JSON.stringify({ role: next }),
+    });
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}));
+      alert(d.detail || "Could not change the role.");
+      return;
+    }
+    setUsers(prev => prev.map(x => x.id === u.id ? { ...x, role: next } : x));
   };
 
   const deleteUser = async (id) => {
@@ -66,6 +86,11 @@ export default function UserList() {
               className="px-3 py-1.5 rounded-[8px] text-sm"
               style={{ background: "var(--bg-elevated)", color: "var(--text-muted)", border: "1px solid var(--border)" }}>
               Corrections
+            </Link>
+            <Link to="/admin/reports"
+              className="px-3 py-1.5 rounded-[8px] text-sm"
+              style={{ background: "var(--bg-elevated)", color: "var(--text-muted)", border: "1px solid var(--border)" }}>
+              Reports
             </Link>
             <Link to="/admin/lineups"
               className="px-3 py-1.5 rounded-[8px] text-sm"
@@ -133,6 +158,17 @@ export default function UserList() {
                           }}>
                           {u.is_banned ? "Unban" : "Ban"}
                         </button>
+                        {u.id !== me?.id && (
+                          <button onClick={() => toggleRole(u)}
+                            className="px-2 py-1 rounded-[8px] text-xs transition-colors"
+                            style={{
+                              background: "var(--bg-elevated)",
+                              color: u.role === "admin" ? "var(--text-muted)" : "var(--accent)",
+                              border: "1px solid var(--border)",
+                            }}>
+                            {u.role === "admin" ? "Remove admin" : "Make admin"}
+                          </button>
+                        )}
                         <button onClick={() => deleteUser(u.id)}
                           className="px-2 py-1 rounded-[8px] text-xs"
                           style={{ color: "var(--danger)", border: "1px solid rgba(248,113,113,.3)" }}>

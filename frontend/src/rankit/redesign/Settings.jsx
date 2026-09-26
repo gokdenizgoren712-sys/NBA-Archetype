@@ -23,7 +23,10 @@ import { useCallback, useEffect, useState } from "react";
 import { ErrorState, Loading, SkeletonRows } from "./States";
 import { createPortal } from "react-dom";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { rankitApi } from "../rankitApi";
+import { rankitApi, rankitDeleteAccount, rankitMe, announceBlock } from "../rankitApi";
+import { reviewerFromStorage } from "./reviewIdentity";
+import { LEGAL_PAGES, externalLinkProps } from "../openExternal";
+import { IS_STORE_BUILD } from "../channel";
 import { BROADCAST_COUNTRIES, localeCountry } from "../rankitPrefs";
 import { useBackClose } from "./backStack";
 import { FollowPicker } from "./FirstRun";
@@ -57,6 +60,102 @@ function Row({ label, hint, value, onClick }) {
   );
 }
 
+/* Hesap silme (Google Play: uygulama içinden de silinebilmeli; web karşılığı
+   /account/delete). Satır açılınca aynı kartın içinde onay alanı çıkar — ayrı
+   bir diyalog değil, geri tuşu Ayarlar'ı kapatmaya devam eder. Sunucu yeniden
+   doğrulama ister: şifreli hesapta şifre, Google hesabında kullanıcı adı. */
+function DeleteAccount({ onDeleted }) {
+  const [open, setOpen] = useState(false);
+  const [me, setMe] = useState(null);
+  const [value, setValue] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!open || me) return undefined;
+    let alive = true;
+    rankitMe().then((d) => alive && setMe(d)).catch(() => alive && setError("Could not load your account."));
+    return () => { alive = false; };
+  }, [open, me]);
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setBusy(true); setError("");
+    try {
+      await rankitDeleteAccount(me?.has_password ? { password: value } : { confirm: value });
+      onDeleted();
+    } catch (err) {
+      setError(err.message || "Could not delete the account.");
+      setBusy(false);
+    }
+  };
+
+  if (!open) return <Row label="Delete account" hint="Permanently delete your Primary Arch account" onClick={() => setOpen(true)} />;
+  return (
+    <form className="ri-delete" onSubmit={submit}>
+      <strong>Delete account</strong>
+      <p>This permanently deletes your Primary Arch account and everything in RankIt: diary, ratings, reviews, lists and follows. It can't be undone.</p>
+      <label htmlFor="ri-delete-input">{me?.has_password ? "Enter your password to confirm" : `Type your username${me ? ` (${me.username})` : ""} to confirm`}</label>
+      <input id="ri-delete-input" type={me?.has_password ? "password" : "text"} value={value} autoComplete={me?.has_password ? "current-password" : "off"}
+        onChange={(e) => setValue(e.target.value)} />
+      {error && <p role="alert" className="ri-delete-error">{error}</p>}
+      <div className="ri-delete-actions">
+        <button type="button" className="ri-delete-cancel" onClick={() => { setOpen(false); setValue(""); setError(""); }}>Keep account</button>
+        <button type="submit" className="ri-delete-go" disabled={!me || !value || busy}>{busy ? "Deleting…" : "Delete"}</button>
+      </div>
+    </form>
+  );
+}
+
+/* PRIVACY & SAFETY → Blocked accounts (B5). DeleteAccount gibi satir
+   yerinde acilir; geri tusu Ayarlar'i kapatmaya devam eder. Yalniz senin
+   engellediklerin listelenir -- seni kimin engelledigi soylenmez. */
+function BlockedAccounts() {
+  const [open, setOpen] = useState(false);
+  const [rows, setRows] = useState(null);
+  const [error, setError] = useState("");
+  const [busyId, setBusyId] = useState(null);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    let alive = true;
+    rankitApi.blocks().then((d) => alive && setRows(d.blocked || []))
+      .catch(() => alive && setError("Could not load blocked accounts."));
+    return () => { alive = false; };
+  }, [open]);
+
+  const unblock = async (row) => {
+    setBusyId(row.id); setError("");
+    try {
+      await rankitApi.unblock(row.id);
+      announceBlock(row.id, false);
+      setRows((v) => v.filter((r) => r.id !== row.id));
+    } catch { setError(`Could not unblock @${row.username}. Try again.`); }
+    finally { setBusyId(null); }
+  };
+
+  if (!open) return <Row label="Blocked accounts" hint="You and they can't see each other's reviews, replies or lists"
+    onClick={() => setOpen(true)} />;
+  return (
+    <div className="ri-delete">
+      <strong>Blocked accounts</strong>
+      {rows === null && !error && <Loading label="Loading blocked accounts"><SkeletonRows count={2} height={44}/></Loading>}
+      {rows?.length === 0 && <p>You haven&apos;t blocked anyone. Block someone from the ⋯ menu on their review, reply or profile.</p>}
+      {rows?.map((row) => (
+        <div key={row.id} className="ri-blocked-row">
+          <span>@{row.username}</span>
+          <button type="button" onClick={() => unblock(row)} disabled={busyId === row.id} aria-busy={busyId === row.id}
+            aria-label={`Unblock @${row.username}`}>{busyId === row.id ? "Unblocking…" : "Unblock"}</button>
+        </div>
+      ))}
+      {error && <p role="alert" className="ri-delete-error">{error}</p>}
+      <div className="ri-delete-actions">
+        <button type="button" className="ri-delete-cancel" onClick={() => setOpen(false)}>Done</button>
+      </div>
+    </div>
+  );
+}
+
 function Group({ title, children }) {
   return (
     <section className="ri-set-group">
@@ -66,7 +165,7 @@ function Group({ title, children }) {
   );
 }
 
-export default function Settings({ prefs, setPref, followCount, onClose, onFollowsChanged, accountAction, accountActionLabel }) {
+export default function Settings({ prefs, setPref, followCount, onClose, onFollowsChanged, accountAction, accountActionLabel, onAccountDeleted }) {
   // "Competitions & clubs" 4h'nin secicisini DUZENLEYICI kipinde aciyor.
   const [editingFollows, setEditingFollows] = useState(false);
   // Kaydedilen sayi, profil verisinden gelenin YERINE gecer; kaydedilmediyse
@@ -90,6 +189,7 @@ export default function Settings({ prefs, setPref, followCount, onClose, onFollo
   // "!editingFollows" gerekmiyor: takip duzenleyici de bir dialog ve
   // yiginda ustte oldugu icin Escape once onu kapatiyor.
   const dialog = useDialog({ onClose, label: "Settings" });
+  const signedIn = reviewerFromStorage(localStorage)?.id != null;
 
   const setAccountFlag = async (key, value) => {
     if (busy) return;
@@ -123,7 +223,10 @@ export default function Settings({ prefs, setPref, followCount, onClose, onFollo
 
       <div className="ri-settings-body">
         {/* Native hesap kontrolu 6b'nin sag ust kontrollerini kapatmasin. */}
-        {accountAction && <Group title="PRIMARY ARCH ACCOUNT"><Row label={accountActionLabel || 'Account'} onClick={accountAction}/></Group>}
+        {accountAction && <Group title="PRIMARY ARCH ACCOUNT">
+          <Row label={accountActionLabel || 'Account'} onClick={accountAction}/>
+          {onAccountDeleted && <DeleteAccount onDeleted={onAccountDeleted}/>}
+        </Group>}
         <Group title="SPOILERS">
           <Switch label="Hide scores by default" hint="Blurs score, heat and reviews"
             on={prefs.hideScores} onChange={(v) => setPref({ hideScores: v })} />
@@ -167,11 +270,16 @@ export default function Settings({ prefs, setPref, followCount, onClose, onFollo
             onClick={() => setPref({ reduceMotion: !prefs.reduceMotion })} />
         </Group>
 
-        <Group title="LEGAL">
-          {[["/privacy-policy", "Privacy policy"],
-            ["/terms-of-service", "Terms of service"],
-            ["/rankit/download", "Update RankIt"]].map(([href, label]) => (
-            <a key={href} className="ri-set-line" href={href}>
+        {signedIn && <Group title="PRIVACY & SAFETY">
+          <BlockedAccounts />
+        </Group>}
+
+        {/* Sayfalar sitede: uygulamada uygulama içi tarayıcıda, tam adresle açılır
+            (göreli bağlantı paketlenmiş uygulamayı yeniden yüklüyordu). "Update
+            RankIt" yalnız siteden indirilen APK'da; mağaza derlemesinde yok. */}
+        <Group title="LEGAL & SUPPORT">
+          {[...LEGAL_PAGES, ...(IS_STORE_BUILD ? [] : [["/rankit/download", "Update RankIt"]])].map(([path, label]) => (
+            <a key={path} className="ri-set-line" {...externalLinkProps(path)}>
               <span className="ri-set-label"><strong>{label}</strong></span>
               <ChevronRight size={14} color={INK_4} />
             </a>

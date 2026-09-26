@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import LegalPageLayout, { Section } from "./LegalPageLayout";
 
 export default function PrivacyPolicy() {
@@ -42,9 +43,14 @@ export default function PrivacyPolicy() {
       <Section heading="Your rights">
         <p>
           You can request a copy of the personal data we hold about you, ask us to correct it,
-          or ask us to delete your account and associated data. [PLACEHOLDER: add a real
-          contact method — e.g. a support email — and, if you have EU/UK/California users,
-          the specific GDPR/UK GDPR/CCPA request-handling language a reviewer recommends.]
+          or ask us to delete your account and associated data. You can delete your account
+          yourself at any time: in the RankIt app under Profile → Settings, or on the web at{" "}
+          <Link to="/account/delete" style={{ color: "var(--yamabuki)" }}>primaryarch.net/account/delete</Link>.
+          Deletion removes your profile and everything tied to it; articles you wrote stay
+          published without your name. For any other request, email{" "}
+          <a href="mailto:info@primaryarch.net" style={{ color: "var(--yamabuki)" }}>info@primaryarch.net</a>.
+          [PLACEHOLDER: if you have EU/UK/California users, add the specific GDPR/UK GDPR/CCPA
+          request-handling language a reviewer recommends.]
         </p>
       </Section>
 
@@ -66,7 +72,9 @@ export default function PrivacyPolicy() {
 
       <Section heading="Contact">
         <p>
-          Questions about this policy: [PLACEHOLDER: support email / contact page link].
+          Questions about this policy:{" "}
+          <a href="mailto:info@primaryarch.net" style={{ color: "var(--yamabuki)" }}>info@primaryarch.net</a>{" "}
+          or the <Link to="/contact" style={{ color: "var(--yamabuki)" }}>contact page</Link>.
         </p>
       </Section>
     </LegalPageLayout>

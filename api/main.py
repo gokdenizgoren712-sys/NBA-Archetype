@@ -3,7 +3,7 @@ NBA Arketip API — FastAPI backend
 Parquet dosyalarını okuyup JSON olarak sunar.
 """
 
-import sys, json, os, time, logging, secrets, unicodedata, hashlib
+import sys, json, os, re, time, logging, secrets, unicodedata, hashlib, hmac
 from pathlib import Path
 from functools import lru_cache
 from typing import Optional
@@ -17,7 +17,7 @@ from fastapi import FastAPI, Query, HTTPException, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, PlainTextResponse, JSONResponse
+from fastapi.responses import FileResponse, PlainTextResponse, JSONResponse, Response
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
@@ -34,7 +34,37 @@ COMP_COLS = CORE_NOUNS        # uyum hesabı sadece core noun
 ALL_COMP_COLS = CORE_NOUNS + MODIFIER_TAGS
 CORE      = CORE_NOUNS        # geriye dönük alias
 
-app = FastAPI(title="NBA Arketip API", version="1.0.0")
+IS_PROD   = (os.environ.get("RENDER") == "true"
+             or os.environ.get("RAILWAY_ENVIRONMENT") is not None
+             or os.environ.get("IS_PROD") == "true")
+
+# Canlıda /docs, /redoc, /openapi.json kapalı: tüm endpoint haritasını
+# herkese sunmanın faydası yok (2026-09 güvenlik). Yerelde açık.
+class _RedactSecrets(logging.Filter):
+    """Uvicorn erişim/bağlantı satırlarındaki sırları maskeler.
+
+    WebSocket'ler JWT'yi URL'de taşıyor (?token=...) ve uvicorn bağlantı
+    satırına sorgu dizesini de yazıyor; şifre sıfırlama bağlantısı
+    (/reset-password?token=...) ve mobil giriş kodu (?code=...) da erişim
+    loguna düşüyordu. Loga erişen herkes oturum çalabilirdi."""
+    _rx = re.compile(r"((?:^|[?&])(?:token|ticket|code|credential)=)[^&\s\"']+", re.I)
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        if isinstance(record.msg, str):
+            record.msg = self._rx.sub(r"\1***", record.msg)
+        if record.args:
+            record.args = tuple(self._rx.sub(r"\1***", a) if isinstance(a, str) else a
+                                for a in (record.args if isinstance(record.args, tuple) else (record.args,)))
+        return True
+
+
+for _log_name in ("uvicorn.access", "uvicorn.error"):
+    logging.getLogger(_log_name).addFilter(_RedactSecrets())
+
+app = FastAPI(title="NBA Arketip API", version="1.0.0",
+              docs_url=None if IS_PROD else "/docs",
+              redoc_url=None if IS_PROD else "/redoc",
+              openapi_url=None if IS_PROD else "/openapi.json")
 
 # Tüm unhandled exception'ları JSON olarak döndür (Starlette'in plain-text 500'ünü geç)
 import traceback as _tb
@@ -50,9 +80,6 @@ async def _json_500(request: Request, exc: Exception):
 
 # ─── Middleware ────────────────────────────────────────────────────────────────
 
-IS_PROD   = (os.environ.get("RENDER") == "true"
-             or os.environ.get("RAILWAY_ENVIRONMENT") is not None
-             or os.environ.get("IS_PROD") == "true")
 SMTP_FROM        = os.environ.get("SMTP_FROM", "")
 BREVO_API_KEY    = os.environ.get("BREVO_API_KEY", "")
 SITE_URL         = os.environ.get("SITE_URL", "https://nba-archetype.onrender.com")
@@ -60,6 +87,13 @@ GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
 MOBILE_ORIGINS   = [x.strip() for x in os.environ.get(
     "MOBILE_ORIGINS", "http://localhost,https://localhost,capacitor://localhost"
 ).split(",") if x.strip()]
+# Canlıda eksik ayar: siteyi düşürmek yerine loga bağır. SITE_URL yoksa
+# sıfırlama bağlantıları eski onrender adresine gider (o alan adı başkasının
+# eline geçerse token'lar ona akar); GOOGLE_CLIENT_ID yoksa Google girişi kapalı.
+if IS_PROD:
+    for _k in ("SITE_URL", "GOOGLE_CLIENT_ID", "BREVO_API_KEY"):
+        if not os.environ.get(_k):
+            logging.warning("%s is not set in production", _k)
 
 # Railway'in outbound SMTP portlarını (587/2525 dahil) engellediği gözlemlendi
 # (bağlantı timeout ile ölüyordu) — bu yüzden SMTP yerine Brevo'nun HTTPS
@@ -88,12 +122,7 @@ def _send_email(to: str, subject: str, html: str):
 
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=list(dict.fromkeys([SITE_URL, *MOBILE_ORIGINS])) if IS_PROD else ["*"],
-    allow_methods=["GET", "POST", "DELETE", "PUT"],
-    allow_headers=["Authorization", "Content-Type"],
-)
+# CORS en DIŞTA kayıtlı — aşağıda, http middleware'lerinden SONRA (bkz. not).
 
 # Çok-oyunculu draft odaları (oda REST + WebSocket) — api/game_ws.py
 from .game_ws import router as _game_ws_router
@@ -114,12 +143,39 @@ from .rankit import router as _rankit_router
 app.include_router(_rankit_router)
 
 # Güvenlik header'ları
+# CSP önce YALNIZ RAPOR modunda (hiçbir şeyi engellemez): ihlaller
+# /api/csp-report'a düşer, bir süre izlenip temizlenince zorunlu yapılır.
+# Kaynaklar: Google Sign-In, Google Fonts, Cloudinary (admin yükleme),
+# görseller (NBA CDN, Cloudinary, ...) https üzerinden.
+_WS_ORIGIN = SITE_URL.replace("https://", "wss://").replace("http://", "ws://").rstrip("/")
+_CSP = "; ".join([
+    "default-src 'self'",
+    "script-src 'self' https://accounts.google.com/gsi/client",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com/gsi/style",
+    "font-src 'self' data: https://fonts.gstatic.com",
+    "img-src 'self' data: blob: https:",
+    f"connect-src 'self' {_WS_ORIGIN} https://accounts.google.com https://api.cloudinary.com",
+    "frame-src https://accounts.google.com",
+    "frame-ancestors 'none'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "report-uri /api/csp-report",
+])
+
+
 @app.middleware("http")
 async def security_headers(request: Request, call_next):
     response = await call_next(request)
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+    if IS_PROD:
+        # includeSubDomains YOK: alt alan adlarının hepsinin https olduğu teyit edilmedi
+        response.headers["Strict-Transport-Security"] = "max-age=31536000"
+    if response.headers.get("content-type", "").startswith("text/html"):
+        response.headers["Content-Security-Policy-Report-Only"] = _CSP
     return response
 
 # Request loglama (yavaş endpoint tespiti)
@@ -167,22 +223,83 @@ _RL_LOCK = threading.Lock()
 RL_WINDOW = 60   # saniye
 RL_LIMIT  = 120  # istek / pencere
 
+RL_MAX_KEYS = 20_000  # sahte IP yağmurunda sözlük sınırsız büyümesin
+
+# Cloudflare'in yayınladığı çıkış aralıkları (https://www.cloudflare.com/ips/).
+import ipaddress as _ipaddress
+_CF_NETS = [_ipaddress.ip_network(n) for n in (
+    "173.245.48.0/20", "103.21.244.0/22", "103.22.200.0/22", "103.31.4.0/22",
+    "141.101.64.0/18", "108.162.192.0/18", "190.93.240.0/20", "188.114.96.0/20",
+    "197.234.240.0/22", "198.41.128.0/17", "162.158.0.0/15", "104.16.0.0/13",
+    "104.24.0.0/14", "172.64.0.0/13", "131.0.72.0/22",
+    "2400:cb00::/32", "2606:4700::/32", "2803:f800::/32", "2405:b500::/32",
+    "2405:8100::/32", "2a06:98c0::/29", "2c0f:f248::/32",
+)]
+
+
+def _is_cloudflare(ip: str) -> bool:
+    try:
+        addr = _ipaddress.ip_address(ip)
+    except ValueError:
+        return False
+    return any(addr in net for net in _CF_NETS)
+
+
+def client_ip(request: Request) -> str:
+    """İstemcinin gerçek IP'si, sahtelenemeyen kaynaktan.
+
+    Zincir: istemci → Cloudflare (primaryarch.net) → Railway kenarı → uygulama.
+    X-Forwarded-For'un SOLU istemcinin kendi yazdığıdır — önceden oradan
+    okunuyordu, her istekte başka IP yazan sınıra hiç takılmıyordu. En SAĞDAKİ
+    değeri Railway ekler: Railway'e bağlanan adres. O bir Cloudflare adresiyse
+    gerçek istemci CF-Connecting-IP'dedir; değilse (Railway adresine doğrudan
+    gelinmiş) istemci o adresin kendisidir ve CF başlığına güvenilmez.
+    Canlıda doğrulamak için: GET /api/admin/request-ip.
+    """
+    xff = [p.strip() for p in request.headers.get("x-forwarded-for", "").split(",") if p.strip()]
+    peer = xff[-1] if xff else (request.client.host if request.client else "unknown")
+    cf = (request.headers.get("cf-connecting-ip") or "").strip()
+    if cf and _is_cloudflare(peer):
+        return cf
+    return peer
+
+
 def _check_rate(ip: str) -> bool:
     now = time.time()
     with _RL_LOCK:
         hits = [t for t in _RL.get(ip, []) if now - t < RL_WINDOW]
         hits.append(now)
         _RL[ip] = hits
+        if len(_RL) > RL_MAX_KEYS:
+            for k in [k for k, v in _RL.items() if not v or now - v[-1] >= RL_WINDOW]:
+                _RL.pop(k, None)
         return len(hits) > RL_LIMIT
 
 @app.middleware("http")
 async def rate_limit(request: Request, call_next):
     if request.url.path.startswith("/api"):
-        ip = request.headers.get("x-forwarded-for", request.client.host if request.client else "unknown").split(",")[0].strip()
+        ip = client_ip(request)
         if _check_rate(ip):
             return JSONResponse({"detail": "Too many requests"}, status_code=429,
                                 headers={"Retry-After": str(RL_WINDOW)})
     return await call_next(request)
+
+
+# CORS en dışta olmalı: Starlette'te en SON eklenen middleware en dıştakidir.
+# Önceden CORS bu http middleware'lerinden önce ekleniyordu, yani rate
+# limiter'ın 429'u CORS'tan geçmeden dönüyordu — başlıksız. Site API'ye aynı
+# kökenden gittiği için etkilenmiyordu; RankIt uygulaması (https://localhost,
+# çapraz köken) 429'u OKUYAMIYOR, "ağ hatası" görüyordu: Rewrite History'nin
+# 29 takımlık lig kurulumu (leagueSim.js 429'da Retry-After kadar bekleyip
+# yeniden dener) uygulamada hiç yeniden denemeden düşüyordu (2026-09-26,
+# Games by Primary Arch uçtan uca testinde yakalandı). Yan fayda: tarayıcının
+# preflight (OPTIONS) istekleri artık rate limit sayacına girmeden cevaplanır.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=list(dict.fromkeys([SITE_URL, *MOBILE_ORIGINS])) if IS_PROD else ["*"],
+    allow_methods=["GET", "POST", "DELETE", "PUT"],
+    allow_headers=["Authorization", "Content-Type"],
+)
 
 
 # ─── İsim eşleştirme: aksan/büyük-küçük harf duyarsız ──────────────────────────
@@ -2821,9 +2938,10 @@ def get_pca_loadings():
 # ─── Auth + User + Article + Comment endpoints ────────────────────────────────
 
 from .db   import init_db, get_conn
+from . import moderation_words
 from .auth import (hash_password, verify_password, create_token,
                    get_current_user, get_optional_user, require_admin,
-                   ADMIN_INVITE_CODE)
+                   burn_password_check)
 from pydantic import BaseModel, EmailStr
 import re as _re
 
@@ -2944,10 +3062,15 @@ if _missing:
 # ── Pydantic modelleri ────────────────────────────────────────────────────────
 
 class RegisterBody(BaseModel):
+    # admin_invite_code kaldırıldı (2026-09 güvenlik): admin yalnız sunucuda
+    # src/make_admin.py ile atanır. Eski istemci alanı gönderirse yok sayılır.
     email: str
     username: str
     password: str
-    admin_invite_code: str = ""
+    # Kayıt formundaki zorunlu onay kutusu (Terms + Community Guidelines).
+    # None: onay kutusundan önceki önbellekli istemci — kayıt reddedilmez,
+    # kabul kaydı da yazılmaz; bir sonraki girişte "Updated terms" bandı çıkar.
+    accept_terms: Optional[bool] = None
 
 class LoginBody(BaseModel):
     email: str
@@ -2955,6 +3078,7 @@ class LoginBody(BaseModel):
 
 class PatchUserBody(BaseModel):
     is_banned: int = None
+    role: Optional[str] = None   # "user" | "admin" — davet kodunun yerine panelden atama
 
 class ForgotBody(BaseModel):
     email: str
@@ -2968,6 +3092,14 @@ class GoogleAuthBody(BaseModel):
 
 class MobileAuthExchangeBody(BaseModel):
     code: str
+    verifier: Optional[str] = None   # PKCE; eski APK'lar göndermez
+
+class MobileCodeBody(BaseModel):
+    challenge: Optional[str] = None  # base64url(SHA-256(verifier)), 43 karakter
+
+class DeleteAccountBody(BaseModel):
+    password: str = ""   # şifreli hesap: şifre
+    confirm: str = ""    # şifresiz (Google) hesap: kullanıcı adı
 
 class ArticleBody(BaseModel):
     title: str
@@ -3012,6 +3144,24 @@ _FOOTBALL_SHAPES = {"4-3-3", "4-2-3-1", "4-4-2", "3-5-2", "3-4-2-1", "4-1-4-1", 
 
 # ── Yardımcı ─────────────────────────────────────────────────────────────────
 
+# ── Makale HTML'i: yalnız editörün (Tiptap StarterKit + Image + Link) ürettiği
+# etiketler. Blog sayfası içeriği ham HTML olarak basıyor ve oturum token'ı
+# localStorage'da — içerikteki tek bir <img onerror> okuyan HERKESİN oturumunu
+# çalardı. Kaydederken ve okurken temizlenir; istemci de DOMPurify'dan geçirir.
+import nh3 as _nh3
+_ARTICLE_TAGS = {"p", "br", "strong", "b", "em", "i", "u", "s", "del", "code", "pre",
+                 "blockquote", "ul", "ol", "li", "h1", "h2", "h3", "h4", "h5", "h6",
+                 "hr", "a", "img", "span"}
+_ARTICLE_ATTRS = {"a": {"href", "title", "target"}, "img": {"src", "alt", "title"},
+                  "ol": {"start"}, "code": {"class"}, "pre": {"class"}}
+
+
+def _clean_article_html(html: str) -> str:
+    return _nh3.clean(html or "", tags=_ARTICLE_TAGS, attributes=_ARTICLE_ATTRS,
+                      url_schemes={"http", "https", "mailto"},
+                      link_rel="noopener noreferrer nofollow")
+
+
 def _slugify(text: str) -> str:
     s = text.lower().strip()
     s = _re.sub(r"[^\w\s-]", "", s)
@@ -3023,66 +3173,155 @@ def _row(r) -> dict:
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
 
+# ── Giriş uçlarına özel sınırlar (2026-09 güvenlik) ──────────────────────────
+# Genel IP sınırı tek başına yetmez: saldırgan binlerce IP'den TEK bir hesaba
+# şifre deneyebilir. Bu sayaçlar HESABA (e-postaya) bağlı, IP'den bağımsız.
+_AUTH_HITS: dict = {}
+_AUTH_LOCK = threading.Lock()
+LOGIN_FAIL_LIMIT, LOGIN_FAIL_WINDOW = 10, 15 * 60   # 15 dk'da 10 hatalı deneme
+FORGOT_LIMIT, FORGOT_WINDOW = 3, 60 * 60            # saatte 3 sıfırlama e-postası
+
+
+def _auth_hits(key: str, window: int, *, add: bool) -> int:
+    now = time.time()
+    with _AUTH_LOCK:
+        hits = [t for t in _AUTH_HITS.get(key, ()) if now - t < window]
+        if add:
+            hits.append(now)
+        if hits:
+            _AUTH_HITS[key] = hits
+        else:
+            _AUTH_HITS.pop(key, None)
+        if len(_AUTH_HITS) > 50_000:   # bellek tavanı: bayat anahtarları at
+            for k in [k for k, v in _AUTH_HITS.items() if now - v[-1] > 3600]:
+                _AUTH_HITS.pop(k, None)
+        return len(hits)
+
+
+def _auth_reset(key: str) -> None:
+    with _AUTH_LOCK:
+        _AUTH_HITS.pop(key, None)
+
+
+def _reset_hash(token: str) -> str:
+    """Sıfırlama token'ı DB'de yalnız özetiyle durur (mobil kodlar gibi)."""
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+# Yeni belirlenen şifreler 6–18 karakter (sahibin kararı, 2026-09-26). Yalnız
+# kayıt ve sıfırlamada uygulanır; GİRİŞTE uzunluk bakılmaz, eski hesaplar
+# eski şifreleriyle girmeye devam eder. frontend/src/lib/passwordRules.js ile aynı.
+PASSWORD_MIN, PASSWORD_MAX = 6, 18
+# Kullanım şartları + Community Guidelines sürümü (UGC / sıfır tolerans maddesi,
+# docs/RANKIT_STORE_BLOCKERS_PLAN.md B7). Metin değişince tarih ilerler; eski
+# sürümü kabul etmiş kullanıcılara sitede "Updated terms" bandı çıkar.
+TERMS_VERSION = "2026-09-26"
+
+
+def _check_new_password(password: str) -> None:
+    if not PASSWORD_MIN <= len(password or "") <= PASSWORD_MAX:
+        raise HTTPException(400, f"Password must be {PASSWORD_MIN}–{PASSWORD_MAX} characters")
+
+
 @app.post("/api/auth/register")
 def register(body: RegisterBody):
-    is_admin = body.admin_invite_code and body.admin_invite_code == ADMIN_INVITE_CODE
-    role = "admin" if is_admin else "user"
+    # Rol her zaman "user": admin davet kodu kaldırıldı (internetten kaba
+    # kuvvetle denenebiliyordu). Admin yalnız sunucuda src/make_admin.py ile.
+    role = "user"
     if not body.email or "@" not in body.email:
         raise HTTPException(400, "Invalid email address")
-    if len(body.password) < 6:
-        raise HTTPException(400, "Password must be at least 6 characters")
+    _check_new_password(body.password)
     if len(body.username) < 2:
         raise HTTPException(400, "Username must be at least 2 characters")
+    if body.accept_terms is False:
+        raise HTTPException(400, "Agree to the Terms of Service and Community Guidelines to continue")
+    # Kullanıcı adı herkese görünen içerik: küfür/hakaret filtresi (B4).
+    if moderation_words.blocked_word(body.username):
+        raise HTTPException(400, "Choose a different username")
     hashed = hash_password(body.password)
     try:
         with get_conn() as conn:
             cur = conn.execute(
-                "INSERT INTO users (email, username, hashed_password, role) VALUES (?,?,?,?)",
-                (body.email.lower(), body.username, hashed, role)
+                "INSERT INTO users (email, username, hashed_password, role, terms_version) VALUES (?,?,?,?,?)",
+                (body.email.lower(), body.username, hashed, role,
+                 TERMS_VERSION if body.accept_terms else None)
             )
             user_id = cur.lastrowid
     except Exception as e:
         if "UNIQUE" in str(e):
             raise HTTPException(409, "Email or username already taken")
-        raise HTTPException(500, str(e))
+        # DB hata metni istemciye gitmesin (tablo/kolon adı sızdırıyordu)
+        logging.error("register failed: %s", e)
+        raise HTTPException(500, "Could not create the account. Try again in a moment.")
     token = create_token(user_id, role)
     return {"token": token, "user": {"id": user_id, "email": body.email, "username": body.username, "role": role}}
 
 @app.post("/api/auth/login")
 def login(body: LoginBody):
+    email = body.email.lower()
+    fail_key = f"login:{email}"
+    if _auth_hits(fail_key, LOGIN_FAIL_WINDOW, add=False) >= LOGIN_FAIL_LIMIT:
+        raise HTTPException(429, "Too many sign-in attempts. Try again in 15 minutes.",
+                            headers={"Retry-After": str(LOGIN_FAIL_WINDOW)})
     with get_conn() as conn:
-        row = conn.execute("SELECT * FROM users WHERE email=?", (body.email.lower(),)).fetchone()
+        row = conn.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
     if not row or not row["hashed_password"]:
+        burn_password_check(body.password)   # hesap yokken de aynı süre
+        _auth_hits(fail_key, LOGIN_FAIL_WINDOW, add=True)
         raise HTTPException(401, "Incorrect email or password")
     if not verify_password(body.password, row["hashed_password"]):
+        _auth_hits(fail_key, LOGIN_FAIL_WINDOW, add=True)
         raise HTTPException(401, "Incorrect email or password")
     if row["is_banned"]:
         raise HTTPException(403, "This account has been suspended")
+    _auth_reset(fail_key)
     token = create_token(row["id"], row["role"])
     return {"token": token, "user": {"id": row["id"], "email": row["email"],
                                       "username": row["username"], "role": row["role"]}}
 
 @app.post("/api/auth/google")
 def google_auth(body: GoogleAuthBody):
-    resp = httpx.get(
-        f"https://oauth2.googleapis.com/tokeninfo?id_token={body.credential}",
-        timeout=10,
-    )
+    # Hedef kitle kontrolü ZORUNLU: GOOGLE_CLIENT_ID yokken başka herhangi bir
+    # uygulama için üretilmiş bir Google token'ı da kabul ediliyordu.
+    if not GOOGLE_CLIENT_ID:
+        raise HTTPException(503, "Google sign-in is not available right now")
+    if not body.credential or len(body.credential) > 4096:
+        raise HTTPException(400, "Invalid Google token")
+    try:
+        resp = httpx.get("https://oauth2.googleapis.com/tokeninfo",
+                         params={"id_token": body.credential}, timeout=10)
+    except httpx.HTTPError:
+        raise HTTPException(502, "Could not reach Google — try again")
     if resp.status_code != 200:
         raise HTTPException(400, "Invalid Google token")
     info = resp.json()
-    if GOOGLE_CLIENT_ID and info.get("aud") != GOOGLE_CLIENT_ID:
+    if info.get("aud") != GOOGLE_CLIENT_ID:
         raise HTTPException(400, "Token audience mismatch")
+    if info.get("iss") not in ("accounts.google.com", "https://accounts.google.com"):
+        raise HTTPException(400, "Invalid Google token")
+    if str(info.get("email_verified", "")).lower() != "true":
+        raise HTTPException(400, "Your Google email address is not verified")
     email = info.get("email", "")
     if not email:
         raise HTTPException(400, "No email in Google token")
     base = _re.sub(r"[^A-Za-z0-9_]", "", info.get("given_name", email.split("@")[0]))[:20] or "user"
+    if moderation_words.blocked_word(base):
+        base = "member"
     with get_conn() as conn:
         row = conn.execute("SELECT * FROM users WHERE email=?", (email.lower(),)).fetchone()
         if row:
             if row["is_banned"]:
                 raise HTTPException(403, "Account suspended")
             user_id, role = row["id"], row["role"]
+            if row["hashed_password"] and not row["email_verified"]:
+                # Önden ele geçirme: biri bu e-postayla şifreli bir hesap açmış
+                # ama e-postanın sahibi olduğunu hiç kanıtlamamış olabilir.
+                # E-postanın gerçek sahibi (Google) gelince o şifre ve açık
+                # oturumlar düşer; şifre gerekirse sıfırlama e-postasıyla alınır.
+                conn.execute("""UPDATE users SET hashed_password='', email_verified=1,
+                                token_version=token_version+1 WHERE id=?""", (user_id,))
+            elif not row["email_verified"]:
+                conn.execute("UPDATE users SET email_verified=1 WHERE id=?", (user_id,))
         else:
             username = base
             for i in range(1, 100):
@@ -3090,9 +3329,11 @@ def google_auth(body: GoogleAuthBody):
                 if not exists:
                     break
                 username = f"{base}{i}"
+            # Google düğmesinin altındaki "By continuing you agree…" satırı kabul sayılır.
             cur = conn.execute(
-                "INSERT INTO users (email, username, hashed_password, role) VALUES (?,?,?,?)",
-                (email.lower(), username, "", "user"),
+                "INSERT INTO users (email, username, hashed_password, role, email_verified, terms_version)"
+                " VALUES (?,?,?,?,1,?)",
+                (email.lower(), username, "", "user", TERMS_VERSION),
             )
             user_id, role = cur.lastrowid, "user"
         user_row = conn.execute(
@@ -3102,14 +3343,22 @@ def google_auth(body: GoogleAuthBody):
 
 @app.post("/api/auth/forgot-password")
 def forgot_password(body: ForgotBody):
+    email = body.email.lower()
+    # E-posta başına sınır: birine sıfırlama e-postası yağdırılamasın (Brevo
+    # kotası + gönderen itibarı). Cevap yine aynı: hesabın varlığı sızmasın.
+    if _auth_hits(f"forgot:{email}", FORGOT_WINDOW, add=True) > FORGOT_LIMIT:
+        return {"ok": True}
     with get_conn() as conn:
-        row = conn.execute("SELECT id, email FROM users WHERE email=?", (body.email.lower(),)).fetchone()
+        row = conn.execute("SELECT id, email FROM users WHERE email=?", (email,)).fetchone()
     if row:
         token = secrets.token_urlsafe(32)
-        expires = (datetime.utcnow() + timedelta(hours=1)).isoformat()
+        # Süre SQLite'ın datetime('now') biçiminde: isoformat() "T" ayraçlı
+        # yazıyordu, metin karşılaştırmasında "T" > " " olduğu için bağlantı
+        # 1 saat yerine UTC gün sonuna kadar geçerli kalıyordu.
+        expires = (datetime.utcnow() + timedelta(hours=1)).strftime("%Y-%m-%d %H:%M:%S")
         with get_conn() as conn:
             conn.execute("UPDATE users SET reset_token=?, reset_expires=? WHERE id=?",
-                         (token, expires, row["id"]))
+                         (_reset_hash(token), expires, row["id"]))
         reset_url = f"{SITE_URL}/reset-password?token={token}"
         _send_email(
             row["email"],
@@ -3122,66 +3371,129 @@ def forgot_password(body: ForgotBody):
 
 @app.post("/api/auth/reset-password")
 def reset_password(body: ResetBody):
-    if len(body.password) < 6:
-        raise HTTPException(400, "Password must be at least 6 characters")
+    _check_new_password(body.password)
+    if not body.token or len(body.token) > 200:
+        raise HTTPException(400, "Invalid or expired reset link")
     with get_conn() as conn:
         row = conn.execute(
             "SELECT id, role FROM users WHERE reset_token=? AND reset_expires > datetime('now')",
-            (body.token,),
+            (_reset_hash(body.token),),
         ).fetchone()
     if not row:
         raise HTTPException(400, "Invalid or expired reset link")
     hashed = hash_password(body.password)
     with get_conn() as conn:
+        # token_version+1: şifre değişti, o ana kadarki TÜM oturumlar düşer.
+        # Bağlantıyı açabilen e-postanın sahibidir → email_verified.
         conn.execute(
-            "UPDATE users SET hashed_password=?, reset_token=NULL, reset_expires=NULL WHERE id=?",
+            """UPDATE users SET hashed_password=?, reset_token=NULL, reset_expires=NULL,
+                   token_version=token_version+1, email_verified=1 WHERE id=?""",
             (hashed, row["id"]),
         )
         user_row = conn.execute("SELECT id,email,username,role FROM users WHERE id=?", (row["id"],)).fetchone()
+    _auth_reset(f"login:{user_row['email'].lower()}")
     new_token = create_token(row["id"], row["role"])
     return {"token": new_token, "user": dict(user_row)}
 
-@app.post("/api/auth/promote")
-def promote(body: LoginBody, user=Depends(get_current_user)):
-    """Mevcut kullanıcıyı admin'e yükselt — invite code doğruysa."""
-    if not ADMIN_INVITE_CODE:
-        raise HTTPException(400, "ADMIN_INVITE_CODE env var not set on server")
-    if body.password != ADMIN_INVITE_CODE:
-        raise HTTPException(403, "Invalid admin invite code")
-    uid = int(user["sub"])
-    with get_conn() as conn:
-        conn.execute("UPDATE users SET role='admin' WHERE id=?", (uid,))
-        row = conn.execute("SELECT id,email,username,role FROM users WHERE id=?", (uid,)).fetchone()
-    if not row:
-        raise HTTPException(404, "User not found in database")
-    new_token = create_token(uid, "admin")
-    return {"token": new_token, "user": dict(row)}
+# /api/auth/promote KALDIRILDI (2026-09 güvenlik): davet kodu internetten
+# sınırsız denenebiliyordu. Admin yalnız sunucuda: python src/make_admin.py
+
+@app.post("/api/csp-report", status_code=204, include_in_schema=False)
+async def csp_report(request: Request):
+    """Tarayıcının CSP ihlal raporları (Report-Only). Loga özet düşer; saatte
+    en çok 300 satır — kötü niyetli rapor yağmuru logu boğmasın."""
+    body = (await request.body())[:8192]
+    if _auth_hits("csp-report", 3600, add=True) <= 300:
+        try:
+            rep = json.loads(body or b"{}").get("csp-report", {})
+            logging.warning("CSP report: %s blocked %s on %s",
+                            str(rep.get("violated-directive", ""))[:80],
+                            str(rep.get("blocked-uri", ""))[:200],
+                            str(rep.get("document-uri", ""))[:200])
+        except Exception:
+            pass
+    return Response(status_code=204)
+
+
+@app.post("/api/admin/cloudinary/sign", include_in_schema=False)
+def admin_cloudinary_sign(_user=Depends(require_admin)):
+    """Makale görseli için tek yüklemelik Cloudinary imzası (yalnız admin).
+
+    Eskiden editör imzasız bir upload preset'iyle yüklüyordu; preset adı
+    herkese açık pakette olduğu için herkes hesaba dosya yükleyebiliyordu.
+    Gizli anahtar sunucuda kalır, tarayıcı yalnız bu imzayı görür. Sunucuda
+    anahtar tanımlı değilse 503: editör geçiş döneminde eski yola düşer.
+    İmza: parametreler alfabetik, "a=1&b=2" + api_secret, SHA-1 (Cloudinary)."""
+    cloud = os.environ.get("CLOUDINARY_CLOUD_NAME") or os.environ.get("VITE_CLOUDINARY_CLOUD_NAME")
+    key, secret = os.environ.get("CLOUDINARY_API_KEY"), os.environ.get("CLOUDINARY_API_SECRET")
+    if not (cloud and key and secret):
+        raise HTTPException(503, "Signed uploads are not configured")
+    params = {"folder": "articles", "timestamp": str(int(time.time()))}
+    to_sign = "&".join(f"{k}={v}" for k, v in sorted(params.items()))
+    signature = hashlib.sha1((to_sign + secret).encode("utf-8")).hexdigest()
+    return {"cloud_name": cloud, "api_key": key, "signature": signature, **params}
+
+
+@app.get("/api/admin/request-ip", include_in_schema=False)
+def admin_request_ip(request: Request, _user=Depends(require_admin)):
+    """Canlıda istek sınırının doğru IP'yi gördüğünü doğrulamak için."""
+    h = request.headers
+    return {"resolved": client_ip(request),
+            "x_forwarded_for": h.get("x-forwarded-for"),
+            "x_real_ip": h.get("x-real-ip"),
+            "cf_connecting_ip": h.get("cf-connecting-ip"),
+            "client_host": request.client.host if request.client else None}
 
 @app.get("/api/auth/me")
 def me(user=Depends(get_current_user)):
     with get_conn() as conn:
-        row = conn.execute("SELECT id,email,username,role,created_at FROM users WHERE id=?",
-                           (int(user["sub"]),)).fetchone()
+        row = conn.execute("""SELECT id,email,username,role,created_at,hashed_password,terms_version
+                              FROM users WHERE id=?""", (int(user["sub"]),)).fetchone()
     if not row:
         raise HTTPException(404, "User not found")
-    return _row(row)
+    out = _row(row)
+    # Hesap silme formu neyi soracağını bilsin: şifre mi, kullanıcı adı mı.
+    out["has_password"] = bool(out.pop("hashed_password", "") not in ("", "!", None))
+    # Güncel şartlar kabul edilmediyse site engellemeyen bir bant gösterir.
+    out["terms_current"] = out.pop("terms_version", None) == TERMS_VERSION
+    return out
+
+
+@app.post("/api/account/accept-terms")
+def accept_terms(user=Depends(get_current_user)):
+    """"Updated terms" bandındaki onay: güncel sürüm hesaba yazılır."""
+    with get_conn() as conn:
+        conn.execute("UPDATE users SET terms_version=? WHERE id=?", (TERMS_VERSION, int(user["sub"])))
+    return {"ok": True, "terms_current": True}
+
+_PKCE_RX = _re.compile(r"^[A-Za-z0-9_-]{43}$")
+
+
+def _pkce_challenge(verifier: str) -> str:
+    import base64
+    digest = hashlib.sha256(verifier.encode("ascii")).digest()
+    return base64.urlsafe_b64encode(digest).rstrip(b"=").decode("ascii")
+
 
 @app.post("/api/auth/mobile-code")
-def create_mobile_auth_code(user=Depends(get_current_user)):
+def create_mobile_auth_code(body: Optional[MobileCodeBody] = None, user=Depends(get_current_user)):
     """Canli web oturumunu APK'ya tek kullanimlik kodla devreder.
 
     JWT deep-link URL'sine yazilmaz; ham kod yalnizca bir kez ve 5 dakika
     boyunca kullanilabilir. Veritabaninda da kodun sadece SHA-256 ozeti tutulur.
     """
     uid = int(user["sub"])
+    challenge = (body.challenge or "").strip() if body else ""
+    if challenge and not _PKCE_RX.match(challenge):
+        raise HTTPException(400, "Invalid app challenge — start sign-in from the app again")
     raw_code = secrets.token_urlsafe(32)
     code_hash = hashlib.sha256(raw_code.encode("utf-8")).hexdigest()
     expires_at = (datetime.utcnow() + timedelta(minutes=5)).strftime("%Y-%m-%d %H:%M:%S")
     with get_conn() as conn:
         conn.execute("DELETE FROM mobile_auth_codes WHERE expires_at < datetime('now') OR used_at IS NOT NULL")
         conn.execute(
-            "INSERT INTO mobile_auth_codes(code_hash,user_id,expires_at) VALUES(?,?,?)",
-            (code_hash, uid, expires_at),
+            "INSERT INTO mobile_auth_codes(code_hash,user_id,expires_at,challenge) VALUES(?,?,?,?)",
+            (code_hash, uid, expires_at, challenge or None),
         )
     return {"code": raw_code, "expires_in": 300, "deep_link": f"rankit://auth?code={raw_code}"}
 
@@ -3191,19 +3503,29 @@ def exchange_mobile_auth_code(body: MobileAuthExchangeBody):
         raise HTTPException(400, "Invalid mobile authorization code")
     code_hash = hashlib.sha256(body.code.encode("utf-8")).hexdigest()
     with get_conn() as conn:
-        row = conn.execute("""SELECT c.id,c.user_id,u.email,u.username,u.role,u.is_banned
+        row = conn.execute("""SELECT c.id,c.user_id,c.challenge,u.email,u.username,u.role,u.is_banned
             FROM mobile_auth_codes c JOIN users u ON u.id=c.user_id
             WHERE c.code_hash=? AND c.used_at IS NULL AND c.expires_at >= datetime('now')""",
             (code_hash,),
         ).fetchone()
         if not row:
             raise HTTPException(401, "Mobile authorization code expired or already used")
+        # Kod ÖNCE harcanır: yanlış doğrulayıcıyla bir deneme hakkı bile kalmaz.
         changed = conn.execute(
             "UPDATE mobile_auth_codes SET used_at=datetime('now') WHERE id=? AND used_at IS NULL",
             (row["id"],),
         ).rowcount
         if changed != 1:
             raise HTTPException(401, "Mobile authorization code already used")
+    # PKCE: kod bir doğrulayıcı özetine bağlıysa, yalnız o doğrulayıcıyı
+    # bilen (akışı başlatan uygulama) takas edebilir. Özetsiz kod = eski APK;
+    # MOBILE_PKCE_REQUIRED=1 olunca onlar da reddedilir.
+    if row["challenge"]:
+        if not body.verifier or len(body.verifier) > 200 or not hmac.compare_digest(
+                _pkce_challenge(body.verifier), row["challenge"]):
+            raise HTTPException(401, "This sign-in was started on another device — try again from the app")
+    elif os.environ.get("MOBILE_PKCE_REQUIRED") == "1":
+        raise HTTPException(401, "Update RankIt to sign in")
     if row["is_banned"]:
         raise HTTPException(403, "This account has been suspended")
     account = {"id": row["user_id"], "email": row["email"], "username": row["username"], "role": row["role"]}
@@ -3235,6 +3557,7 @@ def get_article(slug: str, user=Depends(get_optional_user)):
     if not row:
         raise HTTPException(404, "Article not found")
     art = _row(row)
+    art["content"] = _clean_article_html(art.get("content"))   # eski kayıtlar da temiz dönsün
     if art["status"] != "published":
         if not user or user.get("role") != "admin":
             raise HTTPException(404, "Article not found")
@@ -3265,14 +3588,15 @@ def create_article(body: ArticleBody, user=Depends(require_admin)):
             cur = conn.execute(
                 """INSERT INTO articles (title, slug, content, cover_image_url, author_id, status, created_at, updated_at)
                    VALUES (?,?,?,?,?,?,?,?)""",
-                (body.title, slug, body.content, body.cover_image_url or None,
+                (body.title, slug, _clean_article_html(body.content), body.cover_image_url or None,
                  int(user["sub"]), body.status, now, now)
             )
             return {"id": cur.lastrowid, "slug": slug}
     except Exception as e:
         if "UNIQUE" in str(e):
             raise HTTPException(409, "This slug is already in use")
-        raise HTTPException(500, str(e))
+        logging.error("create_article failed: %s", e)
+        raise HTTPException(500, "Could not save the article. Try again in a moment.")
 
 @app.put("/api/admin/articles/{article_id}")
 def update_article(article_id: int, body: ArticleBody, user=Depends(require_admin)):
@@ -3283,7 +3607,7 @@ def update_article(article_id: int, body: ArticleBody, user=Depends(require_admi
         conn.execute(
             """UPDATE articles SET title=?, slug=?, content=?, cover_image_url=?,
                status=?, updated_at=? WHERE id=?""",
-            (body.title, slug, body.content, body.cover_image_url or None,
+            (body.title, slug, _clean_article_html(body.content), body.cover_image_url or None,
              body.status, now, article_id)
         )
     return {"ok": True, "slug": slug}
@@ -3298,9 +3622,31 @@ def admin_list_users(_user=Depends(require_admin)):
 
 @app.patch("/api/admin/users/{user_id}")
 def admin_patch_user(user_id: int, body: PatchUserBody, _user=Depends(require_admin)):
-    if body.is_banned is not None:
-        with get_conn() as conn:
+    """Ban ve rol. Rolü yalnız zaten admin olan biri değiştirebilir (require_admin
+    rolü DB'den okur); kendi yetkini kaldıramazsın, son admin düşürülemez —
+    panel kimsesiz kalmasın. Her değişiklik denetim için loglanır."""
+    actor = int(_user["sub"])
+    with get_conn() as conn:
+        target = conn.execute("SELECT id, role, username FROM users WHERE id=?", (user_id,)).fetchone()
+        if not target:
+            raise HTTPException(404, "User not found")
+        if body.is_banned is not None:
+            if user_id == actor and body.is_banned:
+                raise HTTPException(400, "You can't ban your own account")
             conn.execute("UPDATE users SET is_banned=? WHERE id=?", (body.is_banned, user_id))
+            logging.warning("ADMIN AUDIT: user %s set is_banned=%s on user %s", actor, body.is_banned, user_id)
+        if body.role is not None and body.role != target["role"]:
+            if body.role not in ("user", "admin"):
+                raise HTTPException(400, "Role must be 'user' or 'admin'")
+            if body.role == "user":
+                if user_id == actor:
+                    raise HTTPException(400, "You can't remove your own admin role")
+                admins = conn.execute("SELECT COUNT(*) FROM users WHERE role='admin' AND is_banned=0").fetchone()[0]
+                if admins <= 1:
+                    raise HTTPException(400, "At least one admin must remain")
+            conn.execute("UPDATE users SET role=? WHERE id=?", (body.role, user_id))
+            logging.warning("ADMIN AUDIT: user %s set role=%s on user %s (%s)",
+                            actor, body.role, user_id, target["username"])
     return {"ok": True}
 
 # /all must come BEFORE /{user_id} — otherwise FastAPI tries int("all") → 422
@@ -3314,10 +3660,68 @@ def delete_all_users(_user=Depends(require_admin)):
         conn.execute("DELETE FROM users")
     return {"deleted": count}
 
+def _delete_account(conn, uid: int) -> None:
+    """Kullanıcıyı ve ona ait her şeyi siler.
+
+    37 bağlantı ON DELETE CASCADE / SET NULL ile kendiliğinden temizlenir.
+    Silmeyi ENGELLEYEN dört bağlantı (kuralsız FK) ve iki kuralsız sütun
+    önce boşaltılır; polimorfik takip/favori satırları (target_type='user')
+    ayrıca silinir. Bunlar yokken kullanıcı silme FK hatasıyla 500 dönüyordu.
+    Şemaya kullanıcıya bağlı yeni bir sütun eklenirse buraya da eklenmeli
+    (tests/test_security_hardening.py bunu şemadan denetliyor)."""
+    conn.execute("UPDATE articles SET author_id=NULL WHERE author_id=?", (uid,))
+    for col in ("player1_user_id", "player2_user_id", "turn_user_id"):
+        conn.execute(f"UPDATE game_rooms SET {col}=NULL WHERE {col}=?", (uid,))
+    conn.execute("UPDATE game_room_picks SET user_id=NULL WHERE user_id=?", (uid,))
+    conn.execute("UPDATE rankit_review_comments SET reply_to_user_id=NULL WHERE reply_to_user_id=?", (uid,))
+    for table in ("rankit_follows", "rankit_favorites"):
+        conn.execute(f"DELETE FROM {table} WHERE target_type='user' AND target_id=?", (uid,))
+    conn.execute("DELETE FROM users WHERE id=?", (uid,))
+
+
 @app.delete("/api/admin/users/{user_id}")
 def admin_delete_user(user_id: int, _user=Depends(require_admin)):
+    if user_id == int(_user["sub"]):
+        raise HTTPException(400, "Delete your own account from your profile instead")
     with get_conn() as conn:
-        conn.execute("DELETE FROM users WHERE id=?", (user_id,))
+        _delete_account(conn, user_id)
+    logging.warning("ADMIN AUDIT: user %s deleted user %s", _user["sub"], user_id)
+    return {"ok": True}
+
+
+@app.post("/api/account/delete")
+def delete_own_account(body: DeleteAccountBody, user=Depends(get_current_user)):
+    """Kullanıcı kendi hesabını ve verisini kalıcı olarak siler (Google Play ve
+    KVKK/GDPR: uygulamadan ve web'den hesap silme). Açık kalmış bir oturumla
+    başkası silemesin diye yeniden doğrulama ister: şifreli hesapta şifre,
+    şifresiz (Google) hesapta kullanıcı adı. Yanlışta 403 — 401 değil: sitenin
+    fetch sarmalayıcısı 401'de oturumu kapatıyor. Denemeler giriş sayacına
+    yazılır (kaba kuvvet için ikinci bir kapı olmasın)."""
+    uid = int(user["sub"])
+    with get_conn() as conn:
+        row = conn.execute("SELECT id,email,username,role,hashed_password FROM users WHERE id=?",
+                           (uid,)).fetchone()
+    if not row:
+        raise HTTPException(404, "User not found")
+    fail_key = f"login:{row['email'].lower()}"
+    if _auth_hits(fail_key, LOGIN_FAIL_WINDOW, add=False) >= LOGIN_FAIL_LIMIT:
+        raise HTTPException(429, "Too many attempts. Try again in 15 minutes.",
+                            headers={"Retry-After": str(LOGIN_FAIL_WINDOW)})
+    if row["hashed_password"] not in ("", "!", None):
+        ok, wrong = verify_password(body.password, row["hashed_password"]), "Password is incorrect"
+    else:
+        ok, wrong = body.confirm.strip().lower() == row["username"].lower(), "Type your username to confirm"
+    if not ok:
+        _auth_hits(fail_key, LOGIN_FAIL_WINDOW, add=True)
+        raise HTTPException(403, wrong)
+    with get_conn() as conn:
+        if row["role"] == "admin":
+            others = conn.execute("""SELECT COUNT(*) FROM users
+                WHERE role='admin' AND is_banned=0 AND id!=?""", (uid,)).fetchone()[0]
+            if not others:
+                raise HTTPException(400, "You are the only admin — make someone else an admin first")
+        _delete_account(conn, uid)
+    logging.warning("ACCOUNT DELETED: user %s deleted their own account", uid)
     return {"ok": True}
 
 # ── Leaderboard moderasyonu (2026-08) ───────────────────────────────────────
@@ -5012,16 +5416,45 @@ def get_refresh_status(user=Depends(require_admin)):
 
 # ─── Frontend statik dosyaları (build sonrası) ────────────────────────────────
 
+# Güvenlik açığı bildirmek isteyenler için standart adres (RFC 9116). Expires
+# bir yıl ileride; yenilemek için tarihi güncellemek yeterli.
+@app.get("/.well-known/security.txt", include_in_schema=False)
+def security_txt():
+    return PlainTextResponse(
+        "Contact: mailto:info@primaryarch.net\n"
+        "Expires: 2027-09-26T00:00:00.000Z\n"
+        "Preferred-Languages: en, tr\n"
+        "Canonical: https://primaryarch.net/.well-known/security.txt\n"
+    )
+
+
 frontend_dist = ROOT / "frontend" / "dist"
+
+
+def _spa_file(dist: Path, full_path: str) -> Path:
+    """İstenen yol dist'in İÇİNDE gerçek bir dosyaysa onu, değilse index.html.
+
+    Önceden `dist / full_path` doğrudan sunuluyordu: "/..%2F..%2Fdata%2Fapp.db"
+    (uvicorn %2F'yi çözer) ya da "//etc/hostname" (mutlak yol birleştirmede
+    dist'i siler) ile sunucudaki HER dosya okunabiliyordu — kullanıcı DB'si
+    dahil. Yol çözülüp (symlink ve .. dahil) dist altında kaldığı doğrulanıyor.
+    """
+    index = dist / "index.html"
+    try:
+        root = dist.resolve()
+        candidate = (dist / full_path.lstrip("/")).resolve()
+    except (OSError, ValueError):
+        return index
+    if candidate != root and candidate.is_relative_to(root) and candidate.is_file():
+        return candidate
+    return index
+
+
 if frontend_dist.exists():
     # Catch-all: React Router path'lerini index.html'e yönlendir (SPA routing)
     @app.get("/{full_path:path}", include_in_schema=False)
     async def spa_fallback(full_path: str):
-        index = frontend_dist / "index.html"
-        file_path = frontend_dist / full_path
-        if file_path.exists() and file_path.is_file():
-            return FileResponse(str(file_path))
-        return FileResponse(str(index))
+        return FileResponse(str(_spa_file(frontend_dist, full_path)))
 
     # assets/ AYRICA kontrol ediliyor: `vite build` işe başlarken dist'i
     # boşaltıyor, o aralıkta API açılırsa StaticFiles "directory does not
@@ -5046,4 +5479,8 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=int(os.environ.get("PORT", "8000")),
         workers=int(os.environ.get("WEB_CONCURRENCY", "1")),  # 512MB'de 1 worker
+        # İstemciden gelen tek WebSocket mesajı en çok 256 KB (varsayılan 16 MB:
+        # birkaç bağlantıyla belleği doldurmak mümkündü). Oyun/sohbet mesajları
+        # birkaç KB.
+        ws_max_size=262_144,
     )

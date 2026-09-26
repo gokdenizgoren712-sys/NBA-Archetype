@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import LegalPageLayout, { Section } from "./LegalPageLayout";
 
 export default function TermsOfService() {
@@ -41,10 +42,19 @@ export default function TermsOfService() {
 
       <Section heading="User-generated content">
         <p>
-          Blog comments and any other content you post must not be illegal, harassing,
-          hateful, or spam. We may remove content or suspend accounts that violate this at
-          our discretion. You retain ownership of what you post, but grant us a license to
-          display it on the site.
+          RankIt reviews, replies, lists, live chat messages, blog comments, usernames and
+          anything else you post must follow the{" "}
+          <Link to="/community-guidelines" style={{ color: "var(--yamabuki)" }}>Community Guidelines</Link>.
+          There is <strong>zero tolerance</strong> for objectionable content or abusive users:
+          hate speech, harassment, threats, sexual content, spam and illegal content are not
+          allowed anywhere.
+        </p>
+        <p>
+          Posts are filtered before they are published, and every post and profile can be
+          reported and its author blocked. We review reports within 24 hours, remove content
+          that breaks the rules and suspend or close the accounts that post it. You retain
+          ownership of what you post, but grant us a license to display it on the site and
+          in the RankIt app.
         </p>
       </Section>
 
@@ -73,7 +83,9 @@ export default function TermsOfService() {
 
       <Section heading="Contact">
         <p>
-          Questions about these terms: [PLACEHOLDER: support email / contact page link].
+          Questions about these terms:{" "}
+          <a href="mailto:info@primaryarch.net" style={{ color: "var(--yamabuki)" }}>info@primaryarch.net</a>{" "}
+          or the <Link to="/contact" style={{ color: "var(--yamabuki)" }}>contact page</Link>.
         </p>
       </Section>
     </LegalPageLayout>

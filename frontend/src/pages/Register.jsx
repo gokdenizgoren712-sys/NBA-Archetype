@@ -4,6 +4,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { SEO } from "../hooks/useSEO";
 import { safeNextPath } from "../lib/safeNext";
 import GoogleSignIn from "../components/GoogleSignIn";
+import { passwordProblem, PASSWORD_HINT } from "../lib/passwordRules";
 
 const BASE = "/api";
 
@@ -13,17 +14,20 @@ export default function Register() {
   const [searchParams] = useSearchParams();
   const nextPath = safeNextPath(searchParams.get("next"));
   const [form, setForm] = useState({
-    email: "", username: "", password: "", confirm: "", admin_invite_code: ""
+    email: "", username: "", password: "", confirm: ""
   });
-  const [showAdminField, setShowAdminField] = useState(false);
   const [error, setError]   = useState("");
   const [loading, setLoading] = useState(false);
+  // Zorunlu onay (mağaza UGC şartı): şartlar + Community Guidelines.
+  const [agreed, setAgreed] = useState(false);
 
   const submit = async (e) => {
     e.preventDefault();
     setError("");
+    if (!agreed) { setError("Agree to the Terms of Service and Community Guidelines to continue"); return; }
     if (form.password !== form.confirm) { setError("Passwords don't match"); return; }
-    if (form.password.length < 6) { setError("Password must be at least 6 characters"); return; }
+    const pwProblem = passwordProblem(form.password);
+    if (pwProblem) { setError(pwProblem); return; }
     setLoading(true);
     try {
       const res = await fetch(`${BASE}/auth/register`, {
@@ -33,7 +37,7 @@ export default function Register() {
           email: form.email,
           username: form.username,
           password: form.password,
-          admin_invite_code: form.admin_invite_code,
+          accept_terms: true,
         }),
       });
       const data = await res.json();
@@ -47,9 +51,11 @@ export default function Register() {
     }
   };
 
-  const field = (label, key, type = "text") => (
+  const field = (label, key, type = "text", hint = "") => (
     <div>
-      <label className="block text-sm mb-1" style={{ color: "var(--text-muted)" }}>{label}</label>
+      <label className="block text-sm mb-1" style={{ color: "var(--text-muted)" }}>
+        {label}{hint && <span className="ml-1 text-xs" style={{ color: "var(--text-muted)" }}>· {hint}</span>}
+      </label>
       <input
         type={type} required
         value={form[key]}
@@ -72,29 +78,20 @@ export default function Register() {
         <form onSubmit={submit} className="space-y-4">
           {field("Email", "email", "email")}
           {field("Username", "username")}
-          {field("Password", "password", "password")}
+          {field("Password", "password", "password", PASSWORD_HINT)}
           {field("Confirm Password", "confirm", "password")}
 
-          {showAdminField ? (
-            <div>
-              <label className="block text-sm mb-1" style={{ color: "var(--text-muted)" }}>
-                Admin Invite Code
-              </label>
-              <input
-                type="text"
-                value={form.admin_invite_code}
-                onChange={e => setForm(f => ({ ...f, admin_invite_code: e.target.value }))}
-                placeholder="Leave blank if you don't have one"
-                className="w-full px-3 py-2 rounded-lg text-sm outline-none"
-                style={{ background: "var(--bg-elevated)", color: "var(--text-primary)", border: "1px solid var(--border)" }}
-              />
-            </div>
-          ) : (
-            <button type="button" onClick={() => setShowAdminField(true)}
-              className="text-xs underline" style={{ color: "var(--text-muted)" }}>
-              I have an admin invite code
-            </button>
-          )}
+          <label className="flex items-start gap-2.5 text-sm leading-snug cursor-pointer" style={{ color: "var(--text-muted)" }}>
+            <input type="checkbox" required checked={agreed} onChange={e => setAgreed(e.target.checked)}
+              className="mt-0.5 h-4 w-4 shrink-0" style={{ accentColor: "var(--yamabuki)" }} />
+            <span>
+              I agree to the{" "}
+              <Link to="/terms-of-service" target="_blank" className="underline" style={{ color: "var(--text-primary)" }}>Terms of Service</Link>{" "}
+              and{" "}
+              <Link to="/community-guidelines" target="_blank" className="underline" style={{ color: "var(--text-primary)" }}>Community Guidelines</Link>,
+              including zero tolerance for abusive content.
+            </span>
+          </label>
 
           {error && <p className="text-sm text-red-400">{error}</p>}
 

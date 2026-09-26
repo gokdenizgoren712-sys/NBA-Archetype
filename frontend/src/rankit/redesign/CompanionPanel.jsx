@@ -14,6 +14,8 @@ import { SkeletonRows, Loading, ErrorState } from "./States";
 import { RAMP, NAMES, inkFor } from "./heat";
 import { companionMinute, measuredPulse, measuredRise } from "./companionView";
 import { mergeThreadMessages, threadPageCursor } from "./threadPages";
+import ContentActions from "./ContentActions";
+import { useBlockedAuthors } from "./blockedAuthors";
 
 const INK_3 = "#9aa0a6";
 const INK_4 = "#7f868b";
@@ -122,6 +124,7 @@ export default function CompanionPanel({ matchId, isLoggedIn = true, rated = fal
   const [sending, setSending] = useState(false);
   const pendingRef = useRef(null);
   const [messages, setMessages] = useState([]);
+  const isBlocked = useBlockedAuthors();
   const [archiveCursor, setArchiveCursor] = useState(null);
   const [archiveHasMore, setArchiveHasMore] = useState(null);
   const [archiveLoading, setArchiveLoading] = useState(false);
@@ -320,8 +323,12 @@ export default function CompanionPanel({ matchId, isLoggedIn = true, rated = fal
         {archiveLoading ? "Loading earlier messages…" : "Load earlier messages"}
       </button>}
       <div className="ri-chat-log">
-        {messages.map((m) => (
-          <p key={m.id}><strong>@{m.username}</strong><span>{m.content}</span></p>
+        {/* Engel sunucuda da suzuluyor; bu, ekrandaki mesajlari aninda kaldirir. */}
+        {messages.filter((m) => !isBlocked(m.user_id)).map((m) => (
+          <p key={m.id}>
+            <ContentActions type="message" id={m.id} author={{ id: m.user_id, username: m.username }} />
+            <strong>@{m.username}</strong><span>{m.content}</span>
+          </p>
         ))}
         {!messages.length && (
           <span style={{ fontSize: 11, color: INK_3 }}>

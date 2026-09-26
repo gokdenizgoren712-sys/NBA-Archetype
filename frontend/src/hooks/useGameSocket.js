@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState, useCallback } from "react";
+import { socketUrl } from "../lib/apiOrigin";
 
-function wsUrl(path) {
-  const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
-  return `${proto}//${window.location.host}${path}`;
-}
+// Sitede sayfanın kendi hostu; paketlenmiş uygulamada API kökeni (bkz. lib/apiOrigin.js).
+const wsUrl = (path) => socketUrl(path);
 
 // Oda WS'i (/ws/game/room/{code}) ve matchmaking WS'i (/ws/game/matchmaking)
 // için ortak bağlantı kancası — otomatik reconnect (exponential backoff),

@@ -962,3 +962,8 @@
   .riw-welcome-promise h1 { font-size: 30px; }
   .riw-welcome-choices { padding: 26px 16px 0; }
 }
+
+/* Report / Block ⋯ (ContentActions) web yerlesimi — B6. */
+.riw-review-who .ri-more { margin: -12px -10px -12px auto; }
+.riw-comments p .ri-more, .riw-review-actions + .riw-comments p .ri-more { float: right; height: 32px; margin: -6px -10px 0 4px; }
+.riw-lists-head .riw-sortbar .ri-more, .riw-page-actions .ri-more { align-self: center; }
