@@ -3195,6 +3195,17 @@ def _reset_hash(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
+# Yeni belirlenen şifreler 6–18 karakter (sahibin kararı, 2026-09-26). Yalnız
+# kayıt ve sıfırlamada uygulanır; GİRİŞTE uzunluk bakılmaz, eski hesaplar
+# eski şifreleriyle girmeye devam eder. frontend/src/lib/passwordRules.js ile aynı.
+PASSWORD_MIN, PASSWORD_MAX = 6, 18
+
+
+def _check_new_password(password: str) -> None:
+    if not PASSWORD_MIN <= len(password or "") <= PASSWORD_MAX:
+        raise HTTPException(400, f"Password must be {PASSWORD_MIN}–{PASSWORD_MAX} characters")
+
+
 @app.post("/api/auth/register")
 def register(body: RegisterBody):
     # Rol her zaman "user": admin davet kodu kaldırıldı (internetten kaba
@@ -3202,8 +3213,7 @@ def register(body: RegisterBody):
     role = "user"
     if not body.email or "@" not in body.email:
         raise HTTPException(400, "Invalid email address")
-    if len(body.password) < 6:
-        raise HTTPException(400, "Password must be at least 6 characters")
+    _check_new_password(body.password)
     if len(body.username) < 2:
         raise HTTPException(400, "Username must be at least 2 characters")
     hashed = hash_password(body.password)
@@ -3334,8 +3344,7 @@ def forgot_password(body: ForgotBody):
 
 @app.post("/api/auth/reset-password")
 def reset_password(body: ResetBody):
-    if len(body.password) < 6:
-        raise HTTPException(400, "Password must be at least 6 characters")
+    _check_new_password(body.password)
     if not body.token or len(body.token) > 200:
         raise HTTPException(400, "Invalid or expired reset link")
     with get_conn() as conn:

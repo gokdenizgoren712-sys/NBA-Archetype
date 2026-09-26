@@ -388,3 +388,29 @@ def test_cloudinary_signature_is_admin_only_and_correct(client, monkeypatch):
     assert d["cloud_name"] == "demo-cloud" and d["api_key"] == "1234" and "s3cr3t" not in str(d)
     expected = hashlib.sha1(f"folder={d['folder']}&timestamp={d['timestamp']}s3cr3t".encode()).hexdigest()
     assert d["signature"] == expected
+
+
+# ── Yeni şifre kuralı: 6–18 karakter (eski hesaplar etkilenmez) ──────────────
+
+def test_new_passwords_must_be_6_to_18_characters(client):
+    tag = uuid.uuid4().hex[:8]
+    reg = lambda pw, n: client.post("/api/auth/register", json={
+        "email": f"len{n}-{tag}@example.test", "username": f"len{n}{tag}", "password": pw})
+    assert reg("a" * 5, 5).status_code == 400
+    assert reg("a" * 19, 19).status_code == 400
+    assert "6–18" in reg("a" * 19, 191).json()["detail"]
+    assert reg("a" * 6, 6).status_code == 200
+    assert reg("a" * 18, 18).status_code == 200
+
+
+def test_reset_enforces_the_rule_but_old_long_passwords_still_sign_in(client, app_mod, monkeypatch):
+    from api.auth import hash_password
+    email, _, uid = _register(client)
+    # Kuraldan önce açılmış, 30 karakterlik şifreli eski hesap
+    old_pw = "a-very-long-legacy-password-30"
+    with _db() as conn:
+        conn.execute("UPDATE users SET hashed_password=? WHERE id=?", (hash_password(old_pw), uid))
+    assert client.post("/api/auth/login", json={"email": email, "password": old_pw}).status_code == 200
+    raw = _request_reset(client, app_mod, monkeypatch, email)
+    assert client.post("/api/auth/reset-password", json={"token": raw, "password": "b" * 19}).status_code == 400
+    assert client.post("/api/auth/reset-password", json={"token": raw, "password": "new-pass-ok"}).status_code == 200
