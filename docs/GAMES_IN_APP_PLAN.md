@@ -1,7 +1,7 @@
 # Games by Primary Arch — RankIt uygulamasına oyun modülü
 
-**Belge tarihi:** 25 Eylül 2026 · **güncelleme:** 26 Eylül 2026 (taslak v2)
-**Durum:** TASLAK — planlama aşaması, henüz kod yazılmadı
+**Belge tarihi:** 25 Eylül 2026 · **güncelleme:** 26 Eylül 2026 (v3 — son plan)
+**Durum:** ONAYLANDI — tüm kararlar verildi, uygulama Faz 0'dan başlıyor
 **Kapsam:** YALNIZCA Android uygulaması (RankIt by Primary Arch). Web'de oyuna
 zaten `/basketball/game` üzerinden gidiliyor; web'e yeni bir yüzey eklenmiyor.
 **Görsel taslak:** https://claude.ai/artifact/PBwC8t3avTM54srcmYjP8y (telefon
@@ -26,7 +26,10 @@ duruyor: RankIt'in kabuğu onu yalnızca açıyor, içine karışmıyor.
 | 2026-09-26 | Oyun **mobil arayüze göre yeniden tasarlanır** — sitenin masaüstü düzeni (3 sütunlu HUD, dock) telefona sıkıştırılmaz. | Kullanıcı |
 | 2026-09-26 | **Same Screen modu uygulamada yok** — tek telefonda iki kişi için ekran çok küçük. | Kullanıcı |
 | 2026-09-26 | **Önce basketbol.** Futbol (Squad Builder) sonraya; web tarafında da eksikleri var. | Kullanıcı |
-| 2026-09-26 | Futbol gelene kadar spor seçim ekranı yok: Games tuşu doğrudan Lineup Builder'a açılır. Modül yapısı futbolu sonradan RankIt'e dokunmadan eklemeye izin verir. | Öneri |
+| 2026-09-26 | Futbol gelene kadar spor seçim ekranı yok: Games tuşu doğrudan Lineup Builder'a açılır. Modül yapısı futbolu sonradan RankIt'e dokunmadan eklemeye izin verir. | Öneri, onaylandı |
+| 2026-09-26 | **Misafir oynayabilir.** Oyun tam oynanır; yalnız skor tablosuna gönderim girişe bağlı. | Kullanıcı |
+| 2026-09-26 | Discover tuşu **`side`** düzeninde: Hunt geniş, Games yanında dar kutu. Hunt yoksa Games satırı tek başına alır. | Kullanıcı |
+| 2026-09-26 | **Rotasyon/dakika editörü ve Rewrite History v1'de.** "Oyunun en enteresan kısımları" — kesilmez. | Kullanıcı |
 
 ### 2.1 Ürün kaydı (istisna)
 
@@ -89,7 +92,9 @@ modül, parite kapsamı dışında (`src/audit_rankit_surfaces.py` onu saymaz, �
 4. **Paylaşım**: `ShareCard` `window.location.origin` ile link kuruyor, PNG'yi
    `a.download` ile indiriyor — ikisi de WebView'da çalışmaz.
 5. **Ağ yükü**: Rewrite History aynı sezon için 29 takımı paralel çekiyor
-   (`leagueSim.js buildLeague`) — mobil veride ağır.
+   (`leagueSim.js buildLeague`) — mobil veride ağır. Rewrite History v1'de olduğu
+   için bu hafifletilir (bkz. Faz 4): eşzamanlılık sınırı, ilerleme göstergesi,
+   sezon başına bellek önbelleği, eksik takımda mevcut uyarı.
 6. **WebSocket** (yalnız With a Friend / Online): `useGameSocket` `window.location.host`
    kullanıyor.
 
@@ -172,8 +177,34 @@ Discover ─► [Games] ─► Lineup Builder girişi (Classic | Salary Cap)
                         └──────────── yeni çark ◄──────────┘
                                      │
                                      ▼
-                     Koç seç ─► Sonuç (Lineup Fit) ─► Sezon ─► Playoff ─► Skor tablosu
+                     Koç seç ─► Sonuç (Lineup Fit)
+                                     │
+                                     ▼
+                     Sezon kurulumu: Quick Sim | Rewrite History (sezon → takım)
+                                     + rotasyon (dakika editörü)
+                                     │
+                                     ▼
+                     Sezon akışı ─► Playoff ─► Dynasty ─► Skor tablosu
 ```
+
+### 5.0 Ekranlar (tuvaldeki numaralarla)
+
+| # | Ekran | Not |
+|---|---|---|
+| 1 | Discover — Hunt + Games (`side`) | RankIt'teki tek değişiklik |
+| 2 | Discover — Hunt yokken | Games satırı tek başına |
+| 3 | Lineup Builder girişi | Classic / Salary Cap, nasıl oynanır, skorlar |
+| 4 | Dönem seçimi | 6 dönem, rastgele |
+| 5 | Çark | Sezon + takım |
+| 6 | Oyuncu seçimi | 5 joker, G/F/C filtre, sıralama, gizli OVR |
+| 7 | Pozisyon paneli | ★ birincil, 9 slot |
+| 8 | Kadro | Saha görünümü, takas |
+| 9 | Koç | 4 aday |
+| 10 | Sonuç | Lineup Fit, kimya, misafir girişi |
+| 11 | Sezon kurulumu | Quick Sim / Rewrite History + rotasyon editörü |
+| 12 | Rewrite History seçimi | Gerçek sezon → yerine geçilen takım |
+| 13 | Sezon akışı | Kayıt, maçlar, playoff'lar, dynasty |
+| 14 | Misafir skor gönderir | Giriş paneli, bekleyen skor |
 
 Geri tuşu: her ekran bir adım geri; draft ortasında geri → "Draft'tan çık?" onayı
 (kadro kaybolmasın); girişte → Discover.
@@ -208,14 +239,22 @@ Geri tuşu: her ekran bir adım geri; draft ortasında geri → "Draft'tan çık
 - Discover satırı (Hunt + Games), `GamesSurface`, giriş, dönem, çark, oyuncu
   listesi, pozisyon paneli, kadro paneli, koç, sonuç.
 
-### Faz 4 — Mobil sezon + skor tablosu
-- Quick Sim, sezon akışı, playoff'lar (dikey tur listesi — ağaç değil), ödüller,
-  dynasty; skor tablosu; kadro kaydetme; paylaşım (`@capacitor/share`).
+### Faz 4 — Mobil sonuç, sezon, skor tablosu
+- Sonuç ekranı (Lineup Fit, kimya, dönemin istediği sütunlar).
+- **Sezon kurulumu**: Quick Sim / Rewrite History anahtarı + **rotasyon editörü**
+  (9 oyuncu, taban dakikalar `BASE_MINUTES` ±`MINUTE_FLEX`, 240 dakikalık banka;
+  37+ "tiring", 39+ "fatigue", ilk beşte ≤31 "fresh +PO" — web ile aynı kurallar,
+  telefonda satır başına 44px −/+ düğmeleri).
+- **Rewrite History**: dönemin gerçek sezonları → o sezonun takımları (gerçek W-L) →
+  "Standing in for …" → takımın gerçek programı. Mobil hafifletme: `buildLeague`
+  isteklerine eşzamanlılık sınırı (ör. 4), "Building the league 12/29" ilerlemesi,
+  sezon başına bellek önbelleği; eksik takım uyarısı olduğu gibi kalır.
+- Sezon akışı, playoff'lar (dikey tur listesi — ağaç değil), ödüller, dynasty.
+- Skor tablosu; kadro kaydetme; paylaşım (`@capacitor/share`).
 - Misafir: oyun tam oynanır, skor gönderimi girişe bağlı (bekleyen skor).
 
 ### Faz 5 — Sonra
 - With a Friend + Online Opponent (WebSocket, oda kodu).
-- Rewrite History (29 takımlık yük mobil için önce hafifletilmeli).
 - Futbol (Squad Builder) — web eksikleri kapandıktan sonra.
 
 ### Faz 6 — Doğrulama ve sürüm
@@ -226,11 +265,8 @@ Geri tuşu: her ekran bir adım geri; draft ortasında geri → "Draft'tan çık
 
 ## 7. Açık sorular
 
-1. Misafir oynayabilsin mi? (Öneri: evet, skor gönderimi girişe bağlı.)
-2. Discover tuşu düzeni: `side` (Hunt geniş + dar kutu) mı `split` (eşit yarım) mı?
-3. v1'de rotasyon/dakika editörü olsun mu? (Öneri: hayır — varsayılan dakikalar,
-   "Advanced" altında sonra.)
-4. Rewrite History v1'e girsin mi? (Öneri: hayır, Faz 5.)
+Yok — hepsi 2026-09-26'da karara bağlandı (bkz. §2): misafir oynar, tuş `side`,
+rotasyon editörü ve Rewrite History v1'de.
 
 ## 8. Yan bulgu
 
