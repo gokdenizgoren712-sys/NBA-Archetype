@@ -14,7 +14,7 @@ PyJWT>=2.9,!=2.10.0     # JWT (python-jose bırakıldı; 2.10.0'da issuer açı�
 pydantic[email]>=2.0
 python-multipart>=0.0.9
 slowapi>=0.1.9
-nh3>=0.2.14          # makale HTML temizleme (blog XSS koruması)
+nh3>=0.3.7          # makale HTML temizleme (blog XSS koruması)
 # NOT: euroleague-api RUNTIME'da gerekmez — sunucu yalnız commit'li parquet'i
 # okur. Yalnızca veri çekerken lazım: `pip install euroleague-api` (fetch_euroleague.py).
 # requirements'a konulunca build'i uzatıp deploy'u düşürüyordu, o yüzden çıkarıldı.
