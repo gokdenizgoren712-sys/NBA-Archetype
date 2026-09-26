@@ -1,15 +1,14 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLang } from "../contexts/LanguageContext";
 import { useAuth } from "../contexts/AuthContext";
 import { SEO } from "../hooks/useSEO";
 import { ERAS, ERA_META_BLURB, ERA_PILLAR_WEIGHTS, ERA_HEX, getEra } from "../game/eras";
-import { computePlayerFit, computeLineupFit, computeAffinity } from "../game/lineupScore";
+import { computePlayerFit, computeAffinity } from "../game/lineupScore";
 import SeasonSimPanel from "../game/SeasonSimPanel";
-import { COACHES } from "../game/coaches";
 import { ERA_GUIDE } from "../data/glossary";
 import { getPlayerTags, TAG_INFO } from "../game/awards";
 import CourtBoard from "../game/CourtBoard";
-import { START_BUDGET, MIN_COST, costColor, totalSpent, maxSpendNow, applyTeamPricing, priceOf } from "../game/salary";
+import { START_BUDGET, MIN_COST, costColor, totalSpent, maxSpendNow, priceOf } from "../game/salary";
 import {
   StarIcon, CoachIcon, TrophyIcon, CrownIcon, CapIcon, TargetIcon, WheelIcon,
   TagIcon, RefreshIcon, CalendarIcon, BoltIcon, UsersIcon,
@@ -30,6 +29,8 @@ import CoachPicker from "../game/CoachPicker";
 import DraftAnalysis from "../game/DraftAnalysis";
 import LeaderboardPanel from "../game/LeaderboardPanel";
 import { apiUrl } from "../lib/apiOrigin";
+import { useLineupDraft } from "../game/useLineupDraft";
+import { finalScore } from "../game/draftScore";
 import "../game/game.css";
 
 // Not: aşağıdaki hex haritaları CSS custom property'lere (accent / glow) besleniyor;
@@ -59,12 +60,8 @@ const SORT_KEYS = [
 // ── Sonuç ekranı ──────────────────────────────────────────────────────────────
 function ScoreReveal({ fit, lineup, primaryCount, onReset, lang, affinityMatrix, simEra, coach, mode="classic" }) {
   const { isLoggedIn, token } = useAuth();
-  const chemBonus = primaryCount * 0.02;
-  const rawScore  = fit.lineupScore;
-  const totalScore = Math.min(1, rawScore + chemBonus);
-  const pct  = Math.round(totalScore * 100);
-  // Eşikler ağırlıklı-toplam bandına göre: tipik çekiliş ~66-72 (C+/B), iyi ~78 (A), efsane 85+ (S)
-  const grade = pct>=85?"S":pct>=78?"A":pct>=70?"B":pct>=62?"C":"D";
+  // Puan ve not ortak kaynaktan (game/draftScore.js): uygulama da aynı tabloya yazıyor.
+  const { chemBonus, pct, grade } = finalScore(fit, primaryCount);
 
   // Archetype affinity score — v3.8: her oyuncunun TOP-3 arketibinin ağırlıklı
   // profili üzerinden (sadece birincil arketip değil). Çift affinity'si iki
@@ -581,356 +578,23 @@ function ShareCard({ pct, grade, fit, lineup, simEra, coach }) {
 export default function LineupGame() {
   const { lang } = useLang();
 
-  // Oyun fazı
-  const [phase, setPhase] = useState("idle");
-  // idle | pick_era | spin_season | spin_team | fetching | pick_player | pick_pos | pick_coach | complete
-
-  // Simülasyon era'sı (v3.5): sezon simülasyonunun oynanacağı dönem
-  const [simEra, setSimEra] = useState(null);
-
-  // Oyun modu (Faz 3b): classic | salarycap
-  const [mode, setMode] = useState("classic");
-  const modeRef = useRef("classic");
-  useEffect(()=>{ modeRef.current = mode; },[mode]);
-  const guaranteeRef = useRef(0);    // salary cap: art arda kaç spin'de seçilebilir tier çıkmadı
-  const wildcardRef  = useRef(false); // 15 denemede tier bulunamadı → herkes seçilebilir
-  const startSpinRef = useRef(null);  // fetchPlayers → startFullSpin döngüsel referansı
-
-  // Koç draft'ı (Faz 2)
-  const [coach, setCoach]               = useState(null);
-  const [coachOptions, setCoachOptions] = useState([]);
-
-  // Veriler
-  const [seasons, setSeasons]       = useState([]);
-  const [teamPool, setTeamPool]     = useState([]);
-  const [players, setPlayers]       = useState([]);
-  const [lineup, setLineup]         = useState({PG:null,SG:null,SF:null,PF:null,C:null,B1:null,B2:null,B3:null,B4:null});
-  const [pickedPlayer, setPickedPlayer] = useState(null);
-  const [fitResult, setFitResult]   = useState(null);
-  const [statusMsg, setStatusMsg]   = useState("");
-  const [moveSrc, setMoveSrc]       = useState(null); // saha üzerinde taşınan slot
-  const [posFilter, setPosFilter]   = useState("");   // pick listesi G/F/C filtresi
-  const [sortKey, setSortKey]       = useState("PTS"); // pick listesi sıralaması
-
-  // Çark
-  const [spinSeasons, setSpinS] = useState(false);
-  const [spinTeams,   setSpinT] = useState(false);
-  const [targetSIdx,  setTargetSIdx] = useState(0);
-  const [targetTIdx,  setTargetTIdx] = useState(0);
-  const [chosenSeason, setChosenSeason] = useState("");
-  const [chosenTeam,   setChosenTeam]   = useState("");
-
-  // Jokerler
-  const [jokers, setJokers] = useState({reTeam:true,reYear:true,reBoth:true,double:true,discover:true});
-  const [doubleActive, setDoubleActive]   = useState(false);
-  const [discoverActive, setDiscoverActive] = useState(false);
+  // Oyunun kuralları ortak motorda (game/lineupDraft.js): RankIt uygulamasının
+  // mobil arayüzü de aynısını kullanıyor, ikisi aynı skor tablosuna yazıyor.
+  const {
+    phase, simEra, mode, coach, coachOptions, seasons, teamPool, players, lineup,
+    pickedPlayer, fitResult, statusMsg, moveSrc, posFilter, spinSeasons, spinTeams,
+    targetSIdx, targetTIdx, chosenSeason, chosenTeam, jokers, doubleActive, discoverActive,
+    affinityMatrix, filledSlots, emptySlots, primaryCount, canRearrange, isSpinPhase,
+    spendCap,
+    setMode, setPosFilter, beginEraPick, chooseEra, randomEra,
+    jokerReTeam, jokerReYear, jokerReBoth, jokerDouble, jokerDiscover,
+    pickPlayer: handlePickPlayer, cancelPick, pickPos: handlePickPos, slotTap: handleSlotTap,
+    pickCoach, reset: resetGame,
+  } = useLineupDraft();
+  const [sortKey, setSortKey] = useState("PTS"); // pick listesi sıralaması
   // Info modals
   const [modal, setModal] = useState(null); // "chemistry" | "jokers" | "archetype" | "tags"
   const [eraInfo, setEraInfo] = useState(null); // era bilgi pop-up'ı (ⓘ düğmesi)
-
-  const lineupRef = useRef(lineup);
-  useEffect(()=>{ lineupRef.current=lineup; },[lineup]);
-  const timerRef = useRef(null);
-
-  const filledSlots = ALL_SLOTS.filter(p=>lineup[p]!==null);
-  const emptySlots  = ALL_SLOTS.filter(p=>lineup[p]===null);
-  // Kimya: mevcut dizilime göre türetilir (taşıma/swap sonrası güncel kalır)
-  const primaryCount = POSITIONS.filter(p=>lineup[p]&&getPrimaryPos(lineup[p])===p).length;
-
-  // ── Saha üzerinde taşı / takas et ─────────────────────────────────────────
-  const canRearrange = ["spin_season","spin_team","fetching","pick_player","pick_coach"].includes(phase);
-  const handleSlotTap = useCallback((slot)=>{
-    const cur = lineupRef.current;
-    if(moveSrc==null){
-      if(cur[slot]) setMoveSrc(slot);
-      return;
-    }
-    if(moveSrc===slot){ setMoveSrc(null); return; }
-    const place=(pl,s)=>pl?{...pl,_assignedPos:s,_isBench:!POSITIONS.includes(s),
-                            _posPenalty:posPenaltyFor(pl,s),
-                            _isPrimary:POSITIONS.includes(s)&&getPrimaryPos(pl)===s}:null;
-    const nl={...cur,[slot]:place(cur[moveSrc],slot),[moveSrc]:place(cur[slot],moveSrc)};
-    setLineup(nl);
-    lineupRef.current=nl;
-    setMoveSrc(null);
-  },[moveSrc]);
-
-  const [affinityMatrix, setAffinityMatrix] = useState(null);
-
-  useEffect(()=>{
-    fetch(apiUrl("/api/game/seasons")).then(r=>r.json()).then(d=>setSeasons(d.seasons||["2025-26"])).catch(()=>setSeasons(["2025-26"]));
-    fetch(apiUrl("/api/affinity")).then(r=>r.json()).then(d=>setAffinityMatrix(d.matrix||null)).catch(()=>{});
-  },[]);
-
-  // ── Oyuncu çek (ortak) ───────────────────────────────────────────────────
-  const fetchPlayers = useCallback((season, team, onEmpty) => {
-    setPhase("fetching");
-    setStatusMsg("Loading players...");
-    fetch(apiUrl(`/api/game/players?season=${encodeURIComponent(season)}&team=${encodeURIComponent(team)}`))
-      .then(r=>r.json())
-      .then(d=>{
-        const taken=Object.values(lineupRef.current).filter(Boolean).map(x=>x.PLAYER_NAME);
-        let list=(d.players||[]).filter(p=>!taken.includes(p.PLAYER_NAME));
-        if(list.length===0){ onEmpty(); return; }
-
-        // Takım içi fiyatlama: rosterın en iyi 3'üne yıldız primi tabanı
-        if(modeRef.current==="salarycap") list = applyTeamPricing(list);
-
-        // Salary Cap garantisi: rosterda kalan bütçeyle alınabilir oyuncu olmalı
-        // (kalan her slota %4 rezerv bırakarak). Yoksa otomatik yeniden çevir
-        // (15 denemeden sonra wildcard: rezerv şartı kalkar).
-        if(modeRef.current==="salarycap" && !wildcardRef.current){
-          const lu=Object.values(lineupRef.current);
-          const budgetLeft=START_BUDGET-totalSpent(lu);
-          const slotsLeft=ALL_SLOTS.length-lu.filter(Boolean).length;
-          const cap=maxSpendNow(budgetLeft, slotsLeft);
-          const pickable=list.some(p=>priceOf(p)<=cap);
-          if(!pickable){
-            guaranteeRef.current++;
-            if(guaranteeRef.current>=15){
-              wildcardRef.current=true;
-              setStatusMsg("Tier hunt exhausted — wildcard round: anyone is pickable");
-            } else {
-              setStatusMsg(`No open-tier players on this roster — respinning (${guaranteeRef.current})...`);
-              setTimeout(()=>startSpinRef.current&&startSpinRef.current(),650);
-              return;
-            }
-          } else {
-            guaranteeRef.current=0;
-          }
-        }
-
-        setPlayers(list);
-        setPosFilter("");
-        setPhase("pick_player");
-        if(!wildcardRef.current) setStatusMsg("");
-      })
-      .catch(()=>{ setStatusMsg("API error"); setPhase("idle"); });
-  },[lang]);
-
-  // ── TAM SPIN: sezon → takım → oyuncular ──────────────────────────────────
-  // ÖNEMLİ: fixed* ("değer önceden belli") ile spin* ("o çark dönsün mü")
-  // AYRI kavramlar. Eskiden tek parametre ikisini birden ifade ediyordu ve
-  // Year jokeri ters çalışıyordu: yeniden yuvarlanan SEZON hiç dönmeden
-  // beliriyor, korunan TAKIM ise boşuna 2sn dönüyordu.
-  const startFullSpin = useCallback((fixedSeason=null, fixedTeam=null, opts={}) => {
-    if(seasons.length===0) return;
-    clearTimeout(timerRef.current);
-
-    const spinSeason = opts.spinSeason ?? !fixedSeason;
-    const spinTeam   = opts.spinTeam   ?? true;
-
-    const sIdx = fixedSeason ? seasons.indexOf(fixedSeason) : Math.floor(Math.random()*seasons.length);
-    setTargetSIdx(Math.max(0,sIdx));
-    setSpinS(spinSeason);
-    setSpinT(false);
-    setPlayers([]);
-    setPhase(spinSeason?"spin_season":"spin_team");
-    setStatusMsg("");
-
-    const afterSeasonStop = (season) => {
-      setChosenSeason(season);
-      setStatusMsg("Loading teams...");
-
-      fetch(apiUrl(`/api/game/teams?season=${encodeURIComponent(season)}`))
-        .then(r=>r.json())
-        .then(d=>{
-          const teams=d.teams||[];
-          if(teams.length===0){ startFullSpin(); return; }
-          setTeamPool(teams);
-
-          // Sabit takım varsa onu seç, yoksa rastgele
-          let tIdx;
-          if(fixedTeam){
-            const fi=teams.indexOf(fixedTeam);
-            tIdx=fi>=0?fi:Math.floor(Math.random()*teams.length);
-          } else {
-            tIdx=Math.floor(Math.random()*teams.length);
-          }
-          setTargetTIdx(tIdx);
-          setSpinT(spinTeam);
-          setPhase("spin_team");
-          setStatusMsg("");
-
-          // Takım korunuyorsa çarkı döndürmenin anlamı yok — kısa bir
-          // yerleşme payı bırakıp doğrudan rostere geç.
-          timerRef.current=setTimeout(()=>{
-            const team=teams[tIdx];
-            setSpinT(false);
-            setChosenTeam(team);
-            fetchPlayers(season, team, ()=>{
-              setStatusMsg("No data, re-spinning...");
-              setTimeout(()=>startFullSpin(),700);
-            });
-          }, spinTeam ? 1600 : 250);
-        })
-        .catch(()=>startFullSpin());
-    };
-
-    const landedSeason = fixedSeason || seasons[Math.max(0,sIdx)];
-    if(spinSeason){
-      timerRef.current=setTimeout(()=>{
-        setSpinS(false);
-        afterSeasonStop(landedSeason);
-      },1600);
-    } else {
-      afterSeasonStop(landedSeason);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[seasons, lang, fetchPlayers]);
-
-  // fetchPlayers içindeki otomatik respin için güncel referans
-  useEffect(()=>{ startSpinRef.current = startFullSpin; },[startFullSpin]);
-
-  // ── Joker: sadece takım çevir (mevcut takım hariç) ───────────────────────
-  const jokerReTeam = useCallback(()=>{
-    if(!jokers.reTeam||teamPool.length===0) return;
-    setJokers(j=>({...j,reTeam:false}));
-    clearTimeout(timerRef.current);
-    // Mevcut takımı havuzdan çıkar
-    const otherTeams = teamPool.filter(t => t !== chosenTeam);
-    const pool = otherTeams.length > 0 ? otherTeams : teamPool;
-    const tIdx = teamPool.indexOf(pool[Math.floor(Math.random()*pool.length)]);
-    setTargetTIdx(Math.max(0,tIdx));
-    setSpinT(true);
-    setSpinS(false);
-    setPlayers([]);
-    setPhase("spin_team");
-
-    timerRef.current=setTimeout(()=>{
-      const team=teamPool[Math.max(0,tIdx)];
-      setSpinT(false);
-      setChosenTeam(team);
-      fetchPlayers(chosenSeason,team,()=>{
-        // hâlâ boş ise tekrar dene
-        const alt=pool.filter(t=>t!==team);
-        if(alt.length===0) return;
-        const ai=teamPool.indexOf(alt[Math.floor(Math.random()*alt.length)]);
-        setTargetTIdx(Math.max(0,ai));
-        setSpinT(true);
-        timerRef.current=setTimeout(()=>{
-          const t2=teamPool[Math.max(0,ai)];
-          setSpinT(false);
-          setChosenTeam(t2);
-          fetchPlayers(chosenSeason,t2,()=>{});
-        },2000);
-      });
-    },2000);
-  },[jokers.reTeam,teamPool,chosenTeam,chosenSeason,fetchPlayers]);
-
-  // ── Joker: sadece yılı çevir (mevcut sezon hariç) ────────────────────────
-  const jokerReYear = useCallback(()=>{
-    if(!jokers.reYear||seasons.length===0) return;
-    setJokers(j=>({...j,reYear:false}));
-    const otherSeasons = seasons.filter(s => s !== chosenSeason);
-    const pool = otherSeasons.length > 0 ? otherSeasons : seasons;
-    const picked = pool[Math.floor(Math.random()*pool.length)];
-    // Sezon yeniden yuvarlanıyor → SEZON çarkı dönsün; takım korunuyor →
-    // takım çarkı dönmesin.
-    startFullSpin(picked, chosenTeam, { spinSeason:true, spinTeam:false });
-  },[jokers.reYear,seasons,chosenSeason,chosenTeam,startFullSpin]);
-
-  // ── Joker: ikisini de çevir (mevcut sezon+takım kombinasyonu hariç) ──────
-  const jokerReBoth = useCallback(()=>{
-    if(!jokers.reBoth) return;
-    setJokers(j=>({...j,reBoth:false}));
-    // startFullSpin tamamen rastgele — sadece aynı sezonu almamaya çalış
-    const otherSeasons = seasons.filter(s => s !== chosenSeason);
-    const pool = otherSeasons.length > 0 ? otherSeasons : seasons;
-    const picked = pool[Math.floor(Math.random()*pool.length)];
-    // İkisi de yeniden yuvarlanıyor → her iki çark da dönsün.
-    startFullSpin(picked, null, { spinSeason:true, spinTeam:true });
-  },[jokers.reBoth,seasons,chosenSeason,startFullSpin]);
-
-  // ── Joker: ikili seçim ────────────────────────────────────────────────────
-  const jokerDouble = useCallback(()=>{
-    if(!jokers.double) return;
-    setJokers(j=>({...j,double:false}));
-    setDoubleActive(true);
-  },[jokers.double]);
-
-  // ── Joker: discover (arketip + skor göster) ───────────────────────────────
-  const jokerDiscover = useCallback(()=>{
-    if(!jokers.discover) return;
-    setJokers(j=>({...j,discover:false}));
-    setDiscoverActive(true);
-  },[jokers.discover]);
-
-  // ── Oyuncu seç ────────────────────────────────────────────────────────────
-  const handlePickPlayer = (player) => {
-    let enrichedPick = player;
-    // Salary Cap: bütçeyi aşan sözleşme alınamaz (wildcard'da rezerv şartı düşer)
-    if(mode==="salarycap"){
-      const c=priceOf(player);
-      const lu=Object.values(lineupRef.current);
-      const budgetLeft=START_BUDGET-totalSpent(lu);
-      const slotsLeft=ALL_SLOTS.length-lu.filter(Boolean).length;
-      const cap=wildcardRef.current ? budgetLeft : maxSpendNow(budgetLeft, slotsLeft);
-      if(c>cap) return; // kart zaten disabled — guard
-      enrichedPick={...player,_cost:c};
-    }
-    setPickedPlayer(enrichedPick);
-    setDiscoverActive(false);
-    setStatusMsg("");
-    setPhase("pick_pos");
-  };
-
-  // ── Pozisyon seç (starter mevkisi veya bench slotu) ──────────────────────
-  const handlePickPos = (pos) => {
-    const isStarter = POSITIONS.includes(pos);
-    const isPrimary = isStarter && getPrimaryPos(pickedPlayer) === pos;
-
-    const enriched={...pickedPlayer,_season:chosenSeason,_team:chosenTeam,_isPrimary:isPrimary,
-                    _assignedPos:pos,_isBench:!isStarter,
-                    _posPenalty:posPenaltyFor(pickedPlayer,pos)};
-    const newLineup={...lineupRef.current,[pos]:enriched};
-    setLineup(newLineup);
-    lineupRef.current=newLineup;
-    setPickedPlayer(null);
-
-    const filled=ALL_SLOTS.filter(p=>newLineup[p]!==null);
-    if(filled.length===ALL_SLOTS.length){
-      // Koç draft'ı: 4 rastgele aday. Fit, koç seçilirken hesaplanır
-      // (pick_coach sırasında dizilim hâlâ değiştirilebilir).
-      setCoachOptions([...COACHES].sort(()=>Math.random()-0.5).slice(0,4));
-      setPhase("pick_coach");
-    } else if(doubleActive){
-      // İkili seçim: aynı havuzdan tekrar seç
-      setPlayers(prev=>prev.filter(p=>p.PLAYER_NAME!==pickedPlayer.PLAYER_NAME));
-      setDoubleActive(false);
-      setPhase("pick_player");
-    } else {
-      setTimeout(()=>startFullSpin(),400);
-    }
-  };
-
-  const resetGame = () => {
-    clearTimeout(timerRef.current);
-    const empty={PG:null,SG:null,SF:null,PF:null,C:null,B1:null,B2:null,B3:null,B4:null};
-    setLineup(empty);
-    lineupRef.current=empty;
-    setCoach(null);
-    setCoachOptions([]);
-    setFitResult(null);
-    setPlayers([]);
-    setPickedPlayer(null);
-    setChosenSeason("");
-    setChosenTeam("");
-    setTeamPool([]);
-    setStatusMsg("");
-    setSpinS(false);
-    setSpinT(false);
-    setMoveSrc(null);
-    setJokers({reTeam:true,reYear:true,reBoth:true,double:true,discover:true});
-    setDoubleActive(false);
-    setDiscoverActive(false);
-    setSimEra(null);
-    guaranteeRef.current=0;
-    wildcardRef.current=false;
-    setPhase("idle");
-  };
-
-  const isSpinPhase = phase==="spin_season"||phase==="spin_team"||phase==="fetching";
 
   return (
     <div className="h-full overflow-y-auto">
@@ -984,7 +648,7 @@ export default function LineupGame() {
           </div>
 
           <div className="g-dock-center">
-            <button onClick={()=>setPhase("pick_era")} disabled={seasons.length===0}
+            <button onClick={beginEraPick} disabled={seasons.length===0}
               className="aura-rating-btn"
               style={{padding:"17px 42px",fontSize:14,letterSpacing:".14em",opacity:seasons.length===0?0.5:1}}>
               {seasons.length===0?"Loading…"
@@ -1209,7 +873,7 @@ export default function LineupGame() {
               const eHex = ERA_HEX[era.id] || "#9ca3af";
               return (
                 <div key={era.id} className="g-tile"
-                  onClick={()=>{setSimEra(era);startFullSpin();}}
+                  onClick={()=>chooseEra(era)}
                   style={{"--accent":eHex,"--accent-a":eHex+"1a","--accent-line":eHex+"55"}}>
                   <span className="aura-blob" style={{"--slot-color":eHex,right:-24,top:-24,width:120,height:88,opacity:0.26}} />
                   {/* Bilgi düğmesi — seçim tıklamasını tetiklemez */}
@@ -1225,7 +889,7 @@ export default function LineupGame() {
             })}
           </div>
           <button
-            onClick={()=>{setSimEra(ERAS[Math.floor(Math.random()*ERAS.length)]);startFullSpin();}}
+            onClick={randomEra}
             className="aura-pill-btn w-full justify-center shrink-0" style={{padding:"10px"}}>
             <DiceIcon size={15} /> Random Era
           </button>
@@ -1262,7 +926,7 @@ export default function LineupGame() {
                   </div>
                 </div>
               )}
-              <button onClick={()=>{setEraInfo(null);setSimEra(eraInfo);startFullSpin();}}
+              <button onClick={()=>{setEraInfo(null);chooseEra(eraInfo);}}
                 className="aura-rating-btn w-full" style={{padding:"11px",fontSize:12.5,letterSpacing:".1em"}}>
                 Play this era
               </button>
@@ -1281,10 +945,7 @@ export default function LineupGame() {
       {/* === PICK PLAYER === */}
       {phase==="pick_player"&&(()=>{
         const salary = mode==="salarycap";
-        const budgetLeft = salary ? START_BUDGET-totalSpent(Object.values(lineup)) : null;
-        const spendCap = salary
-          ? (wildcardRef.current ? budgetLeft : maxSpendNow(budgetLeft, emptySlots.length))
-          : null;
+        // spendCap motordan (wildcard dahil): mobil arayüz de aynı sınırı görür.
         let list = posFilter ? players.filter(p=>posGroupOf(p)===posFilter) : players;
         const sorted = [...list].sort((a,b)=>{
           if(sortKey==="TAGGED"){
@@ -1405,7 +1066,7 @@ export default function LineupGame() {
                   ))}
                 </div>
               </div>
-              <button onClick={()=>{setPickedPlayer(null);setPhase("pick_player");}}
+              <button onClick={cancelPick}
                 className="text-[var(--text-faint)] hover:text-[var(--text-primary)] text-xs shrink-0">← Back</button>
             </div>
             {/* Tag'ler büyütülmüş — tam ad + etkisi (oyuncuya tıklayınca ne olduğu net) */}
@@ -1481,13 +1142,7 @@ export default function LineupGame() {
         <CoachPicker
           title="Final Step — Draft a Coach"
           options={coachOptions}
-          onPick={(c)=>{
-            setCoach(c);
-            setMoveSrc(null);
-            const fit=computeLineupFit(POSITIONS.map(p=>lineupRef.current[p]), simEra, affinityMatrix);
-            setFitResult(fit);
-            setPhase("complete");
-          }}
+          onPick={pickCoach}
         />
       )}
 
