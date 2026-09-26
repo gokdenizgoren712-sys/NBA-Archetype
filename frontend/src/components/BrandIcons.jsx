@@ -45,6 +45,25 @@ export function Logo({ size = 32, dashed = false }) {
   );
 }
 
+/* ── Tek renk logo — RankIt 4i "MONO — APPROVED" ─────────────────────
+   Dolu 12-gen; dikişler ve kural (1 birim içeride) maskeyle OYULUR, çizgi
+   formu değil — her zeminde ve küçük boyda okunur. Renk currentColor.
+   BUILD §7.4: RankIt ile yan yana (ortak markalama) iki işaret asla ikisi
+   birden altın değil; RankIt başlığında bu işaret kullanılır. */
+export function LogoMono({ size = 32, color = "currentColor", label }) {
+  const maskId = `pa-mono-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
+  return (
+    <svg width={size} height={size} viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"
+      {...(label ? { role: "img", "aria-label": label } : { "aria-hidden": true })}>
+      <mask id={maskId}>
+        <rect width="48" height="48" fill="#fff" />
+        {[SEAM_L, SEAM_R, RULE].map((d) => <path key={d} d={d} stroke="#000" strokeWidth="5.2" strokeLinecap="round" />)}
+      </mask>
+      <polygon points={DODECAGON} fill={color} mask={`url(#${maskId})`} />
+    </svg>
+  );
+}
+
 /* ── Nav ikon sarmalayıcı: 24x24, stroke 1.5, round ───────────────── */
 function Svg({ size = 24, className = "", children }) {
   return (

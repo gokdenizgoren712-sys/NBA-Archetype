@@ -291,7 +291,7 @@ test("8c: tablo ve hafta yan yana, AVG HEAT sütunu, 7g bağlantısı; yalan tak
   const c = css();
   assert.match(c, /\.riw-comp-left \{ width: 596px; flex: none;/);
   assert.match(c, /\.riw-comp-cards \{ display: grid; grid-template-columns: repeat\(2, minmax\(0, 1fr\)\); gap: 13px; \}/);
-  assert.match(c, /\.riw-comp-strip \{ display: flex; align-items: center; gap: 14px;/, "30 görünür + 14 aralık = 44 adım");
+  assert.match(c, /\.riw-comp-strip \{ display: flex; align-items: center; gap: 13px;/, "30 görünür + 13 aralık (§1.6 ölçeği): 44'lük dokunma alanları arasında boşluk kalmaz");
   assert.match(c, /\.riw-comp-pill::after, \.riw-comp-step::after \{ content: ""; position: absolute; inset: -7px; \}/);
 });
 

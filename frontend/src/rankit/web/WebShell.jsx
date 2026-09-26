@@ -18,6 +18,7 @@ import { useEffect, useRef } from "react";
 import { Link, NavLink } from "react-router-dom";
 import { Activity as ActivityIcon, CircleUserRound, Compass, Home, LogIn, Menu, Plus, Search, Shield, SlidersHorizontal } from "lucide-react";
 import { RankItMark } from "../redesign/BrandMark";
+import { LogoMono } from "../../components/BrandIcons";
 import { collectionPercent, ringFill } from "../redesign/huntSummary";
 import { RAMP } from "../redesign/heat";
 
@@ -88,10 +89,19 @@ export function WebHeader({ user, isLoggedIn, hideScores, onToggleScores, nights
   const progress = Math.min(1, (nights || 0) / 7);
   return (
     <header className={`riw-top${searching ? " is-searching" : ""}`}>
-      <Link to="/rankit" className="riw-lockup" aria-label="RankIt home">
-        <RankItMark size={26} />
-        <span><strong>RANK<span>IT</span></strong><small>BY PRIMARY ARCH</small></span>
-      </Link>
+      {/* Primary Arch'a dönüş sol üstte (sitenin üst barı RankIt'te çekili).
+          §7.4 ortak markalama: ana işaret tek renk, RankIt altın; aralarında
+          1px line-strong çizgi. */}
+      <div className="riw-brandline">
+        <Link to="/" className="riw-parent" aria-label="Primary Arch home" title="Primary Arch">
+          <LogoMono size={28} />
+        </Link>
+        <i className="riw-parent-rule" aria-hidden="true" />
+        <Link to="/rankit" className="riw-lockup" aria-label="RankIt home">
+          <RankItMark size={26} />
+          <span><strong>RANK<span>IT</span></strong><small>BY PRIMARY ARCH</small></span>
+        </Link>
+      </div>
 
       <nav className="riw-topnav" aria-label="RankIt">
         {NAV.map(({ to, end, label }) => (
@@ -238,12 +248,8 @@ export function WebRail({ isLoggedIn, rank, hunt, clubs, onOpenEntity, sheet = f
           <Link to="/login?next=/rankit" className="riw-rail-cta" title="Sign in"><LogIn size={16} aria-hidden="true" /><span>Sign in</span></Link>
         </section>
       )}
-
-      {/* Sitenin üst barı RankIt'in içinde çekiliyor (7a'da yok); Primary
-          Arch'a dönüş yolu burada kalıyor. */}
-      <div className="riw-rail-foot">
-        <Link to="/" className="riw-home-link" title="Primary Arch"><Home size={16} aria-hidden="true" /><span>Primary Arch</span></Link>
-      </div>
+      {/* Primary Arch'a dönüş başlığın sol üstünde (.riw-parent); rayın
+          dibindeki eski bağlantı onunla yinelendiği için kaldırıldı. */}
     </aside>
   );
 }

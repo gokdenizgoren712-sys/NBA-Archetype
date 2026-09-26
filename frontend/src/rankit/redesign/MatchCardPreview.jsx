@@ -24,8 +24,8 @@ const MATCH = {
 
 function Frame({ preset, children, note }) {
   return (
-    <figure style={{ margin: 0, display: "flex", flexDirection: "column", gap: 8, minWidth: 0 }}>
-      <figcaption style={{ font: "700 9px Rajdhani,system-ui,sans-serif", letterSpacing: ".14em", color: "#7f868b", textTransform: "uppercase" }}>
+    <figure style={{ margin: 0, display: "flex", flexDirection: "column", gap: 9, minWidth: 0 }}>
+      <figcaption style={{ font: "700 9px var(--font-logo)", letterSpacing: ".14em", color: "#7f868b", textTransform: "uppercase" }}>
         {preset.label} · {preset.wrapper}w · art {preset.artHeight} · crest {preset.crestSize} · score {preset.scoreSize}
         {note ? ` · ${note}` : ""}
       </figcaption>
@@ -40,10 +40,10 @@ function Frame({ preset, children, note }) {
 export default function MatchCardPreview() {
   return (
     <div style={{ height: "100%", overflowY: "auto", background: "#090a0b", padding: 26, boxSizing: "border-box" }}>
-      <h1 style={{ font: "700 21px Rajdhani,system-ui,sans-serif", color: "#eceded", margin: "0 0 4px" }}>
+      <h1 style={{ font: "700 21px var(--font-logo)", color: "#eceded", margin: "0 0 4px" }}>
         MatchCard — §2.5 presets
       </h1>
-      <p style={{ font: "400 12px Outfit,system-ui,sans-serif", color: "#9aa0a6", margin: "0 0 26px" }}>
+      <p style={{ font: "400 12px var(--font-sans)", color: "#9aa0a6", margin: "0 0 26px" }}>
         Seven exact presets, one component. Nothing on this page is wired to a product screen.
       </p>
 
@@ -55,7 +55,7 @@ export default function MatchCardPreview() {
         ))}
       </div>
 
-      <h2 style={{ font: "700 13px Rajdhani,system-ui,sans-serif", letterSpacing: ".14em", color: "#9aa0a6", margin: "34px 0 13px", textTransform: "uppercase" }}>
+      <h2 style={{ font: "700 13px var(--font-logo)", letterSpacing: ".14em", color: "#9aa0a6", margin: "34px 0 13px", textTransform: "uppercase" }}>
         State coverage
       </h2>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 26, alignItems: "flex-start" }}>

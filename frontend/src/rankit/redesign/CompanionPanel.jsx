@@ -72,7 +72,7 @@ function PulseTimeline({ timeline = [], minute, sport = "Football", minimum = 20
       </svg> : <p className="ri-companion-note">No measured pulse yet.</p>}
       <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6 }}>
         {(sport === "Basketball" ? ["TIP-OFF", ...[.25,.5,.75].map(part => companionMinute(buckets[Math.floor((buckets.length-1)*part)].bucket, sport)), finished ? "FT" : companionMinute(minute, sport) || "NOW"] : ["KO", "30'", "HT", "60'", finished ? "FT" : companionMinute(minute, sport) || "NOW"]).map((t,i) => (
-          <span key={i} style={{ font: "700 9px Rajdhani,system-ui,sans-serif", letterSpacing: ".14em", color: INK_4 }}>{t}</span>
+          <span key={i} style={{ font: "700 9px var(--font-logo)", letterSpacing: ".14em", color: INK_4 }}>{t}</span>
         ))}
       </div>
     </div>
@@ -85,8 +85,8 @@ function LiveRead({ value, onChange, disabled }) {
   return (
     <div style={{ marginTop: 13 }}>
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 7 }}>
-        <span style={{ font: "700 9px Rajdhani,system-ui,sans-serif", letterSpacing: ".14em", color: INK_4 }}>YOUR LIVE READ</span>
-        <strong style={{ font: "700 13px Rajdhani,system-ui,sans-serif", color: inkFor(value) }}>
+        <span style={{ font: "700 9px var(--font-logo)", letterSpacing: ".14em", color: INK_4 }}>YOUR LIVE READ</span>
+        <strong style={{ font: "700 13px var(--font-logo)", color: inkFor(value) }}>
           {value ? `${NAMES[Math.round(value) - 1]} ${value.toFixed(1)}` : "—"}
         </strong>
       </div>
@@ -103,7 +103,7 @@ function LiveRead({ value, onChange, disabled }) {
                 border: `1px solid ${on ? RAMP[step - 1] : LINE}`,
                 background: on ? `${RAMP[step - 1]}22` : "transparent",
                 color: on ? RAMP[step - 1] : INK_4,
-                font: "700 9px Rajdhani,system-ui,sans-serif", letterSpacing: ".1em",
+                font: "700 9px var(--font-logo)", letterSpacing: ".1em",
                 cursor: disabled ? "default" : "pointer", opacity: disabled ? 0.5 : 1,
               }}>
               {NAMES[step - 1]}

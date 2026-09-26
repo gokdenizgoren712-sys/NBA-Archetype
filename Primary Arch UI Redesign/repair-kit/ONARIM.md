@@ -1568,3 +1568,84 @@ Profil kimlik satırı `0 following · 1 followers` yazıyordu; `9a` sekmeleri d
   - Kopya DB, token silindi.
   - `launch.json` bayt-aynı (sha `5d564097…`).
   - Gerçek DB'de QA verisi yok (14 günlük satırı, 0 QA kullanıcısı).
+
+#### Aşama 19 — kozmetik normalizasyon / 2026-09-26
+
+- **Kaynak:** BUILD §1 (1.1 renk, 1.3 altın bütçesi, 1.5 tip, 1.6 geometri) + tahtalar (RankIt Redesign / Web / MatchCard .dc.html). Kural: jeton dışı değer en yakın jetona; BUILD'de karşılığı olmayan her şey (gölge, beyaz-alfa çizgi, ara font boyu) **tahtanın kendi sözlüğüne**. Kapsam `frontend/src/rankit/**` CSS'i ve kartın dışındaki JSX satır içi stiller. Kartın kendi geometrisi (`MatchCard.jsx`, `States.jsx` iskeleti) §2'ye ait, dokunulmadı.
+- **Bulunan bozulma:** `rankit-mobile.css` `80b6fa0`'dan beri her "g"yi "r" yapmıştı (`heirht`, `backrround`, `rrba`, `alirn`, `marrin`…). Giriş ekranı stilleri fiilen ölüydü. `33973ea`'dan geri yüklendi, amaçlanan beş 8→9px değişikliği yeniden uygulandı, sonra normalize edildi.
+- **Renk (§1.1):**
+  - Metin: gri tonlar en yakın mürekkebe (≥#5a mürekkep-4'ün altına inmez), altın üstü koyu metin `#17120a`; 145 satır.
+  - Elle: hata / CANLI → heat-5, kaydedildi → positive, respect aktif → ink, favori nötr, sosyal nokta → positive.
+  - Eski kırmızı (255,65,78), mercan (232,101,76), heat-3 yazım hatası (155,63,150), gold açık durakları (#ffe09a / #ffe4a8 / #ffc955 → #ffe9b0).
+  - Zemin: koyu griler ve gradyan durakları en yakın yüzeye; zemine yakın cam zeminler (10,11,12…) ground'a, alfa aynı. Perde (5,6,7) → ground.
+  - Kenar: opak koyu gri çizgiler → line `.09` ya da kontrollerde tahtanın `.14`'ü.
+  - 8 ölü `.ri-diary-heat` kuralı silindi.
+  - **Dokunulmayan (tahtada birebir):** `#7a1d43` Standing arması, `#0f1012` sayfa yüzeyi, mor rütbe kartı gradyanı, Hunt yeşilleri, `#3a3f47` / `#2a2e34` arma yedekleri. Beyaz-alfa çizgi ve tonlar da tahta sözlüğü (`.14` her iki tahtada 100+ kez); FOLLOWING çipi tahtadaki gibi `.14`.
+  - Bilinçli istisnalar: 7e'deki Broadsheet örneği `#e8e4d9`, takım / varlık rengindeki arma parıltısı (veri rengi), oyuncu kartının `.04` forma filigranı.
+- **Tip (§1.5):**
+  - Rajdhani kısaltmada 600/800 → 700 (39); Outfit 600/700 → 500 (5); tek başına 800 → 700, 600 → 500.
+  - Düğme `.ri-auth-submit` Rajdhani 700.
+  - Düz yığınlar (`Rajdhani,system-ui…`, `Outfit,sans-serif` …) → `var(--font-logo)` / `var(--font-sans)`; 46 yer.
+  - Tahtada geçmeyen beş boyut en yakın tahta boyuna: 23→24, 25→26, 27→26, 28/29→30 (14 yer). 105/148px forma numarası dekoratif filigran, dokunulmadı. 9px taban temiz (tek eşleşme yorumda).
+- **Geometri (§1.6):**
+  - Aralık 7·9·11·13·16·18·22·26·34, eşitlikte yukarı: 8→9, 10→11, 12→13, 14→13, 15→16, 20→22, 32→34; 135 CSS + 4 JSX.
+  - Yarıçap: 6/7/9→8, 11/12→10, 13/15/16→14, 17/20→18, 24/25→22; "X X 0 0" sayfa tepeleri → 22 (27'likler dahil); 106 yer.
+  - **İstisnalar:** ≤6 mikro aralık, ≤5 mikro yarıçap, döndürülmüş biçimler (elmas / arma), asimetrik kalkan yarıçapları, yüzdeler.
+  - **Kilit 10 geri alındı:** §7.3 "mark 24, gap 10, wordmark 21" özel kural, genel ölçekten önce gelir. `.ri-brand` ve `.riw-lockup` 10'da kaldı.
+  - **7e'nin 60'ı:** §19.2 "copy 400 wide, right of the card, 60px gap" — spesifikasyon, sorulacak bir şey değil.
+  - Yarışma şeridi 14→13: 30'luk hapların 44'lük dokunma alanları arasında boşluk kalmaz.
+- **Gölge:** tahtanın sözlüğü kart kalkışı `0 14px 34px rgba(0,0,0,.28)` · telefon ve 820 sayfası `0 -22px 80px #000` · diyalog `0 26px 70px rgba(0,0,0,.6)` · odak `0 0 0 2px #090a0b,0 0 0 4px #eceded` (BUILD: 2px ink, asla altın) · RANK elması `0 0 22px rgba(255,177,27,.35)` (web elması dahil). ~50 çeşit bunlara indirildi.
+- **Altın bütçesi (§1.3) — tarayıcıda bölge bölge sayıldı:**
+  - **Web:** puan yıldızları altındı (bir yorum sayfasında 30–45 altın glif); iki tahta da yıldızı `#eceded` çiziyor → ink (`.ri-star-glyph`, `.ri-stars .on`, `.riw-rate-glyph`, telefon parıltısı).
+  - `REVEAL ANYWAY` altındı (topluluk kartlı bir duvarda sütun sütun). Web tahtası: cümle ink-2, eylem ink-3 → `CommunityVerdictGate` `#9aa0a6`; kartın kendi kapısı skinin ikincil mürekkebi (`t.eyebrow`; açık skinlerde okunur kalır).
+  - Altın haleler kaldırıldı (hap, sekme çizgisi, avatar, arama alanı, giriş düğmesi, kart). Altın bir şeyi işaretler, atmosfer olmaz.
+  - **Telefon (bölge = görüntü alanı):** tahtada kaşlar `#7f868b` (132/180), baş harf avatarları mürekkep → bölüm / sayfa / künye / puan paneli / yayın / Hunt / rütbe / profil / varlık / yarışma kaşları `#7f868b`, `.14em`; avatarlar `#c9cccd`; yüzen arama simgesi `#9aa0a6`.
+  - 2a'nın boş eylemi "FIND A MATCH" nötr (`EmptyState quiet`): "a screen carrying the RankIt wordmark … does not also carry a gold CTA". 3l'nin Diary eylemi tahtada altın, dokunulmadı.
+  - **Telefon zili:** nokta her zaman çiziliyordu (`<Bell/><i/>`), okunmamış olsun olmasın. Web zili gibi heat-5 ve yalnız `unread > 0`; sayfa kapanınca yeniden sorulur, etiket sayıyı söyler.
+  - **Tahtanın kendisi altın dedikleri (dokunulmadı):** lockup (işaret + IT), aktif nav / sekme / hap, FOLLOW ve FOLLOW BACK (§13.4), "All activity ›" ve "Open the full wall ›", classics sayısı, CLASSIC işareti ve Instant Classic çentik çizgisi (§2.1), ısı haritasının kaydedilmiş gece elmasları (§22.2), seçili skinin iç halkası.
+- **Tarayıcıda (gerçek DB'nin kopyası):**
+  - Web 12 sayfa × 1440 / 1000 / 390: gövde ve belge yatay taşması 0, başlık sığıyor.
+  - 390'da raf kartları 174 ve hiçbiri kırpılmıyor (10/10).
+  - Web bölgeleri: başlık 2–3 (lockup + aktif nav), duvar yalnız tahtanın dediği işaretler, Inspector 2 (aktif sekme + birincil eylem; ikisi de web tahtasında).
+  - Telefon 390 Home / Discover / Activity / Profile: taşma 0. Altın: yalnız lockup + aktif hap (Home), lockup (Discover), lockup + aktif segment + kartların Classic işaretleri (Activity), classics sayısı (Profile).
+  - Zil noktası 1 okunmamışla görünür, okununca kaybolur.
+- **Test:** yeni `frontend/tests/stage19-cosmetics.test.mjs` (11 test: metin / zemin jetonları, ağırlık ve yığın, aralık ve yarıçap ölçeği ve istisnaları, hale yok, gölge sözlüğü, yıldız, REVEAL ANYWAY, telefon kaşı / avatar / boş eylem, zil). Aşama 17–18'in iki beklentisi yeni ölçeğe güncellendi (şerit 13, 820 sayfası 22). **Mutasyon:** 15 kural tek tek kırıldı → hepsi **kırmızı**, dosyalar bayt-aynı (sha).
+- **Sonuç:** Frontend **244/244**, Vite build geçti; ESLint değişmedi (9, hepsi önceden var).
+- **Ertelenen / karar bekleyen:**
+  - Telefon başlığı wordmark'ı **her sekmede** taşıyor; tahtalar diğer sekmeleri başlıkla adlandırıyor (3l "Diary"). §1.3'e göre wordmark'lı ekran altın eylem taşımaz, yani bugün Diary'nin altın boş eylemi IT ile aynı görüntüde. Sekme başına başlık yapısal bir iş, kozmetik değil.
+  - Inspector'da aktif sekme çizgisi + birincil eylem aynı panelde iki altın; ikisi de web tahtasından (§1.3 ile gerilim, tahtaya uyuldu).
+  - Kanca bulguları: `rankit.css`'te genişlik animasyonları (yüzen arama, atlıkarınca noktası) hareket işi, bu aşamanın dışında. `.ri-tonight-row.is-live` 3px şeridi tahtada birebir (heat-5 / heat-4), dokunulmadı.
+  - Commit / push yapılmadı.
+- **Ortam:**
+  - Kopya DB, token ve sekmedeki test anahtarları silindi.
+  - `launch.json` bayt-aynı (sha `5d564097…`).
+  - Gerçek DB'de QA verisi yok (14 günlük satırı, 0 QA kullanıcısı).
+
+#### Aşama 19 ek — sahibin kararları ve Primary Arch ↔ RankIt geçişleri / 2026-09-26
+
+- **Kararlar (Aşama 19'un açık iki sorusu):**
+  - Telefon başlığının wordmark'ı her sekmede kalıyor — sahip: "uygun, sorun yok". Sekme başına başlık yapılmayacak.
+  - Inspector'da aktif sekme çizgisi + birincil eylem (iki altın) — sahip: "tahtaya uyalım". Web tahtası geçerli, §1.3 istisnası olarak kayıtlı.
+- **Sorun:** RankIt web'den Primary Arch'a görünür bir dönüş yoktu (yalnız Home / Discover rayının dibinde, ≤820'de menünün içinde). Siteden RankIt'e tek giriş kök spor-seçim ekranıydı.
+- **RankIt başlığı, sol üst:** Primary Arch işareti → `/`, 1px line-strong çizgi, sonra RankIt kilidi (`.riw-brandline`).
+  - Kaynak çatışması: tahta 4i'nin "Shared gold — settled" notu ortak markalamada iki işareti de altın tutuyor (ölçek + boşlukla ayrım, çizgi yok). BUILD §7.4 tersini söylüyor: "Both marks mono, never both gold, separated by a 1px line-strong rule". Kaynak önceliği BUILD → BUILD uygulandı.
+  - Ana işaret tahta 4i'nin onaylı **MONO** biçimi: dolu 12-gen, dikişler ve kural (1 birim içeride) maskeyle oyulmuş. Yeni `LogoMono` (`components/BrandIcons.jsx`), `currentColor`.
+  - Renk ink-2 → üzerinde ink; RankIt kilidi altın kaldı. Başlığa yeni altın eklenmedi, bütçe aynı.
+  - Dokunma 44; eksi kenar boşluğu işareti sayfanın 26'lık kenarına oturtur. Odak: 2px ink.
+  - ≤820: öbek aralığı 7, işaret 24. 390'da 13 / 28 ile sağ küme 4px taşıyordu (ölçüldü); şimdi 16–151 + 164–374, tam sığıyor. Arama ekranında öbek gizlenir.
+- **Site rayı:** `RANKIT_NAV` (`/rankit`) masaüstü ikon rayının **dibine** sabit (`mt-auto`); kardeş ürün, sporun bölümü değil. Mobil çekmecede listenin sonunda.
+  - Basketbol, futbol ve spor-nötr (blog…) raylarında var. Kök spor-seçim ekranında ray yok (orada zaten RankIt kartı var).
+  - İşaret altın birincil biçiminde: sitenin nav ikonları kendi marka renklerinde (G-League kırmızı, NCAA mavi…). RankIt'in altın bütçesi RankIt ekranlarının kuralı, sitenin değil.
+  - RankIt'in içinde site rayı yine yok.
+- **Tarayıcıda (kopya DB):**
+  - 1440 / 1000 / 390'da taşma 0.
+  - İşaret `/`'e gidiyor, Primary Arch ana sayfası açılıyor.
+  - `/basketball/players`, `/football/players`, `/blog` raylarında RankIt var; tıklayınca RankIt kabuğu açılıyor, site rayı çekiliyor.
+- **Test:** yeni `frontend/tests/rankit-site-links.test.mjs` (4). **Mutasyon:** 8 kural → hepsi **kırmızı**, dosyalar bayt-aynı.
+- **Sonuç:** Frontend **248/248**, Vite build geçti, ESLint değişmedi (9, önceden var).
+- **Not:** Rayın dibindeki eski "Primary Arch" bağlantısı (`.riw-home-link`) duruyor; başlıktaki işaretle yinelenmiş oldu. Kaldırmak ayrı karar.
+- Commit / push yapılmadı. `launch.json` bayt-aynı (sha `5d564097…`). Gerçek DB'de QA verisi yok.
+- **Takip (aynı gün):** sahip "kaldır" dedi. Rayın dibindeki eski "Primary Arch" bağlantısı (`.riw-rail-foot` / `.riw-home-link`) ve CSS'i silindi (geniş ray, 1080 ikon rayı, ≤820 menü sayfası). Dönüş artık yalnız başlıktaki işarette.
+  - Aşama 18 testinin iki beklentisi buna göre güncellendi. `rankit-site-links` testine "kabukta `/` bağlantısı tek" eklendi (5 test).
+  - Tarayıcıda 1440 / 1000 / 390'da ray, ikon rayı ve menü sayfası düzgün; taşma 0, konsol hatası yok.
+  - Frontend **249/249**, build geçti, ESLint 9 (değişmedi).

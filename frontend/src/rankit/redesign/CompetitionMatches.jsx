@@ -100,10 +100,10 @@ function Fixture({ match, onOpen, hideScores }) {
         {/* §1 — sayı her zaman rengin yanında. */}
         {!verdictCovered && <b style={{ color: rating ? heat : INK_4 }}>{rating ? rating.toFixed(1) : tooFew ? "TOO FEW RATINGS" : "—"}</b>}
       </div>
-      {verdictCovered && !hidden && <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: 8, color: INK_3, fontSize: 10 }}>
+      {verdictCovered && !hidden && <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 9, marginTop: 8, color: INK_3, fontSize: 10 }}>
         <span>Rate it first — then see whether the room agreed with you.</span>
         <button type="button" onClick={event => { event.stopPropagation(); setCommunityRevealed(true); }}
-          style={{ flex: "none", border: 0, padding: 0, background: "none", color: GOLD, font: "700 10px Rajdhani,system-ui,sans-serif", cursor: "pointer" }}>REVEAL ANYWAY</button>
+          style={{ flex: "none", border: 0, padding: 0, background: "none", color: GOLD, font: "700 10px var(--font-logo)", cursor: "pointer" }}>REVEAL ANYWAY</button>
       </div>}
     </div>
   );

@@ -35,7 +35,7 @@ function Legend() {
 /* Tahtadaki kulüp elması: kendi rengi → %34'ü gece zemine karışmış hâli. */
 function swatch(color) {
   const c = /^#[0-9a-f]{3,8}$/i.test(String(color || "").trim()) ? color.trim() : "#3a3f47";
-  return `linear-gradient(135deg,${c},color-mix(in oklab,${c} 34%,#0b0b0b))`;
+  return `linear-gradient(135deg,${c},color-mix(in oklab,${c} 34%,#090a0b))`;
 }
 
 export default function HeatMapPage({ competitionId }) {

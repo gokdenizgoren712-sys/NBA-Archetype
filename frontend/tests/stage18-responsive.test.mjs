@@ -38,9 +38,8 @@ test("1080: ray 64px ikon sütunu (çekilmiyor); Inspector 820'ye kadar yerleşi
   assert.match(b, /\.riw\.has-inspector \{ grid-template-columns: minmax\(0, 1fr\) 468px; \}/);
   assert.doesNotMatch(b, /\.riw-rail(:not\(\.is-sheet\))? \{ display: none; \}/, "ray 1080'de gizlenmez");
   // Adlar görünmez ama okunur — display:none değil kırpma.
-  assert.match(b, /:is\(\.riw-rail-label, \.riw-rail-name, \.riw-standing-copy, \.riw-home-link span, \.riw-rail-cta span\) \{[^}]*clip: rect\(0, 0, 0, 0\)/);
+  assert.match(b, /:is\(\.riw-rail-label, \.riw-rail-name, \.riw-standing-copy, \.riw-rail-cta span\) \{[^}]*clip: rect\(0, 0, 0, 0\)/);
   assert.match(b, /\.riw-rail:not\(\.is-sheet\) \.riw-hunt-row, \.riw-rail:not\(\.is-sheet\) \.riw-club-row \{[^}]*width: 44px; height: 44px;/);
-  assert.match(b, /\.riw-rail:not\(\.is-sheet\) \.riw-home-link \{ flex: none; width: 44px;/);
   assert.match(b, /\.riw-filter-rail \.riw-filter-rail-toggle \{[^}]*width: 44px; height: 44px;/);
   // Aşama 16'nın ara hâli (panel duvarın üstüne biner) gitti.
   assert.doesNotMatch(web("rankit-inspector.css"), /\.riw-insp-dock \{ position: fixed; top: var\(--riw-top\)/);
@@ -50,7 +49,7 @@ test("1080: ray 64px ikon sütunu (çekilmiyor); Inspector 820'ye kadar yerleşi
 test("820: ray menüde, Inspector alttan tam genişlik sayfa + perde; başlık telefonunki gibi", () => {
   const b = block(css(), "max-width: 820px");
   assert.match(b, /\.riw-rail:not\(\.is-sheet\) \{ display: none; \}/);
-  assert.match(b, /\.riw-insp-dock \{\s*position: fixed; left: 0; right: 0; bottom: 0; top: auto;[^}]*border-radius: 20px 20px 0 0;/);
+  assert.match(b, /\.riw-insp-dock \{\s*position: fixed; left: 0; right: 0; bottom: 0; top: auto;[^}]*border-radius: 22px 22px 0 0;/);
   assert.match(b, /\.riw-sheet-scrim \{ display: block; position: fixed; inset: 0;/);
   assert.match(b, /\.riw-sheet-wrap \{ place-items: end stretch; padding: 0; \}/);
   assert.match(b, /\.riw-search, \.riw-me, \.riw-signin \{ display: none; \}/);

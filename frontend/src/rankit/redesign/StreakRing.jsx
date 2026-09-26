@@ -29,19 +29,19 @@ export default function StreakRing({ nights = 0 }) {
     <div
       role="img"
       aria-label={active ? `Streak: ${nights} ${nights === 1 ? "night" : "nights"}` : "No streak yet"}
-      style={{ flex: "none", display: "flex", alignItems: "center", gap: 8, height: 44,
+      style={{ flex: "none", display: "flex", alignItems: "center", gap: 9, height: 44,
                padding: "0 13px 0 9px", borderRadius: 999, background: "#121315",
                border: "1px solid var(--ri-line)" }}
     >
       <div style={{ position: "relative", width: 26, height: 26, display: "grid", placeItems: "center" }} aria-hidden="true">
         <div style={{ position: "absolute", inset: 0, borderRadius: 999, background: fill }} />
         <div style={{ position: "absolute", inset: 3, borderRadius: 999, background: "#121315" }} />
-        <span style={{ position: "relative", font: "700 12px/1 Rajdhani,system-ui,sans-serif", color: active ? INK : INK_4 }}>
+        <span style={{ position: "relative", font: "700 12px/1 var(--font-logo)", color: active ? INK : INK_4 }}>
           {nights}
         </span>
       </div>
       {/* §1.5 tip tabanı 9px — eski sürüm burada 7px kullanıyordu. */}
-      <span style={{ font: "700 9px/1 Rajdhani,system-ui,sans-serif", letterSpacing: ".14em", color: INK_2 }} aria-hidden="true">
+      <span style={{ font: "700 9px/1 var(--font-logo)", letterSpacing: ".14em", color: INK_2 }} aria-hidden="true">
         {nights === 1 ? "NIGHT" : "NIGHTS"}
       </span>
     </div>

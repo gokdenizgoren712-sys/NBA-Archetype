@@ -32,7 +32,7 @@ const STEPS = [
 function Chip({ label, on, color, onToggle }) {
   return (
     <button type="button" className={`riw-welcome-chip${on ? " is-on" : ""}`} aria-pressed={on} onClick={onToggle}>
-      {color && <i aria-hidden="true" style={{ background: `linear-gradient(135deg,${color},color-mix(in oklab,${color} 34%,#0b0b0b))` }} />}
+      {color && <i aria-hidden="true" style={{ background: `linear-gradient(135deg,${color},color-mix(in oklab,${color} 34%,#090a0b))` }} />}
       {label}
     </button>
   );
