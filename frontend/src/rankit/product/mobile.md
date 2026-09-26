@@ -89,6 +89,20 @@ collided with the crests. The emptiness was a proportion problem.
 on this surface, with the design constraints a redesign must respect. Written
 to be handed to a designer (or a design tool) without further context.
 
+## Games by Primary Arch (guest module)
+
+The app hosts Primary Arch's Lineup Builder as a separate module — see
+"Games by Primary Arch" in [../PRODUCT.md](../PRODUCT.md) and the full plan in
+`docs/GAMES_IN_APP_PLAN.md`. On this surface that means:
+
+| | |
+|---|---|
+| Entry | A tile beside The Hunt on Discover (`.ri-discover-gates`); alone on the row when The Hunt has nothing to show |
+| Code | `frontend/src/arcade/` — lazy chunk, only in the packaged app (`VITE_RANKIT_MOBILE`) |
+| Root class | `.arc-surface`, full screen above the RankIt shell; no bottom nav inside |
+| Back button | Registers with `useBackClose`; steps back through the module's own screens, closes at its home |
+| Parity | Not counted — app-only by the owner's decision (2026-09-25) |
+
 ## Releases are cut on request, not per feature
 
 The user calls the release. Work accumulates on both surfaces, and when they say
