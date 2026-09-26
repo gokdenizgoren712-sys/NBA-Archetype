@@ -3804,6 +3804,27 @@ FOOTBALL_PHASE_LABELS = {"gk": "Goalkeeper", "def": "Defence",
                          "mid": "Midfield", "fwd": "Attack"}
 
 
+def _fb_season(season: str) -> str:
+    """Sezon etiketini dosya adı biçimine çevir: "2017/2018" -> "2017-2018".
+
+    Oyuncu kayıtları SEASON'ı EĞİK ÇİZGİYLE taşıyor ("2017/2018"), dosyalar ise
+    football__2017-2018__*.parquet. Normalleştirmeden birleştirince eğik çizgi
+    yol ayıracı sayılıyor: Path "football__2017" klasörünün altında
+    "2018__real_xi.parquet" arıyor, bulamıyor, FileNotFoundError'a düşüyor ve
+    çağıran "available: false" dönüyor. Sezon simülasyonu tam bu yüzden çarktan
+    kurulan HİÇBİR kadroda açılmıyordu — panel "Simulation data is not built
+    yet." yazıyordu, oysa veri yerindeydi.
+
+    Biçim ayrıca DOĞRULANIYOR. Sezon bir sorgu parametresi ve doğrudan dosya
+    adına giriyor; "../.." gibi bir değer yolu DATA dışına taşırdı.
+    """
+    s = str(season or "").replace("/", "-").strip()
+    parts = s.split("-")
+    if len(parts) != 2 or not all(p.isdigit() and len(p) == 4 for p in parts):
+        raise FileNotFoundError(f"bad season: {season!r}")
+    return s
+
+
 def _football_seasons() -> list[str]:
     """Skorlanmış sezonlar, en yeni önce."""
     return sorted((p.name.split("__")[1] for p in DATA.glob("football__*__scores.parquet")),
@@ -3812,6 +3833,7 @@ def _football_seasons() -> list[str]:
 
 @lru_cache(maxsize=8)
 def _load_football_scores(season: str) -> pd.DataFrame:
+    season = _fb_season(season)
     p = DATA / f"football__{season}__scores.parquet"
     if not p.exists():
         raise FileNotFoundError(p)
@@ -4041,6 +4063,7 @@ def football_game_players(
 def _load_football_affinity(season: str):
     """Ampirik arketip-arketip uyum matrisi (gerçek maç sonuçlarından).
     Yoksa None — o zaman skorlayıcı elle-yazılmış önsele düşer."""
+    season = _fb_season(season)
     p = DATA / f"football__{season}__affinity.parquet"
     if not p.exists():
         return None
@@ -4137,6 +4160,7 @@ def get_football_best_xi(
 
 @lru_cache(maxsize=4)
 def _load_football_real_xi(season: str) -> pd.DataFrame:
+    season = _fb_season(season)
     p = DATA / f"football__{season}__real_xi.parquet"
     if not p.exists():
         raise FileNotFoundError(p)
@@ -4999,7 +5023,15 @@ if frontend_dist.exists():
             return FileResponse(str(file_path))
         return FileResponse(str(index))
 
-    app.mount("/assets", StaticFiles(directory=str(frontend_dist / "assets")), name="assets")
+    # assets/ AYRICA kontrol ediliyor: `vite build` işe başlarken dist'i
+    # boşaltıyor, o aralıkta API açılırsa StaticFiles "directory does not
+    # exist" diye AÇILIŞTA patlıyor ve süreç hiç ayağa kalkmıyor. dist'in
+    # kendisinin var olması, içinin dolu olduğu anlamına gelmiyor.
+    if (frontend_dist / "assets").is_dir():
+        app.mount("/assets", StaticFiles(directory=str(frontend_dist / "assets")), name="assets")
+    else:
+        print("[startup] frontend/dist/assets yok — statik varlıklar sunulmuyor "
+              "(derleme sürüyor olabilir; API yine de çalışıyor)", flush=True)
 
 
 # ─── Prod entrypoint ─────────────────────────────────────────────────────────
