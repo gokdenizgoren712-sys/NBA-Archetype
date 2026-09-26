@@ -1,0 +1,13 @@
+# gitleaks yapılandırması — varsayılan kurallar AÇIK, yalnız doğrulanmış yanlış
+# alarmlar dar kapsamla susturulur (güvenlik planı, 2026-09-26). Buraya bir dosya
+# eklemeden önce eşleşmenin gerçekten sır olmadığını elle doğrula.
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Futbol sözlüğü: \"key\" alanları istatistik adları (ör. aerials_won_90), sır değil"
+paths = ['''^frontend/src/data/footballGlossary\.js$''']
+
+[[allowlists]]
+description = "Test fixture: sabit bir UUID (istemci kimliği), sır değil"
+paths = ['''^tests/test_rankit_collectible\.py$''']

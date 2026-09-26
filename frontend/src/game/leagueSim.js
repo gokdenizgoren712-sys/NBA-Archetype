@@ -7,6 +7,7 @@
 // arketip-skorlarından türer — "Rewrite History" adını hak eden kısım bu.
 import { computeLineupFit } from "./lineupScore";
 import { computeTeamRating, simulateSeason } from "./seasonSim";
+import { apiUrl } from "../lib/apiOrigin";
 
 // Gerçek "kim başladı" verisi yok — dakikaya (MIN) göre top-5 starter,
 // sonraki 4 bench. Kullanıcının kendi 9-kişilik rotasyon şekliyle tutarlı,
@@ -36,8 +37,8 @@ async function fetchJson(url, attempt = 0) {
 
 async function fetchTeam(season, abbr) {
   const [playersRes, scheduleRes] = await Promise.all([
-    fetchJson(`/api/game/players?season=${season}&team=${abbr}`),
-    fetchJson(`/api/historical/${season}/team/${abbr}/schedule`),
+    fetchJson(apiUrl(`/api/game/players?season=${season}&team=${abbr}`)),
+    fetchJson(apiUrl(`/api/historical/${season}/team/${abbr}/schedule`)),
   ]);
   return { abbr, players: playersRes?.players || [], schedule: scheduleRes };
 }
@@ -47,26 +48,42 @@ async function fetchTeam(season, abbr) {
 // /api/game/players notu — orada asıl kaynak zaten düzeltildi, ama küçük
 // gruplar hâlde ateşlemek ekstra bir güvenlik payı: hem backend tarafında
 // hem Railway'in 512MB limitinde tepe yükü daha da düzleşir).
-async function mapBatched(items, batchSize, fn) {
+async function mapBatched(items, batchSize, fn, onBatch) {
   const out = [];
   for (let i = 0; i < items.length; i += batchSize) {
     const batch = items.slice(i, i + batchSize);
     out.push(...await Promise.all(batch.map(fn)));
+    onBatch?.(out.length);
   }
   return out;
 }
+
+// Aynı sezon+takım için ligi ikinci kez ağdan çekmemek: "Run It Back" ve
+// telefonda (mobil veri, 58 istek) aynı ligi yeniden kurmak anında olur.
+// Yalnız TAM kurulmuş lig (her takım 9+ oyuncu ve programıyla) önbelleğe
+// girer — eksik bir lig bir sonraki denemede yeniden çekilmeli.
+const leagueCache = new Map();
+export function clearLeagueCache() { leagueCache.clear(); }
 
 // buildLeague: sezon + kullanıcının yerine geçtiği takım + kullanıcının
 // seçtiği era. Dönüş: { teamRatings: {ABBR: rating}, teamSeasons:
 // {ABBR: simulateSeason sonucu} } — kullanıcının KENDİ takımı bu objelerde
 // YOK (o ayrıca, kendi draftıyla simüle ediliyor, bkz. SeasonSimPanel.jsx).
-export async function buildLeague(season, excludeTeam, simEra) {
-  const teamsRes = await fetchJson(`/api/historical/${season}/teams`);
-  const otherAbbrs = (teamsRes?.teams || [])
-    .map(t => t.abbr)
-    .filter(a => a !== excludeTeam);
-
-  const teamsData = await mapBatched(otherAbbrs, 6, a => fetchTeam(season, a));
+// opts.onProgress(built, total): telefonda "Building the league 12/29" için.
+export async function buildLeague(season, excludeTeam, simEra, opts = {}) {
+  const key = `${season}|${excludeTeam}`;
+  let cached = leagueCache.get(key);
+  if (!cached) {
+    const teamsRes = await fetchJson(apiUrl(`/api/historical/${season}/teams`));
+    const abbrs = (teamsRes?.teams || []).map(t => t.abbr).filter(a => a !== excludeTeam);
+    opts.onProgress?.(0, abbrs.length);
+    const data = await mapBatched(abbrs, 6, a => fetchTeam(season, a), n => opts.onProgress?.(n, abbrs.length));
+    cached = { otherAbbrs: abbrs, teamsData: data };
+    if (abbrs.length && data.every(t => t.players.length >= 9 && t.schedule?.games?.length)) leagueCache.set(key, cached);
+  } else {
+    opts.onProgress?.(cached.otherAbbrs.length, cached.otherAbbrs.length);
+  }
+  const { otherAbbrs, teamsData } = cached;
 
   const teamRatings = {};
   const rosterByAbbr = {};

@@ -3,7 +3,7 @@
    hareket azaltma, Android sürümü, yasal bağlantılar. */
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ChevronRight, EyeOff, FileText, Radio, SlidersHorizontal, Smartphone } from "lucide-react";
+import { ChevronRight, EyeOff, FileText, Radio, SlidersHorizontal, Smartphone, UserX } from "lucide-react";
 import { BROADCAST_COUNTRIES, readPrefs, writePrefs, localeCountry } from "../rankitPrefs";
 
 export default function SettingsPanel({ hideScores, onToggleScores }) {
@@ -77,6 +77,17 @@ export default function SettingsPanel({ hideScores, onToggleScores }) {
                 : "No build published yet"}
             </small>
           </div>
+          <ChevronRight size={15} />
+        </Link>
+      </div>
+
+      {/* Hesap Primary Arch hesabı: silme sitenin /account/delete sayfasında
+          (Play Console'daki web silme bağlantısı da o). */}
+      <div className="riw-set-group">
+        <span>ACCOUNT</span>
+        <Link to="/account/delete" className="riw-set-row">
+          <UserX size={16} />
+          <div><strong>Delete account</strong><small>Permanently delete your Primary Arch account</small></div>
           <ChevronRight size={15} />
         </Link>
       </div>

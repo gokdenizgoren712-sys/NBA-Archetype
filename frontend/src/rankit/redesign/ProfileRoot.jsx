@@ -75,7 +75,7 @@ function OwnReview({ entry }) {
     : <p>{entry.review}</p>;
 }
 
-export default function ProfileRoot({ revision = 0, accountAction, accountActionLabel, onOpen, onShelf, onRank, onOpenList, onCreateList, onOpenHunt, hideScores, onHideScoresChange }) {
+export default function ProfileRoot({ revision = 0, accountAction, accountActionLabel, onAccountDeleted, onOpen, onShelf, onRank, onOpenList, onCreateList, onOpenHunt, hideScores, onHideScoresChange }) {
   const account = ratingAccount();
   const relationshipRevision = useRelationshipRevision();
   const profile = useResource(`profile6:${account}:${revision}:${relationshipRevision}`, () => rankitApi.profile());
@@ -151,7 +151,7 @@ export default function ProfileRoot({ revision = 0, accountAction, accountAction
       setPrefs(writePrefs(patch));
       if (Object.hasOwn(patch, 'hideScores')) onHideScoresChange?.(patch.hideScores);
     }} followCount={stats?.following_sources ?? 0}
-      accountAction={accountAction} accountActionLabel={accountActionLabel} onClose={() => setSurface(null)}/>}
+      accountAction={accountAction} accountActionLabel={accountActionLabel} onAccountDeleted={onAccountDeleted} onClose={() => setSurface(null)}/>}
     {(surface === 'lists' || surface === 'reviews') && <ProfileCollection kind={surface} lists={profile.data?.owned_lists || []} entries={entries}
       onClose={() => setSurface(null)} onOpenList={id => { setSurface(null); onOpenList(id); }} onRank={() => { setSurface(null); onRank(); }} onCreateList={() => { setSurface(null); onCreateList(); }}/>} 
   </section>;

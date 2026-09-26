@@ -133,6 +133,8 @@ frontend/android/app/src/main/assets/public/ # `npx cap sync` yeniden uretiyor
 *.aab
 *.keystore
 *.jks
+# Android release imzasının şifreleri (frontend/android/keystore.properties)
+keystore.properties
 
 # ── Anahtarlar / kimlik bilgileri ────────────────────────────────────────────
 # .railway-temp-key/ calisma agacinda ozel SSH anahtariyla duruyordu ve hicbir

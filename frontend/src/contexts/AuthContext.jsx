@@ -50,6 +50,25 @@ export function AuthProvider({ children }) {
     return () => { window.fetch = originalFetch; };
   }, []);
 
+  // Kullanıcı (özellikle ROL) açılışta sunucudan tazelenir: admin yetkisi artık
+  // panelden verilip alınıyor ve sunucu rolü her istekte DB'den okuyor. Cihazdaki
+  // kopya eski kalırsa yeni admin paneli göremez, yetkisi alınan menüde görür.
+  // Yukarıdaki fetch sarmalayıcısından SONRA tanımlı: 401 yine oturumu kapatır.
+  useEffect(() => {
+    if (!token) return undefined;
+    let alive = true;
+    fetch("/api/auth/me", { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((me) => {
+        if (!alive || !me?.id) return;
+        const next = { id: me.id, email: me.email, username: me.username, role: me.role };
+        localStorage.setItem(USER_KEY, JSON.stringify(next));
+        setUser(next);
+      })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [token]);
+
   const isAdmin = user?.role === "admin";
   const isLoggedIn = !!token;
 

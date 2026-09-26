@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { App as CapacitorApp } from "@capacitor/app";
 import {
   Award, Bell, Bookmark, CalendarDays, ChevronDown, ChevronRight, CircleUserRound,
@@ -69,6 +69,23 @@ import "./rankit-next.css";
 import "./rankit-v030.css";
 
 const SPORTS = ["All", "Basketball", "Football", "Olympics"];
+// Games by Primary Arch — RankIt'in parçası DEĞİL, uygulamaya özel konuk modül
+// (docs/GAMES_IN_APP_PLAN.md, PRODUCT.md "Games by Primary Arch"). Yalnız
+// paketlenmiş uygulamada: web'de oyun zaten /basketball/game'de. Tembel yüklenir,
+// oyun kodu ayrı chunk'ta kalır.
+const GAMES_IN_APP = import.meta.env.VITE_RANKIT_MOBILE === "true";
+const GamesSurface = GAMES_IN_APP ? lazy(() => import("../arcade/GamesSurface")) : null;
+
+// Discover'daki Games kutusunun işareti: Primary Arch 12-geni, TEK RENK (gri).
+// Renkli logo altın taşır; bu bölgede altın THE HUNT'ın (One Gold Rule).
+function GamesMark({ size = 24 }) {
+  return <svg width={size} height={size} viewBox="0 0 48 48" fill="none" aria-hidden="true" style={{ flex: "none" }}>
+    <polygon points="24,4 34,6.7 41.3,14 44,24 41.3,34 34,41.3 24,44 14,41.3 6.7,34 4,24 6.7,14 14,6.7" stroke="#c9cccd" strokeWidth="3.6" strokeLinejoin="round"/>
+    <path d="M 14 6.7 C 22 18 22 30 14 41.3 M 34 6.7 C 26 18 26 30 34 41.3" stroke="#7f868b" strokeWidth="3.6" strokeLinecap="round"/>
+    <path d="M 6 24 H 42" stroke="#c9cccd" strokeWidth="3.6" strokeLinecap="round"/>
+  </svg>;
+}
+
 const TABS = [
   ["Home", Home], ["Discover", Compass], ["Rank", Plus], ["Activity", Users], ["Profile", CircleUserRound],
 ];
@@ -1061,7 +1078,7 @@ function HomeView({ sport, setSport, hideScores, setHideScores, onOpen, onOpenCo
   </>;
 }
 
-function DiscoverView({ hideScores, onOpen, onOpenCompetition, onOpenHunt, catalog = [], meta, listCatalog = [], onCreateList, onOpenList }) {
+function DiscoverView({ hideScores, onOpen, onOpenCompetition, onOpenHunt, onOpenGames, catalog = [], meta, listCatalog = [], onCreateList, onOpenList }) {
   // 2c ust bloğu: The Hunt ilerlemesi. Hata durumunda blok sessizce yok olur —
   // Discover'in kendi isi katalog, koleksiyon ozeti onun ustune bir katman.
   const [hunt, setHunt] = useState(null);
@@ -1152,11 +1169,26 @@ function DiscoverView({ hideScores, onOpen, onOpenCompetition, onOpenHunt, catal
       countFor={countFor} onApply={applyFilters} onClose={()=>setDrawerOpen(false)}/>}
     {/* 2c: The Hunt ozeti — 2m dizininin girisi. Yuzde yoksa (hic acilmis
         koleksiyon yok) blok hic cizilmiyor: "0%" bilmemekle ayni sey degil. */}
-    {huntLine(hunt) && <button type="button" className="ri-hunt-summary" onClick={onOpenHunt}>
-      <strong>{huntPercent(hunt) || "—"}</strong>
-      <span><small>THE HUNT</small><b>{huntLine(hunt)}</b></span>
-      <ChevronRight size={16}/>
-    </button>}
+    {/* Games by Primary Arch: Hunt'ın YANINDA dar kutu (sahibin kararı, "side");
+        Hunt çizilmiyorsa satırı tek başına alır. Kutu nötr — bu bölgede altın
+        zaten THE HUNT'ta (DESIGN.md One Gold Rule). */}
+    {(huntLine(hunt) || onOpenGames) && <div className={`ri-discover-gates${huntLine(hunt) ? "" : " is-solo"}`}>
+      {huntLine(hunt) && <button type="button" className="ri-hunt-summary" onClick={onOpenHunt}>
+        <strong>{huntPercent(hunt) || "—"}</strong>
+        <span><small>THE HUNT</small><b>{huntLine(hunt)}</b></span>
+        <ChevronRight size={16}/>
+      </button>}
+      {onOpenGames && (huntLine(hunt)
+        ? <button type="button" className="ri-games-tile" onClick={onOpenGames} aria-label="Games by Primary Arch">
+            <span><GamesMark size={24}/><ChevronRight size={14}/></span>
+            <span><strong>Games</strong><small>BY PRIMARY ARCH</small></span>
+          </button>
+        : <button type="button" className="ri-games-row" onClick={onOpenGames}>
+            <GamesMark size={28}/>
+            <span><small>GAMES · BY PRIMARY ARCH</small><b>Lineup Builder — draft nine players, hire a coach, simulate a season</b></span>
+            <ChevronRight size={16}/>
+          </button>)}
+    </div>}
     <section className="ri-section"><div className="ri-section-head"><div><small>{season === "All" ? "MATCH CATALOGUE" : season}</small><h2>{status === "All" ? "Matches to explore" : `${status} matches`}</h2></div>
       {/* Satir ici panel gidince sayi burada (2c altinda "148 MATCHES"). */}
       <span className="ri-discover-count" aria-live="polite">{loading ? "Updating…" : failed ? "" : `${total.toLocaleString("en-GB")} ${total === 1 ? "MATCH" : "MATCHES"}`}</span></div>
@@ -1313,7 +1345,7 @@ function ProfileView({ profileData, diaryEntries = [], onOpen, hideScores, onHid
   </>;
 }
 
-export default function RankItPrototype({ nativeBack = false, accountAction, accountActionLabel }) {
+export default function RankItPrototype({ nativeBack = false, accountAction, accountActionLabel, onAccountDeleted }) {
   const [collectible, setCollectible] = useState(null);
   const [tab, setTab] = useState("Home");
   const [activityShelf, setActivityShelf] = useState(false);
@@ -1336,6 +1368,7 @@ export default function RankItPrototype({ nativeBack = false, accountAction, acc
   // dogrudan bir koleksiyonla (alerts'ten gelen derin baglanti).
   const [hunt, setHunt] = useState(null);
   const openHunt = (collectionId = null) => setHunt({ collectionId });
+  const [gamesOpen, setGamesOpen] = useState(false);
   const [rankOpen, setRankOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchExpanded, setSearchExpanded] = useState(false);
@@ -1612,7 +1645,7 @@ export default function RankItPrototype({ nativeBack = false, accountAction, acc
           <HomeView sport={sport} setSport={setSport} hideScores={hideScores} setHideScores={setHideScores} onOpen={openMatch} onOpenCompetition={openCompetition} onNavigate={name=>{setTabDirection(TABS.findIndex(x=>x[0]===name)-TABS.findIndex(x=>x[0]===tab));setTab(name)}} catalog={catalog} feed={feed} ratedMatchIds={ratedMatchIds} loading={initialLoading}/>
         )}
         {tab === "Discover" && (
-          <DiscoverView hideScores={hideScores} onOpenHunt={()=>openHunt()} onOpen={openMatch} onOpenCompetition={openCompetition} catalog={catalog} meta={catalogMeta} listCatalog={listCatalog} onCreateList={()=>setListCreatorOpen(true)} onOpenList={id=>openEntity("list",id)}/>
+          <DiscoverView hideScores={hideScores} onOpenHunt={()=>openHunt()} onOpenGames={GamesSurface ? ()=>setGamesOpen(true) : undefined} onOpen={openMatch} onOpenCompetition={openCompetition} catalog={catalog} meta={catalogMeta} listCatalog={listCatalog} onCreateList={()=>setListCreatorOpen(true)} onOpenList={id=>openEntity("list",id)}/>
         )}
         {tab === "Activity" && (
           <ActivityView initialShelf={activityShelf} diaryEntries={diaryEntries} diaryLoaded={diaryLoaded} watchlist={watchlist} listCatalog={listCatalog} friendFeed={feed} ratedMatchIds={ratedMatchIds} hideScores={hideScores} onOpen={openMatch} onOpenCompetition={openCompetition} onOpenList={id=>openEntity("list",id)}
@@ -1620,7 +1653,7 @@ export default function RankItPrototype({ nativeBack = false, accountAction, acc
             onNavigate={name=>{setTabDirection(TABS.findIndex(x=>x[0]===name)-TABS.findIndex(x=>x[0]===tab));setTab(name)}}/>
         )}
         {tab === "Profile" && (
-          RANKIT_NEW_CARD ? <ProfileRoot key={ratingAccount()} revision={profileRevision} onOpenHunt={()=>openHunt()} onOpen={openMatch} accountAction={accountAction} accountActionLabel={accountActionLabel}
+          RANKIT_NEW_CARD ? <ProfileRoot key={ratingAccount()} revision={profileRevision} onOpenHunt={()=>openHunt()} onOpen={openMatch} accountAction={accountAction} accountActionLabel={accountActionLabel} onAccountDeleted={onAccountDeleted}
             hideScores={hideScores}
             onHideScoresChange={setHideScores}
             onShelf={()=>{setActivityShelf(true);setTabDirection(-1);setTab("Activity")}}
@@ -1646,6 +1679,9 @@ export default function RankItPrototype({ nativeBack = false, accountAction, acc
       onOpenMatch={m=>openMatch(fromApiMatch(m))} onOpenMember={id=>setMemberId(id)}/>}
     {memberId && <MemberProfile memberId={memberId} hideScores={hideScores} onClose={()=>setMemberId(null)}
       onOpenMatch={m=>openMatch(fromApiMatch(m))}/>} 
+    {gamesOpen && GamesSurface && <Suspense fallback={null}>
+      <GamesSurface onClose={()=>setGamesOpen(false)} onGuestSignIn={accountActionLabel === "Sign in" ? accountAction : undefined}/>
+    </Suspense>}
     {hunt && <HuntIndex collectionId={hunt.collectionId} onCollection={id=>setHunt({collectionId:id})}
       hideScores={hideScores} onClose={()=>setHunt(null)} onOpenMatch={m=>openMatch(fromApiMatch(m))}/>}
     {rankOpen && (

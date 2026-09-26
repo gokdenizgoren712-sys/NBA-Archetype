@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useSearchParams, useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { SEO } from "../hooks/useSEO";
+import { passwordProblem, PASSWORD_HINT } from "../lib/passwordRules";
 
 export default function ResetPassword() {
   const [params]    = useSearchParams();
@@ -17,7 +18,8 @@ export default function ResetPassword() {
   const submit = async (e) => {
     e.preventDefault();
     if (password !== confirm) { setError("Passwords don't match"); return; }
-    if (password.length < 6)  { setError("Password must be at least 6 characters"); return; }
+    const pwProblem = passwordProblem(password);
+    if (pwProblem) { setError(pwProblem); return; }
     setLoading(true); setError("");
     try {
       const res = await fetch("/api/auth/reset-password", {
@@ -54,7 +56,9 @@ export default function ResetPassword() {
         </h1>
         <form onSubmit={submit} className="space-y-4">
           <div>
-            <label className="block text-sm mb-1" style={{ color: "var(--text-muted)" }}>New Password</label>
+            <label className="block text-sm mb-1" style={{ color: "var(--text-muted)" }}>
+              New Password<span className="ml-1 text-xs" style={{ color: "var(--text-muted)" }}>· {PASSWORD_HINT}</span>
+            </label>
             <input
               type="password" required autoFocus
               value={password}

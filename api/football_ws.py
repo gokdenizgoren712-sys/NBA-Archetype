@@ -31,7 +31,7 @@ from functools import lru_cache
 from fastapi import (APIRouter, Depends, HTTPException, WebSocket,
                      WebSocketDisconnect, Query)
 
-from .auth import _decode, _is_banned, get_current_user
+from .auth import verify_token, get_current_user
 from .db import get_conn
 
 router = APIRouter()
@@ -342,12 +342,13 @@ HANDLERS = {"shape": _h_shape, "wheel": _h_wheel, "ready": _h_ready, "pick": _h_
 @router.websocket("/ws/football/room/{room_code}")
 async def football_room_socket(ws: WebSocket, room_code: str, token: str = Query(...)):
     try:
-        uid = int(_decode(token)["sub"])
-    except Exception:
-        await _reject(ws, "invalid_token", "Your session expired — log in again.")
-        return
-    if _is_banned(uid):
-        await _reject(ws, "banned", "This account can't use online play.")
+        # verify_token: imza + ban + token sürümü (şifre değişince düşer)
+        uid = int(verify_token(token)["sub"])
+    except Exception as e:   # bozuk token, DB hatası: hepsi temiz bir ret
+        if getattr(e, "status_code", None) == 403:
+            await _reject(ws, "banned", "This account can't use online play.")
+        else:
+            await _reject(ws, "invalid_token", "Your session expired — log in again.")
         return
 
     row = _row(room_code)
@@ -530,12 +531,13 @@ async def football_matchmaking_leave(user=Depends(get_current_user)):
 async def football_matchmaking_socket(ws: WebSocket, token: str = Query(...)):
     global MM_QUEUE
     try:
-        uid = int(_decode(token)["sub"])
-    except Exception:
-        await _reject(ws, "invalid_token", "Your session expired — log in again.")
-        return
-    if _is_banned(uid):
-        await _reject(ws, "banned", "This account can't use online play.")
+        # verify_token: imza + ban + token sürümü (şifre değişince düşer)
+        uid = int(verify_token(token)["sub"])
+    except Exception as e:   # bozuk token, DB hatası: hepsi temiz bir ret
+        if getattr(e, "status_code", None) == 403:
+            await _reject(ws, "banned", "This account can't use online play.")
+        else:
+            await _reject(ws, "invalid_token", "Your session expired — log in again.")
         return
 
     await ws.accept()

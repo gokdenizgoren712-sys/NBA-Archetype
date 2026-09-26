@@ -2,32 +2,19 @@
 // Rotasyon/dakika editörü, maç maç akan sezon, playoff bracket'i,
 // dynasty modu: şampiyonluğu savun → back-to-back → THREEPEAT.
 
-import { useState, useRef, useEffect } from "react";
-import { simulateSeason, computeLeagueAwards, BASE_MINUTES, MINUTE_FLEX, agePenaltyFor } from "./seasonSim";
-import { buildLeague } from "./leagueSim";
-import { buildConferenceStandings, initBracket, computeUserPlayoffStatLines, deriveRhResultKey } from "./playoffBracket";
+import { useState } from "react";
+import { computeLeagueAwards, BASE_MINUTES, MINUTE_FLEX } from "./seasonSim";
+import { buildConferenceStandings, computeUserPlayoffStatLines } from "./playoffBracket";
 import PlayoffBracket from "./PlayoffBracketView";
 import { useAuth } from "../contexts/AuthContext";
 import { CoachIcon, TrophyIcon, CrownIcon, PlayIcon, LoopIcon, DnaIcon, WheelIcon } from "./GameIcons";
+import { useSeasonSim } from "./useSeasonSim";
 import "./game.css";
-
-const MONTHS = ["OCT", "NOV", "DEC", "JAN", "FEB", "MAR", "APR"];
 
 // "Üst seviye simülasyon" şablonu (2026-08) — Rewrite History modundayken
 // panelin TAMAMI (idle→running→done) bu altın kimliğe bürünür, sadece
 // pre-sim banner'da değil (bkz. plan: docs/plans/fancy-cooking-gizmo.md).
 const RH_ACCENT_STYLE = { "--accent": "#FFB11B", "--accent-a": "rgba(255,177,27,.10)", "--accent-line": "rgba(255,177,27,.35)" };
-
-// "Rewrite History" — era.years [start, endExclusive) aralığındaki gerçek
-// sezon string'lerini üretir (bkz. game/eras.js ERAS).
-function seasonsInEra(era) {
-  if (!era?.years) return [];
-  const [start, endExcl] = era.years;
-  const end = Math.min(endExcl, new Date().getFullYear());  // içinde bulunduğumuz/açık sezonu hariç tut
-  const out = [];
-  for (let y = start; y < end; y++) out.push(`${y}-${String(y + 1).slice(-2)}`);
-  return out;
-}
 
 export default function SeasonSimPanel({
   players, simEra, fit, affinity01, bench = [], coach = null, gameScoreId = null, enableRealHistory = false,
@@ -39,301 +26,16 @@ export default function SeasonSimPanel({
   fixedSeason = null, excludeTeam = null, noSave = false,
 }) {
   const { isLoggedIn, token } = useAuth();
-  const [result, setResult]           = useState(null);
-  const [revealGames, setRevealGames] = useState(0);
-  const [revealRounds, setRevealRounds] = useState(0);
-  const [stage, setStage]             = useState("idle"); // idle | regular | playoffs | done
-  const [runCount, setRunCount]       = useState(0);
-  // Faz D: rotasyon dakikaları (5 starter + N bench)
-  const nRoster = players.length + bench.length;
-  const [minutes, setMinutes] = useState(() => BASE_MINUTES.slice(0, nRoster));
-  // Faz E: dynasty durumu — {year, titles} (titles = art arda şampiyonluk)
-  const [dynasty, setDynasty] = useState({ year: 1, titles: 0 });
-  const timerRef = useRef(null);
-
-  // "Tam lig" (bkz. leagueSim.js buildLeague) — Rewrite History'de Simulate
-  // Season'a basılınca ÖNCE diğer 29 gerçek takımın roster-bazlı reytingi/
-  // sezonu kuruluyor, SONRA kullanıcının kendi sezonu o reytinglerle koşuyor.
-  const [leagueLoading, setLeagueLoading] = useState(false);
-  const [league, setLeague] = useState(null);   // {teamRatings, teamSeasons, rosterByAbbr}
-  // Ligin çoğu takımı fetch/rate-limit hatasıyla sessizce eksik kurulduysa
-  // (bkz. leagueSim.js fetchJson notu) kullanıcıya bozuk bir "lig" göstermek
-  // yerine bunu açıkça söyle.
-  const [leagueWarning, setLeagueWarning] = useState(null);
-  // Faz C: gerçek playoff bracket'i — "Simulate Playoffs" tıklanınca kurulur.
-  const [bracket, setBracket] = useState(null);
-  // Rewrite History'de dynasty/"Defend the Title" artık BU sezonun GERÇEK
-  // bracket'inin sonucuna bağlı — eskiden simulateSeason'ın İÇİNDEKİ sentetik
-  // playoff'un result.champion'ına bağlıydı, bu da (a) "Defend the Title"nın
-  // kullanıcı gerçek bracket'i HENÜZ BİTİRMEDEN görünmesine (b) gerçekten
-  // şampiyon olunan bir sezonda THREEPEAT'e izin vermemesine yol açıyordu
-  // (iki ayrı kullanıcı raporu, 2026-08). run()/defend() başında false'a
-  // döner (yeni sezon = henüz kazanılmamış), bracket.champion kullanıcının
-  // takımıyla eşleşince true olur (aşağıdaki effect).
-  const [rhTitleWon, setRhTitleWon] = useState(false);
+  // Mantık ortak motorda (game/seasonRun.js): RankIt uygulamasının mobil sezon
+  // ekranları da aynı sezonu oynuyor, ikisi aynı skor tablosuna yazıyor.
+  const {
+    result, revealGames, revealRounds, stage, minutes, dynasty, leagueLoading, league, leagueWarning,
+    bracket, rhTitleWon, simMode, rhStep, rhSeasons, rhSchedule, rhLoading, rhError,
+    minuteBank, rhActive, visibleRhTeams, shownWins, shownLosses, shownRealWins, shownRealLosses, month,
+    run, defend, startBracket, updateBracket, pickRhSeason, pickRhTeam, setSimMode, backToSeasons, changeTeam, bumpMinute,
+  } = useSeasonSim({ players, bench, simEra, fit, affinity01, coach, gameScoreId, fixedSeason, excludeTeam, noSave, isLoggedIn, token });
   // Faz D: "Season Awards" tablosunda Regular Season/Playoffs toggle.
   const [statView, setStatView] = useState("regular");   // "regular" | "playoffs"
-
-  // "Rewrite History" (bkz. plan: docs/plans/fancy-cooking-gizmo.md) — Single
-  // Player'a özel, opt-in. simMode="quick" bugünkü davranış, "history" gerçek
-  // sezon+takım seçimi açar.
-  const [simMode, setSimMode]   = useState(fixedSeason ? "history" : "quick");   // "quick" | "history"
-  const [rhStep, setRhStep]     = useState(fixedSeason ? "team" : "season");   // season | team | ready
-  const [rhSeasons]             = useState(() => seasonsInEra(simEra));
-  const [rhSeason, setRhSeason] = useState(fixedSeason || null);
-  const [rhTeams, setRhTeams]   = useState([]);
-  const [rhTeam, setRhTeam]     = useState(null);
-  const [rhSchedule, setRhSchedule] = useState(null);
-  const [rhLoading, setRhLoading]   = useState(false);
-  const [rhError, setRhError]       = useState("");
-  const visibleRhTeams = excludeTeam ? rhTeams.filter(t => t.abbr !== excludeTeam) : rhTeams;
-
-  // fixedSeason'da sezon adımı hiç gösterilmiyor — takım listesini doğrudan
-  // mount'ta çek (bkz. yukarıdaki pickRhSeason ile aynı istek, tek fark
-  // burada kullanıcı tıklaması beklenmiyor).
-  useEffect(() => {
-    if (!fixedSeason) return;
-    setRhLoading(true);
-    fetch(`/api/historical/${fixedSeason}/teams`).then(r => r.json())
-      .then(d => setRhTeams(d.teams || []))
-      .catch(() => setRhError("Could not load teams for this season."))
-      .finally(() => setRhLoading(false));
-  }, [fixedSeason]);
-
-  const pickRhSeason = (s) => {
-    setRhSeason(s); setRhTeam(null); setRhSchedule(null); setRhError("");
-    setRhLoading(true);
-    fetch(`/api/historical/${s}/teams`).then(r => r.json())
-      .then(d => { setRhTeams(d.teams || []); setRhStep("team"); })
-      .catch(() => setRhError("Could not load teams for this season."))
-      .finally(() => setRhLoading(false));
-  };
-  const pickRhTeam = (abbr) => {
-    setRhTeam(abbr); setRhError("");
-    setRhLoading(true);
-    fetch(`/api/historical/${rhSeason}/team/${abbr}/schedule`).then(r => r.json())
-      .then(d => { setRhSchedule(d); setRhStep("ready"); })
-      .catch(() => setRhError("Could not load that team's schedule."))
-      .finally(() => setRhLoading(false));
-  };
-
-  useEffect(() => () => clearInterval(timerRef.current), []);
-
-  // Gerçek bracket'in kendi kendine "kim şampiyon" karar verdiği tek yer —
-  // dynasty/Defend the Title BUNU izler (bkz. yukarıdaki rhTitleWon notu).
-  useEffect(() => {
-    if (bracket?.champion && rhSchedule && bracket.champion.abbr === rhSchedule.team) {
-      setRhTitleWon(true);
-    }
-  }, [bracket?.champion, rhSchedule]);
-
-  // 2026-08 denetimi: leaderboard'a yazılan season_result RH'de hâlâ
-  // seasonSim.js'in İÇ sentetik playoff'undan geliyordu (bkz. run()'daki
-  // postResult çağrısı notu) — gerçek bracket'in kaderi burada belli olunca
-  // (deriveRhResultKey null DEĞİL döndüğünde) DOĞRU değeri postluyoruz.
-  // Sadece 1. sezon (dynasty.year===1) — 2+ sezonlarda REPEAT/THREEPEAT
-  // zaten kendi postResult'ını yapıyor (bkz. defend()), bir kayıp o satırı
-  // ezmemeli (şampiyonluk geçmişi kaybolmasın).
-  const postedRhResultRef = useRef(false);
-  useEffect(() => {
-    if (simMode !== "history" || !bracket || dynasty.year !== 1 || postedRhResultRef.current) return;
-    const key = deriveRhResultKey(bracket, rhSchedule?.team);
-    if (!key) return;
-    postedRhResultRef.current = true;
-    if (isLoggedIn && token && !noSave && result) postResult(result, key);
-  }, [bracket, rhSchedule, simMode, dynasty.year, isLoggedIn, token, noSave, result]);
-
-  const minuteBank = 240 - minutes.reduce((a, b) => a + b, 0);
-  const bumpMinute = (i, d) => {
-    setMinutes(ms => {
-      const base = BASE_MINUTES[i] ?? 13;
-      const next = ms[i] + d;
-      if (next < Math.max(6, base - MINUTE_FLEX) || next > base + MINUTE_FLEX) return ms;
-      if (d > 0 && minuteBank <= 0) return ms;
-      const copy = [...ms];
-      copy[i] = next;
-      return copy;
-    });
-  };
-
-  const postResult = (res, resultKey) => {
-    // gameScoreId varsa TAM O satır güncellenir (bkz. api/main.py save_season_result) —
-    // "kullanıcının son satırı" tahminine düşmek StrictMode'un dev'de mount
-    // effect'i çift tetiklemesiyle yanlış satırı güncelleyebiliyordu.
-    fetch("/api/game/season-result", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({
-        wins: res.wins, season_result: resultKey, sim_era: simEra.id, game_id: gameScoreId,
-        real_season: res.realSeason || null, real_team: res.realTeam || null,
-      }),
-    }).catch(() => {});
-  };
-
-  // Ortak animasyon: sezonu akıt, playoff'u aç. nGames sabit 82 DEĞİL — Rewrite
-  // History'de kısaltılmış gerçek sezonlar olabilir (1998-99 lockout 50 maç vb,
-  // bkz. seasonSim.js madePlayoffs notu).
-  const animate = (res, after) => {
-    clearInterval(timerRef.current);
-    const nGames = res.gameLog.length;
-    setResult(res);
-    setRevealGames(0);
-    setRevealRounds(0);
-    setStage("regular");
-    let g = 0;
-    timerRef.current = setInterval(() => {
-      g = Math.min(nGames, g + 2);
-      setRevealGames(g);
-      if (g >= nGames) {
-        clearInterval(timerRef.current);
-        if (res.madePlayoffs) {
-          setStage("playoffs");
-          let r = 0;
-          timerRef.current = setInterval(() => {
-            r++;
-            setRevealRounds(r);
-            if (r >= res.playoffRounds.length) {
-              clearInterval(timerRef.current);
-              setTimeout(() => { setStage("done"); after && after(); }, 600);
-            }
-          }, 950);
-        } else {
-          setStage("done");
-          after && after();
-        }
-      }
-    }, 60);
-  };
-
-  // Yeni dynasty (sezon 1). Yalnızca İLK koşu leaderboard'a işlenir.
-  // Rewrite History'de extras.realSchedule dolu — seasonSim.js gerçek rakip/
-  // ev-deplasman/maç-maç box score yoluna geçer (bkz. plan). "Tam lig" modu:
-  // önce diğer 29 gerçek takımın roster-bazlı reytingi kuruluyor (buildLeague),
-  // sonra o reytingler extras.teamRatings olarak kullanıcının kendi
-  // simulateSeason çağrısına geçiyor — rakip gücü artık win_pct-proxy değil.
-  const run = async () => {
-    setBracket(null);
-    setLeagueWarning(null);
-    postedRhResultRef.current = false;   // yeni dynasty — gerçek sonuç henüz postlanmadı
-    const extras = { bench, coach, minutes };
-    if (simMode === "history" && rhSchedule) {
-      extras.realSchedule = rhSchedule;
-      setLeagueLoading(true);
-      try {
-        const built = await buildLeague(rhSchedule.season, rhSchedule.team, simEra);
-        setLeague(built);
-        extras.teamRatings = built.teamRatings;
-        // Retry sonrası hâlâ takımların %70'inden azı kurulduysa (kalıcı ağ/
-        // rate-limit sorunu), sessizce bozuk bir lig göstermek yerine söyle —
-        // standings/League Awards/bracket hepsi bu veriye dayanıyor.
-        if (built.teamsBuilt < built.teamsExpected * 0.7) {
-          setLeagueWarning(`Only ${built.teamsBuilt} of ${built.teamsExpected} teams built successfully — the league, awards, and playoff bracket below may be incomplete. Try "Run It Back" to rebuild.`);
-        }
-      } catch {
-        setLeagueWarning("Couldn't build the rest of the league (network error) — opponent strength fell back to the old win-rate estimate, and the league/playoff sections below won't appear. Try again.");
-      } finally {
-        setLeagueLoading(false);
-      }
-    }
-    const res = simulateSeason(players, simEra, fit, affinity01, extras);
-    const isFirst = runCount === 0;
-    setRunCount(c => c + 1);
-    setRhTitleWon(false);   // yeni sezon — gerçek bracket henüz kazanılmadı
-    // RH'de "şampiyon musun" artık SADECE gerçek bracket'ten gelir (bkz.
-    // yukarıdaki rhTitleWon notu) — regular season biter bitmez sentetik
-    // result.champion'a bakıp 0/1 title vermek, kullanıcı gerçek bracket'i
-    // oynamadan/kaybederken bile "şampiyon" sayabiliyordu. Quick Sim eski
-    // davranışını (sentetik result.champion) korur.
-    setDynasty({ year: 1, titles: simMode === "history" ? 0 : (res.champion ? 1 : 0) });
-    animate(res);
-    // RH'de res.resultKey (CHAMPION/FINALS/CF/SEMI/R1) İÇ sentetik Quick-Sim
-    // playoff'undan geliyor — kullanıcı gerçek bracket'i hiç oynamadan/
-    // kaybederken bile leaderboard'da sahte bir sonuç görünebiliyordu (2026-08
-    // denetimi). Playoff'a kalmadıysa (madePlayoffs gerçek galibiyet sayısına
-    // dayanıyor, sentetik değil) bu KESİN ve doğru — hemen postla. Kaldıysa
-    // gerçek sonuç henüz bilinmiyor; yukarıdaki deriveRhResultKey efekti
-    // gerçek bracket kararını verince postlar (backend'de "TBD" durumu yok,
-    // o yüzden burada hiç göndermemek satırın mevcut durumunu korur).
-    if (isFirst && isLoggedIn && token && !noSave) {
-      if (simMode === "history") {
-        if (!res.madePlayoffs) postResult(res, "MISSED");
-      } else {
-        postResult(res, res.resultKey);
-      }
-    }
-  };
-
-  // Faz E: şampiyonluğu savun — kadro her sezon yaşlanır (S6: hızlanan eğri, agePenaltyFor).
-  // Rewrite History'de bu ARTIK bir sonraki GERÇEK sezona ilerliyor (aynı era
-  // içinde) — kadron yaşlanırken lig de o yeni sezonun gerçek 30 takımıyla
-  // yeniden kuruluyor (buildLeague tekrar çalışır). Era'da bir sonraki sezon
-  // yoksa (veya o sezonun verisi yoksa/takım o sezon farklı bir kısaltmayla
-  // oynuyorsa) sessizce eski senkron-dışı moda düşmek YERİNE aynı sezonu
-  // (yaşlanmış kadronla) tekrar oynatır ve bunu açıkça söyler.
-  const defend = async () => {
-    setBracket(null);
-    setLeagueWarning(null);
-    const nextYear = dynasty.year + 1;
-    const extras = { bench, coach, minutes, agePenalty: agePenaltyFor(nextYear) };
-    if (simMode === "history" && rhSchedule) {
-      const idx = rhSeasons.indexOf(rhSchedule.season);
-      const nextSeason = idx >= 0 && idx < rhSeasons.length - 1 ? rhSeasons[idx + 1] : null;
-      const targetSeason = nextSeason || rhSchedule.season;
-      setLeagueLoading(true);
-      try {
-        const sched = await fetch(`/api/historical/${targetSeason}/team/${rhSchedule.team}/schedule`).then(r => r.json());
-        if (!sched?.games?.length) throw new Error("no schedule for target season");
-        const built = await buildLeague(targetSeason, rhSchedule.team, simEra);
-        setLeague(built);
-        setRhSchedule(sched);
-        extras.realSchedule = sched;
-        extras.teamRatings = built.teamRatings;
-        if (built.teamsBuilt < built.teamsExpected * 0.7) {
-          setLeagueWarning(`Only ${built.teamsBuilt} of ${built.teamsExpected} teams built successfully for ${targetSeason} — the league/bracket below may be incomplete.`);
-        } else if (!nextSeason) {
-          setLeagueWarning(`No more real ${simEra.label} seasons after this one — replaying ${targetSeason} with your aged roster.`);
-        }
-      } catch {
-        setLeagueWarning(`Couldn't advance to a new real season — replayed ${rhSchedule.season} again instead.`);
-        extras.realSchedule = rhSchedule;
-        if (league?.teamRatings) extras.teamRatings = league.teamRatings;
-      } finally {
-        setLeagueLoading(false);
-      }
-    }
-    const res = simulateSeason(players, simEra, fit, affinity01, extras);
-    // defend() RH modda SADECE rhTitleWon===true iken tetiklenebiliyor
-    // (bkz. buton gating aşağıda) — ama yine de burada AÇIKÇA hangi sinyali
-    // kullandığımızı belirtelim (Quick Sim hâlâ sentetik result.champion'a
-    // bakar, RH artık BU sezonun (defend'e girmeden ÖNCEki) gerçek
-    // bracket sonucuna bakar).
-    const wonThisSeason = simMode === "history" ? rhTitleWon : !!res.champion;
-    const newTitles = wonThisSeason ? dynasty.titles + 1 : dynasty.titles;
-    setRhTitleWon(false);   // yeni sezon başlıyor — bir sonraki gerçek bracket henüz kazanılmadı
-    setDynasty({ year: nextYear, titles: newTitles, ended: !wonThisSeason });
-    animate(res, () => {
-      // İlk dynasty koşusunda repeat/threepeat leaderboard'a yükseltilir
-      if (runCount === 1 && isLoggedIn && token && !noSave && wonThisSeason) {
-        if (newTitles >= 3)      postResult(res, "THREEPEAT");
-        else if (newTitles === 2) postResult(res, "REPEAT");
-      }
-    });
-  };
-
-  const shownLog   = result ? result.gameLog.slice(0, revealGames) : [];
-  const shownWins  = shownLog.filter(Boolean).length;
-  const shownLosses = shownLog.length - shownWins;
-  const month = MONTHS[Math.min(6, Math.floor(revealGames / 12))];
-
-  // Rewrite History kalıcı kimliği — simMode değişmeden run/defend arasında
-  // sabit kalır (mid-run mode-switch UI yok), bu yüzden tüm aşamalarda
-  // (idle/regular/playoffs/done) tek, tutarlı bir bayrak olarak kullanılabilir.
-  const rhActive = simMode === "history";
-  // Canlı reveal sırasında gerçek takımın O ANA KADAR ki galibiyet/mağlubiyeti —
-  // yeni fetch yok, result.gameSchedule zaten her maçın gerçek skorunu taşıyor.
-  const shownReal = result?.gameSchedule ? result.gameSchedule.slice(0, revealGames) : [];
-  const shownRealWins = shownReal.filter(g => g.realTeamPts > g.realOppPts).length;
-  const shownRealLosses = shownReal.length - shownRealWins;
 
   return (
     <div className="g-panel p-4 space-y-3" style={rhActive ? RH_ACCENT_STYLE : undefined}>
@@ -411,7 +113,7 @@ export default function SeasonSimPanel({
               {rhStep === "team" && (
                 <div className="space-y-2">
                   {!fixedSeason && (
-                    <button onClick={()=>{setRhStep("season"); setRhTeam(null);}} disabled={leagueLoading}
+                    <button onClick={backToSeasons} disabled={leagueLoading}
                       className="text-[10.5px] disabled:opacity-40" style={{color:"var(--text-muted)"}}>← Back to seasons</button>
                   )}
                   <div className="grid grid-cols-2 gap-1.5 max-h-64 overflow-y-auto pr-0.5">
@@ -439,7 +141,7 @@ export default function SeasonSimPanel({
                   {rhSchedule.season} {rhSchedule.team} <span className="font-normal text-gray-500">({rhSchedule.wins}-{rhSchedule.losses})</span>
                 </div>
               </div>
-              <button onClick={()=>{setRhStep("team");}} disabled={leagueLoading}
+              <button onClick={changeTeam} disabled={leagueLoading}
                 className="text-[10.5px] disabled:opacity-40" style={{color:"var(--text-muted)"}}>Change</button>
             </div>
           )}
@@ -747,33 +449,13 @@ export default function SeasonSimPanel({
                   <button
                     disabled={leagueLoading}
                     title={leagueLoading ? "Advancing to the next season — wait for it to finish first" : undefined}
-                    onClick={() => {
-                      // Faz D: playoff box-score + organik MVP için roster/profile bilgisi
-                      // (bkz. playoffBracket.js rosterOf/accumulateBoxScores).
-                      const rosterInfo = {};
-                      for (const [abbr, r] of Object.entries(league.rosterByAbbr)) {
-                        rosterInfo[abbr] = { players: r.starters, bench: r.bench,
-                          profiles: league.teamSeasons[abbr]?.profiles, benchProfiles: league.teamSeasons[abbr]?.benchProfiles };
-                      }
-                      const userRoster = { players, bench, profiles: result.profiles, benchProfiles: result.benchProfiles };
-                      // initBracket bir konferansta çok az takım kurulduysa
-                      // artık sessizce çökmek yerine açık bir Error fırlatıyor
-                      // (bkz. playoffBracket.js notu) — burada yakalayıp aynı
-                      // leagueWarning banner'ında göster.
-                      try {
-                        setBracket(initBracket(rhSchedule.season, league.teamSeasons, league.teamRatings, rhSchedule.team,
-                          result.rating, result.wins, result.losses, Math.random, rosterInfo, userRoster,
-                          agePenaltyFor(dynasty.year)));
-                      } catch (err) {
-                        setLeagueWarning(err.message);
-                      }
-                    }}
+                    onClick={startBracket}
                     className="w-full py-2.5 rounded-xl font-bold text-[11px] uppercase tracking-wide inline-flex items-center justify-center gap-1.5 disabled:opacity-40"
                     style={{background:"linear-gradient(90deg,#FFD470,#FFB11B)",color:"#000"}}>
                     <TrophyIcon size={14} /> Simulate Playoffs
                   </button>
                 ) : (
-                  <PlayoffBracket bracket={bracket} onUpdate={setBracket} />
+                  <PlayoffBracket bracket={bracket} onUpdate={updateBracket} />
                 )}
               </div>
             );

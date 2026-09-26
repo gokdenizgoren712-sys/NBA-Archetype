@@ -216,8 +216,21 @@ export async function rankitForgotPassword(email) {
   return data;
 }
 
-export async function rankitMobileExchange(code) {
-  return rankitAuth("mobile-exchange", { code });
+// verifier: PKCE doğrulayıcısı (pkce.js). Yoksa eski akış (sunucu geçiş
+// döneminde özetsiz kodları hâlâ kabul ediyor).
+export async function rankitMobileExchange(code, verifier) {
+  return rankitAuth("mobile-exchange", verifier ? { code, verifier } : { code });
+}
+
+// Hesabı ve verisini kalıcı siler (Google Play + KVKK). Şifreli hesapta şifre,
+// şifresiz (Google) hesapta kullanıcı adı ister; yanlışta 403 döner.
+export async function rankitDeleteAccount({ password = "", confirm = "" } = {}) {
+  const res = await fetch(`${API_ROOT}/api/account/delete`, {
+    method: "POST", headers: headers(), body: JSON.stringify({ password, confirm }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.detail || `${res.status} ${res.statusText}`);
+  return data;
 }
 
 export function rankitSocketUrl(path) {

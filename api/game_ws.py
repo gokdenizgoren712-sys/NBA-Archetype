@@ -19,6 +19,7 @@ FONKSİYON İÇİNDE import edilir — main.py'nin geri kalanının zaten kullan
 import asyncio
 import json
 import random
+import secrets
 import string
 from datetime import datetime, timezone
 
@@ -26,7 +27,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPExce
 from pydantic import BaseModel
 
 from .db import get_conn
-from .auth import get_current_user, _decode, _is_banned
+from .auth import get_current_user, verify_token
 
 router = APIRouter()
 
@@ -34,7 +35,9 @@ _ROOM_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"  # I/1/O/0 karışması
 
 
 def _gen_room_code(n: int = 6) -> str:
-    return "".join(random.choices(_ROOM_CODE_ALPHABET, k=n))
+    # secrets: random (Mersenne Twister) çıktısı gözlemlenerek tahmin edilebilir,
+    # arkadaş odasına davetsiz girilebilirdi.
+    return "".join(secrets.choice(_ROOM_CODE_ALPHABET) for _ in range(n))
 
 
 async def _reject(ws: WebSocket, reason: str, message: str) -> None:
@@ -929,13 +932,14 @@ def clear_my_stuck_rooms(user=Depends(get_current_user)):
 async def matchmaking_socket(ws: WebSocket, token: str = Query(...)):
     global MM_QUEUE
     try:
-        payload = _decode(token)
+        # verify_token: imza + ban + token sürümü (şifre değişince düşer)
+        payload = verify_token(token)
         user_id = int(payload["sub"])
-    except Exception:
-        await _reject(ws, "invalid_token", "Your session expired — log in again.")
-        return
-    if _is_banned(user_id):
-        await _reject(ws, "banned", "This account can't use online matchmaking.")
+    except Exception as e:   # bozuk token, DB hatası: hepsi temiz bir ret
+        if getattr(e, "status_code", None) == 403:
+            await _reject(ws, "banned", "This account can't use online matchmaking.")
+        else:
+            await _reject(ws, "invalid_token", "Your session expired — log in again.")
         return
 
     await ws.accept()
@@ -1152,13 +1156,14 @@ def challenge_board(body: ChallengeBody, user=Depends(get_current_user)):
 @router.websocket("/ws/game/room/{room_code}")
 async def room_socket(ws: WebSocket, room_code: str, token: str = Query(...)):
     try:
-        payload = _decode(token)
+        # verify_token: imza + ban + token sürümü (şifre değişince düşer)
+        payload = verify_token(token)
         user_id = int(payload["sub"])
-    except Exception:
-        await _reject(ws, "invalid_token", "Your session expired — log in again.")
-        return
-    if _is_banned(user_id):
-        await _reject(ws, "banned", "This account can't use online play.")
+    except Exception as e:   # bozuk token, DB hatası: hepsi temiz bir ret
+        if getattr(e, "status_code", None) == 403:
+            await _reject(ws, "banned", "This account can't use online play.")
+        else:
+            await _reject(ws, "invalid_token", "Your session expired — log in again.")
         return
 
     with get_conn() as conn:
