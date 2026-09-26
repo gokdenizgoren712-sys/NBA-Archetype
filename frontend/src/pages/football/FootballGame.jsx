@@ -7,9 +7,11 @@ import { FORMATIONS, SHAPE_KEYS, allSlots, BENCH_COUNT } from "../../game/footba
 import { posPenaltyFor, isPrimarySlot, canPlace, PENALTY_LABEL } from "../../game/football/positions";
 import { drawManagers, managerBonus } from "../../game/football/managers";
 import SeasonPanel from "../../game/football/SeasonPanel";
+import HowItWorksPanel from "../../game/HowItWorksPanel";
 import SquadAnalysis from "../../game/football/SquadAnalysis";
 import FootballLeaderboard from "../../game/football/LeaderboardPanel";
-import { RefreshIcon, CalendarIcon, BoltIcon, UsersIcon, SearchIcon } from "../../game/GameIcons";
+import { RefreshIcon, CalendarIcon, BoltIcon, UsersIcon, SearchIcon,
+         WheelIcon, TargetIcon, CoachIcon, TrophyIcon } from "../../game/GameIcons";
 import "../../game/game.css";
 import { LEAGUE_LABEL } from "../../game/football/leagues";
 import { ModeInfoButton } from "../../game/football/ModeAbout";
@@ -427,14 +429,44 @@ export default function FootballGame() {
           </div>
         </div>
 
-        {/* Uzun anlatım yalnızca kadro boşken (giriş anı) — oyun başlayınca
-            dikey alan sahaya ve havuza gitmeli. */}
-        <div className={setupScreen ? "" : "hidden"}>
-          <p className="text-[12px]" style={{ color: "var(--text-muted)" }}>
-            Two wheels give you a club and a season. Take a player, put him where
-            you want him on the pitch, and build eighteen. The same club can come
-            up again in a different season — it's a different squad.
-          </p>
+        {/* Giriş anı: solda akış, sağda kovalanacak sayı — basketbolun idle
+            ekranıyla aynı yapı. Önceden burada üç satırlık düz bir paragraf
+            vardı ve leaderboard yalnızca oyun BİTTİKTEN sonra görünüyordu;
+            yani ilk kez gelen biri ne oynayacağını da, neyi kovaladığını da
+            göremiyordu. Sayılar oyunun kendi kodundan: positions.js cezaları,
+            managers.js bonusu, seasonSim.js katsayıları. */}
+        <div className={`grid gap-3 lg:grid-cols-[1.15fr_1fr] ${setupScreen ? "" : "hidden"}`}>
+          <HowItWorksPanel label="Draft Process" steps={[
+            ["1", WheelIcon, "", "Spin two wheels", "A club and a season",
+              "One wheel lands on a club, the other on a season, and you draft off that exact squad. " +
+              "The same club can come up again in a different year — Barcelona 2018 and Barcelona 2025 " +
+              "are different squads, so both count as fresh. Five jokers let you bend the wheel: re-club, " +
+              "re-year, re-both, take two from one squad, or reveal ratings.",
+              <>The wheel lands on <b>2015-16 Leicester</b>. Take Kanté as your Ball-Winner, or Mahrez if
+                you still have a wing to fill.</>],
+            ["2", TargetIcon, "", "Place him yourself", "Position costs points",
+              "He does not have to play his own position, but it costs: comfortable −5, out of position −11, " +
+              "a foreign role −20, and an outfielder in goal −45. Ratings stay hidden while you draft — you " +
+              "see the role, the position and the per-90 line, and judge from those.",
+              <>A centre-back at right-back is <b>−5</b>. The same centre-back on the wing is <b>−20</b>, and
+                that comes straight off your squad quality.</>],
+            ["3", CoachIcon, "", "Eleven, seven and a manager", "Shape match pays",
+              "Eleven on the pitch, seven on the bench — bench places carry no position penalty, which makes " +
+              "them the home for an awkward pick. Once the eighteen are in, three managers are offered. One " +
+              "whose preferred shape matches yours is worth up to +5; any other is worth at most +1.",
+              <>So the formation you picked before the first spin is a decision that either pays off at the
+                end or doesn't.</>],
+            ["4", TrophyIcon, "", "Play the season", "200 of them, actually",
+              "Your eleven enters a real league and plays a full campaign. Goals come from a model fitted on " +
+              "1,705 real matches, and it explains about 14% of any single one — so one 38-game run can land " +
+              "several places off. The sim runs 200 seasons and shows you the spread rather than one table.",
+              <>A squad can post a median finish of 5th with a range of 3rd to 9th. The range is the answer;
+                the table is one sample.</>],
+          ]} />
+
+          {/* Leaderboard artık oyundan ÖNCE de burada: kovalanacak sayıyı
+              görmeden oynamak, hedefi bitişte öğrenmek demekti. */}
+          <FootballLeaderboard />
         </div>
 
         {/* Kurulum — diziliş dock'a taşındı, çarkın havuzu burada seçiliyor.
