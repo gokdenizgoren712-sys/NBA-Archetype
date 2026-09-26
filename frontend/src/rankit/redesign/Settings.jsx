@@ -24,6 +24,8 @@ import { ErrorState, Loading, SkeletonRows } from "./States";
 import { createPortal } from "react-dom";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { rankitApi, rankitDeleteAccount, rankitMe } from "../rankitApi";
+import { LEGAL_PAGES, externalLinkProps } from "../openExternal";
+import { IS_STORE_BUILD } from "../channel";
 import { BROADCAST_COUNTRIES, localeCountry } from "../rankitPrefs";
 import { useBackClose } from "./backStack";
 import { FollowPicker } from "./FirstRun";
@@ -217,11 +219,12 @@ export default function Settings({ prefs, setPref, followCount, onClose, onFollo
             onClick={() => setPref({ reduceMotion: !prefs.reduceMotion })} />
         </Group>
 
-        <Group title="LEGAL">
-          {[["/privacy-policy", "Privacy policy"],
-            ["/terms-of-service", "Terms of service"],
-            ["/rankit/download", "Update RankIt"]].map(([href, label]) => (
-            <a key={href} className="ri-set-line" href={href}>
+        {/* Sayfalar sitede: uygulamada uygulama içi tarayıcıda, tam adresle açılır
+            (göreli bağlantı paketlenmiş uygulamayı yeniden yüklüyordu). "Update
+            RankIt" yalnız siteden indirilen APK'da; mağaza derlemesinde yok. */}
+        <Group title="LEGAL & SUPPORT">
+          {[...LEGAL_PAGES, ...(IS_STORE_BUILD ? [] : [["/rankit/download", "Update RankIt"]])].map(([path, label]) => (
+            <a key={path} className="ri-set-line" {...externalLinkProps(path)}>
               <span className="ri-set-label"><strong>{label}</strong></span>
               <ChevronRight size={14} color={INK_4} />
             </a>

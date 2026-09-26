@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "vite build",
     "build:rankit-mobile": "vite build --mode rankit-mobile",
+    "build:rankit-store": "vite build --mode rankit-store",
     "android:sync": "npm run build:rankit-mobile && cap sync android",
+    "android:sync:store": "npm run build:rankit-store && cap sync android",
     "android:apk": "npm run android:sync && cd android && gradlew.bat assembleDebug",
     "lint": "eslint .",
     "preview": "vite preview"

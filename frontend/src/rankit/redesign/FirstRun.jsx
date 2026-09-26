@@ -25,6 +25,7 @@ import { SkeletonChips, Loading } from "./States";
 import { Shield } from "./MatchCard";
 import { useBackClose } from "./backStack";
 import { useDialog } from "./useDialog";
+import { externalLinkProps } from "../openExternal";
 
 const INK = "#eceded";
 const GOLD = "#ffb11b";
@@ -67,6 +68,12 @@ export function ConnectScreen({ mark, busy, error, onConnect, onCreate, onBrowse
         <button type="button" className="ri-first-secondary" disabled={busy} onClick={onCreate}>Create an account</button>
         <button type="button" className="ri-first-ghost" onClick={onBrowse}>Look around first</button>
       </div>
+      {/* Gizlilik politikası girişten önce de ulaşılabilir olmalı (Apple 5.1.1,
+          Play). Hesap sitede açılıyor; şartların kabulü orada, bu satır hatırlatır. */}
+      <p className="ri-first-legal">
+        By continuing you agree to the <a {...externalLinkProps("/terms-of-service")}>Terms of service</a>
+        {" "}and the <a {...externalLinkProps("/privacy-policy")}>Privacy policy</a>.
+      </p>
     </main>
   );
 }

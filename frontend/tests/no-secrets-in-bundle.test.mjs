@@ -23,6 +23,7 @@ const ALLOWED_VITE = new Set([
   "VITE_RANKIT_API_URL",           // uygulamanın konuştuğu API adresi
   "VITE_RANKIT_MOBILE",            // build bayrağı
   "VITE_RANKIT_NEW_CARD",          // özellik bayrağı (yeni maç kartı)
+  "VITE_RANKIT_CHANNEL",           // dağıtım kanalı: sideload | store (src/rankit/channel.js)
 ]);
 const VITE_BUILTINS = new Set(["MODE", "DEV", "PROD", "BASE_URL", "SSR"]);
 

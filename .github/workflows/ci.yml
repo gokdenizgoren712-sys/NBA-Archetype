@@ -50,11 +50,17 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
       - run: node --test tests/*.test.mjs tests/*.test.js
-      # Sır bekçisi derlenmiş paketi de tarar: site ve uygulama build'i ayrı ayrı.
+      # Her derleme ayrı ayrı: sır bekçisi paketi tarar, check-build kanalını
+      # denetler (site: viewport-fit yok; APK: Update var; mağaza: Update/APK yok).
       - run: npm run build
       - run: node --test tests/no-secrets-in-bundle.test.mjs
+      - run: node scripts/check-build.mjs site
       - run: npm run build:rankit-mobile
       - run: node --test tests/no-secrets-in-bundle.test.mjs
+      - run: node scripts/check-build.mjs sideload
+      - run: npm run build:rankit-store
+      - run: node --test tests/no-secrets-in-bundle.test.mjs
+      - run: node scripts/check-build.mjs store
 
   audit:
     name: Dependency advisories
