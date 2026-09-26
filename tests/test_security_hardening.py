@@ -68,7 +68,7 @@ def _db():
 
 def test_production_refuses_to_start_without_a_real_jwt_secret():
     from api.auth import _resolve_secret, _DEV_SECRET
-    for bad in (None, "", "   ", _DEV_SECRET):
+    for bad in (None, "", "   ", _DEV_SECRET, "change-me-in-production-please"):
         with pytest.raises(RuntimeError):
             _resolve_secret(bad, prod=True)
     assert _resolve_secret("x" * 64, prod=True) == "x" * 64
@@ -89,7 +89,7 @@ def test_register_never_grants_admin_and_promote_is_gone(client):
 
 
 def test_admin_role_is_read_from_the_database_not_the_token(client):
-    from jose import jwt
+    import jwt
     from api.auth import SECRET_KEY, ALGORITHM
     _, token, uid = _register(client)
     # Rolü "admin" yazılmış ama DB'de "user" olan token (ör. yetkisi alınmış admin)
@@ -304,3 +304,87 @@ def test_admins_can_grant_and_revoke_admin_from_the_panel(client):
     assert patch(admin_token, user_id, {"role": "user"}).status_code == 200
     assert client.get("/api/admin/users", headers=_auth(user_token)).status_code == 403
     assert patch(admin_token, 10**9, {"role": "admin"}).status_code == 404
+
+
+# ── Kütüphane geçişi: passlib → bcrypt, python-jose → PyJWT ──────────────────
+# Örnekler ESKİ kütüphanelerle üretildi (2026-09-26). Canlıdaki şifreler ve
+# açık oturumlar geçişten sonra da çalışmalı.
+_PASSLIB_HASH = "$2b$12$R0uPdu0eFLSg2//CFx2AteE6RACcgnOmRyV45xd4A92AJd7I1/.AG"       # "correct-horse-1"
+_PASSLIB_LONG = "$2b$12$cQBM6ktu.zOd1ghZhSaGF.6RcryK.7MbIwkuYNRejQ9lG1E0x7O6G"       # "x" * 100
+_JOSE_TOKEN = ("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI3Iiwicm9sZSI6InVzZXIiLCJleHAiOjQwNzA5MDg4MDB9"
+               ".9omikRFbS-KGEVYnzch_10SzK-MD-UpcHOwrscaAxmg")                         # anahtar: legacy-test-secret
+
+
+def test_existing_passlib_hashes_still_verify():
+    from api.auth import verify_password, hash_password
+    assert verify_password("correct-horse-1", _PASSLIB_HASH)
+    assert not verify_password("correct-horse-2", _PASSLIB_HASH)
+    assert verify_password("x" * 100, _PASSLIB_LONG)          # 72 bayt kesmesi aynı
+    assert verify_password("x" * 100, hash_password("x" * 100))
+    for bad in ("", "!", None):
+        assert verify_password("anything", bad) is False
+
+
+def test_existing_jose_tokens_still_decode(monkeypatch):
+    import api.auth as A
+    monkeypatch.setattr(A, "SECRET_KEY", "legacy-test-secret")
+    assert A._decode(_JOSE_TOKEN)["sub"] == "7"
+    # "alg: none" ile imzasız token kabul edilmez
+    import jwt
+    unsigned = jwt.encode({"sub": "7", "exp": 4070908800}, key=None, algorithm="none")
+    with pytest.raises(Exception):
+        A._decode(unsigned)
+
+
+# ── WebSocket: log maskeleme ve sohbet seli ──────────────────────────────────
+
+def test_access_logs_mask_tokens_codes_and_reset_links(app_mod):
+    import logging as _logging
+    f = app_mod._RedactSecrets()
+    rec = _logging.LogRecord("uvicorn.error", 20, __file__, 1, '%s - "WebSocket %s" [accepted]',
+                             ("1.2.3.4:5", "/ws/watchalong/9?token=eyJabc.def.ghi&room=community"), None)
+    f.filter(rec)
+    assert rec.args[1] == "/ws/watchalong/9?token=***&room=community"
+    rec = _logging.LogRecord("uvicorn.access", 20, __file__, 1, '%s - "%s %s HTTP/%s" %d',
+                             ("1.2.3.4:5", "GET", "/reset-password?token=Zx9_-q", "1.1", 200), None)
+    f.filter(rec)
+    assert rec.args[2] == "/reset-password?token=***" and rec.args[4] == 200
+    assert any(isinstance(x, app_mod._RedactSecrets) for x in _logging.getLogger("uvicorn.access").filters)
+
+
+def test_watchalong_chat_is_rate_limited_per_connection(client):
+    with _db() as conn:
+        row = conn.execute("SELECT id FROM rankit_matches WHERE status IN ('upcoming','live') LIMIT 1").fetchone()
+    if not row:
+        pytest.skip("seed'de açık oda yok")
+    _, token, _ = _register(client)
+    got = []
+    with client.websocket_connect(f"/api/rankit/ws/watchalong/{row[0]}?token={token}") as ws:
+        for i in range(7):
+            ws.send_json({"content": f"hi {i}", "client_id": f"c{i}"})
+        for _ in range(7):
+            got.append(ws.receive_json())
+    kinds = [m.get("type") for m in got]
+    assert kinds.count("message") == 5 and kinds.count("error") == 2
+    assert "too fast" in [m for m in got if m.get("type") == "error"][0]["error"]
+
+
+# ── Cloudinary: imzalı yükleme (imzasız preset'in yerine) ────────────────────
+
+def test_cloudinary_signature_is_admin_only_and_correct(client, monkeypatch):
+    _, admin_token, admin_id = _register(client)
+    _, user_token, _ = _register(client)
+    with _db() as conn:
+        conn.execute("UPDATE users SET role='admin' WHERE id=?", (admin_id,))
+    for k in ("CLOUDINARY_CLOUD_NAME", "VITE_CLOUDINARY_CLOUD_NAME", "CLOUDINARY_API_KEY", "CLOUDINARY_API_SECRET"):
+        monkeypatch.delenv(k, raising=False)
+    assert client.post("/api/admin/cloudinary/sign", headers=_auth(admin_token)).status_code == 503
+    monkeypatch.setenv("CLOUDINARY_CLOUD_NAME", "demo-cloud")
+    monkeypatch.setenv("CLOUDINARY_API_KEY", "1234")
+    monkeypatch.setenv("CLOUDINARY_API_SECRET", "s3cr3t")
+    assert client.post("/api/admin/cloudinary/sign").status_code == 401
+    assert client.post("/api/admin/cloudinary/sign", headers=_auth(user_token)).status_code == 403
+    d = client.post("/api/admin/cloudinary/sign", headers=_auth(admin_token)).json()
+    assert d["cloud_name"] == "demo-cloud" and d["api_key"] == "1234" and "s3cr3t" not in str(d)
+    expected = hashlib.sha1(f"folder={d['folder']}&timestamp={d['timestamp']}s3cr3t".encode()).hexdigest()
+    assert d["signature"] == expected

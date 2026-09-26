@@ -2,8 +2,8 @@
 import logging
 import os
 from datetime import datetime, timedelta
-from passlib.context import CryptContext
-from jose import JWTError, jwt
+import bcrypt
+import jwt
 from fastapi import HTTPException, Depends
 from fastapi.security import OAuth2PasswordBearer
 
@@ -14,8 +14,10 @@ IS_PROD = bool(os.environ.get("RAILWAY_ENVIRONMENT")
                or os.environ.get("RENDER") == "true"
                or os.environ.get("IS_PROD") == "true")
 
-# Repo herkese açık: bu varsayılan herkesin elinde. Yalnız yerel geliştirme için.
-_DEV_SECRET = "change-me-in-production-please"
+# Repo herkese açık: bu varsayılanlar herkesin elinde. Yalnız yerel geliştirme
+# için; canlıda ikisi de reddedilir (eskisi elle JWT_SECRET'a yazılmış olabilir).
+_DEV_SECRET = "change-me-in-production-please-local-dev-only"
+_PUBLIC_SECRETS = {_DEV_SECRET, "change-me-in-production-please"}
 
 
 def _resolve_secret(raw: str | None, prod: bool) -> str:
@@ -25,7 +27,7 @@ def _resolve_secret(raw: str | None, prod: bool) -> str:
     secret = (raw or "").strip()
     if not prod:
         return secret or _DEV_SECRET
-    if not secret or secret == _DEV_SECRET:
+    if not secret or secret in _PUBLIC_SECRETS:
         raise RuntimeError("JWT_SECRET is not set for production — refusing to start")
     if len(secret) < 32:
         logging.warning("JWT_SECRET is shorter than 32 characters — rotate it to a long random value")
@@ -36,25 +38,33 @@ SECRET_KEY          = _resolve_secret(os.environ.get("JWT_SECRET"), IS_PROD)
 ALGORITHM           = "HS256"
 TOKEN_EXPIRE_DAYS   = 7
 
-pwd_context   = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=False)
 
-# Kullanıcı yokken de bcrypt çalışsın diye (giriş süresi hesabın var olup
-# olmadığını ele vermesin) sabit bir sahte özet.
-_DUMMY_HASH = pwd_context.hash("not-a-real-password")
+
+# Şifreler doğrudan bcrypt ile (2026-09: bakımsız passlib ve python-jose
+# bırakıldı). passlib'in yazdığı "$2b$12$..." özetleri aynen doğrulanır.
+# bcrypt yalnız ilk 72 baytı kullanır; passlib de sessizce kesiyordu,
+# bcrypt 5 ise uzun girdide hata fırlatıyor — aynı davranış için açıkça kes.
+def _pw_bytes(password: str) -> bytes:
+    return (password or "").encode("utf-8")[:72]
 
 
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    return bcrypt.hashpw(_pw_bytes(password), bcrypt.gensalt(rounds=12)).decode("ascii")
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    # Seed kullanıcıların özeti "!" (giriş kapalı): passlib tanımadığı özette
-    # hata fırlatıyordu, giriş 500 dönüyordu.
+    # Seed kullanıcıların özeti "!" (giriş kapalı), Google hesaplarınınki "":
+    # tanınmayan özet hata değil, "yanlış şifre".
     try:
-        return pwd_context.verify(plain, hashed)
+        return bcrypt.checkpw(_pw_bytes(plain), (hashed or "").encode("ascii"))
     except (ValueError, TypeError):
         return False
+
+
+# Kullanıcı yokken de bcrypt çalışsın diye (giriş süresi hesabın var olup
+# olmadığını ele vermesin) sabit bir sahte özet.
+_DUMMY_HASH = hash_password("not-a-real-password")
 
 
 def burn_password_check(plain: str) -> None:
@@ -77,9 +87,11 @@ def create_token(user_id: int, role: str) -> str:
 
 
 def _decode(token: str) -> dict:
+    # algorithms sabit listede: "alg": "none" ya da başka algoritmayla
+    # imzalanmış token kabul edilmez.
     try:
         return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-    except JWTError:
+    except jwt.PyJWTError:
         raise HTTPException(status_code=401, detail="Geçersiz veya süresi dolmuş token")
 
 

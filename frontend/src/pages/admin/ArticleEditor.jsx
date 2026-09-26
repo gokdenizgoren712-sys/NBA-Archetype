@@ -19,6 +19,29 @@ function authFetch(path, token, opts = {}) {
 }
 
 /* ── Toolbar ─────────────────────────────────────────────────────────────── */
+// Görsel yükleme: önce İMZALI yol — gizli anahtar sunucuda, tarayıcı yalnız
+// bu yüklemenin imzasını görür. Sunucuda imza yapılandırılmamışsa (503) geçiş
+// dönemi için eski imzasız preset'e düşer.
+async function cloudinaryUpload(file, token) {
+  const fd = new FormData();
+  fd.append("file", file);
+  let cloud = CLOUD;
+  const sig = await authFetch("/admin/cloudinary/sign", token, { method: "POST" });
+  if (sig.ok) {
+    const s = await sig.json();
+    cloud = s.cloud_name;
+    for (const k of ["api_key", "timestamp", "signature", "folder"]) fd.append(k, s[k]);
+  } else if (CLOUD && PRESET) {
+    fd.append("upload_preset", PRESET);
+  } else {
+    throw new Error("Image uploads are not configured on the server.");
+  }
+  const res = await fetch(`https://api.cloudinary.com/v1_1/${cloud}/image/upload`, { method: "POST", body: fd });
+  const data = await res.json();
+  if (!data.secure_url) throw new Error(data.error?.message || "Upload failed");
+  return data.secure_url;
+}
+
 function Toolbar({ editor, onImageUpload, uploading }) {
   if (!editor) return null;
 
@@ -119,33 +142,23 @@ export default function ArticleEditor() {
   const uploadImage = useCallback(async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!CLOUD || !PRESET) {
-      alert("Cloudinary env vars ayarlanmamış.\nVITE_CLOUDINARY_CLOUD_NAME ve VITE_CLOUDINARY_UPLOAD_PRESET gerekli.");
-      return;
-    }
     setUploading(true);
     try {
-      const fd = new FormData();
-      fd.append("file", file);
-      fd.append("upload_preset", PRESET);
-      const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD}/image/upload`, { method: "POST", body: fd });
-      const data = await res.json();
-      if (data.secure_url) editor?.chain().focus().setImage({ src: data.secure_url }).run();
-    } catch { alert("Fotoğraf yüklenemedi"); }
+      const url = await cloudinaryUpload(file, token);
+      editor?.chain().focus().setImage({ src: url }).run();
+    } catch (err) { alert(`Image upload failed: ${err.message}`); }
     finally { setUploading(false); e.target.value = ""; }
-  }, [editor]);
+  }, [editor, token]);
 
   const uploadCover = async (e) => {
     const file = e.target.files?.[0];
-    if (!file || !CLOUD || !PRESET) return;
+    if (!file) return;
     setUploading(true);
     try {
-      const fd = new FormData();
-      fd.append("file", file); fd.append("upload_preset", PRESET);
-      const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD}/image/upload`, { method: "POST", body: fd });
-      const data = await res.json();
-      if (data.secure_url) setMeta(m => ({ ...m, cover_image_url: data.secure_url }));
-    } finally { setUploading(false); e.target.value = ""; }
+      const url = await cloudinaryUpload(file, token);
+      setMeta(m => ({ ...m, cover_image_url: url }));
+    } catch (err) { alert(`Image upload failed: ${err.message}`); }
+    finally { setUploading(false); e.target.value = ""; }
   };
 
   const save = async (status = meta.status) => {

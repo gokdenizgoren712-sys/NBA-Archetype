@@ -3,7 +3,7 @@ NBA Arketip API — FastAPI backend
 Parquet dosyalarını okuyup JSON olarak sunar.
 """
 
-import sys, json, os, time, logging, secrets, unicodedata, hashlib
+import sys, json, os, re, time, logging, secrets, unicodedata, hashlib
 from pathlib import Path
 from functools import lru_cache
 from typing import Optional
@@ -40,6 +40,27 @@ IS_PROD   = (os.environ.get("RENDER") == "true"
 
 # Canlıda /docs, /redoc, /openapi.json kapalı: tüm endpoint haritasını
 # herkese sunmanın faydası yok (2026-09 güvenlik). Yerelde açık.
+class _RedactSecrets(logging.Filter):
+    """Uvicorn erişim/bağlantı satırlarındaki sırları maskeler.
+
+    WebSocket'ler JWT'yi URL'de taşıyor (?token=...) ve uvicorn bağlantı
+    satırına sorgu dizesini de yazıyor; şifre sıfırlama bağlantısı
+    (/reset-password?token=...) ve mobil giriş kodu (?code=...) da erişim
+    loguna düşüyordu. Loga erişen herkes oturum çalabilirdi."""
+    _rx = re.compile(r"((?:^|[?&])(?:token|ticket|code|credential)=)[^&\s\"']+", re.I)
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        if isinstance(record.msg, str):
+            record.msg = self._rx.sub(r"\1***", record.msg)
+        if record.args:
+            record.args = tuple(self._rx.sub(r"\1***", a) if isinstance(a, str) else a
+                                for a in (record.args if isinstance(record.args, tuple) else (record.args,)))
+        return True
+
+
+for _log_name in ("uvicorn.access", "uvicorn.error"):
+    logging.getLogger(_log_name).addFilter(_RedactSecrets())
+
 app = FastAPI(title="NBA Arketip API", version="1.0.0",
               docs_url=None if IS_PROD else "/docs",
               redoc_url=None if IS_PROD else "/redoc",
@@ -3110,6 +3131,24 @@ _FOOTBALL_SHAPES = {"4-3-3", "4-2-3-1", "4-4-2", "3-5-2", "3-4-2-1", "4-1-4-1", 
 
 # ── Yardımcı ─────────────────────────────────────────────────────────────────
 
+# ── Makale HTML'i: yalnız editörün (Tiptap StarterKit + Image + Link) ürettiği
+# etiketler. Blog sayfası içeriği ham HTML olarak basıyor ve oturum token'ı
+# localStorage'da — içerikteki tek bir <img onerror> okuyan HERKESİN oturumunu
+# çalardı. Kaydederken ve okurken temizlenir; istemci de DOMPurify'dan geçirir.
+import nh3 as _nh3
+_ARTICLE_TAGS = {"p", "br", "strong", "b", "em", "i", "u", "s", "del", "code", "pre",
+                 "blockquote", "ul", "ol", "li", "h1", "h2", "h3", "h4", "h5", "h6",
+                 "hr", "a", "img", "span"}
+_ARTICLE_ATTRS = {"a": {"href", "title", "target"}, "img": {"src", "alt", "title"},
+                  "ol": {"start"}, "code": {"class"}, "pre": {"class"}}
+
+
+def _clean_article_html(html: str) -> str:
+    return _nh3.clean(html or "", tags=_ARTICLE_TAGS, attributes=_ARTICLE_ATTRS,
+                      url_schemes={"http", "https", "mailto"},
+                      link_rel="noopener noreferrer nofollow")
+
+
 def _slugify(text: str) -> str:
     s = text.lower().strip()
     s = _re.sub(r"[^\w\s-]", "", s)
@@ -3340,6 +3379,25 @@ async def csp_report(request: Request):
     return Response(status_code=204)
 
 
+@app.post("/api/admin/cloudinary/sign", include_in_schema=False)
+def admin_cloudinary_sign(_user=Depends(require_admin)):
+    """Makale görseli için tek yüklemelik Cloudinary imzası (yalnız admin).
+
+    Eskiden editör imzasız bir upload preset'iyle yüklüyordu; preset adı
+    herkese açık pakette olduğu için herkes hesaba dosya yükleyebiliyordu.
+    Gizli anahtar sunucuda kalır, tarayıcı yalnız bu imzayı görür. Sunucuda
+    anahtar tanımlı değilse 503: editör geçiş döneminde eski yola düşer.
+    İmza: parametreler alfabetik, "a=1&b=2" + api_secret, SHA-1 (Cloudinary)."""
+    cloud = os.environ.get("CLOUDINARY_CLOUD_NAME") or os.environ.get("VITE_CLOUDINARY_CLOUD_NAME")
+    key, secret = os.environ.get("CLOUDINARY_API_KEY"), os.environ.get("CLOUDINARY_API_SECRET")
+    if not (cloud and key and secret):
+        raise HTTPException(503, "Signed uploads are not configured")
+    params = {"folder": "articles", "timestamp": str(int(time.time()))}
+    to_sign = "&".join(f"{k}={v}" for k, v in sorted(params.items()))
+    signature = hashlib.sha1((to_sign + secret).encode("utf-8")).hexdigest()
+    return {"cloud_name": cloud, "api_key": key, "signature": signature, **params}
+
+
 @app.get("/api/admin/request-ip", include_in_schema=False)
 def admin_request_ip(request: Request, _user=Depends(require_admin)):
     """Canlıda istek sınırının doğru IP'yi gördüğünü doğrulamak için."""
@@ -3428,6 +3486,7 @@ def get_article(slug: str, user=Depends(get_optional_user)):
     if not row:
         raise HTTPException(404, "Article not found")
     art = _row(row)
+    art["content"] = _clean_article_html(art.get("content"))   # eski kayıtlar da temiz dönsün
     if art["status"] != "published":
         if not user or user.get("role") != "admin":
             raise HTTPException(404, "Article not found")
@@ -3458,14 +3517,15 @@ def create_article(body: ArticleBody, user=Depends(require_admin)):
             cur = conn.execute(
                 """INSERT INTO articles (title, slug, content, cover_image_url, author_id, status, created_at, updated_at)
                    VALUES (?,?,?,?,?,?,?,?)""",
-                (body.title, slug, body.content, body.cover_image_url or None,
+                (body.title, slug, _clean_article_html(body.content), body.cover_image_url or None,
                  int(user["sub"]), body.status, now, now)
             )
             return {"id": cur.lastrowid, "slug": slug}
     except Exception as e:
         if "UNIQUE" in str(e):
             raise HTTPException(409, "This slug is already in use")
-        raise HTTPException(500, str(e))
+        logging.error("create_article failed: %s", e)
+        raise HTTPException(500, "Could not save the article. Try again in a moment.")
 
 @app.put("/api/admin/articles/{article_id}")
 def update_article(article_id: int, body: ArticleBody, user=Depends(require_admin)):
@@ -3476,7 +3536,7 @@ def update_article(article_id: int, body: ArticleBody, user=Depends(require_admi
         conn.execute(
             """UPDATE articles SET title=?, slug=?, content=?, cover_image_url=?,
                status=?, updated_at=? WHERE id=?""",
-            (body.title, slug, body.content, body.cover_image_url or None,
+            (body.title, slug, _clean_article_html(body.content), body.cover_image_url or None,
              body.status, now, article_id)
         )
     return {"ok": True, "slug": slug}
@@ -5278,4 +5338,8 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=int(os.environ.get("PORT", "8000")),
         workers=int(os.environ.get("WEB_CONCURRENCY", "1")),  # 512MB'de 1 worker
+        # İstemciden gelen tek WebSocket mesajı en çok 256 KB (varsayılan 16 MB:
+        # birkaç bağlantıyla belleği doldurmak mümkündü). Oyun/sohbet mesajları
+        # birkaç KB.
+        ws_max_size=262_144,
     )

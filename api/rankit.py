@@ -7,6 +7,7 @@ yerel gelistirmede ise seed_rankit() deterministik bir demo katalogu kurar.
 from __future__ import annotations
 
 import os
+import time
 import re
 from datetime import date, datetime, timedelta, timezone
 from typing import Literal, Optional
@@ -3321,6 +3322,9 @@ def _accrue_room_seconds(conn, uid: int, match_id: int, joined_at: datetime, lef
     return added
 
 
+WATCHALONG_RATE_LIMIT, WATCHALONG_RATE_WINDOW = 5, 10.0
+
+
 @router.websocket("/ws/watchalong/{match_id}")
 async def rankit_watchalong_socket(ws: WebSocket, match_id: int, room: str = "community"):
     token = ws.query_params.get("token", "")
@@ -3350,22 +3354,34 @@ async def rankit_watchalong_socket(ws: WebSocket, match_id: int, room: str = "co
     present[uid] = present.get(uid, 0) + 1
     with get_conn() as conn:
         _join_room(conn, uid, match_id)
+    sent_at: list[float] = []   # bu bağlantının son mesaj zamanları (sel koruması)
     try:
         while True:
             payload = await ws.receive_json()
+            if not isinstance(payload, dict):
+                continue
             content = str(payload.get("content", "")).strip()[:300]
             if not content:
                 continue
+            # Bağlantı başına 10 sn'de en çok 5 mesaj: HTTP istek sınırı
+            # WebSocket'i kapsamıyor, tek istemci odayı mesaj seliyle boğabiliyordu.
+            now_ts = time.monotonic()
+            sent_at = [t for t in sent_at if now_ts - t < WATCHALONG_RATE_WINDOW]
+            if len(sent_at) >= WATCHALONG_RATE_LIMIT:
+                await ws.send_json({"type": "error", "error": "You're sending messages too fast — wait a moment.",
+                                    "client_id": str(payload.get("client_id", ""))[:64]})
+                continue
+            sent_at.append(now_ts)
             with get_conn() as conn:
                 match = conn.execute("SELECT status FROM rankit_matches WHERE id=?", (match_id,)).fetchone()
                 if not match or match["status"] not in ("upcoming", "live"):
-                    await ws.send_json({"type": "error", "error": "This room is now read-only.", "client_id": payload.get("client_id")})
+                    await ws.send_json({"type": "error", "error": "This room is now read-only.", "client_id": str(payload.get("client_id", ""))[:64]})
                     continue
                 cur = conn.execute("INSERT INTO rankit_watchalong_messages(match_id,user_id,room,content) VALUES(?,?,?,?)", (match_id, uid, key[1], content))
                 message = {"id": cur.lastrowid, "username": username, "content": content, "created_at": "now"}
             for peer in list(WATCHALONG_CONNECTIONS.get(key, [])):
                 try:
-                    await peer.send_json({"type": "message", "message": message, "client_id": payload.get("client_id")})
+                    await peer.send_json({"type": "message", "message": message, "client_id": str(payload.get("client_id", ""))[:64]})
                 except Exception:
                     if peer in WATCHALONG_CONNECTIONS.get(key, []):
                         WATCHALONG_CONNECTIONS[key].remove(peer)
