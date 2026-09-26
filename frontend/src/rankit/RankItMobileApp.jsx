@@ -6,6 +6,9 @@ import RankItPrototype from "./RankItPrototype";
 import { API_ROOT, rankitApi, rankitMe, rankitMobileExchange } from "./rankitApi";
 import { ConnectScreen, FollowPicker } from "./redesign/FirstRun";
 import { RankItMark } from "./redesign/BrandMark";
+// Games by Primary Arch: misafirin bitmiş sonucu giriş sırasında cihazda bekler
+// (giriş kabuğu yeniden kurar, oyun söner) — hesap gelince buradan gönderilir.
+import { flushPendingScore } from "../arcade/pendingScore";
 import "./rankit.css";
 import "./rankit-mobile.css";
 
@@ -81,6 +84,7 @@ export default function RankItMobileApp() {
   // (rankit_user_settings.onboarded) -- yeni bir cihazda yeniden sormaz.
   useEffect(() => {
     if (!user) return undefined;
+    flushPendingScore({ token: localStorage.getItem(TOKEN_KEY) }).catch(() => {});
     let alive = true;
     rankitApi.onboarding("")
       .then(d => alive && setFirstRun(!d.done))

@@ -1,7 +1,7 @@
 # Games by Primary Arch — RankIt uygulamasına oyun modülü
 
 **Belge tarihi:** 25 Eylül 2026 · **güncelleme:** 26 Eylül 2026 (v3 — son plan)
-**Durum:** ONAYLANDI — tüm kararlar verildi, uygulama Faz 0'dan başlıyor
+**Durum:** UYGULANIYOR — Faz 0–4 bitti, Faz 6'da APK ve emülatör turu bekliyor (bkz. §9)
 **Kapsam:** YALNIZCA Android uygulaması (RankIt by Primary Arch). Web'de oyuna
 zaten `/basketball/game` üzerinden gidiliyor; web'e yeni bir yüzey eklenmiyor.
 **Görsel taslak:** https://claude.ai/artifact/PBwC8t3avTM54srcmYjP8y (telefon
@@ -274,3 +274,40 @@ rotasyon editörü ve Rewrite History v1'de.
 tüm "g" harfleri "r" olmuş (`heirht`, `backrround`, `rrba(`, `--font-loro`).
 Tarayıcı bunları geçersiz sayıp atlıyor. Bu işin kapsamı dışında, ayrı görev olarak
 önerildi.
+
+## 9. İlerleme (26 Eylül 2026)
+
+| Faz | Durum | Not |
+|---|---|---|
+| 0 | bitti | PRODUCT.md + product/mobile.md |
+| 1 | bitti | `lib/apiOrigin.js`, `arcade/pendingScore.js` |
+| 2 | bitti | `game/lineupDraft.js` + `seasonRun.js`; web `/basketball/game` bu motorlarla çalışıyor |
+| 3–4 | bitti | `arcade/` (14 ekran), Discover satırı, geri tuşu zinciri, rotasyon, Rewrite History, playoff listesi, skor tablosu |
+| 5 | sonra | With a Friend / Online Opponent, futbol |
+| 6 | kısmen | testler + iki build + Chromium'da misafir uçtan uca tur bitti; emülatörde giriş yapmış tur ve APK (Kural 2) bekliyor |
+
+**Doğrulama:** `frontend/tests/games-*.test.mjs` (motorlar, altyapı, arcade
+sözleşmesi), `tests/test_games_cors.py`; mobil build'de oyun ayrı chunk
+(`GamesSurface` ~97 kB, gzip ~32 kB), site build'inde arcade kodu yok.
+Chromium 390×844, yerel backend + gerçek veri: 9 seçim → koç → sonuç →
+rotasyon → Rewrite History (29 takım, uyarısız) → playoff → misafir skoru
+cihazda bekliyor → geri tuşu zinciri → Discover.
+
+**Uygulama sırasında bulunan hatalar (düzeltildi):**
+- **CORS / 429:** rate limiter'ın 429'u CORS başlığı taşımıyordu; uygulama
+  (https://localhost) bunu ağ hatası sanıyor, Rewrite History'nin lig kurulumu
+  Retry-After'ı bekleyemeden düşüyordu. CORS middleware'i en dışa alındı
+  (`api/main.py`); preflight artık sayaca girmiyor.
+- **Aynı oyuncu iki kez:** pozisyon seçiminden sonraki 400 ms'de eski liste hâlâ
+  tıklanabiliyordu. Motor artık yalnız `pick_player` fazında ve kadroda olmayan
+  oyuncuyu kabul ediyor (web sayfası da bu korumayı alıyor).
+
+**Plandan sapma (açık iş):** paylaşım şimdilik `navigator.share`, yoksa panoya
+kopyalama. Android WebView `navigator.share` sunmadığı için uygulamada düğme
+bugün yalnız metni kopyalıyor ("Copied to clipboard"). Gerçek paylaşım sayfası
+için `@capacitor/share` eklenmeli; yeni native eklenti `cap sync` + APK
+gerektirdiği için bir sonraki APK'yla birlikte yapılacak.
+
+**Dikkat:** rate limit dakikada 120 istek. Rewrite History tek seferde 29 takım
+çekiyor (6'lı gruplar); art arda birkaç sezon denemek sınıra dayanabilir.
+429 artık okunuyor ve bekleniyor, yani akış bozulmuyor, yalnız yavaşlıyor.
