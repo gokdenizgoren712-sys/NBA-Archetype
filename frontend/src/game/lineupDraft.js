@@ -258,6 +258,11 @@ export function createLineupDraft({
 
   // ── Oyuncu seç ───────────────────────────────────────────────────────────
   function pickPlayer(player) {
+    // Yalnız oyuncu seçme anında ve kadroda olmayan biri: pozisyon seçildikten
+    // sonraki 400 ms'de eski liste hâlâ ekrandaysa aynı oyuncu ikinci kez
+    // alınabiliyordu (telefonda yakalandı, 2026-09-26).
+    if (state.phase !== "pick_player") return;
+    if (Object.values(state.lineup).some((x) => x && x.PLAYER_NAME === player.PLAYER_NAME)) return;
     let enriched = player;
     // Salary Cap: bütçeyi aşan sözleşme alınamaz (wildcard'da rezerv şartı düşer)
     if (state.mode === "salarycap") {

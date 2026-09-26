@@ -327,3 +327,21 @@ test("web sayfası motoru ve ortak puanı kullanıyor, kendi kopyası yok", () =
   assert.doesNotMatch(page, /pct>=85\?"S"/);
   assert.doesNotMatch(page, /wildcardRef/);
 });
+
+test("aynı oyuncu iki kez alınamaz: yerleştirmeden sonraki 400 ms'de eski listeden seçim yok sayılır", async () => {
+  const ctx = await setup();
+  ctx.draft.actions.chooseEra(ERAS[4]);
+  await ctx.clock.advance(SPIN_MS * 2);
+  const first = ctx.s().players[0];
+  ctx.draft.actions.pickPlayer(first);
+  ctx.draft.actions.pickPos("PG");
+  // yeni çark henüz başlamadı: faz hâlâ pick_pos, liste eski
+  assert.equal(ctx.s().phase, "pick_pos");
+  ctx.draft.actions.pickPlayer(first);
+  assert.equal(ctx.s().pickedPlayer, null);
+  // oyuncu seçme anında bile kadrodaki biri reddedilir
+  await ctx.clock.advance(NEXT_SPIN_MS + SPIN_MS * 2);
+  ctx.draft.actions.pickPlayer({ ...first });
+  assert.equal(ctx.s().phase, "pick_player");
+  assert.equal(ctx.s().pickedPlayer, null);
+});
