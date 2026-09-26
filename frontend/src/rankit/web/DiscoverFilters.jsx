@@ -3,7 +3,7 @@
  * each option").
  *
  *   FILTERS · Clear N  ·  SPORT (sayılı)  ·  STAGE Live/Upcoming/Finished
- *   (canlıda nokta)  ·  MINIMUM HEAT (rampa + "Rated Good or better ·
+ *   (canlıda nokta)  ·  DATE (sayılı)  ·  MINIMUM HEAT (rampa + "Rated Good or better ·
  *   3.0+")  ·  COMPETITION (ilk iki, "+N more")  ·  SEASON (birden çoksa)
  *
  * Seçili seçenek .06 zemin; altın yalnız seçili SPOR ve TURNUVA adında
@@ -12,6 +12,7 @@
  */
 import { useState } from "react";
 import { activeFilterCount, facetCount, heatFloorLabel } from "./pagesView";
+import { DATES } from "../redesign/discoverFilters";
 
 function Option({ label, count, on, onPick, dot = false, gold = false }) {
   return (
@@ -40,7 +41,7 @@ export default function DiscoverFilters({ filters, facets, onChange, idPrefix = 
     <div className="riw-filters">
       <div className="riw-filters-head">
         <span className="riw-rail-label">FILTERS</span>
-        {active > 0 && <button type="button" className="riw-filters-clear" onClick={() => onChange({ sport: "All", status: "All", competition: "All", season: "All", minHeat: null })}>Clear {active}</button>}
+        {active > 0 && <button type="button" className="riw-filters-clear" onClick={() => onChange({ sport: "All", status: "All", competition: "All", season: "All", minHeat: null, when: "All" })}>Clear {active}</button>}
       </div>
 
       <section className="riw-fgroup2" aria-labelledby={`${idPrefix}-f-sport`}>
@@ -55,6 +56,16 @@ export default function DiscoverFilters({ filters, facets, onChange, idPrefix = 
         {[["live", "Live"], ["upcoming", "Upcoming"], ["finished", "Finished"]].map(([v, label]) => (
           <Option key={v} label={label} dot={v === "live"} count={facets ? facetCount(facets, "status", v) : null}
             on={filters.status === v} onPick={() => toggle("status", v)} />
+        ))}
+      </section>
+
+      {/* Tarih (sahibin isteği): yerel gün, kartın gün etiketiyle aynı sayar.
+          Pencereler çakışabilir (bugün hem Today hem Next 7 days). */}
+      <section className="riw-fgroup2" aria-labelledby={`${idPrefix}-f-date`}>
+        <h3 id={`${idPrefix}-f-date`} className="riw-rail-label">DATE</h3>
+        {DATES.map(([v, label]) => (
+          <Option key={v} label={label} count={facets ? facetCount(facets, "when", v) : null}
+            on={filters.when === v} onPick={() => toggle("when", v)} />
         ))}
       </section>
 

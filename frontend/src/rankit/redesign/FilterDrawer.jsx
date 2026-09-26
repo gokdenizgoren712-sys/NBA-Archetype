@@ -2,7 +2,7 @@
  *
  * Görsel kaynak `RankIt Redesign.dc.html#6c`: sol 0, 288px (en fazla %85),
  * `#1a1b1e`, sağ kenarda hairline ve gölge; arkası `rgba(0,0,0,.55)` perde.
- * Başlık "Filters" + kapat; bölümler SPORT / STAGE / MINIMUM HEAT; altta
+ * Başlık "Filters" + kapat; bölümler SPORT / STAGE / DATE / MINIMUM HEAT; altta
  * canlı sayılı "Show N matches". Seçimler ONAYA kadar bekler — düğme, o
  * seçimle kaç maç geleceğini gerçek sayıyla söylüyor.
  *
@@ -15,7 +15,7 @@ import { X } from "lucide-react";
 import { useDialog } from "./useDialog";
 import { useBackClose } from "./backStack";
 import {
-  SPORTS, STAGES, HEAT_LEVELS, EMPTY_FILTERS, toggle, heatName, activeCount, showLabel,
+  SPORTS, STAGES, DATES, HEAT_LEVELS, EMPTY_FILTERS, toggle, heatName, activeCount, showLabel,
   heatStep, heatFromStep, heatNameColor,
 } from "./discoverFilters";
 
@@ -68,6 +68,12 @@ export default function FilterDrawer({ value, families = [], allSeasons = [], co
         <div className="ri-drawer-pills">{STAGES.map((s) =>
           <button type="button" key={s} aria-pressed={draft.status === s} className={draft.status === s ? "on" : ""}
             onClick={() => set({ status: toggle(draft.status, s) })}>{s}</button>)}</div>
+
+        {/* Tarih: kullanıcının yerel günü; kartın gün etiketiyle aynı sayar. */}
+        <p className="ri-drawer-eyebrow">DATE</p>
+        <div className="ri-drawer-pills">{DATES.map(([v, label]) =>
+          <button type="button" key={v} aria-pressed={draft.when === v} className={draft.when === v ? "on" : ""}
+            onClick={() => set({ when: toggle(draft.when || "All", v) })}>{label}</button>)}</div>
 
         <p className="ri-drawer-eyebrow">MINIMUM HEAT</p>
         {/* §5.5: ısı 20 puanın altında YOK. Bu filtre seçilince yeni ya da az

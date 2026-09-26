@@ -143,7 +143,7 @@ export default function MatchCard(props) {
   const setCommunityRevealed = (value) => { setOwnReveal(value); if (value) props.onCommunityReveal?.(); };
   const {
     comp = "", statusLabel, homeAbbr = "", awayAbbr = "",
-    homeShort, awayShort, homeScore = "", awayScore = "", kickoff = "",
+    homeShort, awayShort, homeScore = "", awayScore = "", kickoff = "", kickoffDay = "",
     heatLabel = "", ratings = "", footNote = "",
     homeCrestInk = "#fff", awayCrestInk = "#fff",
     homeCrestUrl = "", awayCrestUrl = "",
@@ -305,7 +305,9 @@ export default function MatchCard(props) {
           </div>
 
           <div style={{ marginTop: profileShelf ? 6 : 9, minWidth: 0 }}>
-            {!profileShelf && <small style={{color:liveFresh ? RAMP[4] : t.eyebrow}}>{status}</small>}
+            {/* Yaklaşan maçta saatin üstündeki satır günü söyler ("TOMORROW",
+                "SUN 28 SEP"); "UPCOMING" gün yazınca bilgi taşımıyor. Yükseklik aynı. */}
+            {!profileShelf && <small style={{color:liveFresh ? RAMP[4] : t.eyebrow}}>{kickoffDay || status}</small>}
             {scoreInArt ? (
               <div style={{ fontSize: scoreSize, fontWeight: 700, lineHeight: 1, letterSpacing: ".01em", color: t.score, filter: spoiler ? "blur(9px)" : "none", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                 {score}
@@ -383,6 +385,8 @@ export default function MatchCard(props) {
             )}
             {!finished && !live && (
               <div style={{ position: "relative", textAlign: "center" }}>
+                {/* Gün saatin üstünde (sahibin isteği): yalnız saat her maçı bugün gibi okutuyordu. */}
+                {kickoffDay && <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".14em", color: t.eyebrow, marginBottom: 7, whiteSpace: "nowrap" }}>{kickoffDay}</div>}
                 <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: ".02em", color: t.ink }}>{kickoff}</div>
                 <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: ".06em", color: t.faint, marginTop: 4 }}>VS</div>
               </div>

@@ -6,7 +6,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   toggle, activeCount, toCatalogQuery, showLabel, heatStep, heatFromStep, heatName, heatNameColor,
-  HEAT_LEVELS, EMPTY_FILTERS,
+  HEAT_LEVELS, EMPTY_FILTERS, DATES,
 } from "../src/rankit/redesign/discoverFilters.js";
 
 test("6c: pill'e ikinci dokunus filtreyi kaldirir ('All' pill'i yok)", () => {
@@ -32,9 +32,14 @@ test("6c: kaydirici 0 = sinir yok, 1..4 seviyeler; gidis-donus kayipsiz", () => 
 
 test("6c: katalog sorgusu — min_heat yalniz secildiyse, sahne kucuk harf", () => {
   assert.deepEqual(toCatalogQuery({ ...EMPTY_FILTERS }),
-    { sport: "All", competition: "All", season: "All", status: "All", minHeat: null });
+    { sport: "All", competition: "All", season: "All", status: "All", minHeat: null, when: "All" });
   assert.deepEqual(toCatalogQuery({ ...EMPTY_FILTERS, sport: "Football", status: "Live", minHeat: 2.5 }),
-    { sport: "Football", competition: "All", season: "All", status: "live", minHeat: 2.5 });
+    { sport: "Football", competition: "All", season: "All", status: "live", minHeat: 2.5, when: "All" });
+  // Tarih süzgeci: yalnız bilinen pencereler uca gider, sayılır.
+  assert.equal(toCatalogQuery({ ...EMPTY_FILTERS, when: "tomorrow" }).when, "tomorrow");
+  assert.equal(toCatalogQuery({ ...EMPTY_FILTERS, when: "yesterday" }).when, "All");
+  assert.equal(activeCount({ ...EMPTY_FILTERS, when: "weekend" }), 1);
+  assert.deepEqual(DATES.map(([v]) => v), ["today", "tomorrow", "weekend", "next7", "past7"]);
 });
 
 test("6c: 'Show N matches' sayisi uctan, uydurulmuyor", () => {

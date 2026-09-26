@@ -814,6 +814,41 @@ def rankit_sync_health():
         return {"providers": out, "catalog": dict(totals)}
 
 
+DISCOVER_WHEN = ("today", "tomorrow", "weekend", "next7", "past7")
+
+
+def _now_utc() -> datetime:
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
+def _when_window(when: str, tz_offset: int = 0, now: Optional[datetime] = None) -> tuple[str, str]:
+    """Discover tarih suzgeci: kullanicinin YEREL takvim gunleri -- kartin
+    TODAY / TOMORROW / SUN 28 SEP etiketiyle ayni gun (RankIt gunu 11:00 ->
+    11:00 degil; kart da takvim gununu yaziyor). Donen sinirlar UTC ISO,
+    [baslangic, bitis). tz_offset dakika, UTC'nin dogusu pozitif."""
+    now = now or _now_utc()
+    local = now + timedelta(minutes=tz_offset)
+    midnight = local.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(minutes=tz_offset)
+    day = timedelta(days=1)
+    if when == "today":
+        start, end = midnight, midnight + day
+    elif when == "tomorrow":
+        start, end = midnight + day, midnight + 2 * day
+    elif when == "weekend":
+        # Bu haftanin Cumartesi + Pazar'i; Pazar gunu dunden (Cumartesi) baslar.
+        wd = local.weekday()
+        start = midnight - day if wd == 6 else midnight + ((5 - wd) % 7) * day
+        end = start + 2 * day
+    elif when == "next7":
+        start, end = now, midnight + 7 * day
+    elif when == "past7":
+        start, end = midnight - 7 * day, now
+    else:
+        raise ValueError(when)
+    fmt = "%Y-%m-%dT%H:%M:%SZ"
+    return start.strftime(fmt), end.strftime(fmt)
+
+
 @router.get("/catalog")
 def rankit_catalog(
     sport: str = "All",
@@ -833,7 +868,12 @@ def rankit_catalog(
     sort: Literal["nearest", "hottest", "soonest", "reviewed"] = "nearest",
     # 8a: web rayi filtreleri kalici gosterir, her secenegin yaninda sayi.
     facets: bool = False,
+    # Tarih suzgeci (sahibin 2026-09-26 istegi): Today / Tomorrow / This
+    # weekend / Next 7 days / Past 7 days, kullanicinin yerel gunune gore.
+    when: Literal["All", "today", "tomorrow", "weekend", "next7", "past7"] = "All",
+    tz_offset: int = Query(0, ge=-840, le=840),
 ):
+    when_sql = "julianday(m.starts_at) >= julianday(?) AND julianday(m.starts_at) < julianday(?)"
     with get_conn() as conn:
         uid = int(user["sub"]) if user else (None if IS_PROD else _demo_user_id(conn))
         filters: dict[str, tuple[str, list]] = {}
@@ -851,6 +891,8 @@ def rankit_catalog(
             filters["season"] = ("m.season=?", [season])
         if status != "All":
             filters["status"] = ("m.status=?", [status])
+        if when != "All":
+            filters["when"] = (when_sql, list(_when_window(when, tz_offset)))
 
         def where_without(skip=None):
             parts, values = ["m.provider IS NOT NULL"], []
@@ -891,6 +933,13 @@ def rankit_catalog(
                     f"""SELECT {col} value, COUNT(*) n FROM rankit_matches m
                         JOIN rankit_competitions c ON c.id=m.competition_id{where}
                         GROUP BY {col} ORDER BY n DESC, value""", values)]
+            # Tarih secenekleri sabit sirada; pencereler cakisabilir (bugun hem
+            # "Today" hem "Next 7 days"), her biri ayri sayilir.
+            where, values = where_without("when")
+            out["facets"]["when"] = [{"value": w, "count": conn.execute(
+                f"""SELECT COUNT(*) n FROM rankit_matches m
+                    JOIN rankit_competitions c ON c.id=m.competition_id{where} AND {when_sql}""",
+                [*values, *_when_window(w, tz_offset)]).fetchone()["n"]} for w in DISCOVER_WHEN]
         return out
 
 

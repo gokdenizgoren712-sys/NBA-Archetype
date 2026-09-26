@@ -86,7 +86,9 @@ export const rankitApi = {
   // 6c: min_heat TUM katalogda sunucuda uygulanir, `total` gercek sayi (cekmecenin
   // "Show N matches" dugmesi buradan). Yoksa parametre hic gonderilmez.
   // 8a: sort nearest|hottest|soonest|reviewed; facets=true raydaki secenek sayilarini da getirir.
-  catalog: ({ sport = "All", competition = "All", season = "All", status = "All", minHeat = null, limit = 60, offset = 0, sort = null, facets = false } = {}) => request(`/catalog?sport=${encodeURIComponent(sport)}&competition=${encodeURIComponent(competition)}&season=${encodeURIComponent(season)}&status=${encodeURIComponent(status)}${Number.isFinite(minHeat) ? `&min_heat=${minHeat}` : ""}&limit=${limit}&offset=${offset}${sort ? `&sort=${encodeURIComponent(sort)}` : ""}${facets ? "&facets=true" : ""}`),
+  // `when`: tarih süzgeci (today / tomorrow / weekend / next7 / past7); gün
+  // kullanıcının YEREL günü, o yüzden saat farkı her istekte gider.
+  catalog: ({ sport = "All", competition = "All", season = "All", status = "All", minHeat = null, when = "All", limit = 60, offset = 0, sort = null, facets = false } = {}) => request(`/catalog?sport=${encodeURIComponent(sport)}&competition=${encodeURIComponent(competition)}&season=${encodeURIComponent(season)}&status=${encodeURIComponent(status)}${Number.isFinite(minHeat) ? `&min_heat=${minHeat}` : ""}${when && when !== "All" ? `&when=${encodeURIComponent(when)}` : ""}&tz_offset=${-new Date().getTimezoneOffset()}&limit=${limit}&offset=${offset}${sort ? `&sort=${encodeURIComponent(sort)}` : ""}${facets ? "&facets=true" : ""}`),
   meta: () => request("/meta"),
   competition: id => request(`/competitions/${id}`),
   // 7g sezon isi haritasi: kulup x mac haftasi; `available:false` = haftasiz turnuva.

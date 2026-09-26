@@ -12,6 +12,7 @@ import { entryTagOptions } from "./redesign/entryTags";
 import { communityHeat, communityRatingCount, communityVerdictCovered, hasCommunityVerdict, heatSteps, NAMES, MIN_COMMUNITY_RATINGS } from "./redesign/heat";
 import CommunityVerdictGate from "./redesign/CommunityVerdictGate";
 import ExpectedHeat from "./redesign/ExpectedHeat";
+import KickoffCountdown from "./redesign/KickoffCountdown";
 import { broadcastLabel } from "./redesign/broadcastLabel";
 import { appetiteOpen, appetiteValue, nextAppetite } from "./redesign/appetite";
 import { liveFreshness } from "./redesign/liveFreshness";
@@ -554,6 +555,7 @@ export function MatchDetail({ match, hideScores, onClose, onSave, onResult, onTo
         onRate={value=>{if(!rating && value)rate(value);setSection("Community");}}/>
       : section === "Match" ? <>
         {!scoreHidden && match.summary && <p className="ri-summary">{match.summary}</p>}
+        {match.status === "upcoming" && <KickoffCountdown startsAt={match.starts_at}/>}
         {match.status === "upcoming" && <ExpectedHeat match={match}/>}
         <div className="ri-broadcast"><small>{country.supported ? `WATCH IN ${country.code}` : "BROADCAST"}</small><strong>{!country.supported ? "Not covered in your region yet" : broadcastInfo === undefined ? "Checking coverage…" : broadcastInfo === null ? "Broadcast information unavailable" : broadcastInfo?.channels?.length ? broadcastInfo.channels.map(channel=>channel.name).join(" · ") : "Not covered in your region yet"}</strong><span>{broadcastInfo?.confidence === "confirmed" ? "Confirmed broadcaster" : broadcastInfo?.confidence === "typical" ? "Typical competition coverage · check before the match" : "Coverage has not been confirmed yet"}</span></div>
         <div className="ri-timeline"><small>MATCH</small><div><span>{match.status === "finished" ? scoreHidden ? "—" : "FT" : match.status === "live" ? companionMinute(match.live_minute, match.sport) || "LIVE" : match.time || match.dateOnly}</span><strong>{match.status === "finished" ? scoreHidden ? "Played" : "Full time" : match.status === "live" ? liveDelayed ? "Updates delayed" : "Live now" : "Scheduled"}</strong></div><button onClick={() => setSection("Community")}>Community <ChevronRight size={14}/></button></div>
@@ -1081,6 +1083,8 @@ function DiscoverView({ hideScores, onOpen, onOpenCompetition, onOpenHunt, catal
   const [status, setStatus] = useState("All");
   // 6c MINIMUM HEAT (null = filtre yok) ve soldan acilan cekmece.
   const [minHeat, setMinHeat] = useState(null);
+  // Tarih süzgeci (today / tomorrow / weekend / next7 / past7) — kullanıcının yerel günü.
+  const [when, setWhen] = useState("All");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [pageCatalog, setPageCatalog] = useState(catalog);
   const [total, setTotal] = useState(catalog.length);
@@ -1114,7 +1118,7 @@ function DiscoverView({ hideScores, onOpen, onOpenCompetition, onOpenHunt, catal
     const version = ++requestVersion.current;
     setLoading(true); setFailed(false);
     try {
-      const data = await rankitApi.catalog({ sport: sportFilter, competition, season, status: status === "All" ? "All" : status.toLowerCase(), minHeat, limit: 60, offset });
+      const data = await rankitApi.catalog({ sport: sportFilter, competition, season, status: status === "All" ? "All" : status.toLowerCase(), minHeat, when, limit: 60, offset });
       if (version !== requestVersion.current) return;
       const incoming = (data.matches || []).map(fromApiMatch);
       setPageCatalog(v => append ? [...new Map([...v, ...incoming].map(m => [m.id, m])).values()] : incoming);
@@ -1124,7 +1128,7 @@ function DiscoverView({ hideScores, onOpen, onOpenCompetition, onOpenHunt, catal
     } finally {
       if (version === requestVersion.current) setLoading(false);
     }
-  }, [sportFilter, competition, season, status, minHeat]);
+  }, [sportFilter, competition, season, status, minHeat, when]);
   useEffect(() => {
     let active = true;
     const requests = requestVersion;
@@ -1132,10 +1136,10 @@ function DiscoverView({ hideScores, onOpen, onOpenCompetition, onOpenHunt, catal
     Promise.resolve().then(() => { if (active) load(); });
     return () => { active = false; requests.current++; };
   }, [load]);
-  const clearFilters = () => { setSportFilter("All"); setCompetition("All"); setSeason("All"); setStatus("All"); setMinHeat(null); };
-  const filters = { sport: sportFilter, status, minHeat, competition, season };
+  const clearFilters = () => { setSportFilter("All"); setCompetition("All"); setSeason("All"); setStatus("All"); setMinHeat(null); setWhen("All"); };
+  const filters = { sport: sportFilter, status, minHeat, competition, season, when };
   const activeFilterCount = filterCount(filters);
-  const applyFilters = f => { setSportFilter(f.sport); setStatus(f.status); setMinHeat(f.minHeat); setCompetition(f.competition); setSeason(f.season); };
+  const applyFilters = f => { setSportFilter(f.sport); setStatus(f.status); setMinHeat(f.minHeat); setCompetition(f.competition); setSeason(f.season); setWhen(f.when || "All"); };
   // Cekmecenin "Show N matches" sayisi: ayni uc, tek satir, gercek `total`.
   const countFor = useCallback(async draft => (await rankitApi.catalog({ ...toCatalogQuery(draft), limit: 1, offset: 0 })).total ?? 0, []);
   // Siralama katalog ucuna ait; her sayfa geldiginde ekrani yeniden dizme.
@@ -1164,7 +1168,7 @@ function DiscoverView({ hideScores, onOpen, onOpenCompetition, onOpenHunt, catal
       {loading && !pageCatalog.length && <Loading label="Loading matches"><div className={`ri-discover-grid${RANKIT_NEW_CARD ? " is-redesign" : ""}`}>
         {[0,1,2,3].map(i=><div key={i} className="ri-card-slot">{RANKIT_NEW_CARD ? <SkeletonCard compact crestSize={44} cut={14} scoreSize={30}/> : <MatchCardSkeleton/>}</div>)}
       </div></Loading>}
-      {!loading && !failed && !pageCatalog.length && <EmptyState title="No matches for these filters" body="Nothing in the catalogue matches this sport, status, competition and season together." action="Clear filters" onAction={clearFilters}/>}
+      {!loading && !failed && !pageCatalog.length && <EmptyState title="No matches for these filters" body="Nothing in the catalogue matches this sport, status, date, competition and season together." action="Clear filters" onAction={clearFilters}/>}
       <div className={`ri-discover-grid${RANKIT_NEW_CARD ? " is-redesign" : ""}`}>{smartCatalog.map(m => RANKIT_NEW_CARD
         // Ekran 2c, §2.5 preset: 155 genislik / crest 44 / skor 30, compact.
         ? <div key={m.id} className="ri-card-slot" role="button" tabIndex={0} onClick={e=>{if(!e.target.closest("button"))onOpen(m)}}

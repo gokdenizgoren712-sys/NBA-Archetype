@@ -466,7 +466,7 @@ test("11d: akış solda (following / mutuals), kayıt sağda; Watchlist kaybolma
 
 test("8a: süzgeç durumu adreste; varsayılanlar yazılmaz; ray Discover'da süzgeçlerin kendisi (§23.1)", () => {
   const f = discoverFilters(new URLSearchParams("sport=Football&status=live&heat=3&sort=soonest&comp=Premier%20League"));
-  assert.deepEqual(f, { sport: "Football", status: "live", competition: "Premier League", season: "All", minHeat: 3, sort: "soonest" });
+  assert.deepEqual(f, { sport: "Football", status: "live", competition: "Premier League", season: "All", minHeat: 3, when: "All", sort: "soonest" });
   assert.deepEqual(discoverParams({ ...f, sort: "hottest", minHeat: null }), { sport: "Football", status: "live", comp: "Premier League" });
   assert.equal(discoverFilters(new URLSearchParams("sort=bogus")).sort, "hottest");
   assert.equal(activeFilterCount(f), 4);

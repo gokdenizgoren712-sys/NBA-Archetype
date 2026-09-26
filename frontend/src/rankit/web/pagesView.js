@@ -3,6 +3,7 @@
 import { toMatchCardProps } from "../redesign/toMatchCardProps.js";
 import { fromApiMatch } from "../matchModel.js";
 import { RAMP } from "../redesign/heat.js";
+import { isDate } from "../redesign/discoverFilters.js";
 
 /* 7f kartı: rafın sahibinin kaydı kartı boyar (kişisel puan, Classic, skin).
    BAŞKASININ rafında, maçı sen puanlamadıysan onun puanı ve damgası bir
@@ -401,6 +402,7 @@ export function discoverFilters(params) {
     competition: get("comp") || "All",
     season: get("season") || "All",
     minHeat: Number.isFinite(heat) && heat > 0 ? Math.min(5, heat) : null,
+    when: isDate(get("when")) ? get("when") : "All",
     sort: DISCOVER_SORTS.some((s) => s.key === sort) ? sort : "hottest",
   };
 }
@@ -412,12 +414,13 @@ export function discoverParams(f) {
   if (f.competition && f.competition !== "All") out.comp = f.competition;
   if (f.season && f.season !== "All") out.season = f.season;
   if (f.minHeat) out.heat = String(f.minHeat);
+  if (f.when && f.when !== "All") out.when = f.when;
   if (f.sort && f.sort !== "hottest") out.sort = f.sort;
   return out;
 }
 
 export function activeFilterCount(f) {
-  return ["sport", "status", "competition", "season"].filter((k) => f[k] && f[k] !== "All").length + (f.minHeat ? 1 : 0);
+  return ["sport", "status", "competition", "season", "when"].filter((k) => f[k] && f[k] !== "All").length + (f.minHeat ? 1 : 0);
 }
 
 /* "Rated Good or better · 3.0+" — basamak adı tabanın yuvarlanmış hâli. */
@@ -503,7 +506,7 @@ export function discoverEmpty(f) {
   }
   if (activeFilterCount(f || {}) > 0) {
     return { title: "No matches match those filters.", note: "Nothing in the catalog fits every filter at once.",
-      action: { label: "Clear filters", patch: { sport: "All", status: "All", competition: "All", season: "All", minHeat: null } } };
+      action: { label: "Clear filters", patch: { sport: "All", status: "All", competition: "All", season: "All", minHeat: null, when: "All" } } };
   }
   return { title: "No matches yet.", note: "The catalog fills as fixtures are published.", action: null };
 }

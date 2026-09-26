@@ -1649,3 +1649,39 @@ Profil kimlik satırı `0 following · 1 followers` yazıyordu; `9a` sekmeleri d
   - Aşama 18 testinin iki beklentisi buna göre güncellendi. `rankit-site-links` testine "kabukta `/` bağlantısı tek" eklendi (5 test).
   - Tarayıcıda 1440 / 1000 / 390'da ray, ikon rayı ve menü sayfası düzgün; taşma 0, konsol hatası yok.
   - Frontend **249/249**, build geçti, ESLint 9 (değişmedi).
+
+#### Maç tarihleri: kartta gün, tarih süzgeci, geri sayım / 2026-09-26
+
+- **Sorun (sahip):** "Webde saat yazıyor ama tarih olmadığı için sanki bugün gibi gözüküyor."
+  - Aşama 4–15'in ortak kartı yalnız saati (`kickoff`) yazıyordu.
+  - Eski web duvar kartının tam tarihi 7f'ye geçişte düştü. Tahtalarda da kartta gün yok.
+  - Bugünkü push'la ilgisi yok.
+- **Kartta gün, saatin üstünde (web + telefon):**
+  - `formatWhen.js` → `kickoffDay()`: yerel takvim günü. `TODAY` / `TOMORROW` / `SUN 28 SEP`; başka yılsa yıl da.
+  - `toMatchCardProps` yalnız `upcoming` durumunda doldurur; ertelenen ve iptal kendi durumunu söyler.
+  - Geniş kartta 10px eyebrow saatin üstünde. Kompakt kartta "UPCOMING" satırının yerinde, yükseklik aynı.
+- **Tarih süzgeci:**
+  - Uç: `/catalog?when=today|tomorrow|weekend|next7|past7&tz_offset=` (`_when_window`, yerel takvim günü, kartla aynı gün).
+    - This weekend: bu haftanın Cumartesi + Pazar'ı; Pazar günü dünden başlar.
+    - Next 7 days: şimdiden 7. gün sonuna. Past 7 days: 7 gün önceki gece yarısından şimdiye.
+    - `facets=true` her pencereyi sayar, pencereler çakışabilir.
+  - Web rayında DATE grubu (sayılı, adreste `when`); telefonun 6c çekmecesinde DATE hapları.
+  - Aynı liste tek yerde (`redesign/discoverFilters.js` `DATES`). "Clear" ve boş durumun "Clear filters"ı tarihi de sıfırlar.
+- **Geri sayım:** `redesign/KickoffCountdown.jsx`
+  - "KICKS OFF IN 2 DAYS 5 HRS" / "5 HRS 12 MIN" / "12 MIN"; ifade 5a'dan. Dakika yukarı yuvarlanır, 30 sn'de bir yenilenir.
+  - Yerleri: telefon maç sayfası Match sekmesinin başı (yaklaşan maç), web Inspector 16c / lineup evresi.
+  - Başlama saati geçtiyse "Any moment now". Altın yok; 31'lik rakam ink.
+- **Tarayıcıda (kopya DB):**
+  - Web 1440: duvar kartlarında gün, DATE sayıları (Next 7 days 20, Past 7 days 53); Next 7 days seçilince 20 kart, adres `when=next7`.
+  - 800'de Inspector: "TUE 29 SEP / 19:00 / VS" + "KICKS OFF IN 3 DAYS 2 HRS".
+  - Telefon 390: çekmecede DATE, "Show 20 matches", kompakt kartta "TUE 29 SEP", maç sayfasında geri sayım; taşma 0.
+- **Bulunan veri sorunu (bu işin dışında, ayrı ele alınmalı):** canlıda 6 maç başlama saatinden aylar sonra hâlâ `upcoming`.
+  - UEFA eleme turları, 2025-07-24/31 ve 2026-07-23/30. Bazılarında yer tutucu takım adı ("Urartu FC/Neman Grodno").
+  - "Soonest" sırasında en başa geliyorlar. Kart artık tarihlerini gösterdiği için göze batıyorlar; süzgeç onları dışarıda bırakıyor.
+- **Test:**
+  - Yeni `frontend/tests/match-dates.test.mjs` (6).
+  - `tests/test_rankit_web.py`'ye pencere ve süzgeç testleri (2).
+  - İki eski beklenti `when` alanıyla güncellendi.
+  - **Mutasyon:** 6 kural → hepsi kırmızı, dosyalar bayt-aynı.
+- **Sonuç:** Frontend **255/255**, backend RankIt testleri **255** geçti, Vite build geçti, ESLint 9 (değişmedi).
+- Commit / push yapılmadı.

@@ -104,6 +104,36 @@ def test_catalog_sorts_hottest_soonest_and_most_reviewed(db):
     assert client().get("/api/rankit/catalog?sort=random").status_code == 422
 
 
+def test_when_window_uses_the_local_calendar_day():
+    # Carsamba 22:30 UTC = Istanbul'da (UTC+3) Persembe 01:30.
+    now = datetime(2026, 9, 23, 22, 30)
+    assert RK._when_window("today", 180, now) == ("2026-09-23T21:00:00Z", "2026-09-24T21:00:00Z")
+    assert RK._when_window("tomorrow", 180, now) == ("2026-09-24T21:00:00Z", "2026-09-25T21:00:00Z")
+    # Persembe'den bu hafta sonu: Cumartesi 00:00 -> Pazartesi 00:00 yerel.
+    assert RK._when_window("weekend", 180, now) == ("2026-09-25T21:00:00Z", "2026-09-27T21:00:00Z")
+    assert RK._when_window("next7", 180, now) == ("2026-09-23T22:30:00Z", "2026-09-30T21:00:00Z")
+    assert RK._when_window("past7", 180, now) == ("2026-09-16T21:00:00Z", "2026-09-23T22:30:00Z")
+    # UTC'de ayni an hala Carsamba.
+    assert RK._when_window("today", 0, now) == ("2026-09-23T00:00:00Z", "2026-09-24T00:00:00Z")
+    # Pazar gunu "This weekend" dunku Cumartesi'den baslar; New York (UTC-4).
+    sunday = datetime(2026, 9, 27, 15, 0)
+    assert RK._when_window("weekend", -240, sunday) == ("2026-09-26T04:00:00Z", "2026-09-28T04:00:00Z")
+
+
+def test_catalog_filters_and_counts_by_date(db):
+    body = client().get("/api/rankit/catalog?when=tomorrow&tz_offset=0&facets=true").json()
+    assert [m["id"] for m in body["matches"]] == [6] and body["total"] == 1
+    when = {f["value"]: f["count"] for f in body["facets"]["when"]}
+    assert list(when) == ["today", "tomorrow", "weekend", "next7", "past7"]
+    assert when["tomorrow"] == 1 and when["next7"] == 2 and when["past7"] == 4
+    # Tarih boyutu kendi suzgeciyle daralmaz; oteki boyutlar tarihe uyar.
+    assert {f["value"]: f["count"] for f in body["facets"]["sport"]} == {"Basketball": 1}
+    upcoming = client().get("/api/rankit/catalog?when=next7&sport=Football").json()
+    assert [m["id"] for m in upcoming["matches"]] == [4]
+    assert client().get("/api/rankit/catalog?when=yesterday").status_code == 422
+    assert client().get("/api/rankit/catalog?when=today&tz_offset=900").status_code == 422
+
+
 # ── 8c: AVG HEAT ─────────────────────────────────────────────────────────────
 
 def test_table_avg_heat_uses_only_matches_with_twenty_ratings(db):

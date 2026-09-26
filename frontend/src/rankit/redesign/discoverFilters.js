@@ -8,6 +8,18 @@
 export const SPORTS = ["Football", "Basketball"];
 export const STAGES = ["Live", "Upcoming", "Finished"];
 
+/* Tarih süzgeci (sahibin 2026-09-26 isteği) — telefon çekmecesi ve web rayı
+   aynı listeyi kullanır. Değerler uçla aynı (`/catalog?when=`); gün
+   kullanıcının yerel takvim günü, kartın TODAY / TOMORROW etiketiyle aynı. */
+export const DATES = [
+  ["today", "Today"],
+  ["tomorrow", "Tomorrow"],
+  ["weekend", "This weekend"],
+  ["next7", "Next 7 days"],
+  ["past7", "Past 7 days"],
+];
+export const isDate = (value) => DATES.some(([v]) => v === value);
+
 /* MINIMUM HEAT seçenekleri. Eşik, kartın ISI ADINI nasıl verdiğine göre:
    kart `NAMES[Math.round(heat) - 1]` kullanıyor, yani 2.5 "GOOD" yazıyor.
    "Good or better" filtresi 2.5'ten başlamazsa GOOD yazan bir kart filtreden
@@ -21,7 +33,7 @@ export const HEAT_LEVELS = [
 ];
 
 export const EMPTY_FILTERS = Object.freeze({
-  sport: "All", status: "All", minHeat: null, competition: "All", season: "All",
+  sport: "All", status: "All", minHeat: null, competition: "All", season: "All", when: "All",
 });
 
 /* Pill'ler "radyo + kapatılabilir": seçili olana yeniden dokunmak "All"a döner.
@@ -39,7 +51,7 @@ export function heatName(min) {
 }
 
 export function activeCount(f) {
-  return ["sport", "status", "competition", "season"].filter((k) => f[k] && f[k] !== "All").length
+  return ["sport", "status", "competition", "season", "when"].filter((k) => f[k] && f[k] !== "All").length
     + (Number.isFinite(f.minHeat) ? 1 : 0);
 }
 
@@ -51,6 +63,7 @@ export function toCatalogQuery(f) {
     season: f.season || "All",
     status: f.status && f.status !== "All" ? f.status.toLowerCase() : "All",
     minHeat: Number.isFinite(f.minHeat) ? f.minHeat : null,
+    when: isDate(f.when) ? f.when : "All",
   };
 }
 

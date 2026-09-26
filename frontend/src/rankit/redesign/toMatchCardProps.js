@@ -10,6 +10,7 @@ import { hidesScore } from "../rankitPrefs.js";
 import { communityHeat, communityRatingCount, expectedHeat, expectedInterestCount, hasCommunityVerdict, hasOwnRating } from "./heat.js";
 import { broadcastLabel } from "./broadcastLabel.js";
 import { liveFreshness } from "./liveFreshness.js";
+import { kickoffDay } from "../formatWhen.js";
 
 
 /* 3 harfli rozet. Kısa ad zaten kısaysa onu kullan, değilse sesli harfleri
@@ -100,6 +101,9 @@ export function toMatchCardProps(match, opts = {}) {
     awayShort: match.away?.short || match.away?.name || "",
     homeScore, awayScore,
     kickoff: match.time || "",
+    // Saatin üstündeki gün — yalnız yaklaşan maçta (ertelenen/iptal kendi
+    // durumunu söyler, biten ve canlıda saat yok).
+    kickoffDay: match.status === "upcoming" ? kickoffDay(match.starts_at || match.startsAt, nowMs) : "",
     homeColor: match.home?.color || "#3a3f47",
     awayColor: match.away?.color || "#2a2e34",
     homeCrestInk: crestInk(match.home?.color),

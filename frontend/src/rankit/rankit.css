@@ -951,3 +951,10 @@ button.ri-reviews-link{display:inline-flex;align-items:center;gap:4px;border:0;b
 .ri-players-foot{flex:none;display:flex;align-items:center;gap:13px;padding:16px 20px max(16px,env(safe-area-inset-bottom,0px));border-top:1px solid rgba(255,255,255,.09)}.ri-players-foot span{flex:1;min-width:0;color:#7f868b;font-size:11.5px;line-height:1.45}.ri-players-foot button{height:44px;padding:0 20px;border:0;border-radius:10px;background:#ffb11b;color:#17120a;font:700 12.5px/1 var(--font-logo);letter-spacing:.06em;cursor:pointer}
 .ri-players-overlay.is-web{align-items:center}.ri-players-overlay.is-web .ri-players-picker{width:min(560px,calc(100vw - 32px));max-height:min(760px,calc(100dvh - 32px));border:1px solid rgba(255,255,255,.12);border-radius:18px;box-shadow:0 26px 70px rgba(0,0,0,.6)}.ri-players-overlay.is-web .ri-players-head{min-height:56px;border-bottom:1px solid rgba(255,255,255,.09)}.ri-players-overlay.is-web .ri-players-budget{padding:16px 20px 0}.ri-players-overlay.is-web .ri-players-teams{margin-top:16px}
 @media(max-width:360px){.ri-players-budget{gap:11px}.ri-players-columns,.ri-players-row{padding:0 12px}}
+/* Maç sayfasının geri sayımı (telefon 2f + web 16c): 21'lik başlık rakamı, ink; altın yok. */
+.ri-countdown{display:flex;flex-direction:column;align-items:center;gap:9px;padding:16px;border-radius:14px;background:#121315;border:1px solid rgba(255,255,255,.09);text-align:center}
+.ri-countdown>small{font:700 9px/1 var(--font-logo);letter-spacing:.14em;color:#7f868b}
+.ri-countdown>div{display:flex;align-items:baseline;justify-content:center;gap:16px}
+.ri-countdown b{font:700 31px/1 var(--font-logo);color:#eceded;font-variant-numeric:tabular-nums}
+.ri-countdown i{margin-left:7px;font:700 11px/1 var(--font-logo);font-style:normal;letter-spacing:.14em;color:#9aa0a6}
+.ri-countdown.is-due>strong{font:700 21px/1 var(--font-logo);color:#eceded}

@@ -34,6 +34,7 @@ import { fromApiMatch } from "../matchModel";
 import SharedMatchCard, { Shield } from "../redesign/MatchCard";
 import { toMatchCardProps } from "../redesign/toMatchCardProps";
 import ExpectedHeat from "../redesign/ExpectedHeat";
+import KickoffCountdown from "../redesign/KickoffCountdown";
 import CommunityVerdictGate from "../redesign/CommunityVerdictGate";
 import CompanionPanel from "../redesign/CompanionPanel";
 import PlayersPicker from "../redesign/PlayersPicker";
@@ -227,6 +228,7 @@ function MatchTab({ detail, phase, scoreHidden, country, broadcast, isLoggedIn, 
     (detail.players || []).filter((p) => p.team === teamName(team)).length));
   return (
     <div className="riw-insp-stack">
+      {(phase === "scheduled" || phase === "lineup") && <KickoffCountdown startsAt={detail.starts_at} />}
       {phase === "live" && (lineups.length
         ? <LivePitch lineups={lineups} />
         : <Note>The lineup has not reached us yet. It appears here the moment the provider confirms it.</Note>)}
