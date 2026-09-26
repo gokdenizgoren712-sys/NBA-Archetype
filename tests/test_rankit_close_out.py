@@ -134,7 +134,12 @@ def test_twenty_rating_threshold_holds_on_every_heat_surface(db):
     # TASIMAZ (§15) ama esigi asmadan hic dogmaz.
     with DB.get_conn() as c:
         c.execute("INSERT INTO rankit_watchlist(user_id,match_id) VALUES(?,?)", (ME, PLAYED))
+        # Maç bu RankIt gününde (11:00 -> 11:00) oynanmış olmalı. "Şimdiden 1 saat
+        # önce" 11:00-12:00 UTC arasında bir önceki güne düşüyor, test günün o
+        # saatinde kırılıyordu; günün açılışından 1 dakika sonrası hep içeride.
+        day_open = (datetime.fromisoformat(rankit_rank.rankit_day(utcnow(), 0))
+                    + timedelta(hours=rankit_rank.RANKIT_DAY_START_HOUR))
         c.execute("UPDATE rankit_matches SET starts_at=? WHERE id=?",
-                  (iso(utcnow() - timedelta(hours=1)), PLAYED))
+                  (iso(day_open + timedelta(minutes=1)), PLAYED))
         alerts = [i for i in rankit_notify.feed(c, ME)["items"] if i["kind"] == "hot_match"]
     assert len(alerts) == 1 and "rating" not in alerts[0]
