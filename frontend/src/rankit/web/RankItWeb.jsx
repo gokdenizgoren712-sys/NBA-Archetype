@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
-  Compass, X, ChevronLeft, ChevronRight, Search,
-  MessageSquare, Heart,
+  Compass, X, ChevronLeft, ChevronRight, MessageSquare, Heart, SlidersHorizontal,
 } from "lucide-react";
 import { SEO } from "../../hooks/useSEO";
 import { useAuth } from "../../contexts/AuthContext";
@@ -33,6 +32,8 @@ import WelcomePage from "./WelcomePage";
 import SkinPage from "./SkinPage";
 import { WallSkeleton } from "./Skeletons";
 import { useNetwork } from "./useNetwork";
+import Sheet from "./Sheet";
+import RankSheet from "./RankSheet";
 import { PageHead, SortBar } from "./PageParts";
 import { DISCOVER_SORTS, activeFilterCount, discoverEmpty, discoverEyebrow, discoverFilters, discoverParams } from "./pagesView";
 import { rankitDayContext, tonightLabel, tonightRows } from "../redesign/homeTonight";
@@ -42,6 +43,7 @@ import "../rankit.css";
 import "./rankit-web.css";
 import "./rankit-inspector.css";
 import "./rankit-pages.css";
+import "./rankit-responsive.css";
 
 // ── RankIt web yüzeyi ────────────────────────────────────────────────────────
 // Görsel dünya telefondan devralınıyor; masaüstünün getirdiği tek şey aynı anda
@@ -464,76 +466,6 @@ function EntityDrawer({ kind, id, onClose, onOpenMatch, onOpenEntity, hideScores
    Üçü de telefonda vardı, webde yoktu (likeReview / comments / addComment).
    Yorumlar TEMBEL yükleniyor: bir maçta sekiz inceleme var ve hiçbirine
    bakılmadan sekiz istek atmanın anlamı yok. */
-/* ── Rank: puanlanacak maçı bul ───────────────────────────────────────────────
-   Telefondaki orta düğmenin karşılığı. Duvarda maçı aramak "önce filtrele,
-   sonra bul" demek; buradaki iş tek bir maçı hatırlayıp puanlamak, o yüzden
-   ayrı bir yüzey ve doğrudan arama. Yalnızca BİTMİŞ maçlar: oynanmamış bir
-   maçı puanlatmak anlamsız. */
-function RankSheet({ onClose, onPick, hideScores }) {
-  const [q, setQ] = useState("");
-  const [rows, setRows] = useState(null);
-  const [err, setErr] = useState("");
-
-  useEffect(() => {
-    let alive = true;
-    const t = setTimeout(() => {
-      setRows(null); setErr("");
-      const p = q.trim().length >= 2
-        ? rankitApi.search(q.trim(), "Matches", "finished")
-        : rankitApi.catalog({ status: "finished", limit: 40 });
-      p.then((d) => alive && setRows((d.matches || []).map(toCard)))
-       .catch((e) => alive && setErr(String(e.message || e)));
-    }, 200);
-    return () => { alive = false; clearTimeout(t); };
-  }, [q]);
-
-  useEffect(() => {
-    const onKey = (e) => e.key === "Escape" && onClose();
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
-  return (
-    <div className="riw-inspect-wrap" onClick={onClose}>
-      <section className="riw-inspect riw-rank-sheet" onClick={(e) => e.stopPropagation()}
-        role="dialog" aria-modal="true" aria-label="Rank a match">
-        <div className="ri-sheet-grab" aria-hidden="true" />
-        <button onClick={onClose} className="ri-sheet-close" aria-label="Close"><X size={16} /></button>
-
-        <h2 className="riw-rank-title">Rank a match</h2>
-        <label className="riw-rank-search">
-          <Search size={16} />
-          <input autoFocus value={q} onChange={(e) => setQ(e.target.value)}
-            placeholder="Search finished matches — team, competition…" />
-        </label>
-
-        {err && <div className="riw-note">{err}</div>}
-
-        <div className="riw-rank-results">
-          {rows === null && !err && (
-            <p className="ri-entity-loading">Looking…</p>
-          )}
-          {rows?.map((m) => (
-            <button key={m.id} type="button" onClick={() => onPick(m.id)}>
-              <span className="riw-rank-comp">{m.competition}</span>
-              <span className="riw-rank-teams">
-                {m.home.short || m.home.name} <b>{hidesScore(hideScores, m) ? "—" : m.score || "—"}</b> {m.away.short || m.away.name}
-              </span>
-              <span className="riw-rank-date">{m.date}</span>
-            </button>
-          ))}
-          {rows && !rows.length && (
-            <Empty icon={Search} title="No finished match matches that"
-              note="Try a club's short name, or clear the search to see the most recent." />
-          )}
-        </div>
-      </section>
-    </div>
-  );
-}
-
-/* ── Bölümler ─────────────────────────────────────────────────────────────── */
-
 /* 8a — Discover duvarı. Süzgeçler rayda (DiscoverFilters, §23.1 — çekmece
    yok); durum adreste, ray ile duvar aynı kaynağı okur. Sıralar görünür
    (Hottest / Soonest / Most reviewed). Ray ≤1080'de çekildiği için (Aşama
@@ -573,7 +505,7 @@ function DiscoverView({ filters, onChange, onFacets, tabs, onOpenMatch, hideScor
         <SortBar label="Sort the wall" value={filters.sort} onChange={(sort) => onChange({ sort })} options={DISCOVER_SORTS} />
       </PageHead>
       <div className="riw-discover-tabs">{tabs}</div>
-      <details className="riw-discover-inline">
+      <details className="riw-discover-inline" id="riw-discover-inline">
         <summary>Filters{active ? ` · ${active}` : ""}</summary>
         <DiscoverFilters filters={filters} onChange={onChange} facets={null} idPrefix="inline" />
       </details>
@@ -615,6 +547,11 @@ export default function RankItWeb({ section = "home" }) {
   const { user, isLoggedIn } = useAuth();
   const params = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  // §25 ≤820: ray bir menünün arkasında (Discover'da süzgeçler). Açıldığı
+  // adrese bağlı: başka sayfaya geçince kendiliğinden kapanır (efekt yok).
+  const [menuAt, setMenuAt] = useState(null);
+  const menuOpen = menuAt === location.pathname;
   const [hideScores, setHideScores] = useState(() => readPrefs().hideScores);
   const [ratedMatchIds, setRatedMatchIds] = useState(new Set());
   const visibleRatedMatchIds = isLoggedIn ? ratedMatchIds : new Set();
@@ -809,10 +746,17 @@ export default function RankItWeb({ section = "home" }) {
         path="/rankit" />
       <WebHeader user={user} isLoggedIn={isLoggedIn} hideScores={hideScores} onToggleScores={toggleScores}
         nights={rank?.streak?.current || 0} query={query} onQuery={onQuery} onSearch={onSearch}
-        bell={isLoggedIn ? <NotificationsMenu key={accountId} hideScores={hideScores} onOpenMatch={openMatch} /> : null} />
+        bell={isLoggedIn ? <NotificationsMenu key={accountId} hideScores={hideScores} onOpenMatch={openMatch} /> : null}
+        searching={section === "search"} menuKind={section === "discover" ? "filters" : "rail"}
+        onMenu={() => setMenuAt(location.pathname)} />
       {withRail && (section === "discover"
         ? <aside className="riw-rail riw-filter-rail" aria-label="Filters">
             <DiscoverFilters filters={discoverState} facets={discoverFacets} onChange={setDiscover} />
+            {/* ≤1080 ikon sütununda süzgeçler sığmaz: tek düğme, başlıktaki kutuyu açar. */}
+            <button type="button" className="riw-filter-rail-toggle" aria-label="Filters" title="Filters" onClick={() => {
+              const box = document.getElementById("riw-discover-inline");
+              if (box) { box.open = true; box.querySelector("summary")?.focus(); }
+            }}><SlidersHorizontal size={18} aria-hidden="true" />{activeFilterCount(discoverState) > 0 && <b>{activeFilterCount(discoverState)}</b>}</button>
           </aside>
         : <WebRail isLoggedIn={isLoggedIn} rank={rank} hunt={hunt} clubs={clubs} onOpenEntity={openEntity} />)}
       <main className="riw-body">{body}</main>
@@ -831,9 +775,23 @@ export default function RankItWeb({ section = "home" }) {
       )}
 
       {rankOpen && (
-        <RankSheet hideScores={hideScores} onClose={() => setRankOpen(false)}
-          onPick={(id) => { setRankOpen(false); openMatch(id); }} />
+        <RankSheet hideScores={hideScores} onClose={() => setRankOpen(false)} onPick={openMatch} />
       )}
+      {menuOpen && (
+        section === "discover" ? (
+          <Sheet label="Filters" onClose={() => setMenuAt(null)} className="riw-menu-sheet">
+            <DiscoverFilters filters={discoverState} facets={discoverFacets} onChange={setDiscover} idPrefix="sheet" />
+          </Sheet>
+        ) : (
+          <Sheet label="Your RankIt" onClose={() => setMenuAt(null)} className="riw-menu-sheet">
+            <WebRail sheet isLoggedIn={isLoggedIn} rank={rank} hunt={hunt} clubs={clubs}
+              onOpenEntity={(kind, id) => { setMenuAt(null); openEntity(kind, id); }} />
+          </Sheet>
+        )
+      )}
+      {/* §25 ≤820: Inspector alttan tam genişlik sayfa; perdeye dokunmak maçı
+          KÜÇÜLTÜR (taslak köşede bekler), kulübü kapatır. Genişte görünmez. */}
+      {docked && <div className="riw-sheet-scrim" aria-hidden="true" onClick={clubId ? closeClub : minimizeMatch} />}
       {/* Küçültülmüşken panel DOM'da kalır (taslak yaşasın), yalnız gizli. */}
       {inspectId && (
         <div className="riw-insp-dock" hidden={inspectMinimized}>

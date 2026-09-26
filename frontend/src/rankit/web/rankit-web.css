@@ -557,7 +557,7 @@
    Etiket satırı (9px .14em) + sağda 30px iki ok; altında yan yana üç kart,
    kaydırma-yakalama. Noktalar yok (tahtada yok). Kart sütunu hiçbir zaman
    320'nin altına inmez (§18). */
-.riw-home { display: grid; gap: 26px; min-width: 0; padding: 22px 26px 40px; }
+.riw-home { display: grid; grid-template-columns: minmax(0, 1fr); gap: 26px; min-width: 0; padding: 22px 26px 40px; }
 .riw-label-row { display: flex; align-items: center; justify-content: space-between; min-height: 30px; margin-bottom: 13px; }
 .riw-label-row h2 { margin: 0; font: 700 9px/1 var(--font-logo); letter-spacing: .14em; color: #7f868b; }
 .riw-label-link {
@@ -708,11 +708,7 @@
   .riw-main { grid-template-columns: minmax(0, 1fr); }
   .riw-filters { position: static; }
   .riw-fgroup > div { overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; }
-  /* Aşama 18'e kadar ara hâl: §25'in 64px ikon sütunu orada. Şimdilik ray
-     1080'in altında çekiliyor; başlık gezinmeyi ve aramayı taşımaya devam
-     ediyor, kademe ve Hunt Profile'da. */
-  .riw { grid-template-columns: minmax(0, 1fr); }
-  .riw-rail { display: none; }
+  /* Ray ve ızgara sütunları: Aşama 18, rankit-responsive.css (§25). */
   .riw-top { gap: 18px; }
 }
 

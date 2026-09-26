@@ -1521,3 +1521,50 @@ Profil kimlik satırı `0 following · 1 followers` yazıyordu; `9a` sekmeleri d
   - Kopya DB, token ve tahta klasörü silindi.
   - `launch.json` bayt-aynı (sha `5d564097…`).
   - Gerçek DB'de QA verisi yok (14 günlük satırı, 0 QA kullanıcısı).
+
+#### Aşama 18 — responsive / 2026-09-26
+
+- **Kaynak:** BUILD §25 + Phase 17. Web tahtasındaki not: "1080 drops the rail to icons, 820 drops the inspector to a full-width sheet — the phone's own pattern, reached by narrowing". Dar genişlikler için ayrı tahta yok. Yeni kurallar tek dosyada, kabukta en son yükleniyor: `web/rankit-responsive.css`. Aşama 15–16'nın ara hâlleri kaldırıldı: ≤1080'de ray gizleniyordu, panel duvarın üstüne biniyordu.
+- **> 1080:** değişmedi (ray 232, duvar 320, Inspector 468 yerleşik).
+- **1080 — ray 64px ikon sütunu:**
+  - Zaten simge olan şeyler kalır: kademe elması, av halkaları, takip edilen kulüp elmasları, Primary Arch (ev simgesi).
+  - Her biri 44 hedef ve `title` ipucu taşır.
+  - Adlar `display:none` değil kırpılmış; ekran okuyucu okur.
+  - Av satırları artık `/rankit/hunt/:id` bağlantısı (12c var).
+  - Discover'ın süzgeç rayı sütuna sığmaz: tek süzgeç düğmesi (etkin süzgeç sayısıyla) başlıktaki açılır kutuyu açıp odaklar.
+  - Inspector 820'ye kadar ızgarada yerleşik; 1000'de duvar tek sütun, panel 468.
+- **820 — uygulamanın kendisi ("indistinguishable in behaviour from the app"):**
+  - Ray bir menünün arkasında: başlıkta menü düğmesi, telefonun alt sayfası. Discover'da menü süzgeçlerin kendisi (telefonun 6c'si); sayfa içi kutu yok.
+  - Menü açıldığı adrese bağlı: sayfa değişince kendiliğinden kapanır, efekt yok. İçinden bir kulüp açılınca menü kapanır, kulüp alt sayfada gelir.
+  - **Inspector (maç ya da kulüp) alttan tam genişlik sayfa:**
+    - tepede 56 boşluk, 20 yarıçap, tutamaç, perde;
+    - perdeye dokunmak maçı KÜÇÜLTÜR (taslak alt barın üstündeki çipte bekler), kulübü kapatır.
+  - **Başlık telefonun 2a'sı gibi:**
+    - marka · arama simgesi · menü · kalkan · zil · seri; hesap alttaki Profile sekmesinde.
+    - Arama kendi ekranı; arama sayfasında alan başlığın tamamını alır.
+    - Aşama 17'nin zili 390'da arama alanını 41px'e sıkıştırmıştı — düzeldi.
+  - **Rank = telefonun 3j'si:** `web/RankSheet.jsx`, `GET /quick-rate`.
+    - Önce "FROM TONIGHT · NOT YET LOGGED", seri notuyla (`nightStatus`, telefonla ortak).
+    - Sonra "OR CATCH UP · Last 7 days · N unrated"; üstte arama.
+    - Eski web sayfası yalnız "bitmiş maç ara" listesiydi.
+  - Ortak kap `web/Sheet.jsx`: `useDialog` ile odak tuzağı ve Escape; genişte ortada diyalog.
+- **Bulunan ve düzeltilen eski kusur:**
+  - 390'da ana sayfa yana kayıyordu (gövde 426 / 390): `.riw-home` ızgarasının sütun şablonu yoktu, sütun atlıkarınca içeriğine göre büyüyordu → `minmax(0, 1fr)`.
+  - Aşama 15–17 ölçümleri yalnız belgenin genişliğine bakıyordu; kayan gövde (`.riw-body`) orada görünmüyordu. Bu aşamada ikisi birden ölçüldü.
+- **Animasyon:** alt sayfa kayışı `fill-mode: both` taşımıyor. Önizleme bölmesi animasyonu ilerletmediğinde sayfa 28px aşağıda kalıyordu; oynamasa da yerinde dursun. Hareket azaltılınca animasyon yok.
+- **Tarayıcıda (gerçek DB'nin kopyası; 1081 / 1080 / 1000 / 821 / 820 / 390):**
+  - Sınırlar tam: 1081'de ray 232, 1080 ve 821'de 64, 820'de ray yok + alt bar + menü.
+  - 13 sayfada gövde ve belge yatay taşması 0 (390 ve 1000).
+  - İkon sütununda her öğe 44.
+  - Alt sayfalar son konumda: Inspector y=56–844, Rank sayfası görünür alanda.
+  - Menü açılışta odaklı, Escape kapatır; perde küçültür, çip alt barın üstünde.
+- **Test:** yeni `frontend/tests/stage18-responsive.test.mjs` (7 test). **Mutasyon:** 13 kural tek tek kırıldı → yeşil kontrole karşı hepsi **kırmızı**, dosyalar bayt-aynı (sha).
+- **Sonuç:** Frontend **227/227**, Vite build geçti; ESLint değişmedi (9, hepsi dokunulmamış dosyalarda).
+- **Ertelenen:**
+  - ≤820'de Inspector alt sayfası görsel olarak modal ama `aria-modal="false"`: odak tuzağı yok, Tab arkaya kaçabilir. Inspector'ın kendi Escape ve klavye mantığı `aria-modal` varlığına bakıyor; ayrı ele alınmalı.
+  - Oyuncu ve üye çekmecesi (eski `riw-inspect`) her genişlikte zaten alt sayfa, dokunulmadı.
+  - Commit / push yapılmadı.
+- **Ortam:**
+  - Kopya DB, token silindi.
+  - `launch.json` bayt-aynı (sha `5d564097…`).
+  - Gerçek DB'de QA verisi yok (14 günlük satırı, 0 QA kullanıcısı).
