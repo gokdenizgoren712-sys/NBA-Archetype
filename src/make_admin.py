@@ -1,12 +1,16 @@
 # -*- coding: utf-8 -*-
-"""Yerel geliştirme veritabanında bir kullanıcıyı admin yapar.
+"""Bir kullanıcıyı admin yapar (ya da --demote ile geri alır).
 
 NEDEN GEREKLİ
 ─────────────
-Admin sayfaları (`/admin/*`) `require_admin`'e bağlı ve o da JWT'deki
-`role == "admin"` kontrolüne bakıyor. Yerel veritabanı production'ın kopyası
-değil — içinde yalnızca test kullanıcıları var, hiçbiri admin değil. Dolayısıyla
-lokalde `/admin/photo-layout` gibi sayfalar açılmıyor.
+Admin atamanın TEK yolu bu betik: sitedeki "admin invite code" ucu
+(/api/auth/promote) 2026-09 güvenlik çalışmasında kaldırıldı — kod internetten
+sınırsız denenebiliyordu. `require_admin` rolü her istekte veritabanından okur.
+
+- Yerelde: yerel DB'de test kullanıcıları var, hiçbiri admin değil; lokalde
+  `/admin/photo-layout` gibi sayfalar bunun için açılmıyor.
+- Canlıda: betiği SUNUCUNUN İÇİNDE çalıştır (Railway: `railway ssh`, sonra
+  aşağıdaki komut). DB_PATH orada zaten canlı veritabanını gösterir.
 
 KULLANIM
 ────────
@@ -19,13 +23,12 @@ KULLANIM
 
        python src/make_admin.py --username gokdeniz
 
-3) Siteden ÇIKIP TEKRAR GİRİŞ YAP — rol JWT'nin içinde taşınıyor, eski
-   oturumdaki token hâlâ "user" diyor.
+3) Yeniden giriş gerekmez: rol her istekte veritabanından okunuyor.
 
 Listelemek için argümansız çalıştır.
 
-DİKKAT: bu yalnızca yerel geliştirme içindir. Production veritabanına
-DB_PATH ile işaret etmeyin.
+DİKKAT: kendi makinenden canlı veritabanına DB_PATH ile işaret etme —
+canlıda betiği sunucunun kendi kabuğunda çalıştır.
 """
 
 from __future__ import annotations
@@ -80,8 +83,7 @@ def main():
         sys.exit(1)
 
     print(f"[OK] {value} -> role={role}")
-    print("\nSIRADAKI ADIM: siteden CIKIP TEKRAR GIRIS YAPIN.")
-    print("Rol JWT'nin icinde tasiniyor; acik oturumdaki token hala eski rolu soyluyor.")
+    print("Rol her istekte veritabanindan okunuyor; yeniden giris gerekmez.")
 
 
 if __name__ == "__main__":

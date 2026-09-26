@@ -14,7 +14,7 @@ from typing import Literal, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, Field
 
-from .auth import get_optional_user, require_admin, _decode, _is_banned
+from .auth import get_optional_user, require_admin, verify_token
 from .db import get_conn
 from . import rankit_rank
 from . import rankit_notify
@@ -3327,10 +3327,8 @@ async def rankit_watchalong_socket(ws: WebSocket, match_id: int, room: str = "co
     uid = None
     if token:
         try:
-            payload = _decode(token)
-            candidate = int(payload["sub"])
-            if not _is_banned(candidate):
-                uid = candidate
+            # imza + ban + token sürümü; geçmezse misafir değil, kapı kapalı
+            uid = int(verify_token(token)["sub"])
         except Exception:
             uid = None
     with get_conn() as conn:

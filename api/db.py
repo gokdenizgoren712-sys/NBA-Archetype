@@ -883,11 +883,21 @@ def init_db():
             ("is_banned",     "INTEGER NOT NULL DEFAULT 0"),
             ("reset_token",   "TEXT"),
             ("reset_expires", "TEXT"),
+            # 2026-09 güvenlik: şifre değişince artar, eski JWT'ler düşer
+            ("token_version", "INTEGER NOT NULL DEFAULT 0"),
+            # E-postanın sahibi kanıtlandı mı (Google ya da sıfırlama bağlantısı)
+            ("email_verified", "INTEGER NOT NULL DEFAULT 0"),
         ]:
             try:
                 conn.execute(f"ALTER TABLE users ADD COLUMN {col} {dfn}")
             except Exception:
                 pass
+        # Google'la açılan hesapların şifresi yok; e-postaları Google'ca doğrulanmış.
+        conn.execute("UPDATE users SET email_verified=1 WHERE hashed_password='' AND email_verified=0")
+        # Sıfırlama token'ı artık yalnız SHA-256 özetiyle (64 hex) saklanıyor;
+        # eskiden düz metin yazılmış olanlar geçersiz — temizle.
+        conn.execute("""UPDATE users SET reset_token=NULL, reset_expires=NULL
+                        WHERE reset_token IS NOT NULL AND length(reset_token) != 64""")
         # v3.5: sezon simülasyonu sonuçları + oyun modu
         for col, dfn in [
             ("wins",          "INTEGER"),
