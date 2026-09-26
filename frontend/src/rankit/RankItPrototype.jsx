@@ -1041,7 +1041,7 @@ function HomeView({ sport, setSport, hideScores, setHideScores, onOpen, onOpenCo
           </div>
         : <MatchCard key={m.id} match={m} hideScores={hideScores} onOpen={onOpen} onOpenCompetition={onOpenCompetition} featured />) : <div className="ri-day-empty-slot"><EmptyState title={`No ${sport === "All" ? "matches" : sport.toLowerCase()} in this RankIt day`}
           body="A RankIt day runs 11:00 to 11:00. Nothing is scheduled in this one yet."
-          action="Find a match" onAction={() => onNavigate("Discover")}/></div>}</div>
+          action="Find a match" onAction={() => onNavigate("Discover")} quiet/></div>}</div>
       {heroes.length > 1 && <div className="ri-carousel-dots" role="tablist" aria-label="Tonight's matches">
         {heroes.map((match, index) => <button key={match.id} type="button" role="tab"
           aria-selected={carousel.index === index}
@@ -1374,6 +1374,17 @@ export default function RankItPrototype({ nativeBack = false, accountAction, acc
   const [searchExpanded, setSearchExpanded] = useState(false);
   const [listCreatorOpen, setListCreatorOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
+  /* Zil noktası yalnız okunmamış varken (web zili gibi); sayfa kapanınca
+     yeniden sorulur — okunanlar orada işaretlenir. */
+  const [unreadAlerts, setUnreadAlerts] = useState(0);
+  useEffect(() => {
+    if (notificationOpen) return undefined;
+    let live = true;
+    rankitApi.notifications(-new Date().getTimezoneOffset())
+      .then(data => { if (live) setUnreadAlerts(Number(data?.unread) || 0); })
+      .catch(() => { if (live) setUnreadAlerts(0); });
+    return () => { live = false; };
+  }, [notificationOpen]);
   const [quickSearch, setQuickSearch] = useState("");
   // Ornek veri YOK (§5: "no sample fixtures"). Kabuk eskiden mockData'daki
   // uydurma maclarla ve uydurma arkadas etkinligiyle aciliyordu; API
@@ -1617,7 +1628,8 @@ export default function RankItPrototype({ nativeBack = false, accountAction, acc
         {RANKIT_NEW_CARD && <button className={`ri-shield${hideScores?" on":""}`} aria-pressed={hideScores}
           aria-label={hideScores?"Show scores":"Hide scores"} onClick={()=>setHideScores(v=>!v)}>
           <Shield size={19} strokeWidth={1.8}/></button>}
-        <button aria-label="Open notifications" onClick={()=>setNotificationOpen(true)}><Bell size={19}/><i/></button>
+        <button aria-label={unreadAlerts ? `Open notifications, ${unreadAlerts} unread` : "Open notifications"}
+          onClick={()=>setNotificationOpen(true)}><Bell size={19}/>{unreadAlerts > 0 && <i aria-hidden="true"/>}</button>
       </div></header>
     <main className="ri-main" onScroll={handleMainScroll}>
       {/* 3l — ag gidince: kirmizi cizgili serit, kartlar %62 (bkz. .is-offline),

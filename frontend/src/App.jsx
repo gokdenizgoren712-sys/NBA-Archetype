@@ -3,6 +3,7 @@ import { useState, useEffect, lazy, Suspense } from "react";
 import { Logo, GameIcon, NBAIcon, GLeagueIcon, NCAAIcon, EuroLeagueIcon,
          LineupsIcon, ExploreIcon, BlogIcon, FootballIcon,
          GlossaryIcon, AdminIcon, RefreshIcon } from "./components/BrandIcons";
+import { RankItMark } from "./rankit/redesign/BrandMark";
 import Footer from "./components/Footer";
 import TermsBanner from "./components/TermsBanner";
 
@@ -101,6 +102,16 @@ const SHARED_NAV = [
   { to: "/football",   Icon: FootballIcon, label: "Football", color: "#3FB08C" },
   { to: "/blog",       Icon: BlogIcon,     label: "Blog"     },
 ];
+
+/* RankIt kardeş ürün, bir sporun bölümü değil: masaüstü rayının DİBİNE
+   sabitlenir (pin), çekmecede listenin sonunda. Sitenin ikonları kendi marka
+   renklerinde (G-League kırmızı, NCAA mavi…); RankIt de birincil biçiminde,
+   altın (4i "PRIMARY GOLD ON DARK"). Önceden RankIt'e tek giriş kök
+   spor-seçim ekranıydı. */
+const RankItNavIcon = ({ size = 22, className = "" }) => (
+  <span className={`inline-flex ${className}`}><RankItMark size={size} /></span>
+);
+const RANKIT_NAV = { to: "/rankit", Icon: RankItNavIcon, label: "RankIt", pin: true };
 
 function sportOf(pathname) {
   if (pathname === "/basketball" || pathname.startsWith("/basketball/")) return "basketball";
@@ -243,6 +254,7 @@ function SideNav() {
   const items = [
     ...base,
     ...(isAdmin ? [{ to: "/admin/articles", Icon: AdminIcon, label: "Admin" }] : []),
+    RANKIT_NAV,
   ];
 
   return (
@@ -253,7 +265,7 @@ function SideNav() {
         const color = n.color || "#FFB11B";
         return (
           <NavLink key={n.to} to={n.to} title={n.label}
-            className={`group relative flex flex-col items-center justify-center h-14 gap-1 transition-colors
+            className={`group relative flex flex-col items-center justify-center h-14 gap-1 transition-colors${n.pin ? " mt-auto" : ""}
               ${active ? "text-white" : "text-[var(--text-muted)] hover:text-white"}`}
           >
             {active && (
@@ -300,6 +312,7 @@ function MobileDrawer({ open, onClose }) {
   const items = [
     ...(navFor(location.pathname).length ? navFor(location.pathname) : SHARED_NAV),
     ...(isAdmin ? [{ to: "/admin/articles", Icon: AdminIcon, label: "Admin" }] : []),
+    RANKIT_NAV,
   ];
 
   return (

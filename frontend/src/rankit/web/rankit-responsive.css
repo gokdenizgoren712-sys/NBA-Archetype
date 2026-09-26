@@ -13,7 +13,7 @@
 
 /* Geniş ekranda gizli, dar ekranda görünen düğmeler. */
 .riw-search-btn, .riw-menu-btn, .riw-filter-rail-toggle { display: none; }
-.riw-home-link svg, .riw-rail-cta svg { display: none; }
+.riw-rail-cta svg { display: none; }
 .riw-sheet-scrim { display: none; }
 
 .riw-top-icon {
@@ -26,10 +26,10 @@
 
 /* ── Ortak alt sayfa kabı (web/Sheet.jsx) — genişte ortada diyalog ───────── */
 
-.riw-sheet-wrap { position: fixed; inset: 0; z-index: 70; display: grid; place-items: center; padding: 26px; background: rgba(5, 6, 7, .62); }
+.riw-sheet-wrap { position: fixed; inset: 0; z-index: 70; display: grid; place-items: center; padding: 26px; background: rgba(9, 10, 11, .62); }
 .riw-sheet {
   width: min(460px, 100%); max-height: min(720px, calc(100vh - 52px)); display: flex; flex-direction: column; overflow: hidden;
-  border-radius: 18px; background: #1a1b1e; border: 1px solid rgba(255, 255, 255, .12); box-shadow: 0 26px 70px rgba(0, 0, 0, .62); color: #eceded;
+  border-radius: 18px; background: #1a1b1e; border: 1px solid rgba(255, 255, 255, .12); box-shadow: 0 26px 70px rgba(0, 0, 0, .6); color: #eceded;
 }
 .riw-sheet:focus { outline: none; }
 .riw-sheet-grab { display: none; }
@@ -43,14 +43,13 @@
 .riw-sheet-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0 20px 22px; }
 .riw-sheet :is(button, a, input, summary):focus-visible { outline: 2px solid var(--ri-focus, #eceded); outline-offset: 2px; }
 .riw-sheet .riw-rail.is-sheet { display: flex; min-height: 0; overflow: visible; padding: 0; border: 0; }
-.riw-sheet .riw-rail.is-sheet .riw-rail-foot { margin-top: 8px; }
 
 /* 3j (web/RankSheet.jsx) */
 .riw-rank-eyebrow { margin: 0 0 12px; }
-.riw-quick-group { display: flex; flex-direction: column; gap: 8px; margin-top: 18px; }
+.riw-quick-group { display: flex; flex-direction: column; gap: 9px; margin-top: 18px; }
 .riw-quick-group > h3 { margin: 0 0 4px; }
 .riw-quick-row {
-  width: 100%; min-height: 56px; display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 12px;
+  width: 100%; min-height: 56px; display: flex; align-items: center; gap: 13px; padding: 10px 12px; border-radius: 10px;
   background: #121315; border: 1px solid rgba(255, 255, 255, .09); color: inherit; text-align: left; cursor: pointer;
 }
 .riw-quick-row > span:nth-child(2) { flex: 1; min-width: 0; display: flex; flex-direction: column; }
@@ -75,11 +74,11 @@
   .riw-rail:not(.is-sheet) { align-items: center; gap: 18px; padding: 16px 10px; overflow-x: hidden; }
   .riw-rail:not(.is-sheet) > section, .riw-rail:not(.is-sheet) .riw-rail-list { display: flex; flex-direction: column; align-items: center; }
   /* Adlar görünmez ama okunur (ekran okuyucu ve title ipucu). */
-  .riw-rail:not(.is-sheet) :is(.riw-rail-label, .riw-rail-name, .riw-standing-copy, .riw-home-link span, .riw-rail-cta span) {
+  .riw-rail:not(.is-sheet) :is(.riw-rail-label, .riw-rail-name, .riw-standing-copy, .riw-rail-cta span) {
     position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
   }
   .riw-rail:not(.is-sheet) :is(.riw-rail-note, .riw-rail-guest p, .riw-hunt-row small) { display: none; }
-  .riw-rail:not(.is-sheet) .riw-standing { width: 44px; height: 44px; padding: 0; justify-content: center; border-radius: 12px; }
+  .riw-rail:not(.is-sheet) .riw-standing { width: 44px; height: 44px; padding: 0; justify-content: center; border-radius: 10px; }
   .riw-rail:not(.is-sheet) .riw-hunt-row, .riw-rail:not(.is-sheet) .riw-club-row {
     width: 44px; height: 44px; padding: 0; justify-content: center; gap: 0;
   }
@@ -89,20 +88,18 @@
   .riw-rail:not(.is-sheet) .riw-rail-more { width: 44px; height: auto; padding: 4px 0; justify-content: center; text-align: center; font-size: 10px; line-height: 1.2; }
   .riw-rail:not(.is-sheet) .riw-rail-skeleton { width: 44px; height: 44px; }
   .riw-rail:not(.is-sheet) .riw-rail-cta { width: 44px; min-height: 44px; padding: 0; }
-  .riw-rail:not(.is-sheet) .riw-rail-cta svg, .riw-rail:not(.is-sheet) .riw-home-link svg { display: block; }
-  .riw-rail:not(.is-sheet) .riw-rail-foot { width: 100%; display: flex; justify-content: center; }
-  .riw-rail:not(.is-sheet) .riw-home-link { flex: none; width: 44px; justify-content: center; padding: 0; }
+  .riw-rail:not(.is-sheet) .riw-rail-cta svg { display: block; }
 
   /* Discover'ın süzgeç rayı ikon sütununa sığmaz: tek düğme başlıktaki
      açılır kutuyu açar (Aşama 17'nin ≤1080 kutusu). */
   .riw-filter-rail .riw-filters { display: none; }
   .riw-filter-rail .riw-filter-rail-toggle {
-    position: relative; width: 44px; height: 44px; display: grid; place-items: center; padding: 0; border-radius: 12px; cursor: pointer;
+    position: relative; width: 44px; height: 44px; display: grid; place-items: center; padding: 0; border-radius: 10px; cursor: pointer;
     background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .14); color: #c9cccd;
   }
   .riw-filter-rail-toggle b {
     position: absolute; top: -6px; right: -6px; min-width: 18px; height: 18px; display: grid; place-items: center; padding: 0 4px;
-    border-radius: 999px; background: #eceded; color: #090a0b; font: 700 10px/1 var(--font-logo);
+    border-radius: 999px; background: #eceded; color: #17120a; font: 700 10px/1 var(--font-logo);
   }
 }
 
@@ -114,22 +111,28 @@
 
   /* Başlık telefonun 2a'sı gibi: marka · seri · kalkan · zil; arama kendi
      ekranı (simge), ray menüde, hesap alttaki Profile sekmesinde. */
-  .riw-top { gap: 8px; }
+  .riw-top { gap: 9px; }
   .riw-top-end { gap: 2px; }
   .riw-search, .riw-me, .riw-signin { display: none; }
   .riw-search-btn, .riw-menu-btn { display: grid; }
   .riw-top.is-searching .riw-search { display: block; flex: 1 1 auto; max-width: none; }
-  .riw-top.is-searching :is(.riw-lockup, .riw-top-end) { display: none; }
+  .riw-top.is-searching :is(.riw-brandline, .riw-top-end) { display: none; }
+  /* 390'da Primary Arch işareti + çizgi başlığa sığsın (ölçüldü: 13 aralık ve
+     28'lik işaretle öbek 4px taşıyordu): aralık 7, işaret 24, dokunma yine 44. */
+  .riw-brandline { gap: 7px; }
+  .riw-parent { margin: 0 -10px; }
+  .riw-parent svg { width: 24px; height: 24px; }
+  .riw-parent-rule { height: 24px; }
 
   /* Inspector (maç ya da kulüp) alttan tam genişlik sayfa. */
   .riw.has-inspector .riw-body { opacity: 1; }
-  .riw-sheet-scrim { display: block; position: fixed; inset: 0; z-index: 44; background: rgba(5, 6, 7, .62); }
+  .riw-sheet-scrim { display: block; position: fixed; inset: 0; z-index: 44; background: rgba(9, 10, 11, .62); }
   .riw-insp-dock {
     position: fixed; left: 0; right: 0; bottom: 0; top: auto; z-index: 45; width: auto;
     height: calc(100vh - 56px); height: calc(100dvh - 56px);
-    overflow: hidden; border-radius: 20px 20px 0 0; animation: riw-sheet-up .26s cubic-bezier(.2, .8, .2, 1);
+    overflow: hidden; border-radius: 22px 22px 0 0; animation: riw-sheet-up .26s cubic-bezier(.2, .8, .2, 1);
   }
-  .riw-insp-dock .riw-insp { border-left: 0; border-radius: inherit; box-shadow: 0 -18px 50px rgba(0, 0, 0, .6); }
+  .riw-insp-dock .riw-insp { border-left: 0; border-radius: inherit; box-shadow: 0 -22px 80px #000; }
   .riw-insp-dock .riw-insp::before {
     content: ""; position: absolute; z-index: 3; top: 7px; left: 50%; width: 36px; height: 4px; margin-left: -18px;
     border-radius: 2px; background: rgba(255, 255, 255, .22); pointer-events: none;
@@ -139,7 +142,7 @@
   /* Ortak kap da alttan. */
   .riw-sheet-wrap { place-items: end stretch; padding: 0; }
   .riw-sheet {
-    width: 100%; max-height: 88vh; max-height: 88dvh; border-radius: 20px 20px 0 0; border-bottom: 0;
+    width: 100%; max-height: 88vh; max-height: 88dvh; border-radius: 22px 22px 0 0; border-bottom: 0;
     animation: riw-sheet-up .26s cubic-bezier(.2, .8, .2, 1);
   }
   .riw-sheet-grab { display: block; width: 36px; height: 4px; margin: 8px auto 0; border-radius: 2px; background: rgba(255, 255, 255, .22); }

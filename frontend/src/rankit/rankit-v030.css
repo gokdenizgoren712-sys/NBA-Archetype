@@ -1,24 +1,24 @@
 /* RankIt 0.3.0 — maç detay ekranında bilgi, topluluk ve günlük hiyerarşisi. */
-.ri-v03-hero{position:relative;margin:-1px -20px 0;padding:8px 20px 18px;overflow:hidden;background:radial-gradient(circle at 12% 48%,color-mix(in srgb,var(--detail-home) 20%,transparent),transparent 34%),radial-gradient(circle at 88% 48%,color-mix(in srgb,var(--detail-away) 20%,transparent),transparent 34%),linear-gradient(180deg,#17191c,#101113);border-bottom:1px solid var(--ri-line)}
+.ri-v03-hero{position:relative;margin:-1px -20px 0;padding:8px 20px 18px;overflow:hidden;background:radial-gradient(circle at 12% 48%,color-mix(in srgb,var(--detail-home) 20%,transparent),transparent 34%),radial-gradient(circle at 88% 48%,color-mix(in srgb,var(--detail-away) 20%,transparent),transparent 34%),linear-gradient(180deg,#1a1b1e,#121315);border-bottom:1px solid var(--ri-line)}
 .ri-v03-hero:after{content:"";position:absolute;inset:0;pointer-events:none;opacity:.08;background:repeating-linear-gradient(68deg,transparent 0 10px,#fff 10px 11px,transparent 11px 24px)}
 .ri-v03-hero .ri-detail-kicker{position:relative;z-index:1;margin:0 34px 18px;display:flex;align-items:center;justify-content:space-between;text-align:left}.ri-v03-hero .ri-detail-kicker b{font:700 9px var(--font-logo);letter-spacing:.13em;color:var(--ri-green);border:1px solid rgba(63,176,140,.27);border-radius:999px;padding:4px 7px}.ri-v03-hero .ri-detail-kicker span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.ri-v03-hero .ri-detail-kicker.live b{color:#ff5b63;border-color:rgba(255,65,78,.48);background:rgba(255,65,78,.1);box-shadow:0 0 14px rgba(255,65,78,.16)}
-.ri-v03-hero .ri-detail-teams{position:relative;z-index:1;grid-template-columns:minmax(0,1fr) 92px minmax(0,1fr);gap:5px}.ri-v03-team{min-width:0;display:grid;grid-template-rows:90px 17px 15px;justify-items:center;align-items:center;gap:0}.ri-v03-team .ri-team-mark{width:66px;height:66px;margin:0}.ri-v03-team>strong{font:800 14px var(--font-logo)}.ri-v03-team>small{width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;color:#73767a;font-size:9px}.ri-v03-score{height:122px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}.ri-v03-score>small{font-size:9px;color:#777}.ri-v03-score>strong{min-height:44px;display:grid;place-items:center;font:800 25px var(--font-logo);color:#fff}.ri-v03-score>span{font:700 9px var(--font-logo);letter-spacing:.1em;color:#555}
+.ri-v03-hero .ri-detail-kicker.live b{color:#f5402e;border-color:rgba(245,64,46,.48);background:rgba(245,64,46,.1);box-shadow:none}
+.ri-v03-hero .ri-detail-teams{position:relative;z-index:1;grid-template-columns:minmax(0,1fr) 92px minmax(0,1fr);gap:5px}.ri-v03-team{min-width:0;display:grid;grid-template-rows:90px 17px 15px;justify-items:center;align-items:center;gap:0}.ri-v03-team .ri-team-mark{width:66px;height:66px;margin:0}.ri-v03-team>strong{font:700 14px var(--font-logo)}.ri-v03-team>small{width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;color:#7f868b;font-size:9px}.ri-v03-score{height:122px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}.ri-v03-score>small{font-size:9px;color:#7f868b}.ri-v03-score>strong{min-height:44px;display:grid;place-items:center;font:700 26px var(--font-logo);color:#fff}.ri-v03-score>span{font:700 9px var(--font-logo);letter-spacing:.1em;color:#4d5256}
 .ri-detail-sheet>.ri-detail-tabs{position:sticky;top:-22px;z-index:4;margin:0 -20px 17px;padding:5px 20px 0;background:rgba(15,16,18,.94);backdrop-filter:blur(15px)}
-.ri-v03-community-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-bottom:10px}.ri-v03-community-stats>div{min-width:0;padding:11px 6px;border:1px solid var(--ri-line);border-radius:13px;background:#111214;display:grid;grid-template-columns:auto auto;align-items:center;justify-content:center;gap:2px 6px}.ri-v03-community-stats svg{color:var(--ri-gold)}.ri-v03-community-stats strong{font:800 17px var(--font-logo)}.ri-v03-community-stats span{grid-column:1/-1;text-align:center;color:#5e6165;font:700 9px var(--font-logo);letter-spacing:.12em}
-.ri-v03-consensus{border:1px solid rgba(255,177,27,.18);border-radius:16px;background:linear-gradient(145deg,rgba(255,177,27,.055),#111214);padding:12px;margin-bottom:19px}.ri-v03-potm{display:flex;align-items:center;gap:9px}.ri-v03-potm>svg{color:var(--ri-gold)}.ri-v03-potm>span{display:flex;flex:1;flex-direction:column}.ri-v03-potm small{font:700 9px var(--font-logo);letter-spacing:.13em;color:#696b6e}.ri-v03-potm strong{font:800 13px var(--font-logo)}.ri-v03-potm>b{font:800 10px var(--font-logo);color:var(--ri-gold)}.ri-v03-tag-cloud{display:flex;gap:6px;overflow-x:auto;margin-top:11px;padding-top:10px;border-top:1px solid var(--ri-line);scrollbar-width:none}.ri-v03-tag-cloud>span{flex:none;border:1px solid var(--ri-line);border-radius:999px;padding:6px 8px;color:#777;font-size:9px}.ri-v03-tag-cloud>span b{margin-left:5px;color:#aaa}.ri-v03-tag-cloud>span.dominant{border-color:rgba(255,177,27,.35);color:var(--ri-gold);background:rgba(255,177,27,.06)}
-.ri-v03-log-head{display:flex;align-items:end;justify-content:space-between;margin:4px 1px 10px}.ri-v03-log-head small{font:700 9px var(--font-logo);letter-spacing:.14em;color:var(--ri-gold)}.ri-v03-log-head h3{font:800 20px/1 var(--font-logo);margin:4px 0 0}.ri-v03-log-head>b{font:700 9px var(--font-logo);color:var(--ri-green);border:1px solid rgba(63,176,140,.3);border-radius:999px;padding:5px 8px}
-.ri-v03-votes{padding:0;overflow:hidden}.ri-v03-vote-trigger{width:100%;min-height:56px;border:0;background:transparent;color:#ddd;padding:10px 12px;display:grid;grid-template-columns:20px minmax(0,1fr) auto;align-items:center;gap:8px;text-align:left}.ri-v03-vote-trigger+ .ri-match-player-groups,.ri-v03-vote-trigger.respect{border-top:1px solid var(--ri-line)}.ri-v03-vote-trigger>svg{color:var(--ri-gold)}.ri-v03-vote-trigger.respect>svg{color:var(--ri-green)}.ri-v03-vote-trigger>span{min-width:0;display:flex;flex-direction:column}.ri-v03-vote-trigger small{color:#65676a;font:700 9px var(--font-logo);letter-spacing:.12em}.ri-v03-vote-trigger strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:700 11px var(--font-logo)}.ri-v03-vote-trigger>b{font:700 9px var(--font-logo);color:var(--ri-gold)}.ri-v03-vote-trigger.respect>b{color:var(--ri-green)}.ri-v03-votes>.ri-match-player-groups{padding:0 10px 10px;margin:0}
+.ri-v03-community-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-bottom:10px}.ri-v03-community-stats>div{min-width:0;padding:11px 6px;border:1px solid var(--ri-line);border-radius:14px;background:#121315;display:grid;grid-template-columns:auto auto;align-items:center;justify-content:center;gap:2px 6px}.ri-v03-community-stats svg{color:var(--ri-gold)}.ri-v03-community-stats strong{font:700 17px var(--font-logo)}.ri-v03-community-stats span{grid-column:1/-1;text-align:center;color:#7f868b;font:700 9px var(--font-logo);letter-spacing:.12em}
+.ri-v03-consensus{border:1px solid rgba(255,177,27,.18);border-radius:14px;background:linear-gradient(145deg,rgba(255,177,27,.055),#121315);padding:12px;margin-bottom:19px}.ri-v03-potm{display:flex;align-items:center;gap:9px}.ri-v03-potm>svg{color:var(--ri-gold)}.ri-v03-potm>span{display:flex;flex:1;flex-direction:column}.ri-v03-potm small{font:700 9px var(--font-logo);letter-spacing:.13em;color:#7f868b}.ri-v03-potm strong{font:700 13px var(--font-logo)}.ri-v03-potm>b{font:700 10px var(--font-logo);color:var(--ri-gold)}.ri-v03-tag-cloud{display:flex;gap:6px;overflow-x:auto;margin-top:11px;padding-top:10px;border-top:1px solid var(--ri-line);scrollbar-width:none}.ri-v03-tag-cloud>span{flex:none;border:1px solid var(--ri-line);border-radius:999px;padding:6px 8px;color:#7f868b;font-size:9px}.ri-v03-tag-cloud>span b{margin-left:5px;color:#9aa0a6}.ri-v03-tag-cloud>span.dominant{border-color:rgba(255,177,27,.35);color:var(--ri-gold);background:rgba(255,177,27,.06)}
+.ri-v03-log-head{display:flex;align-items:end;justify-content:space-between;margin:4px 1px 10px}.ri-v03-log-head small{font:700 9px var(--font-logo);letter-spacing:.14em;color:#7f868b}.ri-v03-log-head h3{font:700 20px/1 var(--font-logo);margin:4px 0 0}.ri-v03-log-head>b{font:700 9px var(--font-logo);color:var(--ri-green);border:1px solid rgba(63,176,140,.3);border-radius:999px;padding:5px 8px}
+.ri-v03-votes{padding:0;overflow:hidden}.ri-v03-vote-trigger{width:100%;min-height:56px;border:0;background:transparent;color:#eceded;padding:10px 12px;display:grid;grid-template-columns:20px minmax(0,1fr) auto;align-items:center;gap:9px;text-align:left}.ri-v03-vote-trigger+ .ri-match-player-groups,.ri-v03-vote-trigger.respect{border-top:1px solid var(--ri-line)}.ri-v03-vote-trigger>svg{color:var(--ri-gold)}.ri-v03-vote-trigger.respect>svg{color:var(--ri-green)}.ri-v03-vote-trigger>span{min-width:0;display:flex;flex-direction:column}.ri-v03-vote-trigger small{color:#7f868b;font:700 9px var(--font-logo);letter-spacing:.12em}.ri-v03-vote-trigger strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:700 11px var(--font-logo)}.ri-v03-vote-trigger>b{font:700 9px var(--font-logo);color:var(--ri-gold)}.ri-v03-vote-trigger.respect>b{color:var(--ri-green)}.ri-v03-votes>.ri-match-player-groups{padding:0 10px 10px;margin:0}
 @media(max-width:370px){.ri-v03-team .ri-team-mark{width:58px;height:58px}.ri-v03-hero .ri-detail-teams{grid-template-columns:minmax(0,1fr) 78px minmax(0,1fr)}.ri-v03-community-stats strong{font-size:15px}}
 
-.ri-day-empty{width:100%;min-height:180px;border:1px dashed var(--ri-line);border-radius:20px;background:#101113;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#555}.ri-day-empty svg{color:var(--ri-gold)}.ri-day-empty strong{margin-top:8px;color:#aaa;font:700 12px var(--font-logo)}.ri-day-empty span{margin-top:4px;color:#555;font-size:9px}
+.ri-day-empty{width:100%;min-height:180px;border:1px dashed var(--ri-line);border-radius:18px;background:#121315;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#4d5256}.ri-day-empty svg{color:var(--ri-gold)}.ri-day-empty strong{margin-top:8px;color:#9aa0a6;font:700 12px var(--font-logo)}.ri-day-empty span{margin-top:4px;color:#4d5256;font-size:9px}
 
 /* Turnuva yüzeyi yalnızca maç kartı başlığından açılır. */
-.ri-match-top>button{border:0;background:transparent;padding:0;color:inherit;font:inherit;letter-spacing:inherit;text-transform:inherit;text-align:left}.ri-match-top>button:not(:disabled){color:#d5d5d5;text-decoration:underline;text-decoration-color:rgba(255,177,27,.35);text-underline-offset:3px}.ri-match-top>button:disabled{opacity:1}
-.ri-competition-sheet{padding-bottom:34px}.ri-competition-head{padding:9px 19px 16px;border-bottom:1px solid var(--ri-line);background:radial-gradient(circle at 15% 0,rgba(255,177,27,.12),transparent 44%)}.ri-competition-head small{font:700 9px var(--font-logo);letter-spacing:.12em;color:var(--ri-gold);text-transform:uppercase}.ri-competition-head h2{margin:5px 0 3px;font:800 25px var(--font-logo);color:#f1f1f1}.ri-competition-head span{font-size:9px;color:#737373}.ri-competition-tabs{grid-template-columns:1.2fr .9fr 1.25fr;position:sticky;top:0;z-index:4;background:rgba(11,12,14,.96);backdrop-filter:blur(12px)}.ri-competition-tabs button{font-size:9px;white-space:nowrap}
-.ri-competition-fixtures{display:grid;gap:7px;padding:12px 14px}.ri-competition-fixtures>button{width:100%;min-height:58px;border:1px solid var(--ri-line);border-radius:13px;background:#111214;color:#ddd;padding:10px;display:grid;grid-template-columns:minmax(0,1fr) auto 15px;gap:8px;align-items:center;text-align:left}.ri-competition-fixtures>button>span{min-width:0;display:grid;gap:3px}.ri-competition-fixtures small{font:700 9px var(--font-logo);letter-spacing:.08em;color:#777;text-transform:uppercase}.ri-competition-fixtures strong{font:700 11px var(--font-logo);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ri-competition-fixtures strong b{color:#666;font-weight:600;margin:0 3px}.ri-competition-fixtures time{font:700 9px var(--font-logo);color:var(--ri-gold);white-space:nowrap}
-.ri-competition-table{padding:12px 14px}.ri-competition-table>header,.ri-competition-table>div:not(.ri-empty-state){display:grid;grid-template-columns:22px minmax(0,1fr) 25px 31px 31px;align-items:center;gap:5px;min-height:38px;border-bottom:1px solid rgba(255,255,255,.055);font-size:9px;color:#8a8a8a}.ri-competition-table>header{min-height:28px;font:700 9px var(--font-logo);letter-spacing:.08em;color:#555;text-transform:uppercase}.ri-competition-table>div>strong{display:flex;align-items:center;gap:7px;min-width:0;color:#d8d8d8}.ri-competition-table .ri-team-mark{width:25px;height:25px;flex:0 0 25px}.ri-competition-table .ri-team-mark img{width:72%;height:72%}.ri-competition-table>div>strong>b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:700 9px var(--font-logo)}.ri-competition-table>div>span:last-child{color:var(--ri-gold);font-weight:800}
-.ri-popular-players{display:grid;gap:7px;padding:12px 14px}.ri-popular-players>button{border:1px solid var(--ri-line);border-radius:13px;background:#111214;color:#ddd;min-height:58px;padding:8px;display:grid;grid-template-columns:20px 38px minmax(0,1fr) auto;align-items:center;gap:8px;text-align:left}.ri-popular-players>button>b{font:800 10px var(--font-logo);color:var(--ri-gold);text-align:center}.ri-popular-players>button>img,.ri-popular-players>button>span{width:36px;height:36px;border-radius:50%;object-fit:cover;background:#1c1d20;display:grid;place-items:center;font:700 9px var(--font-logo)}.ri-popular-players>button>div{min-width:0;display:grid;gap:2px}.ri-popular-players>button>div strong{font:700 10px var(--font-logo);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ri-popular-players>button>div small{font-size:9px;color:#696969}.ri-popular-players>button>em{font:700 9px var(--font-logo);font-style:normal;color:#777;white-space:nowrap}
+.ri-match-top>button{border:0;background:transparent;padding:0;color:inherit;font:inherit;letter-spacing:inherit;text-transform:inherit;text-align:left}.ri-match-top>button:not(:disabled){color:#c9cccd;text-decoration:underline;text-decoration-color:rgba(255,177,27,.35);text-underline-offset:3px}.ri-match-top>button:disabled{opacity:1}
+.ri-competition-sheet{padding-bottom:34px}.ri-competition-head{padding:9px 19px 16px;border-bottom:1px solid var(--ri-line);background:radial-gradient(circle at 15% 0,rgba(255,177,27,.12),transparent 44%)}.ri-competition-head small{font:700 9px var(--font-logo);letter-spacing:.12em;color:#7f868b;text-transform:uppercase}.ri-competition-head h2{margin:5px 0 3px;font:700 26px var(--font-logo);color:#eceded}.ri-competition-head span{font-size:9px;color:#7f868b}.ri-competition-tabs{grid-template-columns:1.2fr .9fr 1.25fr;position:sticky;top:0;z-index:4;background:rgba(9,10,11,.96);backdrop-filter:blur(12px)}.ri-competition-tabs button{font-size:9px;white-space:nowrap}
+.ri-competition-fixtures{display:grid;gap:7px;padding:12px 14px}.ri-competition-fixtures>button{width:100%;min-height:58px;border:1px solid var(--ri-line);border-radius:14px;background:#121315;color:#eceded;padding:10px;display:grid;grid-template-columns:minmax(0,1fr) auto 15px;gap:9px;align-items:center;text-align:left}.ri-competition-fixtures>button>span{min-width:0;display:grid;gap:3px}.ri-competition-fixtures small{font:700 9px var(--font-logo);letter-spacing:.08em;color:#7f868b;text-transform:uppercase}.ri-competition-fixtures strong{font:700 11px var(--font-logo);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ri-competition-fixtures strong b{color:#7f868b;font-weight:700;margin:0 3px}.ri-competition-fixtures time{font:700 9px var(--font-logo);color:var(--ri-gold);white-space:nowrap}
+.ri-competition-table{padding:12px 14px}.ri-competition-table>header,.ri-competition-table>div:not(.ri-empty-state){display:grid;grid-template-columns:22px minmax(0,1fr) 25px 31px 31px;align-items:center;gap:5px;min-height:38px;border-bottom:1px solid rgba(255,255,255,.055);font-size:9px;color:#7f868b}.ri-competition-table>header{min-height:28px;font:700 9px var(--font-logo);letter-spacing:.08em;color:#4d5256;text-transform:uppercase}.ri-competition-table>div>strong{display:flex;align-items:center;gap:7px;min-width:0;color:#c9cccd}.ri-competition-table .ri-team-mark{width:25px;height:25px;flex:0 0 25px}.ri-competition-table .ri-team-mark img{width:72%;height:72%}.ri-competition-table>div>strong>b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:700 9px var(--font-logo)}.ri-competition-table>div>span:last-child{color:var(--ri-gold);font-weight:700}
+.ri-popular-players{display:grid;gap:7px;padding:12px 14px}.ri-popular-players>button{border:1px solid var(--ri-line);border-radius:14px;background:#121315;color:#eceded;min-height:58px;padding:8px;display:grid;grid-template-columns:20px 38px minmax(0,1fr) auto;align-items:center;gap:9px;text-align:left}.ri-popular-players>button>b{font:700 10px var(--font-logo);color:var(--ri-gold);text-align:center}.ri-popular-players>button>img,.ri-popular-players>button>span{width:36px;height:36px;border-radius:50%;object-fit:cover;background:#1a1b1e;display:grid;place-items:center;font:700 9px var(--font-logo)}.ri-popular-players>button>div{min-width:0;display:grid;gap:2px}.ri-popular-players>button>div strong{font:700 10px var(--font-logo);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ri-popular-players>button>div small{font-size:9px;color:#7f868b}.ri-popular-players>button>em{font:700 9px var(--font-logo);font-style:normal;color:#7f868b;white-space:nowrap}
 
 /* ==========================================================================
    0.5.2 — bildirilen uc gorsel hata + home kart geometrisi.
@@ -40,11 +40,11 @@
 /* Halkanin hapa tasinma karari (yukaridaki not) korunuyor; YALNIZ rengi
    degisti: §26 odak gostergesini altin birakmiyor, yoksa arama kutusu
    odaklandigi anda bolgenin tek altin isaretini uzerine aliyor. */
-.rankit-app .ri-floating-search:focus-within{border-color:rgba(236,237,237,.5);box-shadow:0 12px 36px rgba(0,0,0,.6),0 0 0 3px rgba(236,237,237,.18)}
-.rankit-app .ri-search:focus-within{border-color:rgba(236,237,237,.42);box-shadow:0 0 0 3px rgba(236,237,237,.15)}
+.rankit-app .ri-floating-search:focus-within{border-color:rgba(236,237,237,.5);box-shadow:0 14px 34px rgba(0,0,0,.28),0 0 0 2px #090a0b,0 0 0 4px #eceded}
+.rankit-app .ri-search:focus-within{border-color:rgba(236,237,237,.42);box-shadow:0 0 0 2px #090a0b,0 0 0 4px #eceded}
 /* 3e arama sayfasi da ayni: yuvarlak hapin ICINDE koseli beyaz bir kutu
    ciziliyordu (olculdu, 2026-09-23). Halka hapa. */
-.rankit-app .ri-find-field:focus-within{border-color:rgba(236,237,237,.42);box-shadow:0 0 0 3px rgba(236,237,237,.15)}
+.rankit-app .ri-find-field:focus-within{border-color:rgba(236,237,237,.42);box-shadow:0 0 0 2px #090a0b,0 0 0 4px #eceded}
 
 /* [2] Hero kartindaki kalkan kartin kenarini kesiyordu.
    62px'lik kalkan 45 derece donunce 87.7px yer kapliyor, ama sutunu 61px'ti;
@@ -74,9 +74,9 @@
    oldugunu soyleyen ipucu) kaliyor ama sonuk hale getiriliyor — is artik
    yaziya, punto ve agirliga birakildi. Uzun lig adlari icin tasma emniyeti:
    tarih sabit kalir, lig adi kisalir. */
-.rankit-app .ri-match-top{font-size:10px;color:#9aa0a5;gap:10px}
+.rankit-app .ri-match-top{font-size:10px;color:#9aa0a6;gap:11px}
 .rankit-app .ri-match-top>button:not(:disabled),
-.rankit-app .ri-match-top>span:first-child{color:#e6e9ec;font-weight:700;letter-spacing:.11em}
+.rankit-app .ri-match-top>span:first-child{color:#eceded;font-weight:700;letter-spacing:.11em}
 .rankit-app .ri-match-top>button{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-decoration-color:rgba(255,177,27,.28)}
 .rankit-app .ri-match-top>span:last-child,
 .rankit-app .ri-match-top>.ri-live-date{flex:0 0 auto;white-space:nowrap}
@@ -92,7 +92,7 @@
    calismadi — armalarin uzerine tasip leke gibi duruyordu, o yuzden
    duruyor degil. Bunun yerine alan icerigine gore kisaltildi. */
 .rankit-app .ri-hero-carousel .ri-match-art{height:166px;flex:0 0 auto}
-.rankit-app .ri-hero-carousel .ri-versus small{font-size:10px;letter-spacing:.15em;color:#b9bec3}
+.rankit-app .ri-hero-carousel .ri-versus small{font-size:10px;letter-spacing:.15em;color:#c9cccd}
 .rankit-app .ri-hero-carousel .ri-versus strong{font-size:31px;text-shadow:0 4px 18px rgba(0,0,0,.55)}
 
 /* Paylas butonu (.ri-card-share, rankit-next.css:2) alt seritteki asama
@@ -138,19 +138,19 @@
 .rankit-app .ri-filter-heading small{font-size:9px}
 .rankit-app .ri-filter-group > span{font-size:9px}
 /* Kaynak: RankIt Redesign.dc.html #15d; mobil mevcut stil katmaninda. */
-.ri-live-lineup{margin:16px 0 0;color:#eceded}.ri-live-lineup-tabs{display:flex;gap:4px;background:#121315;border-radius:10px;padding:4px}.ri-live-lineup-tabs button{flex:1;min-width:0;min-height:38px;border:0;border-radius:7px;background:transparent;color:#9aa0a6;font:700 12px/1 var(--font-logo,Rajdhani,sans-serif);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}.ri-live-lineup-tabs button[aria-selected="true"]{background:rgba(255,255,255,.1);color:#eceded}
-.ri-live-lineup-label{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:16px 2px 9px;font:700 9px/1 var(--font-logo,Rajdhani,sans-serif);letter-spacing:.14em;color:#7f868b}.ri-live-lineup-label span{color:#9aa0a6;font-size:11px;letter-spacing:.05em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ri-live-lineup-card{border-radius:14px;background:#151618;border:1px solid rgba(255,255,255,.09);padding:6px 14px 10px}.ri-live-lineup-row{display:flex;align-items:center;gap:11px;min-height:38px}.ri-live-lineup-row+.ri-live-lineup-row{border-top:1px solid rgba(255,255,255,.07)}.ri-live-lineup-row b{flex:0 0 34px;font:700 12px/1 var(--font-logo,Rajdhani,sans-serif);color:#7f868b}.ri-live-lineup-row strong{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:700 12.5px/1 var(--font-logo,Rajdhani,sans-serif)}.ri-live-lineup-row small{flex:none;max-width:45%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#7f868b;font-size:11px}.ri-live-lineup-row.came-on b{color:#d43a63}
-.ri-live-lineup-note{border:1px dashed rgba(255,255,255,.14);background:#121315;border-radius:14px;padding:14px 15px;margin:14px 0;color:#9aa0a6;font-size:12px;line-height:1.45}.ri-live-lineup-cta{width:100%;min-height:48px;border:0;border-radius:10px;background:#ffb11b;color:#17120a;font:700 13px/1 var(--font-logo,Rajdhani,sans-serif);letter-spacing:.04em;cursor:pointer}
+.ri-live-lineup{margin:16px 0 0;color:#eceded}.ri-live-lineup-tabs{display:flex;gap:4px;background:#121315;border-radius:10px;padding:4px}.ri-live-lineup-tabs button{flex:1;min-width:0;min-height:38px;border:0;border-radius:8px;background:transparent;color:#9aa0a6;font:700 12px/1 var(--font-logo);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}.ri-live-lineup-tabs button[aria-selected="true"]{background:rgba(255,255,255,.1);color:#eceded}
+.ri-live-lineup-label{display:flex;justify-content:space-between;align-items:baseline;gap:9px;padding:16px 2px 9px;font:700 9px/1 var(--font-logo);letter-spacing:.14em;color:#7f868b}.ri-live-lineup-label span{color:#9aa0a6;font-size:11px;letter-spacing:.05em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ri-live-lineup-card{border-radius:14px;background:#151618;border:1px solid rgba(255,255,255,.09);padding:6px 14px 10px}.ri-live-lineup-row{display:flex;align-items:center;gap:11px;min-height:38px}.ri-live-lineup-row+.ri-live-lineup-row{border-top:1px solid rgba(255,255,255,.07)}.ri-live-lineup-row b{flex:0 0 34px;font:700 12px/1 var(--font-logo);color:#7f868b}.ri-live-lineup-row strong{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:700 12.5px/1 var(--font-logo)}.ri-live-lineup-row small{flex:none;max-width:45%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#7f868b;font-size:11px}.ri-live-lineup-row.came-on b{color:#d43a63}
+.ri-live-lineup-note{border:1px dashed rgba(255,255,255,.14);background:#121315;border-radius:14px;padding:14px 15px;margin:14px 0;color:#9aa0a6;font-size:12px;line-height:1.45}.ri-live-lineup-cta{width:100%;min-height:48px;border:0;border-radius:10px;background:#ffb11b;color:#17120a;font:700 13px/1 var(--font-logo);letter-spacing:.04em;cursor:pointer}
 
 /* 2f: maç bittikten sonra doğrulanmış olaylar, ev/deplasman tarafıyla. */
-.ri-match-events{margin:18px 0 0}.ri-match-event-list{border:1px solid rgba(255,255,255,.09);border-radius:14px;background:#151618;padding:8px 12px}.ri-match-event-teams{display:flex;justify-content:space-between;gap:12px;padding:4px 0 10px;color:#9aa0a6;font:700 10px/1 var(--font-logo);letter-spacing:.08em}.ri-match-event{display:grid;grid-template-columns:minmax(0,1fr) 38px minmax(0,1fr);align-items:center;gap:8px;min-height:42px;padding:7px 0;border-top:1px solid rgba(255,255,255,.07)}.ri-match-event>b{text-align:center;color:#c9cccd;font:700 11px/1 var(--font-logo);font-variant-numeric:tabular-nums}.ri-match-event-detail{display:flex;align-items:center;gap:6px;min-width:0;color:#c9cccd}.ri-match-event-detail svg{flex:none;color:#9aa0a6}.ri-match-event-detail span{min-width:0;overflow-wrap:anywhere;font:500 11px/1.3 var(--font-sans)}.ri-match-event.away .ri-match-event-detail:last-child{justify-content:flex-end}.ri-match-event.away .ri-match-event-detail:last-child span{order:-1;text-align:right}
+.ri-match-events{margin:18px 0 0}.ri-match-event-list{border:1px solid rgba(255,255,255,.09);border-radius:14px;background:#151618;padding:8px 12px}.ri-match-event-teams{display:flex;justify-content:space-between;gap:13px;padding:4px 0 10px;color:#9aa0a6;font:700 10px/1 var(--font-logo);letter-spacing:.08em}.ri-match-event{display:grid;grid-template-columns:minmax(0,1fr) 38px minmax(0,1fr);align-items:center;gap:9px;min-height:42px;padding:7px 0;border-top:1px solid rgba(255,255,255,.07)}.ri-match-event>b{text-align:center;color:#c9cccd;font:700 11px/1 var(--font-logo);font-variant-numeric:tabular-nums}.ri-match-event-detail{display:flex;align-items:center;gap:6px;min-width:0;color:#c9cccd}.ri-match-event-detail svg{flex:none;color:#9aa0a6}.ri-match-event-detail span{min-width:0;overflow-wrap:anywhere;font:500 11px/1.3 var(--font-sans)}.ri-match-event.away .ri-match-event-detail:last-child{justify-content:flex-end}.ri-match-event.away .ri-match-event-detail:last-child span{order:-1;text-align:right}
 .ri-detail-actions .ri-review-cta.secondary{min-height:44px;font-size:11px;white-space:nowrap}
 
 /* BUILD §9 / 2h: Community'de maç öncesi kişisel okuma, puanlama değil.
    Isı renkleri eylem düğmesi olarak kullanılmaz; seçili durum sayı + kenarlık. */
 .ri-appetite-entry{margin:18px 0;border:1px solid rgba(255,255,255,.09);border-radius:18px;background:#151618;padding:18px;color:#eceded}
-.ri-appetite-entry .ri-block-head{display:flex;justify-content:space-between;gap:12px;font:700 9px/1 var(--font-logo);letter-spacing:.14em;color:#7f868b}
+.ri-appetite-entry .ri-block-head{display:flex;justify-content:space-between;gap:13px;font:700 9px/1 var(--font-logo);letter-spacing:.14em;color:#7f868b}
 .ri-appetite-entry h2{text-align:left;margin:22px 0 8px;font:700 21px/1.1 var(--font-logo)}
 .ri-appetite-entry p{margin:0;color:#9aa0a6;font:400 12px/1.5 var(--font-sans)}
 .ri-appetite-choices{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px;margin:20px 0 12px}
@@ -239,7 +239,7 @@
    ========================================================================== */
 .rankit-app .ri-composer{position:absolute;inset:0;z-index:30;display:flex;flex-direction:column;
   background:#090a0b}
-.rankit-app .ri-composer-head{flex:none;display:flex;align-items:center;gap:12px;height:64px;
+.rankit-app .ri-composer-head{flex:none;display:flex;align-items:center;gap:13px;height:64px;
   padding:0 16px;border-bottom:1px solid var(--ri-line)}
 .rankit-app .ri-composer-head button{width:44px;height:44px;display:grid;place-items:center;
   border:0;background:none;color:#c9cccd;margin-left:-10px}
@@ -253,13 +253,13 @@
   color:var(--ri-gold);border:1px solid rgba(255,177,27,.4);border-radius:999px;padding:5px 8px}
 /* Metin alani: kartin degil, KISININ sesi (§1.5 Outfit). */
 .rankit-app .ri-composer-input{flex:1;min-height:180px;resize:none;margin:16px 0 0;padding:14px;
-  border:1px solid var(--ri-line);border-radius:14px;background:#101113;color:#eceded;
+  border:1px solid var(--ri-line);border-radius:14px;background:#121315;color:#eceded;
   font:400 13px/1.65 var(--font-sans);outline:none}
-.rankit-app .ri-composer-input::placeholder{color:#5f6469}
+.rankit-app .ri-composer-input::placeholder{color:#7f868b}
 .rankit-app .ri-composer-input:focus-visible{outline:2px solid var(--ri-focus);outline-offset:2px}
 .rankit-app .ri-composer-meter{display:flex;align-items:baseline;justify-content:space-between;
-  gap:12px;margin:9px 1px 0}
-.rankit-app .ri-composer-meter span{font:700 9px/1.3 var(--font-logo);letter-spacing:.13em;color:#5f6469}
+  gap:13px;margin:9px 1px 0}
+.rankit-app .ri-composer-meter span{font:700 9px/1.3 var(--font-logo);letter-spacing:.13em;color:#7f868b}
 .rankit-app .ri-composer-meter b{font:400 11.5px/1 var(--font-sans);color:#9aa0a6;
   font-variant-numeric:tabular-nums;white-space:nowrap}
 .rankit-app .ri-composer-shield{margin:18px 0;padding:14px;border:1px dashed rgba(255,255,255,.14);
@@ -271,29 +271,29 @@
 .rankit-app .ri-composer-foot{flex:none;padding:12px 16px calc(12px + env(safe-area-inset-bottom));
   border-top:1px solid var(--ri-line);background:rgba(9,10,11,.96)}
 /* Bu ekranin tek altini: birincil eylem (§1.2 bolge basina bir altin). */
-.rankit-app .ri-composer-save{width:100%;min-height:52px;border:0;border-radius:13px;
+.rankit-app .ri-composer-save{width:100%;min-height:52px;border:0;border-radius:14px;
   background:var(--ri-gold);color:#17120a;font:700 13px/1 var(--font-logo);letter-spacing:.04em}
 .rankit-app .ri-review-trigger strong{white-space:normal;overflow:hidden;display:-webkit-box;
   -webkit-line-clamp:2;-webkit-box-orient:vertical}
 
 /* 2c — Discover üstündeki The Hunt özeti. Yüzde iri, cümle yanında. */
-.rankit-app .ri-hunt-summary{display:flex;align-items:center;gap:14px;margin:0 0 14px;padding:14px 16px;
-  border:1px solid var(--ri-line);border-radius:17px;background:#111214}
-.rankit-app .ri-hunt-summary>strong{font:800 25px/1 var(--font-logo);color:#eceded;
+.rankit-app .ri-hunt-summary{display:flex;align-items:center;gap:13px;margin:0 0 14px;padding:14px 16px;
+  border:1px solid var(--ri-line);border-radius:18px;background:#121315}
+.rankit-app .ri-hunt-summary>strong{font:700 26px/1 var(--font-logo);color:#eceded;
   font-variant-numeric:tabular-nums;flex:none}
 .rankit-app .ri-hunt-summary>span{min-width:0;display:flex;flex-direction:column;gap:4px}
-.rankit-app .ri-hunt-summary small{font:700 9px/1 var(--font-logo);letter-spacing:.14em;color:var(--ri-gold)}
+.rankit-app .ri-hunt-summary small{font:700 9px/1 var(--font-logo);letter-spacing:.14em;color:#7f868b}
 .rankit-app .ri-hunt-summary b{font:400 12px/1.4 var(--font-sans);color:#9aa0a6;font-weight:400}
 
 /* Ayarlar → hesap silme: satır açılınca aynı kartta onay alanı. Kırmızı yalnız
    geri alınamaz eylemin kendisinde; iptal nötr. */
-.rankit-app .ri-delete{display:grid;gap:10px;padding:14px 16px 16px;border-top:1px solid var(--ri-line)}
+.rankit-app .ri-delete{display:grid;gap:11px;padding:14px 16px 16px;border-top:1px solid var(--ri-line)}
 .rankit-app .ri-delete strong{font:700 13px/1 var(--font-logo);letter-spacing:.02em;color:#eceded}
 .rankit-app .ri-delete p,.rankit-app .ri-delete label{margin:0;font:400 12px/1.45 var(--font-sans);color:#9aa0a6}
 .rankit-app .ri-delete input{min-height:44px;border-radius:10px;border:1px solid var(--ri-line);background:#121315;color:#eceded;padding:0 12px;font:400 14px/1 var(--font-sans)}
 .rankit-app .ri-delete input:focus-visible,.rankit-app .ri-delete button:focus-visible{outline:2px solid var(--ri-focus);outline-offset:2px}
 .rankit-app .ri-delete .ri-delete-error{color:#f5402e}
-.rankit-app .ri-delete-actions{display:flex;gap:8px}
+.rankit-app .ri-delete-actions{display:flex;gap:9px}
 .rankit-app .ri-delete-actions button{flex:1;min-height:44px;border-radius:10px;background:transparent;font:700 12px/1 var(--font-logo);letter-spacing:.06em;text-transform:uppercase}
 .rankit-app .ri-delete-cancel{border:1px solid var(--ri-line);color:#eceded}
 .rankit-app .ri-delete-go{border:1px solid #f5402e;color:#f5402e}
@@ -302,16 +302,16 @@
 /* Games by Primary Arch (yalnız uygulama) — Hunt geniş, Games yanında dar kutu
    ("side", sahibin kararı 2026-09-26). Hunt yoksa Games satırı tek başına alır.
    Nötr: bu bölgenin altını THE HUNT'ta (One Gold Rule). */
-.rankit-app .ri-discover-gates{display:flex;gap:10px;margin:0 0 14px}
+.rankit-app .ri-discover-gates{display:flex;gap:11px;margin:0 0 14px}
 .rankit-app .ri-discover-gates .ri-hunt-summary{flex:1 1 auto;min-width:0;margin:0}
 .rankit-app .ri-games-tile{flex:none;width:108px;min-height:44px;padding:13px 12px 12px;display:flex;flex-direction:column;
-  justify-content:space-between;gap:10px;border:1px solid var(--ri-line);border-radius:17px;background:#111214;color:#eceded;text-align:left}
+  justify-content:space-between;gap:11px;border:1px solid var(--ri-line);border-radius:18px;background:#121315;color:#eceded;text-align:left}
 .rankit-app .ri-games-tile>span{display:flex;align-items:center;justify-content:space-between;color:#7f868b}
 .rankit-app .ri-games-tile>span:last-child{flex-direction:column;align-items:flex-start;gap:5px}
 .rankit-app .ri-games-tile strong{font:700 17px/1 var(--font-logo);letter-spacing:.02em;color:#eceded}
 .rankit-app .ri-games-tile small{font:700 9px/1.3 var(--font-logo);letter-spacing:.14em;color:#7f868b}
-.rankit-app .ri-games-row{flex:1 1 auto;display:flex;align-items:center;gap:14px;padding:14px 14px 14px 16px;
-  border:1px solid var(--ri-line);border-radius:17px;background:#111214;color:#eceded;text-align:left}
+.rankit-app .ri-games-row{flex:1 1 auto;display:flex;align-items:center;gap:13px;padding:14px 14px 14px 16px;
+  border:1px solid var(--ri-line);border-radius:18px;background:#121315;color:#eceded;text-align:left}
 .rankit-app .ri-games-row>span{min-width:0;flex:1 1 auto;display:flex;flex-direction:column;gap:4px}
 .rankit-app .ri-games-row small{font:700 9px/1 var(--font-logo);letter-spacing:.14em;color:#c9cccd}
 .rankit-app .ri-games-row b{font:400 12px/1.4 var(--font-sans);color:#9aa0a6}
@@ -343,7 +343,7 @@
      satır      72px; gün 21px + hafta günü 9px; başlık 13px; 11px yıldız
      raf        iki sütun, 13px aralık; kart 200px, çerçevesiz
    ========================================================================== */
-.rankit-app .ri-activity-title{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;padding-bottom:13px}
+.rankit-app .ri-activity-title{display:flex;align-items:flex-end;justify-content:space-between;gap:13px;padding-bottom:13px}
 .rankit-app .ri-activity-title h1{margin:0;line-height:1}
 /* 2e toggle: 32px görünür, 44px dokunma (::after). Altın değil — tahtada nötr. */
 .rankit-app .ri-view-toggle{flex:none;display:flex;background:#121315;border:1px solid rgba(255,255,255,.09);border-radius:999px;padding:3px}
@@ -356,7 +356,7 @@
   color:#7f868b;font:700 13px/1 var(--font-logo);letter-spacing:.06em}
 .rankit-app .ri-segment.is-tabs button.active{color:var(--ri-gold);box-shadow:inset 0 -2px 0 var(--ri-gold)}
 .rankit-app .ri-segment.is-tabs button.active::after{content:none}
-.rankit-app .ri-diary-meta{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:8px}
+.rankit-app .ri-diary-meta{display:flex;align-items:center;justify-content:space-between;gap:13px;margin-top:8px}
 .rankit-app .ri-diary-meta>span{min-width:0;font:700 9px/1 var(--font-logo);letter-spacing:.14em;color:#7f868b;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rankit-app .ri-diary-sort{flex:none;min-height:44px;display:inline-flex;align-items:center;gap:4px;padding:0 0 0 12px;
@@ -371,8 +371,8 @@
 @keyframes riDbarIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
 .rankit-app .ri-dbar p{margin:0 0 8px;font:700 9px/1 var(--font-logo);letter-spacing:.14em;color:#7f868b}
 .rankit-app .ri-dbar .ri-diary-filters+p{margin-top:14px}
-.rankit-app .ri-dbar .ri-diary-filters{display:flex;gap:3px;padding:3px;overflow:visible;border-radius:12px;background:#0c0d0f}
-.rankit-app .ri-dbar .ri-diary-filters button{flex:1 1 0;min-width:0;min-height:48px;padding:0 6px;border:0;border-radius:9px;
+.rankit-app .ri-dbar .ri-diary-filters{display:flex;gap:3px;padding:3px;overflow:visible;border-radius:10px;background:#090a0b}
+.rankit-app .ri-dbar .ri-diary-filters button{flex:1 1 0;min-width:0;min-height:48px;padding:0 6px;border:0;border-radius:8px;
   background:none;box-shadow:none;transform:none;color:#7f868b;font:700 11px/1 var(--font-logo);letter-spacing:.06em}
 .rankit-app .ri-dbar .ri-diary-filters button.active{background:rgba(255,255,255,.1);color:#eceded;box-shadow:none;transform:none}
 /* 2d ısı şeridi. Boş gece %22 ve .07; kaydı olup topluluk ısısı olmayan
@@ -396,17 +396,17 @@
 .rankit-app .ri-drow-text{flex:1;min-width:0}
 .rankit-app .ri-drow-text strong{display:block;font:700 13px/1 var(--font-logo);letter-spacing:.02em;color:#eceded;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.rankit-app .ri-drow-text>span{display:flex;align-items:center;gap:8px;margin-top:7px}
+.rankit-app .ri-drow-text>span{display:flex;align-items:center;gap:9px;margin-top:7px}
 .rankit-app .ri-drow-classic{width:11px;height:11px;flex:none;transform:rotate(45deg);border-radius:3px 3px 4px 4px;background:var(--ri-gold)}
 .rankit-app .ri-drow-heat{flex:none;display:flex;align-items:center;gap:7px}
 .rankit-app .ri-drow-heat>b{font:700 11px/1 var(--font-logo);color:#9aa0a6;font-variant-numeric:tabular-nums}
 .rankit-app .ri-drow-heat>i{width:4px;height:36px;border-radius:2px;background:rgba(255,255,255,.12)}
 .rankit-app .ri-dstars{display:inline-flex;gap:2px}
-.rankit-app .ri-dstar{position:relative;width:11px;height:11px;color:rgba(255,255,255,.2)}
+.rankit-app .ri-dstar{position:relative;width:11px;height:11px;color:#4d5256}
 .rankit-app .ri-dstar svg{display:block}
 .rankit-app .ri-dstar>span{position:absolute;inset:0;width:var(--fill);overflow:hidden;color:#eceded}
 /* Günlükteki listeler: 3h'in satır dili. */
-.rankit-app .ri-dlists{display:grid;gap:10px;margin-top:4px}
+.rankit-app .ri-dlists{display:grid;gap:11px;margin-top:4px}
 .rankit-app .ri-dlists button{display:flex;align-items:center;gap:13px;min-height:68px;padding:0 14px;border-radius:14px;
   background:#151618;border:1px solid rgba(255,255,255,.09);color:inherit;text-align:left}
 .rankit-app .ri-dlists span{flex:1;min-width:0}
@@ -484,14 +484,14 @@
 .rankit-app .ri-coll-count{flex:none;display:flex;flex-direction:column;align-items:center;min-width:64px}
 .rankit-app .ri-coll-count strong{font:700 44px/1 var(--font-logo);font-variant-numeric:tabular-nums}
 .rankit-app .ri-coll-count span{margin-top:4px;font:700 9px/1 var(--font-logo);letter-spacing:.14em;color:#7f868b}
-.rankit-app .ri-coll-title{margin:6px 0 0;font:700 25px/1.05 var(--font-logo);letter-spacing:.02em;text-wrap:balance}
+.rankit-app .ri-coll-title{margin:6px 0 0;font:700 26px/1.05 var(--font-logo);letter-spacing:.02em;text-wrap:balance}
 .rankit-app .ri-coll-sentence{margin:16px 0 22px;font:400 13px/1.55 var(--font-sans);color:#c9cccd;text-wrap:pretty}
 .rankit-app .ri-coll-section{display:flex;align-items:baseline;justify-content:space-between;margin:18px 2px 9px}
 .rankit-app .ri-coll-section span{font:700 9px/1 var(--font-logo);letter-spacing:.14em;color:#7f868b}
 .rankit-app .ri-coll-section small{font:400 11px/1 var(--font-sans);color:#7f868b}
 .rankit-app .ri-coll-rows{border-radius:14px;background:#151618;border:1px solid var(--ri-line);overflow:hidden}
 .rankit-app .ri-coll-row{width:100%;min-height:48px;display:flex;align-items:center;justify-content:space-between;
-  gap:12px;padding:0 14px;border:0;background:none;color:#eceded;text-align:left;font:inherit}
+  gap:13px;padding:0 14px;border:0;background:none;color:#eceded;text-align:left;font:inherit}
 .rankit-app .ri-coll-row+.ri-coll-row{border-top:1px solid rgba(255,255,255,.07)}
 .rankit-app .ri-coll-row strong{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
   font:700 13px/1 var(--font-logo);letter-spacing:.02em}
@@ -533,7 +533,7 @@
   border:0;background:none;color:#c9cccd}
 .rankit-app .ri-drawer-body{flex:1;min-height:0;overflow-y:auto;padding:18px}
 .rankit-app .ri-drawer-eyebrow{margin:0 0 13px;font:700 9px/1 var(--font-logo);letter-spacing:.14em;color:#7f868b}
-.rankit-app .ri-drawer-pills{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:26px}
+.rankit-app .ri-drawer-pills{display:flex;flex-wrap:wrap;gap:9px;margin-bottom:26px}
 .rankit-app .ri-drawer-pills button{height:48px;padding:0 16px;display:flex;align-items:center;border:0;border-radius:999px;
   background:#121315;color:#c9cccd;font:700 12px/1 var(--font-logo);letter-spacing:.06em}
 .rankit-app .ri-drawer-pills button.on{background:var(--ri-gold);color:#17120a}
@@ -572,9 +572,9 @@
 
 /* 2c başlık satırı: "Discover" + sağda filtre tetikleyicisi (6c'de ikon
    filtre aktifken altın). Sayı rozeti etkin filtre adedini söylüyor. */
-.rankit-app .ri-discover-title{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+.rankit-app .ri-discover-title{display:flex;align-items:flex-end;justify-content:space-between;gap:13px}
 .rankit-app .ri-filter-trigger{position:relative;flex:none;width:44px;height:44px;margin-right:-8px;display:grid;place-items:center;
-  border:0;border-radius:12px;background:none;color:#c9cccd}
+  border:0;border-radius:10px;background:none;color:#c9cccd}
 .rankit-app .ri-filter-trigger.is-active{color:var(--ri-gold)}
 .rankit-app .ri-filter-trigger b{position:absolute;top:5px;right:4px;min-width:16px;height:16px;padding:0 4px;border-radius:999px;
   display:grid;place-items:center;background:var(--ri-gold);color:#17120a;font:700 9px/1 var(--font-logo)}
@@ -592,11 +592,11 @@
    Skin yalniz karoyu boyar; ekranin kendisi uygulama kabugu (§4.2).
    ========================================================================== */
 .rankit-app .ri-skins{position:fixed;inset:0;z-index:30;display:flex;flex-direction:column;
-  background:#0c0d0f;color:#eceded}
+  background:#090a0b;color:#eceded}
 .rankit-app .ri-skins-head{flex:none;height:64px;display:grid;grid-template-columns:44px 1fr 44px;
   align-items:center;padding:0 15px}
 .rankit-app .ri-skins-head button{width:44px;height:44px;display:grid;place-items:center;border:0;
-  background:none;color:#c9cccd;border-radius:12px}
+  background:none;color:#c9cccd;border-radius:10px}
 .rankit-app .ri-skins-head h1{margin:0;text-align:center;font:700 13px/1 var(--font-logo);letter-spacing:.1em;
   text-transform:uppercase;color:#eceded}
 .rankit-app .ri-skins-body{flex:1;min-height:0;overflow-y:auto;padding:0 26px 18px}
@@ -640,7 +640,7 @@
   border:1px solid rgba(255,255,255,.09);font:400 12px/1.5 var(--font-sans);color:#9aa0a6;text-wrap:pretty}
 .rankit-app .ri-skins-empty{margin:24px 0;text-align:center;font:400 13px/1.5 var(--font-sans);color:#9aa0a6}
 .rankit-app .ri-skins-foot{flex:none;padding:0 26px 26px}
-.rankit-app .ri-skins-failure{margin:0 0 10px;font:400 12px/1.45 var(--font-sans);color:#f08a7a;text-align:center}
+.rankit-app .ri-skins-failure{margin:0 0 10px;font:400 12px/1.45 var(--font-sans);color:#f5402e;text-align:center}
 .rankit-app .ri-skins-apply{width:100%;height:48px;border:0;border-radius:10px;background:var(--ri-gold);color:#17120a;
   font:700 13px/1 var(--font-logo);letter-spacing:.06em}
 .rankit-app .ri-skins-apply:disabled{opacity:.55}
@@ -649,7 +649,7 @@
    a row, not a modal"). Tahtadaki cerceve rgba(255,177,27,.42). */
 .rankit-app .ri-result-unlock{display:flex;align-items:center;gap:13px;margin:11px 0 0;padding:13px 15px;
   border-radius:14px;background:#121315;border:1px solid rgba(255,177,27,.42);text-align:left}
-.rankit-app .ri-result-unlock .ri-unlock-swatch{position:relative;width:38px;height:48px;flex:none;border-radius:6px;overflow:hidden;
+.rankit-app .ri-result-unlock .ri-unlock-swatch{position:relative;width:38px;height:48px;flex:none;border-radius:8px;overflow:hidden;
   clip-path:polygon(0 0,calc(100% - 7px) 0,100% 7px,100% 100%,7px 100%,0 calc(100% - 7px))}
 .rankit-app .ri-result-unlock .ri-unlock-swatch>i{position:absolute;inset:0}
 .rankit-app .ri-result-unlock .ri-unlock-swatch>b{position:absolute;top:3.5px;right:-1.5px;width:9.9px;height:1px;
@@ -662,7 +662,7 @@
 .rankit-app .ri-result-unlock button:focus-visible{outline:2px solid var(--ri-focus);outline-offset:2px}
 
 /* 2n — bu kulup sezonunu bitirmek ligin skinini acar. */
-.rankit-app .ri-coll-reward{display:flex;align-items:center;gap:12px;margin:0 0 20px;padding:11px 13px;border-radius:12px;
+.rankit-app .ri-coll-reward{display:flex;align-items:center;gap:13px;margin:0 0 20px;padding:11px 13px;border-radius:10px;
   background:#121315;border:1px solid var(--ri-line)}
 .rankit-app .ri-coll-reward>i{position:relative;width:26px;height:33px;flex:none;border-radius:5px;opacity:.6;
   clip-path:polygon(0 0,calc(100% - 5px) 0,100% 5px,100% 100%,5px 100%,0 calc(100% - 5px))}
@@ -686,7 +686,7 @@
 .rankit-app .ri-shield-row button{position:relative;flex:none;width:46px;height:28px;padding:3px;border:0;border-radius:999px;
   background:#3fb08c;display:flex;justify-content:flex-end}
 .rankit-app .ri-shield-row button::after{content:"";position:absolute;inset:-8px -2px}
-.rankit-app .ri-shield-row button i{width:22px;height:22px;border-radius:999px;background:#0c0d0f}
+.rankit-app .ri-shield-row button i{width:22px;height:22px;border-radius:999px;background:#090a0b}
 .rankit-app .ri-shield-row button:focus-visible{outline:2px solid var(--ri-focus);outline-offset:2px}
 
 /* ==========================================================================
@@ -696,11 +696,11 @@
                     5px nabız noktası; başlık Rajdhani 700 13px; sağda "Join"
    ========================================================================== */
 .rankit-app .ri-home-hero{margin-top:4px}
-.rankit-app .ri-label-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:4px 0 0}
+.rankit-app .ri-label-row{display:flex;align-items:center;justify-content:space-between;gap:13px;padding:4px 0 0}
 .rankit-app .ri-label-row span{font:700 9px/1 var(--font-logo);letter-spacing:.14em;color:#7f868b}
 .rankit-app .ri-label-row button{min-height:44px;padding:0 0 0 12px;border:0;background:none;color:#9aa0a6;
   font:700 11px/1 var(--font-logo);letter-spacing:.06em}
-.rankit-app .ri-tonight-list{display:grid;gap:10px}
+.rankit-app .ri-tonight-list{display:grid;gap:11px}
 .rankit-app .ri-tonight-row{position:relative;display:flex;align-items:center;gap:13px;min-height:64px;padding:0 16px 0 10px;
   border-radius:14px;background:#151618;border:1px solid rgba(255,255,255,.09);color:inherit;text-align:left;overflow:hidden}
 .rankit-app .ri-tonight-row.is-live::before{content:"";position:absolute;left:0;top:13px;bottom:13px;width:3px;
@@ -729,10 +729,10 @@
 .rankit-app .ri-ffeed{display:grid;gap:13px;padding:18px 0 8px}
 .rankit-app .ri-fcard{border-radius:18px;background:#151618;border:1px solid rgba(255,255,255,.09);overflow:hidden;cursor:pointer}
 .rankit-app .ri-fcard.is-collection{padding:14px;cursor:default}
-.rankit-app .ri-fcard-head{display:flex;align-items:center;gap:10px;padding:14px 14px 13px}
+.rankit-app .ri-fcard-head{display:flex;align-items:center;gap:11px;padding:14px 14px 13px}
 .rankit-app .ri-fcard.is-collection .ri-fcard-head{padding:0}
 .rankit-app .ri-fcard-avatar{width:31px;height:31px;flex:none;border-radius:999px;display:grid;place-items:center;
-  background:linear-gradient(140deg,#2c3035,#16181b);border:1px solid rgba(255,255,255,.09);
+  background:linear-gradient(140deg,#1a1b1e,#121315);border:1px solid rgba(255,255,255,.09);
   font:700 10px/1 var(--font-logo);letter-spacing:.06em;color:#c9cccd}
 .rankit-app .ri-fcard-who{flex:1;min-width:0}
 .rankit-app .ri-fcard-who strong{display:block;font:700 12px/1 var(--font-logo);letter-spacing:.02em;color:#eceded;
@@ -824,9 +824,9 @@
 .rankit-app .ri-match-sheet .is-2f .ri-detail-kicker{margin:0 44px 16px;display:block;text-align:center;
   font:700 9px/1.4 var(--font-logo);letter-spacing:.14em;text-transform:uppercase;color:#7f868b}
 .rankit-app .ri-match-sheet .is-2f .ri-kicker-comp{color:inherit;text-align:center;text-transform:inherit}
-.rankit-app .ri-match-sheet .is-2f .ri-detail-teams{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:8px}
+.rankit-app .ri-match-sheet .is-2f .ri-detail-teams{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:9px}
 .rankit-app .ri-match-sheet .is-2f .ri-v03-team{display:grid;place-items:center;grid-template-rows:none}
-.rankit-app .ri-match-sheet .is-2f .ri-v03-score{height:auto;gap:10px}
+.rankit-app .ri-match-sheet .is-2f .ri-v03-score{height:auto;gap:11px}
 .rankit-app .ri-match-sheet .is-2f .ri-v03-score>strong{min-height:0;font:700 46px/1 var(--font-logo);color:#fff}
 .rankit-app .ri-status-pill{display:inline-flex;align-items:center;height:26px;padding:0 10px;border-radius:999px;
   background:rgba(0,0,0,.42);border:1px solid rgba(255,255,255,.14);font:700 9px/1 var(--font-logo);letter-spacing:.14em;color:#eceded;white-space:nowrap}

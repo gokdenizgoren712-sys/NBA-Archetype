@@ -212,11 +212,11 @@ export default function MatchCard(props) {
   const verdictGate = !spoiler && verdictCovered && (
     <div data-community-gate="" style={{ minWidth: 0, display: "grid", gap: compact ? 4 : 7, padding: compact ? "4px 0" : "0 18px 13px" }}>
       <div aria-hidden="true" style={{ filter: "blur(3px)", opacity: .6 }}><HeatBars steps={3} gap={compact ? 3 : 4} height={compact ? 4 : 5} rest={t.rest} /></div>
-      <span style={{ color: t.eyebrow, fontSize: compact ? 9 : 11, lineHeight: 1.25, fontFamily: "Outfit,system-ui,sans-serif" }}>
+      <span style={{ color: t.eyebrow, fontSize: compact ? 9 : 11, lineHeight: 1.25, fontFamily: "var(--font-sans)" }}>
         Rate it first — then see whether the room agreed with you.
       </span>
       <button type="button" className="ri-gate-action" onClick={event => { event.stopPropagation(); setCommunityRevealed(true); }}
-        style={{ justifySelf: "start", padding: 0, border: 0, background: "none", color: t.gold, font: "700 10px Rajdhani,system-ui,sans-serif", letterSpacing: ".12em", cursor: "pointer" }}>
+        style={{ justifySelf: "start", padding: 0, border: 0, background: "none", color: t.eyebrow, font: "700 10px var(--font-logo)", letterSpacing: ".12em", cursor: "pointer" }}>
         REVEAL ANYWAY
       </button>
     </div>
@@ -248,7 +248,7 @@ export default function MatchCard(props) {
     /* §2.2 — Zemin. Kulüp renkleri APİ'den prop olarak gelir, asla sabit değil. */
     background: t.base,
     boxShadow: "0 14px 34px rgba(0,0,0,.28)",
-    fontFamily: "Rajdhani,system-ui,sans-serif",
+    fontFamily: "var(--font-logo)",
     color: t.ink,
     display: "flex", flexDirection: "column", overflow: "hidden",
     ...style,

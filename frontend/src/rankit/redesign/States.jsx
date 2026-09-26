@@ -59,7 +59,7 @@ export function SkeletonCard({ compact = false, crestSize, cut, artHeight = 150,
   const shell = {
     position: "relative", width: "100%", height: "100%", minWidth: 0, overflow: "hidden",
     borderRadius: c, background: GROUND, display: "flex", flexDirection: "column",
-    fontFamily: "Rajdhani,system-ui,sans-serif",
+    fontFamily: "var(--font-logo)",
     clipPath: `polygon(0 0,calc(100% - ${c}px) 0,100% ${c}px,100% 100%,${c}px 100%,0 calc(100% - ${c}px))`,
   };
   const frame = (<>
@@ -186,9 +186,9 @@ export function Loading({ label = "Loading", children }) {
 }
 
 /* 3l — boş durum. Kesikli elmas, başlık, bir cümle, TEK eylem. */
-export function EmptyState({ title, body, action, onAction }) {
+export function EmptyState({ title, body, action, onAction, quiet = false }) {
   return (
-    <div className="ri-empty">
+    <div className={`ri-empty${quiet ? " is-quiet" : ""}`}>
       <div className="ri-empty-mark" aria-hidden="true"><i /></div>
       <strong>{title}</strong>
       {body && <p>{body}</p>}

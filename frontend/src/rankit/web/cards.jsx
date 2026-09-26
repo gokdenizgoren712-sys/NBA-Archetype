@@ -66,7 +66,7 @@ export function TeamMark({ team }) {
   // var, webde yoktu.
   return (
     <div className={`ri-team-mark${crest ? " has-logo" : ""}`}
-      style={{ "--team": team?.color || "#2a2c30" }}>
+      style={{ "--team": team?.color || "#3a3f47" }}>
       {crest
         ? <img src={crest} alt="" loading="lazy" />
         : <span>{(team?.short || team?.name || "?").slice(0, 3).toUpperCase()}</span>}
