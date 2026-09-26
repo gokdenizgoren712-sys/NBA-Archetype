@@ -414,3 +414,109 @@ def test_reset_enforces_the_rule_but_old_long_passwords_still_sign_in(client, ap
     raw = _request_reset(client, app_mod, monkeypatch, email)
     assert client.post("/api/auth/reset-password", json={"token": raw, "password": "b" * 19}).status_code == 400
     assert client.post("/api/auth/reset-password", json={"token": raw, "password": "new-pass-ok"}).status_code == 200
+
+
+# ── Mobil giriş: PKCE (rankit:// bağlantısını yakalayan kodu kullanamaz) ─────
+
+def _pkce_pair():
+    import base64
+    import secrets as _secrets
+    verifier = _secrets.token_urlsafe(32)
+    challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).rstrip(b"=").decode()
+    return verifier, challenge
+
+
+def _mobile_code(client, token, challenge=None):
+    body = {"challenge": challenge} if challenge is not None else None
+    r = client.post("/api/auth/mobile-code", json=body, headers=_auth(token))
+    return r
+
+
+def test_pkce_bound_code_needs_the_apps_verifier(client):
+    _, token, _ = _register(client)
+    verifier, challenge = _pkce_pair()
+    code = _mobile_code(client, token, challenge).json()["code"]
+    # Kodu yakalayan ama doğrulayıcıyı bilmeyen: reddedilir, kod da yanar
+    assert client.post("/api/auth/mobile-exchange", json={"code": code}).status_code == 401
+    assert client.post("/api/auth/mobile-exchange", json={"code": code, "verifier": verifier}).status_code == 401
+    code = _mobile_code(client, token, challenge).json()["code"]
+    assert client.post("/api/auth/mobile-exchange", json={"code": code, "verifier": "x" * 43}).status_code == 401
+    code = _mobile_code(client, token, challenge).json()["code"]
+    r = client.post("/api/auth/mobile-exchange", json={"code": code, "verifier": verifier})
+    assert r.status_code == 200 and r.json()["token"]
+
+
+def test_legacy_app_without_pkce_still_signs_in_until_required(client, monkeypatch):
+    _, token, _ = _register(client)
+    code = _mobile_code(client, token).json()["code"]          # eski APK: gövde yok
+    assert client.post("/api/auth/mobile-exchange", json={"code": code}).status_code == 200
+    monkeypatch.setenv("MOBILE_PKCE_REQUIRED", "1")
+    code = _mobile_code(client, token).json()["code"]
+    assert client.post("/api/auth/mobile-exchange", json={"code": code}).status_code == 401
+    assert _mobile_code(client, token, "not-a-valid-challenge").status_code == 400
+
+
+# ── Hesap silme ──────────────────────────────────────────────────────────────
+
+def test_user_deletes_their_account_with_password(client):
+    email, token, uid = _register(client, password="delete-me-123")
+    # Silmeyi eskiden FK hatasıyla düşüren bağlar: makale yazarı, oyun odası
+    with _db() as conn:
+        conn.execute("INSERT INTO articles(title,slug,content,author_id,status) VALUES('t',?,'',?,'draft')",
+                     (f"del-{uid}", uid))
+        conn.execute("""INSERT INTO game_rooms(room_code,mode,status,season,team_a,team_b,player1_user_id,turn_user_id)
+                        VALUES(?,?,?,?,?,?,?,?)""", (f"D{uid}"[:6], "friend", "complete", "2023-24", "BOS", "LAL", uid, uid))
+        conn.execute("INSERT INTO lineup_games(user_id,pct,grade,lineup_json) VALUES(?,?,?,?)", (uid, 70, "B", "[]"))
+    assert client.get("/api/auth/me", headers=_auth(token)).json()["has_password"] is True
+    r = client.post("/api/account/delete", json={"password": "wrong-one"}, headers=_auth(token))
+    assert r.status_code == 403                                     # 401 değil: oturumu düşürmesin
+    assert client.post("/api/account/delete", json={"password": "delete-me-123"}, headers=_auth(token)).status_code == 200
+    with _db() as conn:
+        assert conn.execute("SELECT COUNT(*) FROM users WHERE id=?", (uid,)).fetchone()[0] == 0
+        assert conn.execute("SELECT COUNT(*) FROM lineup_games WHERE user_id=?", (uid,)).fetchone()[0] == 0
+        assert conn.execute("SELECT author_id FROM articles WHERE slug=?", (f"del-{uid}",)).fetchone()[0] is None
+    assert client.get("/api/auth/me", headers=_auth(token)).status_code == 401
+    assert client.post("/api/auth/login", json={"email": email, "password": "delete-me-123"}).status_code == 401
+
+
+def test_google_account_confirms_deletion_with_username(client, app_mod, monkeypatch):
+    tag = uuid.uuid4().hex[:8]
+    _google(monkeypatch, app_mod, email=f"g-{tag}@example.test", given_name=f"gdel{tag}")
+    d = client.post("/api/auth/google", json={"credential": "t"}).json()
+    token, username = d["token"], d["user"]["username"]
+    assert client.get("/api/auth/me", headers=_auth(token)).json()["has_password"] is False
+    assert client.post("/api/account/delete", json={"confirm": "someone-else"}, headers=_auth(token)).status_code == 403
+    assert client.post("/api/account/delete", json={"confirm": username.upper()}, headers=_auth(token)).status_code == 200
+
+
+def test_the_only_admin_cannot_delete_their_account(client):
+    _, token, uid = _register(client, password="only-admin-1")
+    with _db() as conn:
+        conn.execute("UPDATE users SET role='user' WHERE role='admin'")
+        conn.execute("UPDATE users SET role='admin' WHERE id=?", (uid,))
+    r = client.post("/api/account/delete", json={"password": "only-admin-1"}, headers=_auth(token))
+    assert r.status_code == 400 and "only admin" in r.json()["detail"]
+
+
+def test_every_user_reference_is_cleaned_when_an_account_is_deleted():
+    """Şema bekçisi: kullanıcıya bağlanan her sütun ya CASCADE/SET NULL ile
+    kendiliğinden temizlenmeli ya da _delete_account'ta elle ele alınmalı."""
+    import inspect
+    import api.main as M
+    handled_src = inspect.getsource(M._delete_account)
+    with _db() as conn:
+        tables = [r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")]
+        for t in tables:
+            fks = {fk["from"]: fk["on_delete"] for fk in conn.execute(f"PRAGMA foreign_key_list('{t}')") if fk["table"] == "users"}
+            for col in conn.execute(f"PRAGMA table_info('{t}')"):
+                name = col["name"]
+                user_ish = name in fks or name == "user_id" or name.endswith("_user_id") or name == "author_id"
+                if not user_ish or fks.get(name) in ("CASCADE", "SET NULL"):
+                    continue
+                assert t in handled_src and name in handled_src, f"{t}.{name} hesap silinince temizlenmiyor"
+
+
+def test_security_txt_is_published(client):
+    r = client.get("/.well-known/security.txt")
+    assert r.status_code == 200 and r.headers["content-type"].startswith("text/plain")
+    assert "Contact: mailto:" in r.text and "Expires: " in r.text

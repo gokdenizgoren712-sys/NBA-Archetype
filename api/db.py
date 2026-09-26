@@ -892,6 +892,13 @@ def init_db():
                 conn.execute(f"ALTER TABLE users ADD COLUMN {col} {dfn}")
             except Exception:
                 pass
+        # PKCE (2026-09): uygulamanın gönderdiği doğrulayıcı özeti. Doluysa kod
+        # yalnız o doğrulayıcıyla takas edilir (rankit:// bağlantısını yakalayan
+        # başka bir uygulama kodu kullanamaz).
+        try:
+            conn.execute("ALTER TABLE mobile_auth_codes ADD COLUMN challenge TEXT")
+        except Exception:
+            pass
         # Google'la açılan hesapların şifresi yok; e-postaları Google'ca doğrulanmış.
         conn.execute("UPDATE users SET email_verified=1 WHERE hashed_password='' AND email_verified=0")
         # Sıfırlama token'ı artık yalnız SHA-256 özetiyle (64 hex) saklanıyor;

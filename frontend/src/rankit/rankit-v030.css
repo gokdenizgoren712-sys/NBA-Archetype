@@ -285,6 +285,20 @@
 .rankit-app .ri-hunt-summary small{font:700 9px/1 var(--font-logo);letter-spacing:.14em;color:var(--ri-gold)}
 .rankit-app .ri-hunt-summary b{font:400 12px/1.4 var(--font-sans);color:#9aa0a6;font-weight:400}
 
+/* Ayarlar → hesap silme: satır açılınca aynı kartta onay alanı. Kırmızı yalnız
+   geri alınamaz eylemin kendisinde; iptal nötr. */
+.rankit-app .ri-delete{display:grid;gap:10px;padding:14px 16px 16px;border-top:1px solid var(--ri-line)}
+.rankit-app .ri-delete strong{font:700 13px/1 var(--font-logo);letter-spacing:.02em;color:#eceded}
+.rankit-app .ri-delete p,.rankit-app .ri-delete label{margin:0;font:400 12px/1.45 var(--font-sans);color:#9aa0a6}
+.rankit-app .ri-delete input{min-height:44px;border-radius:10px;border:1px solid var(--ri-line);background:#121315;color:#eceded;padding:0 12px;font:400 14px/1 var(--font-sans)}
+.rankit-app .ri-delete input:focus-visible,.rankit-app .ri-delete button:focus-visible{outline:2px solid var(--ri-focus);outline-offset:2px}
+.rankit-app .ri-delete .ri-delete-error{color:#f5402e}
+.rankit-app .ri-delete-actions{display:flex;gap:8px}
+.rankit-app .ri-delete-actions button{flex:1;min-height:44px;border-radius:10px;background:transparent;font:700 12px/1 var(--font-logo);letter-spacing:.06em;text-transform:uppercase}
+.rankit-app .ri-delete-cancel{border:1px solid var(--ri-line);color:#eceded}
+.rankit-app .ri-delete-go{border:1px solid #f5402e;color:#f5402e}
+.rankit-app .ri-delete-go:disabled{opacity:.45}
+
 /* Games by Primary Arch (yalnız uygulama) — Hunt geniş, Games yanında dar kutu
    ("side", sahibin kararı 2026-09-26). Hunt yoksa Games satırı tek başına alır.
    Nötr: bu bölgenin altını THE HUNT'ta (One Gold Rule). */

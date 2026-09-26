@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import LegalPageLayout, { Section } from "./LegalPageLayout";
 
 export default function TermsOfService() {
@@ -73,7 +74,9 @@ export default function TermsOfService() {
 
       <Section heading="Contact">
         <p>
-          Questions about these terms: [PLACEHOLDER: support email / contact page link].
+          Questions about these terms:{" "}
+          <a href="mailto:info@primaryarch.net" style={{ color: "var(--yamabuki)" }}>info@primaryarch.net</a>{" "}
+          or the <Link to="/contact" style={{ color: "var(--yamabuki)" }}>contact page</Link>.
         </p>
       </Section>
     </LegalPageLayout>

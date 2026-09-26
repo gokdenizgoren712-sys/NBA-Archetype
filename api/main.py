@@ -3,7 +3,7 @@ NBA Arketip API — FastAPI backend
 Parquet dosyalarını okuyup JSON olarak sunar.
 """
 
-import sys, json, os, re, time, logging, secrets, unicodedata, hashlib
+import sys, json, os, re, time, logging, secrets, unicodedata, hashlib, hmac
 from pathlib import Path
 from functools import lru_cache
 from typing import Optional
@@ -3087,6 +3087,14 @@ class GoogleAuthBody(BaseModel):
 
 class MobileAuthExchangeBody(BaseModel):
     code: str
+    verifier: Optional[str] = None   # PKCE; eski APK'lar göndermez
+
+class MobileCodeBody(BaseModel):
+    challenge: Optional[str] = None  # base64url(SHA-256(verifier)), 43 karakter
+
+class DeleteAccountBody(BaseModel):
+    password: str = ""   # şifreli hesap: şifre
+    confirm: str = ""    # şifresiz (Google) hesap: kullanıcı adı
 
 class ArticleBody(BaseModel):
     title: str
@@ -3420,28 +3428,43 @@ def admin_request_ip(request: Request, _user=Depends(require_admin)):
 @app.get("/api/auth/me")
 def me(user=Depends(get_current_user)):
     with get_conn() as conn:
-        row = conn.execute("SELECT id,email,username,role,created_at FROM users WHERE id=?",
+        row = conn.execute("SELECT id,email,username,role,created_at,hashed_password FROM users WHERE id=?",
                            (int(user["sub"]),)).fetchone()
     if not row:
         raise HTTPException(404, "User not found")
-    return _row(row)
+    out = _row(row)
+    # Hesap silme formu neyi soracağını bilsin: şifre mi, kullanıcı adı mı.
+    out["has_password"] = bool(out.pop("hashed_password", "") not in ("", "!", None))
+    return out
+
+_PKCE_RX = _re.compile(r"^[A-Za-z0-9_-]{43}$")
+
+
+def _pkce_challenge(verifier: str) -> str:
+    import base64
+    digest = hashlib.sha256(verifier.encode("ascii")).digest()
+    return base64.urlsafe_b64encode(digest).rstrip(b"=").decode("ascii")
+
 
 @app.post("/api/auth/mobile-code")
-def create_mobile_auth_code(user=Depends(get_current_user)):
+def create_mobile_auth_code(body: Optional[MobileCodeBody] = None, user=Depends(get_current_user)):
     """Canli web oturumunu APK'ya tek kullanimlik kodla devreder.
 
     JWT deep-link URL'sine yazilmaz; ham kod yalnizca bir kez ve 5 dakika
     boyunca kullanilabilir. Veritabaninda da kodun sadece SHA-256 ozeti tutulur.
     """
     uid = int(user["sub"])
+    challenge = (body.challenge or "").strip() if body else ""
+    if challenge and not _PKCE_RX.match(challenge):
+        raise HTTPException(400, "Invalid app challenge — start sign-in from the app again")
     raw_code = secrets.token_urlsafe(32)
     code_hash = hashlib.sha256(raw_code.encode("utf-8")).hexdigest()
     expires_at = (datetime.utcnow() + timedelta(minutes=5)).strftime("%Y-%m-%d %H:%M:%S")
     with get_conn() as conn:
         conn.execute("DELETE FROM mobile_auth_codes WHERE expires_at < datetime('now') OR used_at IS NOT NULL")
         conn.execute(
-            "INSERT INTO mobile_auth_codes(code_hash,user_id,expires_at) VALUES(?,?,?)",
-            (code_hash, uid, expires_at),
+            "INSERT INTO mobile_auth_codes(code_hash,user_id,expires_at,challenge) VALUES(?,?,?,?)",
+            (code_hash, uid, expires_at, challenge or None),
         )
     return {"code": raw_code, "expires_in": 300, "deep_link": f"rankit://auth?code={raw_code}"}
 
@@ -3451,19 +3474,29 @@ def exchange_mobile_auth_code(body: MobileAuthExchangeBody):
         raise HTTPException(400, "Invalid mobile authorization code")
     code_hash = hashlib.sha256(body.code.encode("utf-8")).hexdigest()
     with get_conn() as conn:
-        row = conn.execute("""SELECT c.id,c.user_id,u.email,u.username,u.role,u.is_banned
+        row = conn.execute("""SELECT c.id,c.user_id,c.challenge,u.email,u.username,u.role,u.is_banned
             FROM mobile_auth_codes c JOIN users u ON u.id=c.user_id
             WHERE c.code_hash=? AND c.used_at IS NULL AND c.expires_at >= datetime('now')""",
             (code_hash,),
         ).fetchone()
         if not row:
             raise HTTPException(401, "Mobile authorization code expired or already used")
+        # Kod ÖNCE harcanır: yanlış doğrulayıcıyla bir deneme hakkı bile kalmaz.
         changed = conn.execute(
             "UPDATE mobile_auth_codes SET used_at=datetime('now') WHERE id=? AND used_at IS NULL",
             (row["id"],),
         ).rowcount
         if changed != 1:
             raise HTTPException(401, "Mobile authorization code already used")
+    # PKCE: kod bir doğrulayıcı özetine bağlıysa, yalnız o doğrulayıcıyı
+    # bilen (akışı başlatan uygulama) takas edebilir. Özetsiz kod = eski APK;
+    # MOBILE_PKCE_REQUIRED=1 olunca onlar da reddedilir.
+    if row["challenge"]:
+        if not body.verifier or len(body.verifier) > 200 or not hmac.compare_digest(
+                _pkce_challenge(body.verifier), row["challenge"]):
+            raise HTTPException(401, "This sign-in was started on another device — try again from the app")
+    elif os.environ.get("MOBILE_PKCE_REQUIRED") == "1":
+        raise HTTPException(401, "Update RankIt to sign in")
     if row["is_banned"]:
         raise HTTPException(403, "This account has been suspended")
     account = {"id": row["user_id"], "email": row["email"], "username": row["username"], "role": row["role"]}
@@ -3598,10 +3631,68 @@ def delete_all_users(_user=Depends(require_admin)):
         conn.execute("DELETE FROM users")
     return {"deleted": count}
 
+def _delete_account(conn, uid: int) -> None:
+    """Kullanıcıyı ve ona ait her şeyi siler.
+
+    37 bağlantı ON DELETE CASCADE / SET NULL ile kendiliğinden temizlenir.
+    Silmeyi ENGELLEYEN dört bağlantı (kuralsız FK) ve iki kuralsız sütun
+    önce boşaltılır; polimorfik takip/favori satırları (target_type='user')
+    ayrıca silinir. Bunlar yokken kullanıcı silme FK hatasıyla 500 dönüyordu.
+    Şemaya kullanıcıya bağlı yeni bir sütun eklenirse buraya da eklenmeli
+    (tests/test_security_hardening.py bunu şemadan denetliyor)."""
+    conn.execute("UPDATE articles SET author_id=NULL WHERE author_id=?", (uid,))
+    for col in ("player1_user_id", "player2_user_id", "turn_user_id"):
+        conn.execute(f"UPDATE game_rooms SET {col}=NULL WHERE {col}=?", (uid,))
+    conn.execute("UPDATE game_room_picks SET user_id=NULL WHERE user_id=?", (uid,))
+    conn.execute("UPDATE rankit_review_comments SET reply_to_user_id=NULL WHERE reply_to_user_id=?", (uid,))
+    for table in ("rankit_follows", "rankit_favorites"):
+        conn.execute(f"DELETE FROM {table} WHERE target_type='user' AND target_id=?", (uid,))
+    conn.execute("DELETE FROM users WHERE id=?", (uid,))
+
+
 @app.delete("/api/admin/users/{user_id}")
 def admin_delete_user(user_id: int, _user=Depends(require_admin)):
+    if user_id == int(_user["sub"]):
+        raise HTTPException(400, "Delete your own account from your profile instead")
     with get_conn() as conn:
-        conn.execute("DELETE FROM users WHERE id=?", (user_id,))
+        _delete_account(conn, user_id)
+    logging.warning("ADMIN AUDIT: user %s deleted user %s", _user["sub"], user_id)
+    return {"ok": True}
+
+
+@app.post("/api/account/delete")
+def delete_own_account(body: DeleteAccountBody, user=Depends(get_current_user)):
+    """Kullanıcı kendi hesabını ve verisini kalıcı olarak siler (Google Play ve
+    KVKK/GDPR: uygulamadan ve web'den hesap silme). Açık kalmış bir oturumla
+    başkası silemesin diye yeniden doğrulama ister: şifreli hesapta şifre,
+    şifresiz (Google) hesapta kullanıcı adı. Yanlışta 403 — 401 değil: sitenin
+    fetch sarmalayıcısı 401'de oturumu kapatıyor. Denemeler giriş sayacına
+    yazılır (kaba kuvvet için ikinci bir kapı olmasın)."""
+    uid = int(user["sub"])
+    with get_conn() as conn:
+        row = conn.execute("SELECT id,email,username,role,hashed_password FROM users WHERE id=?",
+                           (uid,)).fetchone()
+    if not row:
+        raise HTTPException(404, "User not found")
+    fail_key = f"login:{row['email'].lower()}"
+    if _auth_hits(fail_key, LOGIN_FAIL_WINDOW, add=False) >= LOGIN_FAIL_LIMIT:
+        raise HTTPException(429, "Too many attempts. Try again in 15 minutes.",
+                            headers={"Retry-After": str(LOGIN_FAIL_WINDOW)})
+    if row["hashed_password"] not in ("", "!", None):
+        ok, wrong = verify_password(body.password, row["hashed_password"]), "Password is incorrect"
+    else:
+        ok, wrong = body.confirm.strip().lower() == row["username"].lower(), "Type your username to confirm"
+    if not ok:
+        _auth_hits(fail_key, LOGIN_FAIL_WINDOW, add=True)
+        raise HTTPException(403, wrong)
+    with get_conn() as conn:
+        if row["role"] == "admin":
+            others = conn.execute("""SELECT COUNT(*) FROM users
+                WHERE role='admin' AND is_banned=0 AND id!=?""", (uid,)).fetchone()[0]
+            if not others:
+                raise HTTPException(400, "You are the only admin — make someone else an admin first")
+        _delete_account(conn, uid)
+    logging.warning("ACCOUNT DELETED: user %s deleted their own account", uid)
     return {"ok": True}
 
 # ── Leaderboard moderasyonu (2026-08) ───────────────────────────────────────
@@ -5295,6 +5386,18 @@ def get_refresh_status(user=Depends(require_admin)):
 
 
 # ─── Frontend statik dosyaları (build sonrası) ────────────────────────────────
+
+# Güvenlik açığı bildirmek isteyenler için standart adres (RFC 9116). Expires
+# bir yıl ileride; yenilemek için tarihi güncellemek yeterli.
+@app.get("/.well-known/security.txt", include_in_schema=False)
+def security_txt():
+    return PlainTextResponse(
+        "Contact: mailto:info@primaryarch.net\n"
+        "Expires: 2027-09-26T00:00:00.000Z\n"
+        "Preferred-Languages: en, tr\n"
+        "Canonical: https://primaryarch.net/.well-known/security.txt\n"
+    )
+
 
 frontend_dist = ROOT / "frontend" / "dist"
 

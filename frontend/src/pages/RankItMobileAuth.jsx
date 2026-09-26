@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Smartphone } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { SEO } from "../hooks/useSEO";
@@ -9,17 +9,24 @@ export default function RankItMobileAuth() {
   const navigate = useNavigate();
   const [state, setState] = useState("idle");
   const [error, setError] = useState("");
+  // Uygulamanın PKCE özeti (rankit/pkce.js). Biçimi tutmazsa yok sayılır:
+  // kod o zaman eski akışla, özetsiz üretilir.
+  const [params] = useSearchParams();
+  const raw = params.get("challenge") || "";
+  const challenge = /^[A-Za-z0-9_-]{43}$/.test(raw) ? raw : null;
 
   useEffect(() => {
-    if (!isLoggedIn) navigate("/login?next=/rankit/mobile-auth", { replace: true });
-  }, [isLoggedIn, navigate]);
+    const back = `/rankit/mobile-auth${challenge ? `?challenge=${challenge}` : ""}`;
+    if (!isLoggedIn) navigate(`/login?next=${encodeURIComponent(back)}`, { replace: true });
+  }, [isLoggedIn, navigate, challenge]);
 
   const continueToApp = async () => {
     setState("loading"); setError("");
     try {
       const response = await fetch("/api/auth/mobile-code", {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify(challenge ? { challenge } : {}),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.detail || "Could not authorize RankIt");

@@ -23,7 +23,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ErrorState, Loading, SkeletonRows } from "./States";
 import { createPortal } from "react-dom";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { rankitApi } from "../rankitApi";
+import { rankitApi, rankitDeleteAccount, rankitMe } from "../rankitApi";
 import { BROADCAST_COUNTRIES, localeCountry } from "../rankitPrefs";
 import { useBackClose } from "./backStack";
 import { FollowPicker } from "./FirstRun";
@@ -57,6 +57,53 @@ function Row({ label, hint, value, onClick }) {
   );
 }
 
+/* Hesap silme (Google Play: uygulama içinden de silinebilmeli; web karşılığı
+   /account/delete). Satır açılınca aynı kartın içinde onay alanı çıkar — ayrı
+   bir diyalog değil, geri tuşu Ayarlar'ı kapatmaya devam eder. Sunucu yeniden
+   doğrulama ister: şifreli hesapta şifre, Google hesabında kullanıcı adı. */
+function DeleteAccount({ onDeleted }) {
+  const [open, setOpen] = useState(false);
+  const [me, setMe] = useState(null);
+  const [value, setValue] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!open || me) return undefined;
+    let alive = true;
+    rankitMe().then((d) => alive && setMe(d)).catch(() => alive && setError("Could not load your account."));
+    return () => { alive = false; };
+  }, [open, me]);
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setBusy(true); setError("");
+    try {
+      await rankitDeleteAccount(me?.has_password ? { password: value } : { confirm: value });
+      onDeleted();
+    } catch (err) {
+      setError(err.message || "Could not delete the account.");
+      setBusy(false);
+    }
+  };
+
+  if (!open) return <Row label="Delete account" hint="Permanently delete your Primary Arch account" onClick={() => setOpen(true)} />;
+  return (
+    <form className="ri-delete" onSubmit={submit}>
+      <strong>Delete account</strong>
+      <p>This permanently deletes your Primary Arch account and everything in RankIt: diary, ratings, reviews, lists and follows. It can't be undone.</p>
+      <label htmlFor="ri-delete-input">{me?.has_password ? "Enter your password to confirm" : `Type your username${me ? ` (${me.username})` : ""} to confirm`}</label>
+      <input id="ri-delete-input" type={me?.has_password ? "password" : "text"} value={value} autoComplete={me?.has_password ? "current-password" : "off"}
+        onChange={(e) => setValue(e.target.value)} />
+      {error && <p role="alert" className="ri-delete-error">{error}</p>}
+      <div className="ri-delete-actions">
+        <button type="button" className="ri-delete-cancel" onClick={() => { setOpen(false); setValue(""); setError(""); }}>Keep account</button>
+        <button type="submit" className="ri-delete-go" disabled={!me || !value || busy}>{busy ? "Deleting…" : "Delete"}</button>
+      </div>
+    </form>
+  );
+}
+
 function Group({ title, children }) {
   return (
     <section className="ri-set-group">
@@ -66,7 +113,7 @@ function Group({ title, children }) {
   );
 }
 
-export default function Settings({ prefs, setPref, followCount, onClose, onFollowsChanged, accountAction, accountActionLabel }) {
+export default function Settings({ prefs, setPref, followCount, onClose, onFollowsChanged, accountAction, accountActionLabel, onAccountDeleted }) {
   // "Competitions & clubs" 4h'nin secicisini DUZENLEYICI kipinde aciyor.
   const [editingFollows, setEditingFollows] = useState(false);
   // Kaydedilen sayi, profil verisinden gelenin YERINE gecer; kaydedilmediyse
@@ -123,7 +170,10 @@ export default function Settings({ prefs, setPref, followCount, onClose, onFollo
 
       <div className="ri-settings-body">
         {/* Native hesap kontrolu 6b'nin sag ust kontrollerini kapatmasin. */}
-        {accountAction && <Group title="PRIMARY ARCH ACCOUNT"><Row label={accountActionLabel || 'Account'} onClick={accountAction}/></Group>}
+        {accountAction && <Group title="PRIMARY ARCH ACCOUNT">
+          <Row label={accountActionLabel || 'Account'} onClick={accountAction}/>
+          {onAccountDeleted && <DeleteAccount onDeleted={onAccountDeleted}/>}
+        </Group>}
         <Group title="SPOILERS">
           <Switch label="Hide scores by default" hint="Blurs score, heat and reviews"
             on={prefs.hideScores} onChange={(v) => setPref({ hideScores: v })} />

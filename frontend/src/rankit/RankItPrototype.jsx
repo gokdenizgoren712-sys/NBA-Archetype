@@ -1345,7 +1345,7 @@ function ProfileView({ profileData, diaryEntries = [], onOpen, hideScores, onHid
   </>;
 }
 
-export default function RankItPrototype({ nativeBack = false, accountAction, accountActionLabel }) {
+export default function RankItPrototype({ nativeBack = false, accountAction, accountActionLabel, onAccountDeleted }) {
   const [collectible, setCollectible] = useState(null);
   const [tab, setTab] = useState("Home");
   const [activityShelf, setActivityShelf] = useState(false);
@@ -1641,7 +1641,7 @@ export default function RankItPrototype({ nativeBack = false, accountAction, acc
             onNavigate={name=>{setTabDirection(TABS.findIndex(x=>x[0]===name)-TABS.findIndex(x=>x[0]===tab));setTab(name)}}/>
         )}
         {tab === "Profile" && (
-          RANKIT_NEW_CARD ? <ProfileRoot key={ratingAccount()} revision={profileRevision} onOpenHunt={()=>openHunt()} onOpen={openMatch} accountAction={accountAction} accountActionLabel={accountActionLabel}
+          RANKIT_NEW_CARD ? <ProfileRoot key={ratingAccount()} revision={profileRevision} onOpenHunt={()=>openHunt()} onOpen={openMatch} accountAction={accountAction} accountActionLabel={accountActionLabel} onAccountDeleted={onAccountDeleted}
             hideScores={hideScores}
             onHideScoresChange={setHideScores}
             onShelf={()=>{setActivityShelf(true);setTabDirection(-1);setTab("Activity")}}

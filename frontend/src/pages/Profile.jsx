@@ -80,6 +80,10 @@ export default function Profile() {
             </button>
           </div>
         </div>
+        {/* Hesap silme ayrı sayfada (Play Console bağlantısı da o): /account/delete */}
+        <p className="-mt-3 mb-6 text-right">
+          <Link to="/account/delete" className="text-xs underline" style={{ color: "var(--text-muted)" }}>Delete account</Link>
+        </p>
 
         {/* Tabs */}
         <div className="flex gap-1 mb-4 border-b" style={{ borderColor: "var(--border)" }}>

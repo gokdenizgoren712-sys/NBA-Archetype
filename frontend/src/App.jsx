@@ -36,6 +36,7 @@ const NCAAPage       = lazy(() => import("./pages/NCAAPage"));
 const EuroLeaguePage = lazy(() => import("./pages/EuroLeaguePage"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const ResetPassword  = lazy(() => import("./pages/ResetPassword"));
+const AccountDelete  = lazy(() => import("./pages/AccountDelete"));
 const PlayerProfile  = lazy(() => import("./pages/PlayerProfile"));
 const SportSelect    = lazy(() => import("./pages/SportSelect"));
 const FootballPlayers = lazy(() => import("./pages/football/FootballPlayers"));
@@ -447,6 +448,7 @@ function AppInner() {
               {/* Auth extras */}
               <Route path="/forgot-password"          element={<ForgotPassword />} />
               <Route path="/reset-password"           element={<ResetPassword />} />
+              <Route path="/account/delete"           element={<AccountDelete />} />
               {/* Admin */}
               <Route path="/admin"                    element={<Navigate to="/admin/articles" replace />} />
               <Route path="/admin/articles"           element={<ArticleList />} />

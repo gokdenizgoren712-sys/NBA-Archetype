@@ -4,6 +4,7 @@ import { App as CapacitorApp } from "@capacitor/app";
 import { Browser } from "@capacitor/browser";
 import RankItPrototype from "./RankItPrototype";
 import { API_ROOT, rankitApi, rankitMe, rankitMobileExchange } from "./rankitApi";
+import { pkceStart, pkceVerifier, pkceClear } from "./pkce";
 import { ConnectScreen, FollowPicker } from "./redesign/FirstRun";
 import { RankItMark } from "./redesign/BrandMark";
 // Games by Primary Arch: misafirin bitmiş sonucu giriş sırasında cihazda bekler
@@ -37,7 +38,8 @@ export default function RankItMobileApp() {
     if (!code) { setAuthError("The authorization link is incomplete."); return; }
     setAuthBusy(true); setAuthError("");
     try {
-      const data = await rankitMobileExchange(code);
+      const data = await rankitMobileExchange(code, pkceVerifier());
+      pkceClear();
       localStorage.setItem(TOKEN_KEY, data.token);
       localStorage.setItem(USER_KEY, JSON.stringify(data.user));
       localStorage.removeItem(GUEST_KEY); setGuest(false);
@@ -66,14 +68,20 @@ export default function RankItMobileApp() {
   // Giris ve kayit AYNI yoldan doner: ikisi de sitede biter, /rankit/mobile-auth
   // tek kullanimlik kodu uretir ve rankit:// derin baglantisiyla geri gelir.
   // Kayit sayfasi ?next= destekliyor, yani yeni hesap da ayni koda iner.
+  // PKCE: sayfaya yalnız doğrulayıcının özeti gider; kod ona bağlanır ve
+  // yalnız bu cihazdaki doğrulayıcıyla takas edilir (bkz. pkce.js).
+  const authPath = async () => {
+    const pkce = await pkceStart().catch(() => null);
+    return pkce ? `/rankit/mobile-auth?challenge=${pkce.challenge}` : "/rankit/mobile-auth";
+  };
   const openSite = async path => {
     setAuthBusy(true); setAuthError("");
     try { await Browser.open({ url: `${API_ROOT}${path}`, presentationStyle: "popover" }); }
     catch { setAuthError("Could not open Primary Arch."); }
     finally { setAuthBusy(false); }
   };
-  const startWebAuth = () => openSite("/rankit/mobile-auth");
-  const startSignup = () => openSite(`/register?next=${encodeURIComponent("/rankit/mobile-auth")}`);
+  const startWebAuth = async () => openSite(await authPath());
+  const startSignup = async () => openSite(`/register?next=${encodeURIComponent(await authPath())}`);
   const browseAsGuest = () => { localStorage.setItem(GUEST_KEY, "1"); setGuest(true); };
   const logout = () => {
     localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(USER_KEY);
@@ -101,6 +109,7 @@ export default function RankItMobileApp() {
       ? <button className="ri-mobile-account" onClick={logout} aria-label="Log out"><span>{user.username?.slice(0, 2).toUpperCase()}</span><LogOut size={14}/></button>
       // Misafir: ayni kose, "Sign in" -- 4g'ye geri doner.
       : <button className="ri-mobile-account" onClick={logout} aria-label="Sign in"><span>IN</span><LogIn size={14}/></button>}
-    <RankItPrototype nativeBack accountAction={logout} accountActionLabel={user ? 'Log out' : 'Sign in'}/>
+    <RankItPrototype nativeBack accountAction={logout} accountActionLabel={user ? 'Log out' : 'Sign in'}
+      onAccountDeleted={user ? logout : undefined}/>
   </div>;
 }
