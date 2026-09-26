@@ -284,7 +284,7 @@ Tarayıcı bunları geçersiz sayıp atlıyor. Bu işin kapsamı dışında, ayr
 | 2 | bitti | `game/lineupDraft.js` + `seasonRun.js`; web `/basketball/game` bu motorlarla çalışıyor |
 | 3–4 | bitti | `arcade/` (14 ekran), Discover satırı, geri tuşu zinciri, rotasyon, Rewrite History, playoff listesi, skor tablosu |
 | 5 | sonra | With a Friend / Online Opponent, futbol |
-| 6 | kısmen | testler + iki build + Chromium'da misafir uçtan uca tur bitti; emülatörde giriş yapmış tur ve APK (Kural 2) bekliyor |
+| 6 | kısmen | testler + iki build + Chromium'da misafir ve giriş yapmış uçtan uca turlar bitti; emülatör turu ve APK (Kural 2) bekliyor |
 
 **Doğrulama:** `frontend/tests/games-*.test.mjs` (motorlar, altyapı, arcade
 sözleşmesi), `tests/test_games_cors.py`; mobil build'de oyun ayrı chunk
@@ -292,6 +292,8 @@ sözleşmesi), `tests/test_games_cors.py`; mobil build'de oyun ayrı chunk
 Chromium 390×844, yerel backend + gerçek veri: 9 seçim → koç → sonuç →
 rotasyon → Rewrite History (29 takım, uyarısız) → playoff → misafir skoru
 cihazda bekliyor → geri tuşu zinciri → Discover.
+Giriş yapmış tur: misafir sonucu girişten sonra tek satır olarak (sezonuyla)
+tabloya düşüyor; girişliyken oynanan oyun skor + sezon olarak doğrudan yazılıyor.
 
 **Uygulama sırasında bulunan hatalar (düzeltildi):**
 - **CORS / 429:** rate limiter'ın 429'u CORS başlığı taşımıyordu; uygulama
@@ -301,6 +303,9 @@ cihazda bekliyor → geri tuşu zinciri → Discover.
 - **Aynı oyuncu iki kez:** pozisyon seçiminden sonraki 400 ms'de eski liste hâlâ
   tıklanabiliyordu. Motor artık yalnız `pick_player` fazında ve kadroda olmayan
   oyuncuyu kabul ediyor (web sayfası da bu korumayı alıyor).
+- **Misafir skoru üç kez:** girişten sonra kullanıcı effect'i art arda koşuyor
+  (cihazdaki kullanıcı, sonra /me cevabı). Kayıt POST'tan sonra silindiği için
+  her çağrı skoru yeniden yazıyordu. `flushPendingScore` artık tek uçuşlu.
 
 **Plandan sapma (açık iş):** paylaşım şimdilik `navigator.share`, yoksa panoya
 kopyalama. Android WebView `navigator.share` sunmadığı için uygulamada düğme

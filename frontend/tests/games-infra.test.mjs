@@ -114,6 +114,19 @@ test("gönderim: skor, sonra aynı satıra sezon; kayıt silinir", async () => {
   assert.equal(readPendingScore({ now: 3, storage }), null);
 });
 
+test("gönderim: eşzamanlı çağrılar skoru bir kez yazar (tek uçuş)", async () => {
+  const storage = memoryStorage();
+  savePendingScore(SCORE, { now: 0, storage });
+  savePendingSeason({ wins: 49, season_result: "R1", sim_era: "small_ball" }, { now: 1, storage });
+  const { impl, calls } = fakeFetch([{ status: 200, body: { ok: true, id: 7 } }, { status: 200, body: { ok: true } }]);
+  const outs = await Promise.all([1, 2, 3].map(() => flushPendingScore({ token: "t", fetchImpl: impl, now: 2, storage })));
+  assert.deepEqual(outs, [{ posted: true, id: 7 }, { posted: true, id: 7 }, { posted: true, id: 7 }]);
+  assert.deepEqual(calls.map((c) => c.url), ["/api/game/score", "/api/game/season-result"]);
+  // uçuş bitti: sonraki çağrı yeniden bakar, kayıt yok → istek yok
+  assert.deepEqual(await flushPendingScore({ token: "t", fetchImpl: impl, now: 3, storage }), { posted: false, reason: "none" });
+  assert.equal(calls.length, 2);
+});
+
 test("gönderim: token yok / 401 / ağ hatası → kayıt kalır", async () => {
   const storage = memoryStorage();
   savePendingScore(SCORE, { now: 0, storage });

@@ -82,7 +82,19 @@ export function clearPendingScore({ storage } = {}) {
 /** Giriş dönüşünde: skoru, sonra (varsa) sezonu gönder.
  *  { posted: true, id } | { posted: false, reason: "none" | "auth" | "rejected" | "network" }
  *  auth / network → kayıt kalır (sonra tekrar denenir); rejected → silinir. */
-export async function flushPendingScore({ token, fetchImpl = globalThis.fetch, now = Date.now(), storage } = {}) {
+// Tek uçuş: RankItMobileApp'in kullanıcı effect'i art arda koşabiliyor (önce
+// cihazdaki kullanıcı, sonra /me cevabı; dev'de StrictMode). Kayıt ancak POST
+// cevabından sonra silindiği için eşzamanlı çağrıların hepsi aynı kaydı okuyup
+// skoru üç kez yazıyordu (2026-09-26, giriş yapmış uçtan uca turda yakalandı).
+// Uçuştaki çağrı varken gelen çağrı aynı sözü alır.
+let inFlight = null;
+
+export function flushPendingScore(opts = {}) {
+  if (!inFlight) inFlight = flushOnce(opts).finally(() => { inFlight = null; });
+  return inFlight;
+}
+
+async function flushOnce({ token, fetchImpl = globalThis.fetch, now = Date.now(), storage } = {}) {
   const s = store(storage);
   const entry = readPendingScore({ now, storage: s });
   if (!entry) return { posted: false, reason: "none" };
