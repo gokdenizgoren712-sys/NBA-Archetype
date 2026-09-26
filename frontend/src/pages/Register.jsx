@@ -18,10 +18,13 @@ export default function Register() {
   });
   const [error, setError]   = useState("");
   const [loading, setLoading] = useState(false);
+  // Zorunlu onay (mağaza UGC şartı): şartlar + Community Guidelines.
+  const [agreed, setAgreed] = useState(false);
 
   const submit = async (e) => {
     e.preventDefault();
     setError("");
+    if (!agreed) { setError("Agree to the Terms of Service and Community Guidelines to continue"); return; }
     if (form.password !== form.confirm) { setError("Passwords don't match"); return; }
     const pwProblem = passwordProblem(form.password);
     if (pwProblem) { setError(pwProblem); return; }
@@ -34,6 +37,7 @@ export default function Register() {
           email: form.email,
           username: form.username,
           password: form.password,
+          accept_terms: true,
         }),
       });
       const data = await res.json();
@@ -76,6 +80,18 @@ export default function Register() {
           {field("Username", "username")}
           {field("Password", "password", "password", PASSWORD_HINT)}
           {field("Confirm Password", "confirm", "password")}
+
+          <label className="flex items-start gap-2.5 text-sm leading-snug cursor-pointer" style={{ color: "var(--text-muted)" }}>
+            <input type="checkbox" required checked={agreed} onChange={e => setAgreed(e.target.checked)}
+              className="mt-0.5 h-4 w-4 shrink-0" style={{ accentColor: "var(--yamabuki)" }} />
+            <span>
+              I agree to the{" "}
+              <Link to="/terms-of-service" target="_blank" className="underline" style={{ color: "var(--text-primary)" }}>Terms of Service</Link>{" "}
+              and{" "}
+              <Link to="/community-guidelines" target="_blank" className="underline" style={{ color: "var(--text-primary)" }}>Community Guidelines</Link>,
+              including zero tolerance for abusive content.
+            </span>
+          </label>
 
           {error && <p className="text-sm text-red-400">{error}</p>}
 

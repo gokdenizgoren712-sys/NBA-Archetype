@@ -67,18 +67,42 @@ const body = (method, value) => ({ method, body: JSON.stringify(value) });
    tersine-cevir yoluna dusuyor, yani eski istemciler kirilmiyor. */
 const want = on => (typeof on === "boolean" ? { on } : {});
 
-async function setUserFollow(id, following) {
-  let account = 'guest';
-  try { account = String(JSON.parse(localStorage.getItem('nba_arch_user'))?.id || 'guest'); } catch { /* guest */ }
-  const result = await request(`/people/${id}/follow`, body('PUT', { following }));
-  // Profil sayaclari ve takipci-gorunurlugundeki eski GET kopyalari gecersiz.
+function currentAccount() {
+  try { return String(JSON.parse(localStorage.getItem('nba_arch_user'))?.id || 'guest'); } catch { return 'guest'; }
+}
+
+// Iliski degisince (takip, engel) hesabin eski GET kopyalari gecersiz:
+// profil sayaclari, gorunurluk, akislar.
+function forgetAccountCache(account) {
   try {
     for (const key of Object.keys(localStorage)) {
       if (key.startsWith(`rankit:cache:${account}:`)) localStorage.removeItem(key);
     }
-  } catch { /* Sunucunun onayladigi takibi depolama hatasi reddedildi yapmaz. */ }
+  } catch { /* Sunucunun onayladigi degisikligi depolama hatasi reddedildi yapmaz. */ }
+}
+
+async function setUserFollow(id, following) {
+  const account = currentAccount();
+  const result = await request(`/people/${id}/follow`, body('PUT', { following }));
+  forgetAccountCache(account);
   window.dispatchEvent(new CustomEvent('rankit:relationships', { detail: { account, id, ...result } }));
   return result;
+}
+
+/* Engel (docs/RANKIT_STORE_BLOCKERS_PLAN.md B5). Olay AYRI duyurulur
+   (announceBlock): engelleyen kisi onay satirini gorurken icerik altindan
+   kaybolmasin; sheet kapaninca ekranlar temizlenir. */
+async function setUserBlock(id, blocked) {
+  const result = await request(`/people/${id}/block`, { method: blocked ? 'PUT' : 'DELETE' });
+  forgetAccountCache(currentAccount());
+  return result;
+}
+
+export function announceBlock(id, blocked) {
+  const account = currentAccount();
+  window.dispatchEvent(new CustomEvent('rankit:blocks', { detail: { account, id, blocked } }));
+  // Profil ve kisi listeleri takip olayini dinliyor: engel takipleri de sildi.
+  window.dispatchEvent(new CustomEvent('rankit:relationships', { detail: { account, id, following: false, blocked } }));
 }
 
 export const rankitApi = {
@@ -184,6 +208,12 @@ export const rankitApi = {
   companion: matchId => request(`/matches/${matchId}/companion`),
   pulse: (matchId, value) => request(`/matches/${matchId}/pulse`, body("POST", { value })),
   markMoment: momentId => request(`/moments/${momentId}/mark`, body("POST", {})),
+  // Moderasyon (B2): sikayet, engel, engellenenler listesi.
+  report: (targetType, targetId, reason, note = "") =>
+    request("/reports", body("POST", { target_type: targetType, target_id: targetId, reason, note })),
+  block: id => setUserBlock(id, true),
+  unblock: id => setUserBlock(id, false),
+  blocks: () => request("/blocks"),
   watchalong: (matchId, room = "community", beforeId = null) =>
     request(`/matches/${matchId}/watchalong?room=${encodeURIComponent(room)}${beforeId == null ? "" : `&before_id=${encodeURIComponent(beforeId)}`}`),
 };

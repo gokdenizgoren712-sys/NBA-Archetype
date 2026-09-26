@@ -49,6 +49,11 @@ export default function ArticleList() {
               style={{ background: "var(--bg-elevated)", color: "var(--text-muted)", border: "1px solid var(--border)" }}>
               Corrections
             </Link>
+            <Link to="/admin/reports"
+              className="px-3 py-1.5 rounded-[8px] text-sm"
+              style={{ background: "var(--bg-elevated)", color: "var(--text-muted)", border: "1px solid var(--border)" }}>
+              Reports
+            </Link>
             <Link to="/admin/lineups"
               className="px-3 py-1.5 rounded-[8px] text-sm"
               style={{ background: "var(--bg-elevated)", color: "var(--text-muted)", border: "1px solid var(--border)" }}>

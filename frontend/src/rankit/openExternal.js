@@ -36,5 +36,6 @@ export function externalLinkProps(path, { app = IS_APP, root = API_ROOT, browser
 export const LEGAL_PAGES = [
   ["/privacy-policy", "Privacy policy"],
   ["/terms-of-service", "Terms of service"],
+  ["/community-guidelines", "Community guidelines"],
   ["/contact", "Contact & support"],
 ];

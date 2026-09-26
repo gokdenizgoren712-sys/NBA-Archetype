@@ -952,3 +952,51 @@ button.ri-reviews-link{display:inline-flex;align-items:center;gap:4px;border:0;b
 .ri-players-foot{flex:none;display:flex;align-items:center;gap:13px;padding:16px 20px max(16px,env(safe-area-inset-bottom,0px));border-top:1px solid rgba(255,255,255,.09)}.ri-players-foot span{flex:1;min-width:0;color:#7f868b;font-size:11.5px;line-height:1.45}.ri-players-foot button{height:44px;padding:0 20px;border:0;border-radius:10px;background:#ffb11b;color:#17120a;font:700 12.5px/1 var(--font-logo,Rajdhani,sans-serif);letter-spacing:.06em;cursor:pointer}
 .ri-players-overlay.is-web{align-items:center}.ri-players-overlay.is-web .ri-players-picker{width:min(560px,calc(100vw - 32px));max-height:min(760px,calc(100dvh - 32px));border:1px solid rgba(255,255,255,.12);border-radius:18px;box-shadow:0 26px 70px rgba(0,0,0,.6)}.ri-players-overlay.is-web .ri-players-head{min-height:56px;border-bottom:1px solid rgba(255,255,255,.09)}.ri-players-overlay.is-web .ri-players-budget{padding:16px 20px 0}.ri-players-overlay.is-web .ri-players-teams{margin-top:16px}
 @media(max-width:360px){.ri-players-budget{gap:10px}.ri-players-columns,.ri-players-row{padding:0 12px}}
+
+/* Report / Block (ContentActions, docs/RANKIT_STORE_BLOCKERS_PLAN.md B5).
+   Web de bu dosyayi yukluyor: sheet ikisinde ayni. Tokenlar kabinda da
+   tanimli -- web'de portal .rankit-app yerine body'ye cizilir. Dokunma
+   hedefleri >=44px (§26). */
+.ri-more{width:44px;height:44px;flex:none;display:inline-grid;place-items:center;border:0;border-radius:12px;
+  background:none;color:#9aa0a6;cursor:pointer}
+.ri-more:hover{color:#eceded;background:rgba(255,255,255,.05)}
+.ri-more:focus-visible{outline:2px solid var(--ri-focus,#eceded);outline-offset:2px}
+.ri-mod-wrap{z-index:1300;--ri-gold:#ffb11b;--ri-line:rgba(255,255,255,.09);--ri-focus:#eceded}
+.ri-mod{color:#eceded;font-family:var(--font-sans)}
+.ri-mod h2.ri-mod-title{text-align:left;font:700 21px/1.2 var(--font-logo);margin:4px 48px 16px 0;overflow-wrap:anywhere}
+.ri-mod-menu{display:flex;flex-direction:column;gap:8px}
+.ri-mod-menu button{min-height:52px;display:flex;align-items:center;gap:12px;padding:0 16px;border:1px solid var(--ri-line);
+  border-radius:14px;background:#121315;color:#eceded;font:600 14px/1.3 var(--font-sans);text-align:left;cursor:pointer}
+.ri-mod-menu button.is-danger{color:#ff8a80}
+.ri-mod-menu button.is-quiet{justify-content:center;border-color:transparent;background:none;color:#9aa0a6}
+.ri-mod-reasons{border:0;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;min-width:0}
+.ri-mod-reasons legend{font-size:13px;color:#9aa0a6;margin-bottom:10px;padding:0}
+.ri-mod-reasons label{min-height:48px;display:flex;align-items:center;gap:12px;padding:0 14px;border:1px solid var(--ri-line);
+  border-radius:12px;background:#121315;font-size:14px;cursor:pointer}
+.ri-mod-reasons label.is-on{border-color:#c9cccd}
+.ri-mod-reasons input{accent-color:var(--ri-gold);width:18px;height:18px;margin:0;flex:none}
+.ri-mod-note{display:flex;flex-direction:column;gap:6px;margin-top:16px;font-size:13px;color:#9aa0a6}
+.ri-mod-note small{color:#7f868b;margin-left:4px}
+.ri-mod-note textarea{resize:vertical;min-height:72px;border:1px solid var(--ri-line);border-radius:12px;background:#0c0d0f;
+  color:#eceded;padding:10px 12px;font:400 14px/1.45 var(--font-sans)}
+.ri-mod-copy{font-size:14px;line-height:1.55;color:#c9cccd;margin:0 0 18px}
+.ri-mod-error{color:#ff8a80;font-size:13px;margin:12px 0 0}
+.ri-mod-primary{width:100%;height:50px;margin-top:16px;border:0;border-radius:12px;background:var(--ri-gold);color:#17120a;
+  font:700 13px/1 var(--font-logo);letter-spacing:.06em;cursor:pointer}
+.ri-mod-primary.is-danger{background:#b3261e;color:#fff}
+.ri-mod-primary:disabled{opacity:.45;cursor:default}
+.ri-mod-secondary{width:100%;height:46px;margin-top:8px;border:0;background:none;color:#9aa0a6;font:600 13px var(--font-sans);cursor:pointer}
+.ri-mod button:focus-visible,.ri-mod textarea:focus-visible,.ri-mod input:focus-visible{outline:2px solid var(--ri-focus);outline-offset:2px}
+/* Engellenmis profil ve Settings'teki engellenenler listesi */
+.ri-blocked-note{border:1px solid var(--ri-line);border-radius:16px;background:#121315;padding:18px 16px;margin-top:16px}
+.ri-blocked-note p{margin:0 0 12px;font-size:14px;line-height:1.5;color:#c9cccd}
+.ri-blocked-note button,.ri-blocked-row button{min-height:44px;padding:0 16px;border:1px solid var(--ri-line);border-radius:12px;
+  background:none;color:#eceded;font:600 13px var(--font-sans);cursor:pointer}
+.ri-blocked-row{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:56px;padding:6px 0;
+  border-bottom:1px solid var(--ri-line);font-size:14px;color:#eceded}
+.ri-reply-who .ri-more,.ri-review-who .ri-more{margin:-12px -12px -12px auto;align-self:center}
+.ri-fcard-head .ri-more{margin:-10px -8px -10px 0}
+.ri-chat-log p{position:relative}
+.ri-chat-log .ri-more{float:right;width:44px;height:32px;margin:-6px -10px 0 4px}
+.ri-member-head .ri-member-more{margin-left:auto}
+.ri-shelf-head .ri-member-more{margin-left:auto}

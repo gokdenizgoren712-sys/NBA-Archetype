@@ -29,6 +29,8 @@ import { CrestPair } from "./MatchCard";
 import { communityHeat, communityRatingCount, communityVerdictCovered, inkFor, MIN_COMMUNITY_RATINGS } from "./heat";
 import { useBackClose } from "./backStack";
 import { useDialog } from "./useDialog";
+import ContentActions from "./ContentActions";
+import { useBlockedAuthors } from "./blockedAuthors";
 
 const INK = "#eceded";
 const INK_3 = "#9aa0a6";
@@ -168,7 +170,10 @@ export default function ListShelf({ listId, onClose, onOpenMatch, onOpenMember, 
 
   // "!picking" gerekmiyor: defter secici de bir dialog, yigindaki en ust o
   // oldugu icin Escape once ONU kapatiyor (bkz. useDialog).
-  const data = loaded.id === listId ? loaded.data : null;
+  const isBlocked = useBlockedAuthors();
+  const shown = loaded.id === listId ? loaded.data : null;
+  // Sahibini bu oturumda engellediysen liste yeniden yukleme beklemeden kapanir.
+  const data = shown?.list && isBlocked(shown.list.user_id) ? { missing: true } : shown;
   const list = data?.list;
   const dialog = useDialog({ onClose, label: list?.title || "List" });
 
@@ -192,6 +197,10 @@ export default function ListShelf({ listId, onClose, onOpenMatch, onOpenMember, 
     <div {...dialog} className="ri-shelf">
       <div className="ri-shelf-head">
         <button type="button" onClick={onClose} aria-label="Back"><ChevronLeft size={16} /></button>
+        {list && !data.is_owner && (
+          <ContentActions type="list" id={list.id} author={{ id: list.user_id, username: list.username }}
+            className="ri-member-more" />
+        )}
       </div>
       <div className="ri-shelf-body">
         {loaded.error && <ErrorState error={loaded.error} onRetry={load}/>}
@@ -208,6 +217,7 @@ export default function ListShelf({ listId, onClose, onOpenMatch, onOpenMember, 
             </small>
             <h2>{list.title}</h2>
             {list.description && <p>{list.description}</p>}
+            {list.hidden && <p className="ri-mod-copy" role="status">Hidden after reports. Only you can see it while we review it.</p>}
             <div className="ri-shelf-acts">
               <button type="button" disabled={data.is_owner} aria-pressed={!!data.respected}
                 aria-label={data.respected ? "Take back your respect" : "Respect this list"}

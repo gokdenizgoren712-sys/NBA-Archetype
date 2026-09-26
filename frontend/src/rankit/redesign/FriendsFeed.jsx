@@ -23,6 +23,8 @@ import CommunityVerdictGate from "./CommunityVerdictGate";
 import { DiaryStars } from "./Diary";
 import { RAMP } from "./heat";
 import { toMatchCardProps } from "./toMatchCardProps";
+import ContentActions from "./ContentActions";
+import { useBlockedAuthors } from "./blockedAuthors";
 import {
   collectionLine, collectionPercent, feedCardMatch, feedSub, initials, verdictCovered,
 } from "./feedItems";
@@ -59,7 +61,11 @@ function EntryCard({ item, hideScores, onOpen }) {
     aria-label={`@${item.user?.username} on ${match.home.short} vs ${match.away.short}`}
     onClick={event => { if (!event.target.closest("button")) open(); }}
     onKeyDown={event => { if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); open(); } }}>
-    <Head item={item}>{!covered && item.rating != null && <DiaryStars value={item.rating} />}</Head>
+    <Head item={item}>
+      {!covered && item.rating != null && <DiaryStars value={item.rating} />}
+      <ContentActions type={item.review ? "review" : "user"} id={item.review ? item.entry_id : item.user?.id}
+        author={item.user} className="ri-fcard-more" />
+    </Head>
     <div className="ri-fcard-card"><MatchCard {...card} crestSize={32} cut={12} /></div>
     {item.review_withheld
       ? <div className="ri-fcard-gate"><CommunityVerdictGate spoiler actionLabel="OPEN MATCH"
@@ -95,7 +101,8 @@ export default function FriendsFeed({ hideScores, onOpen, onFind }) {
   const { data, error, loading, reload } = useResource(key, () => rankitApi.activity());
   const [more, setMore] = useState({ key: null, items: [], hasMore: null, busy: false, failed: false });
   const extra = more.key === key ? more : { items: [], hasMore: null, busy: false, failed: false };
-  const items = [...(data?.items || []), ...extra.items];
+  const isBlocked = useBlockedAuthors();
+  const items = [...(data?.items || []), ...extra.items].filter((item) => !isBlocked(item.user?.id));
   const hasMore = extra.hasMore ?? !!data?.has_more;
   const loadMore = async () => {
     setMore(v => ({ ...(v.key === key ? v : { items: [], hasMore: null }), key, busy: true, failed: false }));

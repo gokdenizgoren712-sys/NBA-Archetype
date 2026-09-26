@@ -71,7 +71,8 @@ export function ConnectScreen({ mark, busy, error, onConnect, onCreate, onBrowse
       {/* Gizlilik politikası girişten önce de ulaşılabilir olmalı (Apple 5.1.1,
           Play). Hesap sitede açılıyor; şartların kabulü orada, bu satır hatırlatır. */}
       <p className="ri-first-legal">
-        By continuing you agree to the <a {...externalLinkProps("/terms-of-service")}>Terms of service</a>
+        By continuing you agree to the <a {...externalLinkProps("/terms-of-service")}>Terms of service</a>,
+        {" "}the <a {...externalLinkProps("/community-guidelines")}>Community guidelines</a>
         {" "}and the <a {...externalLinkProps("/privacy-policy")}>Privacy policy</a>.
       </p>
     </main>

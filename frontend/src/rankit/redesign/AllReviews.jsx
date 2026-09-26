@@ -13,6 +13,8 @@ import { rankitApi } from "../rankitApi";
 import { SkeletonRows, Loading, EmptyState, EndOfList, ErrorState } from "./States";
 import { useDialog } from "./useDialog";
 import { reviewerFromStorage, isOwnContent } from "./reviewIdentity";
+import ContentActions from "./ContentActions";
+import { useBlockedAuthors } from "./blockedAuthors";
 
 const SORTS = [
   ["respected", "Most respected"],
@@ -78,6 +80,7 @@ function Row({ row, onOpenThread, reviewer }) {
         {/* §7.1'in "gecesinde puanladi" isareti — 5c'de handle'in yaninda. */}
         {row.on_the_night && <em>on the night</em>}
         <small>{ago(row.created_at)}</small>
+        <ContentActions type="review" id={row.id} author={{ id: row.user_id, username: row.username }} />
       </div>
       {row.rating != null && <div className="ri-review-rating" aria-label={`${row.rating} out of 5 stars`}>★ {row.rating} / 5</div>}
       {row.review && (
@@ -103,6 +106,7 @@ function Row({ row, onOpenThread, reviewer }) {
 
 export default function AllReviews({ matchId, title, onClose, onOpenThread }) {
   const reviewer = reviewerFromStorage(localStorage);
+  const isBlocked = useBlockedAuthors();
   const [sort, setSort] = useState("respected");
   // Yuklenen sirayi VERIYLE BIRLIKTE tutuyoruz: "hangi sira yukleniyor"
   // boyle turetiliyor ve efektin basinda state sifirlamak gerekmiyor
@@ -128,7 +132,13 @@ export default function AllReviews({ matchId, title, onClose, onOpenThread }) {
   }, [matchId, sort, offset, retry]);
 
   // null => hala yukleniyor (ya da baska bir siranin sonucu duruyor)
-  const data = loaded.sort === sort && loaded.id === matchId ? loaded.data : null;
+  const shown = loaded.sort === sort && loaded.id === matchId ? loaded.data : null;
+  // Bu oturumda engellenenlerin satirlari yeniden yukleme beklemeden kalkar.
+  const data = shown && {
+    ...shown,
+    followed: shown.followed?.filter((row) => !isBlocked(row.user_id)),
+    everyone: shown.everyone?.filter((row) => !isBlocked(row.user_id)),
+  };
   const pending = loaded.sort !== sort || loaded.id !== matchId || loaded.offset !== offset || loaded.retry !== retry;
   const error = !pending ? loaded.error : null;
 

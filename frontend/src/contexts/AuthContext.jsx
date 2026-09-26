@@ -10,6 +10,9 @@ export function AuthProvider({ children }) {
   const [user,  setUser]    = useState(() => {
     try { return JSON.parse(localStorage.getItem(USER_KEY)); } catch { return null; }
   });
+  // Güncel şartlar (Terms + Community Guidelines) kabul edildi mi — /me'den.
+  // null = bilinmiyor; bant yalnız sunucu açıkça false dediğinde çıkar.
+  const [termsCurrent, setTermsCurrent] = useState(null);
 
   const login = (tokenStr, userData) => {
     localStorage.setItem(TOKEN_KEY, tokenStr);
@@ -64,6 +67,7 @@ export function AuthProvider({ children }) {
         const next = { id: me.id, email: me.email, username: me.username, role: me.role };
         localStorage.setItem(USER_KEY, JSON.stringify(next));
         setUser(next);
+        setTermsCurrent(typeof me.terms_current === "boolean" ? me.terms_current : null);
       })
       .catch(() => {});
     return () => { alive = false; };
@@ -72,8 +76,17 @@ export function AuthProvider({ children }) {
   const isAdmin = user?.role === "admin";
   const isLoggedIn = !!token;
 
+  const acceptTerms = async () => {
+    const res = await fetch("/api/account/accept-terms", {
+      method: "POST", headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) throw new Error("Could not save. Try again.");
+    setTermsCurrent(true);
+  };
+
   return (
-    <AuthContext.Provider value={{ token, user, isLoggedIn, isAdmin, login, logout }}>
+    <AuthContext.Provider value={{ token, user, isLoggedIn, isAdmin, login, logout,
+      termsCurrent: isLoggedIn ? termsCurrent : null, acceptTerms }}>
       {children}
     </AuthContext.Provider>
   );

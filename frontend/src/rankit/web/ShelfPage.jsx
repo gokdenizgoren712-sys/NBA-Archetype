@@ -12,6 +12,7 @@ import { rankitApi } from "../rankitApi";
 import SharedMatchCard from "../redesign/MatchCard";
 import { PageHead, SortBar } from "./PageParts";
 import { ShelfSkeleton } from "./Skeletons";
+import ContentActions from "../redesign/ContentActions";
 import { shelfCardProps, shelfGroups } from "./pagesView";
 
 const SORTS = [
@@ -80,6 +81,10 @@ export default function ShelfPage({ memberId = null, user, isLoggedIn, hideScore
     <div className="riw-page riw-shelf">
       <PageHead eyebrow={eyebrow || "THE SHELF"} title={own ? "Your shelf" : username ? `@${username}'s shelf` : "Shelf"}>
         <SortBar label="Sort the shelf" value={sort} options={SORTS} onChange={setSort} />
+        {/* Report / Block hesabin kendisi icin (B6). */}
+        {!own && isLoggedIn && owner?.id != null && (
+          <ContentActions type="user" id={owner.id} author={{ id: owner.id, username: owner.username }} />
+        )}
       </PageHead>
       {/* §3.1 başkasının rafında: boş alt satırın nedeni söylenir. */}
       {!own && <p className="riw-page-fine">Their ratings and Classics stay covered on matches you haven't rated.</p>}

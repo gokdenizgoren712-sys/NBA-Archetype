@@ -62,6 +62,13 @@ Her paket için aynı teslim kuralı:
 
 ## Paket B — Kullanıcı içeriği moderasyonu (4–6 gün)
 
+> **Durum (2026-09-26): uygulandı** — backend (`api/rankit.py` moderasyon bölümü,
+> `api/moderation_words.py`, `tests/test_rankit_moderation.py`) ve arayüz
+> (`ContentActions`, Settings → Blocked accounts, `/admin/reports`,
+> `/community-guidelines`, kayıt onayı, "Updated terms" bandı). Canlıda admin
+> e-postası için Railway'e `ADMIN_ALERT_EMAIL` eklenmeli; yoksa şikâyetler yalnız
+> kuyrukta görünür.
+
 **Mağaza şartı** (Apple 1.2, Play UGC):
 1. zararlı içerik filtresi;
 2. içerik şikâyeti ve zamanında yanıt;

@@ -96,6 +96,7 @@ export default function SettingsPanel({ hideScores, onToggleScores }) {
         <span>LEGAL</span>
         {[["/privacy-policy", "Privacy policy"],
           ["/terms-of-service", "Terms of service"],
+          ["/community-guidelines", "Community guidelines"],
           ["/contact", "Contact"],
           ["/affiliate-disclosure", "Affiliate disclosure"]].map(([to, label]) => (
           <Link key={to} to={to} className="riw-set-row">

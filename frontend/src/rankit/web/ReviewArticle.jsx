@@ -18,9 +18,16 @@ import { reviewerFromStorage, isOwnContent } from "../redesign/reviewIdentity";
 import { createReplyAttempts } from "../redesign/replyAttempt";
 import { Stars } from "./cards";
 import { feedAgo, initials } from "../redesign/feedItems";
+import ContentActions from "../redesign/ContentActions";
+import { useBlockedAuthors } from "../redesign/blockedAuthors";
 
 export default function ReviewArticle({ row, isLoggedIn, variant = "short" }) {
   const ownReview = row.is_mine ?? isOwnContent(row, reviewerFromStorage(localStorage));
+  // Report / Block (B6): uygulamadaki ayni ⋯ menusu. Engellenen yazarin
+  // incelemesi ve yanitlari yeniden yukleme beklemeden kalkar.
+  const isBlocked = useBlockedAuthors();
+  const author = { id: row.user_id ?? row.user?.id, username: row.username };
+  const actions = isLoggedIn && <ContentActions type="review" id={row.id} author={author} />;
   const [replyAttempts] = useState(createReplyAttempts);
   const [liked, setLiked] = useState(!!(row.liked ?? row.respected));
   const [likes, setLikes] = useState(row.likes ?? row.respect ?? 0);
@@ -67,16 +74,23 @@ export default function ReviewArticle({ row, isLoggedIn, variant = "short" }) {
     finally { setSending(false); }
   };
 
+  const shownComments = comments?.filter((c) => !isBlocked(c.user_id));
+  const commentRow = (c) => (
+    <p key={c.id}>
+      {isLoggedIn && <ContentActions type="comment" id={c.id} author={{ id: c.user_id, username: c.username }} />}
+      <strong>@{c.username}</strong><span>{c.content}</span>
+    </p>
+  );
+  if (isBlocked(author.id)) return null;
+
   const text = row.review && (row.spoiler && !spoilerShown
     ? <p><button type="button" className="riw-spoiler" onClick={() => setSpoilerShown(true)}>Contains spoilers — tap to read</button></p>
     : String(row.review).split(/\n{2,}/).map((para, i) => <p key={i}>{para}</p>));
   const thread = open && (
     <div className="riw-comments">
       {comments === null && <span className="riw-quiet">Loading…</span>}
-      {comments?.map((c) => (
-        <p key={c.id}><strong>@{c.username}</strong><span>{c.content}</span></p>
-      ))}
-      {comments?.length === 0 && <span className="riw-quiet">No replies yet.</span>}
+      {shownComments?.map(commentRow)}
+      {shownComments?.length === 0 && <span className="riw-quiet">No replies yet.</span>}
       {isLoggedIn ? (
         <div className="ri-chat-compose">
           <input value={draft} onChange={(e) => setDraft(e.target.value)}
@@ -100,7 +114,7 @@ export default function ReviewArticle({ row, isLoggedIn, variant = "short" }) {
         <header>
           <span className="riw-review-avatar" aria-hidden="true">{initials(row.username)}</span>
           <div>
-            <p className="riw-review-who"><strong>@{row.username}</strong>{!!row.followed && !ownReview && <b>FOLLOWING</b>}</p>
+            <p className="riw-review-who"><strong>@{row.username}</strong>{!!row.followed && !ownReview && <b>FOLLOWING</b>}{actions}</p>
             <p className="riw-review-meta">
               {row.rating > 0 && <Stars value={row.rating} compact />}
               {!!row.classic && <i className="riw-review-classic" role="img" aria-label={ownReview ? "Your Classic" : "Their Classic"} />}
@@ -133,6 +147,7 @@ export default function ReviewArticle({ row, isLoggedIn, variant = "short" }) {
       <div>
         <strong style={{ font: "700 11px var(--font-logo)" }}>@{row.username}</strong>
         <Stars value={row.rating || 0} compact />
+        {actions}
       </div>
       {row.review && (
         row.spoiler && !spoilerShown ? (
@@ -159,10 +174,8 @@ export default function ReviewArticle({ row, isLoggedIn, variant = "short" }) {
       {open && (
         <div className="riw-comments">
           {comments === null && <span className="riw-quiet">Loading…</span>}
-          {comments?.map((c) => (
-            <p key={c.id}><strong>@{c.username}</strong><span>{c.content}</span></p>
-          ))}
-          {comments?.length === 0 && <span className="riw-quiet">No replies yet.</span>}
+          {shownComments?.map(commentRow)}
+          {shownComments?.length === 0 && <span className="riw-quiet">No replies yet.</span>}
           {isLoggedIn ? (
             <div className="ri-chat-compose">
               <input value={draft} onChange={(e) => setDraft(e.target.value)}
