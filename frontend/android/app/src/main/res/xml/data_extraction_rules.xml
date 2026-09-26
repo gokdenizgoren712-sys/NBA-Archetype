@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Güvenlik planı Faz 3: uygulama verisi (WebView localStorage'daki oturum
+     token'ı dahil) ne Google Drive yedeğine ne cihazdan cihaza aktarıma gider.
+     Android 12+ bu dosyayı okur; daha eskisi manifestteki allowBackup="false"
+     ve fullBackupContent="false" ile aynı sonuca varır. Yeni cihazda yeniden
+     giriş yapılır — hesap verisi zaten sunucuda. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="root" path="." />
+        <exclude domain="file" path="." />
+        <exclude domain="database" path="." />
+        <exclude domain="sharedpref" path="." />
+        <exclude domain="external" path="." />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="root" path="." />
+        <exclude domain="file" path="." />
+        <exclude domain="database" path="." />
+        <exclude domain="sharedpref" path="." />
+        <exclude domain="external" path="." />
+    </device-transfer>
+</data-extraction-rules>
