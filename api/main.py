@@ -2938,6 +2938,7 @@ def get_pca_loadings():
 # ─── Auth + User + Article + Comment endpoints ────────────────────────────────
 
 from .db   import init_db, get_conn
+from . import moderation_words
 from .auth import (hash_password, verify_password, create_token,
                    get_current_user, get_optional_user, require_admin,
                    burn_password_check)
@@ -3066,6 +3067,10 @@ class RegisterBody(BaseModel):
     email: str
     username: str
     password: str
+    # Kayıt formundaki zorunlu onay kutusu (Terms + Community Guidelines).
+    # None: onay kutusundan önceki önbellekli istemci — kayıt reddedilmez,
+    # kabul kaydı da yazılmaz; bir sonraki girişte "Updated terms" bandı çıkar.
+    accept_terms: Optional[bool] = None
 
 class LoginBody(BaseModel):
     email: str
@@ -3207,6 +3212,10 @@ def _reset_hash(token: str) -> str:
 # kayıt ve sıfırlamada uygulanır; GİRİŞTE uzunluk bakılmaz, eski hesaplar
 # eski şifreleriyle girmeye devam eder. frontend/src/lib/passwordRules.js ile aynı.
 PASSWORD_MIN, PASSWORD_MAX = 6, 18
+# Kullanım şartları + Community Guidelines sürümü (UGC / sıfır tolerans maddesi,
+# docs/RANKIT_STORE_BLOCKERS_PLAN.md B7). Metin değişince tarih ilerler; eski
+# sürümü kabul etmiş kullanıcılara sitede "Updated terms" bandı çıkar.
+TERMS_VERSION = "2026-09-26"
 
 
 def _check_new_password(password: str) -> None:
@@ -3224,12 +3233,18 @@ def register(body: RegisterBody):
     _check_new_password(body.password)
     if len(body.username) < 2:
         raise HTTPException(400, "Username must be at least 2 characters")
+    if body.accept_terms is False:
+        raise HTTPException(400, "Agree to the Terms of Service and Community Guidelines to continue")
+    # Kullanıcı adı herkese görünen içerik: küfür/hakaret filtresi (B4).
+    if moderation_words.blocked_word(body.username):
+        raise HTTPException(400, "Choose a different username")
     hashed = hash_password(body.password)
     try:
         with get_conn() as conn:
             cur = conn.execute(
-                "INSERT INTO users (email, username, hashed_password, role) VALUES (?,?,?,?)",
-                (body.email.lower(), body.username, hashed, role)
+                "INSERT INTO users (email, username, hashed_password, role, terms_version) VALUES (?,?,?,?,?)",
+                (body.email.lower(), body.username, hashed, role,
+                 TERMS_VERSION if body.accept_terms else None)
             )
             user_id = cur.lastrowid
     except Exception as e:
@@ -3290,6 +3305,8 @@ def google_auth(body: GoogleAuthBody):
     if not email:
         raise HTTPException(400, "No email in Google token")
     base = _re.sub(r"[^A-Za-z0-9_]", "", info.get("given_name", email.split("@")[0]))[:20] or "user"
+    if moderation_words.blocked_word(base):
+        base = "member"
     with get_conn() as conn:
         row = conn.execute("SELECT * FROM users WHERE email=?", (email.lower(),)).fetchone()
         if row:
@@ -3312,9 +3329,11 @@ def google_auth(body: GoogleAuthBody):
                 if not exists:
                     break
                 username = f"{base}{i}"
+            # Google düğmesinin altındaki "By continuing you agree…" satırı kabul sayılır.
             cur = conn.execute(
-                "INSERT INTO users (email, username, hashed_password, role, email_verified) VALUES (?,?,?,?,1)",
-                (email.lower(), username, "", "user"),
+                "INSERT INTO users (email, username, hashed_password, role, email_verified, terms_version)"
+                " VALUES (?,?,?,?,1,?)",
+                (email.lower(), username, "", "user", TERMS_VERSION),
             )
             user_id, role = cur.lastrowid, "user"
         user_row = conn.execute(
@@ -3428,14 +3447,24 @@ def admin_request_ip(request: Request, _user=Depends(require_admin)):
 @app.get("/api/auth/me")
 def me(user=Depends(get_current_user)):
     with get_conn() as conn:
-        row = conn.execute("SELECT id,email,username,role,created_at,hashed_password FROM users WHERE id=?",
-                           (int(user["sub"]),)).fetchone()
+        row = conn.execute("""SELECT id,email,username,role,created_at,hashed_password,terms_version
+                              FROM users WHERE id=?""", (int(user["sub"]),)).fetchone()
     if not row:
         raise HTTPException(404, "User not found")
     out = _row(row)
     # Hesap silme formu neyi soracağını bilsin: şifre mi, kullanıcı adı mı.
     out["has_password"] = bool(out.pop("hashed_password", "") not in ("", "!", None))
+    # Güncel şartlar kabul edilmediyse site engellemeyen bir bant gösterir.
+    out["terms_current"] = out.pop("terms_version", None) == TERMS_VERSION
     return out
+
+
+@app.post("/api/account/accept-terms")
+def accept_terms(user=Depends(get_current_user)):
+    """"Updated terms" bandındaki onay: güncel sürüm hesaba yazılır."""
+    with get_conn() as conn:
+        conn.execute("UPDATE users SET terms_version=? WHERE id=?", (TERMS_VERSION, int(user["sub"])))
+    return {"ok": True, "terms_current": True}
 
 _PKCE_RX = _re.compile(r"^[A-Za-z0-9_-]{43}$")
 

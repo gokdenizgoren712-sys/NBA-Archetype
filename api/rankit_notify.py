@@ -42,6 +42,12 @@ def notify(conn, user_id: Optional[int], kind: str, *, actor_id: Optional[int] =
     if not user_id or user_id == actor_id:
         return
     try:
+        # Engelli iliskide (iki yon) bildirim dogmaz.
+        if actor_id and conn.execute(
+                """SELECT 1 FROM rankit_blocks WHERE (blocker_id=? AND blocked_id=?)
+                   OR (blocker_id=? AND blocked_id=?)""",
+                (user_id, actor_id, actor_id, user_id)).fetchone():
+            return
         conn.execute(
             """INSERT OR IGNORE INTO rankit_notifications
                (user_id,kind,actor_id,match_id,entry_id,list_id,detail)
@@ -81,6 +87,11 @@ def _stored(conn, user_id: int) -> list[dict]:
            LEFT JOIN rankit_teams a ON a.id=m.away_team_id
            LEFT JOIN rankit_lists l ON l.id=n.list_id
            WHERE n.user_id=?
+             -- Engellenen (ya da seni engelleyen) kisiden bildirim yok; engel
+             -- sonradan kondugunda eski satirlar da gorunmez.
+             AND NOT EXISTS(SELECT 1 FROM rankit_blocks bl WHERE
+                 (bl.blocker_id=n.user_id AND bl.blocked_id=n.actor_id)
+                 OR (bl.blocker_id=n.actor_id AND bl.blocked_id=n.user_id))
              -- Classic bir HUKUM: puanlamadigin maca dair olani hic gosterme
              -- (BUILD §15). Yazim aninda da suzuluyor; bu, suzgecten once
              -- yazilmis satirlari ve sonradan kaldirilmis puanlari kapsar.

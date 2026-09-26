@@ -41,6 +41,8 @@ def conn():
         CREATE TABLE rankit_list_saves(list_id INTEGER, user_id INTEGER);
         CREATE TABLE rankit_user_settings(user_id INTEGER, key TEXT, value TEXT,
                                           PRIMARY KEY(user_id,key));
+        CREATE TABLE rankit_blocks(blocker_id INTEGER, blocked_id INTEGER,
+                                   PRIMARY KEY(blocker_id, blocked_id));
         CREATE TABLE rankit_notifications(
             id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL,
             kind TEXT NOT NULL, actor_id INTEGER, match_id INTEGER, entry_id INTEGER,
