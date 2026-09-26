@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { TrophyIcon, CrownIcon, CapIcon, WheelIcon } from "./GameIcons";
+import { apiUrl } from "../lib/apiOrigin";
 import "./game.css";
 
 // ── Canlı leaderboard — oyun giriş ekranının sağ sütunu ───────────────────
@@ -21,7 +22,7 @@ export default function LeaderboardPanel({ mode = "classic", limit = 25, fill = 
   useEffect(() => {
     let alive = true;
     setEntries(null);
-    fetch(`/api/leaderboard?limit=${limit}&mode=${mode}`)
+    fetch(apiUrl(`/api/leaderboard?limit=${limit}&mode=${mode}`))
       .then(r => r.json())
       .then(d => { if (alive) setEntries(d.entries || []); })
       .catch(() => { if (alive) setEntries([]); });

@@ -9,6 +9,7 @@ import { buildConferenceStandings, initBracket, computeUserPlayoffStatLines, der
 import PlayoffBracket from "./PlayoffBracketView";
 import { useAuth } from "../contexts/AuthContext";
 import { CoachIcon, TrophyIcon, CrownIcon, PlayIcon, LoopIcon, DnaIcon, WheelIcon } from "./GameIcons";
+import { apiUrl } from "../lib/apiOrigin";
 import "./game.css";
 
 const MONTHS = ["OCT", "NOV", "DEC", "JAN", "FEB", "MAR", "APR"];
@@ -94,7 +95,7 @@ export default function SeasonSimPanel({
   useEffect(() => {
     if (!fixedSeason) return;
     setRhLoading(true);
-    fetch(`/api/historical/${fixedSeason}/teams`).then(r => r.json())
+    fetch(apiUrl(`/api/historical/${fixedSeason}/teams`)).then(r => r.json())
       .then(d => setRhTeams(d.teams || []))
       .catch(() => setRhError("Could not load teams for this season."))
       .finally(() => setRhLoading(false));
@@ -103,7 +104,7 @@ export default function SeasonSimPanel({
   const pickRhSeason = (s) => {
     setRhSeason(s); setRhTeam(null); setRhSchedule(null); setRhError("");
     setRhLoading(true);
-    fetch(`/api/historical/${s}/teams`).then(r => r.json())
+    fetch(apiUrl(`/api/historical/${s}/teams`)).then(r => r.json())
       .then(d => { setRhTeams(d.teams || []); setRhStep("team"); })
       .catch(() => setRhError("Could not load teams for this season."))
       .finally(() => setRhLoading(false));
@@ -111,7 +112,7 @@ export default function SeasonSimPanel({
   const pickRhTeam = (abbr) => {
     setRhTeam(abbr); setRhError("");
     setRhLoading(true);
-    fetch(`/api/historical/${rhSeason}/team/${abbr}/schedule`).then(r => r.json())
+    fetch(apiUrl(`/api/historical/${rhSeason}/team/${abbr}/schedule`)).then(r => r.json())
       .then(d => { setRhSchedule(d); setRhStep("ready"); })
       .catch(() => setRhError("Could not load that team's schedule."))
       .finally(() => setRhLoading(false));
@@ -160,7 +161,7 @@ export default function SeasonSimPanel({
     // gameScoreId varsa TAM O satır güncellenir (bkz. api/main.py save_season_result) —
     // "kullanıcının son satırı" tahminine düşmek StrictMode'un dev'de mount
     // effect'i çift tetiklemesiyle yanlış satırı güncelleyebiliyordu.
-    fetch("/api/game/season-result", {
+    fetch(apiUrl("/api/game/season-result"), {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify({
@@ -281,7 +282,7 @@ export default function SeasonSimPanel({
       const targetSeason = nextSeason || rhSchedule.season;
       setLeagueLoading(true);
       try {
-        const sched = await fetch(`/api/historical/${targetSeason}/team/${rhSchedule.team}/schedule`).then(r => r.json());
+        const sched = await fetch(apiUrl(`/api/historical/${targetSeason}/team/${rhSchedule.team}/schedule`)).then(r => r.json());
         if (!sched?.games?.length) throw new Error("no schedule for target season");
         const built = await buildLeague(targetSeason, rhSchedule.team, simEra);
         setLeague(built);

@@ -29,6 +29,7 @@ import HowItWorksPanel from "../game/HowItWorksPanel";
 import CoachPicker from "../game/CoachPicker";
 import DraftAnalysis from "../game/DraftAnalysis";
 import LeaderboardPanel from "../game/LeaderboardPanel";
+import { apiUrl } from "../lib/apiOrigin";
 import "../game/game.css";
 
 // Not: aşağıdaki hex haritaları CSS custom property'lere (accent / glow) besleniyor;
@@ -93,7 +94,7 @@ function ScoreReveal({ fit, lineup, primaryCount, onReset, lang, affinityMatrix,
     // döndürdüğü tam satır (primary_arch/overall_score/score_*) + pick sırasında
     // eklenen _season/_cost/_posPenalty'yi taşıyor, ek bir fetch gerekmiyor.
     const roster = mode === "salarycap" && filled.length === ALL_SLOTS.length ? filled : [];
-    fetch("/api/game/score", {
+    fetch(apiUrl("/api/game/score"), {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify({ pct, grade, lineup: players, mode, roster }),
@@ -106,7 +107,7 @@ function ScoreReveal({ fit, lineup, primaryCount, onReset, lang, affinityMatrix,
 
   // Leaderboard — mod bazlı
   useEffect(() => {
-    fetch(`/api/leaderboard?limit=10&mode=${mode}`).then(r => r.json()).then(d => setLeaderboard(d.entries || [])).catch(() => {});
+    fetch(apiUrl(`/api/leaderboard?limit=10&mode=${mode}`)).then(r => r.json()).then(d => setLeaderboard(d.entries || [])).catch(() => {});
   }, [mode]);
 
   const coveragePct = Math.round((fit.coverage || 0) * 100);
@@ -124,7 +125,7 @@ function ScoreReveal({ fit, lineup, primaryCount, onReset, lang, affinityMatrix,
     const roster = ALL_SLOTS.map(p => lineup[p]).filter(Boolean);
     if (roster.length !== ALL_SLOTS.length) return;
     setSaveStatus("saving"); setSaveErr("");
-    fetch("/api/rosters", {
+    fetch(apiUrl("/api/rosters"), {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify({
@@ -657,15 +658,15 @@ export default function LineupGame() {
   const [affinityMatrix, setAffinityMatrix] = useState(null);
 
   useEffect(()=>{
-    fetch("/api/game/seasons").then(r=>r.json()).then(d=>setSeasons(d.seasons||["2025-26"])).catch(()=>setSeasons(["2025-26"]));
-    fetch("/api/affinity").then(r=>r.json()).then(d=>setAffinityMatrix(d.matrix||null)).catch(()=>{});
+    fetch(apiUrl("/api/game/seasons")).then(r=>r.json()).then(d=>setSeasons(d.seasons||["2025-26"])).catch(()=>setSeasons(["2025-26"]));
+    fetch(apiUrl("/api/affinity")).then(r=>r.json()).then(d=>setAffinityMatrix(d.matrix||null)).catch(()=>{});
   },[]);
 
   // ── Oyuncu çek (ortak) ───────────────────────────────────────────────────
   const fetchPlayers = useCallback((season, team, onEmpty) => {
     setPhase("fetching");
     setStatusMsg("Loading players...");
-    fetch(`/api/game/players?season=${encodeURIComponent(season)}&team=${encodeURIComponent(team)}`)
+    fetch(apiUrl(`/api/game/players?season=${encodeURIComponent(season)}&team=${encodeURIComponent(team)}`))
       .then(r=>r.json())
       .then(d=>{
         const taken=Object.values(lineupRef.current).filter(Boolean).map(x=>x.PLAYER_NAME);
@@ -731,7 +732,7 @@ export default function LineupGame() {
       setChosenSeason(season);
       setStatusMsg("Loading teams...");
 
-      fetch(`/api/game/teams?season=${encodeURIComponent(season)}`)
+      fetch(apiUrl(`/api/game/teams?season=${encodeURIComponent(season)}`))
         .then(r=>r.json())
         .then(d=>{
           const teams=d.teams||[];

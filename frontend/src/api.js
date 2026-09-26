@@ -1,4 +1,7 @@
-const BASE = "/api";
+import { apiUrl } from "./lib/apiOrigin";
+
+// Sitede "/api"; paketlenmiş uygulamada tam adres (bkz. lib/apiOrigin.js).
+const BASE = apiUrl("/api");
 
 async function get(path, params = {}) {
   // undefined/null parametreleri AT. URLSearchParams bunları "undefined"

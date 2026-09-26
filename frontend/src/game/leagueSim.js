@@ -7,6 +7,7 @@
 // arketip-skorlarından türer — "Rewrite History" adını hak eden kısım bu.
 import { computeLineupFit } from "./lineupScore";
 import { computeTeamRating, simulateSeason } from "./seasonSim";
+import { apiUrl } from "../lib/apiOrigin";
 
 // Gerçek "kim başladı" verisi yok — dakikaya (MIN) göre top-5 starter,
 // sonraki 4 bench. Kullanıcının kendi 9-kişilik rotasyon şekliyle tutarlı,
@@ -36,8 +37,8 @@ async function fetchJson(url, attempt = 0) {
 
 async function fetchTeam(season, abbr) {
   const [playersRes, scheduleRes] = await Promise.all([
-    fetchJson(`/api/game/players?season=${season}&team=${abbr}`),
-    fetchJson(`/api/historical/${season}/team/${abbr}/schedule`),
+    fetchJson(apiUrl(`/api/game/players?season=${season}&team=${abbr}`)),
+    fetchJson(apiUrl(`/api/historical/${season}/team/${abbr}/schedule`)),
   ]);
   return { abbr, players: playersRes?.players || [], schedule: scheduleRes };
 }
@@ -61,7 +62,7 @@ async function mapBatched(items, batchSize, fn) {
 // {ABBR: simulateSeason sonucu} } — kullanıcının KENDİ takımı bu objelerde
 // YOK (o ayrıca, kendi draftıyla simüle ediliyor, bkz. SeasonSimPanel.jsx).
 export async function buildLeague(season, excludeTeam, simEra) {
-  const teamsRes = await fetchJson(`/api/historical/${season}/teams`);
+  const teamsRes = await fetchJson(apiUrl(`/api/historical/${season}/teams`));
   const otherAbbrs = (teamsRes?.teams || [])
     .map(t => t.abbr)
     .filter(a => a !== excludeTeam);
