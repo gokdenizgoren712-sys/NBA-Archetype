@@ -1462,3 +1462,77 @@ button.g-pstep:focus-visible { outline: 2px solid var(--c); outline-offset: 3px;
   .g-draft-jokers { justify-content: flex-start; }
   .g-draft .g-joker { width: 56px; height: 56px; }
 }
+
+/* ═══ Koç seçimi (handoff 12a) ═══════════════════════════════════════════ */
+.g-coach { --pu: #c084fc; position: relative; display: flex; flex-direction: column; min-height: 0; }
+.g-coach-hero { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; margin: 12px 0 28px; }
+.g-coach-step { font-size: 14px; font-weight: 600; color: var(--pu); }
+.g-coach-hero h2 { margin: 0; font-family: var(--font-logo); font-size: clamp(34px, 3.4vw, 48px); font-weight: 700; line-height: 1; color: var(--text-primary); }
+.g-coach-hero p { margin: 0; font-size: 15px; line-height: 1.5; color: var(--text-secondary); max-width: 560px; }
+.g-coach-wait { text-align: center; padding: 40px 0; font-size: 15px; color: var(--text-muted); animation: gLbPulse2 2s ease-in-out infinite; }
+.g-coach-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 22px; }
+.g-coach-card {
+  position: relative; overflow: hidden; min-height: 300px; border: 0; border-radius: 22px; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; padding: 26px 20px 22px; text-align: center;
+  font-family: var(--font-sans);
+  background: linear-gradient(180deg, rgba(192, 132, 252, 0.06), rgba(255, 255, 255, 0.015) 60%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  transition: transform .25s ease, box-shadow .25s ease, background .25s ease;
+}
+.g-coach-card:hover { transform: translateY(-4px); }
+.g-coach-card.on {
+  background: linear-gradient(180deg, rgba(192, 132, 252, 0.18), rgba(192, 132, 252, 0.04) 70%);
+  box-shadow: inset 0 0 0 1px rgba(192, 132, 252, 0.6), 0 0 32px -8px var(--pu);
+}
+.g-coach-card:focus-visible { outline: 2px solid var(--pu); outline-offset: 3px; }
+.g-coach-card > * { position: relative; }
+.g-coach-card > .g-coach-glow {
+  position: absolute; left: 50%; top: -50px; width: 260px; height: 200px; transform: translateX(-50%); pointer-events: none;
+  background: var(--pu); opacity: 0.1; border-radius: 50%; filter: blur(44px); transition: opacity .25s ease;
+}
+.g-coach-card.on > .g-coach-glow { opacity: 0.3; }
+.g-coach-ini {
+  width: 76px; height: 76px; border-radius: 38px; display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-logo); font-size: 28px; font-weight: 700; color: var(--pu);
+  background: rgba(192, 132, 252, 0.14); box-shadow: 0 0 24px -6px var(--pu);
+}
+.g-coach-name { font-family: var(--font-logo); font-size: 26px; font-weight: 700; line-height: 1.05; color: var(--text-primary); margin-top: 18px; }
+.g-coach-era { font-size: 13px; color: var(--text-muted); margin-top: 6px; }
+.g-coach-grades { display: flex; gap: 34px; margin-top: 24px; }
+.g-coach-grades > span { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.g-coach-grades b {
+  font-family: var(--font-logo); font-size: 40px; font-weight: 700; line-height: 1; color: var(--c);
+  text-shadow: 0 0 18px color-mix(in srgb, var(--c) 45%, transparent);
+}
+.g-coach-grades i { font-style: normal; font-size: 12px; color: var(--text-muted); }
+.g-coach-rings { margin-top: auto; padding-top: 16px; display: flex; align-items: center; gap: 4px; min-height: 20px; color: #FFB11B; }
+.g-coach-rings em { font-style: normal; font-size: 13px; color: #FFB11B; margin-left: 4px; }
+.g-coach-rings em.none { color: var(--text-faint); margin: 0; }
+.g-coach-actions { display: flex; justify-content: center; margin-top: 26px; flex-shrink: 0; }
+.g-coach-cta { min-height: 54px; padding: 0 36px; font-size: 19px; letter-spacing: 0.05em; text-transform: uppercase; }
+.g-coach-cta.idle { background: rgba(255, 255, 255, 0.05); color: var(--text-faint); box-shadow: none; cursor: default; }
+.g-coach-cta.idle::after { display: none; }
+.g-coach-cta.idle:hover { transform: none; }
+
+/* Tek oyunculu draft içinde: tüm genişlik, kartlar kalan yüksekliği paylaşır */
+.g-draft-body.solo { grid-template-columns: 1fr !important; }
+.g-draft-body.solo > :last-child { display: none; }
+@media (min-width: 1024px) {
+  .g-draft-body.solo .g-coach { height: 100%; }
+  .g-draft-body.solo .g-coach-grid { flex: 1; min-height: 240px; max-height: 400px; }
+  .g-draft-body.solo .g-coach-card { min-height: 0; }
+  .g-draft-body.solo .g-coach-hero { margin: 0 0 22px; }
+}
+@media (max-width: 1100px) { .g-coach-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) {
+  .g-coach-grid { grid-template-columns: 1fr; gap: 12px; }
+  .g-coach-card { min-height: 0; display: grid; grid-template-columns: auto 1fr auto; grid-template-rows: auto auto; column-gap: 14px; row-gap: 2px; align-items: center; text-align: left; padding: 16px; }
+  .g-coach-ini { width: 52px; height: 52px; font-size: 20px; grid-row: span 2; }
+  .g-coach-name { font-size: 20px; margin: 0; }
+  .g-coach-era { margin: 0; grid-column: 2; }
+  .g-coach-grades { grid-column: 3; grid-row: 1 / span 2; margin: 0; gap: 16px; }
+  .g-coach-grades b { font-size: 28px; }
+  .g-coach-rings { grid-column: 1 / -1; padding-top: 8px; }
+  .g-coach-actions { position: sticky; bottom: 0; margin: 16px -16px 0; padding: 14px 16px calc(20px + env(safe-area-inset-bottom)); background: linear-gradient(to top, #0b0b0b 70%, transparent); }
+  .g-coach-cta { width: 100%; }
+}

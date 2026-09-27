@@ -643,8 +643,8 @@ export default function SameScreenGame() {
         {(gamePhase === "coach1" || gamePhase === "coach2") && (() => {
           const seat = gamePhase === "coach1" ? 1 : 2;
           return (
-            <CoachPicker
-              title={`Player ${seat} — Hire a Coach`}
+            <CoachPicker key={seat}
+              title="Hire a coach" step={`Player ${seat}`} cta={(n) => `Hire ${n}`}
               options={coachOptions}
               onPick={(c) => pickCoach(seat, c)}
             />

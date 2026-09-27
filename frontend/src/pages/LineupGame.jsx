@@ -786,7 +786,7 @@ export default function LineupGame() {
       // saha çizimi sıkışıyordu.
       // items-stretch: iki sütun aynı satır yüksekliğini paylaşır, böylece
       // havuz kutusunun ALT hattı her modda kortunkiyle hizalı kalır.
-      <div className="g-draft-body">
+      <div className={`g-draft-body${phase==="pick_coach"?" solo":""}`}>
 
       {/* ── SOL PANEL: oyuncu havuzu ── */}
       <div className="min-w-0 flex flex-col gap-3">
@@ -1101,7 +1101,7 @@ export default function LineupGame() {
       {/* === PICK COACH === (vs modlarıyla aynı bileşen — tek kaynak) */}
       {phase==="pick_coach"&&(
         <CoachPicker
-          title="Final Step — Draft a Coach"
+          title="Hire your coach"
           options={coachOptions}
           onPick={pickCoach}
         />

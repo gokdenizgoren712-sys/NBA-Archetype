@@ -570,8 +570,9 @@ export default function WithAFriendGame() {
               const pickerName = pickerUid === myUserId ? "You" : opponentUsername;
               const coachOptions = game.coach_seed != null ? pickCoachOptions(game.coach_seed) : [];
               return (
-                <CoachPicker
-                  title={`${pickerName} — Hire a Coach`}
+                <CoachPicker key={game.phase}
+                  title={pickerName === "You" ? "Hire your coach" : `${pickerName} is hiring`}
+                  step="Final call" cta={(n) => `Hire ${n}`}
                   options={coachOptions}
                   onPick={pickCoachAction}
                   waitingFor={pickerUid === myUserId ? null : opponentUsername}
