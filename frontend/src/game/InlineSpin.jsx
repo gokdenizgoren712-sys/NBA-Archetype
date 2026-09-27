@@ -6,7 +6,8 @@ import "./game.css";
 // yapan yatay bir "tarama" şeridi: dönerken isimler kayarak geçer, durunca
 // seçilen isimde sabitlenir. Kutu YOK — kenarları maskeyle söner, arka plan
 // dock'un kendi camı olarak kalır.
-export default function InlineSpin({ items, spinning, targetIdx, label, accent = "#FFB11B" }) {
+// size="lg": handoff 5a — sezon/takım 44px, inince kendi renginde parlıyor.
+export default function InlineSpin({ items, spinning, targetIdx, label, accent = "#FFB11B", size }) {
   const [idx, setIdx] = useState(0);
   const timer = useRef(null);
 
@@ -25,7 +26,7 @@ export default function InlineSpin({ items, spinning, targetIdx, label, accent =
   const current = items[idx] ?? "—";
 
   return (
-    <div className="min-w-0">
+    <div className={`min-w-0${size === "lg" ? " g-spin-lg" : ""}`}>
       <div className={`g-spin-inline${spinning ? " spinning" : ""}`}>
         {/* key = değer: her değişimde animasyon yeniden başlar, "kayma" hissi verir */}
         <span key={`${current}-${idx}`} className="g-spin-inline-item"

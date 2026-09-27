@@ -22,8 +22,8 @@ function headshotUrl(p) {
 function TagBadge({ t }) {
   return (
     <span title={t.detail}
-      className="inline-flex items-center justify-center text-[8.5px] font-bold rounded leading-none shrink-0 px-1 h-[15px] min-w-[15px]"
-      style={{ color: t.color, background: t.color + "22", border: `1px solid ${t.color}66` }}>
+      className="inline-flex items-center justify-center text-[12px] font-bold rounded-[5px] leading-none shrink-0 px-[5px] h-[18px] min-w-[18px]"
+      style={{ color: t.color, background: t.color + "22" }}>
       {t.abbr}
     </span>
   );
@@ -62,7 +62,7 @@ export default function PlayerRow({ player, discover, onClick, cost, unaffordabl
           {url && imgOk ? (
             <img src={url} alt="" loading="lazy" onError={() => setImgOk(false)} />
           ) : (
-            <span className="text-[11px] font-bold" style={{ color: "var(--text-faint)" }}>
+            <span className="g-row-ini">
               {player.PLAYER_NAME?.split(" ").map(w => w[0]).slice(0, 2).join("")}
             </span>
           )}
@@ -78,8 +78,8 @@ export default function PlayerRow({ player, discover, onClick, cost, unaffordabl
               </span>
             )}
           </div>
-          <div className="flex items-center gap-1 mt-0.5">
-            <span className="text-[10px] shrink-0" style={{ color: "var(--text-faint)" }}>{player.POSITION || player.POS5 || ""}</span>
+          <div className="flex items-center gap-[7px] mt-[3px] min-w-0">
+            <span className="g-row-pos">{player.POSITION || player.POS5 || ""}</span>
             <span className="g-row-arch truncate">{insufficientData ? "Insufficient games played" : (player.primary_arch || "—")}</span>
             {!insufficientData && tags.slice(0, 3).map(t => <TagBadge key={t.key} t={t} />)}
           </div>
@@ -97,8 +97,8 @@ export default function PlayerRow({ player, discover, onClick, cost, unaffordabl
       {/* Sözleşme maliyeti (Salary Cap) — insufficientData'da yanıltıcı olur, gizle */}
       {cost != null && !insufficientData && (
         <span className="g-row-cost">
-          <span className="text-[11px] font-black tabular-nums px-1.5 py-0.5 rounded-md leading-none"
-            style={{ color: costColor(cost), background: costColor(cost) + "14", border: `1px solid ${costColor(cost)}44` }}
+          <span className="text-[12px] font-bold tabular-nums px-1.5 py-[3px] rounded-md leading-none"
+            style={{ color: costColor(cost), background: costColor(cost) + "1a" }}
             title={unaffordable ? `Costs ${cost}% — over your spendable cap` : `Contract: ${cost}% of the cap`}>
             {cost}%
           </span>
@@ -109,8 +109,8 @@ export default function PlayerRow({ player, discover, onClick, cost, unaffordabl
       {/* Discover: yalnızca overall'ı ifşa eder */}
       {discover && overall != null && !insufficientData && (
         <span className="g-row-cost">
-          <span className="text-[10px] px-1.5 py-0.5 rounded-md font-bold leading-none"
-            style={{ color: "#c4b5fd", background: "rgba(167,139,250,.16)", border: "1px solid rgba(167,139,250,.4)" }}>
+          <span className="text-[12px] px-1.5 py-[3px] rounded-md font-bold leading-none"
+            style={{ color: "#c4b5fd", background: "rgba(167,139,250,.16)" }}>
             {overall}
           </span>
         </span>

@@ -81,7 +81,7 @@ function CourtSpot({ pos, player, isPrimary, selected, canTap, onTap, placing, o
 // `bench` = "column" (3a: kortun sağında) ya da "strip" (5a: kortun altında).
 export default function CourtBoard({ lineup, coach, moveSrc, canRearrange, onSlotTap, getPrimaryPos,
                                      placing = false, placingEligible = [], placingPenalties = {}, onPlace,
-                                     bare = false, fit = false, bench: benchLayout = "column" }) {
+                                     bare = false, fit = false, framed = true, bench: benchLayout = "column" }) {
   const bench = BENCH_SLOTS.map(b => lineup[b]).filter(Boolean);
   const cover = benchCoverage(bench);
   const tapHandler = placing ? onPlace : onSlotTap;
@@ -118,7 +118,7 @@ export default function CourtBoard({ lineup, coach, moveSrc, canRearrange, onSlo
   );
 
   return (
-    <div className={`g-court${bare ? "" : " g-panel"}${fit ? " fit" : ""}${strip ? " strip" : ""}`}>
+    <div className={`g-court${bare || !framed ? "" : " g-panel"}${fit ? " fit" : ""}${strip ? " strip" : ""}`}>
       {!bare && (
         <div className="g-court-head">
           <span className="g-court-title">Your roster</span>
