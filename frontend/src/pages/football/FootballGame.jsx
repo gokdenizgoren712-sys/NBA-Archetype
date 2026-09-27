@@ -505,7 +505,7 @@ export default function FootballGame() {
           <div className={`g-court-panel ${cockpit ? "flex flex-col min-h-0" : ""}`}>
             <div className="g-dotgrid" />
             <div className="flex items-center justify-between gap-2 mb-3">
-              <span className="g-mono" style={{ color: ACCENT }}>// {shape}</span>
+              <span className="g-section-title">{shape}</span>
               <span className="g-status"
                 style={{ "--accent": "#9ca3af", "--accent-a": "rgba(156,163,175,.12)", "--accent-line": "rgba(156,163,175,.35)" }}>
                 {filledCount}/{slots.length} filled

@@ -479,7 +479,7 @@ export default function SameScreenGame() {
               <span className="aura-blob" style={{ "--slot-color": "#FFB11B", left: -30, top: -60, width: 220, height: 130, opacity: 0.14 }} />
               <div className="g-dock-left"><h1 className="g-dock-title">Same Screen</h1></div>
               <div className="g-dock-center">
-                <span className="g-mono" style={{ color: "var(--yamabuki)" }}>// Step 1 — Pick Your Simulation Era</span>
+                <span className="g-section-title">Step 1 — Pick Your Simulation Era</span>
               </div>
               <div className="g-dock-right" />
             </div>
@@ -883,7 +883,7 @@ function RosterReview({ lineups, simEra, moveSrc, canRearrange, onSlotTap, onCon
           değişikliği doğrudan kortun üzerinden yapılabiliyor. */}
       <FullCourtBoard
         lineups={lineups}
-        label="// Rosters Locked"
+        label="Rosters Locked"
         status="Review"
         scores={{ 1: teamScore(1), 2: teamScore(2) }}
         moveSrc={moveSrc}
@@ -982,7 +982,7 @@ function SeriesPanel({ matchup, games, seriesW, seriesOver, onNextGame, onSeeRes
         <FullCourtBoard
           lineups={lineups}
           coaches={coaches}
-          label="// Series Matchup"
+          label="Series Matchup"
           status={seriesOver ? "Final" : `Game ${games.length + 1}`}
         />
       )}

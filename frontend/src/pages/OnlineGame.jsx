@@ -454,7 +454,7 @@ export default function OnlineGame() {
             <FullCourtBoard
               lineups={{ 1: myLineup, 2: oppLineup }}
               names={{ 1: user?.username || "You", 2: boardActive ? selected.username : (tab === "live" ? (opponent?.username || "Random opponent") : "Pick a roster") }}
-              label={tab === "live" ? "// Matchmaking" : "// Challenge"}
+              label={tab === "live" ? "Matchmaking" : "Challenge"}
               status={tab === "live" ? (queueState === "found" ? "Match Found" : queueState === "searching" ? "Searching" : "Lobby") : boardActive ? "Roster Loaded" : "Lobby"}
               maxWidth={860}
             />

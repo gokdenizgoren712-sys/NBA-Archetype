@@ -151,7 +151,7 @@ function RosterRow({ pos, player, fit, bench }) {
 }
 
 export default function DraftAnalysis({
-  teams, simEra, label = "// Draft Analysis",
+  teams, simEra, label = "Draft Analysis",
   // Klasik mod kendi dev skor kahramanını (g-score-hero) zaten gösteriyor;
   // burada tekrar etmesin diye ikisi de kapatılabiliyor.
   showHero = true, showParts = true,
@@ -175,7 +175,7 @@ export default function DraftAnalysis({
       <span className="aura-blob" style={{ "--slot-color": eraHex, left: "35%", top: -50, width: 300, height: 150, opacity: 0.16 }} />
 
       <div className="flex items-center justify-between gap-2">
-        <span className="g-mono" style={{ color: "var(--yamabuki)" }}>{label}</span>
+        <span className="g-section-title">{label}</span>
         <div className="flex items-center gap-2">
           {affinity != null && (
             <span className="g-status" style={{ "--accent": "#c084fc", "--accent-a": "rgba(192,132,252,.14)", "--accent-line": "rgba(192,132,252,.45)" }}

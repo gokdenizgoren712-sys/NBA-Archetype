@@ -137,7 +137,7 @@ export default function SeasonPanel({ starters, chemistry, positionPenalty = 0,
       <span className="aura-blob" style={{ "--slot-color": ACC, left: "25%", top: -48, width: 280, height: 145, opacity: 0.15 }} />
 
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <span className="g-mono" style={{ color: ACC }}>// Season Simulation</span>
+        <span className="g-section-title">Season Simulation</span>
         <span className="g-status"
           style={{ "--accent": "#9ca3af", "--accent-a": "rgba(156,163,175,.12)", "--accent-line": "rgba(156,163,175,.35)" }}>
           {matchCount} matches · fitted on {setup.coeffs?.n_matches ?? "—"} real

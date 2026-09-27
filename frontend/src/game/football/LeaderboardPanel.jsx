@@ -45,7 +45,7 @@ export default function FootballLeaderboard({ limit = 25, fill = false }) {
         width: 260, height: 140, opacity: 0.14 }} />
 
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <span className="g-mono" style={{ color: ACC }}>// Leaderboard</span>
+        <span className="g-section-title">Leaderboard</span>
         {data?.reference_n && (
           <span className="g-status" style={{ "--accent": "#9ca3af",
             "--accent-a": "rgba(156,163,175,.12)", "--accent-line": "rgba(156,163,175,.35)" }}>

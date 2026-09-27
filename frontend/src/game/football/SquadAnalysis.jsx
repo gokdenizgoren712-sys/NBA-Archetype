@@ -68,7 +68,7 @@ export default function SquadAnalysis({ fit, starters = [], bench = [],
       <span className="aura-blob" style={{ "--slot-color": ACC, left: "30%", top: -50, width: 300, height: 150, opacity: 0.16 }} />
 
       <div className="flex items-center justify-between gap-2">
-        <span className="g-mono" style={{ color: ACC }}>// Squad Analysis</span>
+        <span className="g-section-title">Squad Analysis</span>
         <span className="g-status"
           style={{ "--accent": "#9ca3af", "--accent-a": "rgba(156,163,175,.12)", "--accent-line": "rgba(156,163,175,.35)" }}>
           what this XI can and cannot do

@@ -75,7 +75,7 @@ export default function FullCourtBoard({
   lineups = { 1: {}, 2: {} },
   names = { 1: "Player 1", 2: "Player 2" },
   accents = { 1: "#60a5fa", 2: "#f87171" },
-  label = "// Matchup",
+  label = "Matchup",
   status = "Lobby",
   nodeSize = 46,
   maxWidth = 1080,
@@ -98,7 +98,7 @@ export default function FullCourtBoard({
       <div className="g-dotgrid" />
 
       <div className="flex items-center justify-between gap-2 mb-3">
-        <span className="g-mono" style={{ color: "var(--yamabuki)" }}>{label}</span>
+        <span className="g-section-title">{label}</span>
         <span className="g-status" style={{ "--accent": "#9ca3af", "--accent-a": "rgba(156,163,175,.12)", "--accent-line": "rgba(156,163,175,.35)" }}>
           Status: {status}
         </span>

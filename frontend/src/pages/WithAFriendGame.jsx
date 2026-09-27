@@ -19,15 +19,15 @@ import JokerBtn from "../game/JokerBtn";
 import CounterJokerPrompt from "../game/CounterJokerPrompt";
 import BenchCoverage from "../game/BenchCoverage";
 import FullCourtBoard from "../game/FullCourtBoard";
+import RoomLobby from "../game/RoomLobby";
 import CoachPicker from "../game/CoachPicker";
 import DraftAnalysis from "../game/DraftAnalysis";
 import GameBox from "../game/GameBox";
 import PlayerDetailModal from "../game/PlayerDetailModal";
 import SeasonSimPanel from "../game/SeasonSimPanel";
 import {
-  WheelIcon, UsersIcon, TrophyIcon, CheckIcon, LinkIcon,
-  StarIcon, CoachIcon, CapIcon, RefreshIcon, CalendarIcon, BoltIcon,
-  SearchIcon, WarnIcon, DiceIcon, PlayIcon, EyeIcon, LoopIcon, DnaIcon,
+  WheelIcon, UsersIcon, TrophyIcon, CheckIcon, StarIcon, CoachIcon, CapIcon, RefreshIcon, CalendarIcon, BoltIcon,
+  SearchIcon, WarnIcon, DiceIcon, PlayIcon, EyeIcon, DnaIcon,
 } from "../game/GameIcons";
 import "../game/game.css";
 
@@ -55,7 +55,6 @@ export default function WithAFriendGame() {
   const [creating, setCreating] = useState(false);
   const [joining, setJoining] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
-  const [copied, setCopied] = useState(false);
   const [detailPlayer, setDetailPlayer] = useState(null);
 
   const [serverState, setServerState] = useState(null);
@@ -172,14 +171,6 @@ export default function WithAFriendGame() {
     if (r && !roomCode && isLoggedIn) joinRoomByCode(r);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoggedIn]);
-
-  const copyCode = () => {
-    if (!roomCode) return;
-    navigator.clipboard?.writeText(roomCode).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    });
-  };
 
   const room = serverState?.room;
   const usernames = serverState?.usernames || {};
@@ -304,45 +295,38 @@ export default function WithAFriendGame() {
       <div className="p-4 sm:p-6 max-w-[1400px] mx-auto space-y-3 pb-6">
         {/* ── HEADER DOCK: başlık + çark alt-modu anahtarı tek barda ── */}
         {!roomCode ? (
-          <div className="g-dock">
-            <span className="aura-blob" style={{ "--slot-color": "#FFB11B", left: -30, top: -70, width: 240, height: 150, opacity: 0.16 }} />
-            <div className="g-dock-left">
-              <h1 className="g-dock-title">With a Friend</h1>
-              <p className="g-dock-sub">2 devices · room code · snake draft · best-of-7</p>
+          <header className="g-idle-hero" style={{ margin: "4px 0 18px" }}>
+            <div>
+              <h1 className="g-wordmark lg">With a Friend</h1>
+              <p>2 devices · room code · snake draft · best-of-7</p>
+              <div className="g-seg" style={{ display: "inline-flex", marginTop: 14 }} role="tablist">
+                <button role="tab" aria-selected="true" className="g-seg-btn on">With a Friend</button>
+                <button role="tab" aria-selected="false" className="g-seg-btn" onClick={() => navigate("/basketball/game/online")}>Online</button>
+              </div>
             </div>
-
-            <div className="g-dock-center">
-              {isLoggedIn ? (
-                <button onClick={createRoom} disabled={creating} className="aura-rating-btn"
-                  style={{ padding: "17px 42px", fontSize: 14, letterSpacing: ".14em", opacity: creating ? 0.6 : 1 }}>
-                  <WheelIcon size={16} /> <span className="ml-2">{creating ? "Creating…" : "Create Room"}</span>
-                </button>
-              ) : (
-                <button onClick={() => navigate("/login")} className="aura-rating-btn"
-                  style={{ padding: "17px 42px", fontSize: 14, letterSpacing: ".14em" }}>
-                  Log In to Play
-                </button>
-              )}
-            </div>
-
-            <div className="g-dock-right">
+            <div className="g-idle-actions">
               {isLoggedIn && (
-                <div className="g-seg stacked">
+                <div className="g-modebtn-row" role="radiogroup" aria-label="Wheel rule">
                   {[
-                    { key: "round", Icon: WheelIcon, hex: "#60a5fa", label: "Round", hint: "1 spin / round" },
-                    { key: "pick", Icon: LoopIcon, hex: "#FFB11B", label: "Pick", hint: "1 spin / pick" },
-                  ].map(({ key, Icon, hex, label, hint }) => (
-                    <button key={key} onClick={() => setWheelModeChoice(key)}
-                      className={`g-seg-btn${wheelModeChoice === key ? " on" : ""}`}
-                      style={{ "--accent": hex, "--accent-a": hex + "22", "--accent-line": hex + "66" }}>
-                      <Icon size={14} /> {label}
-                      <span className="opacity-55 font-normal tracking-normal normal-case">({hint})</span>
+                    { key: "round", hex: "#60a5fa", label: "Round", hint: "1 spin / round" },
+                    { key: "pick", hex: "#FFB11B", label: "Pick", hint: "1 spin / pick" },
+                  ].map(r => (
+                    <button key={r.key} role="radio" aria-checked={wheelModeChoice === r.key}
+                      className={`g-modebtn${wheelModeChoice === r.key ? " on" : ""}`} style={{ "--c": r.hex }}
+                      onClick={() => setWheelModeChoice(r.key)}>
+                      <span className="dot" /><span className="lbl"><b>{r.label}</b><i>{r.hint}</i></span>
                     </button>
                   ))}
                 </div>
               )}
+              {isLoggedIn ? (
+                <button onClick={createRoom} disabled={creating} className="aura-rating-btn g-idle-cta"
+                  style={{ opacity: creating ? 0.6 : 1 }}>{creating ? "Creating…" : "Create room"}</button>
+              ) : (
+                <button onClick={() => navigate("/login")} className="aura-rating-btn g-idle-cta">Sign in to play</button>
+              )}
             </div>
-          </div>
+          </header>
         ) : !(game && ["drafting", "placing"].includes(game.phase)) ? (
           // Draft fazının kendi ince dock'u var; başlığı tekrar yazma.
           <div>
@@ -400,25 +384,25 @@ export default function WithAFriendGame() {
         )}
 
         {roomCode && !game && !fatalError && (
-          <div className="max-w-md mx-auto text-center g-panel p-6 space-y-4">
-            {!connected && <p className="text-sm text-[var(--text-muted)] animate-pulse">Connecting…</p>}
-            {connected && !opponentConnected && (
-              <>
-                <div className="text-[13px] text-[var(--text-muted)]">Room Code — share this with your friend</div>
-                <div className="flex items-center justify-center gap-2">
-                  <div className="font-logo text-4xl font-black text-yamabuki tracking-[0.2em]">{roomCode}</div>
-                  <button onClick={copyCode} title="Copy code"
-                    className="w-9 h-9 flex items-center justify-center rounded-xl transition-colors" style={{color:"var(--text-muted)",border:"1px solid rgba(255,255,255,.12)"}}>
-                    {copied ? <CheckIcon size={16} /> : <LinkIcon size={16} />}
-                  </button>
-                </div>
-                <p className="text-xs text-[var(--text-muted)] animate-pulse">Waiting for your friend to join…</p>
-              </>
-            )}
-            {connected && opponentConnected && (
-              <p className="text-sm text-[var(--text-muted)] animate-pulse">Setting up the game…</p>
-            )}
-          </div>
+          <RoomLobby
+            wordmark="With a Friend"
+            modes={[{ key: "friend", label: "With a Friend", to: "/basketball/game/friend" },
+                    { key: "online", label: "Online", to: "/basketball/game/online" }]}
+            activeMode="friend"
+            kicker={connected ? "Room code — share it with your friend" : "Connecting…"}
+            code={roomCode}
+            inviteUrl={`${window.location.origin}/basketball/game/friend?room=${roomCode}`}
+            sub={!connected ? "Opening the room…" : opponentConnected ? "Setting up the game…" : "Waiting for your friend to join…"}
+            host={{ name: user?.username || "You", status: "Host · ready" }}
+            opponent={opponentConnected ? { name: opponentUsername || "Friend", status: "Joined" } : null}
+            waitingLabel="Waiting to join"
+            rules={[
+              { k: "Wheel", v: wheelModeChoice === "pick" ? "1 spin per pick" : "1 spin per round" },
+              { k: "Budget", v: "100% cap each" },
+              { k: "Jokers", v: "5 + counters" },
+              { k: "Series", v: "Best-of-7" },
+            ]}
+          />
         )}
 
         {game && (
@@ -796,7 +780,7 @@ function ReviewPanel({ game, myUserId, opponentUserId, seatName, simEra, moveSrc
       <FullCourtBoard
         lineups={seatLineups}
         names={{ 1: seatName[1], 2: seatName[2] }}
-        label="// Rosters Locked"
+        label="Rosters Locked"
         status="Review"
         scores={{ 1: teamScore(1), 2: teamScore(2) }}
         moveSrc={{ 1: moveSrc, 2: null }}
@@ -947,7 +931,7 @@ function SeriesPanel({ game, matchup, seatName, myUserId, opponentUserId, toSeat
         lineups={seatLineups}
         names={{ 1: seatName[1], 2: seatName[2] }}
         coaches={seatCoaches}
-        label="// Series Matchup"
+        label="Series Matchup"
         status={seriesOver ? "Final" : `Game ${games.length + 1}`}
       />
 
