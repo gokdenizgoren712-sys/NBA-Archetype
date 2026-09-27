@@ -8,11 +8,9 @@ import { FORMATIONS, SHAPE_KEYS, allSlots, BENCH_COUNT } from "../../game/footba
 import { posPenaltyFor, isPrimarySlot, canPlace, PENALTY_LABEL } from "../../game/football/positions";
 import { drawManagers, managerBonus } from "../../game/football/managers";
 import SeasonPanel from "../../game/football/SeasonPanel";
-import HowItWorksPanel from "../../game/HowItWorksPanel";
 import SquadAnalysis from "../../game/football/SquadAnalysis";
 import FootballLeaderboard from "../../game/football/LeaderboardPanel";
-import { RefreshIcon, CalendarIcon, BoltIcon, UsersIcon, SearchIcon,
-         WheelIcon, TargetIcon, CoachIcon, TrophyIcon } from "../../game/GameIcons";
+import { RefreshIcon, CalendarIcon, BoltIcon, UsersIcon, SearchIcon } from "../../game/GameIcons";
 import "../../game/game.css";
 import { LEAGUE_LABEL } from "../../game/football/leagues";
 import { ModeInfoButton } from "../../game/football/ModeAbout";
@@ -388,6 +386,50 @@ export default function FootballGame() {
           listeler kendi panellerinin içinde kayar. Kadro bitince (complete)
           ekran bir rapora dönüşüyor, orada kaydırma serbest. */}
       <div className={`relative max-w-[1500px] w-full mx-auto p-4 ${cockpit ? "flex-1 min-h-0 flex flex-col gap-3" : "space-y-4"}`}>
+        {setupScreen ? (
+          // ── Handoff 18b: diziliş seçici + saha önizlemesi + çark havuzu | bu hafta
+          <div className="g-fb-idle">
+            <div className="g-fb-idle-main">
+              <div className="flex items-center gap-2">
+                <span className="g-wordmark">Spin &amp; Build</span>
+                <ModeInfoButton mode="spin" />
+              </div>
+              <h1 className="g-fb-idle-h1">Choose your shape</h1>
+              <p className="g-fb-idle-sub">Spin the wheels for a club and a season, pick one player, repeat until all eighteen are in.</p>
+              <div className="g-fb-shapes" role="radiogroup" aria-label="Formation">
+                {SHAPE_KEYS.map(k => (
+                  <button key={k} role="radio" aria-checked={shape === k}
+                    className={`g-fb-shape${shape === k ? " on" : ""}`}
+                    onClick={() => { setShape(k); reset(); }}>{k}</button>
+                ))}
+              </div>
+              <div className="g-fb-preview">
+                <Pitch shape={shape} squad={{}} onSlotClick={() => {}} fill />
+              </div>
+              <div className="g-fb-pool">
+                <span className="lbl">Wheel pool · {pairs.length} club-seasons</span>
+                <div className="chips">
+                  <button onClick={() => { setMode("open"); setLeague(""); reset(); }}
+                    className={`g-fb-chip${mode === "open" ? " on" : ""}`}><i />All leagues</button>
+                  {(meta?.leagues || []).map(l => (
+                    <button key={l} onClick={() => { setMode("league"); setLeague(l); reset(); }}
+                      className={`g-fb-chip${mode === "league" && league === l ? " on" : ""}`}><i />{LEAGUE_LABEL[l] || l}</button>
+                  ))}
+                </div>
+              </div>
+              <div className="g-fb-go">
+                <button className="aura-rating-btn g-idle-cta" onClick={() => doSpin()} disabled={spinning || !pairs.length}>
+                  Start draft · {shape}
+                </button>
+                <span>{slots.length} players · 5 jokers · ratings hidden while you draft</span>
+              </div>
+            </div>
+            <aside className="g-fb-idle-side">
+              <FootballLeaderboard />
+            </aside>
+          </div>
+        ) : (
+        <>
         {/* ── HEADER DOCK — basketbol oyunundaki yapının aynısı:
             solda kimlik + ilerleme, ortada diziliş, sagda durum. ── */}
         <div className={`g-dock${setupScreen ? "" : " thin"}`}
@@ -434,67 +476,6 @@ export default function FootballGame() {
               </span>
             )}
           </div>
-        </div>
-
-        {/* Giriş anı: solda akış, sağda kovalanacak sayı — basketbolun idle
-            ekranıyla aynı yapı. Önceden burada üç satırlık düz bir paragraf
-            vardı ve leaderboard yalnızca oyun BİTTİKTEN sonra görünüyordu;
-            yani ilk kez gelen biri ne oynayacağını da, neyi kovaladığını da
-            göremiyordu. Sayılar oyunun kendi kodundan: positions.js cezaları,
-            managers.js bonusu, seasonSim.js katsayıları. */}
-        <div className={`grid gap-3 lg:grid-cols-[1.15fr_1fr] ${setupScreen ? "" : "hidden"}`}>
-          <HowItWorksPanel label="Draft Process" steps={[
-            ["1", WheelIcon, "", "Spin two wheels", "A club and a season",
-              "One wheel lands on a club, the other on a season, and you draft off that exact squad. " +
-              "The same club can come up again in a different year — Barcelona 2018 and Barcelona 2025 " +
-              "are different squads, so both count as fresh. Five jokers let you bend the wheel: re-club, " +
-              "re-year, re-both, take two from one squad, or reveal ratings.",
-              <>The wheel lands on <b>2015-16 Leicester</b>. Take Kanté as your Ball-Winner, or Mahrez if
-                you still have a wing to fill.</>],
-            ["2", TargetIcon, "", "Place him yourself", "Position costs points",
-              "He does not have to play his own position, but it costs: comfortable −5, out of position −11, " +
-              "a foreign role −20, and an outfielder in goal −45. Ratings stay hidden while you draft — you " +
-              "see the role, the position and the per-90 line, and judge from those.",
-              <>A centre-back at right-back is <b>−5</b>. The same centre-back on the wing is <b>−20</b>, and
-                that comes straight off your squad quality.</>],
-            ["3", CoachIcon, "", "Eleven, seven and a manager", "Shape match pays",
-              "Eleven on the pitch, seven on the bench — bench places carry no position penalty, which makes " +
-              "them the home for an awkward pick. Once the eighteen are in, three managers are offered. One " +
-              "whose preferred shape matches yours is worth up to +5; any other is worth at most +1.",
-              <>So the formation you picked before the first spin is a decision that either pays off at the
-                end or doesn't.</>],
-            ["4", TrophyIcon, "", "Play the season", "200 of them, actually",
-              "Your eleven enters a real league and plays a full campaign. Goals come from a model fitted on " +
-              "1,705 real matches, and it explains about 14% of any single one — so one 38-game run can land " +
-              "several places off. The sim runs 200 seasons and shows you the spread rather than one table.",
-              <>A squad can post a median finish of 5th with a range of 3rd to 9th. The range is the answer;
-                the table is one sample.</>],
-          ]} />
-
-          {/* Leaderboard artık oyundan ÖNCE de burada: kovalanacak sayıyı
-              görmeden oynamak, hedefi bitişte öğrenmek demekti. */}
-          <FootballLeaderboard />
-        </div>
-
-        {/* Kurulum — diziliş dock'a taşındı, çarkın havuzu burada seçiliyor.
-            Kadro başlayınca zaten kilitleniyor; dikey alanı sahaya bırakmak
-            için gizleniyor (Reset dock'tan değil, bitişte "Play again"den). */}
-        <div className={`g-panel p-3 flex flex-wrap gap-2 items-center ${setupScreen ? "" : "hidden"}`}
-          style={{ "--accent": ACCENT, "--accent-line": ACCENT + "3d" }}>
-          <span className="aura-blob" style={{ "--slot-color": ACCENT, left: "6%", top: -38, width: 180, height: 96, opacity: 0.12 }} />
-          <span className="g-label shrink-0">Wheel pool</span>
-          <button onClick={() => { setMode("open"); setLeague(""); reset(); }}
-            className={`aura-pill-btn${mode === "open" ? " active" : ""}`}
-            disabled={filledCount > 0}>All leagues</button>
-          {(meta?.leagues || []).map(l => (
-            <button key={l} onClick={() => { setMode("league"); setLeague(l); reset(); }}
-              className={`aura-pill-btn${mode === "league" && league === l ? " active" : ""}`}
-              disabled={filledCount > 0}>{LEAGUE_LABEL[l] || l}</button>
-          ))}
-          <span className="text-[13px] ml-auto" style={{ color: "var(--text-faint)" }}>
-            {pairs.length} club-seasons in the wheel
-          </span>
-          {filledCount > 0 && <button onClick={reset} className="aura-pill-btn">Reset</button>}
         </div>
 
         <div className={`fb-hud ${cockpit ? "flex-1 min-h-0" : ""}`}>
@@ -817,6 +798,9 @@ export default function FootballGame() {
 
         {/* Kadro tamamlandığında: önce karne, sonra simülasyon.
             Karne "bu XI ne yapabiliyor", simülasyon "peki ne kazanır". */}
+        </>
+        )}
+
         {phase === "complete" && fit && (
           <SquadAnalysis
             fit={fit}

@@ -1721,3 +1721,48 @@ button.g-pstep:focus-visible { outline: 2px solid var(--c); outline-offset: 3px;
 .g-join { display: flex; align-items: center; gap: 8px; }
 .g-join input { width: 128px; font-family: var(--font-logo); font-size: 17px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
 .g-join input::placeholder { font-family: var(--font-sans); font-size: 14px; font-weight: 400; letter-spacing: 0; text-transform: none; }
+
+/* ═══ Futbol idle (handoff 18b) ═══════════════════════════════════════════
+   Solda diziliş seçici + saha önizlemesi + çark havuzu + CTA, sağda bu hafta. */
+.g-fb-idle { position: relative; flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 48px; }
+.g-fb-idle-main { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.g-fb-idle-h1 { margin: 18px 0 6px; font-family: var(--font-logo); font-size: 44px; font-weight: 700; line-height: 1; color: var(--text-primary); }
+.g-fb-idle-sub { margin: 0 0 16px; font-size: 15px; color: var(--text-secondary); }
+.g-fb-shapes { display: flex; gap: 8px; flex-wrap: wrap; }
+.g-fb-shape {
+  height: 40px; padding: 0 18px; border: 0; border-radius: 12px; cursor: pointer;
+  font-family: var(--font-logo); font-size: 18px; font-weight: 700; color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.03); transition: background .15s ease, color .15s ease;
+}
+.g-fb-shape:hover { color: var(--text-primary); }
+.g-fb-shape.on { color: #3FB08C; background: rgba(63, 176, 140, 0.12); box-shadow: inset 0 0 0 1px rgba(63, 176, 140, 0.5), 0 0 18px -6px #3FB08C; }
+.g-fb-shape:focus-visible, .g-fb-chip:focus-visible { outline: 2px solid #3FB08C; outline-offset: 2px; }
+.g-fb-preview {
+  flex: 1; min-height: 200px; margin-top: 18px; border-radius: 22px; padding: 12px;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(180deg, rgba(63, 176, 140, 0.10), rgba(63, 176, 140, 0.03));
+}
+.g-fb-preview > * { max-height: 100%; }
+.g-fb-pool { display: flex; flex-direction: column; gap: 10px; margin-top: 18px; }
+.g-fb-pool .lbl { font-size: 13px; color: var(--text-muted); }
+.g-fb-pool .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.g-fb-chip {
+  height: 34px; padding: 0 14px; border: 0; border-radius: 17px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-sans); font-size: 14px;
+  color: var(--text-secondary); background: rgba(255, 255, 255, 0.04);
+}
+.g-fb-chip i { width: 8px; height: 8px; border-radius: 4px; background: var(--text-faint); }
+.g-fb-chip.on { color: var(--text-primary); background: rgba(63, 176, 140, 0.14); }
+.g-fb-chip.on i { background: #3FB08C; box-shadow: 0 0 8px #3FB08C; }
+.g-fb-go { display: flex; align-items: center; gap: 18px; margin-top: 20px; flex-wrap: wrap; }
+.g-fb-go span { font-size: 13px; color: var(--text-muted); }
+.g-fb-idle-side { min-height: 0; overflow-y: auto; padding-top: 44px; }
+@media (max-width: 1100px) {
+  .g-fb-idle { grid-template-columns: 1fr; gap: 28px; }
+  .g-fb-preview { min-height: 280px; }
+  .g-fb-idle-side { padding-top: 0; }
+}
+@media (max-width: 640px) {
+  .g-fb-idle-h1 { font-size: 32px; }
+  .g-fb-go .g-idle-cta { width: 100%; }
+}
