@@ -49,11 +49,11 @@ function BenchCell({ slot, player, accent, selected, canTap, onTap }) {
       className="relative overflow-hidden rounded-xl px-2.5 py-2 min-w-0 text-left w-full transition-colors"
       style={{
         cursor: canTap ? "pointer" : "default",
-        border: selected ? "1px solid #FFB11B"
-          : player ? `1px solid ${accent}44`
-          : "1px dashed rgba(255,255,255,.12)",
-        background: selected ? "rgba(255,177,27,.08)" : player ? "rgba(255,255,255,.03)" : "transparent",
-        boxShadow: selected ? "0 0 16px -3px #FFB11B" : "none",
+        // Handoff: kesikli kutu yok — boş yuva soluk zemin, dolu yuva tarafın
+        // renginde üst iç çizgi, seçili yuva altın halka.
+        border: 0,
+        background: selected ? "rgba(255,177,27,.08)" : player ? "rgba(255,255,255,.035)" : "rgba(255,255,255,.02)",
+        boxShadow: selected ? "inset 0 0 0 1px #FFB11B, 0 0 16px -3px #FFB11B" : player ? `inset 0 1px 0 ${accent}66` : "none",
       }}>
       {player && (
         <span className="aura-blob" style={{
@@ -62,10 +62,10 @@ function BenchCell({ slot, player, accent, selected, canTap, onTap }) {
         }} />
       )}
       <div className="relative font-logo text-[12px] font-bold leading-none"
-        style={{ color: "var(--text-faint)" }}>{slot}</div>
+        style={{ color: "var(--text-muted)" }}>{slot}</div>
       <div className="relative font-logo text-[13px] font-bold truncate leading-tight mt-1"
-        style={{ color: player ? "var(--text-primary)" : "rgba(255,255,255,.16)" }}>
-        {player ? last(player.PLAYER_NAME) : "—"}
+        style={{ color: player ? "var(--text-primary)" : "var(--text-faint)", fontFamily: "var(--font-sans)", fontWeight: player ? 600 : 400 }}>
+        {player ? last(player.PLAYER_NAME) : "Open"}
       </div>
     </button>
   );
@@ -106,7 +106,7 @@ export default function FullCourtBoard({
 
       {/* Taraf başlıkları — kortun iki ucu (kortla aynı genişlikte hizalı) */}
       <div className="flex items-center justify-between gap-3 mb-2 mx-auto w-full"
-        style={{ maxWidth: `min(${maxWidth}px, (100vh - 340px) * 1.88)` }}>
+        style={{ maxWidth: `min(${maxWidth}px, (100vh - 420px) * 1.88)` }}>
         {sides.map(({ seat }) => {
           const filled = [...POSITIONS, ...BENCH_SLOTS].filter(s => lineups[seat]?.[s]).length;
           const sc = scores?.[seat];
@@ -142,7 +142,7 @@ export default function FullCourtBoard({
           kaydırılabilir hâle getiriyor. Kortu ezmek yerine (SVG stretch)
           genişliği kısıp oranı koruyoruz. */}
       <div className="relative w-full mx-auto"
-        style={{ aspectRatio: "940 / 500", maxWidth: `min(${maxWidth}px, (100vh - 340px) * 1.88)` }}>
+        style={{ aspectRatio: "940 / 500", maxWidth: `min(${maxWidth}px, (100vh - 420px) * 1.88)` }}>
         <svg viewBox="0 0 940 500" preserveAspectRatio="none"
           className="absolute inset-0 w-full h-full opacity-60"
           fill="none" stroke="#2a2a2a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -186,7 +186,7 @@ export default function FullCourtBoard({
 
       {/* Bench — iki taraf yan yana, dörder slot (kort genişliğinde) */}
       <div className="g-fc-bench grid grid-cols-2 gap-3 pt-3 mt-3 mx-auto w-full"
-        style={{ borderTop: "1px solid rgba(255,255,255,.08)", maxWidth: `min(${maxWidth}px, (100vh - 340px) * 1.88)` }}>
+        style={{ borderTop: "1px solid rgba(255,255,255,.08)", maxWidth: `min(${maxWidth}px, (100vh - 420px) * 1.88)` }}>
         {sides.map(({ seat }) => (
           <div key={seat} className="min-w-0">
             <div className="g-label mb-1.5" style={{ justifyContent: seat === 2 ? "flex-end" : "flex-start" }}>

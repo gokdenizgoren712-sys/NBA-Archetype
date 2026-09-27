@@ -295,16 +295,16 @@ export default function WithAFriendGame() {
       <div className="p-4 sm:p-6 max-w-[1400px] mx-auto space-y-3 pb-6">
         {/* ── HEADER DOCK: başlık + çark alt-modu anahtarı tek barda ── */}
         {!roomCode ? (
-          <header className="g-idle-hero" style={{ margin: "4px 0 18px" }}>
+          <header className="g-idle-hero compact">
             <div>
               <h1 className="g-wordmark lg">With a Friend</h1>
               <p>2 devices · room code · snake draft · best-of-7</p>
-              <div className="g-seg" style={{ display: "inline-flex", marginTop: 14 }} role="tablist">
+            </div>
+            <div className="g-idle-actions">
+              <div className="g-seg" role="tablist">
                 <button role="tab" aria-selected="true" className="g-seg-btn on">With a Friend</button>
                 <button role="tab" aria-selected="false" className="g-seg-btn" onClick={() => navigate("/basketball/game/online")}>Online</button>
               </div>
-            </div>
-            <div className="g-idle-actions">
               {isLoggedIn && (
                 <div className="g-modebtn-row" role="radiogroup" aria-label="Wheel rule">
                   {[
@@ -317,6 +317,16 @@ export default function WithAFriendGame() {
                       <span className="dot" /><span className="lbl"><b>{r.label}</b><i>{r.hint}</i></span>
                     </button>
                   ))}
+                </div>
+              )}
+              {isLoggedIn && (
+                <div className="g-join">
+                  <input value={joinCodeInput} onChange={e => setJoinCodeInput(e.target.value.toUpperCase())}
+                    onKeyDown={e => e.key === "Enter" && joinRoom()}
+                    placeholder="Room code" maxLength={8} aria-label="Room code" className="aura-ghost-input" />
+                  <button onClick={joinRoom} disabled={joining || !joinCodeInput.trim()} className="pa-btn-secondary">
+                    {joining ? "Joining…" : "Join"}
+                  </button>
                 </div>
               )}
               {isLoggedIn ? (
@@ -348,26 +358,7 @@ export default function WithAFriendGame() {
               status={isLoggedIn ? "Lobby" : "Signed Out"}
             />
 
-            {!isLoggedIn ? (
-              <div className="g-panel subtle p-5 text-center max-w-md mx-auto">
-                <p className="text-sm" style={{ color: "var(--text-muted)" }}>Log in above to create or join a room.</p>
-              </div>
-            ) : (
-              <div className="g-panel p-4 space-y-3 max-w-md mx-auto">
-                <div className="g-section-title">Join an existing room</div>
-                <div className="flex gap-2">
-                  <input value={joinCodeInput} onChange={e => setJoinCodeInput(e.target.value.toUpperCase())}
-                    placeholder="ROOM CODE" maxLength={8}
-                    className="flex-1 min-w-0 rounded-xl px-3 py-2.5 text-sm font-mono tracking-widest focus:outline-none"
-                    style={{ color: "var(--text-primary)", background: "rgba(255,255,255,.04)", border: "1px solid rgba(255,255,255,.12)" }} />
-                  <button onClick={joinRoom} disabled={joining}
-                    className="aura-rating-btn" style={{ padding: "10px 20px", fontSize: 14 }}>
-                    {joining ? "Joining…" : "Join"}
-                  </button>
-                </div>
-                {errorMsg && <p className="text-[13px] text-[var(--danger)]">{errorMsg}</p>}
-              </div>
-            )}
+            {errorMsg && <p className="text-center text-[13px] text-[var(--danger)]">{errorMsg}</p>}
           </div>
         )}
 

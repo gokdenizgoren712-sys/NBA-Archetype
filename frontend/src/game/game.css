@@ -1697,6 +1697,7 @@ button.g-pstep:focus-visible { outline: 2px solid var(--c); outline-offset: 3px;
 .g-lobby-rules > div { display: flex; flex-direction: column; align-items: center; gap: 2px; }
 .g-lobby-rules span { font-size: 12px; color: var(--text-muted); }
 .g-lobby-rules b { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+.g-lobby-cta2 { margin-top: 36px; min-width: 160px; }
 .g-lobby-cta { min-height: 52px; padding: 0 34px; margin-top: 36px; font-size: 18px; letter-spacing: 0.05em; text-transform: uppercase; }
 @media (max-width: 640px) {
   .g-lobby { padding: 8px 16px 24px; }
@@ -1708,3 +1709,15 @@ button.g-pstep:focus-visible { outline: 2px solid var(--c); outline-offset: 3px;
   .g-lobby-rules { gap: 20px 28px; margin-top: 24px; }
   .g-lobby-cta { width: 100%; min-height: 54px; }
 }
+
+/* Lobi sayfalarının başlığı — tam saha/HUD'a yer kalsın diye kompakt */
+.g-idle-hero.compact { margin: 2px 0 16px; align-items: center; }
+.g-idle-hero.compact .g-wordmark.lg { font-size: 34px; }
+.g-idle-hero.compact p { margin-top: 6px; font-size: 14px; }
+.g-idle-hero.compact .g-idle-cta { min-height: 50px; font-size: 17px; }
+@media (max-width: 1100px) { .g-idle-hero.compact .g-idle-actions { flex-wrap: wrap; } }
+
+/* Odaya katıl — başlıktaki alt çizgili kod girişi */
+.g-join { display: flex; align-items: center; gap: 8px; }
+.g-join input { width: 128px; font-family: var(--font-logo); font-size: 17px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.g-join input::placeholder { font-family: var(--font-sans); font-size: 14px; font-weight: 400; letter-spacing: 0; text-transform: none; }

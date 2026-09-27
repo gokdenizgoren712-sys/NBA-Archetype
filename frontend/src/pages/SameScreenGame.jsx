@@ -422,38 +422,27 @@ export default function SameScreenGame() {
       <div className={["spinning", "drafting", "placing"].includes(gamePhase) ? "g-vs-page" : "p-4 sm:p-6 max-w-[1400px] mx-auto space-y-3 pb-6"}>
         {/* ── HEADER DOCK: başlık + çark alt-modu anahtarı tek barda ── */}
         {gamePhase === "idle" ? (
-          <div className="g-dock">
-            <span className="aura-blob" style={{ "--slot-color": "#FFB11B", left: -30, top: -70, width: 240, height: 150, opacity: 0.16 }} />
-            <div className="g-dock-left">
-              <h1 className="g-dock-title">Same Screen</h1>
-              <p className="g-dock-sub">2 players · 1 device · snake draft · best-of-7</p>
+          <header className="g-idle-hero compact">
+            <div>
+              <h1 className="g-wordmark lg">Same Screen</h1>
+              <p>2 players · 1 device · snake draft · best-of-7</p>
             </div>
-
-            {/* Kurallar artık giriş ekranındaki mod kartının ⓘ'sinde —
-                burada ikinci bir "How to Play" tutmuyoruz. */}
-            <div className="g-dock-center">
-              <button onClick={() => setGamePhase("era")} className="aura-rating-btn"
-                style={{ padding: "17px 42px", fontSize: 14, letterSpacing: ".14em" }}>
-                <WheelIcon size={16} /> <span className="ml-2">Start Draft Phase</span>
-              </button>
-            </div>
-
-            <div className="g-dock-right">
-              <div className="g-seg stacked">
+            <div className="g-idle-actions">
+              <div className="g-modebtn-row" role="radiogroup" aria-label="Wheel rule">
                 {[
-                  { key: "round", Icon: WheelIcon, hex: "#60a5fa", label: "Round", hint: "1 spin / round" },
-                  { key: "pick", Icon: LoopIcon, hex: "#FFB11B", label: "Pick", hint: "1 spin / pick" },
-                ].map(({ key, Icon, hex, label, hint }) => (
-                  <button key={key} onClick={() => setWheelMode(key)}
-                    className={`g-seg-btn${wheelMode === key ? " on" : ""}`}
-                    style={{ "--accent": hex, "--accent-a": hex + "22", "--accent-line": hex + "66" }}>
-                    <Icon size={14} /> {label}
-                    <span className="opacity-55 font-normal tracking-normal normal-case">({hint})</span>
+                  { key: "round", hex: "#60a5fa", label: "Round", hint: "1 spin / round" },
+                  { key: "pick", hex: "#FFB11B", label: "Pick", hint: "1 spin / pick" },
+                ].map(r => (
+                  <button key={r.key} role="radio" aria-checked={wheelMode === r.key}
+                    className={`g-modebtn${wheelMode === r.key ? " on" : ""}`} style={{ "--c": r.hex }}
+                    onClick={() => setWheelMode(r.key)}>
+                    <span className="dot" /><span className="lbl"><b>{r.label}</b><i>{r.hint}</i></span>
                   </button>
                 ))}
               </div>
+              <button onClick={() => setGamePhase("era")} className="aura-rating-btn g-idle-cta">Start draft</button>
             </div>
-          </div>
+          </header>
         ) : !["era", "spinning", "drafting", "placing"].includes(gamePhase) ? (
           // Bu fazların kendi ince dock'u var; başlığı tekrar yazma.
           <div>

@@ -79,7 +79,8 @@ export default function RoomLobby({
       )}
 
       {cta && (
-        <button className="aura-rating-btn g-lobby-cta" disabled={cta.disabled} onClick={cta.onClick}>{cta.label}</button>
+        <button className={cta.secondary ? "pa-btn-secondary g-lobby-cta2" : "aura-rating-btn g-lobby-cta"}
+          disabled={cta.disabled} onClick={cta.onClick}>{cta.label}</button>
       )}
       {children}
     </div>

@@ -5,6 +5,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useGameSocket } from "../hooks/useGameSocket";
 import { ERAS, ERA_HEX } from "../game/eras";
 import FullCourtBoard from "../game/FullCourtBoard";
+import RoomLobby from "../game/RoomLobby";
 import {
   WheelIcon, UsersIcon, TrophyIcon, CrownIcon, CapIcon, GlobeIcon,
   LoopIcon, TargetIcon, SearchIcon, WarnIcon, PlayIcon, StarIcon,
@@ -382,45 +383,34 @@ export default function OnlineGame() {
         path="/basketball/game/online" />
 
       <div className="p-4 sm:p-6 max-w-[1400px] mx-auto space-y-3 pb-6">
-        {/* ── HEADER DOCK: başlık | giriş | yol seçimi ── */}
-        <div className="g-dock">
-          <span className="aura-blob" style={{ "--slot-color": "#FFB11B", left: -30, top: -70, width: 240, height: 150, opacity: 0.16 }} />
-
-          <div className="g-dock-left">
-            <h1 className="g-dock-title">Online Opponent</h1>
-            <p className="g-dock-sub">Salary Cap · snake draft · best-of-7</p>
+        {/* Handoff 14a: With a Friend ile aynı lobi, Online sekmesi */}
+        <header className="g-idle-hero compact">
+          <div>
+            <h1 className="g-wordmark lg">Online opponent</h1>
+            <p>Salary Cap · snake draft · best-of-7</p>
           </div>
-
-          <div className="g-dock-center">
-            {isLoggedIn ? (
-              <div className="text-center">
-                <div className="g-mono" style={{ color: "var(--text-faint)" }}>signed in as</div>
-                <div className="font-logo text-lg font-bold mt-0.5" style={{ color: "var(--text-primary)" }}>{user?.username}</div>
-              </div>
-            ) : (
-              <button onClick={() => navigate("/login")} className="aura-rating-btn"
-                style={{ padding: "17px 42px", fontSize: 14, letterSpacing: ".14em" }}>
-                Log In to Play
-              </button>
-            )}
-          </div>
-
-          <div className="g-dock-right">
-            <div className="g-seg stacked">
+          <div className="g-idle-actions">
+            <div className="g-seg" role="tablist">
+              <button role="tab" aria-selected="false" className="g-seg-btn" onClick={() => navigate("/basketball/game/friend")}>With a Friend</button>
+              <button role="tab" aria-selected="true" className="g-seg-btn on">Online</button>
+            </div>
+            <div className="g-modebtn-row" role="radiogroup" aria-label="Opponent">
               {[
-                { key: "board", Icon: CapIcon, hex: "#FFB11B", label: "The Board", hint: "top 25 rosters" },
-                { key: "live", Icon: GlobeIcon, hex: "#60a5fa", label: "Live", hint: "random opponent" },
-              ].map(({ key, Icon, hex, label, hint }) => (
-                <button key={key} onClick={() => setTab(key)}
-                  className={`g-seg-btn${tab === key ? " on" : ""}`}
-                  style={{ "--accent": hex, "--accent-a": hex + "22", "--accent-line": hex + "66" }}>
-                  <Icon size={14} /> {label}
-                  <span className="opacity-55 font-normal tracking-normal normal-case">({hint})</span>
+                { key: "board", hex: "#FFB11B", label: "The Board", hint: "top 25 rosters" },
+                { key: "live", hex: "#60a5fa", label: "Live", hint: "random opponent" },
+              ].map(r => (
+                <button key={r.key} role="radio" aria-checked={tab === r.key}
+                  className={`g-modebtn${tab === r.key ? " on" : ""}`} style={{ "--c": r.hex }}
+                  onClick={() => setTab(r.key)}>
+                  <span className="dot" /><span className="lbl"><b>{r.label}</b><i>{r.hint}</i></span>
                 </button>
               ))}
             </div>
+            {!isLoggedIn && (
+              <button onClick={() => navigate("/login")} className="aura-rating-btn g-idle-cta">Sign in to play</button>
+            )}
           </div>
-        </div>
+        </header>
 
         {notice && (
           <div className="flex items-center justify-center gap-2 text-[12px] py-1" style={{ color: "var(--yamabuki)" }}>
@@ -428,7 +418,29 @@ export default function OnlineGame() {
           </div>
         )}
 
-        {/* ── 3-sütun HUD: yol paneli | kort | sıralama ── */}
+        {tab === "live" && queueState !== "idle" ? (() => {
+          const mm = String(Math.floor(elapsed / 60)).padStart(2, "0");
+          const ss = String(elapsed % 60).padStart(2, "0");
+          const found = queueState === "found";
+          return (
+            <RoomLobby
+              wordmark="Matchmaking"
+              kicker={found ? "Opponent found" : "Searching for an opponent"}
+              big={found ? "READY" : `${mm}:${ss}`}
+              sub={found ? "Both sides draft from the same era under a 100% cap."
+                : queueSize != null ? `${queueSize} in queue` : "Hold tight — pairing you with another fan"}
+              host={{ name: user?.username || "You", status: "Ready" }}
+              opponent={found && opponent ? { name: opponent.username,
+                status: opponent.games != null ? `${opponent.games} games${opponent.best != null ? ` · best ${opponent.best}` : ""}` : "New challenger" } : null}
+              waitingLabel="Searching…"
+              rules={[
+                { k: "Era", v: "Shared" }, { k: "Budget", v: "100% cap each" },
+                { k: "Jokers", v: "5 + counters" }, { k: "Series", v: "Best-of-7" },
+              ]}
+              cta={found ? { label: "Enter draft", onClick: acceptMatch } : { label: "Cancel", onClick: cancelQueue, secondary: true }}
+            />
+          );
+        })() : (
         <div className="g-hud">
           <div className="col-side min-w-0">
             {tab === "live" ? (
@@ -545,7 +557,7 @@ export default function OnlineGame() {
                   <div className="flex gap-2.5 items-start pt-2" style={{ borderTop: "1px solid rgba(255,255,255,.07)" }}>
                     <span className="shrink-0 mt-0.5" style={{ color: "#60a5fa" }}><LoopIcon size={15} /></span>
                     <div className="text-[13px] leading-relaxed" style={{ color: "var(--text-muted)" }}>
-                      Prefer a real person? Switch to <b style={{ color: "var(--text-primary)" }}>Live</b> in the top-right
+                      Prefer a real person? Switch to <b style={{ color: "var(--text-primary)" }}>Live</b> above
                       and you'll be queued against another fan instead.
                     </div>
                   </div>
@@ -554,6 +566,7 @@ export default function OnlineGame() {
             </div>
           </div>
         </div>
+        )}
       </div>
     </div>
   );
