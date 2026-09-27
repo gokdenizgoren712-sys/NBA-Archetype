@@ -8,7 +8,7 @@ import { PageGlow } from "../states/States";
 import PaIcon from "../shell/PaIcon";
 import "./listing.css";
 
-export function ListingPage({ tint, filters, sheetFilters, search, filterCount = 0, chips = [], onReset, resultLabel, children }) {
+export function ListingPage({ tint, glow, filters, sheetFilters, search, filterCount = 0, chips = [], onReset, resultLabel, children }) {
   const [sheet, setSheet] = useState(false);
   useEffect(() => {
     if (!sheet) return;
@@ -28,7 +28,8 @@ export function ListingPage({ tint, filters, sheetFilters, search, filterCount =
       </aside>
 
       <section className="pa-list-main">
-        <PageGlow tint={tint} />
+        {/* glow: koyu lig renkleri (G League #A8263F) ışıkta taban, arayüzde açık tonu */}
+        <PageGlow tint={glow || tint} />
         {/* Mobil üst şerit: arama + filtre düğmesi, altında aktif çipler */}
         <div className="pa-list-mbar">
           <div className="pa-list-mrow">

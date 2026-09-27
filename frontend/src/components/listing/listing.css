@@ -146,3 +146,20 @@
   .pa-card-grid { gap: 20px; }
 }
 @media (prefers-reduced-motion: reduce) { .pa-sheet { animation: none; } }
+
+/* ── Prospect şeridi (handoff 11c/17b) — kartın altında, kart genişliğinde ── */
+.pa-card-stack { display: flex; flex-direction: column; gap: 14px; width: 280px; }
+.pa-prospect {
+  display: flex; flex-direction: column; gap: 14px; padding: 16px 18px; border-radius: 16px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.012));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 20px 50px -30px #000;
+}
+.pa-prospect .top { display: flex; align-items: center; gap: 14px; }
+.pa-prospect .grade { font-family: var(--font-logo); font-size: 36px; font-weight: 700; line-height: 1; color: var(--c); text-shadow: 0 0 18px color-mix(in srgb, var(--c) 53%, transparent); font-variant-numeric: tabular-nums; }
+.pa-prospect .tier { display: flex; flex-direction: column; gap: 2px; }
+.pa-prospect .tier b { font-size: 14px; font-weight: 600; color: var(--c); }
+.pa-prospect .tier span, .pa-prospect .range { font-size: 12px; color: var(--text-muted); }
+.pa-prospect .range { display: flex; justify-content: space-between; }
+.pa-prospect .bar { position: relative; height: 6px; border-radius: 3px; background: var(--frame, #1a1a1a); margin-top: -8px; }
+.pa-prospect .bar i { position: absolute; top: 0; bottom: 0; border-radius: 3px; background: linear-gradient(90deg, var(--lg), var(--c)); box-shadow: 0 0 10px var(--c); min-width: 6px; }
+.pa-list-note { font-size: 12px; line-height: 1.5; color: var(--text-muted); margin: 0; }

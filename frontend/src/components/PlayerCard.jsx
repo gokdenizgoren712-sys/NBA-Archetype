@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { TIER_COLOR } from "../constants/prospectTiers";
 import { api } from "../api";
 import { getAwardBadges } from "../game/awards";
 import "./PlayerCard.css";
@@ -53,10 +54,6 @@ const TAG_LABEL = {
 };
 const tl = n => TAG_LABEL[n] || n;
 
-const TIER_COLOR = {
-  "Elite Prospect": "#a855f7", "First-Round": "#3b82f6", "Rotation Upside": "#10b981",
-  "Developmental": "#d97706", "Longshot": "#9ca3af",
-};
 const OUTCOME_COLOR = {
   "Superstar": "#a855f7", "All-Star": "#3b82f6", "Quality Starter": "#10b981",
   "Starter": "#22c55e", "Rotation": "#d97706", "Fringe": "#9ca3af",

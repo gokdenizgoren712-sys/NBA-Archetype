@@ -2145,6 +2145,8 @@ def get_gleague_players(
         return {"coming_soon": False, "players": [], "total": 0,
                 "message": "Run python src/fetch_gleague.py to fetch G-League data"}
 
+    pool = len(df)
+    groups = sorted(df["TEAM_ABBREVIATION"].dropna().astype(str).unique().tolist()) if "TEAM_ABBREVIATION" in df.columns else []
     if search:
         df = _search_player(df, search)
     if team and "TEAM_ABBREVIATION" in df.columns:
@@ -2155,8 +2157,6 @@ def get_gleague_players(
             df = df[df["POS5"] == pos_upper]
         elif "POSITION" in df.columns:
             df = df[df["POSITION"].str.contains(position, case=False, na=False)]
-    if arch:
-        df = df[df["primary_arch"].str.lower() == arch.lower()]
     if tier and "prospect_tier" in df.columns:
         df = df[df["prospect_tier"].str.lower() == tier.lower()]
     if min_gp is not None and "GP" in df.columns:
@@ -2166,12 +2166,19 @@ def get_gleague_players(
     if max_age is not None and "AGE" in df.columns:
         df = df[df["AGE"] <= max_age]
 
+    # Arketip sayıları arketip filtresinden önce (bkz. _arch_counts)
+    arch_counts, arch_total = _arch_counts(df), len(df)
+    if arch:
+        df = df[df["primary_arch"].str.lower() == arch.lower()]
+
     valid_sort = sort_by if sort_by in df.columns else "overall_score"
     df = df.sort_values(valid_sort, ascending=False, na_position="last")
 
     total = len(df)
     page  = df.iloc[offset: offset + limit]
-    return {"total": total, "offset": offset, "limit": limit, "players": _safe(page)}
+    return {"total": total, "offset": offset, "limit": limit, "pool": pool,
+            "arch_counts": arch_counts, "arch_total": arch_total, "teams": groups,
+            "players": _safe(page)}
 
 
 @app.get("/api/gleague/players/{player_name}/scores")
@@ -2238,6 +2245,8 @@ def get_euroleague_players(
         return {"coming_soon": False, "players": [], "total": 0,
                 "message": "Run python src/fetch_euroleague.py to fetch EuroLeague data"}
 
+    pool = len(df)
+    groups = sorted(df["TEAM_ABBREVIATION"].dropna().astype(str).unique().tolist()) if "TEAM_ABBREVIATION" in df.columns else []
     if search:
         df = _search_player(df, search)
     if team and "TEAM_ABBREVIATION" in df.columns:
@@ -2248,8 +2257,6 @@ def get_euroleague_players(
             df = df[df["POS5"] == pos_upper]
         elif "POSITION" in df.columns:
             df = df[df["POSITION"].str.contains(position, case=False, na=False)]
-    if arch:
-        df = df[df["primary_arch"].str.lower() == arch.lower()]
     if tier and "prospect_tier" in df.columns:
         df = df[df["prospect_tier"].str.lower() == tier.lower()]
     if min_gp is not None and "GP" in df.columns:
@@ -2259,12 +2266,19 @@ def get_euroleague_players(
     if max_age is not None and "AGE" in df.columns:
         df = df[df["AGE"] <= max_age]
 
+    # Arketip sayıları arketip filtresinden önce (bkz. _arch_counts)
+    arch_counts, arch_total = _arch_counts(df), len(df)
+    if arch:
+        df = df[df["primary_arch"].str.lower() == arch.lower()]
+
     valid_sort = sort_by if sort_by in df.columns else "overall_score"
     df = df.sort_values(valid_sort, ascending=False, na_position="last")
 
     total = len(df)
     page  = df.iloc[offset: offset + limit]
-    return {"total": total, "offset": offset, "limit": limit, "players": _safe(page)}
+    return {"total": total, "offset": offset, "limit": limit, "pool": pool,
+            "arch_counts": arch_counts, "arch_total": arch_total, "teams": groups,
+            "players": _safe(page)}
 
 
 @app.get("/api/euroleague/players/{player_name}/scores")
@@ -2332,6 +2346,8 @@ def get_ncaa_players(
         return {"coming_soon": False, "players": [], "total": 0,
                 "message": "Run python src/fetch_ncaa.py to fetch NCAA data"}
 
+    pool = len(df)
+    groups = sorted(df["CONFERENCE"].dropna().astype(str).unique().tolist()) if "CONFERENCE" in df.columns else []
     if search:
         df = _search_player(df, search)
     if team and "TEAM_ABBREVIATION" in df.columns:
@@ -2342,8 +2358,6 @@ def get_ncaa_players(
             df = df[df["POS5"] == pos_upper]
         elif "POSITION" in df.columns:
             df = df[df["POSITION"].str.contains(position, case=False, na=False)]
-    if arch:
-        df = df[df["primary_arch"].str.lower() == arch.lower()]
     if conference and "CONFERENCE" in df.columns:
         df = df[df["CONFERENCE"].str.lower() == conference.lower()]
     if tier and "prospect_tier" in df.columns:
@@ -2355,12 +2369,19 @@ def get_ncaa_players(
     if max_age is not None and "AGE" in df.columns:
         df = df[df["AGE"] <= max_age]
 
+    # Arketip sayıları arketip filtresinden önce (bkz. _arch_counts)
+    arch_counts, arch_total = _arch_counts(df), len(df)
+    if arch:
+        df = df[df["primary_arch"].str.lower() == arch.lower()]
+
     valid_sort = sort_by if sort_by in df.columns else "overall_score"
     df = df.sort_values(valid_sort, ascending=False, na_position="last")
 
     total = len(df)
     page  = df.iloc[offset: offset + limit]
-    return {"total": total, "offset": offset, "limit": limit, "players": _safe(page)}
+    return {"total": total, "offset": offset, "limit": limit, "pool": pool,
+            "arch_counts": arch_counts, "arch_total": arch_total, "conferences": groups,
+            "players": _safe(page)}
 
 
 @app.get("/api/ncaa/players/{player_name}/scores")
