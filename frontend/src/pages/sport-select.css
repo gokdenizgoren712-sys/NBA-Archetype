@@ -1,126 +1,90 @@
-/* ── Giriş ekranı: üç kapının hizası ─────────────────────────────────────────
-   Kartların kendisi PlayerCard.css + game.css'ten geliyor (pcard + .mode).
-   Burada yalnızca SATIR davranışı var — kartın içine karışmıyoruz.
+/* ── Kök spor seçimi — handoff 4a (web) / 4c (telefon) ──────────────────────
+   İki spor kartı önde, RankIt altında ince bir şerit. Kutu çerçevesi yok;
+   kart sporun renginde yukarıdan solan tek yüzey + üstte bir ışık bulutu. */
 
-   Çözülen sorun: meta satırı ("NBA · G-League · …" / "Premier League · La Liga
-   · Serie A · Bundesliga · Ligue 1") bir kartta tek, diğerinde iki satıra
-   düşüyordu. Kart yükseklikleri flex sayesinde eşitti ama İÇERİK kaymıştı:
-   ölçtüğümde ENTER satırları 15px farklı yükseklikteydi. Aynı satırdaki üç
-   kartın aynı yerinde aynı şey olmalı, yoksa göz hizasızlığı "bozuk" okur. */
+.ss-page {
+  position: relative; height: 100%; overflow-y: auto; overflow-x: hidden;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 24px 32px 32px;
+}
+.ss-glow {
+  position: absolute; top: 30%; width: 560px; height: 420px; opacity: .10; pointer-events: none;
+  filter: blur(80px);
+}
+.ss-glow.gold { left: 14%; background: #FFB11B; border-radius: 72% 28% 55% 45% / 35% 65% 40% 60%; }
+.ss-glow.teal { right: 14%; background: #3FB08C; border-radius: 41% 59% 68% 32% / 52% 38% 62% 48%; }
 
-.sport-select-row {
-  align-items: stretch;
+.ss-hero { position: relative; display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; }
+.ss-hero h1 { margin: 0; font-family: var(--font-logo); font-size: clamp(40px, 5vw, 60px); font-weight: 700; line-height: 1; color: var(--text-primary); }
+.ss-hero p { margin: 0; font-size: 17px; color: var(--text-secondary); }
+
+.ss-sports {
+  position: relative; width: 100%; max-width: 1120px; margin-top: 36px;
+  /* Kartlar kalan yüksekliği alır (en fazla 430px) — 720px ekranda da sayfa kaymaz */
+  flex: 1 1 auto; min-height: 300px; max-height: 430px;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 28px;
+}
+.ss-card {
+  position: relative; overflow: hidden; min-height: 0; border-radius: 24px; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; padding: 28px 44px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--m) 14%, transparent) 0%, rgba(255, 255, 255, 0.015) 55%, rgba(255, 255, 255, 0.01) 100%);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--m) 30%, transparent);
+  transition: transform .25s ease, box-shadow .25s ease;
+}
+.ss-card:hover { transform: translateY(-4px); box-shadow: inset 0 1px 0 color-mix(in srgb, var(--m) 45%, transparent), 0 24px 50px -30px color-mix(in srgb, var(--m) 60%, transparent); }
+.ss-card:focus-visible, .ss-rankit:focus-visible { outline: 2px solid var(--m, #FFB11B); outline-offset: 3px; }
+.ss-card > * { position: relative; }
+.ss-card > .ss-card-glow {
+  position: absolute; left: 50%; top: -60px; width: 380px; height: 260px; transform: translateX(-50%);
+  background: var(--m); opacity: .24; pointer-events: none;
+  border-radius: 72% 28% 55% 45% / 35% 65% 40% 60%; filter: blur(50px);
+}
+.ss-live { align-self: stretch; display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--m); }
+.ss-live i { width: 6px; height: 6px; border-radius: 3px; background: var(--m); box-shadow: 0 0 8px var(--m); animation: ssPulse 2s ease-in-out infinite; }
+@keyframes ssPulse { 0%, 100% { opacity: .45; } 50% { opacity: 1; } }
+.ss-icon { margin: auto 0; padding: 18px 0; filter: drop-shadow(0 0 22px var(--m)); }
+.ss-title { font-family: var(--font-logo); font-size: 40px; font-weight: 700; line-height: 1; color: var(--text-primary); }
+.ss-leagues { font-size: 15px; font-weight: 500; color: var(--m); margin-top: 10px; text-align: center; }
+.ss-desc { font-size: 15px; line-height: 1.55; color: var(--text-secondary); text-align: center; margin-top: 14px; max-width: 400px; text-wrap: pretty; }
+.ss-enter {
+  margin-top: auto; padding-top: 20px; font-family: var(--font-logo); font-size: 19px; font-weight: 700; letter-spacing: .04em;
+  color: var(--m); text-shadow: 0 0 16px color-mix(in srgb, var(--m) 40%, transparent);
 }
 
-/* ── RankIt kapısı: yatay koleksiyon kartı ───────────────────────────────────
-   Aynı pcard malzemesi (holo, foil, grain, kesik köşe, isim bandı, rozet),
-   yatay dizilmiş. Genişlik iki spor kartı + aradaki boşlukla BİREBİR aynı
-   (260 + 24 + 260 = 544) — kenarlar hizalansın diye sabit değil, hesaplı. */
+.ss-rankit {
+  --m: #FFB11B;
+  position: relative; width: 100%; max-width: 1120px; margin-top: 22px; cursor: pointer;
+  display: flex; align-items: center; gap: 18px; padding: 16px 22px; border-radius: 18px;
+  background: linear-gradient(100deg, rgba(255, 177, 27, .08), rgba(255, 255, 255, .01) 60%);
+  transition: background .2s ease;
+}
+.ss-rankit:hover { background: linear-gradient(100deg, rgba(255, 177, 27, .13), rgba(255, 255, 255, .02) 60%); }
+.ss-rankit-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ss-rankit-text .name { font-size: 16px; font-weight: 600; color: var(--text-primary); }
+.ss-rankit-text .name b { font-size: 12px; font-weight: 600; color: #FFB11B; margin-left: 6px; }
+.ss-rankit-text .desc { font-size: 14px; color: var(--text-secondary); }
+.ss-rankit-go { font-family: var(--font-logo); font-size: 17px; font-weight: 700; color: #FFB11B; flex-shrink: 0; }
 
-/* Seçici `.pcard-stage.mode` ile aynı özgüllükte olmalı: game.css'teki
-   `.pcard-stage.mode{width:260px}` tek sınıflı bir kuralı eziyor. */
-.pcard-stage.mode.rankit-gate {
-  width: 544px;
-  max-width: 100%;
-  margin-bottom: 24px;
-}
-/* .pcard-stage EK sınıf olarak eklendi: game.css'teki `.pcard-stage.mode .pcard`
-   (0,3,0) ile bu kural (öncesinde de 0,3,0) TAM specificity beraberliğindeydi —
-   berabere olunca kazanan, hangi <link>'in DOM'da SONRA durduğuna bağlı kalıyordu.
-   Kaynakta sport-select.css game.css'ten SONRA import edilse de, Vite'ın
-   production'daki chunk/link sırası bunu garanti etmiyor (2026-09: gerçekte
-   game.css sonra geliyordu, width:260px kazanıyordu, kart 544px yerine
-   260px'te sıkışıp grid kolonları çöküyordu — primaryarch.net'te canlı
-   doğrulandı). Dördüncü sınıf bu belirsizliği ortadan kaldırıyor. */
-.pcard-stage.rankit-gate .pcard.pcard-h {
-  width: 100%;
-  display: grid;
-  grid-template-columns: 116px 1fr auto;
-  align-items: center;
-  gap: 16px;
-  padding: 14px 18px 14px 0;
-  /* Kesik köşe dikeyde 28px'ti; alçak bir kartta o oran köşeyi yiyor. */
-  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 18px), calc(100% - 18px) 100%, 0 100%);
-}
+@media (prefers-reduced-motion: reduce) { .ss-live i { animation: none; } .ss-card { transition: none; } }
 
-/* Emblem vitrini — dikey kartın .pcard-photo alanının yatay karşılığı. */
-.rankit-gate .pcard-h-photo {
-  position: relative;
-  height: 100%;
-  min-height: 104px;
-  display: flex; align-items: center; justify-content: center;
-  border-right: 1px solid var(--accent-line);
-}
-/* 18px keyfi değil: temel emblem 84px/24px oranında (0.286), 62px'in
-   karşılığı 17.7 — ve 18px zaten belgelenmiş yarıçap adımı. */
-.rankit-gate .mode-emblem { width: 62px; height: 62px; border-radius: 18px; }
-
-.rankit-gate .pcard-h-body {
-  position: relative; z-index: 3;
-  min-width: 0;
-  display: flex; flex-direction: column; gap: 9px;
-}
-/* İsim bandı yatayda ortalanmaz — metin sola yaslı okunur. Kartın kendi
-   -0.6deg eğimi korunuyor: koleksiyon kartı hissi oradan geliyor. */
-.rankit-gate .pcard-nameband {
-  margin: 0; padding: 6px 12px;
-  text-align: left;
-  align-self: flex-start;
-}
-.rankit-gate .pcard-h-desc {
-  margin: 0;
-  font-size: 13px; line-height: 1.45;
-  color: var(--text-muted);
-}
-
-.rankit-gate .pcard-h-go {
-  position: relative; z-index: 3;
-  display: flex; flex-direction: column; align-items: flex-end; gap: 10px;
-}
-.rankit-gate .pcard-h-go .pcard-rank.top { position: static; }
-.rankit-gate .pcard-h-go .pcard-peek { margin: 0; white-space: nowrap; }
-
-/* Dar ekranda yatay kart üç sütunu taşıyamaz: emblem üstte, metin altta. */
-@media (max-width: 620px) {
-  .rankit-gate .pcard.pcard-h {
-    grid-template-columns: 1fr;
-    padding: 0 0 14px;
-    justify-items: center;
-    text-align: center;
-    gap: 12px;
-  }
-  .rankit-gate .pcard-h-photo {
-    width: 100%; min-height: 96px;
-    border-right: 0; border-bottom: 1px solid var(--accent-line);
-  }
-  .rankit-gate .pcard-h-body { padding: 0 16px; align-items: center; }
-  .rankit-gate .pcard-nameband { align-self: center; text-align: center; }
-  .rankit-gate .pcard-h-go { align-items: center; }
-}
-
-/* İki satırlık meta'yı taban alıp tek satırlıkları da o yüksekliğe oturtuyoruz.
-   `min-height` seçildi (sabit `height` değil): üçüncü bir satıra düşen bir
-   lig listesi gelirse kart kırpmak yerine büyür. */
-.sport-select-row .pcard-meta {
-  min-height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* Açıklama metni de aynı gerekçeyle: farklı uzunluktaki üç cümle ENTER
-   satırını üç ayrı yüksekliğe itiyordu. */
-.sport-select-row .pcard-stats.flat {
-  min-height: 76px;
-  display: flex;
-  align-items: center;
-}
-
-/* Kartlar dar ekranda alt alta düştüğünde eşitleme kuralları anlamını
-   yitiriyor — orada doğal yüksekliğe bırak. */
-@media (max-width: 620px) {
-  .sport-select-row .pcard-meta,
-  .sport-select-row .pcard-stats.flat {
-    min-height: 0;
-  }
+/* Telefon (4c) */
+@media (max-width: 767px) {
+  .ss-page { align-items: stretch; padding: 4px 16px 24px; }
+  .ss-hero { align-items: flex-start; text-align: left; }
+  .ss-hero h1 { display: none; }            /* üst bar zaten markayı taşıyor */
+  .ss-hero p { font-size: 15px; margin: 10px 2px 4px; }
+  .ss-sports { grid-template-columns: 1fr; gap: 14px; margin-top: 14px; flex: none; min-height: 0; max-height: none; }
+  .ss-card { min-height: 0; max-height: none; align-items: flex-start; padding: 20px; border-radius: 20px; }
+  .ss-card > .ss-card-glow { left: auto; right: -40px; top: -60px; transform: none; width: 220px; height: 180px; }
+  .ss-live { display: none; }
+  .ss-icon { margin: 0 0 8px; padding: 0; }
+  .ss-icon svg { width: 34px; height: 34px; }
+  .ss-enter { position: absolute; right: 20px; top: 24px; margin: 0; padding: 0; font-size: 17px; }
+  .ss-title { font-size: 30px; margin-top: 6px; }
+  .ss-leagues, .ss-desc { text-align: left; font-size: 14px; }
+  .ss-leagues { margin-top: 8px; }
+  .ss-desc { margin-top: 8px; max-width: none; }
+  .ss-rankit { margin-top: 14px; padding: 16px 18px; gap: 14px; }
+  .ss-rankit-text .desc { display: none; }
+  .ss-rankit-text .name::after { content: "Ratings · Reviews · Diary"; display: block; font-size: 13px; font-weight: 400; color: var(--text-secondary); }
 }

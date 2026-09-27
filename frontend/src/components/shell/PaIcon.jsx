@@ -49,6 +49,16 @@ const PATHS = {
   close:    (c) => <path stroke={c.gray} d="M6 6l12 12M18 6L6 18" />,
   check:    (c) => <path stroke={c.gray} d="M5 12l5 5 9-10" />,
   info:     (c) => <g stroke={c.gray}><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 8h.01" /></g>,
+  play:     (c) => <path d="M7 4.5 v15 l12 -7.5 z" fill={c.gray} stroke={c.gray} />,
+  users:    (c) => <g stroke={c.gray} strokeWidth="2"><circle cx="8.5" cy="8" r="3" /><path d="M3 20 a5.5 5.5 0 0 1 11 0" /><path d="M15.5 6 a3 3 0 0 1 0 6 M16.5 15.2 a5.5 5.5 0 0 1 4.5 4.8" /></g>,
+  monitor:  (c) => <g stroke={c.gray} strokeWidth="2"><rect x="3" y="4.5" width="18" height="12" rx="1.5" /><path d="M9 20 h6 M12 16.5 v3.5" /></g>,
+  globe:    (c) => <g stroke={c.gray} strokeWidth="2"><circle cx="12" cy="12" r="8.5" /><path d="M3.5 12 h17 M12 3.5 a13 13 0 0 1 0 17 a13 13 0 0 1 0 -17" /></g>,
+  trophy:   (c) => <g stroke={c.gray} strokeWidth="2"><path d="M7 4 h10 v5 a5 5 0 0 1 -10 0 z" /><path d="M7 5 H4 a2 2 0 0 0 0 4 h1.2" /><path d="M17 5 h3 a2 2 0 0 1 0 4 h-1.2" /><path d="M12 14 v3" /><path d="M8.5 20.5 h7 M9.5 17.5 h5 v3 h-5 z" /></g>,
+  star:     (c) => <polygon stroke={c.gray} points="12,3 14.7,8.6 20.8,9.3 16.3,13.5 17.5,19.6 12,16.6 6.5,19.6 7.7,13.5 3.2,9.3 9.3,8.6" />,
+  wheel:    (c) => <g stroke={c.gray} strokeWidth="2"><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="2" /><path d="M12 3 v3.5 M12 17.5 V21 M3 12 h3.5 M17.5 12 H21 M5.6 5.6 l2.5 2.5 M15.9 15.9 l2.5 2.5 M18.4 5.6 l-2.5 2.5 M8.1 15.9 l-2.5 2.5" /></g>,
+  cap:      (c) => <g stroke={c.gray} strokeWidth="2"><circle cx="12" cy="12" r="9" /><path d="M14.5 9 a3 2.2 0 0 0 -5 0.8 c0 2.6 5 1.4 5 4 a3 2.2 0 0 1 -5 0.8" /><path d="M12 6.5 v11" /></g>,
+  bolt:     (c) => <path d="M13 2 L4 13.5 h6 L11 22 l9 -11.5 h-6 z" fill={c.gray} stroke={c.gray} strokeWidth="1.2" />,
+  calendar: (c) => <g stroke={c.gray} strokeWidth="2"><rect x="3.5" y="5" width="17" height="16" rx="2" /><path d="M3.5 9.5 h17 M8 3 v4 M16 3 v4" /></g>,
 };
 
 export default function PaIcon({ name, size = 20, color = "currentColor", brand = false, style }) {

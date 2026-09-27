@@ -1,7 +1,9 @@
+import { useNavigate } from "react-router-dom";
 import {
   TargetIcon, WheelIcon, CoachIcon, TrophyIcon, CardsIcon, WarnIcon,
-  CapIcon, UsersIcon, LinkIcon, DnaIcon, TagIcon, LoopIcon, StarIcon,
+  CapIcon, UsersIcon, LinkIcon, DnaIcon, LoopIcon, StarIcon,
 } from "./GameIcons";
+import RulesSheet from "./RulesSheet";
 import "./game.css";
 
 // ── Moda özel "About" pop-up'ı ─────────────────────────────────────────────
@@ -78,100 +80,23 @@ const MODES = {
 };
 
 export default function ModeAboutModal({ mode, onClose }) {
+  const navigate = useNavigate();
   if (!mode) return null;
   const cfg = MODES[mode.key];
   if (!cfg) return null;
-  const a = mode.accent;
 
+  // Handoff 17c: anahtar/değer satırları. İçerik aynı, yalnız sunum değişti.
+  const sections = [
+    { title: "How a run plays out", rows: cfg.flow.map(([, k, v]) => ({ k, v })) },
+    { title: "What's different here", rows: cfg.extras.map(([, c, k, v]) => ({ k, v, c })) },
+    { title: "How your lineup is scored", rows: SCORE.map(([name, w, c, v]) => ({ k: `${name} · ${w}`, v, c })) },
+  ];
   return (
-    <div className="g-modal-backdrop" onClick={onClose}>
-      <div className="g-modal" onClick={e => e.stopPropagation()}
-        style={{
-          "--accent": a, "--accent-a": a + "26", "--accent-line": a + "55",
-          maxWidth: "37rem", maxHeight: "86vh", display: "flex", flexDirection: "column", padding: 0,
-        }}>
-        {/* Panini dokusu — kartın kendi katmanları */}
-        <div className="g-holo" />
-        <span className="aura-blob" style={{ "--slot-color": a, left: "10%", top: -60, width: 280, height: 160, opacity: 0.28 }} />
-
-        {/* Başlık — kart isim bandı diliyle */}
-        <div className="shrink-0 px-5 pt-5 pb-4" style={{ borderBottom: "1px solid rgba(255,255,255,.08)" }}>
-          <div className="flex items-start gap-3.5">
-            <div className="mode-emblem" style={{ width: 52, height: 52, borderRadius: 15, flexShrink: 0 }}>
-              <mode.Icon size={24} />
-            </div>
-            <div className="min-w-0 flex-1">
-              <h3 className="font-logo text-lg font-bold tracking-wide" style={{ color: a }}>{mode.title}</h3>
-              <div className="g-mono mt-1" style={{ color: "var(--text-faint)" }}>{cfg.tagline}</div>
-            </div>
-            <button onClick={onClose} className="text-2xl leading-none shrink-0 transition-colors"
-              style={{ color: "var(--text-faint)" }}
-              onMouseEnter={e => e.currentTarget.style.color = "var(--text-primary)"}
-              onMouseLeave={e => e.currentTarget.style.color = "var(--text-faint)"}>×</button>
-          </div>
-        </div>
-
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
-          {/* Akış — numaralı adımlar (Draft Process paneliyle aynı dil) */}
-          <div>
-            <div className="g-section-title mb-2.5">How a run plays out</div>
-            <div className="space-y-2">
-              {cfg.flow.map(([Icon, title, desc], i) => (
-                <div key={title} className="g-step" style={{ "--accent": a, "--accent-a": a + "1a", "--accent-line": a + "3d", display: "block" }}>
-                  <div className="flex items-start gap-3">
-                    <span className="g-step-idx">{String(i + 1).padStart(2, "0")}</span>
-                    <span className="shrink-0 mt-0.5" style={{ color: a }}><Icon size={17} /></span>
-                    <div className="min-w-0">
-                      <div className="g-step-title">{title}</div>
-                      <div className="text-[11.5px] leading-relaxed mt-1" style={{ color: "var(--text-muted)" }}>{desc}</div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Moda özel mekanikler */}
-          <div>
-            <div className="g-section-title mb-2.5">What's different here</div>
-            <div className="space-y-2">
-              {cfg.extras.map(([Icon, hex, title, desc]) => (
-                <div key={title} className="flex gap-3 items-start">
-                  <span className="shrink-0 mt-0.5" style={{ color: hex }}><Icon size={16} /></span>
-                  <div className="min-w-0">
-                    <div className="font-medium text-[13px]" style={{ color: "var(--text-primary)" }}>{title}</div>
-                    <div className="text-[11.5px] leading-relaxed" style={{ color: "var(--text-muted)" }}>{desc}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Skorlama — her modda ortak */}
-          <div className="pt-4" style={{ borderTop: "1px solid rgba(255,255,255,.08)" }}>
-            <div className="g-section-title mb-2.5">How your lineup is scored</div>
-            <div className="space-y-2">
-              {SCORE.map(([name, weight, hex, desc]) => (
-                <div key={name} className="flex gap-3 items-start">
-                  <span className="font-logo text-[11px] font-bold shrink-0 w-9 text-right" style={{ color: hex }}>{weight}</span>
-                  <div className="min-w-0">
-                    <div className="font-medium text-[13px]" style={{ color: "var(--text-primary)" }}>{name}</div>
-                    <div className="text-[11.5px] leading-relaxed" style={{ color: "var(--text-muted)" }}>{desc}</div>
-                  </div>
-                </div>
-              ))}
-              <div className="flex gap-3 items-start pt-1">
-                <span className="shrink-0 mt-0.5" style={{ color: "#FFB11B" }}><StarIcon size={15} /></span>
-                <div className="text-[11.5px] leading-relaxed" style={{ color: "var(--text-muted)" }}>
-                  On top of that, slotting a player at their natural position earns a
-                  {" "}<b style={{ color: "var(--text-primary)" }}>chemistry</b> bonus, and real award tags
-                  {" "}(<TagIcon size={11} /> MVP, rings, iconic duos) feed small boosts into the simulation.
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    <RulesSheet accent={mode.accent} title={mode.title} sub={cfg.tagline}
+      sections={sections}
+      footnote={<>Slotting a player at their natural position earns a chemistry bonus, and real award
+        tags (MVP, rings, iconic duos) feed small boosts into the simulation.</>}
+      cta={mode.path ? { label: `Start ${mode.title}`, onClick: () => navigate(mode.path) } : null}
+      onClose={onClose} />
   );
 }

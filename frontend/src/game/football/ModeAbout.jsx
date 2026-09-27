@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { createPortal } from "react-dom";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import RulesSheet from "../RulesSheet";
+import PaIcon from "../../components/shell/PaIcon";
 import {
   TargetIcon, WheelIcon, CoachIcon, TrophyIcon, CardsIcon, DnaIcon,
   UsersIcon, LinkIcon, GlobeIcon, ScreenIcon, CalendarIcon, LoopIcon,
@@ -182,86 +183,29 @@ export function ModeInfoButton({ mode, style }) {
       <button onClick={(e) => { e.stopPropagation(); setOpen(true); }}
         title={`About ${MODES[mode].title}`}
         aria-label={`About ${MODES[mode].title}`}
-        style={{
-          width: 18, height: 18, borderRadius: "50%", flex: "0 0 auto",
-          border: `1px solid ${ACC}66`, background: `${ACC}14`, color: ACC,
-          fontSize: 11, fontWeight: 700, lineHeight: 1, cursor: "pointer",
-          display: "inline-flex", alignItems: "center", justifyContent: "center",
-          ...style,
-        }}>i</button>
+        className="g-info-btn" style={style}>
+        <PaIcon name="info" size={16} color="currentColor" />
+      </button>
       {open && <ModeAbout mode={mode} onClose={() => setOpen(false)} />}
     </>
   );
 }
 
-export default function ModeAbout({ mode, onClose }) {
+export default function ModeAbout({ mode, path, onClose }) {
+  const navigate = useNavigate();
   const m = MODES[mode];
   if (!m) return null;
-  // PORTAL ŞART. Modal, dock'un içindeki bir başlıktan açılıyor ve dock'ta
-  // backdrop-filter var; bir ata üzerinde backdrop-filter/transform/filter
-  // olduğunda position:fixed artık VIEWPORT'a değil o ataya göre konumlanıyor.
-  // Sonuç: modal dock'un içine hapsolup kırpılıyor ve sayfa öğeleri metnin
-  // üstüne biniyordu. PlayerSearch aynı sorunu aynı şekilde çözmüştü.
-  return createPortal(
-    <div className="g-modal-backdrop" onClick={onClose}>
-      <div className="g-modal" onClick={(e) => e.stopPropagation()}
-        style={{ "--accent": ACC, "--accent-line": `${ACC}55`, maxWidth: 560 }}>
-        <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-          <div style={{ flex: 1 }}>
-            <h2 style={{ margin: 0, fontSize: 19, fontWeight: 800, color: "var(--text-primary)" }}>
-              {m.title}
-            </h2>
-            <div style={{ fontSize: 11.5, color: ACC, marginTop: 2 }}>{m.tagline}</div>
-          </div>
-          <button onClick={onClose} aria-label="Close"
-            style={{ background: "none", border: 0, color: "var(--text-faint)",
-              fontSize: 22, lineHeight: 1, cursor: "pointer" }}>×</button>
-        </div>
-
-        <div style={{ display: "flex", flexDirection: "column", gap: 11, marginTop: 16 }}>
-          {m.flow.map(([Icon, title, desc], i) => (
-            <div key={title + i} style={{ display: "flex", gap: 10 }}>
-              <span style={{ flex: "0 0 26px", height: 26, borderRadius: 8,
-                background: `${ACC}18`, border: `1px solid ${ACC}44`, color: ACC,
-                display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <Icon width={14} height={14} />
-              </span>
-              <div>
-                <div style={{ fontSize: 12.5, fontWeight: 700, color: "var(--text-primary)" }}>{title}</div>
-                <div style={{ fontSize: 11.5, color: "var(--text-muted)",
-                  lineHeight: 1.6 }}>{desc}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {m.extras?.length > 0 && (
-          <div style={{ marginTop: 16, paddingTop: 12,
-            borderTop: "1px solid var(--border)", display: "flex",
-            flexDirection: "column", gap: 9 }}>
-            {m.extras.map(([Icon, hex, title, desc], i) => (
-              <div key={title + i} style={{ display: "flex", gap: 9 }}>
-                <span style={{ flex: "0 0 16px", color: hex, marginTop: 2 }}>
-                  <Icon width={13} height={13} />
-                </span>
-                <div style={{ fontSize: 11.5, lineHeight: 1.6 }}>
-                  <b style={{ color: hex }}>{title}</b>
-                  <span style={{ color: "var(--text-muted)" }}> — {desc}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <p style={{ fontSize: 10.5, color: "var(--text-faint)", marginTop: 14,
-          lineHeight: 1.7 }}>
-          What these numbers do <i>not</i> claim is set out in{" "}
-          <Link to="/football/about" style={{ color: ACC }}>About</Link>; every role's
-          exact metrics are in the{" "}
-          <Link to="/football/glossary" style={{ color: ACC }}>glossary</Link>.
-        </p>
-      </div>
-    </div>,
-    document.body
+  // Handoff 17c kalıbı (basketbolla ortak RulesSheet) — portal onun içinde.
+  const sections = [
+    { title: "How it plays out", rows: m.flow.map(([, k, v]) => ({ k, v })) },
+    ...(m.extras?.length ? [{ title: "Worth knowing", rows: m.extras.map(([, c, k, v]) => ({ k, v, c })) }] : []),
+  ];
+  return (
+    <RulesSheet accent={ACC} title={m.title} sub={m.tagline} sections={sections}
+      footnote={<>What these numbers do <i>not</i> claim is set out in{" "}
+        <Link to="/football/about" onClick={onClose}>About</Link>; every role's exact metrics are in the{" "}
+        <Link to="/football/glossary" onClick={onClose}>glossary</Link>.</>}
+      cta={path ? { label: `Start ${m.title}`, onClick: () => navigate(path) } : null}
+      onClose={onClose} />
   );
 }

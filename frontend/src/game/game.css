@@ -1002,3 +1002,142 @@
 @media (min-width: 1100px) {
   .fb-bench > * { flex: 0 0 calc((100% - 6 * 4px) / 7); }
 }
+
+/* ═══ Handoff v2 — oyun wordmark'ı, mod seçimi (4b/18a), kural penceresi (17c) ═══ */
+
+/* Oyun wordmark'ı — büyük harfin kaldığı tek yer; aksan renginde parlar. */
+.g-wordmark {
+  margin: 0; font-family: var(--font-logo); font-weight: 700; line-height: 1;
+  font-size: 24px; letter-spacing: 0.05em; text-transform: uppercase;
+  color: var(--accent, #FFB11B);
+  text-shadow: 0 0 30px color-mix(in srgb, var(--accent, #FFB11B) 35%, transparent);
+}
+.g-wordmark.lg { font-size: clamp(34px, 4vw, 48px); letter-spacing: 0.04em; }
+
+.g-modes-page {
+  position: relative; height: 100%; overflow-y: auto;
+  display: flex; flex-direction: column; padding: 16px 40px 28px;
+}
+.g-modes-hero { position: relative; display: flex; flex-direction: column; gap: 10px; margin: 12px 0 32px; }
+.g-modes-hero p { margin: 0; font-size: 16px; color: var(--text-secondary); }
+
+.g-modes {
+  position: relative; flex: 1; min-height: 380px; max-height: 520px;
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 22px;
+}
+.g-mode {
+  position: relative; overflow: hidden; border-radius: 22px; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; padding: 22px 22px 26px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--m) 14%, transparent) 0%, rgba(255, 255, 255, 0.015) 55%, rgba(255, 255, 255, 0.01) 100%);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--m) 30%, transparent);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+.g-mode:hover { transform: translateY(-4px); box-shadow: inset 0 1px 0 color-mix(in srgb, var(--m) 45%, transparent), 0 24px 50px -30px color-mix(in srgb, var(--m) 60%, transparent); }
+.g-mode:focus-visible { outline: 2px solid var(--m); outline-offset: 3px; }
+.g-mode.soon { cursor: default; opacity: 0.6; }
+.g-mode.soon:hover { transform: none; }
+.g-mode > * { position: relative; }
+.g-mode > .g-mode-glow {
+  position: absolute; left: 50%; top: -50px; width: 280px; height: 220px; transform: translateX(-50%);
+  background: var(--m); opacity: 0.26; pointer-events: none;
+  border-radius: 72% 28% 55% 45% / 35% 65% 40% 60%; filter: blur(44px);
+}
+.g-mode-top { align-self: stretch; display: flex; align-items: center; justify-content: space-between; }
+.g-mode-live { display: flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 600; color: var(--m); }
+.g-mode-live i { width: 6px; height: 6px; border-radius: 3px; background: var(--m); box-shadow: 0 0 8px var(--m); }
+.g-mode-rules {
+  display: flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 10px; margin-right: -10px;
+  border: 0; border-radius: 10px; background: transparent; cursor: pointer;
+  font-family: var(--font-sans); font-size: 13px; color: var(--text-secondary);
+}
+.g-mode-rules:hover { background: rgba(255, 255, 255, 0.06); color: var(--text-primary); }
+.g-mode-rules:focus-visible { outline: 2px solid var(--m); outline-offset: 1px; }
+.g-mode-icon { margin: auto 0; padding: 20px 0; filter: drop-shadow(0 0 20px var(--m)); }
+.g-mode-text { display: flex; flex-direction: column; align-items: center; text-align: center; }
+.g-mode-title { font-family: var(--font-logo); font-size: 28px; font-weight: 700; line-height: 1; color: var(--text-primary); }
+.g-mode-tag { font-size: 14px; font-weight: 500; color: var(--m); margin-top: 10px; }
+.g-mode-desc { font-size: 14px; line-height: 1.55; color: var(--text-secondary); margin-top: 12px; text-wrap: pretty; max-width: 280px; }
+.g-mode-play {
+  margin-top: 22px; font-family: var(--font-logo); font-size: 18px; font-weight: 700; letter-spacing: 0.04em;
+  color: var(--m); text-shadow: 0 0 16px color-mix(in srgb, var(--m) 40%, transparent);
+}
+
+@media (max-width: 1180px) {
+  .g-modes { grid-template-columns: repeat(2, minmax(0, 1fr)); max-height: none; }
+  .g-mode-icon { padding: 14px 0; }
+}
+/* Telefon (4c kalıbı): ikon solda, metin sağda, "Play" altta */
+@media (max-width: 640px) {
+  .g-modes-page { padding: 8px 16px 24px; }
+  .g-modes-hero { margin: 6px 0 18px; }
+  .g-modes-hero p { font-size: 15px; }
+  .g-modes { grid-template-columns: 1fr; gap: 14px; min-height: 0; flex: none; }
+  .g-mode { align-items: stretch; padding: 18px 20px 20px; border-radius: 20px; }
+  .g-mode > .g-mode-glow { left: auto; right: -40px; top: -60px; transform: none; width: 220px; height: 180px; }
+  .g-mode > .g-mode-icon { position: absolute; left: 20px; top: 58px; padding: 0; margin: 0; }
+  .g-mode-icon svg { width: 34px; height: 34px; }
+  .g-mode-text { align-items: flex-start; text-align: left; padding-left: 52px; margin-top: 14px; }
+  .g-mode-title { font-size: 24px; }
+  .g-mode-tag { margin-top: 6px; }
+  .g-mode-desc { max-width: none; margin-top: 8px; }
+  .g-mode-play { align-self: flex-end; margin-top: 12px; font-size: 17px; }
+  .g-mode-rules { min-height: 44px; }
+  .g-info-btn { width: 36px; height: 36px; border-radius: 18px; }
+}
+
+/* Kural penceresi (17c) */
+.g-rules-backdrop {
+  position: fixed; inset: 0; z-index: 120;
+  display: flex; align-items: center; justify-content: center; padding: 24px;
+  background: rgba(5, 5, 5, 0.72); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  animation: gRulesFade 0.18s ease;
+}
+@keyframes gRulesFade { from { opacity: 0; } }
+.g-rules {
+  position: relative; overflow: hidden; width: 100%; max-width: 560px; max-height: min(86vh, 820px);
+  display: flex; flex-direction: column; gap: 20px; padding: 32px 34px 28px; border-radius: 22px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 6%, #141312), #0f0f0f 60%);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6), 0 0 60px -20px color-mix(in srgb, var(--accent) 35%, transparent);
+  animation: gModalIn 0.2s cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+.g-rules > * { position: relative; }
+.g-rules > .g-rules-glow {
+  position: absolute; left: 50%; top: -120px; width: 420px; height: 240px; transform: translateX(-50%);
+  background: var(--accent); opacity: 0.14; border-radius: 50%; filter: blur(60px); pointer-events: none;
+}
+.g-rules-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.g-rules-eyebrow { font-size: 13px; font-weight: 600; color: var(--accent); }
+.g-rules-title { margin: 6px 0 0; font-family: var(--font-logo); font-size: 34px; font-weight: 700; line-height: 1; color: var(--text-primary); }
+.g-rules-sub { font-size: 14px; color: var(--text-secondary); margin-top: 8px; }
+.g-rules-close {
+  width: 36px; height: 36px; flex-shrink: 0; border: 0; border-radius: 18px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; background: rgba(255, 255, 255, 0.06);
+}
+.g-rules-close:hover { background: rgba(255, 255, 255, 0.1); }
+.g-rules-close:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.g-rules-body { flex: 1; min-height: 0; overflow-y: auto; margin-right: -12px; padding-right: 12px; display: flex; flex-direction: column; gap: 18px; }
+.g-rules-section-title { font-family: var(--font-logo); font-size: 17px; font-weight: 700; color: var(--text-primary); margin-bottom: 2px; }
+.g-rules-row { display: flex; gap: 16px; padding: 11px 0; box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.05); }
+.g-rules-row .k { width: 132px; flex-shrink: 0; font-size: 13px; font-weight: 600; line-height: 1.45; color: var(--accent); }
+.g-rules-row .v { font-size: 14px; line-height: 1.5; color: var(--text-primary); }
+.g-rules-foot { font-size: 13px; line-height: 1.6; color: var(--text-muted); }
+.g-rules-foot a { color: var(--accent); }
+.g-rules-cta { height: 50px; font-size: 18px; letter-spacing: 0.05em; text-transform: uppercase; flex-shrink: 0; }
+@media (max-width: 640px) {
+  .g-rules-backdrop { align-items: flex-end; padding: 0; }
+  .g-rules { max-width: none; max-height: 90vh; border-radius: 22px 22px 0 0; padding: 24px 16px calc(16px + env(safe-area-inset-bottom)); }
+  .g-rules-title { font-size: 28px; }
+  .g-rules-row { flex-direction: column; gap: 4px; }
+  .g-rules-row .k { width: auto; }
+  .g-rules-cta { height: 54px; }
+}
+
+/* ⓘ düğmesi — oyun başlıklarında modun kurallarını açar. 28px (eskisi 18px). */
+.g-info-btn {
+  width: 28px; height: 28px; flex: 0 0 auto; border: 0; border-radius: 14px; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--text-secondary); background: rgba(255, 255, 255, 0.06);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.g-info-btn:hover { color: var(--text-primary); background: rgba(255, 255, 255, 0.1); }
+.g-info-btn:focus-visible { outline: 2px solid var(--accent, #FFB11B); outline-offset: 2px; }
