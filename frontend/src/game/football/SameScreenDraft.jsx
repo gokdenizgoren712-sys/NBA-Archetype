@@ -3,7 +3,7 @@ import { api } from "../../api";
 import Pitch from "./Pitch";
 import SeatPanel, { PHASE_COLOR, SEAT_COLOR } from "./SeatPanel";
 import InlineSpin from "../InlineSpin";
-import { WheelIcon, LoopIcon, ScreenIcon } from "../GameIcons";
+import { ScreenIcon } from "../GameIcons";
 import { SHAPE_KEYS } from "./formations";
 import * as D from "./draft";
 import { LEAGUE_LABEL } from "./leagues";
@@ -102,83 +102,61 @@ export default function SameScreenDraft({ onDone }) {
     setD(r.state);
   };
 
-  /* ── Kurulum ─────────────────────────────────────────────────────────── */
+  /* ── Kurulum (handoff 18b/13a kalıbı) ─────────────────────────────────── */
+  // Kompakt başlık + iki taraf kolonu: isim, diziliş çipleri, sahanın canlı
+  // önizlemesi (yüksekliğe sığar — sayfa kaymaz). Diziliş ilk spin'den ÖNCE
+  // seçiliyor ve sonradan değişmiyor.
   if (!d) {
     return (
-      <div className="space-y-3">
-        <div className="g-dock">
-          <span className="aura-blob" style={{ "--slot-color": SEAT_COLOR[1],
-            left: -30, top: -70, width: 240, height: 150, opacity: 0.16 }} />
-          <div className="g-dock-left">
-            <h1 className="g-dock-title">Same Screen</h1>
-            <p className="g-dock-sub">2 players · 1 device · snake draft · two legs</p>
+      <div className="g-fb-ss">
+        <header className="g-idle-hero compact">
+          <div>
+            <h1 className="g-wordmark lg">Same Screen</h1>
+            <p>2 players · 1 device · snake draft · two legs</p>
           </div>
-
-          <div className="g-dock-center">
-            <button onClick={start} disabled={!meta.pairs.length} className="aura-rating-btn"
-              style={{ padding: "17px 42px", fontSize: 14, letterSpacing: ".14em" }}>
-              <WheelIcon size={16} />
-              <span className="ml-2">{meta.pairs.length ? "Start the Draft" : "Loading Clubs…"}</span>
-            </button>
-          </div>
-
-          <div className="g-dock-right">
-            <div className="g-seg stacked">
-              {[{ key: "round", Icon: WheelIcon, hex: "#60a5fa", label: "Round", hint: "1 spin / round" },
-                { key: "pick", Icon: LoopIcon, hex: "#FFB11B", label: "Pick", hint: "1 spin / pick" }]
-                .map(({ key, Icon, hex, label, hint }) => (
-                <button key={key} onClick={() => setWheelMode(key)}
-                  className={`g-seg-btn${wheelMode === key ? " on" : ""}`}
-                  style={{ "--accent": hex, "--accent-a": hex + "22", "--accent-line": hex + "66" }}>
-                  <Icon size={14} /> {label}
-                  <span className="opacity-55 font-normal tracking-normal normal-case">({hint})</span>
+          <div className="g-idle-actions">
+            <div className="g-modebtn-row" role="radiogroup" aria-label="Wheel rule">
+              {[{ key: "round", hex: "#60a5fa", label: "Round", hint: "1 spin / round" },
+                { key: "pick", hex: "#FFB11B", label: "Pick", hint: "1 spin / pick" }].map(r => (
+                <button key={r.key} role="radio" aria-checked={wheelMode === r.key}
+                  className={`g-modebtn${wheelMode === r.key ? " on" : ""}`} style={{ "--c": r.hex }}
+                  onClick={() => setWheelMode(r.key)}>
+                  <span className="dot" /><span className="lbl"><b>{r.label}</b><i>{r.hint}</i></span>
                 </button>
               ))}
             </div>
+            <button onClick={start} disabled={!meta.pairs.length} className="aura-rating-btn g-idle-cta">
+              {meta.pairs.length ? "Start draft" : "Loading clubs…"}
+            </button>
           </div>
-        </div>
+        </header>
 
-        {/* Diziliş ilk spin'den ÖNCE seçiliyor ve sonradan değişmiyor — o yüzden
-            burada sahayı canlı gösteriyoruz: kaç kanat, kaç stoper. */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="g-fb-ss-cols">
           {[1, 2].map((s) => (
-            <div key={s} className="g-panel p-4 space-y-3"
-              style={{ "--accent": SEAT_COLOR[s], "--accent-line": SEAT_COLOR[s] + "55" }}>
-              <span className="aura-blob" style={{ "--slot-color": SEAT_COLOR[s],
-                right: -24, top: -40, width: 190, height: 120, opacity: 0.18 }} />
-
-              <div className="g-label" style={{ color: SEAT_COLOR[s] }}>Player {s}</div>
-              <input className="aura-ghost-input" value={names[s]} maxLength={18}
-                onChange={(e) => setNames({ ...names, [s]: e.target.value })} />
-
-              <div>
-                <div className="g-label mb-2">Formation</div>
-                <div className="flex flex-wrap gap-1.5">
-                  {SHAPE_KEYS.map((k) => (
-                    <button key={k} onClick={() => setShapes({ ...shapes, [s]: k })}
-                      className="aura-pill-btn" style={{ fontSize: 13, padding: "5px 11px",
-                        ...(shapes[s] === k
-                          ? { borderColor: SEAT_COLOR[s], color: SEAT_COLOR[s],
-                              background: SEAT_COLOR[s] + "14" }
-                          : null) }}>{k}</button>
-                  ))}
-                </div>
+            <section key={s} className="g-fb-ss-seat" style={{ "--c": SEAT_COLOR[s] }}>
+              <div className="g-fb-ss-head">
+                <span className="dot" />
+                <input className="aura-ghost-input" value={names[s]} maxLength={18} aria-label={`Player ${s} name`}
+                  onChange={(e) => setNames({ ...names, [s]: e.target.value })} />
               </div>
-
-              <Pitch shape={shapes[s]} squad={{}} />
-            </div>
+              <div className="g-fb-shapes">
+                {SHAPE_KEYS.map((k) => (
+                  <button key={k} onClick={() => setShapes({ ...shapes, [s]: k })}
+                    className={`g-fb-shape sm${shapes[s] === k ? " on" : ""}`}>{k}</button>
+                ))}
+              </div>
+              <div className="g-fb-ss-pitch"><Pitch shape={shapes[s]} squad={{}} fill /></div>
+            </section>
           ))}
         </div>
 
-        <div className="g-panel subtle p-4">
-          <p className="text-xs leading-relaxed" style={{ color: "var(--text-muted)" }}>
-            You take turns off the same spun squad in snake order — whoever picks second
-            in one round picks first in the next. Eleven picks each, and every pick goes
-            straight into a slot, so a keeper you take is a keeper you play. Nothing is
-            sent anywhere; both squads stay in this browser.
-          </p>
-          {msg && <div className="text-xs mt-2" style={{ color: "#E8654C" }}>{msg}</div>}
-        </div>
+        <p className="g-fb-ss-note">
+          You take turns off the same spun squad in snake order — whoever picks second
+          in one round picks first in the next. Eleven picks each, and every pick goes
+          straight into a slot, so a keeper you take is a keeper you play. Nothing is
+          sent anywhere; both squads stay in this browser.
+          {msg && <span style={{ color: "#E8654C" }}> {msg}</span>}
+        </p>
       </div>
     );
   }
