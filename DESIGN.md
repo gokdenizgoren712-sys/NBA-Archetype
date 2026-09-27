@@ -47,6 +47,7 @@ colors:
   phase-def: "#4C9BE8"
   phase-mid: "#3FB08C"
   phase-fwd: "#E8654C"
+  shadow-black: "#000"
 typography:
   meta:
     fontFamily: "Outfit, ui-sans-serif, sans-serif"
@@ -76,38 +77,141 @@ typography:
   loud-moment:
     fontFamily: "Rajdhani, ui-sans-serif, sans-serif"
     fontWeight: 700
-    fontSize: "96-112px"
+    fontSize: "96px"
+  # Handoff v2 mock'larında kullanılan tüm adımlar (docs/design/handoff-v2).
+  # Bunların dışındaki bir boyut sapmadır. 12px taban; alt adım yok.
+  step-12:
+    fontFamily: "Outfit / Rajdhani"
+    fontSize: "12px"
+  step-13:
+    fontFamily: "Outfit / Rajdhani"
+    fontSize: "13px"
+  step-14:
+    fontFamily: "Outfit / Rajdhani"
+    fontSize: "14px"
+  step-15:
+    fontFamily: "Outfit / Rajdhani"
+    fontSize: "15px"
+  step-16:
+    fontFamily: "Outfit / Rajdhani"
+    fontSize: "16px"
+  step-17:
+    fontFamily: "Outfit / Rajdhani"
+    fontSize: "17px"
+  step-18:
+    fontFamily: "Outfit / Rajdhani"
+    fontSize: "18px"
+  step-19:
+    fontFamily: "Outfit / Rajdhani"
+    fontSize: "19px"
+  step-20:
+    fontFamily: "Outfit / Rajdhani"
+    fontSize: "20px"
+  step-22:
+    fontFamily: "Outfit / Rajdhani"
+    fontSize: "22px"
+  step-24:
+    fontFamily: "Outfit / Rajdhani"
+    fontSize: "24px"
+  step-26:
+    fontFamily: "Outfit / Rajdhani"
+    fontSize: "26px"
+  step-28:
+    fontFamily: "Outfit / Rajdhani"
+    fontSize: "28px"
+  step-30:
+    fontFamily: "Outfit / Rajdhani"
+    fontSize: "30px"
+  step-32:
+    fontFamily: "Outfit / Rajdhani"
+    fontSize: "32px"
+  step-34:
+    fontFamily: "Outfit / Rajdhani"
+    fontSize: "34px"
+  step-36:
+    fontFamily: "Outfit / Rajdhani"
+    fontSize: "36px"
+  step-40:
+    fontFamily: "Outfit / Rajdhani"
+    fontSize: "40px"
+  step-44:
+    fontFamily: "Outfit / Rajdhani"
+    fontSize: "44px"
+  step-48:
+    fontFamily: "Outfit / Rajdhani"
+    fontSize: "48px"
+  step-56:
+    fontFamily: "Outfit / Rajdhani"
+    fontSize: "56px"
+  step-60:
+    fontFamily: "Outfit / Rajdhani"
+    fontSize: "60px"
+  step-64:
+    fontFamily: "Outfit / Rajdhani"
+    fontSize: "64px"
+  step-72:
+    fontFamily: "Outfit / Rajdhani"
+    fontSize: "72px"
+  step-80:
+    fontFamily: "Outfit / Rajdhani"
+    fontSize: "80px"
+  step-88:
+    fontFamily: "Outfit / Rajdhani"
+    fontSize: "88px"
+  step-96:
+    fontFamily: "Outfit / Rajdhani"
+    fontSize: "96px"
+  step-112:
+    fontFamily: "Outfit / Rajdhani"
+    fontSize: "112px"
 rounded:
-  chip: "9-15px"
-  button: "11-12px"
-  row: "9-12px"
-  card: "20px"
-  modal: "22px"
+  r2: "2px"
+  r3: "3px"
+  r4: "4px"
+  r5: "5px"
+  r6: "6px"
+  r7: "7px"
+  r8: "8px"
+  r9: "9px"
+  r10: "10px"
+  r11: "11px"
+  r12: "12px"
+  r13: "13px"
+  r14: "14px"
+  r15: "15px"
+  r16: "16px"
+  r18: "18px"
+  r20: "20px"
+  r22: "22px"
+  r24: "24px"
+  r28: "28px"
+  r36: "36px"
+  pill: "999px"
   avatar: "50%"
 components:
   button-primary-basketball:
     background: "linear-gradient(100deg,#ffe9b0,#FFB11B 55%,#ffe9b0)"
     textColor: "{colors.foil-ink}"
     height: "42-56px"
-    rounded: "{rounded.button}"
+    rounded: "{rounded.r12}"
   button-primary-football:
     backgroundColor: "{colors.pitch-teal}"
     textColor: "#06140f"
     height: "42-56px"
-    rounded: "{rounded.button}"
+    rounded: "{rounded.r12}"
   button-secondary:
     backgroundColor: "{colors.fill-2}"
     textColor: "{colors.ink-primary}"
-    rounded: "{rounded.button}"
+    rounded: "{rounded.r12}"
   card:
     background: "linear-gradient(180deg,<accent>14,rgba(255,255,255,.015) 65%)"
     shadow: "inset 0 1px 0 <accent>55, 0 24px 60px -34px #000"
-    rounded: "{rounded.card}"
+    rounded: "{rounded.r20}"
     padding: "22px 24px"
   row-card:
     backgroundColor: "{colors.fill-1}"
     shadow: "inset 0 1px 0 rgba(255,255,255,.05)"
-    rounded: "14-18px"
+    rounded: "{rounded.r16}"
 ---
 
 # Design System: Primary Arch

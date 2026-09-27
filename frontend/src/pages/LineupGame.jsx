@@ -24,7 +24,8 @@ import LineupSlot from "../game/LineupSlot";
 import PlayerRow, { posGroupOf } from "../game/PlayerRow";
 import InfoModal from "../game/InfoModal";
 import JokerBtn from "../game/JokerBtn";
-import HowItWorksPanel from "../game/HowItWorksPanel";
+import ProcessSteps from "../game/ProcessSteps";
+import { PageGlow } from "../components/states/States";
 import CoachPicker from "../game/CoachPicker";
 import DraftAnalysis from "../game/DraftAnalysis";
 import LeaderboardPanel from "../game/LeaderboardPanel";
@@ -575,6 +576,28 @@ function ShareCard({ pct, grade, fit, lineup, simEra, coach }) {
 }
 
 // ── Ana bileşen ───────────────────────────────────────────────────────────────
+// Draft süreci (handoff 3a: kutusuz satır). Uzun açıklama + örnek adıma
+// tıklayınca kural penceresinde açılıyor.
+const DRAFT_STEPS = [
+              ["1",TargetIcon,"","Pick Era","Distance & style fit",
+                "Your whole run is simulated inside one era. Every player's power scales with how far their real prime sits from it — one era off costs about 3%, five eras about 22%. But an archetype the era loves travels one era closer, and one it has no use for travels one further. A season's top-2 players are TIMELESS and ignore distance entirely.",
+                <>Pick <b>Small Ball</b> and a 1995 Spacer plays nearly at full strength, because that era pays for shooting. The same era guts a back-to-the-basket Force.</>],
+              ["2",WheelIcon,"","Spin & Draft 9","5 starters + 4 bench",
+                "Each round two wheels land on a random season and a random team, and you draft one player off that exact roster. Overall ratings stay hidden — you see the archetype, the box score and the tags, and you judge from those. Five jokers let you bend the wheel when it betrays you.",
+                <>Wheel lands on <b>2015-16 GSW</b>. You can take Curry as your Spacer, or grab Draymond because your lineup has no Anchor yet.</>],
+              ["3",CoachIcon,"","Hire Coach","Offense & Defense grades",
+                "After the roster is full you choose from four coaches. Their Offense and Defense grades shift your team rating all season long, and championship rings add playoff DNA — the more rings, the bigger the boost once the postseason lights come on.",
+                <>An <b>A-grade defensive coach with 3 rings</b> lifts a mediocre defense into contention and adds a real edge in a Game 7.</>],
+              ["4",TrophyIcon,"","Simulate 82","Playoffs & awards glory",
+                "Your nine players and coach run a full 82-game regular season, then the playoffs. The sim produces standings, awards, All-Star nods, a champion — and your final Lineup Fit grade, which is what lands on the leaderboard.",
+                <>A balanced roster can win 58 games; stacking three ball-dominant Engines wins fewer despite better raw talent — <b>role redundancy</b> is a real penalty.</>],
+            ];
+
+const RULESETS = [
+  { key: "classic",   hex: "#60a5fa", label: "Classic",    hint: "Pure luck" },
+  { key: "salarycap", hex: "#FFB11B", label: "Salary Cap", hint: "100% cap" },
+];
+
 export default function LineupGame() {
   const { lang } = useLang();
 
@@ -603,6 +626,51 @@ export default function LineupGame() {
       description="Build the greatest 5-man lineup in NBA history. Pick players from any era — 1983 to today — and see how well your roster fits together across archetypes and eras."
       path="/basketball/game/single"
     />
+    {phase==="idle" ? (
+      <div className="g-idle">
+        <PageGlow tint="#FFB11B" />
+        <header className="g-idle-hero">
+          <div>
+            <h1 className="g-wordmark lg">Lineup Builder</h1>
+            <p>Draft 9 players · 5 starters, 4 bench · 1 coach</p>
+          </div>
+          <div className="g-idle-actions">
+            <div className="g-modebtn-row" role="radiogroup" aria-label="Rule set">
+              {RULESETS.map(r=>(
+                <button key={r.key} role="radio" aria-checked={mode===r.key}
+                  className={`g-modebtn${mode===r.key?" on":""}`} style={{"--c":r.hex}}
+                  onClick={()=>setMode(r.key)}>
+                  <span className="dot" />
+                  <span className="lbl"><b>{r.label}</b><i>{r.hint}</i></span>
+                </button>
+              ))}
+            </div>
+            <button onClick={beginEraPick} disabled={seasons.length===0}
+              className="aura-rating-btn g-idle-cta" style={{opacity:seasons.length===0?0.5:1}}>
+              {seasons.length===0?"Loading…":mode==="salarycap"?"Start cap draft":"Start draft"}
+            </button>
+          </div>
+        </header>
+
+        <ProcessSteps steps={DRAFT_STEPS} />
+        <div className="g-divider" />
+
+        <div className="g-idle-body">
+          <section className="g-idle-roster">
+            <div className="g-idle-roster-head">
+              <span className="t">Your roster</span>
+              <span className="s">0 of 9 drafted</span>
+            </div>
+            <div className="g-idle-court pointer-events-none">
+              <CourtBoard lineup={lineup} coach={null} moveSrc={null} canRearrange={false}
+                onSlotTap={()=>{}} getPrimaryPos={getPrimaryPos} placing={false}
+                placingEligible={[]} placingPenalties={{}} onPlace={()=>{}} bare fit/>
+            </div>
+          </section>
+          <LeaderboardPanel mode={mode} limit={25} fill />
+        </div>
+      </div>
+    ) : (
     <div className="p-4 sm:p-6 max-w-[1560px] mx-auto space-y-3 pb-6">
 
       {/* ── Tag lejantı ────────────────────────────────────────────────
@@ -639,42 +707,6 @@ export default function LineupGame() {
           Eskiden başlık ayrı, iki büyük mod kartı ayrıydı; artık ikisi tek
           kontrol yüzeyi. Mod seçimi bir "segmented switcher" — iki kart
           birbiriyle yarışmıyor, biri açıkça aktif. */}
-      {phase==="idle"&&(
-        <div className="g-dock">
-          <span className="aura-blob" style={{"--slot-color":"var(--accent)",left:-30,top:-70,width:240,height:150,opacity:0.16}} />
-          <div className="g-dock-left">
-            <h1 className="g-dock-title">Lineup Builder</h1>
-            <p className="g-dock-sub">Draft 9 players · 5 starters, 4 bench · 1 coach</p>
-          </div>
-
-          <div className="g-dock-center">
-            <button onClick={beginEraPick} disabled={seasons.length===0}
-              className="aura-rating-btn"
-              style={{padding:"17px 42px",fontSize:14,letterSpacing:".14em",opacity:seasons.length===0?0.5:1}}>
-              {seasons.length===0?"Loading…"
-                :mode==="salarycap"?<><CapIcon size={16} /> <span className="ml-2">Start Salary Cap Draft</span></>
-                :<><WheelIcon size={16} /> <span className="ml-2">Start Draft Phase</span></>}
-            </button>
-          </div>
-
-          <div className="g-dock-right">
-            <div className="g-seg stacked">
-              {[
-                {key:"classic",   Icon:WheelIcon, hex:"#60a5fa", label:"Classic",    hint:"Pure luck"},
-                {key:"salarycap", Icon:CapIcon,   hex:"#FFB11B", label:"Salary Cap", hint:"100% cap"},
-              ].map(({key,Icon,hex,label,hint})=>(
-                <button key={key} onClick={()=>setMode(key)}
-                  className={`g-seg-btn${mode===key?" on":""}`}
-                  style={{"--accent":hex,"--accent-a":hex+"22","--accent-line":hex+"66"}}>
-                  <Icon size={14} /> {label}
-                  <span className="opacity-55 font-normal tracking-normal normal-case">({hint})</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* ── İNCE DOCK: oyun boyunca üstte kalır ─────────────────────────
           Sol: koşu durumu (era + ilerleme). Orta: spin dönerken çark,
           durduğunda jokerler. Sağ: düşen takım/yıl — kutusuz, düz yazı.
@@ -754,58 +786,6 @@ export default function LineupGame() {
           )}
         </div>
       )}
-
-      {/* === IDLE: 3-sütun HUD — bağlam | kort | analitik === */}
-      {phase==="idle"&&(
-        <div className="g-hud">
-
-          {/* ── SOL: draft süreci (numaralı akış — sıra gerçekten anlamlı) ── */}
-          <div className="col-side min-w-0">
-            <HowItWorksPanel label="Draft Process" fill steps={[
-              ["1",TargetIcon,"","Pick Era","Distance & style fit",
-                "Your whole run is simulated inside one era. Every player's power scales with how far their real prime sits from it — one era off costs about 3%, five eras about 22%. But an archetype the era loves travels one era closer, and one it has no use for travels one further. A season's top-2 players are TIMELESS and ignore distance entirely.",
-                <>Pick <b>Small Ball</b> and a 1995 Spacer plays nearly at full strength, because that era pays for shooting. The same era guts a back-to-the-basket Force.</>],
-              ["2",WheelIcon,"","Spin & Draft 9","5 starters + 4 bench",
-                "Each round two wheels land on a random season and a random team, and you draft one player off that exact roster. Overall ratings stay hidden — you see the archetype, the box score and the tags, and you judge from those. Five jokers let you bend the wheel when it betrays you.",
-                <>Wheel lands on <b>2015-16 GSW</b>. You can take Curry as your Spacer, or grab Draymond because your lineup has no Anchor yet.</>],
-              ["3",CoachIcon,"","Hire Coach","Offense & Defense grades",
-                "After the roster is full you choose from four coaches. Their Offense and Defense grades shift your team rating all season long, and championship rings add playoff DNA — the more rings, the bigger the boost once the postseason lights come on.",
-                <>An <b>A-grade defensive coach with 3 rings</b> lifts a mediocre defense into contention and adds a real edge in a Game 7.</>],
-              ["4",TrophyIcon,"","Simulate 82","Playoffs & awards glory",
-                "Your nine players and coach run a full 82-game regular season, then the playoffs. The sim produces standings, awards, All-Star nods, a champion — and your final Lineup Fit grade, which is what lands on the leaderboard.",
-                <>A balanced roster can win 58 games; stacking three ball-dominant Engines wins fewer despite better raw talent — <b>role redundancy</b> is a real penalty.</>],
-            ]} />
-          </div>
-
-          {/* ── ORTA: kort matrisi — ekranın ağırlık merkezi ── */}
-          <div className="col-court min-w-0">
-            <div className="g-court-panel">
-              <div className="g-dotgrid" />
-              <div className="flex items-center justify-between gap-2 mb-3">
-                <span className="g-mono" style={{color:"var(--yamabuki)"}}>// Court Matrix</span>
-                <span className="g-status" style={{"--accent":"#9ca3af","--accent-a":"rgba(156,163,175,.12)","--accent-line":"rgba(156,163,175,.35)"}}>
-                  Status: Awaiting Draft
-                </span>
-              </div>
-              <div className="pointer-events-none">
-                <CourtBoard lineup={lineup} coach={null} moveSrc={null} canRearrange={false}
-                  onSlotTap={()=>{}} getPrimaryPos={getPrimaryPos} placing={false}
-                  placingEligible={[]} placingPenalties={{}} onPlace={()=>{}} bare/>
-              </div>
-            </div>
-          </div>
-
-          {/* ── SAĞ: canlı leaderboard ──────────────────────────────────────
-              Burada eskiden "How Scoring Works" vardı; skorlama artık giriş
-              ekranındaki mod kartının ⓘ pop-up'ında tek kaynaktan
-              anlatılıyor. Bu alan artık kovalanacak sayıyı gösteriyor. */}
-          <div className="col-side min-w-0">
-            <LeaderboardPanel mode={mode} limit={25} fill />
-          </div>
-
-        </div>
-      )}
-
 
       {phase!=="idle"&&phase!=="complete"&&(
       // Havuz sabit-ish genişlikte (satır içeriği ~600px'te bitiyor, fazlası
@@ -1170,6 +1150,7 @@ export default function LineupGame() {
         </div>
       )}
     </div>
+    )}
     </div>
   );
 }

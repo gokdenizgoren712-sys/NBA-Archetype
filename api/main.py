@@ -4013,7 +4013,12 @@ def get_leaderboard(limit: int = Query(50, le=100), mode: str = Query("classic")
             WHERE COALESCE(lg.mode, 'classic') = ?
             ORDER BY lg.pct DESC LIMIT ?
         """, (mode, limit)).fetchall()
-    return {"entries": [dict(r) for r in rows]}
+        # Tablonun referansı: bu kural setinde kayıtlı toplam koşu. Ön yüz
+        # "kaça karşı" sorusunu bununla yanıtlıyor (brief: çıplak sayı yok).
+        total = conn.execute(
+            "SELECT COUNT(*) FROM lineup_games WHERE COALESCE(mode, 'classic') = ?", (mode,)
+        ).fetchone()[0]
+    return {"entries": [dict(r) for r in rows], "total": total}
 
 
 # ── Fotoğraf atfı ────────────────────────────────────────────────────────────
