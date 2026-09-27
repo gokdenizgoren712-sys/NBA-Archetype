@@ -189,7 +189,7 @@ export default function FullCourtBoard({
         style={{ borderTop: "1px solid rgba(255,255,255,.08)", maxWidth: `min(${maxWidth}px, (100vh - 340px) * 1.88)` }}>
         {sides.map(({ seat }) => (
           <div key={seat} className="min-w-0">
-            <div className="g-label mb-1.5" style={{ fontSize: 8.5, justifyContent: seat === 2 ? "flex-end" : "flex-start" }}>
+            <div className="g-label mb-1.5" style={{ justifyContent: seat === 2 ? "flex-end" : "flex-start" }}>
               {names[seat]} · Bench
             </div>
             <div className="grid grid-cols-4 gap-1.5">

@@ -370,7 +370,7 @@ export default function WithAFriendGame() {
               </div>
             ) : (
               <div className="g-panel p-4 space-y-3 max-w-md mx-auto">
-                <div className="g-label">Join an existing room</div>
+                <div className="g-section-title">Join an existing room</div>
                 <div className="flex gap-2">
                   <input value={joinCodeInput} onChange={e => setJoinCodeInput(e.target.value.toUpperCase())}
                     placeholder="ROOM CODE" maxLength={8}

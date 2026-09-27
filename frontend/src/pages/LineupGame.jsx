@@ -541,7 +541,7 @@ function ShareCard({ pct, grade, fit, lineup, simEra, coach }) {
 
   return (
     <div className="g-panel p-4 space-y-3">
-      <div className="g-label">Share Your Result</div>
+      <div className="g-section-title">Share Your Result</div>
 
       {/* Preview */}
       {preview ? (
@@ -860,7 +860,7 @@ export default function LineupGame() {
         <div className="g-panel p-5 flex flex-col gap-3 flex-1 min-h-0">
           <span className="aura-blob" style={{ "--slot-color": "var(--accent)", left: "20%", top: -50, width: 260, height: 140, opacity: 0.16 }} />
           <div className="shrink-0">
-            <div className="g-label mb-2">Step 1 — Pick Your Simulation Era</div>
+            <div className="g-section-title mb-2">Step 1 — Pick Your Simulation Era</div>
             <p className="text-xs leading-relaxed" style={{ color: "var(--text-muted)" }}>
               Your whole run lives in this era. Every player's power scales with distance from
               their home decade (one era off ≈ −3%, five eras ≈ −22%) — but an archetype the era
@@ -913,7 +913,7 @@ export default function LineupGame() {
               </p>
               {g&&(
                 <div className="pt-3" style={{borderTop:"1px solid rgba(255,255,255,.08)"}}>
-                  <div className="g-label mb-2">Archetype Weights</div>
+                  <div className="g-section-title mb-2">Archetype Weights</div>
                   <div className="flex flex-wrap gap-1.5">
                     {g.top.map(t=>(
                       <span key={t} className="text-[10px] px-2 py-0.5 rounded-full font-medium"

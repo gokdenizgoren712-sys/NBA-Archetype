@@ -60,7 +60,7 @@ function QueuePanel({ state, elapsed, queueSize, opponent, onFind, onCancel, onA
       }} />
 
       <div className="flex items-center justify-between gap-2 mb-1">
-        <div className="g-label">
+        <div className="g-section-title nodot">
           <span className={`inline-block w-1.5 h-1.5 rounded-full${searching ? " animate-pulse" : ""}`}
             style={{ background: found ? "#4ade80" : "#60a5fa" }} />
           Live Opponent
@@ -164,7 +164,7 @@ function BoardPanel({ entries, selected, onSelect, onChallenge, loading, challen
     <div className="g-panel p-4 g-hud-fill">
       <span className="aura-blob" style={{ "--slot-color": "#FFB11B", right: "12%", top: -44, width: 220, height: 120, opacity: 0.16 }} />
 
-      <div className="g-label shrink-0 flex items-center justify-between gap-2">
+      <div className="g-section-title nodot shrink-0 flex items-center justify-between gap-2">
         <span className="inline-flex items-center gap-1.5">
           <span className="inline-block w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "var(--yamabuki)" }} />
           Challenge the Board
@@ -465,7 +465,7 @@ export default function OnlineGame() {
             <div className="g-panel p-4 g-hud-fill">
               <span className="aura-blob" style={{ "--slot-color": selected ? "#f87171" : "#60a5fa", right: "10%", top: -40, width: 200, height: 110, opacity: 0.16 }} />
 
-              <div className="g-label shrink-0">{boardActive ? "Opponent" : "How It Works"}</div>
+              <div className="g-section-title shrink-0">{boardActive ? "Opponent" : "How It Works"}</div>
 
               {boardActive ? (
                 <div className="flex-1 min-h-0 overflow-y-auto pr-0.5 mt-3 space-y-3">

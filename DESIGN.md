@@ -1,20 +1,25 @@
 ---
 name: Primary Arch
-description: A scout's card binder for basketball and football — validated player archetypes, presented as gradeable, collectible cards.
+description: A scout's card binder for basketball and football — validated player archetypes, presented as collectible cards. Handoff v2 ("from terminal to collection").
+source: docs/design/handoff-v2 (README + Primary Arch Screens v2) — wins over this file on any conflict
 colors:
   draft-card-foil: "#FFB11B"
-  foil-dim: "rgba(255,177,27,0.12)"
-  foil-border: "rgba(255,177,27,0.32)"
   foil-highlight: "#ffe9b0"
+  foil-ink: "#14110a"
   pitch-teal: "#3FB08C"
   logo-teal: "#00A3AF"
   void-black: "#0b0b0b"
-  card-stock: "#131313"
-  raised-panel: "#1a1a1a"
-  hairline: "#262626"
-  ink-primary: "#e5e5e5"
-  ink-muted: "#8a8a8a"
-  ink-faint: "#3a3a3a"
+  frame: "#1a1a1a"
+  fill-1: "rgba(255,255,255,0.035)"
+  fill-2: "rgba(255,255,255,0.05)"
+  fill-selected: "rgba(255,255,255,0.08)"
+  ink-primary: "#f2efea"
+  ink-secondary: "#b4afa8"
+  ink-muted: "#8b857e"
+  ink-faint: "#5a5650"
+  ink-divider: "#3a3a3a"
+  you: "#60a5fa"
+  opponent: "#f87171"
   nba-red: "#c8102e"
   nba-blue: "#1d428a"
   danger: "#f87171"
@@ -33,393 +38,232 @@ colors:
   arch-initiator: "#FFB11B"
   arch-stopper: "#d1d5db"
   arch-rim-runner: "#34d399"
+  pos-pg: "#1d428a"
+  pos-sg: "#00A3AF"
+  pos-sf: "#6da7ec"
+  pos-pf: "#FFB11B"
+  pos-c: "#c8102e"
   phase-gk: "#F2C14E"
   phase-def: "#4C9BE8"
   phase-mid: "#3FB08C"
   phase-fwd: "#E8654C"
 typography:
-  display:
-    fontFamily: "Rajdhani, ui-sans-serif, sans-serif"
-    fontWeight: 800
-    fontSize: "23px"
-    letterSpacing: "0.06em"
-  headline:
-    fontFamily: "Rajdhani, ui-sans-serif, sans-serif"
-    fontWeight: 700
-    fontSize: "28px"
-  title:
-    fontFamily: "Rajdhani, ui-sans-serif, sans-serif"
-    fontWeight: 700
-    fontSize: "15px"
-  label:
-    fontFamily: "Rajdhani, ui-sans-serif, sans-serif"
-    fontWeight: 700
-    fontSize: "9.5px"
-    letterSpacing: "0.14em"
+  meta:
+    fontFamily: "Outfit, ui-sans-serif, sans-serif"
+    fontWeight: 500
+    fontSize: "12px"
   body:
     fontFamily: "Outfit, ui-sans-serif, sans-serif"
     fontWeight: 400
-    fontSize: "13px"
-  micro:
+    fontSize: "14px"
+  row-title:
     fontFamily: "Rajdhani, ui-sans-serif, sans-serif"
     fontWeight: 700
-    fontSize: "10.5px"
+    fontSize: "16px"
+  section-title:
+    fontFamily: "Rajdhani, ui-sans-serif, sans-serif"
+    fontWeight: 700
+    fontSize: "20px"
+  page-h1:
+    fontFamily: "Rajdhani, ui-sans-serif, sans-serif"
+    fontWeight: 700
+    fontSize: "40px"
+  game-wordmark:
+    fontFamily: "Rajdhani, ui-sans-serif, sans-serif"
+    fontWeight: 700
+    fontSize: "24-48px"
+    letterSpacing: "0.05em"
   loud-moment:
     fontFamily: "Rajdhani, ui-sans-serif, sans-serif"
-    fontWeight: 800
-    fontSize: "96px"
-    letterSpacing: "-0.03em"
+    fontWeight: 700
+    fontSize: "96-112px"
 rounded:
-  pill: "999px"
-  card: "17px"
-  panel: "18px"
-  loud-moment: "22px"
-  tile: "15px"
-  slot: "12px"
-  chip: "8px"
-  chip-sm: "6px"
-  micro: "3px"
-  micro-sm: "2px"
-spacing:
-  xs: "6px"
-  sm: "8px"
-  md: "14px"
-  lg: "18px"
-  xl: "24px"
+  chip: "9-15px"
+  button: "11-12px"
+  row: "9-12px"
+  card: "20px"
+  modal: "22px"
+  avatar: "50%"
 components:
-  button-primary:
-    backgroundColor: "{colors.draft-card-foil}"
-    textColor: "#14110a"
-    typography: "{typography.display}"
-    rounded: "{rounded.chip}"
-    padding: "9px 18px"
-  button-ghost:
-    backgroundColor: "transparent"
-    textColor: "{colors.ink-muted}"
-    rounded: "{rounded.pill}"
-    padding: "6px 12px"
-  button-ghost-active:
-    textColor: "{colors.draft-card-foil}"
-  card-surface:
-    backgroundColor: "{colors.card-stock}"
-    rounded: "{rounded.card}"
-  select-ghost:
-    backgroundColor: "transparent"
+  button-primary-basketball:
+    background: "linear-gradient(100deg,#ffe9b0,#FFB11B 55%,#ffe9b0)"
+    textColor: "{colors.foil-ink}"
+    height: "42-56px"
+    rounded: "{rounded.button}"
+  button-primary-football:
+    backgroundColor: "{colors.pitch-teal}"
+    textColor: "#06140f"
+    height: "42-56px"
+    rounded: "{rounded.button}"
+  button-secondary:
+    backgroundColor: "{colors.fill-2}"
     textColor: "{colors.ink-primary}"
-    rounded: "{rounded.chip}"
-    padding: "6px 8px"
+    rounded: "{rounded.button}"
+  card:
+    background: "linear-gradient(180deg,<accent>14,rgba(255,255,255,.015) 65%)"
+    shadow: "inset 0 1px 0 <accent>55, 0 24px 60px -34px #000"
+    rounded: "{rounded.card}"
+    padding: "22px 24px"
+  row-card:
+    backgroundColor: "{colors.fill-1}"
+    shadow: "inset 0 1px 0 rgba(255,255,255,.05)"
+    rounded: "14-18px"
 ---
 
 # Design System: Primary Arch
 
+> **Source of truth:** `docs/design/handoff-v2/` (README, `Primary Arch Screens v2`,
+> original brief). This file summarises it for the codebase. Where the two disagree,
+> the handoff wins. The rollout plan is `docs/ui-redesign-plan.md`.
+
 ## Overview
 
-**Creative North Star: "The Scout's Card Binder"**
+**Creative North Star: "The Scout's Card Binder", from terminal to collection**
 
-Primary Arch is a scout's binder of graded player cards, not a stats terminal and not
-an arcade. A binder has two states, and both are correct: most of the time you're
-flipping fast through quiet reference pages — dense rows, muted ink, no ceremony,
-built for a scout who reads a hundred lines a minute. Then you pull one card out to
-look at it properly, and it's a real object — foil, holo stripe, a bevel of light
-tracing the cut corner, a rating badge that catches the light. The binder metaphor is
-what makes both states belong to the same object instead of reading as two different
-apps: **the card is always the same card, only the light changes.**
+Primary Arch is a scout's binder of graded player cards. The 2026-09 redesign removes
+the "terminal" layer: tiny mono labels, hairline boxes inside boxes, numbered step
+panels, heavy uppercase. The game's colour and glow now spread to the data pages too,
+but as page-level ambient light rather than a blob behind every panel. Typography and
+spacing carry the brand. The Panini player card is untouchable and stays as it is.
 
-Confirmed visual rejections: no light theme (the binder is read in a dim room, on
-purpose — see Elevation & Depth); no gradient-clipped text anywhere, including the
-game module's own headings (a generic AI-generated-UI tell, and the card foil/holo
-system already carries the "shine" job — a second gradient on the type on top of it
-was redundant, not additive); no purple-to-blue hero gradients, no `rounded-lg`
-default-Tailwind sameness, no emoji-as-icon.
+Two sports, one product, two accents: basketball gold `#FFB11B`, football teal
+`#3FB08C`. The accent follows the section you are in. Gold separately always means
+trophy / #1 / champion, on either sport.
 
-**Key Characteristics:**
-- One accent color, two energy levels — see "The One Root Rule" below.
-- The trading card (holo, foil, cut corner, rating badge) is the signature object;
-  every other surface (panel, tile, dock, row) is the same card face flattened out.
-- Dark-committed, not dark-mode-as-default: `color-scheme: dark` is declared globally,
-  there is no light variant to fall back to.
-- Ghost-until-interaction inputs: selects, search, and text fields carry no visible
-  box at rest. A box appearing is itself a state signal (focus, hover, has-value).
+Confirmed rejections (unchanged): no light theme, no gradient-clipped text, no
+purple-to-blue hero gradients, no `rounded-lg` sameness, no emoji-as-icon.
 
 ## Colors
 
-Warm, low-saturation dark neutrals with a single hot accent that never competes with
-itself — gold is the only color allowed to glow.
+### Accents
+- **Draft Card Foil** `#FFB11B` — basketball accent, and the trophy/champion colour on
+  both sports (`var(--yamabuki)` where it must stay gold regardless of sport).
+- **Pitch Teal** `#3FB08C` — football accent. `main[data-sport="football"]` sets
+  `--accent` to teal, so any `var(--accent)` on a football page is teal.
+- **Logo Teal** `#00A3AF` — wordmark ring, the Explore nav icon. Deliberately scarce.
 
-### Primary
-- **Draft Card Foil** (`#FFB11B`): the site's one true accent — buttons, active
-  states, ratings, trophy/champion iconography, the card's own foil bevel. Read via
-  `var(--accent)` in most component contexts and `var(--yamabuki)` specifically where
-  a color must stay gold regardless of active sport (trophies, champion UI). Two
-  supporting tones ride with it: **Foil Dim** (`rgba(255,177,27,0.12)`, tinted
-  backgrounds), **Foil Border** (`rgba(255,177,27,0.32)`, accent-colored hairlines), and
-  **Foil Highlight** (`#ffe9b0`, the light end of the gold gradient used on the primary
-  button and progress fills — always paired with the accent, never standalone).
+### Neutrals
+- Page `#0b0b0b`; frame line `#1a1a1a`.
+- Raised fills are translucent white, not solid greys: `--fill-1` `.035` (row card),
+  `--fill-2` `.05` (secondary button), `--fill-sel` `.08` (selected segment/row).
+- **Ink, five steps, warm:** primary `#f2efea` · secondary `#b4afa8` (body copy) ·
+  muted `#8b857e` (meta) · faint `#5a5650` (disabled) · divider `#3a3a3a` (only for
+  rules, breadcrumb separators, "VS"). `#3a3a3a` is never text.
 
-### Secondary
-- **Pitch Teal** (`#3FB08C`): the football side's sport-conditional accent. Swaps in
-  for gold wherever the UI is sport-aware (nav, mode cards, phase colors) — never
-  mixed with gold on the same surface. See "The One Root Rule" below.
-
-### Tertiary
-- **Logo Teal** (`#00A3AF`, "asagi"): rare, deliberately scarce — the wordmark's
-  secondary ring color and a handful of sparse accents (About, auth screens). Not a
-  general-purpose UI color; if a new surface reaches for it, that's a signal to
-  reconsider, not a green light to spread it further.
-
-### Neutral
-- **Void Black** (`#0b0b0b`): base page background.
-- **Card Stock** (`#131313`): the next surface up — panel and card backgrounds.
-- **Raised Panel** (`#1a1a1a`): the topmost neutral surface (elevated chrome, modals).
-- **Hairline** (`#262626`): borders and dividers at rest.
-- **Ink Primary / Ink Muted / Ink Faint** (`#e5e5e5` / `#8a8a8a` / `#3a3a3a`): the
-  data-register text scale — see "The One Root Rule" for why the game module
-  re-declares brighter values on top of this.
-
-### Utility
-- **NBA Red** (`#c8102e`) / **NBA Blue** (`#1d428a`): league-identity colors, used only
-  where the content is literally referencing the NBA brand (not a general UI accent).
-- **G-League Red** (`#A8263F`), **NCAA Blue** (`#3D7EC9`), **EuroLeague Orange**
-  (`#FF6900`): one consistent brand hex per non-NBA league, used only in that league's
-  own nav badge/page identity — same rule as NBA Red/Blue, not general UI accents.
-- **Danger** (`#f87171`): the site's one error/destructive-state color — form errors,
-  delete actions, admin moderation flags. Previously an unformalized `text-red-400`
-  used consistently but never named; now a real token.
-
-### Categorical — Archetype & Phase palettes
-Two small, deliberately-not-neutral palettes used for data-visualization categories
-(not UI chrome) — each label always resolves to the same color everywhere it appears.
-- **Archetype colors** (12 core archetypes — Engine `#fb923c`, Ecosystem `#4ade80`, Hub
-  `#2dd4bf`, Connector `#c084fc`, Creator `#fb7185`, Anchor `#60a5fa`, Spacer `#22d3ee`,
-  Finisher `#a3e635`, Force `#f87171`, Initiator `#FFB11B`, Stopper `#d1d5db`, Rim
-  Runner `#34d399`): single source of truth at
-  `frontend/src/constants/archetypeColors.js`. Previously redefined independently in 5
-  files with 3 different value sets — the same archetype rendered a different color
-  depending which page you were on (fixed 2026-09).
-- **Phase / Role colors** (football's 4 on-pitch roles — Goalkeeper `#F2C14E`, Defence
-  `#4C9BE8`, Midfield `#3FB08C`, Attack `#E8654C`): single source of truth at
-  `frontend/src/game/football/theme.js`.
-
-### Named Rules
-
-**The One Root Rule.** There is one color system, not two. The game module and the
-data pages share every token; what changes between them is *energy*, not *palette*.
-Game surfaces (`.g-panel`, `.g-dock`, `.g-tile`, `.g-score-hero`) re-declare
-`--text-primary/muted/faint` to a brighter scale (`#f2efea` / `#b4afa8` / `#8b857e`)
-because on a large glass card face the data register's near-invisible
-`--text-faint: #3a3a3a` reads as broken, not quiet. Data pages keep the quieter
-original scale on purpose — a dense stat table is read in bulk, not admired. Never
-brighten the data register globally to match the game, and never dim the game module
-to match the data register: each value is correct for its own surface.
-
-**The One Voice Rule.** Gold is the only color that glows, animates, or gets a shine
-sweep. A second accent earning the same treatment (Pitch Teal getting a shine sweep,
-say) dilutes the signal that gold = "this is the important thing." Pitch Teal gets
-full parity in every other respect (its own dock accent, its own tile palette) — it
-just doesn't shimmer.
+### Semantic and categorical
+- Status: green `#4ade80`, yellow `#facc15`, red `#f87171`, blue `#60a5fa`,
+  purple `#c084fc` / `#c4b5fd`, orange `#fb923c`, sky `#38bdf8`, mint `#34d399`.
+- Two-player sides: you `#60a5fa`, opponent `#f87171`.
+- League identity: G League `#A8263F`, NCAA `#3D7EC9`, EuroLeague `#FF6900`, NBA
+  `#c8102e` / `#1d428a`.
+- **Archetype colours** — single source `frontend/src/constants/archetypeColors.js`
+  (identical to the handoff's `ARCH_COLOR`).
+- **Position colours** — single source `frontend/src/constants/positionColors.js`
+  (identical to the handoff's `POS_COLOR`).
+- **Football phases** — keeper `#F2C14E`, defence `#4C9BE8`, midfield `#3FB08C`,
+  attack `#E8654C`; single source `frontend/src/game/football/theme.js`. Semantic,
+  never reassigned per page.
 
 ## Typography
 
-**Display Font:** Rajdhani (with `ui-sans-serif, sans-serif` fallback)
-**Body Font:** Outfit (with `ui-sans-serif, sans-serif` fallback)
+Rajdhani for display, numbers and game wordmarks; Outfit for everything read.
+**One type scale** — the old separate game/data scales are merged.
 
-**Character:** Rajdhani is the binder's stencil — condensed, geometric, built for
-short uppercase labels and card nameplates, never for a paragraph. Outfit is the
-quiet workhorse underneath it: humanist, unremarkable on purpose, so the eye has
-somewhere to rest between Rajdhani's louder moments.
+| Role | Size | Face |
+|---|---|---|
+| Meta, caption | 12 | Outfit 400–500 |
+| Body | 13 / 14 / 15 | Outfit 400–600 |
+| Row title, stat | 16–18 | Rajdhani 600–700 |
+| Section title | 20 | Rajdhani 700 + 8px glowing accent dot (`.g-section-title`) |
+| Stat value | 17–44 | Rajdhani 700, glowing in its own colour (`0 0 18px <c>66`) |
+| Page H1 | 40 | Rajdhani 700, line-height 1 |
+| Hero | 48–72 | Rajdhani 700 |
+| Loud moment | 96–112 | Rajdhani 700 — grade letter, aggregate score, room code |
 
-### Hierarchy
-- **Display** (800, ~23px, uppercase, 0.06em tracking): reserved for the game
-  module's dock/hero titles (`.g-dock-title`) — the loudest text in the system, one
-  per screen at most.
-- **Headline** (700, ~28–30px, sentence case, `font-logo`): page-level headers on
-  data pages (`Blog`, `Squad Chemistry`). Bold but not shouting — sentence case is
-  the tell that this is the calm register, not the game's.
-- **Title** (700, 14–17px, `font-logo`): card names, tile titles, section headers
-  inside a panel.
-- **Label** (700, 8.5–9.5px, uppercase, 0.10–0.14em tracking, `font-logo`): the
-  eyebrow/meta layer — `.g-label`, table column headers, badges. Always paired with
-  a short leading rule (`.g-label::before`) in game contexts, bare in data contexts.
-- **Body** (400, 13px, Outfit): everything a scout actually reads at volume — stat
-  values, descriptions, list rows.
-- **Micro** (700, a tight cluster of sub-steps between Label and Body —
-  7.5/8/8.5/10.5/11/11.5/12.5px, `font-logo`): the game module's chip/stat/sub-label
-  scale — column headers, slot positions, joker labels, roster row stats. Not
-  arbitrary: each step is reused consistently across `game.css`, just never enumerated
-  here before. Data pages don't need this scale; they stay on Label/Body.
+### Named rules
+**The 12px Floor.** Nothing renders below 12px, except inside the player card, which
+keeps its own internal scale.
 
-### Named Rules
+**The Wordmark Exception.** Uppercase exists only in Rajdhani game wordmarks and
+their CTAs (`LINEUP BUILDER`, `PLAY AGAIN`), tracked `.05em`. Labels, tabs, segments
+and nav are sentence case.
 
-**The Loud-Moment Exception.** The score-reveal grade letter (`.g-score-grade`, 96px/
-800/-0.03em) and its container (`.g-score-hero`, 22px radius) break the normal type/
-shape scale on purpose — this is the game's single biggest payoff moment (draft
-result), and it's meant to read as an event, not a heading. One such moment per flow;
-don't reuse the 96px step anywhere else or it stops meaning "this is the reveal."
-
-**The Uppercase-Means-Game Rule.** Uppercase, tracked-out Rajdhani at loud weight
-(800) signals "you are in the game module." A data-page heading stays sentence case
-even at bold weight — this is the fastest visual tell a reader has for which energy
-level they're in, so don't borrow one register's casing for the other's headline.
+**The Loud Moment.** 96–112px is for the one payoff per flow (grade reveal, aggregate
+score, room code). Reusing it elsewhere stops it meaning "this is the reveal".
 
 ## Layout
 
-Content lives inside a single-column, max-width-capped column on data pages (`max-w-3xl`
-for reading content like Blog/About, wider for tables and grids) and a fixed-height
-dock + flexible dual-panel split on game screens (`.g-dock` above, `.g-panel` columns
-below, matching the court/pitch's own aspect ratio). Density is the real variable:
-game rows (`.g-row`) run at ~40px with 6px internal gaps for drag/tap targets; data
-rows run tighter, optimized for scanning many at once. Mobile collapses the game dock
-from a 3-column grid to a stacked, centered column (`grid-template-columns: 1fr` under
-768px) rather than shrinking it in place — components resize as blocks, not by
-scaling down their internals.
+- **Shell:** 220px labelled sidebar (collapses to a 72px rail; on play screens it
+  starts collapsed below 1440px), then the content column: breadcrumb + account row,
+  page, footer. Phone: 52px bar (menu, page title, account) and a 320px drawer.
+- **No box-in-box.** Sections separate by whitespace, a single fading divider
+  (`--divider-fade`) or row underlines (`--row-line`). One card per meaningful unit.
+  A panel nested in a panel renders as a row card, not a second card.
+- **No page scroll on entry** for app screens. Long content scrolls inside its own
+  region; the page itself does not move.
+- Phone: 16px side margins, touch targets ≥ 44px, primary action pinned to the bottom
+  at 54px (`<PinnedAction>`).
 
-## Elevation & Depth
+## Elevation & depth
 
-Primarily flat-and-tinted, not shadow-driven. Surfaces separate from each other
-through **background value** (void black → card stock → raised panel, each one step
-lighter) and a **1px accent-tinted edge bevel** (a gradient border traced at the
-card/panel's own corner radius, masked to a hairline) rather than a drop shadow.
-Ambient light comes from the `.aura-blob`/`.aura-glow` system — soft, blurred,
-color-tinted radial shapes positioned behind content — which reads as light falling
-on the card rather than the card floating above the page. True `box-shadow` is
-reserved for two cases: the trading card itself when it's actually meant to feel like
-a physical object lifted off the table (`0 24px 48px -18px rgba(0,0,0,.8)`), and a
-tight accent-colored glow directly under something currently glowing (buttons,
-selected tiles, active slots — `0 0 16-22px` at the accent color).
-
-### Shadow Vocabulary
-- **Card lift** (`box-shadow: 0 24px 48px -18px rgba(0,0,0,0.8)`): under the
-  trading-card stage only — the one element allowed to feel physically raised.
-- **Accent glow** (`box-shadow: 0 0 16-22px [accent]`, often paired with an inset
-  highlight `0 1px 0 rgba(255,255,255,.5) inset`): active/selected/CTA state, never
-  resting state.
-- **Modal lift** (`box-shadow: 0 30px 70px -20px rgba(0,0,0,.85)`): the third and
-  final legitimate exception — a modal genuinely floats over a backdrop, same
-  physical logic as the trading card's own lift. Reserved for true modal/overlay
-  surfaces, not a general excuse to add resting shadows elsewhere.
-
-White and black alpha overlays (`rgba(255,255,255,.04-.28)`, `rgba(0,0,0,.35-.85)`) are
-the system's general-purpose glass/hover/vignette wash tool — texture and depth cues
-layered on top of the real palette, not brand colors themselves. They're a continuous
-opacity space by nature (each surface tunes its own wash to what reads right against
-its own background), not a discrete set to enumerate as named tokens — a scanner
-flagging an individual `rgba(0,0,0,.55)` here is expected and not itself a drift signal;
-what would be real drift is a wash using a *hue* other than pure white/black, or a wash
-strong enough to read as a real background color rather than a texture.
-
-### Named Rules
-
-**The Flat-By-Default Rule.** Nothing gets a shadow just for existing. A panel, tile,
-or row is flat until it's the trading card itself, or until it's actively glowing
-because the user is looking at it or it wants attention.
-
-## Shapes
-
-Radius scales with how "held" an element is meant to feel: the trading card itself
-is the roundest, largest-radius object (17px) *and* has one cut corner
-(`clip-path` notch, bottom-right) — the single most distinctive silhouette in the
-system, reserved for the card alone. Panels and docks (18px) and tiles (15px) stay
-soft-rounded without the notch. Small interactive chips — slots, jokers, badges —
-drop to 12px, and anything pill-shaped (search, ghost buttons, tag badges) goes to
-999px. Borders are 1px hairlines at rest almost everywhere; a thicker or
-colored-solid border is reserved for genuine state (selected, active), never
-decoration.
-
-### Named Rules
-
-**The One Notch Rule.** The cut-corner silhouette (`clip-path` bottom-right notch)
-belongs to the trading card and nothing else. It's the shape's signature the way the
-holo stripe is the surface's signature — reusing it on an unrelated card or panel
-would blur the one shape a user should always recognize as "that's a player."
+- **Card** (`.g-panel`): `linear-gradient(180deg,<accent>14,rgba(255,255,255,.015) 65%)`,
+  `inset 0 1px 0 <accent>55`, `0 24px 60px -34px #000`, r20. No border.
+- **Row card** (`.g-tile`, `.g-panel.subtle`, nested panels): `rgba(255,255,255,.03)`,
+  `inset 0 1px 0 rgba(255,255,255,.05)`.
+- **Selected row/card:** `linear-gradient(100deg,<c>26,<c>08 70%)` +
+  `inset 0 0 0 1px <c>77, 0 0 22px -8px <c>`.
+- **Modal:** r22, dim + blur backdrop, `0 30px 70px -20px rgba(0,0,0,.85)`.
+- **Ambient light:** one or two large organic blobs per page (`.g-smoke` /
+  `<PageGlow tint>`), blur 60–90px, opacity .05–.16, tinted by the page's context
+  (archetype, player on the clock, sport); colour changes cross-fade in .5s. No blob
+  behind individual panels. Admin has none.
+- **Coloured numbers glow** in their own colour.
+- **Cut corner + holo belong to the player card only.**
 
 ## Components
 
-### Buttons
-- **Shape:** primary CTAs are 8-10px radius, never pill unless the button is
-  genuinely a toggle/filter (`.aura-pill-btn`, 999px).
-- **Primary** (`.aura-rating-btn`): gold foil gradient fill (`linear-gradient(100deg,
-  #ffe9b0, var(--accent) 55%, #ffe9b0 100%)`), dark ink text, a continuous shine
-  sweep (3-4.5s loop) — the one button allowed to have ambient motion at rest,
-  because it's directly borrowed from the card's own rating badge.
-- **Ghost** (`.aura-pill-btn`): fully transparent at rest, a soft white wash on
-  hover, gold text + gold-tinted hover when `.active`. Never a resting border.
-- **Hover / Focus:** buttons lift (`translateY(-1px)`) and their glow deepens; no
-  color shift beyond the active/gold state.
+- **Primary button** `.aura-rating-btn` — 42–56px, r12, Rajdhani. Basketball: gold
+  gradient with a 3.2s shine sweep. Football: flat teal with a teal glow, no sweep.
+- **Secondary button** — `--fill-2` fill, primary ink.
+- **Tabs** — text only, 15px/500, active `inset 0 -2px 0 <accent>`.
+- **Segmented control** `.g-seg` — track `.04` r12 p4, active segment `.08`, 14px/500.
+- **Selects and inputs** — underlined (`inset 0 -1px 0 rgba(255,255,255,.12)`), no box.
+  They still carry no visible frame at rest.
+- **Header row** `.g-dock` — a `1fr auto 1fr` grid with a fading divider beneath; no box.
+- **Process steps** `.g-step` — unboxed: a glowing numbered badge in the step's colour
+  over a small colour cloud.
+- **System states** (`components/states/States.jsx`) — skeleton shimmer, empty state
+  with a useful explanation, error with retry, 404.
+- **Navigation** — `components/shell/`: grouped Play / Scout / Learn, sport switch at
+  the top, active item = accent at 10% + accent icon, league items carry a colour dot.
+- **The trading card** — unchanged: cut-corner notch, holo stripe, foil sweep on hover,
+  rating badge. Photo attribution stays visible on the card (licence obligation).
 
-### Cards
-- **Corner Style:** 17px + cut-corner notch (trading card only); 15-18px plain round
-  everywhere else.
-- **Background:** a subtle diagonal gradient (`linear-gradient(160deg, #17151b 0%,
-  #0c0b0e 55%, #14100a 100%)`), never a flat fill — this is what gives the "card
-  stock" its material read.
-- **Shadow Strategy:** see Elevation & Depth — lift shadow on the trading card only,
-  everything else flat + edge bevel.
-- **Border:** 1px hairline (`var(--border)`), swapping to an accent-tinted gradient
-  bevel via `::before` mask.
-- **Internal Padding:** 14-15px is the panel default; the trading card's own internal
-  rhythm is tighter (8-14px) because it's carrying more distinct zones.
+## Product rules (fixed, from the brief)
 
-### Inputs / Selects / Search
-- **Style:** no visible box at rest — background transparent, border absent (select)
-  or reduced to a single underline (`.aura-ghost-input`). A native `<select>`'s arrow
-  is suppressed and redrawn as a two-line chevron.
-- **Focus / Value state:** the box appears. Search expands from a 32px icon-only
-  circle to a 200px pill with a soft glow beneath it; ghost inputs grow a gold
-  underline; selects gain a gold text color when they hold a non-default value
-  (`.aura-select.accent`).
-- **Named Rule — The Ghost-Until-Earned Rule:** if an input has nothing to say (empty,
-  unfocused, default value), it should be nearly invisible. Visibility is a signal
-  the user has done something, not a permanent frame.
+- Dark only.
+- All user-facing copy in English; code comments may be Turkish.
+- Ratings are hidden while drafting unless a joker reveals them.
+- Scores are shown as percentiles against a stated reference ("ranked against 28,388
+  real elevens"); a bare 0–100 is not acceptable.
+- Re-skin the shared `g-*` / `aura-*` / `pcard-*` vocabulary; never fork a visual
+  language per page or per sport.
 
-### Navigation
-- Icon rail (desktop) / bottom-sheet drawer (mobile), Rajdhani uppercase labels,
-  13px, 0.09em tracking. Active state: a soft accent-tinted gradient wash plus a 3px
-  accent rail on the leading edge (`::before`), never a full-color fill.
+## Superseded (pre-2026-09 rules, kept for history)
 
-### The Trading Card (signature component)
-Vertical Panini-style card: cut-corner notch, edge-light bevel, always-on holo stripe
-texture (`mix-blend-mode: color-dodge`, low opacity), foil sweep that only animates
-on hover (perf: one card animating at a time, not sixty), fixed twinkle sparkles at
-three points, a skewed gold rating badge top-right with its own shine loop. This is
-the one component that gets the full ceremony — every other surface in the system is
-a quieter descendant of it.
+These were confirmed earlier and are now overridden by the handoff:
 
-## Do's and Don'ts
-
-### Do:
-- **Do** keep the trading card's cut-corner + holo + foil vocabulary exclusive to the
-  card itself; other surfaces borrow the edge-bevel and blob-glow, not the notch or
-  the holo stripe.
-- **Do** let game surfaces run brighter/louder (text scale, ornament, motion) than
-  data surfaces — that's the deliberate "two energy levels" the whole system is built
-  on, not drift to fix.
-- **Do** keep inputs invisible until they have something to say (focus, hover, value).
-- **Do** use `var(--accent)` for anything sport-conditional (basketball gold /
-  football teal) and `var(--yamabuki)` only for things that must always read gold
-  regardless of active sport (trophies, champion UI, brand wordmark).
-- **Do** respect `prefers-reduced-motion` on every ambient/looping animation (blob
-  drift, shine sweep, sparkle) — already the pattern everywhere; keep it that way.
-- **Do** keep the primary CTA (`.aura-rating-btn`) gold everywhere, football included
-  — confirmed 2026-09: CTA color is not sport-conditional, only secondary/decorative
-  accents (nav, dock, tiles) swap to Pitch Teal. No teal CTA variant exists or should
-  be added.
-- **Do** keep football's comparison/reference surfaces (`FootballCompare.jsx`,
-  `FootballMap.jsx`) in the quiet data register, matching basketball's
-  `Compare.jsx`/`Glossary.jsx` — confirmed 2026-09, converted from the loud game-module
-  chrome (`g-dock`/`g-panel`/`g-tile`) they'd drifted onto.
-
-### Don't:
-- **Don't** use gradient-clipped text anywhere, including for "signature" headings.
-  Removed 2026-09 from the game module's own dock title — the card's foil/holo system
-  already does the "shine" job; a gradient on top of type read as decorative rather
-  than earned, the classic AI-slop tell.
-- **Don't** put a resting `box-shadow` on anything that isn't the trading card itself
-  or an actively-glowing accent state.
-- **Don't** give a second color the gold accent's shine-sweep/glow treatment — one
-  color glows, everyone else stays flat-and-tinted.
-- **Don't** brighten the data register's `--text-faint` to match the game module's,
-  or dim the game module's to match data — they're deliberately different values for
-  the same semantic slot, not an inconsistency to reconcile.
-- **Don't** reach for `rounded-lg`/generic Tailwind defaults, raw palette classes
-  (`bg-blue-700`, `text-gray-400`), or a thick single-side accent border as a
-  substitute for the system's own tokens and edge-bevel language.
+- *Label tier 8.5–9.5px uppercase with a leading rule, and the 7.5–12.5px micro scale*
+  → the 12px floor and one scale.
+- *"Uppercase means game" / two energy registers* → one register; uppercase only in
+  game wordmarks.
+- *The One Root Rule (data pages keep `--text-faint: #3a3a3a`, game surfaces
+  re-declare brighter)* → one warm five-step scale site-wide.
+- *Solid `#131313` / `#1a1a1a` surfaces with `#262626` hairline borders and an accent
+  edge bevel* → translucent fills, borderless cards.
+- *Icon rail with 13px uppercase labels* → labelled sidebar.
+- *"Primary CTA is gold everywhere, football included; no teal CTA variant"* → the
+  handoff specifies a flat teal primary on football.
+- *"Gold is the only colour that glows"* → teal CTAs, coloured stat values and the
+  two-player sides also glow.
+- *Holo/foil as the ancestor of every surface* → card only.

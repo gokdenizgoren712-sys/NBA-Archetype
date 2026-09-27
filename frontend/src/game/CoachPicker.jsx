@@ -83,7 +83,7 @@ export default function CoachPicker({ title, subtitle, options, onPick, waitingF
       <span className="aura-blob" style={{ "--slot-color": "#c084fc", left: "12%", top: -50, width: 260, height: 140, opacity: 0.18 }} />
 
       <div className="flex items-center justify-between gap-3 mb-1">
-        <div className="g-label">
+        <div className="g-section-title nodot">
           <span className="inline-block w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "#c084fc" }} />
           {title}
         </div>

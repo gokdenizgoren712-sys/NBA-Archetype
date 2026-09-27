@@ -184,7 +184,7 @@ export default function FootballAbout() {
 
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 26 }}>
           <Link to="/football/game" className="aura-rating-btn"
-            style={{ borderColor: ACC, color: ACC }}>Play the game</Link>
+            >Play the game</Link>
           <Link to="/football/glossary" className="aura-pill-btn">Every role, in detail</Link>
           <Link to="/football/players" className="aura-pill-btn">Browse players</Link>
           <Link to="/football/lineups" className="aura-pill-btn">Squad chemistry</Link>

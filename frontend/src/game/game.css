@@ -26,17 +26,19 @@
   --text-faint:   #8b857e;
 }
 
-/* The one shared surface. Replaces every `bg-surfaceBg border rounded-2xl`.
-   Not a flat fill — a layered card face with a directional accent bevel. */
+/* The one shared surface — handoff v2 kart katmanı: kenarlık yok; aksanın
+   %8'i ile yukarıdan solan zemin, üstte aksan renkli tek iç çizgi, derin
+   gölge. Anlamlı birim başına tek kart; iç içe gelen ikinci panel aşağıda
+   satır kartına düşer. */
 .g-panel {
   position: relative;
-  border-radius: 18px;
+  border-radius: 20px;
   overflow: hidden;
-  background: linear-gradient(160deg, #17151b 0%, #0c0b0e 55%, #14100a 100%);
-  border: 1px solid var(--border);
-  transition: border-color 0.3s ease;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent, #FFB11B) 8%, transparent), rgba(255, 255, 255, 0.015) 65%);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--accent, #FFB11B) 33%, transparent), 0 24px 60px -34px #000;
 }
-.g-panel::before {
+/* Eski yönlü aksan kenarı (bevel) — handoff'ta kutu çerçevesi yok. */
+.g-panel::before { display: none;
   content: ""; position: absolute; inset: 0; z-index: 4; pointer-events: none;
   border-radius: inherit; padding: 1px;
   background: linear-gradient(150deg, var(--accent-line, rgba(255,255,255,.14)) 0%, transparent 30%,
@@ -48,15 +50,21 @@
 /* Content sits above the blob/holo layers without each child needing z-index. */
 .g-panel > *:not(.aura-blob):not(.g-holo) { position: relative; z-index: 3; }
 
-/* Quieter variant — for secondary/nested surfaces that shouldn't compete. */
-.g-panel.subtle {
-  background: rgba(255, 255, 255, 0.022);
-  border-color: rgba(255, 255, 255, 0.07);
+/* Satır kartı — ikincil yüzeyler ve iç içe gelen paneller (kutu içinde kutu
+   yok: içteki panel ikinci bir kart çizmez, yalnız hafif bir zemin alır). */
+.g-panel.subtle, .g-panel .g-panel {
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
-.g-panel.subtle::before { opacity: 0.4; }
+
+/* Handoff: panel başına blob yok (sayfa başına 1–2 ortam ışığı, bkz.
+   .g-smoke). Holo/foil yalnız oyuncu kartında. */
+.g-panel > .aura-blob, .g-tile > .aura-blob, .g-dock > .aura-blob, .g-step > .aura-blob,
+.g-court-panel > .aura-blob, .g-score-hero > .aura-blob, .g-modal > .aura-blob { display: none; }
 
 /* Prizm stripe texture, reused from the player card but at list-safe opacity. */
-.g-holo {
+.g-holo { display: none;
   position: absolute; inset: 0; pointer-events: none; z-index: 0;
   mix-blend-mode: color-dodge; opacity: 0.10;
   background: repeating-linear-gradient(
@@ -69,16 +77,25 @@
   );
 }
 
-/* Section label — replaces the repeated uppercase gray divs. */
+/* Meta etiket — handoff: 12px, cümle düzeni, mono/büyük harf yok. */
 .g-label {
-  font-family: var(--font-logo); font-size: 12px; font-weight: 700; color: var(--text-faint);
+  font-family: var(--font-sans); font-size: 12px; font-weight: 500; color: var(--text-muted);
   display: flex; align-items: center; gap: 7px;
 }
-.g-label::before {
-  content: ""; width: 14px; height: 1px; background: var(--accent, #FFB11B); opacity: 0.7;
-}
 .g-label.center { justify-content: center; }
-.g-label.center::before { display: none; }
+
+/* Bölüm başlığı — 20px Rajdhani + 8px parlayan aksan noktası. */
+.g-section-title {
+  display: flex; align-items: center; gap: 10px;
+  font-family: var(--font-logo); font-size: 20px; font-weight: 700; line-height: 1.1;
+  color: var(--text-primary);
+}
+.g-section-title::before {
+  content: ""; width: 8px; height: 8px; border-radius: 4px; flex-shrink: 0;
+  background: var(--accent, #FFB11B); box-shadow: 0 0 10px var(--accent, #FFB11B);
+}
+.g-section-title.nodot::before { display: none; }
+.g-section-title .aside { margin-left: auto; font-family: var(--font-sans); font-size: 13px; font-weight: 400; color: var(--text-muted); }
 
 /* ═══ Mode / era / coach tiles ══════════════════════════════════════════ */
 
@@ -86,19 +103,19 @@
    `.selected` lifts it; `.disabled` mutes without changing layout. */
 .g-tile {
   position: relative; overflow: hidden; cursor: pointer; text-align: left;
-  border-radius: 15px; padding: 14px 15px;
-  background: linear-gradient(160deg, #17151b 0%, #0c0b0e 60%, #14100a 100%);
-  border: 1px solid var(--border);
-  transition: transform 0.25s cubic-bezier(0.2, 0.7, 0.3, 1), border-color 0.25s ease;
+  border-radius: 14px; padding: 14px 15px; border: 0;
+  background: rgba(255, 255, 255, 0.035);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  transition: transform 0.25s cubic-bezier(0.2, 0.7, 0.3, 1), background 0.25s ease, box-shadow 0.25s ease;
 }
-.g-tile:hover { transform: translateY(-2px); border-color: var(--accent-line); }
-.g-tile.selected { border-color: var(--accent); }
-.g-tile.selected::after {
-  content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
-  box-shadow: 0 0 0 1px var(--accent) inset, 0 0 22px -6px var(--accent);
+.g-tile:hover { transform: translateY(-2px); background: rgba(255, 255, 255, 0.05); }
+/* Handoff seçili satır/kart: aksan gradyanı + 1px iç halka + dış parıltı */
+.g-tile.selected {
+  background: linear-gradient(100deg, color-mix(in srgb, var(--accent) 15%, transparent), color-mix(in srgb, var(--accent) 3%, transparent) 70%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 47%, transparent), 0 0 22px -8px var(--accent);
 }
 .g-tile.disabled { cursor: not-allowed; opacity: 0.5; }
-.g-tile.disabled:hover { transform: none; border-color: var(--border); }
+.g-tile.disabled:hover { transform: none; background: rgba(255, 255, 255, 0.035); }
 /* :not(.g-tile-info) şart — bu kural 3 sınıflı olduğu için .g-tile-info'nun
    position:absolute'unu eziyordu; relative + right:9px ise düğmeyi sağ üst
    yerine SOLA kaydırıyordu. */
@@ -108,7 +125,7 @@
   letter-spacing: 0.02em; color: var(--text-primary);
   display: flex; align-items: center; gap: 7px;
 }
-.g-tile-sub { font-size: 12px; color: var(--text-faint); margin-top: 2px; font-family: var(--font-logo); }
+.g-tile-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
 .g-tile-desc { font-size: 13px; color: var(--text-muted); margin-top: 7px; line-height: 1.5; }
 
 /* ═══ Draft list ════════════════════════════════════════════════════════ */
@@ -191,11 +208,13 @@
   border: 1px solid transparent;
   transition: border-color 0.22s ease, transform 0.22s ease;
 }
-.g-slot.empty { border: 1px dashed rgba(255, 255, 255, 0.12); }
-.g-slot.filled { border-color: var(--accent-line); background: rgba(255, 255, 255, 0.025); }
+/* Handoff: boş yuva kesikli kutu değil, soluk bir zemin; dolu yuva aksan
+   renginde üst iç çizgi taşır. */
+.g-slot.empty { background: rgba(255, 255, 255, 0.02); }
+.g-slot.filled { background: rgba(255, 255, 255, 0.035); box-shadow: inset 0 1px 0 var(--accent-line); }
 .g-slot.tappable { cursor: pointer; }
-.g-slot.tappable:hover { transform: translateY(-2px); border-color: var(--accent); }
-.g-slot.selected { border-color: var(--accent); box-shadow: 0 0 18px -4px var(--accent); }
+.g-slot.tappable:hover { transform: translateY(-2px); background: rgba(255, 255, 255, 0.05); }
+.g-slot.selected { box-shadow: inset 0 0 0 1px var(--accent), 0 0 18px -4px var(--accent); }
 .g-slot > *:not(.aura-blob) { position: relative; z-index: 2; }
 .g-slot-pos {
   font-family: var(--font-logo); font-size: 12px; font-weight: 700;
@@ -264,8 +283,8 @@
 
 /* The payoff moment — grade letter as a huge, glowing, foil-swept figure. */
 .g-score-hero { position: relative; overflow: hidden; border-radius: 22px; padding: 30px 20px 26px; text-align: center;
-  background: linear-gradient(160deg, #17151b 0%, #0c0b0e 55%, #14100a 100%);
-  border: 1px solid var(--accent-line); }
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent, #FFB11B) 10%, transparent), rgba(255, 255, 255, 0.015) 70%);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--accent, #FFB11B) 40%, transparent), 0 24px 60px -34px #000; }
 .g-score-hero > *:not(.aura-blob):not(.g-holo) { position: relative; z-index: 3; }
 .g-score-grade {
   font-family: var(--font-logo); font-weight: 800; font-size: 96px; line-height: 0.85;
@@ -428,10 +447,9 @@
   justify-content: center; padding: 16px; background: rgba(0, 0, 0, 0.62); backdrop-filter: blur(6px); }
 .g-modal {
   position: relative; overflow: hidden; width: 100%; max-width: 420px;
-  border-radius: 20px; padding: 22px;
-  background: linear-gradient(160deg, #17151b 0%, #0c0b0e 55%, #14100a 100%);
-  border: 1px solid var(--accent-line, rgba(255,255,255,.14));
-  box-shadow: 0 30px 70px -20px rgba(0, 0, 0, 0.85);
+  border-radius: 22px; padding: 24px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent, #FFB11B) 7%, #121212), #101010 60%);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--accent, #FFB11B) 30%, transparent), 0 30px 70px -20px rgba(0, 0, 0, 0.85);
   animation: gModalIn 0.2s cubic-bezier(0.2, 0.7, 0.3, 1);
 }
 .g-modal > *:not(.aura-blob) { position: relative; z-index: 3; }
@@ -477,26 +495,25 @@
 /* ═══ Sayfa dokusu: alttan yükselen duman ═══════════════════════════════
    Başlığın arkasındaki nokta-glow yerine, sayfanın ALT üçte-ikisini kaplayan
    yumuşak bir ısı/duman katmanı. Üst %33 bilinçli olarak boş kalır. */
+/* Sayfa ortam ışığı — handoff: sayfa başına 1–2 büyük organik blob, bağlam
+   rengiyle (--page-tint; yoksa sayfanın aksanı). Animasyonsuz: eski sürüklenen
+   duman sürekli yeniden boyanıyordu. Renk değişince .5s'de geçer. */
 .g-smoke {
-  position: absolute; left: 0; right: 0; bottom: 0; top: 33%;
-  pointer-events: none; z-index: 0; overflow: hidden;
+  position: absolute; inset: 0; pointer-events: none; z-index: 0; overflow: hidden;
 }
 .g-smoke::before, .g-smoke::after {
-  content: ""; position: absolute; left: -10%; right: -10%; bottom: -30%; height: 150%;
-  background:
-    radial-gradient(60% 55% at 50% 100%, rgba(255, 177, 27, 0.22), transparent 70%),
-    radial-gradient(45% 45% at 18% 100%, rgba(255, 177, 27, 0.13), transparent 72%),
-    radial-gradient(45% 45% at 82% 100%, rgba(255, 140, 40, 0.12), transparent 72%);
-  filter: blur(34px);
-  -webkit-mask-image: linear-gradient(to top, #000 20%, rgba(0,0,0,.55) 55%, transparent 92%);
-  mask-image: linear-gradient(to top, #000 20%, rgba(0,0,0,.55) 55%, transparent 92%);
+  content: ""; position: absolute; pointer-events: none;
+  background: var(--page-tint, var(--accent, #FFB11B));
+  transition: background 0.5s ease;
 }
-.g-smoke::after { animation: gSmokeDrift 17s ease-in-out infinite alternate; opacity: 0.75; }
-@keyframes gSmokeDrift {
-  0%   { transform: translate3d(-3%, 2%, 0) scale(1.04); }
-  100% { transform: translate3d(4%, -3%, 0) scale(1.12); }
+.g-smoke::before {
+  left: -40px; top: -170px; width: min(640px, 70%); height: 380px; opacity: 0.14;
+  border-radius: 72% 28% 55% 45% / 35% 65% 40% 60%; filter: blur(70px);
 }
-@media (prefers-reduced-motion: reduce) { .g-smoke::after { animation: none; } }
+.g-smoke::after {
+  right: -120px; top: 45%; width: 420px; height: 420px; opacity: 0.06;
+  border-radius: 50%; filter: blur(80px);
+}
 
 /* ═══ HUD layout ════════════════════════════════════════════════════════
    The game screen is a control surface, not a document — so it's built as a
@@ -508,11 +525,14 @@
    the left, the committed action dead-center, mode switching on the right.
    Three zones, so nothing competes and the primary action is unmissable. */
 .g-dock {
-  position: relative; overflow: hidden;
-  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 16px;
-  min-height: 132px; padding: 18px 24px; border-radius: 18px;
-  background: rgba(19, 17, 22, 0.55); backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  position: relative;
+  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 16px 24px;
+  padding: 4px 0 20px;
+}
+/* Handoff: kutu yok; başlık satırı tek bir solan çizgiyle ayrılıyor. */
+.g-dock::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px; pointer-events: none;
+  background: var(--divider-fade);
 }
 .g-dock-left { justify-self: start; text-align: left; min-width: 0; }
 .g-dock-center { justify-self: center; min-width: 0; }
@@ -521,8 +541,8 @@
 /* In-game variant — the dock follows you through the draft, but slims down
    to a single control row: run state on the left, the live spin (then the
    jokers) in the middle, the landed team on the right. */
-.g-dock.thin { min-height: 0; padding: 10px 20px; border-radius: 15px; gap: 18px; }
-.g-dock.thin .g-dock-title { font-size: 15px; letter-spacing: 0.07em; }
+.g-dock.thin { padding: 0 0 14px; gap: 18px; }
+.g-dock.thin .g-dock-title { font-size: 20px; }
 
 /* Landed season/team — plain type, no box. Team over year. */
 .g-dock-team { text-align: right; line-height: 1.05; }
@@ -531,10 +551,7 @@
   letter-spacing: 0.05em; color: var(--yamabuki, #FFB11B);
   text-shadow: 0 0 22px rgba(255, 177, 27, 0.35);
 }
-.g-dock-team .yr {
-  font-family: var(--mono, ui-monospace, monospace); font-size: 12px;
-  letter-spacing: 0.12em; color: var(--text-muted); margin-top: 3px;
-}
+.g-dock-team .yr { font-size: 12px; color: var(--text-muted); margin-top: 3px; }
 
 /* Single-row inline spinner — the dock has no room for a 3-row wheel, and a
    horizontal strip reads better as "scanning" than a slot machine. No box:
@@ -561,11 +578,11 @@
   .g-spin-inline.spinning .g-spin-inline-item { animation: none; opacity: 0.75; }
 }
 .g-spin-caption {
-  font-family: var(--mono, ui-monospace, monospace); font-size: 12px; color: var(--text-faint);
+  font-size: 12px; color: var(--text-muted);
   text-align: center; margin-top: 1px;
 }
 @media (max-width: 900px) {
-  .g-dock { grid-template-columns: 1fr; justify-items: center; text-align: center; min-height: 0; }
+  .g-dock { grid-template-columns: 1fr; justify-items: center; text-align: center; }
   .g-dock-left, .g-dock-center, .g-dock-right { justify-self: center; text-align: center; }
 }
 /* :not(.aura-blob) şart — aksi hâlde relative'e zorlanan blob flex-child olur
@@ -573,19 +590,20 @@
 .g-dock > *:not(.aura-blob) { position: relative; z-index: 3; }
 /* Sağ blok: mod anahtarı + birincil aksiyon yan yana. */
 .g-dock-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+/* Oyun wordmark'ı — handoff'ta büyük harfin kaldığı tek yer (LINEUP BUILDER). */
 .g-dock-title {
-  font-family: var(--font-logo); font-size: 23px; font-weight: 800;
-  letter-spacing: 0.06em; text-transform: uppercase; line-height: 1;
+  font-family: var(--font-logo); font-size: 26px; font-weight: 700;
+  letter-spacing: 0.05em; text-transform: uppercase; line-height: 1;
   color: var(--accent, var(--yamabuki));
+  text-shadow: 0 0 30px color-mix(in srgb, var(--accent, #FFB11B) 35%, transparent);
 }
-.g-dock-sub { font-size: 13px; color: var(--text-faint); margin-top: 5px; letter-spacing: 0.02em; }
+.g-dock-sub { font-size: 14px; color: var(--text-secondary); margin-top: 8px; }
 
 /* Segmented switcher — one recessed track, the active segment lifts out.
    Replaces two competing full-size cards. `.stacked` runs the segments
    vertically (dock's right rail), so the two modes read as a list of states
    rather than a left/right tug-of-war. */
-.g-seg { display: flex; padding: 4px; border-radius: 13px;
-  background: rgba(0, 0, 0, 0.45); border: 1px solid rgba(255, 255, 255, 0.06); }
+.g-seg { display: flex; gap: 2px; padding: 4px; border-radius: 12px; background: rgba(255, 255, 255, 0.04); }
 .g-seg.stacked { flex-direction: column; gap: 4px; }
 .g-seg.stacked .g-seg-btn { justify-content: flex-start; width: 100%; }
 .g-seg-btn {
@@ -598,12 +616,10 @@
   color: var(--text-faint);
   transition: color 0.2s ease, background 0.2s ease, border-color 0.2s ease;
 }
-.g-seg-btn:hover { color: var(--text-muted); }
-.g-seg-btn.on {
-  color: var(--accent); border-color: var(--accent-line);
-  background: linear-gradient(180deg, var(--accent-a), transparent);
-  box-shadow: 0 0 14px -4px var(--accent);
-}
+.g-seg-btn { color: var(--text-muted); }
+.g-seg-btn:hover { color: var(--text-primary); }
+.g-seg-btn.on { color: var(--text-primary); background: rgba(255, 255, 255, 0.08); }
+.g-seg-btn:focus-visible { outline: 2px solid var(--accent, #FFB11B); outline-offset: 1px; }
 
 /* 3-column grid: context / court / leaderboard. */
 .g-hud { display: grid; grid-template-columns: 1fr; gap: 16px; }
@@ -623,22 +639,31 @@
 
 /* Numbered process step — a horizontal row with a real 01/02 index badge.
    Numbering is meaningful here: the draft genuinely runs 1→4 in order. */
+/* Handoff 3a: adımlar kutusuz — numara adımın renginde parlıyor, arkasında
+   küçük bir renk bulutu; çerçeve ve zemin yok. */
 .g-step {
-  position: relative; overflow: hidden;
-  display: flex; align-items: center; gap: 12px;
-  padding: 11px 13px; border-radius: 13px;
-  border: 1px solid var(--accent-line);
-  background: linear-gradient(100deg, var(--accent-a), transparent 70%);
+  position: relative;
+  display: flex; align-items: center; gap: 14px;
+  padding: 10px 4px; border-radius: 12px;
 }
+.g-step::before {
+  content: ""; position: absolute; left: -14px; top: 50%; width: 110px; height: 70px; margin-top: -35px;
+  background: var(--accent); opacity: 0.12; pointer-events: none;
+  border-radius: 72% 28% 55% 45% / 35% 65% 40% 60%; filter: blur(22px);
+}
+.g-step > * { position: relative; }
 .g-step-idx {
-  flex-shrink: 0; font-family: var(--font-logo); font-size: 12px; font-weight: 800;
-  padding: 4px 7px; border-radius: 7px; color: var(--accent);
-  background: rgba(0, 0, 0, 0.45); border: 1px solid rgba(255, 255, 255, 0.1);
+  flex-shrink: 0; width: 34px; height: 34px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-logo); font-size: 16px; font-weight: 700; color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
+  text-shadow: 0 0 12px color-mix(in srgb, var(--accent) 60%, transparent);
   font-variant-numeric: tabular-nums;
 }
-.g-step.clickable { cursor: pointer; transition: border-color 0.25s ease, transform 0.25s ease; }
-.g-step.clickable:hover { transform: translateY(-1px); border-color: var(--accent); }
-.g-step-title { font-family: var(--font-logo); font-size: 13px; font-weight: 700; color: var(--text-primary); line-height: 1.2; }
+.g-step.clickable { cursor: pointer; transition: background 0.25s ease; }
+.g-step.clickable:hover { background: rgba(255, 255, 255, 0.03); }
+.g-step-title { font-family: var(--font-logo); font-size: 16px; font-weight: 700; color: var(--text-primary); line-height: 1.2; }
 .g-step-sub { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
 .g-step-chev { margin-left: auto; flex-shrink: 0; font-size: 12px; color: var(--accent);
   transition: transform 0.35s cubic-bezier(0.2, 0.7, 0.3, 1); }
@@ -649,11 +674,11 @@
   transition: grid-template-rows 0.4s cubic-bezier(0.2, 0.8, 0.3, 1); }
 .g-step.open .g-step-wrap { grid-template-rows: 1fr; }
 .g-step-inner { overflow: hidden; min-height: 0; }
-.g-step-body { padding-top: 10px; margin-top: 10px; border-top: 1px solid rgba(255, 255, 255, 0.1); }
+.g-step-body { padding-top: 10px; margin-top: 10px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06); }
 .g-step-detail { font-size: 13px; line-height: 1.6; color: var(--text-muted); }
 .g-step-eg {
-  margin-top: 9px; padding: 8px 10px; border-radius: 9px;
-  background: rgba(0, 0, 0, 0.35); border: 1px solid rgba(255, 255, 255, 0.07);
+  margin-top: 9px; padding: 9px 11px; border-radius: 10px;
+  background: rgba(255, 255, 255, 0.035);
   font-size: 13px; line-height: 1.55; color: var(--text-muted);
 }
 .g-step-eg b { color: var(--accent); font-weight: 700; }
@@ -667,27 +692,24 @@
   position: relative; overflow: hidden; border-radius: 18px; padding: 16px;
   /* Vinyet artık resting box-shadow değil (Flat-By-Default kuralı) — aynı
      görsel etki, radial-gradient katmanı olarak taşındı. */
-  background: radial-gradient(ellipse at center, transparent 55%, rgba(0, 0, 0, 0.55) 140%),
-              rgba(17, 15, 20, 0.5);
-  backdrop-filter: blur(14px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: radial-gradient(ellipse at 50% 0%, color-mix(in srgb, var(--accent, #FFB11B) 7%, transparent), transparent 65%),
+              rgba(255, 255, 255, 0.015);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 24px 60px -34px #000;
 }
 .g-court-panel > *:not(.g-dotgrid):not(.aura-blob) { position: relative; z-index: 3; }
-.g-dotgrid {
+/* Handoff: nokta ızgarası dekoratif gürültü — kaldırıldı. */
+.g-dotgrid { display: none;
   position: absolute; inset: 0; z-index: 0; pointer-events: none; opacity: 0.35;
   background-image: radial-gradient(rgba(255, 255, 255, 0.14) 1px, transparent 1px);
   background-size: 17px 17px;
 }
 /* Mono technical readouts — the HUD's own voice. */
-.g-mono {
-  font-family: var(--mono, ui-monospace, SFMono-Regular, Menlo, monospace);
-  font-size: 12px;
-}
+/* Handoff: mono okumalar kalktı — tek tip ölçeği, gövde yazısı. */
+.g-mono { font-size: 12px; color: var(--text-muted); }
 .g-status {
-  font-family: var(--mono, ui-monospace, SFMono-Regular, Menlo, monospace);
-  font-size: 12px;
-  padding: 3px 9px; border-radius: 6px;
-  color: var(--accent); background: var(--accent-a); border: 1px solid var(--accent-line);
+  font-size: 12px; font-weight: 600;
+  padding: 4px 10px; border-radius: 8px;
+  color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent);
 }
 
 /* Draft havuzu, kortla aynı alt hatta bitsin diye akıştan çıkarılır: uzun
@@ -715,7 +737,7 @@
 /* Bench as a horizontal strip under the court — 4 equal cells, reads as a
    dock rather than a sidebar list. */
 .g-bench-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px;
-  padding-top: 12px; margin-top: 12px; border-top: 1px solid rgba(255, 255, 255, 0.08); }
+  padding-top: 12px; margin-top: 12px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06); }
 
 /* Full-width committed CTA at the bottom of the screen. */
 .g-cta-dock { display: flex; justify-content: center; }

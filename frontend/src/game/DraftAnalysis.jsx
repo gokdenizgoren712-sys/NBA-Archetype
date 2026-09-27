@@ -209,7 +209,7 @@ export default function DraftAnalysis({
       {/* 5 sütun — era ağırlığı ortada, iki takım iki yanda (ayna barlar) */}
       <div className={showHero || showParts ? "pt-3.5" : ""}
         style={showHero || showParts ? { borderTop: "1px solid rgba(255,255,255,.07)" } : null}>
-        <div className="g-label mb-2.5">Five Pillars · weighted for the {era.label}</div>
+        <div className="g-section-title mb-2.5">Five Pillars · weighted for the {era.label}</div>
         <div className="space-y-2">
           {PILLARS.map(([key, plabel]) => {
             const [tag, tagHex] = weightTag(W[key]);

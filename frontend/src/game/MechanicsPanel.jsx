@@ -26,7 +26,7 @@ export default function MechanicsPanel() {
           önce ağırlık şeridi + formül, sonra ayırıcı, sonra mekanik kartları. */}
       <div className="g-panel p-4 space-y-4">
         <span className="aura-blob" style={{ "--slot-color": "#c084fc", right: "12%", top: -44, width: 200, height: 110, opacity: 0.14 }} />
-        <div className="g-label">How Scoring Works</div>
+        <div className="g-section-title">How Scoring Works</div>
 
         <div>
           <div className="flex h-9 rounded-xl overflow-hidden text-[10.5px] font-bold font-logo tracking-wide"
@@ -47,7 +47,7 @@ export default function MechanicsPanel() {
         </div>
 
         <div className="pt-1" style={{ borderTop: "1px solid rgba(255,255,255,.07)" }}>
-          <div className="g-label mt-3 mb-2.5">Match Mechanics</div>
+          <div className="g-section-title mt-3 mb-2.5">Match Mechanics</div>
           <div className="grid grid-cols-2 gap-2">
             {CARDS.map(({ key, Icon, hex, title, desc }) => (
               <button key={key} onClick={() => setModal(key)} className="g-tile"

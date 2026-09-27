@@ -191,7 +191,7 @@ export default function SeasonPanel({ starters, chemistry, positionPenalty = 0,
         </div>
         <button onClick={go}
           disabled={busy || quality == null || (mode === "rewrite" && !rhData)}
-          className="aura-rating-btn" style={{ borderColor: ACC, color: ACC }}>
+          className="aura-rating-btn">
           {busy ? "Simulating…" : (run || rh) ? "Run again" : "Simulate season"}
         </button>
         {mode === "rewrite" && rhTeam && !rhData && (

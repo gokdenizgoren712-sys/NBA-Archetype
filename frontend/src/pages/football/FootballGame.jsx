@@ -642,7 +642,7 @@ export default function FootballGame() {
 
                 {fit && (
                   <div className="mt-3 space-y-2">
-                    <div className="g-label">What moved the number</div>
+                    <div className="g-section-title">What moved the number</div>
                     {[
                       ["Chemistry", fit.score, ACCENT],
                       ["Natural slots", fit.chemistry_bonus / 0.165, ACCENT],

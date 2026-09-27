@@ -211,7 +211,7 @@ export default function FootballLineups() {
                 <div className="g-panel p-4 space-y-2.5 shrink-0"
                   style={{ "--accent": ACCENT, "--accent-line": ACCENT + "3d" }}>
                   <span className="aura-blob" style={{ "--slot-color": ACCENT, right: "12%", top: -42, width: 190, height: 105, opacity: 0.18 }} />
-                  <div className="g-label">Chemistry</div>
+                  <div className="g-section-title">Chemistry</div>
                   <div className="font-logo font-black tabular-nums leading-none"
                     style={{ fontSize: 44, color: ACCENT }}>
                     {Math.round((fit?.score ?? 0) * 100)}
@@ -236,7 +236,7 @@ export default function FootballLineups() {
                 <div className="g-panel p-4 space-y-2 shrink-0"
                   style={{ "--accent": ACCENT, "--accent-line": ACCENT + "3d" }}>
                   <span className="aura-blob" style={{ "--slot-color": ACCENT, left: "20%", top: -40, width: 200, height: 100, opacity: 0.12 }} />
-                  <div className="g-label">How well each job is covered</div>
+                  <div className="g-section-title">How well each job is covered</div>
                   {Object.entries(fit.slot_scores)
                     .sort((a, b) => b[1] - a[1])
                     .map(([k, v]) => (

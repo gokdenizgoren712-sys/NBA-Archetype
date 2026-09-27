@@ -5,7 +5,7 @@ import Sidebar from "./components/shell/Sidebar";
 import PageBar from "./components/shell/PageBar";
 import MobileDrawer from "./components/shell/MobileDrawer";
 import NotFound from "./components/shell/NotFound";
-import { shellHidden } from "./components/shell/nav";
+import { shellHidden, sportOf } from "./components/shell/nav";
 import "./components/shell/shell.css";
 import TermsBanner from "./components/TermsBanner";
 
@@ -106,7 +106,8 @@ function Shell({ children }) {
       {!hidden && !bare && <Sidebar />}
       <div className="flex-1 min-w-0 flex flex-col">
         {!hidden && <PageBar onMenu={() => setMenuOpen(true)} />}
-        <main className="flex-1 min-h-0 overflow-hidden">{children}</main>
+        {/* data-sport: sayfanın aksanı sporu izler (handoff kural 6) — bkz. shell.css */}
+        <main className="flex-1 min-h-0 overflow-hidden" data-sport={sportOf(pathname) || undefined}>{children}</main>
         <TermsBanner />
         <Footer />
       </div>

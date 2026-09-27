@@ -64,7 +64,7 @@ export default function HowItWorksPanel({ steps, note, label = "Draft Process", 
     <div className={`g-panel p-4 space-y-3${fill ? " g-hud-fill" : ""}`}>
       <span className="aura-blob" style={{ "--slot-color": "#FFB11B", left: "15%", top: -44, width: 200, height: 110, opacity: 0.13 }} />
 
-      <div className="g-label shrink-0">
+      <div className="g-section-title nodot shrink-0">
         <span className="inline-block w-1.5 h-1.5 rounded-full animate-pulse"
           style={{ background: "var(--yamabuki)" }} />
         {label}

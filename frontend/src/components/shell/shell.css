@@ -216,3 +216,42 @@
 .pa-btn-secondary { background: rgba(255, 255, 255, .06); color: var(--text-primary); font-weight: 500; }
 .pa-btn-secondary:hover { background: var(--fill-sel); }
 .pa-btn-primary:focus-visible, .pa-btn-secondary:focus-visible { outline: 2px solid #FFB11B; outline-offset: 2px; }
+
+/* ═══ Spor aksanı ════════════════════════════════════════════════════════
+   Handoff kural 6: birincil aksan bulunduğun sporu izler. Futbol sayfalarında
+   --accent teal olur; altın yalnız kupa/şampiyon anlamında (--yamabuki) kalır. */
+main[data-sport="football"] {
+  --accent: #3FB08C;
+  --accent-dim: rgba(63, 176, 140, 0.12);
+  --accent-border: rgba(63, 176, 140, 0.32);
+}
+
+/* ═══ Durumlar (18d): iskelet, boş, hata; mobil sabit aksiyon ════════════ */
+@keyframes paSkel { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
+.pa-skel {
+  border-radius: 14px;
+  background: linear-gradient(100deg, #141414 30%, #1c1c1c 50%, #141414 70%);
+  background-size: 300% 100%;
+  animation: paSkel 1.6s ease-in-out infinite;
+}
+.pa-skel.line { height: 14px; border-radius: 7px; }
+.pa-skel.line.sm { height: 12px; border-radius: 6px; }
+.pa-skel-grid { display: grid; gap: 28px 24px; }
+.pa-skel-item { display: flex; flex-direction: column; gap: 10px; }
+.pa-skel-rows { display: flex; flex-direction: column; gap: 6px; }
+@media (prefers-reduced-motion: reduce) { .pa-skel { animation: none; } }
+
+.pa-empty {
+  position: relative; display: flex; flex-direction: column; align-items: center;
+  gap: 12px; padding: 48px 16px 64px; text-align: center;
+}
+.pa-empty-ic { filter: drop-shadow(0 0 16px color-mix(in srgb, var(--tint) 50%, transparent)); }
+.pa-empty .pa-state-body { max-width: 360px; }
+
+.pa-pinned {
+  position: sticky; bottom: 0; z-index: 20;
+  padding: 14px 16px calc(26px + env(safe-area-inset-bottom));
+  background: linear-gradient(to top, #0b0b0b 70%, transparent);
+}
+.pa-pinned > button, .pa-pinned > a { width: 100%; min-height: 54px; }
+@media (min-width: 768px) { .pa-pinned { position: static; padding: 0; background: none; } .pa-pinned > button, .pa-pinned > a { width: auto; } }

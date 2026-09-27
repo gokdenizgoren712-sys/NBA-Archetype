@@ -528,7 +528,7 @@ export default function SameScreenGame() {
                     </p>
                     {g && (
                       <div className="pt-3" style={{ borderTop: "1px solid rgba(255,255,255,.08)" }}>
-                        <div className="g-label mb-2">Archetype Weights</div>
+                        <div className="g-section-title mb-2">Archetype Weights</div>
                         <div className="flex flex-wrap gap-1.5">
                           {g.top.map(t => (
                             <span key={t} className="text-[10px] px-2 py-0.5 rounded-full font-medium"

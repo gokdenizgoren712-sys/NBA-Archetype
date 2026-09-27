@@ -35,7 +35,7 @@ export default function LeaderboardPanel({ mode = "classic", limit = 25, fill = 
     <div className={`g-panel p-4${fill ? " g-hud-fill" : ""}`}>
       <span className="aura-blob" style={{ "--slot-color": "#FFB11B", right: "10%", top: -40, width: 200, height: 110, opacity: 0.16 }} />
 
-      <div className="g-label shrink-0 flex items-center justify-between gap-2">
+      <div className="g-section-title nodot shrink-0 flex items-center justify-between gap-2">
         <span className="inline-flex items-center gap-1.5">
           <span className="inline-block w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "var(--yamabuki)" }} />
           Leaderboard

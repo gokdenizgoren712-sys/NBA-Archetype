@@ -99,7 +99,7 @@ export default function CourtBoard({ lineup, coach, moveSrc, canRearrange, onSlo
       )}
       {!bare && (
         <div className="flex items-center justify-between gap-2">
-          <div className="g-label">Your Roster</div>
+          <div className="g-section-title">Your Roster</div>
           {placing ? (
             <span className="text-[10px] font-medium" style={{ color: "var(--yamabuki)" }}>Tap a spot on the court or bench to place</span>
           ) : canRearrange ? (
@@ -158,7 +158,7 @@ export default function CourtBoard({ lineup, coach, moveSrc, canRearrange, onSlo
         {/* Bench — court'un sağında, dikey stack */}
         <div className="w-[110px] shrink-0 flex flex-col pl-3" style={{ borderLeft: "1px solid rgba(255,255,255,.07)" }}>
           <div className="flex items-center justify-between mb-2">
-            <div className="g-label" style={{ fontSize: 8.5 }}>Bench</div>
+            <div className="g-label">Bench</div>
             <div className="flex items-center gap-1" title="Bench with a Guard, Forward AND Center earns a small buff">
               {["G", "F", "C"].map(g => (
                 <span key={g} className="font-logo text-[8px] w-[15px] h-[15px] rounded-md flex items-center justify-center font-bold"

@@ -114,7 +114,7 @@ export default function ModeAboutModal({ mode, onClose }) {
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
           {/* Akış — numaralı adımlar (Draft Process paneliyle aynı dil) */}
           <div>
-            <div className="g-label mb-2.5">How a run plays out</div>
+            <div className="g-section-title mb-2.5">How a run plays out</div>
             <div className="space-y-2">
               {cfg.flow.map(([Icon, title, desc], i) => (
                 <div key={title} className="g-step" style={{ "--accent": a, "--accent-a": a + "1a", "--accent-line": a + "3d", display: "block" }}>
@@ -133,7 +133,7 @@ export default function ModeAboutModal({ mode, onClose }) {
 
           {/* Moda özel mekanikler */}
           <div>
-            <div className="g-label mb-2.5">What's different here</div>
+            <div className="g-section-title mb-2.5">What's different here</div>
             <div className="space-y-2">
               {cfg.extras.map(([Icon, hex, title, desc]) => (
                 <div key={title} className="flex gap-3 items-start">
@@ -149,7 +149,7 @@ export default function ModeAboutModal({ mode, onClose }) {
 
           {/* Skorlama — her modda ortak */}
           <div className="pt-4" style={{ borderTop: "1px solid rgba(255,255,255,.08)" }}>
-            <div className="g-label mb-2.5">How your lineup is scored</div>
+            <div className="g-section-title mb-2.5">How your lineup is scored</div>
             <div className="space-y-2">
               {SCORE.map(([name, weight, hex, desc]) => (
                 <div key={name} className="flex gap-3 items-start">
