@@ -4313,8 +4313,6 @@ def get_football_players(
 
     if league:
         df = df[df["LEAGUE"] == league]
-    if phase:
-        df = df[df["PHASE"] == phase]
     if position:
         df = df[df["POSITION"] == position]
     if archetype:
@@ -4329,6 +4327,13 @@ def get_football_players(
         s = _fold(search)
         df = df[df["PLAYER_NAME"].map(lambda n: s in _fold(str(n)))]
 
+    # Faz sayıları faz filtresinden ÖNCE — filtre kolonundaki "faz · sayı"
+    # listesi (handoff 6a), seçilince gelecek sonuç sayısıyla aynı.
+    phase_counts = {k: int(v) for k, v in df["PHASE"].value_counts().items()}
+    phase_total = len(df)
+    if phase:
+        df = df[df["PHASE"] == phase]
+
     if sort in df.columns:
         df = df.sort_values(sort, ascending=(sort == "PLAYER_NAME"))
 
@@ -4342,6 +4347,8 @@ def get_football_players(
     return {
         "players": json.loads(page.drop(columns=drop).to_json(orient="records")),
         "total": total,
+        "phase_counts": phase_counts,
+        "phase_total": phase_total,
         "season": season,
         "phase_labels": FOOTBALL_PHASE_LABELS,
     }

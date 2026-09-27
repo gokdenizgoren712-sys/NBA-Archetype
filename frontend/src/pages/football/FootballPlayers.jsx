@@ -1,29 +1,41 @@
-import { useState, useEffect, useMemo, useRef } from "react";
-import { SlidersHorizontal, X } from "lucide-react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { api } from "../../api";
 import { SEO } from "../../hooks/useSEO";
-import AuraSearch from "../../components/AuraSearch";
 import FootballPlayerCard from "../../components/FootballPlayerCard";
 import FootballFeedbackModal from "./FootballFeedbackModal";
+import { SkeletonGrid, EmptyState, ErrorState } from "../../components/states/States";
+import {
+  ListingPage, FilterGroup, UnderSelect, UnderSearch, PillSet, FacetList,
+  ListingHero, LoadMore, CardGrid,
+} from "../../components/listing/Listing";
 import { LEAGUE_LABEL } from "../../game/football/leagues";
-import { ACCENT } from "../../game/football/theme";
+import { ACCENT, PHASE_COLOR } from "../../game/football/theme";
 
-// ── Futbol oyuncular sayfası ─────────────────────────────────────────────────
-// Düzen NBA Players sayfasıyla aynı prensipte: ince üst bar + soldan açılan
-// filtre çekmecesi + kart ızgarası. Kullanıcı kararı: üst barda yalnızca FAZ
-// filtresi kalır (pozisyon filtresi kaldırıldı — faz zaten pozisyon grubunu
-// belirliyor), diğer bütün filtreler çekmecede.
+// ── Futbol oyuncular sayfası (handoff 6a / mobil 19b kalıbı) ────────────────
+// Önceden tek istekte 600 kart çekiliyordu; artık 24'lük sayfalar + "Load
+// more". Faz listesi sayılarıyla solda (API phase_counts), faz seçilince sayfa
+// o fazın rengine bürünür. Pozisyon filtresi yok (kullanıcı kararı — faz
+// zaten pozisyon grubunu belirliyor); lig hapları kolonda.
 
+const PAGE = 24;
 const PHASES = [
-  { key: "", label: "All phases" },
-  { key: "gk", label: "Goalkeeper" },
-  { key: "def", label: "Defence" },
-  { key: "mid", label: "Midfield" },
-  { key: "fwd", label: "Attack" },
+  { key: "gk",  name: "Goalkeepers" },
+  { key: "def", name: "Defenders" },
+  { key: "mid", name: "Midfielders" },
+  { key: "fwd", name: "Attackers" },
+];
+const PHASE_BLURB = {
+  gk:  "Shot stopping, sweeping and distribution — each keeper scored against his own league's keepers.",
+  def: "Centre-backs and full-backs split by what they actually produce: duels, progression, overlaps.",
+  mid: "From deep-lying regista to box-to-box runner — nearby roles share a map.",
+  fwd: "Finishers, inside forwards and creators, told apart by what they produce in the final third.",
+};
+const CONFIDENCE = [
+  { value: "prototype", label: "Prototype" },
+  { value: "clear", label: "Clear" },
+  { value: "between roles", label: "Between roles" },
 ];
 
-// Veri lig anahtarını slug olarak tutuyor (fetch_fotmob.LEAGUES); ekranda
-// okunur adı gösteriyoruz. Bilinmeyen slug olduğu gibi basılır.
 export default function FootballPlayers() {
   const [meta, setMeta]       = useState(null);
   const [season, setSeason]   = useState("");
@@ -38,10 +50,13 @@ export default function FootballPlayers() {
   const [searchInput, setSearchInput] = useState("");
 
   const [rows, setRows]       = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [filterOpen, setFilterOpen] = useState(false);
+  const [info, setInfo]       = useState({ total: 0, phase_counts: {}, phase_total: 0 });
+  const [loading, setLoading] = useState(true);
+  const [more, setMore]       = useState(false);
+  const [error, setError]     = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const debounceRef = useRef();
+  const reqRef = useRef(0);
 
   useEffect(() => {
     api.footballMeta().then(m => {
@@ -50,10 +65,8 @@ export default function FootballPlayers() {
     }).catch(() => setMeta({ available: false }));
   }, []);
 
-  useEffect(() => {
-    if (!season) return;
-    setLoading(true);
-    const p = { season, limit: 600, sort: sortBy };
+  const fetchPage = useCallback((offset) => {
+    const p = { season, limit: PAGE, offset, sort: sortBy };
     if (league) p.league = league;
     if (phase) p.phase = phase;
     if (arch) p.archetype = arch;
@@ -61,55 +74,140 @@ export default function FootballPlayers() {
     if (conf) p.confidence = conf;
     if (minMin) p.min_minutes = minMin;
     if (search) p.search = search;
-    api.footballPlayers(p)
-      .then(r => setRows(r.players || []))
-      .catch(() => setRows([]))
-      .finally(() => setLoading(false));
+    return api.footballPlayers(p);
   }, [season, league, phase, arch, team, conf, minMin, search, sortBy]);
+
+  const load = useCallback(async () => {
+    if (!season) return;
+    const id = ++reqRef.current;
+    setLoading(true); setError(false);
+    try {
+      const r = await fetchPage(0);
+      if (id !== reqRef.current) return;
+      setRows(r.players || []);
+      setInfo({ total: r.total || 0, phase_counts: r.phase_counts || {}, phase_total: r.phase_total ?? r.total ?? 0 });
+    } catch {
+      if (id === reqRef.current) setError(true);
+    }
+    if (id === reqRef.current) setLoading(false);
+  }, [season, fetchPage]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const loadMore = async () => {
+    const id = reqRef.current;
+    setMore(true);
+    try {
+      const r = await fetchPage(rows.length);
+      if (id === reqRef.current) setRows(prev => [...prev, ...(r.players || [])]);
+    } catch { /* düğme tekrar denenebilir kalır */ }
+    setMore(false);
+  };
 
   const archOptions = useMemo(() => {
     if (!meta?.archetypes) return [];
-    return phase ? (meta.archetypes[phase] || [])
-                 : Object.values(meta.archetypes).flat();
+    return phase ? (meta.archetypes[phase] || []) : Object.values(meta.archetypes).flat();
   }, [meta, phase]);
+  const archCount = useMemo(() => Object.values(meta?.archetypes || {}).flat().length, [meta]);
 
-  // Rozet yalnızca ÇEKMECEDEKİ filtreleri sayar; lig ve faz üst barda
-  // görünür durumda olduğu için sayılmaz.
-  const secondaryCount = [arch, team, conf, minMin].filter(Boolean).length;
-  const hasFilters = secondaryCount > 0 || search || league || phase;
+  // Faz değişince o faza ait olmayan arketip seçimi düşer
+  const pickPhase = (k) => {
+    setPhase(k);
+    if (arch && k && !(meta?.archetypes?.[k] || []).includes(arch)) setArch("");
+  };
+
+  const onSearch = (v) => {
+    setSearchInput(v);
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => setSearch(v), 300);
+  };
   const clearAll = () => {
     setLeague(""); setPhase(""); setArch(""); setTeam("");
     setConf(""); setMinMin(""); setSearch(""); setSearchInput("");
   };
-
-  const selectEl = (val, set, opts, placeholder) => (
-    <div className="aura-select-wrap" style={{ width: "100%" }}>
-      <select value={val} onChange={e => set(e.target.value)} className="aura-select">
-        <option value="">{placeholder}</option>
-        {opts.map(o => <option key={o} value={o}>{o}</option>)}
-      </select>
-    </div>
-  );
-  const field = (label, node) => (
-    <div>
-      <div className="font-logo text-[10px] font-bold uppercase tracking-wider mb-1.5"
-        style={{ color: "var(--text-faint)" }}>{label}</div>
-      {node}
-    </div>
-  );
+  const filterCount = [league, phase, arch, team, conf, minMin].filter(Boolean).length;
 
   if (meta && !meta.available) {
     return (
-      <div className="h-full flex items-center justify-center p-8 text-center">
-        <div>
-          <h1 className="font-logo text-xl font-bold text-white mb-2">Football players</h1>
-          <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-            No season data has been built yet. Run the fetcher, then the score builder.
-          </p>
-        </div>
-      </div>
+      <EmptyState tint={ACCENT} title="No football data yet"
+        body="No season has been built yet. Run the fetcher, then the score builder." />
     );
   }
+
+  const tint = phase ? PHASE_COLOR[phase] : ACCENT;
+  const phaseItems = PHASES.map(p => ({ ...p, color: PHASE_COLOR[p.key], count: info.phase_counts[p.key] || 0 }));
+  const leagueOpts = [["", "All"], ...(meta?.leagues || []).map(l => [l, LEAGUE_LABEL[l] || l])];
+  const leagueCount = meta?.leagues?.length || 0;
+
+  const sortSelect = (
+    <UnderSelect label="Sort" value={sortBy} onChange={setSortBy}
+      options={[
+        { value: "overall_score", label: "Overall" }, { value: "primary_score", label: "Archetype fit" },
+        { value: "MINUTES_TOTAL", label: "Minutes" }, { value: "margin", label: "Role clarity" },
+        { value: "PLAYER_NAME", label: "Name A–Z" },
+      ]} />
+  );
+
+  const rest = (
+    <>
+      <FilterGroup label="League">
+        <PillSet value={league} onChange={setLeague} options={leagueOpts} />
+      </FilterGroup>
+      <FilterGroup label="Archetype">
+        <UnderSelect label="Archetype" value={arch} onChange={setArch} options={archOptions}
+          placeholder={`Any of ${archOptions.length}`} />
+      </FilterGroup>
+      <FilterGroup label="Team">
+        <UnderSelect label="Team" value={team} onChange={setTeam} options={meta?.teams || []} placeholder="Any team" />
+      </FilterGroup>
+      <FilterGroup label="Role clarity">
+        <UnderSelect label="Role clarity" value={conf} onChange={setConf} options={CONFIDENCE} placeholder="Any" />
+      </FilterGroup>
+      <FilterGroup label="Minimum minutes">
+        <UnderSelect label="Minimum minutes" value={minMin} onChange={setMinMin}
+          options={[900, 1350, 1800, 2700].map(v => ({ value: String(v), label: `${v.toLocaleString("en-US")}+` }))}
+          placeholder={meta?.min_minutes ? `${meta.min_minutes} (default)` : "Default"} />
+      </FilterGroup>
+      <button className="pa-btn-secondary" onClick={() => setFeedbackOpen(true)}>Suggest an archetype</button>
+    </>
+  );
+
+  const seasonOpts = meta?.seasons || [];
+  const filters = (
+    <>
+      <FilterGroup label="Season">
+        <UnderSelect big label="Season" value={season} onChange={setSeason} options={seasonOpts} />
+      </FilterGroup>
+      <UnderSearch value={searchInput} onChange={onSearch} />
+      <FilterGroup label="Phase">
+        <FacetList items={phaseItems} value={phase} onChange={pickPhase} allLabel="All phases" allCount={info.phase_total} />
+      </FilterGroup>
+      {rest}
+    </>
+  );
+  const sheetFilters = (
+    <>
+      <FilterGroup label="Season">
+        <UnderSelect big label="Season" value={season} onChange={setSeason} options={seasonOpts} />
+      </FilterGroup>
+      <FilterGroup label="Phase">
+        <FacetList chips items={phaseItems} value={phase} onChange={pickPhase} allLabel="All phases" />
+      </FilterGroup>
+      {rest}
+      <FilterGroup label="Sort">{sortSelect}</FilterGroup>
+    </>
+  );
+
+  const chips = [
+    phase && { key: "phase", label: PHASES.find(p => p.key === phase)?.name, color: PHASE_COLOR[phase], onClear: () => setPhase("") },
+    league && { key: "league", label: LEAGUE_LABEL[league] || league, onClear: () => setLeague("") },
+    arch && { key: "arch", label: arch, onClear: () => setArch("") },
+    team && { key: "team", label: team, onClear: () => setTeam("") },
+    conf && { key: "conf", label: CONFIDENCE.find(c => c.value === conf)?.label, onClear: () => setConf("") },
+    minMin && { key: "min", label: `${minMin}+ min`, onClear: () => setMinMin("") },
+  ].filter(Boolean);
+
+  const phaseName = PHASES.find(p => p.key === phase)?.name;
 
   return (
     <>
@@ -117,125 +215,35 @@ export default function FootballPlayers() {
         description="Every player in Europe's big leagues with their archetype, percentile fit and per-90 profile."
         path="/football/players" noindex />
 
-      <div className="relative flex flex-col h-full min-h-0 overflow-hidden">
+      <ListingPage
+        tint={tint}
+        filters={filters}
+        sheetFilters={sheetFilters}
+        filterCount={filterCount}
+        onReset={clearAll}
+        chips={chips}
+        resultLabel={loading ? "Show players" : `Show ${info.total.toLocaleString("en-US")} players`}
+        search={<UnderSearch filled value={searchInput} onChange={onSearch} placeholder="Search players" />}
+      >
+        <ListingHero
+          eyebrow={phase ? `Phase · ${info.total.toLocaleString("en-US")} players` : `${season}${leagueCount ? ` · ${leagueCount} leagues` : ""}`}
+          title={phaseName || "Football players"}
+          blurb={phase ? PHASE_BLURB[phase]
+            : `${archCount || ""} archetypes across Europe's big ${leagueCount || "five"}. Every score is a percentile within the player's own league and phase.`.trim()}
+          aside={<><span className="pa-flabel">Sort</span>{sortSelect}</>}
+        />
 
-        {/* Üst bar — sezon, arama, faz, pozisyon, sıralama */}
-        <div className="px-4 py-3 flex flex-wrap gap-1 items-center shrink-0">
-          <div className="aura-select-wrap">
-            <select value={season} onChange={e => setSeason(e.target.value)}
-              className="aura-select accent">
-              {(meta?.seasons || []).map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </div>
-
-          <AuraSearch value={searchInput} placeholder="Search player..."
-            onChange={v => {
-              setSearchInput(v);
-              clearTimeout(debounceRef.current);
-              debounceRef.current = setTimeout(() => setSearch(v), 300);
-            }} />
-
-          <div className="aura-select-wrap">
-            <select value={phase} onChange={e => setPhase(e.target.value)} className="aura-select">
-              {PHASES.map(p => <option key={p.key} value={p.key}>{p.label}</option>)}
-            </select>
-          </div>
-
-          {/* Lig — açılır kutu değil, her lig kendi düğmesi (kullanıcı kararı).
-              Aynı lige tekrar basmak seçimi kaldırır, yani "hepsi" ayrı bir
-              düğme istemiyor. */}
-          <div className="flex gap-1 items-center">
-            {(meta?.leagues || []).map(l => (
-              <button key={l}
-                onClick={() => setLeague(league === l ? "" : l)}
-                className={`aura-pill-btn${league === l ? " active" : ""}`}
-                title={league === l ? "Show all leagues" : `Only ${LEAGUE_LABEL[l] || l}`}>
-                {LEAGUE_LABEL[l] || l}
-              </button>
-            ))}
-          </div>
-
-          <div className="flex-1" />
-
-          <button onClick={() => setFilterOpen(true)}
-            className={`aura-pill-btn${secondaryCount > 0 ? " active" : ""}`}>
-            <SlidersHorizontal size={13} />
-            Filters
-            {secondaryCount > 0 && <span className="aura-pill-badge">{secondaryCount}</span>}
-          </button>
-
-          <div className="aura-select-wrap">
-            <select value={sortBy} onChange={e => setSortBy(e.target.value)} className="aura-select">
-              <option value="overall_score">Overall ↓</option>
-              <option value="primary_score">Archetype fit ↓</option>
-              <option value="MINUTES_TOTAL">Minutes ↓</option>
-              <option value="margin">Role clarity ↓</option>
-              <option value="PLAYER_NAME">Name A–Z</option>
-            </select>
-          </div>
-
-          {hasFilters && <button onClick={clearAll} className="aura-pill-btn">✕ Clear</button>}
-          <span className="text-xs px-2" style={{ color: "var(--text-faint)" }}>{rows.length}</span>
-        </div>
-
-        {/* Filtre çekmecesi */}
-        {filterOpen && (
-          <div className="absolute inset-0 z-40" style={{ background: "rgba(0,0,0,.55)" }}
-            onClick={() => setFilterOpen(false)} />
-        )}
-        <div className={`aura-glass absolute top-0 bottom-0 left-0 z-50 w-72 max-w-[85vw] flex flex-col rounded-r-2xl transition-transform duration-300 ease-out
-          ${filterOpen ? "translate-x-0" : "-translate-x-full"}`}
-          style={{ boxShadow: "18px 0 44px -16px rgba(0,0,0,.75)" }}>
-          <div className="flex items-center justify-between px-4 py-3.5 shrink-0">
-            <span className="font-logo text-sm font-bold uppercase tracking-wider"
-              style={{ color: ACCENT }}>Filters</span>
-            <button onClick={() => setFilterOpen(false)}
-              className="w-7 h-7 flex items-center justify-center rounded-full"
-              style={{ color: "var(--text-muted)" }}>
-              <X size={14} />
-            </button>
-          </div>
-          <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-4">
-            {/* Lig burada YOK — üst barda düğme olarak duruyor */}
-            {field("Archetype", selectEl(arch, setArch, archOptions, "Any archetype"))}
-            {field("Team", selectEl(team, setTeam, meta?.teams || [], "Any team"))}
-            {field("Role clarity", selectEl(conf, setConf,
-              ["prototype", "clear", "between roles"], "Any"))}
-            {field("Min minutes", (
-              <input type="number" min="0" step="90" value={minMin}
-                onChange={e => setMinMin(e.target.value)}
-                placeholder={meta?.min_minutes ? `default ${meta.min_minutes}` : "e.g. 900"}
-                className="aura-ghost-input w-full" />
-            ))}
-            <button onClick={() => setFeedbackOpen(true)}
-              className="aura-pill-btn w-full justify-center">
-              Suggest an archetype
-            </button>
-          </div>
-          {secondaryCount > 0 && (
-            <div className="px-4 pb-4 shrink-0">
-              <button onClick={() => {
-                setArch(""); setTeam(""); setConf(""); setMinMin("");
-              }} className="aura-pill-btn active w-full justify-center">
-                Clear {secondaryCount} filter{secondaryCount > 1 ? "s" : ""}
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Izgara */}
-        <div className="flex-1 overflow-y-auto p-5">
-          {loading ? (
-            <div className="text-center py-12 text-sm" style={{ color: "var(--text-muted)" }}>
-              Loading…
-            </div>
-          ) : !rows.length ? (
-            <div className="text-center py-12 text-sm" style={{ color: "var(--text-muted)" }}>
-              No players match these filters.
-            </div>
-          ) : (
-            <div className="grid gap-5 justify-items-center items-start"
-              style={{ gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))" }}>
+        {error ? (
+          <ErrorState onRetry={load} />
+        ) : loading ? (
+          <SkeletonGrid count={6} height={380} />
+        ) : rows.length === 0 ? (
+          <EmptyState tint={tint} title="No players match"
+            body={search ? `Nobody called "${search}" with these filters in ${season}.` : `No ${season} player fits all of these filters.`}
+            actions={[{ label: "Clear filters", primary: true, onClick: clearAll }]} />
+        ) : (
+          <>
+            <CardGrid>
               {rows.map((p, i) => (
                 <FootballPlayerCard
                   key={`${p.PLAYER_ID}-${p.PHASE}-${p.LEAGUE}`}
@@ -244,10 +252,11 @@ export default function FootballPlayers() {
                   season={season}
                 />
               ))}
-            </div>
-          )}
-        </div>
-      </div>
+            </CardGrid>
+            <LoadMore shown={rows.length} total={info.total} onMore={loadMore} loading={more} />
+          </>
+        )}
+      </ListingPage>
 
       {feedbackOpen && <FootballFeedbackModal onClose={() => setFeedbackOpen(false)} />}
     </>
