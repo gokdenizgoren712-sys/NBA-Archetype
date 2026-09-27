@@ -17,14 +17,36 @@ import { ACCENT as ACC, PHASE_COLOR } from "./theme";
 
 const FORM_COLOR = { W: ACC, D: "var(--text-faint)", L: "#E8654C" };
 
-function Stat({ label, value, sub, color }) {
+// Handoff 14b: KPI 32px Rajdhani + 12px etiket; `big` = sezonun tek büyük
+// sonucu (72px), kicker üstte, açıklama altta.
+function Stat({ label, value, sub, color, big = false }) {
+  if (big) return (
+    <div className="g-fs-hero">
+      <span className="k">{label}</span>
+      <span className="v" style={{ color: color || "var(--text-primary)" }}>{value}</span>
+      {sub && <span className="s">{sub}</span>}
+    </div>
+  );
   return (
-    <div style={{ flex: "1 1 90px", minWidth: 90 }}>
-      <div className="g-label" style={{ fontSize: 12, 
-        textTransform: "uppercase", color: "var(--text-faint)" }}>{label}</div>
-      <div style={{ fontSize: 26, fontWeight: 700, lineHeight: 1.1,
-        color: color || "var(--text)" }}>{value}</div>
-      {sub && <div style={{ fontSize: 13, color: "var(--text-faint)" }}>{sub}</div>}
+    <div className="g-fs-kpi">
+      <span className="v" style={{ color: color || "var(--text-primary)" }}>{value}</span>
+      <span className="l">{label}</span>
+      {sub && <span className="s">{sub}</span>}
+    </div>
+  );
+}
+
+// 38 maçlık form şeridi (14b) — her hücre bir maç: G teal, B gri, M kırmızı.
+function FormStrip({ matches }) {
+  if (!matches?.length) return null;
+  return (
+    <div className="g-fs-form">
+      <span className="lbl">Form · {matches.length} matches</span>
+      <div className="cells" style={{ gridTemplateColumns: `repeat(${matches.length}, minmax(0, 1fr))` }}>
+        {matches.map((m) => (
+          <span key={m.round} className={`c ${m.result}`} title={`${m.home ? "Home" : "Away"} vs ${m.opponent} · ${m.gf}–${m.ga}`} />
+        ))}
+      </div>
     </div>
   );
 }
@@ -145,16 +167,15 @@ export default function SeasonPanel({ starters, chemistry, positionPenalty = 0,
       </div>
 
       {/* ── Mod ─────────────────────────────────────────────────────────── */}
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 14 }}>
+      <div className="g-seg" style={{ display: "inline-flex", marginTop: 14, alignItems: "center" }}>
         {[["quick", "Quick Sim", "A full league season against the real clubs, on a generated fixture list."],
           ["rewrite", "Rewrite History", "Take a real club's actual fixtures and see if your eleven does better than they did."]]
           .map(([k, label, tip]) => (
           <span key={k} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
             <button title={tip}
               onClick={() => { setMode(k); setRun(null); setDist(null); setRh(null); setRhDist(null); setErr(null); }}
-              className="aura-pill-btn"
-              style={mode === k ? { borderColor: ACC, color: ACC } : undefined}>{label}</button>
-            <ModeInfoButton mode={k} />
+              className={`g-seg-btn${mode === k ? " on" : ""}`}>{label}</button>
+            <ModeInfoButton mode={k} style={{ width: 24, height: 24 }} />
           </span>
         ))}
       </div>
@@ -163,8 +184,7 @@ export default function SeasonPanel({ starters, chemistry, positionPenalty = 0,
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
         {setup.leagues.map((l) => (
           <button key={l} onClick={() => { setLeague(l); setReplace(""); setRun(null); setDist(null); }}
-            className="aura-pill-btn"
-            style={league === l ? { borderColor: ACC, color: ACC } : undefined}>
+            className={`aura-pill-btn${league === l ? " active" : ""}`}>
             {LEAGUE_LABEL[l] || l}
           </button>
         ))}
@@ -222,8 +242,8 @@ export default function SeasonPanel({ starters, chemistry, positionPenalty = 0,
       {rh && rhDist && (
         <>
           <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginTop: 20,
-            paddingTop: 16, borderTop: "1px solid var(--border)" }}>
-            <Stat label="Your points" value={rh.you.pts}
+            paddingTop: 20, boxShadow: "inset 0 1px 0 rgba(255,255,255,.06)", alignItems: "flex-end" }}>
+            <Stat big label="Your points" value={rh.you.pts}
               sub={`${rh.you.w}-${rh.you.d}-${rh.you.l} · ${rh.you.gf}:${rh.you.ga}`}
               color={ACC} />
             <Stat label={`${rhData?.team || "They"} actually`} value={rh.real.pts}
@@ -257,13 +277,13 @@ export default function SeasonPanel({ starters, chemistry, positionPenalty = 0,
             little shorter than the real season.
           </p>
 
+          <FormStrip matches={rh.matches} />
           <Awards a={rh.awards} />
 
-          <div style={{ display: "flex", gap: 8, marginTop: 18, marginBottom: 10 }}>
+          <div className="g-seg" style={{ display: "inline-flex", marginTop: 18, marginBottom: 12 }}>
             {[["table", "Where you finish"], ["fixtures", "Match by match"],
               ["squad", "Squad stats"]].map(([k, label]) => (
-              <button key={k} onClick={() => setTab(k)} className="aura-pill-btn"
-                style={tab === k ? { borderColor: ACC, color: ACC } : undefined}>{label}</button>
+              <button key={k} onClick={() => setTab(k)} className={`g-seg-btn${tab === k ? " on" : ""}`}>{label}</button>
             ))}
           </div>
           {tab === "squad" ? <SquadStats players={rh.players} />
@@ -278,8 +298,8 @@ export default function SeasonPanel({ starters, chemistry, positionPenalty = 0,
       {dist && (
         <>
           <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginTop: 20,
-            paddingTop: 16, borderTop: "1px solid var(--border)" }}>
-            <Stat label="Median finish" value={`${dist.medianPos}${ordinal(dist.medianPos)}`}
+            paddingTop: 20, boxShadow: "inset 0 1px 0 rgba(255,255,255,.06)", alignItems: "flex-end" }}>
+            <Stat big label="Median finish" value={`${dist.medianPos}${ordinal(dist.medianPos)}`}
               sub={`range ${dist.p10}–${dist.p90}`} color={ACC} />
             <Stat label="Points" value={Math.round(dist.meanPts)} sub="average of 200 seasons" />
             <Stat label="Title" value={`${Math.round(dist.titlePct * 100)}%`} />
@@ -303,12 +323,12 @@ export default function SeasonPanel({ starters, chemistry, positionPenalty = 0,
       {/* ── Tek sezon: tablo + fikstür ──────────────────────────────────── */}
       {run && (
         <>
+          <FormStrip matches={run.matches} />
           <Awards a={run.awards} />
 
-          <div style={{ display: "flex", gap: 8, marginTop: 18, marginBottom: 10 }}>
+          <div className="g-seg" style={{ display: "inline-flex", marginTop: 18, marginBottom: 12 }}>
             {[["table", "Table"], ["squad", "Squad stats"], ["fixtures", "Your results"]].map(([k, label]) => (
-              <button key={k} onClick={() => setTab(k)} className="aura-pill-btn"
-                style={tab === k ? { borderColor: ACC, color: ACC } : undefined}>{label}</button>
+              <button key={k} onClick={() => setTab(k)} className={`g-seg-btn${tab === k ? " on" : ""}`}>{label}</button>
             ))}
           </div>
           {tab === "table" ? <Table rows={run.standings} />
@@ -343,22 +363,19 @@ function PositionBars({ positions, n }) {
 function Table({ rows }) {
   return (
     <div style={{ overflowX: "auto" }}>
-      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12,
+      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14,
         fontVariantNumeric: "tabular-nums" }}>
         <thead>
-          <tr style={{ color: "var(--text-faint)", fontSize: 12, 
-            letterSpacing: ".07em" }}>
+          <tr style={{ color: "var(--text-muted)", fontSize: 12 }}>
             {["", "Club", "P", "W", "D", "L", "GF", "GA", "GD", "Pts", "Form"].map((h, i) => (
               <th key={i} style={{ textAlign: i < 2 ? "left" : "right", padding: "6px 6px",
-                borderBottom: "1px solid var(--border)", whiteSpace: "nowrap" }}>{h}</th>
+                boxShadow: "var(--row-line)", whiteSpace: "nowrap", fontWeight: 500 }}>{h}</th>
             ))}
           </tr>
         </thead>
         <tbody>
           {rows.map((s) => (
-            <tr key={s.team} style={{
-              background: s.isYou ? `${ACC}14` : undefined,
-              borderLeft: s.isYou ? `2px solid ${ACC}` : "2px solid transparent" }}>
+            <tr key={s.team} className={`g-fs-row${s.isYou ? " you" : ""}`}>
               <td style={{ padding: "5px 6px", color: "var(--text-faint)" }}>{s.pos}</td>
               <td style={{ padding: "5px 6px", fontWeight: s.isYou ? 700 : 400,
                 color: s.isYou ? ACC : "var(--text)", whiteSpace: "nowrap" }}>{s.team}</td>
@@ -369,7 +386,7 @@ function Table({ rows }) {
               <td style={{ textAlign: "right", padding: "5px 6px",
                 color: s.gd > 0 ? ACC : s.gd < 0 ? "#E8654C" : "var(--text-faint)" }}>
                 {s.gd > 0 ? "+" : ""}{s.gd}</td>
-              <td style={{ textAlign: "right", padding: "5px 6px", fontWeight: 700 }}>{s.pts}</td>
+              <td className="pts" style={{ textAlign: "right", padding: "5px 6px" }}>{s.pts}</td>
               <td style={{ textAlign: "right", padding: "5px 6px", whiteSpace: "nowrap" }}>
                 {s.form.map((f, i) => (
                   <span key={i} style={{ color: FORM_COLOR[f], marginLeft: 2 }}>{f}</span>
@@ -446,23 +463,20 @@ function SquadStats({ players }) {
 function RealTable({ rows }) {
   return (
     <div style={{ overflowX: "auto" }}>
-      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12,
+      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14,
         fontVariantNumeric: "tabular-nums" }}>
         <thead>
-          <tr style={{ color: "var(--text-faint)", fontSize: 12, 
-            letterSpacing: ".07em" }}>
+          <tr style={{ color: "var(--text-muted)", fontSize: 12 }}>
             {["", "Club", "P", "W", "D", "L", "GD", "Pts", "Per game", "Really got"]
               .map((h, i) => (
               <th key={i} style={{ textAlign: i < 2 ? "left" : "right", padding: "6px 6px",
-                borderBottom: "1px solid var(--border)", whiteSpace: "nowrap" }}>{h}</th>
+                boxShadow: "var(--row-line)", whiteSpace: "nowrap", fontWeight: 500 }}>{h}</th>
             ))}
           </tr>
         </thead>
         <tbody>
           {rows.map((s) => (
-            <tr key={s.team} style={{
-              background: s.isYou ? `${ACC}14` : undefined,
-              borderLeft: s.isYou ? `2px solid ${ACC}` : "2px solid transparent" }}>
+            <tr key={s.team} className={`g-fs-row${s.isYou ? " you" : ""}`}>
               <td style={{ padding: "5px 6px", color: "var(--text-faint)" }}>{s.pos}</td>
               <td style={{ padding: "5px 6px", fontWeight: s.isYou ? 700 : 400,
                 color: s.isYou ? ACC : "var(--text)", whiteSpace: "nowrap" }}>{s.team}</td>
@@ -473,7 +487,7 @@ function RealTable({ rows }) {
               <td style={{ textAlign: "right", padding: "5px 6px",
                 color: s.gd > 0 ? ACC : s.gd < 0 ? "#E8654C" : "var(--text-faint)" }}>
                 {s.gd > 0 ? "+" : ""}{s.gd}</td>
-              <td style={{ textAlign: "right", padding: "5px 6px", fontWeight: 700 }}>{s.pts}</td>
+              <td className="pts" style={{ textAlign: "right", padding: "5px 6px" }}>{s.pts}</td>
               <td style={{ textAlign: "right", padding: "5px 6px", color: ACC }}>
                 {s.ppg.toFixed(2)}</td>
               <td style={{ textAlign: "right", padding: "5px 6px",
@@ -497,11 +511,11 @@ function RewriteFixtures({ matches }) {
       gap: 6 }}>
       {matches.map((m) => (
         <div key={m.round} style={{ display: "flex", alignItems: "center", gap: 8,
-          padding: "6px 9px", borderRadius: 8, fontSize: 12,
+          padding: "8px 10px", borderRadius: 10, fontSize: 13,
           background: m.beat ? `${ACC}12` : "rgba(255,255,255,.022)",
-          border: `1px solid ${m.beat ? ACC + "33" : "var(--border)"}` }}>
+          boxShadow: m.beat ? `inset 0 0 0 1px ${ACC}33` : "none" }}>
           <span style={{ color: "var(--text-faint)", fontSize: 12, width: 30 }}>
-            {m.home ? "HOME" : "AWAY"}</span>
+            {m.home ? "Home" : "Away"}</span>
           <span style={{ flex: 1, whiteSpace: "nowrap", overflow: "hidden",
             textOverflow: "ellipsis" }}>{m.opponent}</span>
           <span style={{ fontVariantNumeric: "tabular-nums", fontWeight: 600,
@@ -521,10 +535,10 @@ function Fixtures({ matches }) {
       gap: 6 }}>
       {matches.map((m) => (
         <div key={m.round} style={{ display: "flex", alignItems: "center", gap: 8,
-          padding: "6px 9px", borderRadius: 8, fontSize: 12,
-          background: "rgba(255,255,255,.025)", border: "1px solid var(--border)" }}>
+          padding: "8px 10px", borderRadius: 10, fontSize: 13,
+          background: "rgba(255,255,255,.03)" }}>
           <span style={{ color: "var(--text-faint)", fontSize: 12, width: 30 }}>
-            {m.home ? "HOME" : "AWAY"}</span>
+            {m.home ? "Home" : "Away"}</span>
           <span style={{ flex: 1, whiteSpace: "nowrap", overflow: "hidden",
             textOverflow: "ellipsis" }}>{m.opponent}</span>
           <span style={{ fontVariantNumeric: "tabular-nums", fontWeight: 600,

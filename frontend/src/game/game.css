@@ -1812,3 +1812,30 @@ button.g-pstep:focus-visible { outline: 2px solid var(--c); outline-offset: 3px;
 @media (max-width: 900px) { .g-sq-cols { grid-template-columns: 1fr; gap: 28px; } }
 @media (max-width: 640px) { .g-sq { padding: 8px 16px 24px; } }
 .g-sq-xi .nm em { font-style: normal; font-weight: 400; font-size: 12px; color: var(--text-muted); margin-left: 8px; }
+
+/* ═══ Futbol sezonu (handoff 14b) ═══════════════════════════════════════ */
+.g-fs-hero { display: flex; flex-direction: column; gap: 6px; flex: 0 0 auto; margin-right: 24px; }
+.g-fs-hero .k { font-size: 14px; font-weight: 600; color: #3FB08C; }
+.g-fs-hero .v { font-family: var(--font-logo); font-size: 72px; font-weight: 700; line-height: 1; text-shadow: 0 0 36px rgba(63, 176, 140, 0.45); }
+.g-fs-hero .s { font-size: 14px; color: var(--text-secondary); }
+.g-fs-kpi { display: flex; flex-direction: column; gap: 2px; flex: 0 1 auto; min-width: 90px; padding-bottom: 8px; }
+.g-fs-kpi .v { font-family: var(--font-logo); font-size: 32px; font-weight: 700; line-height: 1; }
+.g-fs-kpi .l { font-size: 12px; color: var(--text-muted); }
+.g-fs-kpi .s { font-size: 12px; color: var(--text-faint); }
+.g-fs-form { display: flex; flex-direction: column; gap: 8px; margin-top: 22px; }
+.g-fs-form .lbl { font-size: 12px; color: var(--text-muted); }
+.g-fs-form .cells { display: grid; gap: 4px; }
+.g-fs-form .c { height: 26px; border-radius: 5px; background: #2a2a2a; }
+.g-fs-form .c.W { background: #3FB08C; box-shadow: 0 0 8px -2px #3FB08C; }
+.g-fs-form .c.L { background: #E8654C; }
+.g-fs-form .c.D { background: #5a5650; }
+.g-fs-row td { height: 44px; color: var(--text-secondary); }
+.g-fs-row.you td { background: linear-gradient(100deg, rgba(63, 176, 140, 0.14), rgba(63, 176, 140, 0.03)); color: var(--text-primary); }
+.g-fs-row.you td:first-child { box-shadow: inset 2px 0 0 #3FB08C; border-radius: 10px 0 0 10px; }
+.g-fs-row.you td:last-child { border-radius: 0 10px 10px 0; }
+.g-fs-row .pts { font-family: var(--font-logo); font-size: 17px; font-weight: 700; color: var(--text-primary); }
+@media (max-width: 640px) {
+  .g-fs-hero .v { font-size: 56px; }
+  .g-fs-form .cells { gap: 2px; }
+  .g-fs-form .c { height: 20px; border-radius: 3px; }
+}
