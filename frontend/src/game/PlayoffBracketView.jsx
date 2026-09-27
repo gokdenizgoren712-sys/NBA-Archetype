@@ -14,7 +14,7 @@ function TeamBadge({ team, series, side, wide }) {
   const won = series.winner && series.winner.abbr === team.abbr;
   const lost = series.winner && !won;
   return (
-    <div className={`flex items-center justify-between gap-1.5 rounded-md ${wide ? "px-3 py-2 text-[13px]" : "px-2 py-1 text-[10.5px]"} ${lost ? "opacity-45" : ""}`}
+    <div className={`flex items-center justify-between gap-1.5 rounded-md ${wide ? "px-3 py-2 text-[13px]" : "px-2 py-1 text-[12px]"} ${lost ? "opacity-45" : ""}`}
       style={isUser ? { background: "rgba(255,177,27,.16)", color: "var(--yamabuki)", fontWeight: 700 }
         : { color: won ? "#fff" : "var(--text-secondary,#d1d5db)" }}>
       <span className="flex items-center gap-1.5 min-w-0">
@@ -34,7 +34,7 @@ function SeriesCard({ series, showMVP, wide }) {
       <div style={{ height: wide ? 4 : 2 }} />
       <TeamBadge team={series.teamB} series={series} side="B" wide={wide} />
       {mvp && (
-        <div className={wide ? "text-[11px] mt-2" : "text-[9px] mt-1 truncate"} style={{ color: "var(--yamabuki)" }} title={`Series MVP — ${mvp.pts} PPG`}>
+        <div className={wide ? "text-[13px] mt-2" : "text-[12px] mt-1 truncate"} style={{ color: "var(--yamabuki)" }} title={`Series MVP — ${mvp.pts} PPG`}>
           ⭐ {mvp.name} ({mvp.abbr})
         </div>
       )}
@@ -45,7 +45,7 @@ function SeriesCard({ series, showMVP, wide }) {
 function RoundColumn({ label, series, showMVP }) {
   return (
     <div className="flex flex-col gap-2 justify-around flex-1 min-w-0">
-      <div className="text-[9px] uppercase tracking-widest text-center" style={{ color: "var(--text-faint)" }}>{label}</div>
+      <div className="text-[12px] text-center" style={{ color: "var(--text-faint)" }}>{label}</div>
       {series.map((s, i) => <SeriesCard key={i} series={s} showMVP={showMVP} />)}
     </div>
   );
@@ -61,15 +61,15 @@ function GameBoxTable({ label, lines, teamPts, won }) {
   return (
     <div className="mt-1.5">
       <div className="flex items-center gap-1.5 mb-1">
-        <span className="text-[9.5px] uppercase tracking-widest" style={{ color: "var(--text-faint)" }}>{label}</span>
-        <span className="text-[11px] font-bold tabular-nums" style={{ color: won ? "var(--yamabuki)" : "var(--text-muted)" }}>{teamPts}</span>
-        <span className={`text-[8.5px] font-bold ${won ? "text-emerald-400" : "text-red-400"}`}>{won ? "W" : "L"}</span>
+        <span className="text-[12px]" style={{ color: "var(--text-faint)" }}>{label}</span>
+        <span className="text-[13px] font-bold tabular-nums" style={{ color: won ? "var(--yamabuki)" : "var(--text-muted)" }}>{teamPts}</span>
+        <span className={`text-[12px] font-bold ${won ? "text-emerald-400" : "text-red-400"}`}>{won ? "W" : "L"}</span>
       </div>
-      <div className={`grid ${COLS} gap-x-1 text-[8.5px] text-gray-500 uppercase tracking-wider pb-1`}>
+      <div className={`grid ${COLS} gap-x-1 text-[12px] text-[var(--text-muted)] pb-1`}>
         <span>Player</span><span className="text-right">PTS</span><span className="text-right">REB</span><span className="text-right">AST</span><span className="text-right">STL</span><span className="text-right">BLK</span>
       </div>
       {sorted.map((l, i) => (
-        <div key={i} className={`grid ${COLS} gap-x-1 text-[10px] leading-relaxed ${l.bench ? "text-gray-500" : "text-gray-300"}`}>
+        <div key={i} className={`grid ${COLS} gap-x-1 text-[12px] leading-relaxed ${l.bench ? "text-[var(--text-muted)]" : "text-gray-300"}`}>
           <span className="truncate">{l.bench ? "· " : ""}{l.name?.split(" ").slice(-1)[0]}</span>
           <span className="text-right tabular-nums">{l.pts}</span>
           <span className="text-right tabular-nums">{l.reb}</span>
@@ -78,7 +78,7 @@ function GameBoxTable({ label, lines, teamPts, won }) {
           <span className="text-right tabular-nums">{l.blk}</span>
         </div>
       ))}
-      <div className={`grid ${COLS} gap-x-1 text-[10px] font-bold text-white mt-1 pt-1 border-t border-white/10`}>
+      <div className={`grid ${COLS} gap-x-1 text-[12px] font-bold text-white mt-1 pt-1 border-t border-white/10`}>
         <span>TEAM</span>
         <span className="text-right tabular-nums">{teamPts}</span>
         <span className="text-right tabular-nums">{lines.reduce((a, l) => a + l.reb, 0)}</span>
@@ -94,18 +94,18 @@ function Controls({ mode, setMode, startAuto, advance, champion }) {
   if (champion) return null;
   return (
     <div className="flex items-center justify-between gap-2">
-      <p className="text-[10.5px]" style={{ color: "var(--text-muted)" }}>
+      <p className="text-[12px]" style={{ color: "var(--text-muted)" }}>
         {mode ? "Series in progress — every team plays with the same engine that scored your roster." : "Pick how the bracket plays out."}
       </p>
       {!mode && (
         <div className="flex gap-1.5 shrink-0">
           <button onClick={() => setMode("manual")}
-            className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wide"
+            className="px-2.5 py-1.5 rounded-lg text-[12px] font-bold"
             style={{ background: "var(--bg-elevated)", color: "var(--text-primary)" }}>
             Manual
           </button>
           <button onClick={startAuto}
-            className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wide inline-flex items-center gap-1"
+            className="px-2.5 py-1.5 rounded-lg text-[12px] font-bold inline-flex items-center gap-1"
             style={{ background: "linear-gradient(90deg,#FFD470,#FFB11B)", color: "#000" }}>
             <WheelIcon size={11} /> Auto
           </button>
@@ -113,7 +113,7 @@ function Controls({ mode, setMode, startAuto, advance, champion }) {
       )}
       {mode === "manual" && (
         <button onClick={advance}
-          className="px-3 py-1.5 rounded-lg text-[10.5px] font-bold uppercase tracking-wide inline-flex items-center gap-1.5 shrink-0"
+          className="px-3 py-1.5 rounded-lg text-[12px] font-bold inline-flex items-center gap-1.5 shrink-0"
           style={{ background: "linear-gradient(90deg,#FFD470,#FFB11B)", color: "#000" }}>
           <PlayIcon size={12} /> Play Round
         </button>
@@ -180,13 +180,13 @@ export default function PlayoffBracket({ bracket, onUpdate }) {
       <Controls {...controlsProps} />
 
       <div className="space-y-3">
-        <div className="text-[9.5px] uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>Eastern Conference</div>
+        <div className="text-[12px]" style={{ color: "var(--text-muted)" }}>Eastern Conference</div>
         <div className="flex gap-2 overflow-x-auto pb-1">
           <RoundColumn label="First Round" series={eastCol(round1)} />
           <RoundColumn label="Semis" series={eastCol(semis)} />
           <RoundColumn label="Conf. Finals" series={eastCol(cfs)} showMVP />
         </div>
-        <div className="text-[9.5px] uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>Western Conference</div>
+        <div className="text-[12px]" style={{ color: "var(--text-muted)" }}>Western Conference</div>
         <div className="flex gap-2 overflow-x-auto pb-1">
           <RoundColumn label="First Round" series={westCol(round1)} />
           <RoundColumn label="Semis" series={westCol(semis)} />
@@ -195,7 +195,7 @@ export default function PlayoffBracket({ bracket, onUpdate }) {
 
         {finalsSeries && (
           <>
-            <div className="text-[10px] uppercase tracking-widest flex items-center gap-1.5" style={{ color: "var(--yamabuki)" }}>
+            <div className="text-[12px] flex items-center gap-1.5" style={{ color: "var(--yamabuki)" }}>
               <DnaIcon size={11} /> NBA Finals
             </div>
             <SeriesCard series={finalsSeries} showMVP wide />
@@ -210,7 +210,7 @@ export default function PlayoffBracket({ bracket, onUpdate }) {
               const ptsB = (finalsSeries.lastGameBoxB || []).reduce((a, l) => a + l.pts, 0);
               return (
                 <div className="g-panel subtle p-3">
-                  <div className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: "var(--text-muted)" }}>
+                  <div className="text-[12px] font-bold mb-1" style={{ color: "var(--text-muted)" }}>
                     Game {finalsGameNo} Box Score
                   </div>
                   <GameBoxTable label={finalsSeries.teamA.abbr} lines={finalsSeries.lastGameBoxA} teamPts={ptsA} won={lastGame?.aWon} />

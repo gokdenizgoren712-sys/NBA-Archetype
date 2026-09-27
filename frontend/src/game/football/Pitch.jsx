@@ -84,7 +84,7 @@ export default function Pitch({ shape, squad, onSlotClick, moveSrc, pickingFor, 
             <span style={{
               width: 34, height: 34, borderRadius: "50%",
               display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 10, fontWeight: 800, letterSpacing: ".02em",
+              fontSize: 12, fontWeight: 800,
               background: p ? `${c}26` : "rgba(0,0,0,.35)",
               border: `2px solid ${isMoveSrc ? "#fff" : p ? c : "rgba(255,255,255,.22)"}`,
               color: p ? c : "rgba(255,255,255,.5)",
@@ -95,7 +95,7 @@ export default function Pitch({ shape, squad, onSlotClick, moveSrc, pickingFor, 
             {p && (
               <>
                 <span style={{
-                  fontSize: 9.5, fontWeight: 700, color: "#fff", maxWidth: 62,
+                  fontSize: 12, fontWeight: 700, color: "#fff", maxWidth: 76,
                   overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                   textShadow: "0 1px 3px rgba(0,0,0,.9)",
                 }}>
@@ -103,7 +103,7 @@ export default function Pitch({ shape, squad, onSlotClick, moveSrc, pickingFor, 
                 </span>
                 {!natural && (
                   <span style={{
-                    fontSize: 8, color: pen >= 0.2 ? "#E8654C" : "#F2C14E",
+                    fontSize: 12, color: pen >= 0.2 ? "#E8654C" : "#F2C14E",
                     textShadow: "0 1px 3px rgba(0,0,0,.9)",
                   }}>
                     −{Math.round(pen * 100)}

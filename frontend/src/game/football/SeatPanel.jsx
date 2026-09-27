@@ -32,16 +32,16 @@ export default function SeatPanel({ seat, active, name, shape, squad, slots, poo
       <div className="flex items-center justify-between gap-2">
         <span className="font-logo text-sm font-bold text-white truncate">{name}</span>
         <div className="flex items-center gap-2 flex-none">
-          <span className="text-[10.5px]" style={{ color: "var(--text-faint)" }}>
+          <span className="text-[12px]" style={{ color: "var(--text-faint)" }}>
             {done}/{slots.length}
           </span>
           {active ? (
-            <span className="text-[9.5px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider"
+            <span className="text-[12px] px-2 py-0.5 rounded-full font-bold"
               style={{ color: acc, background: acc + "33", border: `1px solid ${acc}80` }}>
               Your pick
             </span>
           ) : (
-            <span className="text-[9.5px] px-2 py-0.5 rounded-full uppercase tracking-wider"
+            <span className="text-[12px] px-2 py-0.5 rounded-full"
               style={{ color: "var(--text-faint)", border: "1px solid rgba(255,255,255,.12)" }}>
               Waiting
             </span>
@@ -59,11 +59,11 @@ export default function SeatPanel({ seat, active, name, shape, squad, slots, poo
       {/* Seçim listesi yalnız sıradaki koltukta — iki liste yan yana dursa
           hangisinin canlı olduğu belirsizleşirdi. */}
       {active && pickingFor && (
-        <div className="text-[11.5px] flex items-center gap-2 flex-wrap"
+        <div className="text-[13px] flex items-center gap-2 flex-wrap"
           style={{ color: "#F2C14E" }}>
           <span>Tap a slot for <b>{pickingFor.PLAYER_NAME}</b></span>
           <button onClick={onCancel} className="aura-pill-btn"
-            style={{ fontSize: 10, padding: "3px 9px" }}>cancel</button>
+            style={{ fontSize: 12, padding: "3px 9px" }}>cancel</button>
         </div>
       )}
 
@@ -82,10 +82,10 @@ export default function SeatPanel({ seat, active, name, shape, squad, slots, poo
                 style={{ opacity: ok ? 1 : 0.32, cursor: ok ? "pointer" : "not-allowed",
                   background: "rgba(255,255,255,.022)",
                   border: `1px solid ${ok ? PHASE_COLOR[p.PHASE] + "44" : "var(--border)"}` }}>
-                <span className="text-[9px] uppercase flex-none" style={{ minWidth: 22,
+                <span className="text-[12px] flex-none" style={{ minWidth: 22,
                   color: PHASE_COLOR[p.PHASE] }}>{p.POSITION}</span>
                 <span className="flex-1 truncate">{p.PLAYER_NAME}</span>
-                <span className="text-[10.5px] truncate max-w-[110px] flex-none"
+                <span className="text-[12px] truncate max-w-[110px] flex-none"
                   style={{ color: "var(--text-faint)" }}>{p.primary_arch}</span>
               </button>
             );
@@ -93,7 +93,7 @@ export default function SeatPanel({ seat, active, name, shape, squad, slots, poo
         </div>
       )}
 
-      {msg && <div className="text-[11.5px]" style={{ color: "#E8654C" }}>{msg}</div>}
+      {msg && <div className="text-[13px]" style={{ color: "#E8654C" }}>{msg}</div>}
     </div>
   );
 }

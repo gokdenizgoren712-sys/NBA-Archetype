@@ -156,7 +156,7 @@ export default function SameScreenDraft({ onDone }) {
                 <div className="flex flex-wrap gap-1.5">
                   {SHAPE_KEYS.map((k) => (
                     <button key={k} onClick={() => setShapes({ ...shapes, [s]: k })}
-                      className="aura-pill-btn" style={{ fontSize: 11, padding: "5px 11px",
+                      className="aura-pill-btn" style={{ fontSize: 13, padding: "5px 11px",
                         ...(shapes[s] === k
                           ? { borderColor: SEAT_COLOR[s], color: SEAT_COLOR[s],
                               background: SEAT_COLOR[s] + "14" }
@@ -223,7 +223,7 @@ export default function SameScreenDraft({ onDone }) {
                 <Pitch shape={sq.shape} squad={d.squads[s]} />
                 <div className="flex flex-col gap-0.5">
                   {sq.players.map((p) => (
-                    <div key={p.PLAYER_ID} className="flex gap-2 text-[11.5px] py-px">
+                    <div key={p.PLAYER_ID} className="flex gap-2 text-[13px] py-px">
                       <span style={{ width: 30, color: PHASE_COLOR[p.PHASE] }}>{p._slot}</span>
                       <span className="flex-1 truncate">{p.PLAYER_NAME}</span>
                       <span className="truncate max-w-[130px]"
@@ -265,7 +265,7 @@ export default function SameScreenDraft({ onDone }) {
                 targetIdx={Math.max(0, meta.seasons.indexOf(target?.season))} />
             </div>
           ) : (
-            <span className="font-logo text-[12px] font-bold uppercase tracking-widest"
+            <span className="font-logo text-[12px] font-bold"
               style={{ color: acc }}>
               {names[seat]} to pick — {names[waiting]} waiting
             </span>

@@ -37,7 +37,7 @@ function Side({ label, side, color }) {
     <div style={{ flex: "1 1 160px", minWidth: 150 }}>
       <div className="g-label">{label}</div>
       <div style={{ fontSize: 15, fontWeight: 700, color }}>{side.name}</div>
-      <div style={{ fontSize: 11, color: "var(--text-faint)" }}>
+      <div style={{ fontSize: 13, color: "var(--text-faint)" }}>
         quality {Number(side.quality).toFixed(3)} · chemistry {Number(side.chemistry).toFixed(3)}
       </div>
     </div>
@@ -59,7 +59,7 @@ function TieResult({ tie, odds }) {
           <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5,
             padding: "6px 10px", borderRadius: 8, background: "rgba(255,255,255,.022)",
             border: "1px solid var(--border)" }}>
-            <span style={{ fontSize: 10, color: "var(--text-faint)", width: 44 }}>
+            <span style={{ fontSize: 12, color: "var(--text-faint)", width: 44 }}>
               LEG {i + 1}</span>
             <span style={{ flex: 1 }}>{l.home}</span>
             <b style={{ fontVariantNumeric: "tabular-nums" }}>{l.hg}–{l.ag}</b>
@@ -67,12 +67,12 @@ function TieResult({ tie, odds }) {
           </div>
         ))}
         {tie.extraTime && (
-          <div style={{ fontSize: 11.5, color: "var(--text-muted)", paddingLeft: 10 }}>
+          <div style={{ fontSize: 13, color: "var(--text-muted)", paddingLeft: 10 }}>
             Extra time at {tie.extraTime.host}: {tie.extraTime.hg}–{tie.extraTime.ag}
           </div>
         )}
         {tie.shootout && (
-          <div style={{ fontSize: 11.5, color: "var(--text-muted)", paddingLeft: 10 }}>
+          <div style={{ fontSize: 13, color: "var(--text-muted)", paddingLeft: 10 }}>
             Penalties {tie.shootout.a}–{tie.shootout.b}
             {tie.shootout.kicks.some(k => k.sudden) ? " (sudden death)" : ""}
           </div>
@@ -85,13 +85,13 @@ function TieResult({ tie, odds }) {
           {(aWon ? tie.sides?.a?.name : tie.sides?.b?.name) || (aWon ? "A" : "B")} go through
           {" "}<span style={{ color: ACC }}>{tie.aggA}–{tie.aggB}</span> on aggregate
         </div>
-        <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 2 }}>
+        <div style={{ fontSize: 13, color: "var(--text-faint)", marginTop: 2 }}>
           decided by {tie.decidedBy}
         </div>
       </div>
 
       {odds && (
-        <p style={{ fontSize: 11.5, color: "var(--text-muted)", marginTop: 12, lineHeight: 1.7 }}>
+        <p style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 12, lineHeight: 1.7 }}>
           Over {odds.runs} replays the first side goes through{" "}
           <b style={{ color: "var(--text-primary)" }}>{Math.round(odds.aWinPct * 100)}%</b> of the time.
           Two matches decide very little in football — the single tie above is one draw
@@ -131,7 +131,7 @@ function SameScreen({ coeffs }) {
           width: 220, height: 130, opacity: 0.22 }} />
         <div className="g-dock-left"><h1 className="g-dock-title">Tie Result</h1></div>
         <div className="g-dock-center">
-          <span className="font-logo text-[13px] font-bold uppercase tracking-widest"
+          <span className="font-logo text-[13px] font-bold"
             style={{ color: ACC }}>
             {(aWon ? tie.sides?.a?.name : tie.sides?.b?.name)} go through
           </span>

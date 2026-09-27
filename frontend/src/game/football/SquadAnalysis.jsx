@@ -28,7 +28,7 @@ function SlotBar({ label, value }) {
   const c = hex(value);
   return (
     <div className="flex items-center gap-2.5">
-      <span className="text-[11.5px] shrink-0 text-right" style={{ width: 112, color: "var(--text-muted)" }}>
+      <span className="text-[13px] shrink-0 text-right" style={{ width: 112, color: "var(--text-muted)" }}>
         {label}
       </span>
       <div className="g-bar-track flex-1" style={{ height: 8 }}>
@@ -131,7 +131,7 @@ export default function SquadAnalysis({ fit, starters = [], bench = [],
           <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--text-primary)", marginTop: 2 }}>
             {fit.formation || "not a standard shape"}
           </div>
-          <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 2 }}>
+          <div style={{ fontSize: 13, color: "var(--text-faint)", marginTop: 2 }}>
             {["def", "mid", "fwd"].map((ph) => (
               <span key={ph} style={{ marginRight: 8, color: PHASE_COLOR[ph] }}>
                 {phases[ph] || 0} {ph}
@@ -149,7 +149,7 @@ export default function SquadAnalysis({ fit, starters = [], bench = [],
                 color: dupes.some(([, n]) => n > 2) ? WARN : MID }}>
                 {dupes.map(([a, n]) => `${n}× ${a}`).join(" · ")}
               </div>
-              <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 2 }}>
+              <div style={{ fontSize: 13, color: "var(--text-faint)", marginTop: 2 }}>
                 Same job done twice is a job not done elsewhere.
               </div>
             </>
@@ -178,7 +178,7 @@ export default function SquadAnalysis({ fit, starters = [], bench = [],
       </div>
 
       {/* ── Ölçüm dürüstlüğü ───────────────────────────────────────────── */}
-      <p style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 14, lineHeight: 1.6 }}>
+      <p style={{ fontSize: 13, color: "var(--text-faint)", marginTop: 14, lineHeight: 1.6 }}>
         The percentile is measured, not modelled: it places your XI in the spread of
         {ref ? ` ${ref.n.toLocaleString("en-US")} ` : " 17,936 "}
         elevens that clubs actually put on the pitch. On those same elevens, holding the

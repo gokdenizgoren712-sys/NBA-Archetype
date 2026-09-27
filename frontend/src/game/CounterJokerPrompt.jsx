@@ -35,7 +35,7 @@ export default function CounterJokerPrompt({ jokers, activeSeat, activeName, onU
         <CounterBtn Icon={RefreshIcon} label="Force Team" available={jokers.forceTeam} onClick={() => onUse("forceTeam")} />
         <CounterBtn Icon={CalendarIcon} label="Force Year" available={jokers.forceYear} onClick={() => onUse("forceYear")} />
       </div>
-      <button onClick={onDismiss} className="aura-pill-btn w-full justify-center" style={{ fontSize: 10, padding: "5px" }}>
+      <button onClick={onDismiss} className="aura-pill-btn w-full justify-center" style={{ fontSize: 12, padding: "5px" }}>
         No thanks
       </button>
     </div>

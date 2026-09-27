@@ -72,8 +72,8 @@ function Parts({ fit, align = "left" }) {
       {parts.map(([label, v, w]) => (
         <div key={label} className={align === "right" ? "text-right" : ""}>
           <div className="font-logo font-black tabular-nums leading-none" style={{ fontSize: 19, color: VAL_HEX(v / 100) }}>{v}</div>
-          <div className="text-[9.5px] mt-1" style={{ color: "var(--text-muted)" }}>{label}</div>
-          <div className="g-mono" style={{ color: "var(--text-faint)", fontSize: 8.5 }}>w {w}</div>
+          <div className="text-[12px] mt-1" style={{ color: "var(--text-muted)" }}>{label}</div>
+          <div className="g-mono" style={{ color: "var(--text-faint)", fontSize: 12 }}>w {w}</div>
         </div>
       ))}
     </div>
@@ -221,8 +221,8 @@ export default function DraftAnalysis({
             if (!duo) {
               return (
                 <div key={key} className="flex items-center gap-2.5">
-                  <span className="text-[11.5px] shrink-0 text-right" style={{ width: 96, color: "var(--text-muted)" }}>{plabel}</span>
-                  <span className="text-[8px] font-bold px-1.5 py-px rounded-full shrink-0 w-[46px] text-center"
+                  <span className="text-[13px] shrink-0 text-right" style={{ width: 96, color: "var(--text-muted)" }}>{plabel}</span>
+                  <span className="text-[12px] font-bold px-1.5 py-px rounded-full shrink-0 w-[46px] text-center"
                     style={{ color: tagHex, border: `1px solid ${tagHex}55`, background: tagHex + "14" }}
                     title={`Weight in the ${era.label}: ×${W[key].toFixed(2)}`}>{tag}</span>
                   <div className="g-bar-track flex-1" style={{ height: 8 }}>
@@ -237,15 +237,15 @@ export default function DraftAnalysis({
             return (
               <div key={key} className="g-pillar-row flex items-center gap-2">
                 {/* sol takım — bar sağdan sola dolar */}
-                <span className="font-logo text-[11.5px] font-bold w-6 text-right shrink-0 tabular-nums"
+                <span className="font-logo text-[13px] font-bold w-6 text-right shrink-0 tabular-nums"
                   style={{ color: VAL_HEX(a) }}>{pct100(a)}</span>
                 <div className="g-bar-track flex-1" style={{ height: 8, transform: "scaleX(-1)" }}>
                   <div className="g-bar-fill" style={{ width: `${pct100(a)}%`, "--fill": VAL_HEX(a), "--fill-a": VAL_HEX(a) + "66" }} />
                 </div>
 
                 <div className="g-pillar-label shrink-0 text-center" style={{ width: 108 }}>
-                  <div className="text-[11px] leading-none" style={{ color: "var(--text-muted)" }}>{plabel}</div>
-                  <span className="text-[8px] font-bold px-1.5 py-px rounded-full inline-block mt-1"
+                  <div className="text-[13px] leading-none" style={{ color: "var(--text-muted)" }}>{plabel}</div>
+                  <span className="text-[12px] font-bold px-1.5 py-px rounded-full inline-block mt-1"
                     style={{ color: tagHex, border: `1px solid ${tagHex}55`, background: tagHex + "14" }}
                     title={`Weight in the ${era.label}: ×${W[key].toFixed(2)}`}>{tag}</span>
                 </div>
@@ -253,13 +253,13 @@ export default function DraftAnalysis({
                 <div className="g-bar-track flex-1" style={{ height: 8 }}>
                   <div className="g-bar-fill" style={{ width: `${pct100(b)}%`, "--fill": VAL_HEX(b), "--fill-a": VAL_HEX(b) + "66" }} />
                 </div>
-                <span className="font-logo text-[11.5px] font-bold w-6 shrink-0 tabular-nums" style={{ color: VAL_HEX(b) }}>{pct100(b)}</span>
+                <span className="font-logo text-[13px] font-bold w-6 shrink-0 tabular-nums" style={{ color: VAL_HEX(b) }}>{pct100(b)}</span>
               </div>
             );
           })}
         </div>
         <div className="flex items-baseline gap-2 flex-wrap mt-2.5">
-          <p className="text-[11px] leading-relaxed flex-1 min-w-[220px]" style={{ color: "var(--text-faint)" }}>
+          <p className="text-[13px] leading-relaxed flex-1 min-w-[220px]" style={{ color: "var(--text-faint)" }}>
             {ERA_META_BLURB[era.id]}
           </p>
           {/* Eski Era Report'un iki ayrı satırı — şutör sayısı ve top-hog uyarısı
@@ -282,7 +282,7 @@ export default function DraftAnalysis({
               {duo && <div className="g-mono truncate" style={{ color: "var(--text-faint)" }}>{team.name}</div>}
               <div className="flex gap-2 items-start">
                 <span className="shrink-0 mt-0.5" style={{ color: "#4ade80" }}><BoltIcon size={14} /></span>
-                <p className="text-[11.5px] leading-relaxed" style={{ color: "var(--text-muted)" }}>
+                <p className="text-[13px] leading-relaxed" style={{ color: "var(--text-muted)" }}>
                   <b style={{ color: "var(--text-primary)" }}>Weapon:</b>{" "}
                   <span style={{ color: "#4ade80" }}>{weapon.l} ({pct100(weapon.val)})</span>
                   {weapon.w >= 1.2 ? " — exactly what this era pays for." : weapon.w >= 0.95 ? " — solid currency here." : " — this era barely values it."}
@@ -290,7 +290,7 @@ export default function DraftAnalysis({
               </div>
               <div className="flex gap-2 items-start">
                 <span className="shrink-0 mt-0.5" style={{ color: "#f87171" }}><GapIcon size={14} /></span>
-                <p className="text-[11.5px] leading-relaxed" style={{ color: "var(--text-muted)" }}>
+                <p className="text-[13px] leading-relaxed" style={{ color: "var(--text-muted)" }}>
                   <b style={{ color: "var(--text-primary)" }}>Gap:</b>{" "}
                   <span style={{ color: "#f87171" }}>{gap.l} ({pct100(gap.val)})</span>
                   {gap.w >= 1.2 && <span style={{ color: "var(--yamabuki)" }}> — a KEY pillar here, it will cost games.</span>}
@@ -308,7 +308,7 @@ export default function DraftAnalysis({
             <div className="flex items-center justify-between mb-1">
               <div className="g-label">{team.name}</div>
               {team.coach?.champs > 0 && (
-                <span className="text-[10px] inline-flex items-center gap-0.5" style={{ color: "var(--yamabuki)" }}>
+                <span className="text-[12px] inline-flex items-center gap-0.5" style={{ color: "var(--yamabuki)" }}>
                   <TrophyIcon size={10} />×{team.coach.champs}
                 </span>
               )}

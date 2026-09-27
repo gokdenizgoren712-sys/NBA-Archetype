@@ -93,7 +93,7 @@ export default function FootballLeaderboard({ limit = 25, fill = false }) {
                     whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                     {e.name}
                   </div>
-                  <div style={{ fontSize: 10.5, color: "var(--text-faint)",
+                  <div style={{ fontSize: 12, color: "var(--text-faint)",
                     whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                     {e.username} · {e.shape}
                     {e.top_players?.length ? " · " + e.top_players.map(t => t.name).join(", ") : ""}
@@ -102,9 +102,9 @@ export default function FootballLeaderboard({ limit = 25, fill = false }) {
                 {p != null ? (
                   <div style={{ textAlign: "right", minWidth: 62 }}>
                     <div style={{ fontSize: 17, fontWeight: 800, lineHeight: 1, color: hex(p) }}>
-                      {p}<span style={{ fontSize: 10 }}>{ordinal(p)}</span>
+                      {p}<span style={{ fontSize: 12 }}>{ordinal(p)}</span>
                     </div>
-                    <div style={{ fontSize: 9, textTransform: "uppercase",
+                    <div style={{ fontSize: 12, 
                       letterSpacing: ".07em", color: "var(--text-faint)" }}>pct</div>
                   </div>
                 ) : (

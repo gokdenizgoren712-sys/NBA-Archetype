@@ -20,11 +20,11 @@ const FORM_COLOR = { W: ACC, D: "var(--text-faint)", L: "#E8654C" };
 function Stat({ label, value, sub, color }) {
   return (
     <div style={{ flex: "1 1 90px", minWidth: 90 }}>
-      <div className="g-label" style={{ fontSize: 10, letterSpacing: ".08em",
+      <div className="g-label" style={{ fontSize: 12, 
         textTransform: "uppercase", color: "var(--text-faint)" }}>{label}</div>
       <div style={{ fontSize: 26, fontWeight: 700, lineHeight: 1.1,
         color: color || "var(--text)" }}>{value}</div>
-      {sub && <div style={{ fontSize: 11, color: "var(--text-faint)" }}>{sub}</div>}
+      {sub && <div style={{ fontSize: 13, color: "var(--text-faint)" }}>{sub}</div>}
     </div>
   );
 }
@@ -171,7 +171,7 @@ export default function SeasonPanel({ starters, chemistry, positionPenalty = 0,
       </div>
 
       <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 12, flexWrap: "wrap" }}>
-        <label style={{ fontSize: 11, color: "var(--text-faint)" }}>
+        <label style={{ fontSize: 13, color: "var(--text-faint)" }}>
           {mode === "rewrite" ? "Replace" : "Take the place of"}
         </label>
         <div className="aura-select-wrap">
@@ -195,12 +195,12 @@ export default function SeasonPanel({ starters, chemistry, positionPenalty = 0,
           {busy ? "Simulating…" : (run || rh) ? "Run again" : "Simulate season"}
         </button>
         {mode === "rewrite" && rhTeam && !rhData && (
-          <span style={{ fontSize: 11, color: "var(--text-faint)" }}>loading fixtures…</span>
+          <span style={{ fontSize: 13, color: "var(--text-faint)" }}>loading fixtures…</span>
         )}
       </div>
 
       {mode === "rewrite" && rhData && (
-        <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginTop: 8, lineHeight: 1.6 }}>
+        <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 8, lineHeight: 1.6 }}>
           {rhData.team} played <b style={{ color: "var(--text-primary)" }}>{rhData.matches}</b> matches we
           have lineups for, finishing <b style={{ color: "var(--text-primary)" }}>
           {rhData.real.w}-{rhData.real.d}-{rhData.real.l}</b> on{" "}
@@ -210,7 +210,7 @@ export default function SeasonPanel({ starters, chemistry, positionPenalty = 0,
       )}
 
       {quality != null && (
-        <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 8 }}>
+        <div style={{ fontSize: 13, color: "var(--text-faint)", marginTop: 8 }}>
           Your squad enters at quality <b style={{ color: ACC }}>{quality.toFixed(3)}</b>
           {" · "}chemistry <b style={{ color: ACC }}>{(chemistry ?? 0).toFixed(3)}</b>
           {" — "}the league runs {clubs.length ? `${Math.min(...clubs.map(c => c.quality)).toFixed(2)}–${Math.max(...clubs.map(c => c.quality)).toFixed(2)}` : "—"}
@@ -245,7 +245,7 @@ export default function SeasonPanel({ starters, chemistry, positionPenalty = 0,
               sub={`median ${rhDist.median}`} />
           </div>
 
-          <p style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 14, lineHeight: 1.6 }}>
+          <p style={{ fontSize: 13, color: "var(--text-faint)", marginTop: 14, lineHeight: 1.6 }}>
             Same opponents, same home and away, same season — only the eleven is different.
             Two comparisons are shown because they answer different questions. Beating
             their <i>real</i> return is the romantic one, but it is not quite fair: the
@@ -290,7 +290,7 @@ export default function SeasonPanel({ starters, chemistry, positionPenalty = 0,
 
           <PositionBars positions={dist.positions} n={clubs.length + (replace ? 0 : 1)} />
 
-          <p style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 14, lineHeight: 1.6 }}>
+          <p style={{ fontSize: 13, color: "var(--text-faint)", marginTop: 14, lineHeight: 1.6 }}>
             Football is noisy: the fitted model explains {r2 ? `${Math.round(r2 * 100)}%` : "~14%"} of
             the variance in a single match's goals, so one 38-game run can land several places
             off. The distribution above is the honest answer; the table below is one sample from it.
@@ -346,7 +346,7 @@ function Table({ rows }) {
       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12,
         fontVariantNumeric: "tabular-nums" }}>
         <thead>
-          <tr style={{ color: "var(--text-faint)", fontSize: 10, textTransform: "uppercase",
+          <tr style={{ color: "var(--text-faint)", fontSize: 12, 
             letterSpacing: ".07em" }}>
             {["", "Club", "P", "W", "D", "L", "GF", "GA", "GD", "Pts", "Form"].map((h, i) => (
               <th key={i} style={{ textAlign: i < 2 ? "left" : "right", padding: "6px 6px",
@@ -403,7 +403,7 @@ function Awards({ a }) {
           <div className="g-label">{label}</div>
           <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--text-primary)", marginTop: 2,
             whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{name}</div>
-          <div style={{ fontSize: 11, color: ACC }}>{sub}</div>
+          <div style={{ fontSize: 13, color: ACC }}>{sub}</div>
         </div>
       ))}
     </div>
@@ -423,7 +423,7 @@ function SquadStats({ players }) {
           <span className="g-rr-pos">{p.pos}</span>
           <span style={{ flex: "1 1 120px", whiteSpace: "nowrap", overflow: "hidden",
             textOverflow: "ellipsis" }}>{p.name}</span>
-          <span style={{ flex: "1 1 60px", color: "var(--text-faint)", fontSize: 10.5,
+          <span style={{ flex: "1 1 60px", color: "var(--text-faint)", fontSize: 12,
             whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.arch}</span>
           <div className="g-bar-track shrink-0" style={{ width: 70, height: 7 }}>
             <div className="g-bar-fill" style={{ width: `${((p.goals + p.assists) / max) * 100}%`,
@@ -449,7 +449,7 @@ function RealTable({ rows }) {
       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12,
         fontVariantNumeric: "tabular-nums" }}>
         <thead>
-          <tr style={{ color: "var(--text-faint)", fontSize: 10, textTransform: "uppercase",
+          <tr style={{ color: "var(--text-faint)", fontSize: 12, 
             letterSpacing: ".07em" }}>
             {["", "Club", "P", "W", "D", "L", "GD", "Pts", "Per game", "Really got"]
               .map((h, i) => (
@@ -482,7 +482,7 @@ function RealTable({ rows }) {
           ))}
         </tbody>
       </table>
-      <p style={{ fontSize: 10.5, color: "var(--text-faint)", marginTop: 8, lineHeight: 1.6 }}>
+      <p style={{ fontSize: 12, color: "var(--text-faint)", marginTop: 8, lineHeight: 1.6 }}>
         Clubs play different numbers of matches here, because only games where both
         starting elevens were recorded can be replayed. Ranking is by points per game
         for that reason. The last column is what each club really finished on.
@@ -500,14 +500,14 @@ function RewriteFixtures({ matches }) {
           padding: "6px 9px", borderRadius: 8, fontSize: 12,
           background: m.beat ? `${ACC}12` : "rgba(255,255,255,.022)",
           border: `1px solid ${m.beat ? ACC + "33" : "var(--border)"}` }}>
-          <span style={{ color: "var(--text-faint)", fontSize: 10, width: 30 }}>
+          <span style={{ color: "var(--text-faint)", fontSize: 12, width: 30 }}>
             {m.home ? "HOME" : "AWAY"}</span>
           <span style={{ flex: 1, whiteSpace: "nowrap", overflow: "hidden",
             textOverflow: "ellipsis" }}>{m.opponent}</span>
           <span style={{ fontVariantNumeric: "tabular-nums", fontWeight: 600,
             color: FORM_COLOR[m.result] }}>{m.gf}–{m.ga}</span>
           <span title="what actually happened"
-            style={{ fontVariantNumeric: "tabular-nums", fontSize: 10.5,
+            style={{ fontVariantNumeric: "tabular-nums", fontSize: 12,
               color: "var(--text-faint)" }}>({m.realGf}–{m.realGa})</span>
         </div>
       ))}
@@ -523,7 +523,7 @@ function Fixtures({ matches }) {
         <div key={m.round} style={{ display: "flex", alignItems: "center", gap: 8,
           padding: "6px 9px", borderRadius: 8, fontSize: 12,
           background: "rgba(255,255,255,.025)", border: "1px solid var(--border)" }}>
-          <span style={{ color: "var(--text-faint)", fontSize: 10, width: 30 }}>
+          <span style={{ color: "var(--text-faint)", fontSize: 12, width: 30 }}>
             {m.home ? "HOME" : "AWAY"}</span>
           <span style={{ flex: 1, whiteSpace: "nowrap", overflow: "hidden",
             textOverflow: "ellipsis" }}>{m.opponent}</span>

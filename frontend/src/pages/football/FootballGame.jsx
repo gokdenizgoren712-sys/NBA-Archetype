@@ -405,7 +405,7 @@ export default function FootballGame() {
             {filledCount > 0 && (
               <div className="flex items-center gap-2 min-w-[110px]">
                 <div className="g-progress"><div style={{ width: `${(filledCount / slots.length) * 100}%` }} /></div>
-                <span className="text-[10.5px] tabular-nums shrink-0" style={{ color: "var(--text-muted)" }}>
+                <span className="text-[12px] tabular-nums shrink-0" style={{ color: "var(--text-muted)" }}>
                   {filledCount}/{slots.length}
                 </span>
               </div>
@@ -491,7 +491,7 @@ export default function FootballGame() {
               className={`aura-pill-btn${mode === "league" && league === l ? " active" : ""}`}
               disabled={filledCount > 0}>{LEAGUE_LABEL[l] || l}</button>
           ))}
-          <span className="text-[11px] ml-auto" style={{ color: "var(--text-faint)" }}>
+          <span className="text-[13px] ml-auto" style={{ color: "var(--text-faint)" }}>
             {pairs.length} club-seasons in the wheel
           </span>
           {filledCount > 0 && <button onClick={reset} className="aura-pill-btn">Reset</button>}
@@ -529,12 +529,12 @@ export default function FootballGame() {
                                "--accent-line": moveSrc === s.id ? "var(--text-primary)"
                                  : p ? PHASE_COLOR[p.PHASE] + "55" : "rgba(255,255,255,.12)",
                                padding: "5px 7px", textAlign: "left" }}>
-                      <div className="text-[10px] truncate"
+                      <div className="text-[12px] truncate"
                         style={{ color: p ? "var(--text-primary)" : "var(--text-faint)" }}>
                         {p ? p.PLAYER_NAME.split(" ").slice(-1)[0] : s.id}
                       </div>
                       {p && (
-                        <div className="text-[9px]" style={{ color: PHASE_COLOR[p.PHASE] }}>
+                        <div className="text-[12px]" style={{ color: PHASE_COLOR[p.PHASE] }}>
                           {p.POSITION} · {Math.round((p.overall_score || 0) * 100)}
                         </div>
                       )}
@@ -545,7 +545,7 @@ export default function FootballGame() {
             </div>
 
             {moveSrc && (
-              <div className="text-[11px] mt-2 text-center" style={{ color: "#F2C14E" }}>
+              <div className="text-[13px] mt-2 text-center" style={{ color: "#F2C14E" }}>
                 Moving — tap another slot to swap, or tap again to cancel.
               </div>
             )}
@@ -559,7 +559,7 @@ export default function FootballGame() {
                   <span className="inline-block w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: ACCENT }} />
                   Squad complete — pick a manager
                 </div>
-                <p className="text-[11.5px] leading-relaxed mb-3" style={{ color: "var(--text-muted)" }}>
+                <p className="text-[13px] leading-relaxed mb-3" style={{ color: "var(--text-muted)" }}>
                   A manager who prefers your shape ({shape}) gives a bigger bonus.
                 </p>
                 {/* Basketbol tarafındaki CoachPicker ile aynı dil: her kart
@@ -588,7 +588,7 @@ export default function FootballGame() {
                                 <div className="g-bar-fill" style={{ width: `${gradeVal(g) * 100}%`,
                                   "--fill": hex, "--fill-a": hex + "66" }} />
                               </div>
-                              <span className="font-logo text-[11px] font-bold w-6 text-right shrink-0"
+                              <span className="font-logo text-[13px] font-bold w-6 text-right shrink-0"
                                 style={{ color: hex }}>{g}</span>
                             </div>
                           ))}
@@ -619,7 +619,7 @@ export default function FootballGame() {
                     <span style={{ fontSize: 15, color: "var(--text-faint)" }}> / 100</span>
                   </div>
                   {manager && (
-                    <div className="text-[11px] mt-3 inline-flex items-center gap-1.5"
+                    <div className="text-[13px] mt-3 inline-flex items-center gap-1.5"
                       style={{ color: fit?.manager_matched ? ACCENT : "var(--text-muted)" }}>
                       {manager.name}{fit?.manager_matched ? " · shape match" : ""}
                     </div>
@@ -650,7 +650,7 @@ export default function FootballGame() {
                       ["Average quality", avgOverall / 100, "#4C9BE8"],
                     ].map(([label, v, hex]) => (
                       <div key={label} className="flex items-center gap-2.5">
-                        <span className="text-[11.5px] shrink-0 text-right" style={{ width: 104, color: "var(--text-muted)" }}>{label}</span>
+                        <span className="text-[13px] shrink-0 text-right" style={{ width: 104, color: "var(--text-muted)" }}>{label}</span>
                         <div className="g-bar-track flex-1" style={{ height: 8 }}>
                           <div className="g-bar-fill" style={{ width: `${Math.max(0, Math.min(100, Math.round((v ?? 0) * 100)))}%`,
                             "--fill": hex, "--fill-a": hex + "66" }} />
@@ -678,11 +678,11 @@ export default function FootballGame() {
                     <button onClick={saveRoster} className="aura-pill-btn active">Save</button>
                   </div>
                 ) : (
-                  <div className="text-[11px] mt-4" style={{ color: "var(--text-faint)" }}>
+                  <div className="text-[13px] mt-4" style={{ color: "var(--text-faint)" }}>
                     Log in to save this squad.
                   </div>
                 )}
-                {saveMsg && <div className="text-[11px] mt-1" style={{ color: "var(--text-muted)" }}>{saveMsg}</div>}
+                {saveMsg && <div className="text-[13px] mt-1" style={{ color: "var(--text-muted)" }}>{saveMsg}</div>}
                 <button onClick={reset} className="aura-rating-btn mt-3" style={{ padding: "9px 22px" }}>
                   Play again
                 </button>
@@ -705,7 +705,7 @@ export default function FootballGame() {
                       {chosen?.team || teams[spinT] || "—"}
                     </div>
                     {chosen && (
-                      <div className="text-[10px]" style={{ color: "var(--text-faint)" }}>
+                      <div className="text-[12px]" style={{ color: "var(--text-faint)" }}>
                         {LEAGUE_LABEL[chosen.league] || chosen.league}
                       </div>
                     )}
@@ -730,7 +730,7 @@ export default function FootballGame() {
                   {jokerBtn("dc", SearchIcon,   "Discover", jokerDiscover, jokers.discover && !!chosen)}
                 </div>
 
-                {msg && <div className="text-[11.5px] text-center mt-3"
+                {msg && <div className="text-[13px] text-center mt-3"
                   style={{ color: pickingFor ? "#F2C14E" : "#E8654C" }}>{msg}</div>}
 
                 {roster.length > 0 && !pickingFor && (
@@ -780,7 +780,7 @@ export default function FootballGame() {
                       })}
                     </div>
                     {!discover && (
-                      <div className="text-[10px] mt-1" style={{ color: "var(--text-faint)" }}>
+                      <div className="text-[12px] mt-1" style={{ color: "var(--text-faint)" }}>
                         Ratings are hidden — spend Discover to see them.
                       </div>
                     )}
@@ -792,14 +792,14 @@ export default function FootballGame() {
                     style={{ "--accent": "#F2C14E", "--accent-line": "#F2C14E80" }}>
                     <span className="aura-blob" style={{ "--slot-color": "#F2C14E", right: -18, top: -20, width: 110, height: 66, opacity: 0.2 }} />
                     <div className="g-rr-name">{pickingFor.PLAYER_NAME}</div>
-                    <div className="text-[11px]" style={{ color: "var(--text-muted)" }}>
+                    <div className="text-[13px]" style={{ color: "var(--text-muted)" }}>
                       {pickingFor.primary_arch} · natural {pickingFor.POSITION}
                     </div>
-                    <div className="text-[10.5px] mt-1" style={{ color: "var(--text-faint)" }}>
+                    <div className="text-[12px] mt-1" style={{ color: "var(--text-faint)" }}>
                       Tap a slot on the pitch. Off-position slots cost you points.
                     </div>
                     <button onClick={() => { setPickingFor(null); setMsg(""); }}
-                      className="aura-pill-btn mt-2" style={{ fontSize: 11 }}>Cancel</button>
+                      className="aura-pill-btn mt-2" style={{ fontSize: 13 }}>Cancel</button>
                   </div>
                 )}
               </>

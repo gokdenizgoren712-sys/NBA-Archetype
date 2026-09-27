@@ -15,18 +15,18 @@ export default function ChampionModal({ champion, season, finalsMVP, onClose }) 
             <CrownIcon size={40} />
           </span>
         </div>
-        <div className="text-[10px] uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>{season} NBA Champions</div>
+        <div className="text-[12px]" style={{ color: "var(--text-muted)" }}>{season} NBA Champions</div>
         <div className="text-2xl font-black" style={{ color: "var(--yamabuki)" }}>{champion.abbr}</div>
         {finalsMVP && (
           <div className="pt-2" style={{ borderTop: "1px solid rgba(255,255,255,.08)" }}>
-            <div className="text-[9.5px] uppercase tracking-widest mb-1" style={{ color: "var(--text-muted)" }}>Finals MVP</div>
+            <div className="text-[12px] mb-1" style={{ color: "var(--text-muted)" }}>Finals MVP</div>
             <div className="inline-flex items-center gap-1.5 text-sm font-bold text-white">
               <TrophyIcon size={14} /> {finalsMVP.name} <span style={{ color: "var(--text-faint)" }}>({finalsMVP.abbr})</span>
             </div>
           </div>
         )}
         <button onClick={onClose}
-          className="mt-2 w-full py-2 rounded-lg text-[10.5px] font-bold uppercase tracking-wide"
+          className="mt-2 w-full py-2 rounded-lg text-[12px] font-bold"
           style={{ background: "var(--bg-elevated)", color: "var(--text-primary)" }}>
           Close
         </button>

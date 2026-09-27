@@ -74,7 +74,7 @@ function QueuePanel({ state, elapsed, queueSize, opponent, onFind, onCancel, onA
         </span>
       </div>
 
-      <p className="text-[11.5px] leading-relaxed mb-4" style={{ color: "var(--text-muted)" }}>
+      <p className="text-[13px] leading-relaxed mb-4" style={{ color: "var(--text-muted)" }}>
         Get paired with another fan at random. Same rules as With a Friend — one shared era,
         snake draft, 100% salary cap each, five jokers plus counter-jokers, best-of-7 series.
       </p>
@@ -101,7 +101,7 @@ function QueuePanel({ state, elapsed, queueSize, opponent, onFind, onCancel, onA
           <div className="g-mono mt-1" style={{ color: "var(--text-faint)" }}>
             {queueSize != null ? `${queueSize} in queue` : "searching for an opponent"}
           </div>
-          <button onClick={onCancel} className="mt-4 text-[11.5px] underline underline-offset-2"
+          <button onClick={onCancel} className="mt-4 text-[13px] underline underline-offset-2"
             style={{ color: "var(--text-muted)" }}>Cancel</button>
         </div>
       )}
@@ -175,7 +175,7 @@ function BoardPanel({ entries, selected, onSelect, onChallenge, loading, challen
         </span>
       </div>
 
-      <p className="text-[11.5px] leading-relaxed mt-2 shrink-0" style={{ color: "var(--text-muted)" }}>
+      <p className="text-[13px] leading-relaxed mt-2 shrink-0" style={{ color: "var(--text-muted)" }}>
         No waiting. Pick any of the 25 best Salary Cap rosters ever submitted and draft against it —
         their lineup is frozen, their era is the era you play in.
       </p>
@@ -187,14 +187,14 @@ function BoardPanel({ entries, selected, onSelect, onChallenge, loading, challen
           style={{ background: "var(--bg-surface)", color: "var(--text-primary)", border: "1px solid var(--border)" }} />
         {isFiltering && (
           <button onClick={() => { setScoreFilter(""); onSelect(null); }}
-            className="text-[10.5px] px-2 py-1.5 rounded-lg shrink-0"
+            className="text-[12px] px-2 py-1.5 rounded-lg shrink-0"
             style={{ color: "var(--text-muted)", border: "1px solid var(--border)" }}>
             Clear
           </button>
         )}
       </div>
       {isFiltering && (
-        <p className="text-[10.5px] mt-1 shrink-0" style={{ color: "var(--text-faint)" }}>
+        <p className="text-[12px] mt-1 shrink-0" style={{ color: "var(--text-faint)" }}>
           Every Single Player roster that scored exactly {scoreFilter} — not just the one shown by default.
         </p>
       )}
@@ -203,14 +203,14 @@ function BoardPanel({ entries, selected, onSelect, onChallenge, loading, challen
         {(loading || filterLoading) && [...Array(8)].map((_, i) => <div key={i} className="g-lb-skel" />)}
 
         {!loading && !filterLoading && shownEntries.length === 0 && !isFiltering && (
-          <p className="text-[11.5px] leading-relaxed py-3" style={{ color: "var(--text-muted)" }}>
+          <p className="text-[13px] leading-relaxed py-3" style={{ color: "var(--text-muted)" }}>
             No Salary Cap runs on the board yet. Play a Salary Cap game in Single Player and yours
             becomes the first roster anyone can challenge.
           </p>
         )}
 
         {!loading && !filterLoading && shownEntries.length === 0 && isFiltering && (
-          <p className="text-[11.5px] leading-relaxed py-3" style={{ color: "var(--text-muted)" }}>
+          <p className="text-[13px] leading-relaxed py-3" style={{ color: "var(--text-muted)" }}>
             No Salary Cap roster has scored exactly {scoreFilter} yet.
           </p>
         )}
@@ -482,7 +482,7 @@ export default function OnlineGame() {
                       <div className="font-logo text-[14px] font-bold truncate" style={{ color: "var(--text-primary)" }}>{selected.username}</div>
                       <div className="font-logo font-black tabular-nums leading-none mt-0.5"
                         style={{ fontSize: 24, color: GRADE_HEX[selected.grade] || "#9ca3af" }}>
-                        {selected.pct}<span style={{ fontSize: 11, color: "var(--text-faint)" }}> / 100</span>
+                        {selected.pct}<span style={{ fontSize: 13, color: "var(--text-faint)" }}> / 100</span>
                       </div>
                     </div>
                   </div>
@@ -512,7 +512,7 @@ export default function OnlineGame() {
                     <div className="space-y-0.5">
                       {oppRoster.map((p, i) => (
                         <div key={`${p.PLAYER_NAME}-${i}`} className="flex items-center gap-2 text-[12px]">
-                          <span className="g-roster-pos" style={{ width: 26, fontSize: 9, "--accent": i < 5 ? "#f87171" : "#6b7280", "--accent-a": (i < 5 ? "#f87171" : "#6b7280") + "1f", "--accent-line": (i < 5 ? "#f87171" : "#6b7280") + "4d" }}>
+                          <span className="g-roster-pos" style={{ width: 26, fontSize: 12, "--accent": i < 5 ? "#f87171" : "#6b7280", "--accent-a": (i < 5 ? "#f87171" : "#6b7280") + "1f", "--accent-line": (i < 5 ? "#f87171" : "#6b7280") + "4d" }}>
                             {SLOT_ORDER[i]}
                           </span>
                           <span className="truncate" style={{ color: i < 5 ? "var(--text-primary)" : "var(--text-muted)" }}>{p.PLAYER_NAME}</span>
@@ -521,7 +521,7 @@ export default function OnlineGame() {
                     </div>
                   </div>
 
-                  <p className="text-[11px] leading-relaxed pt-2" style={{ color: "var(--text-faint)", borderTop: "1px solid rgba(255,255,255,.07)" }}>
+                  <p className="text-[13px] leading-relaxed pt-2" style={{ color: "var(--text-faint)", borderTop: "1px solid rgba(255,255,255,.07)" }}>
                     You draft nine under the same 100% cap, in their era. Their roster never changes —
                     beat the number, not the person.
                   </p>
@@ -538,13 +538,13 @@ export default function OnlineGame() {
                       <span className="shrink-0 mt-0.5" style={{ color: hex }}><Icon size={15} /></span>
                       <div className="min-w-0">
                         <div className="font-medium text-[12.5px]" style={{ color: "var(--text-primary)" }}>{title}</div>
-                        <div className="text-[11px] leading-relaxed" style={{ color: "var(--text-muted)" }}>{desc}</div>
+                        <div className="text-[13px] leading-relaxed" style={{ color: "var(--text-muted)" }}>{desc}</div>
                       </div>
                     </div>
                   ))}
                   <div className="flex gap-2.5 items-start pt-2" style={{ borderTop: "1px solid rgba(255,255,255,.07)" }}>
                     <span className="shrink-0 mt-0.5" style={{ color: "#60a5fa" }}><LoopIcon size={15} /></span>
-                    <div className="text-[11px] leading-relaxed" style={{ color: "var(--text-muted)" }}>
+                    <div className="text-[13px] leading-relaxed" style={{ color: "var(--text-muted)" }}>
                       Prefer a real person? Switch to <b style={{ color: "var(--text-primary)" }}>Live</b> in the top-right
                       and you'll be queued against another fan instead.
                     </div>

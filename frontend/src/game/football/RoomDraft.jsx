@@ -106,7 +106,7 @@ export default function RoomDraft({ roomCode, onResult, onLeave }) {
                   <span className="g-label" style={{ color: SEAT_COLOR[s] }}>
                     {mine ? "You" : "Opponent"}
                   </span>
-                  <span className="text-[10px] uppercase tracking-wider"
+                  <span className="text-[12px]"
                     style={{ color: state.ready?.[String(s)] ? ACC : "var(--text-faint)" }}>
                     {state.ready?.[String(s)] ? "ready" : "choosing"}
                   </span>
@@ -119,7 +119,7 @@ export default function RoomDraft({ roomCode, onResult, onLeave }) {
                     <button key={k} disabled={!mine}
                       onClick={() => mine && send({ type: "shape", shape: k })}
                       className="aura-pill-btn"
-                      style={{ fontSize: 11, padding: "5px 11px",
+                      style={{ fontSize: 13, padding: "5px 11px",
                         cursor: mine ? "pointer" : "default",
                         ...(state.shapes?.[String(s)] === k
                           ? { borderColor: SEAT_COLOR[s], color: SEAT_COLOR[s],
@@ -259,7 +259,7 @@ function RoomDock({ state, connected, peerOn, mySeat, roomCode, onLeave, draftin
             <InlineSpin items={seasons} spinning label="Season" accent="#FFB11B" targetIdx={0} />
           </div>
         ) : (
-          <span className="font-logo text-[12px] font-bold uppercase tracking-widest"
+          <span className="font-logo text-[12px] font-bold"
             style={{ color: acc }}>
             {active === mySeat ? "Your pick" : "Their pick"}
           </span>
@@ -277,7 +277,7 @@ function RoomDock({ state, connected, peerOn, mySeat, roomCode, onLeave, draftin
         )}
         {onLeave && (
           <button onClick={onLeave} className="aura-pill-btn"
-            style={{ fontSize: 11 }}>Leave</button>
+            style={{ fontSize: 13 }}>Leave</button>
         )}
       </div>
     </div>

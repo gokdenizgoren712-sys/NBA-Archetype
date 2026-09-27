@@ -35,7 +35,7 @@ function Spot({ pos, player, accent, x, y, size, selected, canTap, onTap }) {
       style={{ left: `${x}%`, top: `${y}%`, cursor: canTap ? "pointer" : "default" }}>
       <Node pos={pos} color={selected ? "#FFB11B" : player ? accent : POS_COLOR[pos]}
         dim={!player && !selected} glow={selected} size={size} />
-      <div className="nm font-logo text-[9.5px] font-bold leading-none mt-1 max-w-[74px] truncate text-center"
+      <div className="nm font-logo text-[12px] font-bold leading-none mt-1 max-w-[74px] truncate text-center"
         style={{ color: selected ? "var(--yamabuki)" : player ? "var(--text-primary)" : "rgba(255,255,255,.18)" }}>
         {player ? last(player.PLAYER_NAME) : "—"}
       </div>
@@ -61,9 +61,9 @@ function BenchCell({ slot, player, accent, selected, canTap, onTap }) {
           transform: "translateX(-50%)", opacity: selected ? 0.3 : 0.18,
         }} />
       )}
-      <div className="relative font-logo text-[8.5px] uppercase tracking-widest font-bold leading-none"
+      <div className="relative font-logo text-[12px] font-bold leading-none"
         style={{ color: "var(--text-faint)" }}>{slot}</div>
-      <div className="relative font-logo text-[11px] font-bold truncate leading-tight mt-1"
+      <div className="relative font-logo text-[13px] font-bold truncate leading-tight mt-1"
         style={{ color: player ? "var(--text-primary)" : "rgba(255,255,255,.16)" }}>
         {player ? last(player.PLAYER_NAME) : "—"}
       </div>

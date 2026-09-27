@@ -10,10 +10,10 @@ import { getPlayerTags, TAG_INFO } from "../game/awards";
 import CourtBoard from "../game/CourtBoard";
 import { START_BUDGET, MIN_COST, costColor, totalSpent, maxSpendNow, priceOf } from "../game/salary";
 import {
-  StarIcon, CoachIcon, TrophyIcon, CrownIcon, CapIcon, TargetIcon, WheelIcon,
+  StarIcon, CoachIcon, TrophyIcon, CapIcon, TargetIcon, WheelIcon,
   TagIcon, RefreshIcon, CalendarIcon, BoltIcon, UsersIcon,
-  SearchIcon, LoopIcon, GapIcon, WarnIcon, EyeIcon, LinkIcon, CheckIcon,
-  DownloadIcon, XLogoIcon, DiceIcon, LightbulbIcon, InfoIcon,
+  SearchIcon, EyeIcon, LinkIcon, CheckIcon,
+  DownloadIcon, XLogoIcon, DiceIcon, InfoIcon,
 } from "../game/GameIcons";
 import {
   POSITIONS, BENCH_SLOTS, ALL_SLOTS, ARCH_POSITIONS, POS_STRING_MAP,
@@ -99,7 +99,8 @@ function ScoreReveal({ fit, lineup, primaryCount, onReset, lang, affinityMatrix,
 
   // Leaderboard — mod bazlı
   useEffect(() => {
-    fetch(apiUrl(`/api/leaderboard?limit=10&mode=${mode}`)).then(r => r.json()).then(d => setLeaderboard(d.entries || [])).catch(() => {});
+    fetch(apiUrl(`/api/leaderboard?limit=100&mode=${mode}`)).then(r => r.json())
+      .then(d => setLeaderboard({ entries: d.entries || [], total: d.total ?? null })).catch(() => {});
   }, [mode]);
 
   const coveragePct = Math.round((fit.coverage || 0) * 100);
@@ -133,84 +134,53 @@ function ScoreReveal({ fit, lineup, primaryCount, onReset, lang, affinityMatrix,
       .catch(() => { setSaveStatus("error"); setSaveErr("Connection error"); });
   };
 
+  // Tablonun referansı (brief: çıplak sayı yok). Bu bir persantil DEĞİL —
+  // 100 üzerinden Lineup Fit puanı; sıra, kayıtlı koşular içinde nereye
+  // düştüğü (ilk 100'ün içindeyse).
+  const modeLabel = mode === "salarycap" ? "Salary Cap" : "Classic";
+  const rank = leaderboard ? leaderboard.entries.filter(e => e.pct > pct).length + 1 : null;
+  const refLine = leaderboard == null ? null
+    : leaderboard.total
+      ? (rank <= leaderboard.entries.length || leaderboard.entries.length < 100
+          ? <>Would place <b>#{rank}</b> of {leaderboard.total.toLocaleString()} {modeLabel} runs on record</>
+          : <>Below the top 100 of {leaderboard.total.toLocaleString()} {modeLabel} runs on record</>)
+      : <>No {modeLabel} runs on the board yet</>;
+
+  const gHex = GRADE_HEX[grade] || "#9ca3af";
+  const parts = [
+    ["Quality",   qualityPct,                    "45%"],
+    ["Coverage",  coveragePct,                   "40%"],
+    ["Chemistry", Math.round(fit.roleFit * 100), "15%"],
+  ];
+  const [shareOpen, setShareOpen] = useState(false);
+
   return (
-    <div className="space-y-4">
-      {/* Ana skor — oyunun ödül anı: not harfi devasa, kendi renginde parlıyor */}
-      {(() => {
-        const gHex = GRADE_HEX[grade] || "#9ca3af";
-        return (
-          <div className="g-score-hero"
-            style={{ "--accent": gHex, "--accent-a": gHex + "40", "--accent-line": gHex + "55" }}>
-            <div className="g-holo" />
-            <span className="aura-blob" style={{ "--slot-color": gHex, left: "50%", top: -40, width: 320, height: 190, transform: "translateX(-50%)", opacity: 0.3 }} />
+    <div className="g-result" style={{ "--g": gHex }}>
+      <PageGlow tint={gHex} />
 
-            <div className="g-label center mb-3">Lineup Fit</div>
-            {simEra && (
-              <div className="mb-4">
-                <span className="text-[10px] px-2.5 py-1 rounded-full font-semibold"
-                  style={{ color: gHex, border: `1px solid ${gHex}44`, background: gHex + "14" }}>
-                  built for the {simEra.label}
-                </span>
-              </div>
-            )}
-
-            <div className="g-score-grade">{grade}</div>
-            <div className="g-score-pct mt-2">{pct}<span style={{ fontSize: 15, color: "var(--text-faint)" }}> / 100</span></div>
-
-            {chemBonus > 0 && (
-              <div className="text-[11px] mt-3 inline-flex items-center gap-1.5" style={{ color: "var(--yamabuki)" }}>
-                <StarIcon size={11} /> Chemistry bonus · {primaryCount} primary slot{primaryCount === 1 ? "" : "s"} (+{Math.round(chemBonus * 100)})
-              </div>
-            )}
-
-            {/* Skor bileşenleri: 45% kalite + 40% kapsama + 15% rol */}
-            <div className="g-score-parts max-w-sm mx-auto">
-              {[
-                ["Quality",  qualityPct,                    "45%"],
-                ["Coverage", coveragePct,                   "40%"],
-                ["Chemistry", Math.round(fit.roleFit * 100), "15%"],
-              ].map(([label, val, w]) => (
-                <div key={label} className="g-score-part">
-                  <div className="v" style={{ color: VAL_HEX(val / 100) }}>{val}</div>
-                  <div className="l">{label}</div>
-                  <div className="w">weight {w}</div>
-                </div>
-              ))}
+      {/* Ödül anı (12b): tek büyük an — 96px not, kendi renginde parlıyor */}
+      <section className="g-result-hero">
+        <span className="g-result-eyebrow">Lineup Fit{simEra ? ` · built for the ${simEra.label}` : ""}</span>
+        <span className="g-result-grade">{grade}</span>
+        <div className="g-result-score"><b>{pct}</b><i>/ 100</i></div>
+        {refLine && <span className="g-result-ref">{refLine}</span>}
+        {chemBonus > 0 && (
+          <span className="g-result-chem">
+            <StarIcon size={12} /> Chemistry bonus · {primaryCount} primary slot{primaryCount === 1 ? "" : "s"} (+{Math.round(chemBonus * 100)})
+          </span>
+        )}
+        <div className="g-result-parts">
+          {parts.map(([label, val, w]) => (
+            <div key={label}>
+              <b style={{ "--c": VAL_HEX(val / 100) }}>{val}</b>
+              <span>{label}</span>
+              <i>weight {w}</i>
             </div>
-          </div>
-        );
-      })()}
-
-      {/* Kadro Kaydetme — bkz. docs/online-architecture-review-and-roadmap.md Faz 1 */}
-      {isLoggedIn && (
-        <div className="rounded-xl p-4" style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
-          {saveStatus === "saved" ? (
-            <div className="text-sm font-medium" style={{ color: "var(--yamabuki)" }}>
-              ✓ Roster saved — find it on your Profile page.
-            </div>
-          ) : (
-            <>
-              <div className="g-label mb-2">Save this roster</div>
-              <div className="flex gap-2">
-                <input
-                  type="text" value={saveName} maxLength={60}
-                  onChange={e => setSaveName(e.target.value)}
-                  placeholder="e.g. Fear the Deer 2011"
-                  className="flex-1 px-3 py-2 rounded-lg text-sm outline-none"
-                  style={{ background: "var(--bg-surface)", color: "var(--text-primary)", border: "1px solid var(--border)" }}
-                />
-                <button
-                  onClick={saveRoster}
-                  disabled={saveStatus === "saving" || !saveName.trim()}
-                  className="px-4 py-2 rounded-lg font-logo text-sm font-bold uppercase tracking-wide bg-yamabuki text-darkBg hover:bg-white transition-colors disabled:opacity-50">
-                  {saveStatus === "saving" ? "Saving…" : "Save"}
-                </button>
-              </div>
-              {saveErr && <p className="text-xs text-[var(--danger)] mt-2">{saveErr}</p>}
-            </>
-          )}
+          ))}
         </div>
-      )}
+      </section>
+
+      <div className="g-divider" />
 
       {/* Sezon simülasyonu (v3.5) */}
       <SeasonSimPanel
@@ -224,53 +194,55 @@ function ScoreReveal({ fit, lineup, primaryCount, onReset, lang, affinityMatrix,
         enableRealHistory
       />
 
-      {/* Draft Analysis — eski "Roster Breakdown" + "Era Report" panellerinin
-          yerini aldı. Aynı bilgiyi tek panelde veriyor: 5 sütun era
-          ağırlıklarıyla, silah/açık, ve kadro satırlarında ham overall →
-          era/pozisyon sonrası kalite. Skor kahramanı yukarıda zaten var,
-          o yüzden showHero/showParts kapalı. "Şunu almalıydın" önerisi
-          bilinçli olarak kaldırıldı — oyun bittikten sonra suçlayıcı
-          duruyordu ve zaten oynanamayan bir tavsiyeydi. */}
+      {/* Draft Analysis — kadro ve era raporu. "Şunu almalıydın" önerisi
+          bilinçli olarak yok (oyun bittikten sonra suçlayıcı duruyordu). */}
       <DraftAnalysis
         simEra={simEra}
         affinity={affinityScore}
         showHero={false}
         showParts={false}
-        label="// Draft Analysis"
+        label="Draft analysis"
         teams={[{ name: "Your Roster", lineup, coach }]}
       />
 
-
-      {/* Share butonu */}
-      <ShareCard pct={pct} grade={grade} fit={fit} lineup={lineup} simEra={simEra} coach={coach} />
-
-      {/* Leaderboard */}
-      {leaderboard && leaderboard.length > 0 && (
-        <div className="g-panel p-4 space-y-2">
-          <div className="g-label mb-1">
-            <span>Top Scores</span>
-            {mode==="salarycap"&&<span className="inline-flex items-center gap-1" style={{color:"#4ade80"}}>· <CapIcon size={12} /> Salary Cap</span>}
-          </div>
-          {leaderboard.slice(0, 10).map((entry, i) => (
-            <div key={i} className="flex items-center gap-2 text-[12.5px]">
-              <span className="text-[var(--text-faint)] w-5 text-right shrink-0 font-mono">{i + 1}.</span>
-              <span className="text-[var(--text-primary)] flex-1 truncate">{entry.username}</span>
-              {entry.season_result === "THREEPEAT" && <span className="shrink-0 text-yamabuki" title="THREEPEAT — three straight simulated titles"><CrownIcon size={13} /></span>}
-              {entry.season_result === "REPEAT" && <span className="shrink-0 text-yamabuki inline-flex" title="Back-to-back simulated champion"><TrophyIcon size={12} /><TrophyIcon size={12} /></span>}
-              {entry.season_result === "CHAMPION" && <span className="shrink-0 text-yamabuki" title="Won a simulated championship"><TrophyIcon size={12} /></span>}
-              {entry.wins != null && <span className="text-[var(--text-faint)] shrink-0 text-[10px]">{entry.wins}W</span>}
-              <span className={`font-bold shrink-0 ${entry.pct>=85?"text-blue-400":entry.pct>=78?"text-sky-300":entry.pct>=70?"text-emerald-400":entry.pct>=62?"text-yamabuki":"text-[var(--danger)]"}`}>
-                {entry.pct}
-              </span>
-              <span className="text-[var(--text-faint)] shrink-0 w-4">{entry.grade}</span>
+      {/* Aksiyon satırı (12b): kaydet · paylaş · tekrar oyna */}
+      <div className="g-result-actions">
+        {isLoggedIn ? (
+          saveStatus === "saved" ? (
+            <span className="g-result-saved">Roster saved — find it on your Profile page.</span>
+          ) : (
+            <div className="g-result-save">
+              <label htmlFor="save-roster">Save this roster</label>
+              <div>
+                <input id="save-roster" type="text" value={saveName} maxLength={60}
+                  onChange={e => setSaveName(e.target.value)} placeholder="e.g. Fear the Deer 2011"
+                  className="aura-ghost-input" />
+                <button onClick={saveRoster} disabled={saveStatus === "saving" || !saveName.trim()}
+                  className="pa-btn-secondary">{saveStatus === "saving" ? "Saving…" : "Save"}</button>
+              </div>
+              {saveErr && <p className="g-result-err">{saveErr}</p>}
             </div>
-          ))}
+          )
+        ) : <span className="g-result-saved muted">Sign in to save rosters and land on the board.</span>}
+        <span className="flex-1" />
+        <button className="pa-btn-secondary" onClick={() => setShareOpen(true)}>Share card</button>
+        <button onClick={onReset} className="aura-rating-btn g-result-again">Play again</button>
+      </div>
+
+      {shareOpen && (
+        <div className="g-rules-backdrop" onClick={() => setShareOpen(false)}>
+          <div className="g-rules" style={{ "--accent": gHex }} onClick={e => e.stopPropagation()}
+            role="dialog" aria-modal="true" aria-label="Share your result">
+            <div className="g-rules-head">
+              <div><div className="g-rules-eyebrow">Share</div><h2 className="g-rules-title">Your card</h2></div>
+              <button className="g-rules-close" onClick={() => setShareOpen(false)} aria-label="Close">×</button>
+            </div>
+            <div className="g-rules-body">
+              <ShareCard pct={pct} grade={grade} fit={fit} lineup={lineup} simEra={simEra} coach={coach} />
+            </div>
+          </div>
         </div>
       )}
-
-      <button onClick={onReset} className="aura-rating-btn w-full" style={{padding:"13px",fontSize:15}}>
-        <LoopIcon size={15} /> <span className="ml-2">Play Again</span>
-      </button>
     </div>
   );
 }
@@ -535,12 +507,11 @@ function ShareCard({ pct, grade, fit, lineup, simEra, coach }) {
   };
 
   return (
-    <div className="g-panel p-4 space-y-3">
-      <div className="g-section-title">Share Your Result</div>
+    <div className="space-y-3">
 
       {/* Preview */}
       {preview ? (
-        <div className="rounded-xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,.1)" }}>
+        <div className="rounded-xl overflow-hidden">
           <img src={preview} alt="score card" className="w-full" />
         </div>
       ) : (
@@ -557,8 +528,8 @@ function ShareCard({ pct, grade, fit, lineup, simEra, coach }) {
           { onClick: copyLink, icon: copied ? <CheckIcon size={13} /> : <LinkIcon size={13} />, label: copied ? "Copied!" : "Copy Link", color: copied ? "#4ade80" : "#9ca3af" },
         ].map(({ onClick, icon, label, color }) => (
           <button key={label} onClick={onClick}
-            className="py-2 rounded-xl text-xs font-semibold transition-all inline-flex items-center justify-center gap-1.5"
-            style={{ color, background: color + "12", border: `1px solid ${color}33` }}
+            className="h-11 rounded-[11px] text-[14px] font-medium transition-all inline-flex items-center justify-center gap-1.5"
+            style={{ color, background: color + "14" }}
             onMouseEnter={e => { e.currentTarget.style.background = color + "22"; e.currentTarget.style.transform = "translateY(-1px)"; }}
             onMouseLeave={e => { e.currentTarget.style.background = color + "12"; e.currentTarget.style.transform = "none"; }}>
             {icon} {label}
@@ -676,14 +647,14 @@ export default function LineupGame() {
       <InfoModal open={modal==="tags"} onClose={()=>setModal(null)}
         title={<span className="inline-flex items-center gap-2"><span className="text-[var(--text-primary)]"><TagIcon size={16} /></span> Player Tag Effects</span>}>
         <div className="space-y-2 max-h-[62vh] overflow-y-auto pr-1">
-          <p className="text-[11px] text-[var(--text-muted)] leading-relaxed pb-1">
+          <p className="text-[13px] text-[var(--text-muted)] leading-relaxed pb-1">
             On player rows tags show as small colored initials. Here's what each means:
           </p>
           {TAG_INFO.map(t=>(
             <div key={t.key} className="rounded-lg p-2.5 flex items-start gap-2.5"
               style={{background:t.color+"0d"}}>
               {/* baş harf rozeti = satırlarda göründüğü hâli */}
-              <span className="shrink-0 mt-0.5 inline-flex items-center justify-center text-[10px] font-bold rounded px-1.5 h-[18px] min-w-[18px]"
+              <span className="shrink-0 mt-0.5 inline-flex items-center justify-center text-[12px] font-bold rounded px-1.5 h-[18px] min-w-[18px]"
                 style={{color:t.color,background:t.color+"22",border:`1px solid ${t.color}66`}}>{t.abbr}</span>
               <div className="min-w-0">
                 <div className="text-[13px] font-bold" style={{color:t.color}}>{t.label}</div>
@@ -691,7 +662,7 @@ export default function LineupGame() {
               </div>
             </div>
           ))}
-          <p className="text-[11px] text-[var(--text-muted)] italic pt-1">
+          <p className="text-[13px] text-[var(--text-muted)] italic pt-1">
             Tags come from real award history (1983+) and live archetype data.
             Click a player to see their tags full-size with effects.
           </p>
@@ -801,7 +772,7 @@ export default function LineupGame() {
           selected={moveSrc===pos} canTap={canRearrange} onTap={handleSlotTap}/>)}
       </div>
       {canRearrange&&moveSrc&&(
-        <p className="text-[9.5px] text-yamabuki/90 lg:hidden">Moving {lineup[moveSrc]?.PLAYER_NAME?.split(" ").slice(-1)[0]} — tap a destination slot</p>
+        <p className="text-[12px] text-yamabuki/90 lg:hidden">Moving {lineup[moveSrc]?.PLAYER_NAME?.split(" ").slice(-1)[0]} — tap a destination slot</p>
       )}
 
       {/* Salary Cap: dock'ta kalan yüzde var; burada sadece bu el için tavan */}
@@ -817,7 +788,7 @@ export default function LineupGame() {
               <div className="g-bar-fill" style={{width:`${budgetLeft}%`,"--fill":hex,"--fill-a":hex+"66"}}/>
             </div>
             {slotsLeft>0&&(
-              <span className="text-[10px] shrink-0" style={{color:"var(--text-muted)"}}>
+              <span className="text-[12px] shrink-0" style={{color:"var(--text-muted)"}}>
                 max <b style={{color:hex}}>{cap}%</b> this pick · {slotsLeft} left
               </span>
             )}
@@ -856,7 +827,7 @@ export default function LineupGame() {
                   </button>
                   <div className="g-tile-title" style={{color:eHex,paddingRight:30}}>{era.label}</div>
                   <div className="g-tile-sub">{era.years[0]}–{Math.min(era.years[1],2026)}</div>
-                  <div className="g-tile-desc" style={{fontSize:10,marginTop:6}}>{ERA_META_BLURB[era.id]}</div>
+                  <div className="g-tile-desc" style={{fontSize:12,marginTop:6}}>{ERA_META_BLURB[era.id]}</div>
                 </div>
               );
             })}
@@ -889,18 +860,18 @@ export default function LineupGame() {
                   <div className="g-section-title mb-2">Archetype Weights</div>
                   <div className="flex flex-wrap gap-1.5">
                     {g.top.map(t=>(
-                      <span key={t} className="text-[10px] px-2 py-0.5 rounded-full font-medium"
+                      <span key={t} className="text-[12px] px-2 py-0.5 rounded-full font-medium"
                         style={{color:"#4ade80",border:"1px solid #4ade8040",background:"#4ade8015"}}>{t}</span>
                     ))}
                     {g.low?.map(t=>(
-                      <span key={t} className="text-[10px] px-2 py-0.5 rounded-full font-medium"
+                      <span key={t} className="text-[12px] px-2 py-0.5 rounded-full font-medium"
                         style={{color:"#f87171",border:"1px solid #f8717140",background:"#f8717115"}}>{t}</span>
                     ))}
                   </div>
                 </div>
               )}
               <button onClick={()=>{setEraInfo(null);chooseEra(eraInfo);}}
-                className="aura-rating-btn w-full" style={{padding:"11px",fontSize:12.5,letterSpacing:".1em"}}>
+                className="aura-rating-btn w-full" style={{padding:"11px",fontSize:12.5,}}>
                 Play this era
               </button>
             </div>
@@ -1003,7 +974,7 @@ export default function LineupGame() {
               <div className="min-w-0">
                 <div className="font-logo text-[17px] font-bold flex items-center gap-2 flex-wrap" style={{color:"var(--text-primary)"}}>
                   {pickedPlayer.PLAYER_NAME}
-                  <span className="text-[11px] font-semibold" style={{color:"#60a5fa"}}>{pickedPlayer.primary_arch||"—"}</span>
+                  <span className="text-[13px] font-semibold" style={{color:"#60a5fa"}}>{pickedPlayer.primary_arch||"—"}</span>
                 </div>
                 <div className="text-xs mt-0.5" style={{color:"var(--text-faint)"}}>{chosenSeason} · {chosenTeam}</div>
                 {/* İstatistikler (arketip her zaman açık, overall gizli) */}
@@ -1014,14 +985,14 @@ export default function LineupGame() {
                     return (
                       <div key={k} className="text-center">
                         <div className="text-[13px] font-bold text-white tabular-nums">{disp}</div>
-                        <div className="text-[8.5px] uppercase tracking-wide text-[var(--text-faint)]">{l}</div>
+                        <div className="text-[12px] text-[var(--text-faint)]">{l}</div>
                       </div>
                     );
                   })}
                 </div>
                 <div className="flex gap-1 mt-2 flex-wrap items-center">
                   {eligible.map(p=>(
-                    <span key={p} className={`text-[9.5px] px-1.5 py-0.5 rounded border font-bold inline-flex items-center gap-0.5 ${POS_COLORS[p]||""}`}>
+                    <span key={p} className={`text-[12px] px-1.5 py-0.5 rounded border font-bold inline-flex items-center gap-0.5 ${POS_COLORS[p]||""}`}>
                       {p}{p===primary&&<StarIcon size={9} />}
                     </span>
                   ))}
@@ -1036,11 +1007,11 @@ export default function LineupGame() {
                 {tg.map(t=>(
                   <div key={t.key} className="rounded-lg px-2 py-1.5 flex items-start gap-2"
                     style={{background:t.color+"14",border:`1px solid ${t.color}44`}}>
-                    <span className="shrink-0 mt-0.5 inline-flex items-center justify-center text-[10px] font-bold rounded px-1 h-[16px] min-w-[16px]"
+                    <span className="shrink-0 mt-0.5 inline-flex items-center justify-center text-[12px] font-bold rounded px-1 h-[16px] min-w-[16px]"
                       style={{color:t.color,background:t.color+"22",border:`1px solid ${t.color}66`}}>{t.abbr}</span>
                     <div className="min-w-0">
-                      <div className="text-[11.5px] font-bold leading-tight" style={{color:t.color}}>{t.label}</div>
-                      <div className="text-[10.5px] text-[var(--text-muted)] leading-snug">{t.detail}</div>
+                      <div className="text-[13px] font-bold leading-tight" style={{color:t.color}}>{t.label}</div>
+                      <div className="text-[12px] text-[var(--text-muted)] leading-snug">{t.detail}</div>
                     </div>
                   </div>
                 ))}
@@ -1071,8 +1042,8 @@ export default function LineupGame() {
                         ? {color:"var(--text-primary)",background:"rgba(255,255,255,.04)",border:`1px solid ${pHex}44`}
                         : {color:"var(--text-faint)",background:"transparent",border:"1px dashed rgba(255,255,255,.12)"}}>
                     <div className="inline-flex items-center gap-1 justify-center">{pos}{isPrim&&<StarIcon size={11} />}</div>
-                    {penLabel&&<div className="text-[8.5px] font-medium" style={{color:"var(--danger)"}}>{penLabel}</div>}
-                    {!penLabel&&!isPrim&&isFlex(pickedPlayer)&&<div className="text-[8.5px] font-medium" style={{color:"#c084fc"}}>vers.</div>}
+                    {penLabel&&<div className="text-[12px] font-medium" style={{color:"var(--danger)"}}>{penLabel}</div>}
+                    {!penLabel&&!isPrim&&isFlex(pickedPlayer)&&<div className="text-[12px] font-medium" style={{color:"#c084fc"}}>vers.</div>}
                   </button>
                 );
               })}
@@ -1126,7 +1097,7 @@ export default function LineupGame() {
 
       {/* === COMPLETE === */}
       {phase==="complete"&&fitResult&&(
-        <div className="max-w-3xl mx-auto space-y-3">
+        <div className="max-w-[1180px] mx-auto">
           <ScoreReveal fit={fitResult} lineup={lineup} primaryCount={primaryCount} onReset={resetGame} lang={lang} affinityMatrix={affinityMatrix} simEra={simEra} coach={coach} mode={mode}/>
         </div>
       )}

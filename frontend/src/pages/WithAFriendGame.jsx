@@ -381,7 +381,7 @@ export default function WithAFriendGame() {
                     {joining ? "Joining…" : "Join"}
                   </button>
                 </div>
-                {errorMsg && <p className="text-[11px] text-[var(--danger)]">{errorMsg}</p>}
+                {errorMsg && <p className="text-[13px] text-[var(--danger)]">{errorMsg}</p>}
               </div>
             )}
           </div>
@@ -390,7 +390,7 @@ export default function WithAFriendGame() {
 
         {roomCode && fatalError && (
           <div className="max-w-md mx-auto text-center g-panel p-6 space-y-3">
-            <div className="text-[11px] text-[var(--danger)] uppercase tracking-widest">Can't reach this room</div>
+            <div className="text-[13px] text-[var(--danger)]">Can't reach this room</div>
             <p className="text-sm" style={{ color: "var(--text-muted)" }}>{fatalError.message}</p>
             <button onClick={leaveFatalRoom} className="aura-rating-btn"
               style={{ padding: "10px 24px", fontSize: 13 }}>
@@ -404,7 +404,7 @@ export default function WithAFriendGame() {
             {!connected && <p className="text-sm text-[var(--text-muted)] animate-pulse">Connecting…</p>}
             {connected && !opponentConnected && (
               <>
-                <div className="text-[11px] text-[var(--text-muted)] uppercase tracking-widest">Room Code — share this with your friend</div>
+                <div className="text-[13px] text-[var(--text-muted)]">Room Code — share this with your friend</div>
                 <div className="flex items-center justify-center gap-2">
                   <div className="font-logo text-4xl font-black text-yamabuki tracking-[0.2em]">{roomCode}</div>
                   <button onClick={copyCode} title="Copy code"
@@ -425,22 +425,22 @@ export default function WithAFriendGame() {
           <div className="space-y-3">
             {fatalError ? (
               <div className="max-w-md mx-auto text-center g-panel p-4 space-y-2">
-                <div className="text-[11px] text-[var(--danger)] uppercase tracking-widest">Lost this room</div>
+                <div className="text-[13px] text-[var(--danger)]">Lost this room</div>
                 <p className="text-[12px]" style={{ color: "var(--text-muted)" }}>{fatalError.message}</p>
                 <button onClick={leaveFatalRoom} className="aura-rating-btn" style={{ padding: "8px 20px", fontSize: 12 }}>
                   Back to Lobby
                 </button>
               </div>
             ) : !connected && (
-              <div className="max-w-md mx-auto text-center text-[11px] text-[var(--text-muted)] bg-gray-900/40 border border-gray-700/40 rounded-lg py-1.5 px-3 animate-pulse">
+              <div className="max-w-md mx-auto text-center text-[13px] text-[var(--text-muted)] bg-gray-900/40 border border-gray-700/40 rounded-lg py-1.5 px-3 animate-pulse">
                 Reconnecting…
               </div>
             )}
             {actionError && (
-              <div className="max-w-md mx-auto text-center text-[11px] text-[var(--danger)] bg-red-950/30 border border-red-800/40 rounded-lg py-1.5 px-3">{actionError}</div>
+              <div className="max-w-md mx-auto text-center text-[13px] text-[var(--danger)] bg-red-950/30 border border-red-800/40 rounded-lg py-1.5 px-3">{actionError}</div>
             )}
             {opponentDisconnected && (
-              <div className="max-w-md mx-auto text-center text-[11px] text-yellow-400 bg-yellow-950/30 border border-yellow-800/40 rounded-lg py-1.5 px-3 animate-pulse">
+              <div className="max-w-md mx-auto text-center text-[13px] text-yellow-400 bg-yellow-950/30 border border-yellow-800/40 rounded-lg py-1.5 px-3 animate-pulse">
                 Opponent's connection dropped — waiting for them to reconnect. The game will resume automatically.
               </div>
             )}
@@ -449,14 +449,14 @@ export default function WithAFriendGame() {
               <div className="g-panel p-5 space-y-3 max-w-3xl mx-auto">
                 {myUserId === room.player1_user_id ? (
                   <>
-                    <div className="text-[11px] text-[var(--text-muted)] uppercase tracking-widest mb-1">Pick Your Simulation Era</div>
+                    <div className="text-[13px] text-[var(--text-muted)] mb-1">Pick Your Simulation Era</div>
                     <div className="grid grid-cols-2 gap-2">
                       {ERAS.map(era => (
                         <button key={era.id} onClick={() => pickEraAction(era)}
                           className={`text-left rounded-xl border p-3 transition-all hover:scale-[1.02] ${era.bg}`}>
                           <div className={`text-sm font-bold ${era.color}`}>{era.label}</div>
-                          <div className="text-[9.5px] text-[var(--text-muted)] mt-0.5">{era.years[0]}–{Math.min(era.years[1], 2026)}</div>
-                          <div className="text-[10px] text-[var(--text-muted)] mt-1.5 leading-snug">{ERA_META_BLURB[era.id]}</div>
+                          <div className="text-[12px] text-[var(--text-muted)] mt-0.5">{era.years[0]}–{Math.min(era.years[1], 2026)}</div>
+                          <div className="text-[12px] text-[var(--text-muted)] mt-1.5 leading-snug">{ERA_META_BLURB[era.id]}</div>
                         </button>
                       ))}
                     </div>
@@ -493,7 +493,7 @@ export default function WithAFriendGame() {
                         <InlineSpin items={teamPool.length > 0 ? teamPool : ["…"]} spinning={spinT} targetIdx={targetTIdx} label="Team" accent="#60a5fa" />
                       </div>
                     ) : (
-                      <span className="font-logo text-[12px] font-bold uppercase tracking-widest" style={{ color: "var(--yamabuki)" }}>
+                      <span className="font-logo text-[12px] font-bold" style={{ color: "var(--yamabuki)" }}>
                         {isMyTurn ? "Your pick" : `${seatName[2]}'s pick`} — {isMyTurn ? seatName[2] : "you"} waiting
                       </span>
                     )}
@@ -631,12 +631,12 @@ function SeatPanel({
     <div className={`rounded-2xl border p-3 space-y-2 ${isActive ? "border-yamabuki/60 bg-yamabuki/[.06] shadow-[0_0_24px_-8px_rgba(255,177,27,.7)]" : "border-white/8 bg-white/[.02]"}`}>
       <div className="flex items-center justify-between">
         <span className="font-logo text-sm font-bold text-white truncate">{username}</span>
-        {isActive && <span className="text-[9.5px] px-2 py-0.5 rounded-full bg-yamabuki/20 border border-yamabuki/50 text-yamabuki font-bold uppercase tracking-wider shrink-0">{interactive ? "Your pick" : "Picking"}</span>}
-        {isWaiting && <span className="text-[9.5px] px-2 py-0.5 rounded-full border border-white/12 text-[var(--text-faint)] uppercase tracking-wider shrink-0">Waiting</span>}
+        {isActive && <span className="text-[12px] px-2 py-0.5 rounded-full bg-yamabuki/20 border border-yamabuki/50 text-yamabuki font-bold shrink-0">{interactive ? "Your pick" : "Picking"}</span>}
+        {isWaiting && <span className="text-[12px] px-2 py-0.5 rounded-full border border-white/12 text-[var(--text-faint)] shrink-0">Waiting</span>}
       </div>
 
       <div className="g-panel subtle px-2 py-1.5">
-        <div className="flex items-center justify-between text-[10px]">
+        <div className="flex items-center justify-between text-[12px]">
           <span className="text-[var(--text-muted)] uppercase tracking-wider flex items-center gap-1"><CapIcon size={11} /> Cap</span>
           <span className={`font-black tabular-nums ${budgetLeft <= 15 ? "text-[var(--danger)]" : budgetLeft <= 35 ? "text-yamabuki" : "text-emerald-300"}`}>{budgetLeft}%</span>
         </div>
@@ -646,7 +646,7 @@ function SeatPanel({
       </div>
 
       {canRearrange && moveSrc && (
-        <p className="text-[9.5px] text-yamabuki/90">Moving {lu[moveSrc]?.PLAYER_NAME?.split(" ").slice(-1)[0]} — tap a destination slot</p>
+        <p className="text-[12px] text-yamabuki/90">Moving {lu[moveSrc]?.PLAYER_NAME?.split(" ").slice(-1)[0]} — tap a destination slot</p>
       )}
       <div className="flex gap-1">
         {POSITIONS.map(pos => <LineupSlot key={pos} pos={pos} player={lu[pos]}
@@ -668,25 +668,25 @@ function SeatPanel({
             <JokerBtn Icon={SearchIcon} label="Discover" available={isActive && jokers.discover && !discoverActive && gamePhase === "drafting"} onClick={() => onUseJoker("discover")} />
           </div>
           {isActive && showBanEffective && (
-            <div className="text-[10.5px] text-[var(--danger)] flex items-center gap-1"><WarnIcon size={11} /> {bannedName} is BANNED this pick — use any joker to counter it.</div>
+            <div className="text-[12px] text-[var(--danger)] flex items-center gap-1"><WarnIcon size={11} /> {bannedName} is BANNED this pick — use any joker to counter it.</div>
           )}
 
           {isWaiting && gamePhase === "drafting" && !counterDismissed && !banPicking && (
             <CounterJokerPrompt jokers={jokers} activeSeat={seat === 1 ? 2 : 1} activeName={opponentName} onUse={onUseCounterJoker} onDismiss={onDismissCounter} />
           )}
           {isWaiting && banPicking && (
-            <div className="text-[10.5px] text-yamabuki">Pick a player below to BAN from their options.</div>
+            <div className="text-[12px] text-yamabuki">Pick a player below to BAN from their options.</div>
           )}
 
           {isActive && gamePhase === "placing" && pickedPlayer && (
             <div className="rounded-xl border border-yamabuki/40 bg-yamabuki/5 p-2 space-y-2">
               <div className="flex items-start justify-between gap-2">
-                <div className="text-white text-sm font-semibold">{pickedPlayer.PLAYER_NAME} <span className="text-[11px] text-blue-400 ml-1">{pickedPlayer.primary_arch || "—"}</span></div>
-                <button onClick={onCancelPick} className="text-[var(--text-muted)] hover:text-gray-300 text-[11px] shrink-0">← Back</button>
+                <div className="text-white text-sm font-semibold">{pickedPlayer.PLAYER_NAME} <span className="text-[13px] text-blue-400 ml-1">{pickedPlayer.primary_arch || "—"}</span></div>
+                <button onClick={onCancelPick} className="text-[var(--text-muted)] hover:text-gray-300 text-[13px] shrink-0">← Back</button>
               </div>
               <div className="flex gap-1 flex-wrap items-center">
                 {eligible.map(p => (
-                  <span key={p} className={`text-[9.5px] px-1.5 py-0.5 rounded border font-bold inline-flex items-center gap-0.5 ${POS_COLORS[p] || ""}`}>
+                  <span key={p} className={`text-[12px] px-1.5 py-0.5 rounded border font-bold inline-flex items-center gap-0.5 ${POS_COLORS[p] || ""}`}>
                     {p}{p === eligible[0] && <StarIcon size={9} />}
                   </span>
                 ))}
@@ -702,8 +702,8 @@ function SeatPanel({
                       className={`flex-1 min-w-[3rem] py-1.5 border rounded-lg font-bold text-xs transition-all
                         ${isPrim ? "bg-yamabuki/25 border-yamabuki text-yamabuki shadow-[0_0_16px_-5px_#FFB11B]" : isElig ? "bg-white/[.04] border-white/20 text-white" : "border-dashed border-white/12 text-[var(--text-faint)]"}`}>
                       <div className="inline-flex items-center gap-0.5 justify-center">{pos}{isPrim && <StarIcon size={9} />}</div>
-                      {penLabel && <div className="text-[8px] font-medium leading-tight" style={{ color: "var(--danger)", opacity: 0.9 }}>{penLabel}</div>}
-                      {!penLabel && !isPrim && isFlex(pickedPlayer) && <div className="text-[8px] font-medium text-violet-400 leading-tight">vers.</div>}
+                      {penLabel && <div className="text-[12px] font-medium leading-tight" style={{ color: "var(--danger)", opacity: 0.9 }}>{penLabel}</div>}
+                      {!penLabel && !isPrim && isFlex(pickedPlayer) && <div className="text-[12px] font-medium text-violet-400 leading-tight">vers.</div>}
                     </button>
                   );
                 })}
@@ -723,23 +723,23 @@ function SeatPanel({
             <div>
               <div className="flex items-center gap-2 mb-1">
                 {isWaiting && !banPicking && (
-                  <span className="text-[9px] text-[var(--text-faint)] uppercase tracking-wider">watching —</span>
+                  <span className="text-[12px] text-[var(--text-faint)]">watching —</span>
                 )}
-                <span className="text-[10px] font-mono tracking-widest text-[var(--text-muted)] uppercase">{chosenTeam} · {chosenSeason}</span>
+                <span className="text-[12px] text-[var(--text-muted)]">{chosenTeam} · {chosenSeason}</span>
                 <span className="ml-auto flex items-center border rounded overflow-hidden" style={{ borderColor: "#262626" }}>
                   {["G", "F", "C"].map(g => (
                     <button key={g} onClick={() => setPosFilter(f => f === g ? "" : g)}
-                      className={`px-2 py-0.5 font-logo text-[10px] font-bold border-r last:border-r-0 ${posFilter === g ? "bg-yamabuki text-darkBg" : "text-[var(--text-muted)]"}`}
+                      className={`px-2 py-0.5 font-logo text-[12px] font-bold border-r last:border-r-0 ${posFilter === g ? "bg-yamabuki text-darkBg" : "text-[var(--text-muted)]"}`}
                       style={{ borderColor: "#262626" }}>{g}</button>
                   ))}
                 </span>
               </div>
               {(isActive || isWaiting) && (
                 <div className="flex items-center gap-1 mb-1 flex-wrap">
-                  <span className="font-logo text-[9px] tracking-widest text-[var(--text-muted)] uppercase mr-1">Sort</span>
+                  <span className="font-logo text-[12px] text-[var(--text-muted)] mr-1">Sort</span>
                   {SORT_KEYS.map(([field, label]) => (
                     <button key={field} onClick={() => setSortKey(field)}
-                      className={`px-1.5 py-0.5 rounded font-logo text-[9px] font-semibold tracking-wider transition-colors
+                      className={`px-1.5 py-0.5 rounded font-logo text-[12px] font-semibold transition-colors
                         ${sortKey === field ? "bg-yamabuki text-darkBg" : "text-[var(--text-muted)] hover:text-white"}`}>
                       {label}
                     </button>
@@ -839,7 +839,7 @@ function TeamPreviewCard({ username, lineup, simEra, moveSrc, canRearrange, onSl
         className={`w-full flex items-center gap-2 py-1.5 border-b last:border-b-0 text-left transition-colors
           ${bench ? "opacity-70" : ""} ${moveSrc === pos ? "bg-yamabuki/10" : "hover:bg-white/[0.02]"}`}
         style={{ borderColor: "rgba(30,41,59,.5)" }}>
-        <span className={`text-[9.5px] font-bold px-1.5 py-1 rounded border shrink-0 w-8 text-center ${bench ? "border-white/12 text-[var(--text-faint)]" : POS_COLORS[pos] || ""}`}>
+        <span className={`text-[12px] font-bold px-1.5 py-1 rounded border shrink-0 w-8 text-center ${bench ? "border-white/12 text-[var(--text-faint)]" : POS_COLORS[pos] || ""}`}>
           {bench ? "BN" : pos}
         </span>
         <div className="flex-1 min-w-0">
@@ -847,13 +847,13 @@ function TeamPreviewCard({ username, lineup, simEra, moveSrc, canRearrange, onSl
             <span className="text-[12px] text-white font-semibold truncate">{p.PLAYER_NAME}</span>
             {isPrimary && <span className="text-yamabuki shrink-0"><StarIcon size={9} /></span>}
           </div>
-          <span className="text-[10px] text-blue-400">{p.primary_arch || "—"}</span>
+          <span className="text-[12px] text-blue-400">{p.primary_arch || "—"}</span>
         </div>
-        <span className="text-[9.5px] text-[var(--text-muted)] tabular-nums shrink-0 w-9 text-right">ovr {base}</span>
+        <span className="text-[12px] text-[var(--text-muted)] tabular-nums shrink-0 w-9 text-right">ovr {base}</span>
         <div className="g-bar-track w-12 shrink-0" style={{height:6}}>
           <div className="h-full rounded-full" style={{ width: `${qPct}%`, background: qPct >= 75 ? "#1D428A" : qPct >= 55 ? "#2a3d6b" : "#7f1d1d" }} />
         </div>
-        <span className={`text-[11px] font-bold w-6 text-right shrink-0 ${qPct >= 75 ? "text-blue-300" : qPct >= 55 ? "text-gray-200" : "text-[var(--danger)]"}`}>{qPct}</span>
+        <span className={`text-[13px] font-bold w-6 text-right shrink-0 ${qPct >= 75 ? "text-blue-300" : qPct >= 55 ? "text-gray-200" : "text-[var(--danger)]"}`}>{qPct}</span>
         {onPlayerInfo && (
           <span onClick={e => { e.stopPropagation(); onPlayerInfo(p); }}
             className="text-[var(--text-faint)] hover:text-yamabuki transition-colors shrink-0" title="Player details">
@@ -872,12 +872,12 @@ function TeamPreviewCard({ username, lineup, simEra, moveSrc, canRearrange, onSl
           {ready && <span className="text-emerald-300 shrink-0"><CheckIcon size={13} /></span>}
         </span>
         <div className="flex items-center gap-1.5 shrink-0">
-          <span className="text-[9.5px] text-[var(--text-muted)] uppercase tracking-widest">Team Score</span>
+          <span className="text-[12px] text-[var(--text-muted)]">Team Score</span>
           <span className={`font-logo text-xl font-black tabular-nums ${pct >= 78 ? "text-blue-300" : pct >= 62 ? "text-sky-300" : "text-gray-300"}`}>{pct}</span>
         </div>
       </div>
       {canRearrange && moveSrc && (
-        <p className="text-[9.5px] text-yamabuki/90">Moving {lu[moveSrc]?.PLAYER_NAME?.split(" ").slice(-1)[0]} — tap a destination slot</p>
+        <p className="text-[12px] text-yamabuki/90">Moving {lu[moveSrc]?.PLAYER_NAME?.split(" ").slice(-1)[0]} — tap a destination slot</p>
       )}
       <div>
         {POSITIONS.map(pos => <Row key={pos} pos={pos} />)}
@@ -901,17 +901,17 @@ function BonusHistoryPanel({ game, matchup, coach, simEra }) {
     <div className="g-panel p-4 space-y-3" style={{ border: "1px solid rgba(255,177,27,.25)" }}>
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="min-w-0">
-          <div className="text-[10px] uppercase tracking-widest flex items-center gap-1.5" style={{ color: "var(--yamabuki)" }}>
+          <div className="text-[12px] flex items-center gap-1.5" style={{ color: "var(--yamabuki)" }}>
             <DnaIcon size={12} /> Rewrite History — Bonus
           </div>
-          <p className="text-[11px] text-[var(--text-muted)] mt-1 leading-relaxed">
+          <p className="text-[13px] text-[var(--text-muted)] mt-1 leading-relaxed">
             This board roster played as the <span className="text-white font-semibold">{game.real_season} {game.real_team}</span>.
             Simulate your own roster as a different {game.real_season} team — just for fun, it won't change the series.
           </p>
         </div>
         {!open && (
           <button onClick={() => setOpen(true)}
-            className="shrink-0 px-3 py-2 rounded-lg text-[11px] font-bold uppercase tracking-wide inline-flex items-center gap-1.5"
+            className="shrink-0 px-3 py-2 rounded-lg text-[13px] font-bold inline-flex items-center gap-1.5"
             style={{ background: "linear-gradient(90deg,#FFD470,#FFB11B)", color: "#000" }}>
             <DnaIcon size={12} /> Simulate
           </button>
@@ -962,7 +962,7 @@ function SeriesPanel({ game, matchup, seatName, myUserId, opponentUserId, toSeat
 
       <div className="max-w-3xl mx-auto space-y-4">
       <div className="text-center">
-        <div className="font-logo text-[11px] uppercase tracking-widest text-[var(--text-muted)] mb-1">Best-of-7 Series</div>
+        <div className="font-logo text-[13px] text-[var(--text-muted)] mb-1">Best-of-7 Series</div>
         <div className="font-logo text-4xl font-black text-white tabular-nums">
           {myWins}<span className="text-[var(--text-faint)] mx-2">–</span>{oppWins}
         </div>
@@ -1025,7 +1025,7 @@ function TeamEvalCard({ name, wins, won, coach, lineup, simEra, mine, token, onP
         <span className="text-3xl font-black tabular-nums shrink-0" style={{ color: won ? "var(--accent)" : "#e5e7eb" }}>{wins}</span>
       </div>
       {coach && (
-        <div className="text-[11px] text-[var(--text-muted)] flex items-center gap-1"><CoachIcon size={12} /> {coach}</div>
+        <div className="text-[13px] text-[var(--text-muted)] flex items-center gap-1"><CoachIcon size={12} /> {coach}</div>
       )}
 
       <div className="g-panel subtle p-3 flex items-center gap-3">
@@ -1037,7 +1037,7 @@ function TeamEvalCard({ name, wins, won, coach, lineup, simEra, mine, token, onP
           {[["Quality", qualityPct], ["Coverage", coveragePct], ["Chemistry", roleFitPct]].map(([label, val]) => (
             <div key={label} className="g-panel subtle py-1.5 text-center">
               <div className={`text-sm font-black ${val >= 75 ? "text-blue-300" : val >= 55 ? "text-gray-200" : "text-[var(--danger)]"}`}>{val}</div>
-              <div className="text-[8px] text-[var(--text-muted)] mt-0.5">{label}</div>
+              <div className="text-[12px] text-[var(--text-muted)] mt-0.5">{label}</div>
             </div>
           ))}
         </div>
@@ -1047,7 +1047,7 @@ function TeamEvalCard({ name, wins, won, coach, lineup, simEra, mine, token, onP
       <div className="flex flex-wrap gap-1">
         {POSITIONS.concat(BENCH_SLOTS).map(pos => lineup[pos] && (
           <button key={pos} onClick={() => onPlayerInfo && onPlayerInfo(lineup[pos])}
-            className={`text-[10px] px-1.5 py-0.5 rounded border transition-colors ${POS_COLORS[pos] || "border-white/12 text-[var(--text-muted)]"} hover:brightness-125`}
+            className={`text-[12px] px-1.5 py-0.5 rounded border transition-colors ${POS_COLORS[pos] || "border-white/12 text-[var(--text-muted)]"} hover:brightness-125`}
             title={`${lineup[pos]._cost ?? priceOf(lineup[pos])}% cap — tap for details`}>
             {lineup[pos].PLAYER_NAME?.split(" ").slice(-1)[0]}
           </button>
@@ -1084,7 +1084,7 @@ function ResultPanel({ game, seatName, myUserId, opponentUserId, simEra, token, 
         <div className="font-logo text-3xl font-black text-white mt-1 tabular-nums">
           {myWins}<span className="text-[var(--text-faint)] mx-2">–</span>{oppWins}
         </div>
-        <div className="text-[11px] text-[var(--text-muted)] mt-1">{(game.series_games || []).length} game{(game.series_games || []).length !== 1 ? "s" : ""} played</div>
+        <div className="text-[13px] text-[var(--text-muted)] mt-1">{(game.series_games || []).length} game{(game.series_games || []).length !== 1 ? "s" : ""} played</div>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <TeamEvalCard uid={myUserId} name={seatName[1]} wins={myWins} won={iWon}

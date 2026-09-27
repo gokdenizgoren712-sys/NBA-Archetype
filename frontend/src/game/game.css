@@ -1536,3 +1536,65 @@ button.g-pstep:focus-visible { outline: 2px solid var(--c); outline-offset: 3px;
   .g-coach-actions { position: sticky; bottom: 0; margin: 16px -16px 0; padding: 14px 16px calc(20px + env(safe-area-inset-bottom)); background: linear-gradient(to top, #0b0b0b 70%, transparent); }
   .g-coach-cta { width: 100%; }
 }
+
+/* ═══ Sonuç ekranı (handoff 12b) ═════════════════════════════════════════
+   Tek büyük an: 96px not kendi renginde; altında puan, referans, üç bileşen.
+   Sonra sezon + analiz, en altta kaydet · paylaş · tekrar oyna. */
+.g-result { position: relative; display: flex; flex-direction: column; gap: 22px; padding-bottom: 8px; }
+.g-result > * { position: relative; }
+.g-result-hero { display: flex; flex-direction: column; align-items: center; text-align: center; padding-top: 18px; }
+.g-result-eyebrow { font-size: 14px; font-weight: 600; color: var(--g); }
+.g-result-grade {
+  font-family: var(--font-logo); font-size: 96px; font-weight: 700; line-height: 1; letter-spacing: -0.03em;
+  color: var(--g); text-shadow: 0 0 50px color-mix(in srgb, var(--g) 60%, transparent); margin-top: 6px;
+}
+.g-result-score { display: flex; align-items: baseline; gap: 8px; margin-top: 4px; }
+.g-result-score b { font-family: var(--font-logo); font-size: 44px; font-weight: 700; line-height: 1; color: var(--text-primary); }
+.g-result-score i { font-style: normal; font-size: 15px; color: var(--text-muted); }
+.g-result-ref { font-size: 14px; color: var(--text-secondary); margin-top: 10px; }
+.g-result-ref b { color: var(--text-primary); font-weight: 600; }
+.g-result-chem { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: #FFB11B; margin-top: 8px; }
+.g-result-parts { display: flex; gap: 64px; margin-top: 28px; }
+.g-result-parts > div { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.g-result-parts b {
+  font-family: var(--font-logo); font-size: 36px; font-weight: 700; line-height: 1; color: var(--c);
+  text-shadow: 0 0 18px color-mix(in srgb, var(--c) 40%, transparent);
+}
+.g-result-parts span { font-size: 14px; color: var(--text-primary); }
+.g-result-parts i { font-style: normal; font-size: 12px; color: var(--text-muted); }
+
+.g-result-actions {
+  display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap;
+  padding-top: 20px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+.g-result-save { display: flex; flex-direction: column; gap: 6px; flex: 1; max-width: 460px; min-width: 240px; }
+.g-result-save label { font-size: 12px; color: var(--text-muted); }
+.g-result-save > div { display: flex; gap: 12px; align-items: center; }
+.g-result-save input { flex: 1; min-width: 0; font-size: 15px; height: 40px; }
+.g-result-err { font-size: 13px; color: var(--danger); margin: 0; }
+.g-result-saved { font-size: 14px; color: #FFB11B; align-self: center; }
+.g-result-saved.muted { color: var(--text-muted); }
+.g-result-again { min-height: 50px; padding: 0 30px; font-size: 18px; letter-spacing: 0.05em; text-transform: uppercase; }
+
+@media (max-width: 640px) {
+  .g-result-grade { font-size: 88px; }
+  .g-result-parts { gap: 28px; }
+  .g-result-parts b { font-size: 30px; }
+  .g-result-actions { position: sticky; bottom: 0; z-index: 20; margin: 0 -16px; padding: 14px 16px calc(20px + env(safe-area-inset-bottom)); background: linear-gradient(to top, #0b0b0b 72%, transparent); box-shadow: none; }
+  .g-result-save { max-width: none; flex-basis: 100%; }
+  .g-result-actions .flex-1 { display: none; }
+  .g-result-again { flex: 1; min-height: 54px; }
+}
+
+/* ═══ Sezon sonucu (handoff 12b dili) ═════════════════════════════════════ */
+.g-season-record { font-family: var(--font-logo); font-size: 56px; font-weight: 700; line-height: 1; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.g-season-record span { color: var(--ink-divider); margin: 0 6px; }
+.g-season-progress { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #ffe9b0, #FFB11B); box-shadow: 0 0 8px #FFB11B; transition: width 0.1s linear; }
+.g-season-h { font-family: var(--font-logo); font-size: 20px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
+.g-season-round { display: flex; align-items: center; gap: 12px; height: 40px; box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.05); }
+.g-season-round .r { width: 140px; flex-shrink: 0; font-size: 13px; color: var(--text-muted); }
+.g-season-round .o { flex: 1; font-size: 14px; color: var(--text-primary); }
+.g-season-round b { font-family: var(--font-logo); font-size: 17px; font-weight: 700; }
+.g-season-final { text-align: center; padding: 8px 0 4px; }
+.g-season-banner { display: inline-flex; align-items: center; gap: 10px; font-family: var(--font-logo); font-size: 26px; font-weight: 700; color: var(--text-secondary); }
+.g-season-banner.gold { font-size: 30px; color: #FFB11B; filter: drop-shadow(0 0 16px rgba(255, 177, 27, 0.5)); }

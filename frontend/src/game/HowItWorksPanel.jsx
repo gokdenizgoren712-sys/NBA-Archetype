@@ -78,7 +78,7 @@ export default function HowItWorksPanel({ steps, note, label = "Draft Process", 
       </div>
 
       {note && (
-        <p className="text-[11px] leading-relaxed pt-2.5 shrink-0"
+        <p className="text-[13px] leading-relaxed pt-2.5 shrink-0"
           style={{ color: "var(--text-muted)", borderTop: "1px solid rgba(255,255,255,.07)" }}>{note}</p>
       )}
     </div>

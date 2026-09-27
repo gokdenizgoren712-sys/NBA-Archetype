@@ -49,14 +49,14 @@ export default function PlayerDetailModal({ player, onClose }) {
             </div>
             <div className="flex items-center gap-2 mt-1.5 flex-wrap">
               {pos && (
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                <span className="text-[12px] font-bold px-2 py-0.5 rounded-full"
                   style={{ color: posHex, background: posHex + "1a", border: `1px solid ${posHex}55` }}>
                   {pos}
                 </span>
               )}
-              <span className="text-[11px] font-semibold" style={{ color: accent }}>{player.primary_arch || "—"}</span>
+              <span className="text-[13px] font-semibold" style={{ color: accent }}>{player.primary_arch || "—"}</span>
               {(player._team || player._season) && (
-                <span className="text-[10px]" style={{ color: "var(--text-faint)" }}>{[player._team, player._season].filter(Boolean).join(" · ")}</span>
+                <span className="text-[12px]" style={{ color: "var(--text-faint)" }}>{[player._team, player._season].filter(Boolean).join(" · ")}</span>
               )}
             </div>
           </div>
@@ -70,13 +70,13 @@ export default function PlayerDetailModal({ player, onClose }) {
           {STAT_KEYS.map(([k, label]) => (
             <div key={k} className="py-2 text-center" style={{ background: "#100e13" }}>
               <div className="font-logo text-[13px] font-bold tabular-nums" style={{ color: "var(--text-primary)" }}>{statVal(player, k)}</div>
-              <div className="text-[7.5px] uppercase tracking-wider mt-0.5" style={{ color: "var(--text-faint)" }}>{label}</div>
+              <div className="text-[12px] mt-0.5" style={{ color: "var(--text-faint)" }}>{label}</div>
             </div>
           ))}
         </div>
 
         {overall != null && (
-          <div className="flex items-center justify-between text-[11px] mt-3.5 px-0.5" style={{ color: "var(--text-muted)" }}>
+          <div className="flex items-center justify-between text-[13px] mt-3.5 px-0.5" style={{ color: "var(--text-muted)" }}>
             <span>Overall</span>
             <span className="font-logo text-base font-bold" style={{ color: accent }}>{overall}</span>
           </div>
@@ -88,14 +88,14 @@ export default function PlayerDetailModal({ player, onClose }) {
             <div className="flex flex-wrap gap-1.5">
               {tags.map(t => (
                 <span key={t.key} title={t.detail}
-                  className="text-[10px] font-semibold px-2 py-1 rounded-full"
+                  className="text-[12px] font-semibold px-2 py-1 rounded-full"
                   style={{ color: t.color, background: t.color + "1a", border: `1px solid ${t.color}55` }}>
                   {t.label}
                 </span>
               ))}
             </div>
           ) : (
-            <div className="text-[11px]" style={{ color: "var(--text-faint)" }}>No tags</div>
+            <div className="text-[13px]" style={{ color: "var(--text-faint)" }}>No tags</div>
           )}
         </div>
       </div>

@@ -12,14 +12,14 @@ const BOX_COLS = "grid-cols-[1fr_2rem_2rem_2rem_2rem_2rem_2rem]";
 function BoxTable({ lines }) {
   return (
     <div>
-      <div className={`grid ${BOX_COLS} gap-x-1 text-[8px] uppercase tracking-wider pb-1`}
+      <div className={`grid ${BOX_COLS} gap-x-1 text-[12px] pb-1`}
         style={{ color: "var(--text-faint)" }}>
         <span>Player</span><span className="text-right">MIN</span><span className="text-right">PTS</span>
         <span className="text-right">REB</span><span className="text-right">AST</span>
         <span className="text-right">STL</span><span className="text-right">BLK</span>
       </div>
       {lines.map((l, i) => (
-        <div key={i} className={`grid ${BOX_COLS} gap-x-1 text-[10px] leading-relaxed`}
+        <div key={i} className={`grid ${BOX_COLS} gap-x-1 text-[12px] leading-relaxed`}
           style={{ color: l.bench ? "var(--text-faint)" : "var(--text-muted)" }}>
           <span className="truncate">{l.bench ? "· " : ""}{l.name?.split(" ").slice(-1)[0]}</span>
           <span className="text-right tabular-nums">{l.min}</span>
@@ -40,7 +40,7 @@ export default function GameBox({ game, labels = { 1: "Player 1", 2: "Player 2" 
     <div className="g-panel p-3.5">
       <div className="flex items-center justify-between mb-2.5">
         <span className="g-label">Game {game.gameIndex + 1}</span>
-        <span className="text-[10px]" style={{ color: "var(--text-faint)" }}>Home: {labels[game.home]}</span>
+        <span className="text-[12px]" style={{ color: "var(--text-faint)" }}>Home: {labels[game.home]}</span>
       </div>
       <div className="grid grid-cols-2 gap-3">
         {[1, 2].map(seat => {
@@ -54,7 +54,7 @@ export default function GameBox({ game, labels = { 1: "Player 1", 2: "Player 2" 
               }}>
               {won && <span className="aura-blob" style={{ "--slot-color": hex, left: "50%", top: -28, width: 150, height: 80, transform: "translateX(-50%)", opacity: 0.26 }} />}
               <div className="relative flex items-center justify-between mb-1.5">
-                <span className="font-logo text-[11px] font-bold truncate"
+                <span className="font-logo text-[13px] font-bold truncate"
                   style={{ color: won ? hex : "var(--text-muted)" }}>{labels[seat]}</span>
                 <span className="font-logo text-xl font-black tabular-nums shrink-0 ml-1"
                   style={{ color: won ? hex : "var(--text-faint)", textShadow: won ? `0 0 20px ${hex}66` : "none" }}>

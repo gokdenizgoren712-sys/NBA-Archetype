@@ -29,7 +29,7 @@ export default function MechanicsPanel() {
         <div className="g-section-title">How Scoring Works</div>
 
         <div>
-          <div className="flex h-9 rounded-xl overflow-hidden text-[10.5px] font-bold font-logo tracking-wide"
+          <div className="flex h-9 rounded-xl overflow-hidden text-[12px] font-bold font-logo"
             style={{ border: "1px solid rgba(255,255,255,.08)" }}>
             <div className="flex items-center justify-center min-w-0 overflow-hidden whitespace-nowrap"
               style={{ width: "45%", background: "linear-gradient(90deg,#1D428A,#2a5cb8)", color: "#dbeafe" }}>QUALITY 45%</div>
@@ -38,7 +38,7 @@ export default function MechanicsPanel() {
             <div className="flex items-center justify-center min-w-0 overflow-hidden whitespace-nowrap"
               style={{ width: "15%", background: "rgba(255,255,255,.06)", color: "var(--text-muted)" }}>ROLE 15%</div>
           </div>
-          <p className="text-[11.5px] mt-2.5 leading-relaxed" style={{ color: "var(--text-muted)" }}>
+          <p className="text-[13px] mt-2.5 leading-relaxed" style={{ color: "var(--text-muted)" }}>
             Both rosters are graded on the same scale, then played head-to-head —
             {" "}<b style={{ color: "var(--text-primary)" }}>Quality</b> is talent adjusted for era fit,
             {" "}<b style={{ color: "var(--text-primary)" }}>Coverage</b> is how completely your archetypes span the floor,
@@ -56,7 +56,7 @@ export default function MechanicsPanel() {
                 <div className="g-tile-title" style={{ fontSize: 12.5 }}>
                   <span style={{ color: hex }}><Icon size={14} /></span> {title}
                 </div>
-                <div className="g-tile-desc" style={{ marginTop: 5, fontSize: 10.5 }}>{desc}</div>
+                <div className="g-tile-desc" style={{ marginTop: 5, fontSize: 12 }}>{desc}</div>
               </button>
             ))}
           </div>
@@ -77,7 +77,7 @@ export default function MechanicsPanel() {
               <span className="shrink-0 text-yamabuki mt-0.5"><Icon size={18} /></span>
               <div>
                 <div className="text-white font-medium text-sm">{name}</div>
-                <div className="text-gray-400 text-xs leading-relaxed">{desc}</div>
+                <div className="text-[var(--text-secondary)] text-xs leading-relaxed">{desc}</div>
               </div>
             </div>
           ))}
@@ -124,7 +124,7 @@ export default function MechanicsPanel() {
         <div className="space-y-3 text-sm text-gray-300 leading-relaxed">
           <p>This mode is always played under Salary Cap rules. Each player starts with a <span className="text-emerald-300 font-semibold">100% budget</span>, independent of the other.</p>
           <p>Every player costs a slice of that budget by quality — a superstar eats <span style={{ color: "#a78bfa" }}>~30%</span>, a role player <span style={{ color: "#fb923c" }}>4%</span>. Each roster's best men carry a star premium (14/10/7% floors), so nobody's franchise player comes cheap.</p>
-          <p className="text-gray-400 text-xs">Fit all 9 contracts — 5 starters, 4 bench — before your cap runs out. A player you can't afford shows locked in the list.</p>
+          <p className="text-[var(--text-secondary)] text-xs">Fit all 9 contracts — 5 starters, 4 bench — before your cap runs out. A player you can't afford shows locked in the list.</p>
         </div>
       </InfoModal>
 
@@ -133,7 +133,7 @@ export default function MechanicsPanel() {
         <div className="space-y-3 text-sm text-gray-300 leading-relaxed">
           <p>Once both rosters are drafted and both coaches are hired, the two lineups face off in a <span className="text-white font-medium">best-of-7 series</span> — same engine as the single-player season sim, home court in a 2-2-1-1-1 pattern.</p>
           <p>Simulate one game at a time and read the full box score — minutes, points, rebounds, assists, steals, blocks — for both rosters before moving to the next game.</p>
-          <p className="text-gray-400 text-xs">First to 4 wins takes the series.</p>
+          <p className="text-[var(--text-secondary)] text-xs">First to 4 wins takes the series.</p>
         </div>
       </InfoModal>
     </>
