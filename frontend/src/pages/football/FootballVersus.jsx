@@ -6,8 +6,10 @@ import { useAuth } from "../../contexts/AuthContext";
 import { playTie, tieOdds, buildSide } from "../../game/football/headToHead";
 import { ModeInfoButton } from "../../game/football/ModeAbout";
 import SameScreenDraft from "../../game/football/SameScreenDraft";
+import { PageGlow } from "../../components/states/States";
+import RoomLobby from "../../game/RoomLobby";
 import RoomDraft from "../../game/football/RoomDraft";
-import { UsersIcon, GlobeIcon, LinkIcon, CheckIcon, LoopIcon } from "../../game/GameIcons";
+import { UsersIcon, GlobeIcon } from "../../game/GameIcons";
 import "../../game/game.css";
 import { ACCENT as ACC } from "../../game/football/theme";
 
@@ -31,73 +33,93 @@ const MODE_META = {
   online: { title: "Online", sub: "2 devices · open room · two legs", Icon: GlobeIcon },
 };
 
-function Side({ label, side, color }) {
-  if (!side) return null;
-  return (
-    <div style={{ flex: "1 1 160px", minWidth: 150 }}>
-      <div className="g-label">{label}</div>
-      <div style={{ fontSize: 15, fontWeight: 700, color }}>{side.name}</div>
-      <div style={{ fontSize: 13, color: "var(--text-faint)" }}>
-        quality {Number(side.quality).toFixed(3)} · chemistry {Number(side.chemistry).toFixed(3)}
-      </div>
-    </div>
-  );
-}
+// ── Eleme sonucu (handoff 13b) ─────────────────────────────────────────────
+// Tek büyük an: 96px toplam skor, iki taraf kendi renginde (A mavi, B kırmızı).
+// Altında ayaklar, gerekiyorsa penaltı noktaları, en altta 400 tekrarlık
+// olasılık çubuğu — tek elemenin bir hüküm değil bir örnek olduğunu gösteriyor.
+const SIDE_A = "#60a5fa", SIDE_B = "#f87171";
 
 function TieResult({ tie, odds }) {
   if (!tie) return null;
+  const a = tie.sides?.a, b = tie.sides?.b;
   const aWon = tie.winner === "a";
+  const winner = (aWon ? a?.name : b?.name) || (aWon ? "Side A" : "Side B");
+  // Ayakları A–B yönüne çevir (2. ayakta ev sahibi B)
+  const legs = [
+    { l: "Leg 1", a: tie.legs[0].hg, b: tie.legs[0].ag, note: `at ${tie.legs[0].home}` },
+    { l: "Leg 2", a: tie.legs[1].ag, b: tie.legs[1].hg, note: `at ${tie.legs[1].home}` },
+    ...(tie.extraTime ? [{ l: "Extra time", a: tie.extraTime.ag, b: tie.extraTime.hg, note: `at ${tie.extraTime.host}` }] : []),
+  ];
+  const how = tie.decidedBy === "penalties"
+    ? `After extra time · ${winner} win ${Math.max(tie.shootout.a, tie.shootout.b)}–${Math.min(tie.shootout.a, tie.shootout.b)} on penalties`
+    : tie.decidedBy === "extra time" ? `${winner} go through after extra time`
+    : `${winner} go through on aggregate`;
+  const aPct = odds ? Math.round(odds.aWinPct * 100) : null;
+
   return (
-    <div>
-      <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-        <Side label="Home first leg" side={tie.sides?.a} color={aWon ? ACC : "var(--text)"} />
-        <Side label="Home second leg" side={tie.sides?.b} color={!aWon ? ACC : "var(--text)"} />
+    <div className="g-tie">
+      <div className="g-tie-score">
+        <div className="side a">
+          <span className="tag" style={{ color: SIDE_A }}>Home first leg</span>
+          <span className="nm">{a?.name}</span>
+        </div>
+        <div className="mid">
+          <span className="lbl">Aggregate</span>
+          <span className="agg">
+            <b style={{ color: SIDE_A, textShadow: aWon ? `0 0 40px ${SIDE_A}99` : "none" }}>{tie.aggA}</b>
+            <i> – </i>
+            <b style={{ color: SIDE_B, textShadow: !aWon ? `0 0 40px ${SIDE_B}99` : "none" }}>{tie.aggB}</b>
+          </span>
+          <span className="how">{how}</span>
+        </div>
+        <div className="side b">
+          <span className="tag" style={{ color: SIDE_B }}>Home second leg</span>
+          <span className="nm">{b?.name}</span>
+        </div>
       </div>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 5, marginTop: 14 }}>
-        {tie.legs.map((l, i) => (
-          <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5,
-            padding: "6px 10px", borderRadius: 8, background: "rgba(255,255,255,.022)",
-            border: "1px solid var(--border)" }}>
-            <span style={{ fontSize: 12, color: "var(--text-faint)", width: 44 }}>
-              LEG {i + 1}</span>
-            <span style={{ flex: 1 }}>{l.home}</span>
-            <b style={{ fontVariantNumeric: "tabular-nums" }}>{l.hg}–{l.ag}</b>
-            <span style={{ flex: 1, textAlign: "right" }}>{l.away}</span>
+      <div className="g-tie-legs">
+        {legs.map(l => (
+          <div key={l.l}>
+            <span className="lbl">{l.l}</span>
+            <span className="sc"><b style={{ color: SIDE_A }}>{l.a}</b><i> – </i><b style={{ color: SIDE_B }}>{l.b}</b></span>
+            <span className="note">{l.note}</span>
           </div>
         ))}
-        {tie.extraTime && (
-          <div style={{ fontSize: 13, color: "var(--text-muted)", paddingLeft: 10 }}>
-            Extra time at {tie.extraTime.host}: {tie.extraTime.hg}–{tie.extraTime.ag}
-          </div>
-        )}
-        {tie.shootout && (
-          <div style={{ fontSize: 13, color: "var(--text-muted)", paddingLeft: 10 }}>
-            Penalties {tie.shootout.a}–{tie.shootout.b}
-            {tie.shootout.kicks.some(k => k.sudden) ? " (sudden death)" : ""}
-          </div>
-        )}
       </div>
 
-      <div style={{ marginTop: 12, padding: "10px 12px", borderRadius: 10,
-        background: `${ACC}0f`, border: `1px solid ${ACC}33` }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>
-          {(aWon ? tie.sides?.a?.name : tie.sides?.b?.name) || (aWon ? "A" : "B")} go through
-          {" "}<span style={{ color: ACC }}>{tie.aggA}–{tie.aggB}</span> on aggregate
+      {tie.shootout && (
+        <div className="g-tie-pens">
+          <span className="lbl">Penalties{tie.shootout.kicks.some(k => k.sudden) ? " · sudden death" : ""}</span>
+          {[["a", a?.name, SIDE_A], ["b", b?.name, SIDE_B]].map(([k, nm, c]) => (
+            <div key={k} className="row">
+              <span className="who" style={{ color: c }}>{nm}</span>
+              {tie.shootout.kicks.map((kick, i) => (
+                <span key={i} className={`dot${kick[k] ? " in" : ""}`} style={{ "--c": c }}
+                  title={kick[k] ? "Scored" : "Missed"} />
+              ))}
+            </div>
+          ))}
         </div>
-        <div style={{ fontSize: 13, color: "var(--text-faint)", marginTop: 2 }}>
-          decided by {tie.decidedBy}
-        </div>
-      </div>
+      )}
 
       {odds && (
-        <p style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 12, lineHeight: 1.7 }}>
-          Over {odds.runs} replays the first side goes through{" "}
-          <b style={{ color: "var(--text-primary)" }}>{Math.round(odds.aWinPct * 100)}%</b> of the time.
-          Two matches decide very little in football — the single tie above is one draw
-          from that spread, not a verdict. {Math.round(odds.penaltiesPct * 100)}% of
-          replays reach penalties.
-        </p>
+        <div className="g-tie-odds">
+          <div className="head">
+            <span>If this tie were replayed {odds.runs} times</span>
+            <i>Squad fit decides the odds, not the result</i>
+          </div>
+          <div className="bar">
+            <span style={{ width: `${aPct}%`, background: SIDE_A, boxShadow: `0 0 14px ${SIDE_A}` }} />
+            <span style={{ width: `${100 - aPct}%`, background: SIDE_B, opacity: 0.8 }} />
+          </div>
+          <div className="foot">
+            <b style={{ color: SIDE_A }}>{a?.name} · {aPct}%</b>
+            <b style={{ color: SIDE_B }}>{100 - aPct}%</b>
+          </div>
+          <p>{Math.round(odds.penaltiesPct * 100)}% of replays reach penalties. Two matches decide very little
+            in football — the tie above is one draw from that spread, not a verdict.</p>
+        </div>
       )}
     </div>
   );
@@ -123,32 +145,16 @@ function SameScreen({ coeffs }) {
 
   if (!tie) return <SameScreenDraft onDone={play} />;
 
-  const aWon = tie.winner === "a";
   return (
-    <div className="space-y-3">
-      <div className="g-dock thin">
-        <span className="aura-blob" style={{ "--slot-color": ACC, left: -30, top: -60,
-          width: 220, height: 130, opacity: 0.22 }} />
-        <div className="g-dock-left"><h1 className="g-dock-title">Tie Result</h1></div>
-        <div className="g-dock-center">
-          <span className="font-logo text-[13px] font-bold"
-            style={{ color: ACC }}>
-            {(aWon ? tie.sides?.a?.name : tie.sides?.b?.name)} go through
-          </span>
-        </div>
-        <div className="g-dock-right">
-          <button onClick={() => { setTie(null); setOdds(null); }}
-            className="aura-rating-btn" style={{ padding: "9px 20px", fontSize: 12 }}>
-            <LoopIcon size={14} /><span className="ml-2">New Draft</span>
-          </button>
-        </div>
+    <div className="g-result g-tie-page" style={{ "--g": ACC }}>
+      <PageGlow tint="#60a5fa" />
+      <div className="g-sq-top">
+        <span className="g-wordmark">Head to head</span>
+        <span className="meta">Same Screen · two legs</span>
       </div>
-
-      <div className="g-panel p-4 max-w-3xl mx-auto"
-        style={{ "--accent": ACC, "--accent-line": `${ACC}44` }}>
-        <span className="aura-blob" style={{ "--slot-color": ACC, left: "20%", top: -50,
-          width: 260, height: 140, opacity: 0.14 }} />
-        <TieResult tie={tie} odds={odds} />
+      <TieResult tie={tie} odds={odds} />
+      <div className="g-tie-actions">
+        <button className="aura-rating-btn g-result-again" onClick={() => { setTie(null); setOdds(null); }}>Rematch</button>
       </div>
     </div>
   );
@@ -161,7 +167,6 @@ function RoomPanel({ mode }) {
   const [code, setCode] = useState("");
   const [room, setRoom] = useState(null);
   const [msg, setMsg] = useState("");
-  const [copied, setCopied] = useState(false);
   const poll = useRef(null);
   const M = MODE_META[mode] || MODE_META.friend;
 
@@ -191,57 +196,42 @@ function RoomPanel({ mode }) {
       .catch((e) => setMsg(String(e.message || e)));
   }, [code]);
 
-  const copy = () => {
-    navigator.clipboard?.writeText(room.room_code).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1600);
-    }).catch(() => {});
-  };
-
-  /* Odaya girilmemiş: dock + açıklama */
+  /* Odaya girilmemiş: kompakt başlık (handoff 3a/14a kalıbı) + açıklama */
   if (!room) {
     return (
-      <div className="space-y-3">
-        <div className="g-dock">
-          <span className="aura-blob" style={{ "--slot-color": ACC, left: -30, top: -70,
-            width: 240, height: 150, opacity: 0.16 }} />
-          <div className="g-dock-left">
-            <h1 className="g-dock-title">{M.title}</h1>
-            <p className="g-dock-sub">{M.sub}</p>
+      <div className="relative">
+        <PageGlow tint={ACC} />
+        <header className="g-idle-hero compact">
+          <div>
+            <h1 className="g-wordmark lg">{M.title}</h1>
+            <p>{M.sub}</p>
           </div>
-
-          <div className="g-dock-center">
-            {isLoggedIn ? (
-              <button onClick={create} className="aura-rating-btn"
-                style={{ padding: "17px 42px", fontSize: 14, letterSpacing: ".14em" }}>
-                <M.Icon size={16} /><span className="ml-2">Open a Room</span>
-              </button>
-            ) : (
-              <button onClick={() => navigate("/login")} className="aura-rating-btn"
-                style={{ padding: "17px 42px", fontSize: 14, letterSpacing: ".14em" }}>
-                Log In to Play
-              </button>
-            )}
-          </div>
-
-          <div className="g-dock-right">
+          <div className="g-idle-actions">
+            <div className="g-seg" role="tablist">
+              {[["friend", "With a Friend"], ["online", "Online"]].map(([k, l]) => (
+                <button key={k} role="tab" aria-selected={mode === k}
+                  className={`g-seg-btn${mode === k ? " on" : ""}`}
+                  onClick={() => mode !== k && navigate(`/football/game/${k}`)}>{l}</button>
+              ))}
+            </div>
             {isLoggedIn && (
-              <div className="flex items-center gap-2">
-                <input className="aura-ghost-input" placeholder="paste a code"
+              <div className="g-join">
+                <input className="aura-ghost-input" placeholder="Room code" aria-label="Room code"
                   value={code} onChange={(e) => setCode(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && code.trim().length >= 4 && join()}
-                  style={{ width: 132, textTransform: "uppercase", letterSpacing: ".1em" }} />
-                <button onClick={join} disabled={code.trim().length < 4}
-                  className="aura-pill-btn" style={{ opacity: code.trim().length < 4 ? 0.4 : 1 }}>
-                  Join
-                </button>
+                  onKeyDown={(e) => e.key === "Enter" && code.trim().length >= 4 && join()} />
+                <button onClick={join} disabled={code.trim().length < 4} className="pa-btn-secondary">Join</button>
               </div>
             )}
+            {isLoggedIn ? (
+              <button onClick={create} className="aura-rating-btn g-idle-cta">Open a room</button>
+            ) : (
+              <button onClick={() => navigate("/login")} className="aura-rating-btn g-idle-cta">Sign in to play</button>
+            )}
           </div>
-        </div>
+        </header>
 
-        <div className="g-panel subtle p-4 max-w-3xl mx-auto">
-          <p className="text-xs leading-relaxed" style={{ color: "var(--text-muted)" }}>
+        <div className="g-room-note">
+          <p>
             {mode === "friend"
               ? "Open a room and send the six-character code to whoever you want to play. "
               : "Open a room and wait, or paste a code you were given. "}
@@ -252,13 +242,13 @@ function RoomPanel({ mode }) {
             their own score.
           </p>
           {!isLoggedIn && (
-            <p className="text-xs mt-2" style={{ color: "var(--text-faint)" }}>
+            <p>
               A room needs an account so the two devices can find each other.{" "}
               <Link to="/football/game/same-screen" style={{ color: ACC }}>Same Screen</Link>{" "}
               works without one.
             </p>
           )}
-          {msg && <div className="text-xs mt-2" style={{ color: RED }}>{msg}</div>}
+          {msg && <p style={{ color: RED }}>{msg}</p>}
         </div>
       </div>
     );
@@ -280,43 +270,27 @@ function RoomPanel({ mode }) {
     );
   }
 
-  // Tek başına bekliyor: kod büyük dursun, kopyalanabilsin.
+  // Tek başına bekliyor: handoff 14a lobisi — kod tek büyük an.
   return (
-    <div className="space-y-3">
-      <div className="g-dock thin">
-        <span className="aura-blob" style={{ "--slot-color": ACC, left: -30, top: -60,
-          width: 220, height: 130, opacity: 0.2 }} />
-        <div className="g-dock-left flex items-center gap-3">
-          <h1 className="g-dock-title">{M.title}</h1>
-          <span className="g-status" style={{ "--accent": "#9ca3af",
-            "--accent-a": "rgba(156,163,175,.14)", "--accent-line": "rgba(156,163,175,.4)" }}>
-            {room.status}
-          </span>
-        </div>
-        <div className="g-dock-center">
-          <div className="flex items-center gap-2">
-            <span className="font-logo text-3xl font-black tracking-[0.2em]"
-              style={{ color: ACC }}>{room.room_code}</span>
-            <button onClick={copy} title="Copy code"
-              className="w-8 h-8 flex items-center justify-center rounded-xl"
-              style={{ color: "var(--text-muted)", border: "1px solid rgba(255,255,255,.12)" }}>
-              {copied ? <CheckIcon size={14} /> : <LinkIcon size={14} />}
-            </button>
-          </div>
-        </div>
-        <div className="g-dock-right">
-          <button onClick={() => { setRoom(null); setCode(""); }}
-            className="aura-pill-btn">Leave</button>
-        </div>
-      </div>
-
-      <p className="text-center text-xs animate-pulse" style={{ color: "var(--text-faint)" }}>
-        {mode === "friend"
-          ? "Send that code to whoever you want to play. The draft starts when they join."
-          : "Waiting for an opponent. The draft starts when someone joins."}
-      </p>
-      {msg && <div className="text-xs text-center" style={{ color: RED }}>{msg}</div>}
-    </div>
+    <RoomLobby
+      wordmark={M.title} accent={ACC}
+      modes={[{ key: "friend", label: "With a Friend", to: "/football/game/friend" },
+              { key: "online", label: "Online", to: "/football/game/online" }]}
+      activeMode={mode}
+      kicker={mode === "friend" ? "Room code — send it to whoever you want to play" : "Room open — waiting for an opponent"}
+      code={room.room_code}
+      sub={mode === "friend" ? "The draft starts when they join." : "The draft starts when someone joins."}
+      host={{ name: room.p1_name || "You", status: "Host · ready" }}
+      opponent={null}
+      waitingLabel="Waiting to join"
+      rules={[
+        { k: "Format", v: "Two legs" }, { k: "Ties", v: "Extra time, penalties" },
+        { k: "Resolved", v: "On the server" }, { k: "Squads", v: "Hidden until both send" },
+      ]}
+      cta={{ label: "Leave room", secondary: true, onClick: () => { setRoom(null); setCode(""); } }}
+    >
+      {msg && <p style={{ color: RED, fontSize: 13, marginTop: 12 }}>{msg}</p>}
+    </RoomLobby>
   );
 }
 

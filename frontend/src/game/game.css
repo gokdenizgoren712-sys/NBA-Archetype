@@ -1839,3 +1839,48 @@ button.g-pstep:focus-visible { outline: 2px solid var(--c); outline-offset: 3px;
   .g-fs-form .cells { gap: 2px; }
   .g-fs-form .c { height: 20px; border-radius: 3px; }
 }
+
+/* ═══ Kafa kafaya sonucu (handoff 13b) ═══════════════════════════════════ */
+.g-tie-page { max-width: 1100px; margin: 0 auto; padding: 14px 36px 28px; }
+.g-tie { display: flex; flex-direction: column; align-items: center; }
+.g-tie-score { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 56px; margin-top: 40px; width: 100%; }
+.g-tie-score .side { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.g-tie-score .side.a { align-items: flex-end; text-align: right; }
+.g-tie-score .side.b { align-items: flex-start; }
+.g-tie-score .tag { font-size: 13px; font-weight: 600; }
+.g-tie-score .nm { font-family: var(--font-logo); font-size: 40px; font-weight: 700; line-height: 1; color: var(--text-primary); overflow-wrap: anywhere; }
+.g-tie-score .mid { display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; }
+.g-tie-score .lbl, .g-tie-legs .lbl, .g-tie-legs .note, .g-tie-pens .lbl { font-size: 12px; color: var(--text-muted); }
+.g-tie-score .agg { font-family: var(--font-logo); font-size: 96px; font-weight: 700; line-height: 1; letter-spacing: -0.03em; }
+.g-tie-score .agg i, .g-tie-legs .sc i { font-style: normal; color: var(--ink-divider); }
+.g-tie-score .how { font-size: 14px; color: #FFB11B; max-width: 320px; }
+.g-tie-legs { display: flex; gap: 64px; margin-top: 40px; flex-wrap: wrap; justify-content: center; }
+.g-tie-legs > div { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.g-tie-legs .sc { font-family: var(--font-logo); font-size: 36px; font-weight: 700; line-height: 1; }
+.g-tie-pens { display: flex; flex-direction: column; align-items: center; gap: 12px; margin-top: 36px; }
+.g-tie-pens .row { display: flex; align-items: center; gap: 10px; }
+.g-tie-pens .who { width: 150px; text-align: right; font-size: 13px; margin-right: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.g-tie-pens .dot { width: 20px; height: 20px; border-radius: 50%; background: rgba(255, 255, 255, 0.06); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12); }
+.g-tie-pens .dot.in { background: var(--c); box-shadow: 0 0 10px var(--c); }
+.g-tie-odds { width: 100%; max-width: 640px; display: flex; flex-direction: column; gap: 10px; margin-top: 44px; }
+.g-tie-odds .head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.g-tie-odds .head span { font-size: 14px; color: var(--text-secondary); }
+.g-tie-odds .head i { font-style: normal; font-size: 12px; color: var(--text-muted); }
+.g-tie-odds .bar { display: flex; height: 12px; border-radius: 6px; overflow: hidden; gap: 2px; }
+.g-tie-odds .foot { display: flex; justify-content: space-between; }
+.g-tie-odds .foot b { font-family: var(--font-logo); font-size: 22px; font-weight: 700; }
+.g-tie-odds p { font-size: 13px; line-height: 1.6; color: var(--text-muted); margin: 4px 0 0; }
+.g-tie-actions { display: flex; justify-content: center; gap: 12px; margin-top: 36px; }
+@media (max-width: 760px) {
+  .g-tie-page { padding: 8px 16px 24px; }
+  .g-tie-score { grid-template-columns: 1fr; gap: 16px; margin-top: 24px; }
+  .g-tie-score .side.a, .g-tie-score .side.b { align-items: center; text-align: center; }
+  .g-tie-score .nm { font-size: 28px; }
+  .g-tie-score .agg { font-size: 80px; }
+  .g-tie-legs { gap: 28px; }
+  .g-tie-pens .who { width: 84px; }
+}
+
+/* Oda öncesi açıklama — kutusuz, okunur genişlikte */
+.g-room-note { position: relative; max-width: 68ch; margin: 8px auto 0; display: flex; flex-direction: column; gap: 10px; }
+.g-room-note p { margin: 0; font-size: 14px; line-height: 1.6; color: var(--text-secondary); }
