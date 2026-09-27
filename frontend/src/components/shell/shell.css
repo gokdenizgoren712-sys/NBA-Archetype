@@ -1,0 +1,218 @@
+/* ── Primary Arch kabuğu — handoff v2 (PaSidebar, 19a, 3a/3b başlık satırı) ──
+   Kutu yok: kenar çubuğu tek bir 1px çerçeve çizgisiyle ayrılıyor; aktif öğe
+   spor aksanının %10'luk zemini. --acc satırın aksanı (altın / teal). */
+
+.pa-wordmark { font-family: var(--font-logo); font-size: 17px; letter-spacing: .1em; line-height: 1; padding-top: 2px; white-space: nowrap; }
+.pa-wordmark .w { font-weight: 600; color: #fff; }
+.pa-wordmark .g { font-weight: 700; color: #FFB11B; }
+
+.pa-side-logo {
+  display: flex; align-items: center; gap: 10px;
+  background: none; border: 0; padding: 0; cursor: pointer; color: inherit;
+}
+
+/* ═══ Kenar çubuğu ═══════════════════════════════════════════════════════ */
+.pa-side {
+  width: 220px; flex-shrink: 0; height: 100%;
+  display: none; flex-direction: column;
+  padding: 18px 14px 16px;
+  box-shadow: inset -1px 0 0 var(--frame);
+  overflow-y: auto; overflow-x: hidden;
+  transition: width .2s ease, padding .2s ease;
+}
+@media (min-width: 768px) { .pa-side { display: flex; } }
+.pa-side > .pa-side-logo { padding: 2px 6px 20px; }
+.pa-side.collapsed { width: 72px; padding: 18px 0 16px; align-items: center; }
+.pa-side.collapsed > .pa-side-logo { padding: 0 0 18px; }
+
+/* Spor anahtarı — iki kolon segment */
+.pa-sport {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 2px;
+  background: #131313; border-radius: 10px; padding: 3px; margin-bottom: 22px;
+}
+.pa-sport-btn {
+  height: 32px; border: 0; border-radius: 8px; background: transparent;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  font-family: var(--font-sans); font-size: 13px; font-weight: 500; color: var(--text-muted);
+  cursor: pointer; transition: background .15s ease, color .15s ease;
+}
+.pa-sport-btn:hover { color: var(--text-primary); }
+.pa-sport-btn.on { background: #222; color: var(--text-primary); cursor: default; }
+.pa-sport.compact { grid-template-columns: 1fr; border-radius: 12px; margin-bottom: 16px; }
+.pa-sport.compact .pa-sport-btn { width: 40px; height: 36px; border-radius: 9px; }
+
+/* Gruplu nav */
+.pa-nav { display: flex; flex-direction: column; gap: 18px; flex: 1; }
+.pa-side.collapsed .pa-nav { gap: 2px; align-items: center; }
+.pa-nav-group { display: flex; flex-direction: column; gap: 2px; }
+.pa-side.collapsed .pa-nav-group { align-items: center; }
+.pa-nav-title { font-size: 12px; color: var(--text-muted); padding: 0 10px 6px; }
+.pa-nav-rule { width: 24px; height: 1px; background: #1f1f1f; margin: 6px 0; }
+
+.pa-nav-item {
+  position: relative; height: 38px; width: 100%;
+  display: flex; align-items: center; gap: 12px; padding: 0 10px;
+  border: 0; border-radius: 10px; background: transparent;
+  font-family: var(--font-sans); font-size: 14px; font-weight: 500; color: var(--text-secondary);
+  text-align: left; text-decoration: none; cursor: pointer;
+  transition: background .15s ease, color .15s ease;
+}
+.pa-nav-item:hover { background: #151515; color: var(--text-primary); }
+.pa-nav-item.on { background: color-mix(in srgb, var(--acc) 10%, transparent); color: var(--text-primary); }
+.pa-nav-item:focus-visible, .pa-sport-btn:focus-visible, .pa-drawer-item:focus-visible,
+.pa-bar-menu:focus-visible, .pa-avatar:focus-visible, .pa-signin:focus-visible {
+  outline: 2px solid var(--acc, #FFB11B); outline-offset: 2px;
+}
+.pa-nav-ic { position: relative; display: flex; }
+.pa-nav-lbl { flex: 1; white-space: nowrap; }
+.pa-nav-dot { width: 6px; height: 6px; border-radius: 3px; flex-shrink: 0; }
+
+.pa-side.collapsed .pa-nav-item { width: 44px; height: 44px; padding: 0; justify-content: center; border-radius: 12px; }
+.pa-side.collapsed .pa-nav-dot { position: absolute; right: 8px; top: 8px; width: 5px; height: 5px; }
+
+.pa-side-foot {
+  display: flex; flex-direction: column; gap: 2px;
+  margin-top: 12px; padding-top: 12px; box-shadow: inset 0 1px 0 var(--frame);
+}
+.pa-side.collapsed .pa-side-foot { align-items: center; width: 100%; }
+.pa-side-foot .pa-nav-item { color: var(--text-muted); }
+.pa-side-foot .pa-nav-item:hover { color: var(--text-primary); }
+
+/* ═══ Sayfa başlığı ══════════════════════════════════════════════════════ */
+.pa-bar {
+  position: relative; z-index: 5; flex-shrink: 0;
+  height: 52px; display: flex; align-items: center; gap: 6px;
+  padding: 0 12px 0 4px;
+}
+.pa-bar.home { padding: 0 20px; justify-content: space-between; height: 64px; }
+.pa-bar-menu {
+  width: 44px; height: 44px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: none; border: 0; border-radius: 12px; cursor: pointer;
+}
+.pa-bar-title {
+  flex: 1; min-width: 0; font-family: var(--font-logo); font-size: 20px; font-weight: 700;
+  color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.pa-crumbs { display: none; }
+
+@media (min-width: 768px) {
+  .pa-bar { height: 52px; padding: 16px 24px 4px; }
+  .pa-bar.home { height: 64px; padding: 0 32px; }
+  .pa-bar-menu, .pa-bar-title { display: none; }
+  .pa-crumbs {
+    display: flex; align-items: center; flex: 1; min-width: 0;
+    font-size: 13px; color: var(--text-muted); white-space: nowrap; overflow: hidden;
+  }
+  .pa-crumb { display: inline-flex; align-items: center; }
+  .pa-crumb .sep { color: var(--ink-divider); margin: 0 7px; }
+  .pa-crumb a { color: var(--text-muted); text-decoration: none; }
+  .pa-crumb a:hover { color: var(--text-primary); }
+  .pa-crumb .cur { color: var(--text-secondary); }
+}
+
+/* Hesap */
+.pa-avatar {
+  width: 32px; height: 32px; flex-shrink: 0; border-radius: 16px; border: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--acc, #FFB11B); color: #0b0b0b;
+  font-family: var(--font-logo); font-weight: 700; font-size: 14px; cursor: pointer;
+  box-shadow: 0 0 16px color-mix(in srgb, var(--acc, #FFB11B) 35%, transparent);
+}
+.pa-signin {
+  height: 32px; padding: 0 14px; flex-shrink: 0; border: 0; border-radius: 10px;
+  background: var(--fill-2); color: var(--text-primary);
+  font-family: var(--font-sans); font-size: 13px; font-weight: 500; cursor: pointer;
+}
+.pa-signin:hover { background: var(--fill-sel); }
+/* Mobilde dokunma hedefi ≥ 44px — görsel boyut aynı, tıklanabilir alan büyük */
+@media (max-width: 767px) {
+  .pa-avatar, .pa-signin { position: relative; }
+  .pa-avatar::after, .pa-signin::after { content: ""; position: absolute; inset: -6px; }
+}
+
+/* ═══ Mobil drawer (19a) ═════════════════════════════════════════════════ */
+.pa-drawer-root { position: fixed; inset: 0; z-index: 90; visibility: hidden; pointer-events: none; }
+.pa-drawer-root.open { visibility: visible; pointer-events: auto; }
+.pa-drawer-backdrop {
+  position: absolute; inset: 0; background: rgba(5, 5, 5, .6);
+  opacity: 0; transition: opacity .22s ease;
+}
+.pa-drawer-root.open .pa-drawer-backdrop { opacity: 1; }
+.pa-drawer {
+  position: absolute; top: 0; bottom: 0; left: 0; width: min(320px, 86vw);
+  display: flex; flex-direction: column; overflow: hidden;
+  padding: 18px 16px calc(20px + env(safe-area-inset-bottom));
+  background: #0e0e0e; box-shadow: 20px 0 60px rgba(0, 0, 0, .6);
+  transform: translateX(-100%); transition: transform .26s cubic-bezier(.2, .8, .2, 1);
+}
+.pa-drawer-root.open .pa-drawer { transform: none; }
+@media (prefers-reduced-motion: reduce) { .pa-drawer, .pa-drawer-backdrop { transition: none; } }
+.pa-drawer-glow {
+  position: absolute; left: -60px; top: -80px; width: 300px; height: 220px; pointer-events: none;
+  background: var(--acc); opacity: .12; border-radius: 50%; filter: blur(50px);
+}
+.pa-drawer-head { position: relative; display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+.pa-drawer-close {
+  width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;
+  background: none; border: 0; cursor: pointer; margin-right: -10px;
+}
+.pa-drawer .pa-sport { position: relative; border-radius: 12px; }
+.pa-drawer .pa-sport-btn { height: 44px; border-radius: 9px; font-size: 14px; }
+.pa-drawer-groups { position: relative; flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 18px; }
+.pa-drawer .pa-nav-title { padding: 0 12px 6px; }
+.pa-drawer-item {
+  height: 46px; display: flex; align-items: center; gap: 14px; padding: 0 12px;
+  border-radius: 12px; text-decoration: none;
+  font-size: 15px; font-weight: 500; color: var(--text-secondary);
+}
+.pa-drawer-item .lbl { flex: 1; }
+.pa-drawer-item:active { background: rgba(255, 255, 255, .05); }
+.pa-drawer-item.on { background: color-mix(in srgb, var(--acc) 10%, transparent); color: var(--text-primary); }
+.pa-drawer-user {
+  position: relative; margin-top: 14px; display: flex; align-items: center; gap: 12px;
+  min-height: 60px; padding: 12px; border: 0; border-radius: 14px; background: rgba(255, 255, 255, .04);
+  color: var(--text-primary); font-family: var(--font-sans); text-align: left; cursor: pointer;
+}
+.pa-drawer-user .pa-avatar { width: 36px; height: 36px; border-radius: 18px; font-size: 15px; box-shadow: none; }
+.pa-drawer-user .who { flex: 1; font-size: 14px; font-weight: 600; }
+.pa-drawer-user .go { font-size: 13px; color: var(--text-muted); }
+
+/* ═══ Footer — tek satır, 12px, üstte iç çizgi ════════════════════════════ */
+.pa-footer {
+  flex-shrink: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 20px;
+  padding: 8px 24px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .05);
+  font-size: 12px; color: var(--text-muted);
+}
+.pa-footer a { color: var(--text-muted); text-decoration: none; }
+.pa-footer a:hover { color: var(--text-primary); }
+@media (max-width: 767px) { .pa-footer { padding: 10px 16px; justify-content: center; } }
+
+/* ═══ Sistem durumu (18d) — 404 ══════════════════════════════════════════ */
+.pa-state {
+  position: relative; height: 100%; min-height: 360px; overflow: hidden;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 12px; padding: 24px 16px; text-align: center;
+}
+.pa-state-glow {
+  position: absolute; left: 50%; top: 40%; width: 420px; height: 280px; transform: translate(-50%, -50%);
+  background: #FFB11B; opacity: .10; border-radius: 50%; filter: blur(70px); pointer-events: none;
+}
+.pa-state-code {
+  position: relative; font-family: var(--font-logo); font-size: 112px; font-weight: 700; line-height: 1;
+  color: #FFB11B; text-shadow: 0 0 50px rgba(255, 177, 27, .45);
+}
+.pa-state-title { position: relative; font-family: var(--font-logo); font-size: 26px; font-weight: 700; color: var(--text-primary); }
+.pa-state-body { position: relative; font-size: 14px; line-height: 1.5; color: var(--text-secondary); max-width: 320px; }
+.pa-state-actions { position: relative; display: flex; gap: 10px; margin-top: 8px; flex-wrap: wrap; justify-content: center; }
+
+/* Ortak düğmeler (handoff: 42px, r11) — Faz 2'de aura-rating-btn de buna yaklaşacak */
+.pa-btn-primary, .pa-btn-secondary {
+  height: 44px; padding: 0 20px; border: 0; border-radius: 11px; cursor: pointer;
+  font-family: var(--font-sans); font-size: 14px;
+}
+.pa-btn-primary { background: #FFB11B; color: #14110a; font-weight: 600; }
+.pa-btn-primary:hover { background: #ffc24d; }
+.pa-btn-secondary { background: rgba(255, 255, 255, .06); color: var(--text-primary); font-weight: 500; }
+.pa-btn-secondary:hover { background: var(--fill-sel); }
+.pa-btn-primary:focus-visible, .pa-btn-secondary:focus-visible { outline: 2px solid #FFB11B; outline-offset: 2px; }

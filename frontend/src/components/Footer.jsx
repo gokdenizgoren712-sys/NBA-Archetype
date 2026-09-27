@@ -6,15 +6,16 @@ import { Link } from "react-router-dom";
 // devam ediyor, footer her zaman görünür kalıyor (dashboard-tarzı kabuklarda
 // yaygın desen — sayfa altına gömülü bir footer, bu layout'ta hiç görünmezdi).
 export default function Footer() {
+  // Handoff v2: 12px, üstte tek iç çizgi, kutu yok. Kabukta içerik kolonunun
+  // altında (kenar çubuğunun yanında), yasal bağlantılar her sayfada erişilir.
   return (
-    <footer className="shrink-0 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 px-4 py-2 text-[11px] aura-glass"
-      style={{ color: "var(--text-faint)" }}>
+    <footer className="pa-footer">
       <span>© {new Date().getFullYear()} Primary Arch</span>
-      <Link to="/privacy-policy" className="hover:underline" style={{ color: "var(--text-faint)" }}>Privacy</Link>
-      <Link to="/terms-of-service" className="hover:underline" style={{ color: "var(--text-faint)" }}>Terms</Link>
-      <Link to="/community-guidelines" className="hover:underline" style={{ color: "var(--text-faint)" }}>Community Guidelines</Link>
-      <Link to="/contact" className="hover:underline" style={{ color: "var(--text-faint)" }}>Contact</Link>
-      <Link to="/affiliate-disclosure" className="hover:underline" style={{ color: "var(--text-faint)" }}>Affiliate Disclosure</Link>
+      <Link to="/privacy-policy">Privacy</Link>
+      <Link to="/terms-of-service">Terms</Link>
+      <Link to="/community-guidelines">Community Guidelines</Link>
+      <Link to="/contact">Contact</Link>
+      <Link to="/affiliate-disclosure">Affiliate Disclosure</Link>
     </footer>
   );
 }

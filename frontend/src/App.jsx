@@ -1,10 +1,12 @@
-import { BrowserRouter, Routes, Route, NavLink, Navigate, useNavigate, useLocation, useParams } from "react-router-dom";
-import { useState, useEffect, lazy, Suspense } from "react";
-import { Logo, GameIcon, NBAIcon, GLeagueIcon, NCAAIcon, EuroLeagueIcon,
-         LineupsIcon, ExploreIcon, BlogIcon, FootballIcon,
-         GlossaryIcon, AdminIcon, RefreshIcon } from "./components/BrandIcons";
-import { RankItMark } from "./rankit/redesign/BrandMark";
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from "react-router-dom";
+import { useState, useCallback, lazy, Suspense } from "react";
 import Footer from "./components/Footer";
+import Sidebar from "./components/shell/Sidebar";
+import PageBar from "./components/shell/PageBar";
+import MobileDrawer from "./components/shell/MobileDrawer";
+import NotFound from "./components/shell/NotFound";
+import { shellHidden } from "./components/shell/nav";
+import "./components/shell/shell.css";
 import TermsBanner from "./components/TermsBanner";
 
 // Route sayfaları LAZY — her biri kendi chunk'ına bölünür. Ağır lib'ler böylece
@@ -64,95 +66,7 @@ const ContactDisclaimer  = lazy(() => import("./pages/legal/ContactDisclaimer"))
 const AffiliateDisclosure = lazy(() => import("./pages/legal/AffiliateDisclosure"));
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
-import { AuthProvider, useAuth } from "./contexts/AuthContext";
-
-/* ── Nav config ──────────────────────────────────────────────────────
-   2026-08: site tek domainde iki bağımsız spora ayrıldı. Nav artık sabit
-   değil — hangi sporun içindeysen onun menüsü çıkıyor. Spor-nötr sayfalarda
-   (blog, profil, admin, yasal) ikisi arasında geçiş menüsü gösteriliyor. */
-const BASKETBALL_NAV = [
-  { to: "/basketball/game",       Icon: GameIcon,       label: "Game"    },
-  { to: "/basketball/players",    Icon: NBAIcon,        label: "NBA"     },
-  { to: "/basketball/gleague",    Icon: GLeagueIcon,    label: "G-Lg",    color: "#A8263F" },
-  { to: "/basketball/ncaa",       Icon: NCAAIcon,       label: "NCAA",    color: "#3D7EC9" },
-  { to: "/basketball/euroleague", Icon: EuroLeagueIcon, label: "EUR",     color: "#FF6900" },
-  { to: "/basketball/lineups",    Icon: LineupsIcon,    label: "Lineups" },
-  { to: "/basketball/explore",    Icon: ExploreIcon,    label: "Explore", extraActive: ["/basketball/compare", "/basketball/affinity"] },
-  { to: "/blog",                  Icon: BlogIcon,       label: "Blog"    },
-  { to: "/basketball/glossary",   Icon: GlossaryIcon,   label: "About",   extraActive: ["/basketball/about"] },
-];
-
-// Basketbolla ayni desen: giris sayfasi YOK, /football dogrudan oyuna
-// yonleniyor. Onceki "Football" sekmesi /football'a gidiyordu ve artik
-// "Game" ile ayni yere dusecegi icin kaldirildi.
-const FOOTBALL_NAV = [
-  { to: "/football/game",    Icon: GameIcon,     label: "Game",      color: "#3FB08C" },
-  { to: "/football/players", Icon: NBAIcon,      label: "Players",  color: "#3FB08C" },
-  { to: "/football/lineups", Icon: LineupsIcon,  label: "Chemistry", color: "#3FB08C" },
-  { to: "/football/map",     Icon: ExploreIcon,  label: "Explore",   color: "#3FB08C",
-    extraActive: ["/football/compare"] },
-  { to: "/blog",             Icon: BlogIcon,     label: "Blog" },
-  { to: "/football/glossary", Icon: GlossaryIcon, label: "About",    color: "#3FB08C",
-    extraActive: ["/football/about"] },
-];
-
-// Spor-nötr sayfalarda (blog, profil, admin, yasal) — iki spora da kapı aç
-const SHARED_NAV = [
-  { to: "/basketball", Icon: NBAIcon,      label: "Basket" },
-  { to: "/football",   Icon: FootballIcon, label: "Football", color: "#3FB08C" },
-  { to: "/blog",       Icon: BlogIcon,     label: "Blog"     },
-];
-
-/* RankIt kardeş ürün, bir sporun bölümü değil: masaüstü rayının DİBİNE
-   sabitlenir (pin), çekmecede listenin sonunda. Sitenin ikonları kendi marka
-   renklerinde (G-League kırmızı, NCAA mavi…); RankIt de birincil biçiminde,
-   altın (4i "PRIMARY GOLD ON DARK"). Önceden RankIt'e tek giriş kök
-   spor-seçim ekranıydı. */
-const RankItNavIcon = ({ size = 22, className = "" }) => (
-  <span className={`inline-flex ${className}`}><RankItMark size={size} /></span>
-);
-const RANKIT_NAV = { to: "/rankit", Icon: RankItNavIcon, label: "RankIt", pin: true };
-
-function sportOf(pathname) {
-  if (pathname === "/basketball" || pathname.startsWith("/basketball/")) return "basketball";
-  if (pathname === "/football"   || pathname.startsWith("/football/"))   return "football";
-  return null;
-}
-
-/* RankIt kendi sol rayını taşıyor (riw-rail). Sitenin ikon rayı da açık
-   kalınca ekranda yan yana ÜÇ gezinme oluyordu: üst bar + Primary Arch rayı +
-   RankIt rayı. RankIt'in içindeyken gezinme RankIt'indir — site rayı çekilir.
-   Aşama 15 (7a, BUILD §17): RankIt'in 78px başlığı kimliği ("BY PRIMARY
-   ARCH") ve hesabı (avatar / Sign in) taşıyor; sitenin 48px üst barı da
-   çekiliyor, yoksa üst üste iki başlık olurdu. Primary Arch'a dönüş RankIt
-   rayının dibinde. /rankit/download ve /rankit/mobile-auth sıradan sayfalar,
-   /rankit/app telefon prototipi — onlar kapsam dışı. */
-/* Aşama 17: RankIt'in kendi sayfaları çoğaldı (raf, ısı haritası, okuma,
-   turnuva, profil…) ve dinamik adresler taşıyor — sabit bir küme yerine
-   /rankit altındaki her şey, sıradan sayfalar dışında. */
-const RANKIT_PLAIN_PAGES = ["/rankit/app", "/rankit/download", "/rankit/mobile-auth", "/rankit/_preview"];
-
-function cleanPath(pathname) {
-  return pathname.replace(/\/+$/, "") || "/";
-}
-
-function isRankItWeb(pathname) {
-  const path = cleanPath(pathname);
-  if (path !== "/rankit" && !path.startsWith("/rankit/")) return false;
-  return !RANKIT_PLAIN_PAGES.some((page) => path === page || path.startsWith(`${page}/`));
-}
-
-function isRankItApp(pathname) {
-  return isRankItWeb(pathname) || cleanPath(pathname) === "/rankit/app";
-}
-
-function navFor(pathname) {
-  if (isRankItApp(pathname)) return [];        // RankIt kendi rayını gösteriyor
-  const sport = sportOf(pathname);
-  if (sport === "basketball") return BASKETBALL_NAV;
-  if (sport === "football")   return FOOTBALL_NAV;
-  return pathname === "/" ? [] : SHARED_NAV;   // kök ekranda menü yok
-}
+import { AuthProvider } from "./contexts/AuthContext";
 
 /* Eski (spor öneki olmayan) URL'ler → /basketball/*. Query ve hash korunur;
    bu adresler sitemap.xml'e girmişti, kırılmamalı. */
@@ -165,211 +79,46 @@ function LegacyPlayer() {
   return <Navigate to={`/basketball/players/${encodeURIComponent(name)}`} replace />;
 }
 
-/* ── User button (top-right) ─────────────────────────────────────── */
-function UserButton() {
-  const { user, isLoggedIn } = useAuth();
-  const navigate = useNavigate();
-  if (!isLoggedIn) return (
-    <button onClick={() => navigate("/login")}
-      className="aura-shine-hover px-3 py-1 rounded-[8px] text-xs font-medium bg-yamabuki text-darkBg hover:bg-white transition-colors">
-      Log In
-    </button>
-  );
-  return (
-    <button onClick={() => navigate("/profile")}
-      className="aura-shine-hover w-7 h-7 flex items-center justify-center rounded-full text-xs font-bold font-logo bg-yamabuki text-darkBg"
-      title={user.username}>
-      {user.username?.[0]?.toUpperCase()}
-    </button>
-  );
-}
-
-/* ── Top bar ─────────────────────────────────────────────────────── */
-function TopBar({ onMenu }) {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const sport = sportOf(location.pathname);
-  if (isRankItWeb(location.pathname)) return null;
-
-
-  return (
-    <header className="relative h-12 shrink-0 flex items-center px-4 gap-3 aura-glass overflow-hidden">
-      <div className="aura-glow" style={{ "--aura-color": "var(--accent)", width: 180, height: 180, left: -40, top: -70 }} />
-
-      {/* Logo — mobilde menüyü açar (alt nav'ın yerini aldı), desktop'ta
-          sol icon bar zaten hep açık olduğu için doğrudan /game'e gider. */}
-      {/* Mobil: menüyü açar. Desktop: sol icon bar zaten hep açık, doğrudan
-          /game'e gider. Viewport'u JS ile ölçmek yerine iki ayrı düğme —
-          hangisinin görüneceğine CSS karar veriyor. */}
-      <button onClick={onMenu} aria-label="Open menu"
-        className="md:hidden relative flex items-center gap-2 -ml-1 pl-1 pr-2 py-2">
-        <Logo size={30} />
-        <span className="font-logo text-lg tracking-widest hidden sm:flex leading-none pt-0.5">
-          <span className="font-semibold text-white">PRIMARY</span>
-          <span className="font-bold text-yamabuki ml-1">ARCH</span>
-        </span>
-        <span style={{ color: "var(--text-faint)", fontSize: 9, marginLeft: -2 }}>▾</span>
-      </button>
-      {/* Logo artık /game'e değil KÖK spor seçimine gider — iki bağımsız
-          spor arasında geçişin tek sabit noktası burası. */}
-      <button onClick={() => navigate("/")}
-        className="hidden md:flex relative items-center gap-2 hover:opacity-80 transition-opacity">
-        <Logo size={30} />
-        <span className="font-logo text-lg tracking-widest flex leading-none pt-0.5">
-          <span className="font-semibold text-white">PRIMARY</span>
-          <span className="font-bold text-yamabuki ml-1">ARCH</span>
-        </span>
-        {sport && (
-          <span className="text-[9.5px] uppercase tracking-widest px-1.5 py-0.5 rounded ml-1"
-            style={{ color: sport === "football" ? "var(--accent-football)" : "var(--yamabuki)",
-                     border: `1px solid ${sport === "football" ? "#3FB08C55" : "rgba(255,177,27,.4)"}` }}>
-            {sport === "football" ? "Football" : "Basketball"}
-          </span>
-        )}
-      </button>
-
-      <div className="relative ml-auto flex items-center gap-1.5">
-        <button
-          onClick={async () => { await fetch("/api/admin/clear-cache", { method: "POST" }); window.location.reload(); }}
-          title="Refresh data"
-          className="w-7 h-7 flex items-center justify-center text-sm transition-colors"
-          style={{ color: "var(--text-muted)" }}
-          onMouseEnter={e => e.currentTarget.style.color = "var(--yamabuki)"}
-          onMouseLeave={e => e.currentTarget.style.color = "var(--text-muted)"}
-        ><RefreshIcon size={15} /></button>
-
-        <UserButton />
-      </div>
-    </header>
-  );
-}
-
-/* ── Sol icon bar (desktop) ──────────────────────────────────────── */
-function SideNav() {
-  const location = useLocation();
-  const { isAdmin } = useAuth();
-
-  const base = navFor(location.pathname);
-  if (!base.length) return null;          // kök spor-seçim ekranı: menü yok
-  const items = [
-    ...base,
-    ...(isAdmin ? [{ to: "/admin/articles", Icon: AdminIcon, label: "Admin" }] : []),
-    RANKIT_NAV,
-  ];
-
-  return (
-    <aside className="hidden md:flex flex-col w-16 shrink-0 aura-glass border-t-0 border-b-0 border-l-0 pt-2 pb-4">
-      {items.map(n => {
-        const active = location.pathname === n.to || location.pathname.startsWith(n.to + "/")
-          || (n.extraActive || []).includes(location.pathname);
-        const color = n.color || "#FFB11B";
-        return (
-          <NavLink key={n.to} to={n.to} title={n.label}
-            className={`group relative flex flex-col items-center justify-center h-14 gap-1 transition-colors${n.pin ? " mt-auto" : ""}
-              ${active ? "text-white" : "text-[var(--text-muted)] hover:text-white"}`}
-          >
-            {active && (
-              <>
-                <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 rounded-r" style={{ background: color }} />
-                <span className="aura-glow" style={{ "--aura-color": color, width: 46, height: 46, left: "calc(50% - 23px)", top: "calc(50% - 23px)" }} />
-              </>
-            )}
-            <n.Icon size={22} className="relative transition-transform group-hover:scale-110" />
-            <span className="relative font-logo text-[9px] font-semibold tracking-wider uppercase">{n.label}</span>
-          </NavLink>
-        );
-      })}
-    </aside>
-  );
-}
-
-/* ── Mobil menü (drawer) ─────────────────────────────────────────
-   Eski 2 satırlık alt nav kaldırıldı: ekranın altından ~64px yiyordu ve
-   mobilde en değerli şey dikey alan. Artık sol üstteki logoya dokununca
-   soldan açılan bir panel. Satırlar 52px — parmak hedefi olarak yeterli
-   (alt nav'daki 18px ikonlar değildi). */
-function MobileDrawer({ open, onClose }) {
-  const location = useLocation();
-  const { isAdmin } = useAuth();
-
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    // Drawer açıkken arka plan kaymasın — mobilde panelin altındaki sayfanın
-    // kaymaya devam etmesi ("scroll chaining") en can sıkıcı detaylardan biri.
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      document.body.style.overflow = prev;
-    };
-  }, [open, onClose]);
-
-  // Rota değişince kendiliğinden kapansın
-  useEffect(() => { onClose(); }, [location.pathname]);   // eslint-disable-line react-hooks/exhaustive-deps
-
-  const items = [
-    ...(navFor(location.pathname).length ? navFor(location.pathname) : SHARED_NAV),
-    ...(isAdmin ? [{ to: "/admin/articles", Icon: AdminIcon, label: "Admin" }] : []),
-    RANKIT_NAV,
-  ];
-
-  return (
-    <div className={`md:hidden nav-drawer-root${open ? " open" : ""}`} aria-hidden={!open}>
-      <div className="nav-drawer-backdrop" onClick={onClose} />
-      <nav className="nav-drawer" role="navigation">
-        <div className="nav-drawer-head">
-          <Logo size={26} />
-          <span className="font-logo text-base tracking-widest leading-none pt-0.5">
-            <span className="font-semibold text-white">PRIMARY</span>
-            <span className="font-bold text-yamabuki ml-1">ARCH</span>
-          </span>
-          <button onClick={onClose} aria-label="Close menu" className="nav-drawer-close">×</button>
-        </div>
-
-        <div className="nav-drawer-items">
-          {items.map(n => {
-            const active = location.pathname === n.to || location.pathname.startsWith(n.to + "/")
-              || (n.extraActive || []).includes(location.pathname);
-            const color = n.color || "#FFB11B";
-            return (
-              <NavLink key={n.to} to={n.to} onClick={onClose}
-                className={`nav-drawer-item${active ? " active" : ""}`}
-                style={{ "--accent": color }}>
-                <n.Icon size={20} />
-                <span className="lbl">{n.label}</span>
-              </NavLink>
-            );
-          })}
-        </div>
-      </nav>
-    </div>
-  );
-}
-
 /* ── Inner app ───────────────────────────────────────────────────── */
 // Lazy sayfa chunk'ı inerken gösterilen hafif fallback (Suspense).
 function PageLoading() {
   return (
     <div className="h-full w-full flex items-center justify-center"
          style={{ color: "var(--text-muted)" }}>
-      <div className="animate-pulse font-logo text-sm tracking-widest uppercase">Loading…</div>
+      <div className="animate-pulse text-[13px]">Loading…</div>
+    </div>
+  );
+}
+
+/* ── Kabuk (handoff v2) ────────────────────────────────────────────
+   Masaüstü: [kenar çubuğu | sayfa başlığı + içerik + footer]. Eski 48px üst
+   bar ve 64px ikon rayı kalktı; logo, spor anahtarı ve nav kenar çubuğunda,
+   hesap sayfa başlığında. Mobil: başlık menü düğmesini taşır, nav drawer'da.
+   RankIt uygulaması kendi rayını ve başlığını taşıdığı için orada kabuk çekilir. */
+function Shell({ children }) {
+  const { pathname } = useLocation();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const closeMenu = useCallback(() => setMenuOpen(false), []);
+  const hidden = shellHidden(pathname);
+  const bare = pathname === "/";           // kök spor seçimi: kenar çubuğu yok (4a)
+  return (
+    <div className="flex h-screen" style={{ background: "var(--bg-base)", color: "var(--text-primary)" }}>
+      {!hidden && !bare && <Sidebar />}
+      <div className="flex-1 min-w-0 flex flex-col">
+        {!hidden && <PageBar onMenu={() => setMenuOpen(true)} />}
+        <main className="flex-1 min-h-0 overflow-hidden">{children}</main>
+        <TermsBanner />
+        <Footer />
+      </div>
+      {!hidden && <MobileDrawer open={menuOpen} onClose={closeMenu} />}
     </div>
   );
 }
 
 function AppInner() {
-  const [menuOpen, setMenuOpen] = useState(false);
   return (
     <BrowserRouter>
-      <div className="flex flex-col h-screen" style={{ background: "var(--bg-base)", color: "var(--text-primary)" }}>
-        <TopBar onMenu={() => setMenuOpen(true)} />
-
-        <div className="flex flex-1 min-h-0 overflow-hidden">
-          <SideNav />
-
-          <main className="flex-1 min-h-0 overflow-hidden">
+      <Shell>
             <Suspense fallback={<PageLoading />}>
             <Routes>
               {/* Kök: spor seçimi */}
@@ -483,16 +232,10 @@ function AppInner() {
               <Route path="/community-guidelines"     element={<CommunityGuidelines />} />
               <Route path="/contact"                  element={<ContactDisclaimer />} />
               <Route path="/affiliate-disclosure"     element={<AffiliateDisclosure />} />
+              <Route path="*"                         element={<NotFound />} />
             </Routes>
             </Suspense>
-          </main>
-        </div>
-
-        <TermsBanner />
-        <Footer />
-
-        <MobileDrawer open={menuOpen} onClose={() => setMenuOpen(false)} />
-      </div>
+      </Shell>
     </BrowserRouter>
   );
 }
