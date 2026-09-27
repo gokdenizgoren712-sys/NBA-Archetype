@@ -48,6 +48,7 @@ colors:
   phase-mid: "#3FB08C"
   phase-fwd: "#E8654C"
   shadow-black: "#000"
+  neutral-glow: "#9ca3af"   # handoff: boş yuva/yedek ışığı, PaIcon gri tonu
 typography:
   meta:
     fontFamily: "Outfit, ui-sans-serif, sans-serif"
