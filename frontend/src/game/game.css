@@ -272,7 +272,7 @@
 }
 .g-wheel-item {
   height: 40px; display: flex; align-items: center; justify-content: center;
-  font-family: var(--font-logo); font-size: 12.5px; letter-spacing: 0.04em;
+  font-family: var(--font-logo); font-size: 13px; letter-spacing: 0.04em;
   padding: 0 6px; text-align: center;
 }
 .g-wheel.spinning .g-wheel-window { animation: gWheelPulse 0.55s ease-in-out infinite; }
@@ -292,13 +292,13 @@
   letter-spacing: -0.03em;
 }
 .g-score-pct {
-  font-family: var(--font-logo); font-weight: 700; font-size: 27px;
+  font-family: var(--font-logo); font-weight: 700; font-size: 28px;
   color: var(--text-primary); font-variant-numeric: tabular-nums; letter-spacing: 0.01em;
 }
 .g-score-parts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; margin-top: 22px;
   background: rgba(255, 255, 255, 0.07); border-radius: 13px; overflow: hidden; }
 .g-score-part { background: #100e13; padding: 11px 6px; }
-.g-score-part .v { font-family: var(--font-logo); font-weight: 700; font-size: 21px; font-variant-numeric: tabular-nums; }
+.g-score-part .v { font-family: var(--font-logo); font-weight: 700; font-size: 22px; font-variant-numeric: tabular-nums; }
 .g-score-part .l { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
 .g-score-part .w { font-size: 12px; color: var(--text-faint); }
 
@@ -412,7 +412,7 @@
   box-shadow: 0 0 13px -5px var(--accent);
 }
 .g-lb-name {
-  flex: 1; min-width: 0; font-size: 12.5px; color: var(--text-primary);
+  flex: 1; min-width: 0; font-size: 13px; color: var(--text-primary);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .g-lb-row.podium .g-lb-name { font-weight: 600; }
@@ -547,7 +547,7 @@
 /* Landed season/team — plain type, no box. Team over year. */
 .g-dock-team { text-align: right; line-height: 1.05; }
 .g-dock-team .tm {
-  font-family: var(--font-logo); font-size: 21px; font-weight: 800;
+  font-family: var(--font-logo); font-size: 22px; font-weight: 800;
   letter-spacing: 0.05em; color: var(--yamabuki, #FFB11B);
   text-shadow: 0 0 22px rgba(255, 177, 27, 0.35);
 }
@@ -878,7 +878,7 @@
   .g-modal-backdrop { padding: 10px; }
 
   /* Skor kahramanı: 3 parça 375px'te sıkışıyordu */
-  .g-score-grade { font-size: 62px; }
+  .g-score-grade { font-size: 64px; }
   .g-score-pct { font-size: 30px; }
   .g-score-part .v { font-size: 18px; }
 
@@ -1791,3 +1791,24 @@ button.g-pstep:focus-visible { outline: 2px solid var(--c); outline-offset: 3px;
 @media (max-width: 640px) {
   .g-fb-wheels { justify-content: flex-start; flex-wrap: wrap; }
 }
+
+/* ═══ Futbol kadro sonucu (handoff 16d) ══════════════════════════════════ */
+.g-sq { max-width: 1180px; margin: 0 auto; padding: 14px 36px 28px; }
+.g-sq-top { display: flex; align-items: center; gap: 14px; }
+.g-sq-top .meta { font-size: 13px; color: var(--text-secondary); }
+.g-result-grade small { font-size: 0.34em; letter-spacing: 0; margin-left: 2px; vertical-align: 0.9em; }
+.g-sq .g-result-ref { max-width: 620px; line-height: 1.5; }
+.g-sq-cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 56px; }
+.g-sq-h { font-family: var(--font-logo); font-size: 20px; font-weight: 700; color: var(--text-primary); margin-bottom: 6px; }
+.g-sq-rep { display: flex; gap: 14px; padding: 12px 0; box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.05); }
+.g-sq-rep i { width: 8px; height: 8px; border-radius: 50%; margin-top: 7px; flex-shrink: 0; background: var(--c); box-shadow: 0 0 8px var(--c); }
+.g-sq-rep div { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.g-sq-rep b { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+.g-sq-rep span { font-size: 13px; line-height: 1.5; color: var(--text-secondary); }
+.g-sq-xi { display: flex; align-items: center; gap: 12px; height: 36px; }
+.g-sq-xi .pos { width: 34px; font-family: var(--font-logo); font-size: 13px; font-weight: 700; flex-shrink: 0; }
+.g-sq-xi .nm { flex: 1; min-width: 0; font-size: 14px; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.g-sq-xi .fit { font-size: 12px; flex-shrink: 0; }
+@media (max-width: 900px) { .g-sq-cols { grid-template-columns: 1fr; gap: 28px; } }
+@media (max-width: 640px) { .g-sq { padding: 8px 16px 24px; } }
+.g-sq-xi .nm em { font-style: normal; font-weight: 400; font-size: 12px; color: var(--text-muted); margin-left: 8px; }

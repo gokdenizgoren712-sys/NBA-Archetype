@@ -10,6 +10,7 @@ import { drawManagers, managerBonus } from "../../game/football/managers";
 import SeasonPanel from "../../game/football/SeasonPanel";
 import SquadAnalysis from "../../game/football/SquadAnalysis";
 import FootballLeaderboard from "../../game/football/LeaderboardPanel";
+import SquadResult from "../../game/football/SquadResult";
 import { RefreshIcon, CalendarIcon, BoltIcon, UsersIcon, SearchIcon } from "../../game/GameIcons";
 import "../../game/game.css";
 import { LEAGUE_LABEL } from "../../game/football/leagues";
@@ -428,6 +429,27 @@ export default function FootballGame() {
               <FootballLeaderboard />
             </aside>
           </div>
+        ) : phase === "complete" && fit ? (
+          <SquadResult fit={fit} shape={shape} manager={manager}
+            starters={pitchSlots.map(s => squad[s.id]).filter(Boolean)}
+            slotOf={(p) => {
+              const s = pitchSlots.find(x => squad[x.id]?.PLAYER_ID === p.PLAYER_ID);
+              return s ? posPenaltyFor(p, s) : 0;
+            }}
+            saveUI={isLoggedIn ? (
+              <div className="g-result-save">
+                <label htmlFor="fb-save">Save this squad</label>
+                <div>
+                  <input id="fb-save" value={saveName} onChange={e => setSaveName(e.target.value)}
+                    placeholder="e.g. Invincibles remix" className="aura-ghost-input" />
+                  <button onClick={saveRoster} className="pa-btn-secondary">Save</button>
+                </div>
+                {saveMsg && <p className="g-result-err" style={{ color: "var(--text-muted)" }}>{saveMsg}</p>}
+              </div>
+            ) : <span className="g-result-saved muted">Sign in to save squads and land on the board.</span>}
+            slotPosOf={(p) => pitchSlots.find(x => squad[x.id]?.PLAYER_ID === p.PLAYER_ID)?.pos}
+            onPlaySeason={() => document.getElementById("fb-season")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+            onReset={reset} />
         ) : (
         <>
         {/* ── Handoff 7a başlığı: wordmark + diziliş + ilerleme | sezon · kulüp | jokerler */}
@@ -751,7 +773,7 @@ export default function FootballGame() {
         )}
 
         {phase === "complete" && fit && (
-          <SquadAnalysis
+          <SquadAnalysis detailOnly
             fit={fit}
             starters={pitchSlots.map(s => squad[s.id]).filter(Boolean)}
             slotOf={(p) => {
@@ -761,6 +783,9 @@ export default function FootballGame() {
           />
         )}
 
+        {phase === "complete" && fit && (
+          <div id="fb-season" />
+        )}
         {phase === "complete" && fit && (
           <SeasonPanel
             starters={pitchSlots.map(s => squad[s.id]).filter(Boolean)}

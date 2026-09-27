@@ -40,8 +40,10 @@ function SlotBar({ label, value }) {
   );
 }
 
+// detailOnly: sonuç ekranı (SquadResult) persantili ve raporu zaten gösteriyor;
+// burada yalnız sekiz işin kapsama çubukları + ölçüm notu kalır.
 export default function SquadAnalysis({ fit, starters = [], bench = [],
-                                        positionPenalty = 0, slotOf }) {
+                                        positionPenalty = 0, slotOf, detailOnly = false }) {
   if (!fit || fit.error) return null;
 
   const ref = fit.reference;
@@ -68,7 +70,7 @@ export default function SquadAnalysis({ fit, starters = [], bench = [],
       <span className="aura-blob" style={{ "--slot-color": ACC, left: "30%", top: -50, width: 300, height: 150, opacity: 0.16 }} />
 
       <div className="flex items-center justify-between gap-2">
-        <span className="g-section-title">Squad Analysis</span>
+        <span className="g-section-title">{detailOnly ? "Role coverage" : "Squad analysis"}</span>
         <span className="g-status"
           style={{ "--accent": "#9ca3af", "--accent-a": "rgba(156,163,175,.12)", "--accent-line": "rgba(156,163,175,.35)" }}>
           what this XI can and cannot do
@@ -77,7 +79,7 @@ export default function SquadAnalysis({ fit, starters = [], bench = [],
 
       {/* Asıl anlamlı sayı: gerçek ilk-11'lere göre nerede duruyorsun.
           Ham 0-100 skorun kendi başına bir ölçeği yok; persantilin var. */}
-      {ref && ref.score != null && (
+      {!detailOnly && ref && ref.score != null && (
         <div className="flex items-center gap-4 rounded-2xl relative overflow-hidden"
           style={{ padding: "14px 16px",
                    background: `linear-gradient(100deg, ${hex(ref.score / 100)}14, transparent 72%)`,
@@ -109,7 +111,7 @@ export default function SquadAnalysis({ fit, starters = [], bench = [],
       </div>
 
       {/* ── Açıklar ────────────────────────────────────────────────────── */}
-      {gaps.length > 0 && (
+      {!detailOnly && gaps.length > 0 && (
         <div className="rounded-xl relative overflow-hidden" style={{ padding: "11px 13px",
           background: `${WARN}0f`, border: `1px solid ${WARN}38` }}>
           <div className="g-label" style={{ "--accent": WARN, color: WARN }}>Gaps</div>
@@ -122,7 +124,7 @@ export default function SquadAnalysis({ fit, starters = [], bench = [],
         </div>
       )}
 
-      <div style={{ display: "grid", gap: 10, marginTop: 14,
+      {!detailOnly && <div style={{ display: "grid", gap: 10, marginTop: 14,
         gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))" }}>
 
         {/* Şekil */}
@@ -175,7 +177,7 @@ export default function SquadAnalysis({ fit, starters = [], bench = [],
             </div>
           </div>
         )}
-      </div>
+      </div>}
 
       {/* ── Ölçüm dürüstlüğü ───────────────────────────────────────────── */}
       <p style={{ fontSize: 13, color: "var(--text-faint)", marginTop: 14, lineHeight: 1.6 }}>
