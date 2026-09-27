@@ -1,0 +1,148 @@
+/* ═══ Oyuncu listesi iskeleti (handoff 3b / 6a / 11c · 19b) ══════════════
+   Kutu yok: kolon sağdan tek bir iç çizgiyle ayrılır, seçimler gradyan
+   satırla, sayfa rengi --tint ile (arketip/faz/lig). */
+.pa-list { position: relative; display: flex; height: 100%; min-height: 0; --tint: var(--accent, #FFB11B); }
+
+/* ── Sol filtre kolonu ─────────────────────────────────────────────────── */
+.pa-list-filters {
+  position: relative; width: 250px; flex-shrink: 0; box-sizing: border-box;
+  padding: 24px 16px 24px 24px; display: flex; flex-direction: column; gap: 26px;
+  overflow-y: auto; box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.05);
+  scrollbar-width: none;  /* kaydırılabilir ama çubuk yok — dar kolonda yer yiyordu */
+}
+.pa-list-filters::-webkit-scrollbar { display: none; }
+.pa-list-fhead { display: flex; align-items: center; justify-content: space-between; height: 32px; }
+.pa-list-fhead span { font-family: var(--font-logo); font-size: 20px; font-weight: 700; color: var(--text-primary); }
+.pa-list-fhead button, .pa-sheet-head button {
+  background: none; border: 0; padding: 0; font-size: 13px; color: var(--tint); cursor: pointer;
+}
+.pa-fgroup { display: flex; flex-direction: column; gap: 8px; }
+.pa-flabel { font-size: 12px; color: var(--text-muted); }
+
+/* Alt çizgili select */
+.pa-uselect { position: relative; display: flex; align-items: center; height: 36px; box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.12); cursor: pointer; }
+.pa-uselect:hover { box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.28); }
+.pa-uselect:focus-within { box-shadow: inset 0 -2px 0 var(--tint); }
+.pa-uselect select {
+  appearance: none; -webkit-appearance: none; background: transparent; border: 0; outline: none;
+  width: 100%; height: 100%; padding: 0 22px 0 0; font-size: 14px; color: var(--text-primary); cursor: pointer;
+}
+.pa-uselect select option { background: #141414; color: var(--text-primary); }
+.pa-uselect svg { position: absolute; right: 0; pointer-events: none; }
+.pa-uselect.big select { font-family: var(--font-logo); font-size: 20px; font-weight: 700; color: var(--tint); }
+
+/* Arama */
+.pa-usearch { position: relative; display: flex; align-items: center; gap: 10px; height: 36px; box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.12); }
+.pa-usearch:focus-within { box-shadow: inset 0 -2px 0 var(--tint); }
+.pa-usearch input { flex: 1; min-width: 0; background: transparent; border: 0; outline: none; font-size: 14px; color: var(--text-primary); }
+.pa-usearch input::placeholder { color: var(--text-muted); }
+.pa-usearch button { background: none; border: 0; color: var(--text-muted); font-size: 18px; line-height: 1; cursor: pointer; padding: 0 2px; }
+.pa-usearch.filled { flex: 1; height: 44px; border-radius: 12px; background: rgba(255, 255, 255, 0.05); box-shadow: none; padding: 0 14px; }
+.pa-usearch.filled:focus-within { box-shadow: inset 0 0 0 1px var(--tint); }
+
+/* Haplar */
+.pa-pills { display: flex; gap: 2px; flex-wrap: wrap; }
+.pa-pills button {
+  height: 32px; padding: 0 8px; border-radius: 16px; border: 0; background: transparent;
+  font-size: 13px; font-weight: 600; color: var(--text-secondary); cursor: pointer; transition: background .15s, color .15s;
+}
+.pa-pills button:hover { background: rgba(255, 255, 255, 0.05); color: var(--text-primary); }
+.pa-pills button.on { background: var(--tint); color: #14110a; }
+.pa-pills.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(52px, 1fr)); gap: 6px; }
+.pa-pills.grid button { height: 44px; border-radius: 12px; background: rgba(255, 255, 255, 0.05); font-family: var(--font-logo); font-size: 16px; font-weight: 700; }
+.pa-pills.grid button.on { background: var(--tint); color: #14110a; }
+
+/* Facet listesi */
+.pa-facets { display: flex; flex-direction: column; margin: 0 -8px; }
+.pa-facet {
+  position: relative; height: 34px; display: flex; align-items: center; gap: 10px; padding: 0 8px;
+  border: 0; border-radius: 9px; background: transparent; cursor: pointer; text-align: left; transition: background .15s;
+}
+.pa-facet:hover { background: rgba(255, 255, 255, 0.04); }
+.pa-facet i { width: 8px; height: 8px; border-radius: 4px; flex-shrink: 0; background: var(--c); box-shadow: 0 0 6px color-mix(in srgb, var(--c) 40%, transparent); }
+.pa-facet i.none { background: var(--ink-divider, #3a3a3a); box-shadow: none; }
+.pa-facet span { flex: 1; min-width: 0; font-size: 14px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pa-facet em { font-style: normal; font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.pa-facet.on { background: linear-gradient(100deg, color-mix(in srgb, var(--c) 14%, transparent), transparent 85%); }
+.pa-facet.on span { color: var(--text-primary); font-weight: 600; }
+.pa-facet.on i { box-shadow: 0 0 10px var(--c); }
+.pa-facet.zero span, .pa-facet.zero em { color: var(--text-faint); }
+
+.pa-facet-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.pa-facet-chips button {
+  height: 34px; padding: 0 12px; border-radius: 999px; border: 0; display: flex; align-items: center; gap: 6px;
+  font-size: 13px; color: var(--text-secondary); background: rgba(255, 255, 255, 0.05); cursor: pointer;
+}
+.pa-facet-chips button i { width: 7px; height: 7px; border-radius: 4px; background: var(--c); }
+.pa-facet-chips button.on { color: var(--text-primary); background: color-mix(in srgb, var(--c) 18%, transparent); }
+
+/* ── İçerik ────────────────────────────────────────────────────────────── */
+.pa-list-main { position: relative; flex: 1; min-width: 0; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; }
+.pa-list-main > .g-smoke { position: absolute; inset: 0 0 auto 0; height: 1100px; }
+.pa-list-body { position: relative; padding: 4px 28px 0; flex: 1; }
+
+.pa-list-hero { display: flex; align-items: flex-end; gap: 24px; margin: 24px 0 26px; }
+.pa-list-hero .art { width: 96px; height: 96px; flex-shrink: 0; object-fit: contain; margin: -10px -6px -6px -10px; filter: drop-shadow(0 0 18px color-mix(in srgb, var(--tint) 55%, transparent)); }
+.pa-list-hero .txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.pa-list-hero .eyebrow { font-size: 13px; font-weight: 600; color: var(--tint); transition: color .5s; }
+.pa-list-hero h1 { margin: 0; font-family: var(--font-logo); font-size: 40px; font-weight: 700; line-height: 1; color: var(--text-primary); text-wrap: balance; }
+.pa-list-hero p { margin: 0; font-size: 14px; line-height: 1.5; color: var(--text-secondary); max-width: 600px; text-wrap: pretty; }
+.pa-list-hero .aside { flex-shrink: 0; display: flex; align-items: center; gap: 8px; }
+.pa-list-hero .aside .pa-flabel { font-size: 14px; }
+
+.pa-card-grid { display: grid; gap: 28px 24px; justify-items: center; align-items: start; }
+
+.pa-more { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 40px 0 34px; }
+.pa-more span { font-size: 13px; color: var(--text-muted); }
+.pa-more button {
+  height: 46px; padding: 0 26px; border: 0; border-radius: 999px; background: transparent; cursor: pointer;
+  color: var(--tint); font-family: var(--font-logo); font-size: 17px; font-weight: 700; letter-spacing: .04em;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tint) 53%, transparent), 0 0 22px color-mix(in srgb, var(--tint) 20%, transparent);
+  transition: box-shadow .2s, background .2s;
+}
+.pa-more button:hover { background: color-mix(in srgb, var(--tint) 8%, transparent); }
+.pa-more button:disabled { opacity: .6; cursor: default; }
+
+/* ── Mobil ─────────────────────────────────────────────────────────────── */
+.pa-list-mbar { display: none; }
+.pa-list-fbtn {
+  height: 44px; padding: 0 14px; border: 0; border-radius: 12px; flex-shrink: 0; display: flex; align-items: center; gap: 8px;
+  background: color-mix(in srgb, var(--tint) 12%, transparent); color: var(--tint); font-size: 14px; font-weight: 600; cursor: pointer;
+}
+.pa-list-fbtn b { min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px; background: var(--tint); color: #14110a; font-size: 12px; display: flex; align-items: center; justify-content: center; }
+.pa-list-chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+.pa-chip {
+  height: 30px; padding: 0 12px; border-radius: 15px; border: 0; display: flex; align-items: center; gap: 6px; white-space: nowrap;
+  font-size: 13px; color: var(--text-primary); background: rgba(255, 255, 255, 0.06); cursor: pointer; flex-shrink: 0;
+}
+.pa-chip[style] { background: color-mix(in srgb, var(--c) 14%, transparent); }
+.pa-chip i { width: 7px; height: 7px; border-radius: 4px; background: var(--c); }
+.pa-chip span { color: var(--text-muted); }
+
+.pa-sheet-wrap { position: fixed; inset: 0; z-index: 80; }
+.pa-sheet-scrim { position: absolute; inset: 0; background: rgba(5, 5, 5, 0.6); }
+.pa-sheet {
+  position: absolute; left: 0; right: 0; bottom: 0; max-height: 86vh; display: flex; flex-direction: column; gap: 16px;
+  padding: 10px 16px calc(20px + env(safe-area-inset-bottom)); border-radius: 24px 24px 0 0; background: #121212;
+  box-shadow: 0 -20px 60px rgba(0, 0, 0, 0.6); animation: pa-sheet-in .22s ease-out;
+}
+@keyframes pa-sheet-in { from { transform: translateY(24px); opacity: 0; } }
+.pa-sheet-grip { align-self: center; width: 40px; height: 4px; border-radius: 2px; background: var(--ink-divider, #3a3a3a); }
+.pa-sheet-head { display: flex; align-items: center; justify-content: space-between; }
+.pa-sheet-head span { font-family: var(--font-logo); font-size: 22px; font-weight: 700; color: var(--text-primary); }
+.pa-sheet-head button { color: var(--text-muted); font-size: 14px; }
+.pa-sheet-body { display: flex; flex-direction: column; gap: 16px; overflow-y: auto; min-height: 0; }
+.pa-sheet-cta { height: 50px; flex-shrink: 0; border: 0; border-radius: 12px; background: var(--text-primary); color: #0b0b0b; font-size: 15px; font-weight: 600; cursor: pointer; }
+
+@media (max-width: 767px) {
+  .pa-list-filters { display: none; }
+  .pa-list-mbar { position: relative; display: flex; flex-direction: column; gap: 12px; padding: 6px 16px 12px; }
+  .pa-list-mrow { display: flex; gap: 8px; }
+  .pa-list-body { padding: 0 16px; }
+  .pa-list-hero { margin: 8px 0 18px; gap: 14px; }
+  .pa-list-hero .art { width: 64px; height: 64px; margin: -6px -4px -4px -6px; }
+  .pa-list-hero h1 { font-size: 30px; }
+  .pa-list-hero .aside { display: none; }
+  .pa-card-grid { gap: 20px; }
+}
+@media (prefers-reduced-motion: reduce) { .pa-sheet { animation: none; } }

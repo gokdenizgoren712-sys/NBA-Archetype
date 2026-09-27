@@ -1210,6 +1210,18 @@ def get_components():
     }
 
 
+def _arch_counts(df: pd.DataFrame) -> dict:
+    """Arketip filtresi HARİÇ diğer filtreler uygulanmış tablodan primary_arch
+    sayıları — Players filtre kolonundaki "arketip · sayı" listesi (handoff 3b).
+    Sayı, o arketip seçilince gelecek sonuç sayısıyla birebir aynı olsun diye
+    arketip filtresinden ÖNCE sayılır."""
+    if "primary_arch" not in df.columns:
+        return {}
+    vc = df["primary_arch"].dropna().astype(str)
+    vc = vc[vc.str.len() > 0].value_counts()
+    return {k: int(v) for k, v in vc.items()}
+
+
 @app.get("/api/players")
 def get_players(
     search:    Optional[str] = Query(None, description="İsim arama"),
@@ -1238,8 +1250,6 @@ def get_players(
             df = df[df["POS5"] == pos_upper]
         elif "POSITION" in df.columns:
             df = df[df["POSITION"].str.contains(position, case=False, na=False)]
-    if arch:
-        df = df[df["primary_arch"].str.lower() == arch.lower()]
     if modifier:
         col = f"score_{modifier}"
         if col in df.columns:
@@ -1253,6 +1263,11 @@ def get_players(
     if min_gp is not None and "GP" in df.columns:
         df = df[df["GP"] >= min_gp]
 
+    # Arketip sayıları arketip filtresinden önce (bkz. _arch_counts)
+    arch_counts, arch_total = _arch_counts(df), len(df)
+    if arch:
+        df = df[df["primary_arch"].str.lower() == arch.lower()]
+
     valid_sort = sort_by if sort_by in df.columns else "overall_score"
     df = df.sort_values(valid_sort, ascending=False, na_position="last")
 
@@ -1263,6 +1278,9 @@ def get_players(
         "total":   total,
         "offset":  offset,
         "limit":   limit,
+        "pool":    len(_load_scores()),
+        "arch_counts": arch_counts,
+        "arch_total": arch_total,
         "players": _safe(page),
     }
 
@@ -1786,6 +1804,10 @@ def get_historical(
     offset: int = Query(0, ge=0),
     sort_col: str = Query("overall_score", description="Sıralama kolonu"),
     sort_asc: bool = Query(False),
+    position: Optional[str] = Query(None),
+    arch: Optional[str] = Query(None, description="primary_arch filtre"),
+    team: Optional[str] = Query(None),
+    min_gp: Optional[int] = Query(None, ge=0),
 ):
     """Tarihsel sezon oyuncu listesi — 2025-26 dahil."""
     # 2025-26 için güncel player_scores kullan
@@ -1812,8 +1834,18 @@ def get_historical(
                 if missing_cols:
                     df = df.merge(base_stats[["PLAYER_ID"] + missing_cols], on="PLAYER_ID", how="left")
 
+    pool = len(df)
     if search:
         df = _search_player(df, search)
+    if position and "POSITION" in df.columns:
+        df = df[df["POSITION"].fillna("").astype(str).str.upper() == position.upper()]
+    if team and "TEAM_ABBREVIATION" in df.columns:
+        df = df[df["TEAM_ABBREVIATION"].fillna("").astype(str).str.upper() == team.upper()]
+    if min_gp is not None and "GP" in df.columns:
+        df = df[df["GP"] >= min_gp]
+    arch_counts, arch_total = _arch_counts(df), len(df)
+    if arch and "primary_arch" in df.columns:
+        df = df[df["primary_arch"].fillna("").astype(str).str.lower() == arch.lower()]
 
     # Zengin percentile veri (2025-26 VEYA tracking-era backfill) score_
     # sütunlarından bileşen listesi kurar; eski boolean tarihsel sezonlar
@@ -1855,6 +1887,9 @@ def get_historical(
     return {
         "season":   season,
         "total":    total,
+        "pool":     pool,
+        "arch_counts": arch_counts,
+        "arch_total": arch_total,
         "data_era": _data_era(season),
         "players":  _safe(df[keep].iloc[offset: offset + limit]),
     }

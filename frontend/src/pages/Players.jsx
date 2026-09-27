@@ -1,225 +1,254 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { SlidersHorizontal, X } from "lucide-react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { api } from "../api";
 import { SEO } from "../hooks/useSEO";
 import PlayerCard from "../components/PlayerCard";
-import AuraSearch from "../components/AuraSearch";
+import { SkeletonGrid, EmptyState, ErrorState } from "../components/states/States";
+import {
+  ListingPage, FilterGroup, UnderSelect, UnderSearch, PillSet, FacetList,
+  ListingHero, LoadMore, CardGrid,
+} from "../components/listing/Listing";
+import { ARCHETYPE_COLOR, ARCHETYPE_BLURB, archetypeArt } from "../constants/archetypeColors";
 
+// Handoff 3b / 19b. Filtreler artık sunucuda (tarihsel sezonlar dahil —
+// önceden ilk 200 satıra istemcide uygulanıyordu, sayılar yanlıştı).
+// Sayfalama offset'li "Load more"; arketip sayıları API'nin arch_counts'u.
 const CORE = ["Engine","Ecosystem","Hub","Connector","Creator","Anchor","Spacer","Finisher","Force","Initiator","Stopper","Rim Runner"];
-const POSITIONS = ["","PG","SG","SF","PF","C"];
+const POSITIONS = [["", "All"], ["PG","PG"], ["SG","SG"], ["SF","SF"], ["PF","PF"], ["C","C"]];
+const TIERS = ["Elite", "Star", "Starter", "Role Player"];
+const CURRENT = "2025-26";
+const PAGE = 24;
+const GOLD = "#FFB11B";
 
-/* ── Main component ──────────────────────────────────────────────── */
 export default function Players() {
   const [seasons, setSeasons]   = useState([]);
-  const [season, setSeason]     = useState("2025-26");
+  const [season, setSeason]     = useState(CURRENT);
 
-  const [search, setSearch]         = useState("");
   const [searchInput, setSearchInput] = useState("");
-  const [pos, setPos]               = useState("");
-  const [arch, setArch]             = useState("");
-  const [team, setTeam]             = useState("");
-  const [tier, setTier]             = useState("");
-  const [minGp, setMinGp]           = useState("");
-  const [sortBy, setSortBy]         = useState("overall_score");
+  const [search, setSearch] = useState("");
+  const [pos, setPos]       = useState("");
+  const [arch, setArch]     = useState("");
+  const [team, setTeam]     = useState("");
+  const [tier, setTier]     = useState("");
+  const [minGp, setMinGp]   = useState("");
+  const [sortBy, setSortBy] = useState("overall_score");
 
-  const [players, setPlayers]   = useState([]);
-  const [total, setTotal]       = useState(0);
-  const [loading, setLoading]   = useState(false);
+  const [players, setPlayers] = useState([]);
+  const [meta, setMeta]       = useState({ total: 0, pool: 0, arch_counts: {}, arch_total: 0 });
+  const [loading, setLoading] = useState(true);
+  const [more, setMore]       = useState(false);
+  const [error, setError]     = useState(false);
   const [teamList, setTeamList] = useState([]);
-  const [filterOpen, setFilterOpen] = useState(false);
   const debounceRef = useRef(null);
+  const reqRef = useRef(0);
 
-  const isCurrent = season === "2025-26";
-
-  const histTeams = useMemo(() => {
-    if (isCurrent) return [];
-    return [...new Set(players.map(p => p.TEAM_ABBREVIATION).filter(Boolean))].sort();
-  }, [players, isCurrent]);
+  const isCurrent = season === CURRENT;
 
   useEffect(() => {
     api.seasons().then(d => setSeasons(d.seasons || [])).catch(() => {});
     api.teams().then(d => setTeamList(d.teams || [])).catch(() => {});
   }, []);
 
+  // Sezon değişince tarihsel takım listesi o sezonun takımlarından
+  const [histTeams, setHistTeams] = useState([]);
   useEffect(() => {
+    if (isCurrent) return;
+    api.historical(season, { limit: 500 })
+      .then(d => setHistTeams([...new Set((d.players || []).map(p => p.TEAM_ABBREVIATION).filter(Boolean))].sort()))
+      .catch(() => setHistTeams([]));
+  }, [season, isCurrent]);
+
+  const changeSeason = (s) => {
+    setSeason(s);
     setSearch(""); setSearchInput("");
     setPos(""); setArch(""); setTeam(""); setTier(""); setMinGp("");
     setSortBy("overall_score");
-    setPlayers([]); setTotal(0);
-  }, [season]);
+  };
+
+  const fetchPage = useCallback((offset) => {
+    if (isCurrent) {
+      const p = { limit: PAGE, offset, sort_by: sortBy };
+      if (search) p.search = search;
+      if (team)   p.team = team;
+      if (pos)    p.position = pos;
+      if (arch)   p.arch = arch;
+      if (tier)   p.tier = tier;
+      if (minGp)  p.min_gp = minGp;
+      return api.players(p);
+    }
+    const p = { limit: PAGE, offset, sort_col: sortBy, sort_asc: false };
+    if (search) p.search = search;
+    if (team)   p.team = team;
+    if (pos)    p.position = pos;
+    if (arch)   p.arch = arch;
+    if (minGp)  p.min_gp = minGp;
+    return api.historical(season, p);
+  }, [isCurrent, season, search, team, pos, arch, tier, minGp, sortBy]);
 
   const load = useCallback(async () => {
-    setLoading(true);
+    const id = ++reqRef.current;
+    setLoading(true); setError(false);
     try {
-      if (isCurrent) {
-        const params = { limit: 60, sort_by: sortBy };
-        if (search) params.search = search;
-        if (team)   params.team   = team;
-        if (pos)    params.position = pos;
-        if (arch)   params.arch   = arch;
-        if (tier)   params.tier   = tier;
-        if (minGp)  params.min_gp = minGp;
-        const data = await api.players(params);
-        setPlayers(data.players || []);
-        setTotal(data.total || 0);
-      } else {
-        const params = { limit: 200, sort_col: sortBy, sort_asc: false };
-        if (search) params.search = search;
-        const data = await api.historical(season, params);
-        let rows = data.players || [];
-        if (pos)   rows = rows.filter(p => (p.POSITION || "") === pos);
-        if (arch)  rows = rows.filter(p => (p.primary_arch || "") === arch);
-        if (team)  rows = rows.filter(p => (p.TEAM_ABBREVIATION || "") === team);
-        if (minGp) rows = rows.filter(p => Number(p.GP || 0) >= Number(minGp));
-        setPlayers(rows);
-        setTotal(data.total || rows.length);
-      }
-    } catch (e) { console.error(e); }
-    setLoading(false);
-  }, [isCurrent, season, search, team, pos, arch, tier, minGp, sortBy]);
+      const d = await fetchPage(0);
+      if (id !== reqRef.current) return;
+      setPlayers(d.players || []);
+      setMeta({ total: d.total || 0, pool: d.pool || 0, arch_counts: d.arch_counts || {}, arch_total: d.arch_total ?? d.total ?? 0 });
+    } catch {
+      if (id === reqRef.current) setError(true);
+    }
+    if (id === reqRef.current) setLoading(false);
+  }, [fetchPage]);
 
   useEffect(() => { load(); }, [load]);
 
-  const clearFilters = () => { setSearch(""); setSearchInput(""); setPos(""); setArch(""); setTeam(""); setTier(""); setMinGp(""); };
-  const hasFilters = search || pos || arch || team || tier || minGp;
-  const secondaryCount = [pos, arch, team, tier, minGp].filter(Boolean).length;
+  const loadMore = async () => {
+    const id = reqRef.current;
+    setMore(true);
+    try {
+      const d = await fetchPage(players.length);
+      if (id === reqRef.current) setPlayers(prev => [...prev, ...(d.players || [])]);
+    } catch { /* düğme tekrar denenebilir kalır */ }
+    setMore(false);
+  };
 
-  const toCardPlayer = (p) => ({ ...p, overall_tier: p.overall_tier || "" });
+  const onSearch = (v) => {
+    setSearchInput(v);
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => setSearch(v), 300);
+  };
 
-  const selectEl = (value, onChange, opts, placeholder, opt = {}) => (
-    <div className="aura-select-wrap" style={opt.full ? { width: "100%" } : undefined}>
-      <select value={value} onChange={e => onChange(e.target.value)}
-        className={`aura-select${opt.accent ? " accent" : ""}`} style={opt.full ? { width: "100%" } : undefined}>
-        <option value="">{placeholder}</option>
-        {opts.map(o => <option key={o} value={o}>{o}</option>)}
-      </select>
-    </div>
+  const clearFilters = () => {
+    setSearch(""); setSearchInput(""); setPos(""); setArch(""); setTeam(""); setTier(""); setMinGp("");
+  };
+  const filterCount = [pos, arch, team, tier, minGp].filter(Boolean).length;
+
+  const tint = arch ? ARCHETYPE_COLOR[arch] : GOLD;
+  const facets = CORE.map(n => ({ key: n, name: n, color: ARCHETYPE_COLOR[n], count: meta.arch_counts[n] || 0 }));
+  const teams = isCurrent ? teamList : histTeams;
+  const seasonOpts = [CURRENT, ...seasons.filter(s => s !== CURRENT)];
+
+  const sortSelect = (
+    <UnderSelect label="Sort" value={sortBy} onChange={setSortBy}
+      options={[
+        { value: "overall_score", label: "Overall" }, { value: "PTS", label: "Points" },
+        { value: "REB", label: "Rebounds" }, { value: "AST", label: "Assists" },
+        ...(isCurrent ? [{ value: "BPM", label: "BPM" }] : []), { value: "GP", label: "Games" },
+      ]} />
   );
 
-  const filterField = (label, node) => (
-    <div>
-      <div className="font-logo text-[10px] font-bold uppercase tracking-wider mb-1.5" style={{ color: "var(--text-faint)" }}>
-        {label}
-      </div>
-      {node}
-    </div>
+  const secondary = (
+    <>
+      <FilterGroup label="Team">
+        <UnderSelect label="Team" value={team} onChange={setTeam} options={teams} placeholder="Any team" />
+      </FilterGroup>
+      {isCurrent && (
+        <FilterGroup label="Tier">
+          <UnderSelect label="Tier" value={tier} onChange={setTier} options={TIERS} placeholder="Any tier" />
+        </FilterGroup>
+      )}
+      <FilterGroup label="Minimum games">
+        <UnderSelect label="Minimum games" value={minGp} onChange={setMinGp}
+          options={["10", "20", "40", "60"].map(v => ({ value: v, label: `${v}+ games` }))} placeholder="Any" />
+      </FilterGroup>
+    </>
   );
+
+  const filters = (
+    <>
+      <FilterGroup label="Season">
+        <UnderSelect big label="Season" value={season} onChange={changeSeason} options={seasonOpts} />
+      </FilterGroup>
+      <UnderSearch value={searchInput} onChange={onSearch} />
+      <FilterGroup label="Position">
+        <PillSet value={pos} onChange={setPos} options={POSITIONS} />
+      </FilterGroup>
+      <FilterGroup label="Archetype">
+        <FacetList items={facets} value={arch} onChange={setArch} allCount={meta.arch_total} />
+      </FilterGroup>
+      {secondary}
+    </>
+  );
+
+  const sheetFilters = (
+    <>
+      <FilterGroup label="Season">
+        <UnderSelect big label="Season" value={season} onChange={changeSeason} options={seasonOpts} />
+      </FilterGroup>
+      <FilterGroup label="Archetype">
+        <FacetList chips items={facets} value={arch} onChange={setArch} />
+      </FilterGroup>
+      <FilterGroup label="Position">
+        <PillSet grid value={pos} onChange={setPos} options={POSITIONS.slice(1)} />
+      </FilterGroup>
+      {secondary}
+      <FilterGroup label="Sort">{sortSelect}</FilterGroup>
+    </>
+  );
+
+  const chips = [
+    arch && { key: "arch", label: arch, color: ARCHETYPE_COLOR[arch], onClear: () => setArch("") },
+    pos && { key: "pos", label: pos, onClear: () => setPos("") },
+    team && { key: "team", label: team, onClear: () => setTeam("") },
+    tier && { key: "tier", label: tier, onClear: () => setTier("") },
+    minGp && { key: "gp", label: `${minGp}+ games`, onClear: () => setMinGp("") },
+  ].filter(Boolean);
+
+  const blurb = arch
+    ? ARCHETYPE_BLURB[arch]
+    : meta.pool ? `Every archetype score is a percentile against the ${meta.pool.toLocaleString("en-US")} players in the ${season} pool.` : null;
+
+  const cardPlayers = useMemo(() => players.map(p => ({ ...p, overall_tier: p.overall_tier || "" })), [players]);
 
   return (
     <>
-    <SEO
-      title="NBA Players — Archetype Profiles"
-      description="Browse every NBA player from 1983 to 2026 with their archetype classification, percentile scores, and modifier tags. Filter by position, archetype, or season."
-      path="/basketball/players"
-    />
-    <div className="relative flex flex-col h-full min-h-0 overflow-hidden">
-      {/* Slim filter bar — no box, just floating controls */}
-      <div className="px-4 py-3 flex flex-wrap gap-1 items-center shrink-0">
-
-        <div className="aura-select-wrap">
-          <select value={season} onChange={e => setSeason(e.target.value)} className="aura-select accent">
-            <option value="2025-26">2025-26</option>
-            {seasons.filter(s => s !== "2025-26").map(s => <option key={s} value={s}>{s}</option>)}
-          </select>
-        </div>
-
-        <AuraSearch value={searchInput} placeholder="Search player..."
-          onChange={v => {
-            setSearchInput(v);
-            clearTimeout(debounceRef.current);
-            debounceRef.current = setTimeout(() => setSearch(v), 300);
-          }}
+      <SEO
+        title="NBA Players — Archetype Profiles"
+        description="Browse every NBA player from 1983 to 2026 with their archetype classification, percentile scores, and modifier tags. Filter by position, archetype, or season."
+        path="/basketball/players"
+      />
+      <ListingPage
+        tint={tint}
+        filters={filters}
+        sheetFilters={sheetFilters}
+        filterCount={filterCount}
+        onReset={clearFilters}
+        chips={chips}
+        resultLabel={loading ? "Show players" : `Show ${meta.total.toLocaleString("en-US")} players`}
+        search={<UnderSearch filled value={searchInput} onChange={onSearch}
+          placeholder={meta.pool ? `Search ${meta.pool} players` : "Search players"} />}
+      >
+        <ListingHero
+          art={arch ? archetypeArt(arch) : null}
+          eyebrow={arch ? `Archetype · ${meta.total} players` : `${season} season`}
+          title={arch || "NBA players"}
+          blurb={blurb}
+          aside={<><span className="pa-flabel">Sort</span>{sortSelect}</>}
         />
-        <div className="flex-1" />
 
-        <button onClick={() => setFilterOpen(true)}
-          className={`aura-pill-btn${secondaryCount > 0 ? " active" : ""}`}>
-          <SlidersHorizontal size={13} />
-          Filters
-          {secondaryCount > 0 && <span className="aura-pill-badge">{secondaryCount}</span>}
-        </button>
-
-        <div className="aura-select-wrap">
-          <select value={sortBy} onChange={e => setSortBy(e.target.value)} className="aura-select">
-            <option value="overall_score">Overall ↓</option>
-            <option value="PTS">PTS ↓</option>
-            <option value="REB">REB ↓</option>
-            <option value="AST">AST ↓</option>
-            {isCurrent && <option value="BPM">BPM ↓</option>}
-            <option value="GP">GP ↓</option>
-          </select>
-        </div>
-
-        {hasFilters && (
-          <button onClick={clearFilters} className="aura-pill-btn">✕ Clear</button>
-        )}
-
-        <span className="text-xs px-2" style={{ color: "var(--text-faint)" }}>{total}</span>
-      </div>
-
-      {/* Filter drawer — slides in from the sidebar edge */}
-      {filterOpen && (
-        <div className="absolute inset-0 z-40" style={{ background: "rgba(0,0,0,.55)" }}
-          onClick={() => setFilterOpen(false)} />
-      )}
-      <div className={`aura-glass absolute top-0 bottom-0 left-0 z-50 w-72 max-w-[85vw] flex flex-col rounded-r-2xl transition-transform duration-300 ease-out
-        ${filterOpen ? "translate-x-0" : "-translate-x-full"}`}
-        style={{ boxShadow: "18px 0 44px -16px rgba(0,0,0,.75)" }}>
-
-        <div className="flex items-center justify-between px-4 py-3.5 shrink-0">
-          <span className="font-logo text-sm font-bold uppercase tracking-wider" style={{ color: "var(--accent)" }}>Filters</span>
-          <button onClick={() => setFilterOpen(false)}
-            className="w-7 h-7 flex items-center justify-center rounded-full transition-colors"
-            style={{ color: "var(--text-muted)" }}
-            onMouseEnter={e => e.currentTarget.style.color = "var(--text-primary)"}
-            onMouseLeave={e => e.currentTarget.style.color = "var(--text-muted)"}>
-            <X size={14} />
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-4">
-          {filterField("Position", selectEl(pos, setPos, POSITIONS.filter(Boolean), "Any position", { full: true }))}
-          {filterField("Archetype", selectEl(arch, setArch, CORE, "Any archetype", { full: true }))}
-          {filterField("Team", selectEl(team, setTeam, isCurrent ? teamList : histTeams, "Any team", { full: true }))}
-          {isCurrent && filterField("Tier", selectEl(tier, setTier, ["Elite", "Star", "Starter", "Role Player"], "Any tier", { full: true }))}
-          {filterField("Min GP", (
-            <input type="number" min="0" value={minGp} onChange={e => setMinGp(e.target.value)}
-              placeholder="e.g. 20" title="Minimum games played"
-              className="aura-ghost-input w-full"
-            />
-          ))}
-        </div>
-
-        {secondaryCount > 0 && (
-          <div className="px-4 pb-4 shrink-0">
-            <button onClick={() => { setPos(""); setArch(""); setTeam(""); setTier(""); setMinGp(""); }}
-              className="aura-pill-btn active w-full justify-center">
-              Clear {secondaryCount} filter{secondaryCount > 1 ? "s" : ""}
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Grid */}
-      <div className="flex-1 overflow-y-auto p-5">
-        {loading ? (
-          <div className="text-center py-12 text-sm" style={{ color: "var(--text-muted)" }}>Loading...</div>
+        {error ? (
+          <ErrorState onRetry={load} />
+        ) : loading ? (
+          <SkeletonGrid count={6} height={380} />
+        ) : players.length === 0 ? (
+          <EmptyState tint={tint} title="No players match"
+            body={search ? `Nobody called "${search}" with these filters in ${season}.` : `No ${season} player fits all of these filters.`}
+            actions={[{ label: "Clear filters", primary: true, onClick: clearFilters }]} />
         ) : (
-          <div className="grid gap-5 justify-items-center items-start"
-            style={{ gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))" }}>
-            {players.map((p, i) => (
-              <PlayerCard
-                key={i}
-                player={toCardPlayer(p)}
-                rank={p.overall_score != null ? i + 1 : null}
-                season={!isCurrent ? season : undefined}
-                expandable
-              />
-            ))}
-          </div>
+          <>
+            <CardGrid>
+              {cardPlayers.map((p, i) => (
+                <PlayerCard
+                  key={`${p.PLAYER_ID || p.PLAYER_NAME}-${i}`}
+                  player={p}
+                  rank={p.overall_score != null && sortBy === "overall_score" ? i + 1 : null}
+                  season={!isCurrent ? season : undefined}
+                  expandable
+                />
+              ))}
+            </CardGrid>
+            <LoadMore shown={players.length} total={meta.total} onMore={loadMore} loading={more} />
+          </>
         )}
-      </div>
-    </div>
+      </ListingPage>
     </>
   );
 }

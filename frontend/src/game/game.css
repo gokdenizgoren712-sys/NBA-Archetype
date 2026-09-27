@@ -492,28 +492,7 @@
 }
 .mode-about:hover { opacity: 1; transform: scale(1.12); }
 
-/* ═══ Sayfa dokusu: alttan yükselen duman ═══════════════════════════════
-   Başlığın arkasındaki nokta-glow yerine, sayfanın ALT üçte-ikisini kaplayan
-   yumuşak bir ısı/duman katmanı. Üst %33 bilinçli olarak boş kalır. */
-/* Sayfa ortam ışığı — handoff: sayfa başına 1–2 büyük organik blob, bağlam
-   rengiyle (--page-tint; yoksa sayfanın aksanı). Animasyonsuz: eski sürüklenen
-   duman sürekli yeniden boyanıyordu. Renk değişince .5s'de geçer. */
-.g-smoke {
-  position: absolute; inset: 0; pointer-events: none; z-index: 0; overflow: hidden;
-}
-.g-smoke::before, .g-smoke::after {
-  content: ""; position: absolute; pointer-events: none;
-  background: var(--page-tint, var(--accent, #FFB11B));
-  transition: background 0.5s ease;
-}
-.g-smoke::before {
-  left: -40px; top: -170px; width: min(640px, 70%); height: 380px; opacity: 0.14;
-  border-radius: 72% 28% 55% 45% / 35% 65% 40% 60%; filter: blur(70px);
-}
-.g-smoke::after {
-  right: -120px; top: 45%; width: 420px; height: 420px; opacity: 0.06;
-  border-radius: 50%; filter: blur(80px);
-}
+/* Sayfa ortam ışığı (.g-smoke) shell.css'e taşındı — oyun dışı sayfalar da kullanıyor. */
 
 /* ═══ HUD layout ════════════════════════════════════════════════════════
    The game screen is a control surface, not a document — so it's built as a

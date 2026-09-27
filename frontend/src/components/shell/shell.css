@@ -255,3 +255,23 @@ main[data-sport="football"] {
 }
 .pa-pinned > button, .pa-pinned > a { width: 100%; min-height: 54px; }
 @media (min-width: 768px) { .pa-pinned { position: static; padding: 0; background: none; } .pa-pinned > button, .pa-pinned > a { width: auto; } }
+
+/* Sayfa ortam ışığı (PageGlow) — oyun dışı sayfalar da kullandığı için global.
+   İki organik blob; --page-tint değişince .5s'de geçer. */
+.g-smoke {
+  position: absolute; inset: 0; pointer-events: none; z-index: 0; overflow: hidden;
+}
+.g-smoke::before, .g-smoke::after {
+  content: ""; position: absolute; pointer-events: none;
+  background: var(--page-tint, var(--accent, #FFB11B));
+  transition: background 0.5s ease;
+}
+.g-smoke::before {
+  left: -40px; top: -170px; width: min(640px, 70%); height: 380px; opacity: 0.14;
+  border-radius: 72% 28% 55% 45% / 35% 65% 40% 60%; filter: blur(70px);
+}
+.g-smoke::after {
+  right: -120px; top: 45%; width: 420px; height: 420px; opacity: 0.06;
+  border-radius: 50%; filter: blur(80px);
+}
+
