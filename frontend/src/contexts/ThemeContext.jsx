@@ -9,7 +9,7 @@ export function ThemeProvider({ children }) {
     root.classList.add("dark");
     root.classList.remove("light");
     document.body.style.background = "#0b0b0b";
-    document.body.style.color = "#e5e5e5";
+    document.body.style.color = "#f2efea";
   }, []);
 
   return (

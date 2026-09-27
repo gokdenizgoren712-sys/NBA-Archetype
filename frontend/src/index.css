@@ -45,19 +45,32 @@
 
 /* ── CSS custom properties ───────────────────────────────────────── */
 :root {
-  /* Primary Arch dark palette — chrome ile aynı */
+  /* Primary Arch — handoff v2 token'ları (docs/design/handoff-v2/README.md).
+     Eski isimler korunuyor (40 dosya okuyor), değerler yeni sisteme taşındı. */
   --bg-base:      #0b0b0b;
   --bg-surface:   #131313;
   --bg-elevated:  #1a1a1a;
-  --border:       #262626;
+  --border:       #1a1a1a;   /* #262626 idi — handoff'ta hairline kutular yok, çerçeve #1a1a1a */
+  --frame:        #1a1a1a;
+  --fill-1:       rgba(255,255,255,.035);  /* satır kartı */
+  --fill-2:       rgba(255,255,255,.05);   /* ikincil buton, yükseltilmiş */
+  --fill-sel:     rgba(255,255,255,.08);   /* seçili segment / satır */
   --accent:       #FFB11B;   /* yamabuki */
   --accent-dim:   rgba(255,177,27,0.12);
   --accent-border:rgba(255,177,27,0.32);
   --yamabuki:     #FFB11B;   /* her zaman altın — spor/sayfa bağımsız (kupa, şampiyon vb.) */
   --accent-football: #3FB08C;
-  --text-primary: #e5e5e5;
-  --text-muted:   #8a8a8a;
-  --text-faint:   #3a3a3a;
+  /* Metin: 5 seviyeli sıcak skala. --text-faint artık okunur (#3a3a3a
+     metinde görünmüyordu); #3a3a3a yalnız ayırıcıya kaldı (--ink-divider). */
+  --text-primary:   #f2efea;
+  --text-secondary: #b4afa8;
+  --text-muted:     #8b857e;
+  --text-faint:     #5a5650;
+  --ink-divider:    #3a3a3a;
+  --divider-fade: linear-gradient(90deg, transparent, rgba(255,255,255,.08) 20%, rgba(255,255,255,.08) 80%, transparent);
+  --row-line:     inset 0 -1px 0 rgba(255,255,255,.05);
+  --you: #60a5fa;
+  --opp: #f87171;
   --nba-red:      #c8102e;
   --nba-blue:     #1d428a;
   --danger:       #f87171;
@@ -89,7 +102,7 @@ h1, h2, h3, h4 { font-family: var(--font-logo); }
 /* ── Scrollbar ───────────────────────────────────────────────────── */
 ::-webkit-scrollbar        { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track  { background: transparent; }
-::-webkit-scrollbar-thumb  { background: var(--border); border-radius: 2px; }
+::-webkit-scrollbar-thumb  { background: #262626; border-radius: 2px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-faint); }
 
 /* ── Utility classes ─────────────────────────────────────────────── */

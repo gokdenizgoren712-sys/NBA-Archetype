@@ -8,6 +8,7 @@
 import { benchCoverage } from "./seasonSim";
 import "./game.css";
 import { StarIcon, CoachIcon, TrophyIcon } from "./GameIcons";
+import { POS_COLOR } from "../constants/positionColors";
 
 const POSITIONS   = ["PG", "SG", "SF", "PF", "C"];
 const BENCH_SLOTS = ["B1", "B2", "B3", "B4"];
@@ -22,9 +23,7 @@ const SPOT = {
 };
 
 // Referans mevki renkleri
-export const POS_COLOR = {
-  PG: "#1d428a", SG: "#00A3AF", SF: "#6da7ec", PF: "#FFB11B", C: "#c8102e",
-};
+export { POS_COLOR };
 const DODECA = "24,4 34,6.7 41.3,14 44,24 41.3,34 34,41.3 24,44 14,41.3 6.7,34 4,24 6.7,14 14,6.7";
 
 // 12-gen düğüm — içine <text> ile mevki harfi (kusursuz ortalanır)

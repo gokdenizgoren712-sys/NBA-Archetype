@@ -1,9 +1,9 @@
 import { StarIcon, EyeIcon } from "./GameIcons";
 import { getPrimaryPos, POS_COLORS } from "./positions";
 import "./game.css";
+import { POS_COLOR as POS_HEX } from "../constants/positionColors";
 
 // Pozisyon → gerçek hex (POS_COLORS Tailwind sınıfı, glow için hex lazım).
-const POS_HEX = { PG: "#a78bfa", SG: "#60a5fa", SF: "#34d399", PF: "#fb923c", C: "#f87171" };
 
 // ── Lineup slot ───────────────────────────────────────────────────────────────
 // Boş slot: kesikli hayalet çerçeve. Dolu slot: oyuncunun pozisyon renginde

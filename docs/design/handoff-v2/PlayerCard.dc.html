@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&amp;family=Outfit:wght@300;400;500;600;700&amp;display=swap">
+<style>
+@keyframes ratingShine { 0%,30% { left:-30%; } 70%,100% { left:130%; } }
+@keyframes sparkleTwinkle { 0%,100% { opacity:0; transform:scale(.4) rotate(0deg); } 50% { opacity:.9; transform:scale(1.1) rotate(45deg); } }
+@media (prefers-reduced-motion: reduce) { .pc-anim { animation:none !important; } }
+</style>
+</helmet>
+<div style="perspective:1000px;width:280px;border-radius:17px;box-shadow:0 24px 48px -18px rgba(0,0,0,.8);font-family:Outfit,ui-sans-serif,sans-serif">
+  <div ref="{{ cardRef }}" onClick="{{ onCard }}" onMouseMove="{{ onMove }}" onMouseLeave="{{ onLeave }}" style="width:280px;position:relative;border-radius:17px;background:linear-gradient(160deg,#17151b 0%,#0c0b0e 55%,#14100a 100%);border:1px solid #262626;clip-path:polygon(0 0,100% 0,100% calc(100% - 28px),calc(100% - 28px) 100%,0 100%);overflow:hidden;transition:transform .35s cubic-bezier(.2,.7,.3,1);transform-style:preserve-3d;cursor:pointer">
+    <div style="position:absolute;inset:0;pointer-events:none;z-index:0;mix-blend-mode:color-dodge;opacity:.16;background:repeating-linear-gradient(72deg,transparent 0 6px,{{ k.accent }} 6px 8px,transparent 8px 16px,#fff 16px 17px,transparent 17px 26px)"></div>
+    <div style="position:absolute;inset:0;pointer-events:none;mix-blend-mode:screen;opacity:.5;z-index:0;background:radial-gradient(circle at 50% 30%,rgba(255,255,255,.32),transparent 42%),linear-gradient(115deg,transparent 15%,{{ k.a }} 32%,{{ k.b }} 50%,transparent 72%)"></div>
+    <div style="position:absolute;inset:0;pointer-events:none;opacity:.05;z-index:0;background-image:repeating-linear-gradient(0deg,#fff 0 1px,transparent 1px 3px)"></div>
+    <span class="pc-anim" style="position:absolute;z-index:1;pointer-events:none;top:14%;left:12%;width:6px;height:6px;opacity:0;animation:sparkleTwinkle 5.2s ease-in-out infinite"><span style="position:absolute;top:50%;left:0;width:100%;height:1px;background:#fff;transform:translateY(-50%)"></span><span style="position:absolute;left:50%;top:0;height:100%;width:1px;background:#fff;transform:translateX(-50%)"></span></span>
+    <span class="pc-anim" style="position:absolute;z-index:1;pointer-events:none;top:30%;right:10%;width:8px;height:8px;opacity:0;animation:sparkleTwinkle 4.3s ease-in-out infinite 1.4s"><span style="position:absolute;top:50%;left:0;width:100%;height:1px;background:#fff;transform:translateY(-50%)"></span><span style="position:absolute;left:50%;top:0;height:100%;width:1px;background:#fff;transform:translateX(-50%)"></span></span>
+    <span class="pc-anim" style="position:absolute;z-index:1;pointer-events:none;top:55%;left:8%;width:6px;height:6px;opacity:0;animation:sparkleTwinkle 6s ease-in-out infinite 2.6s"><span style="position:absolute;top:50%;left:0;width:100%;height:1px;background:#fff;transform:translateY(-50%)"></span><span style="position:absolute;left:50%;top:0;height:100%;width:1px;background:#fff;transform:translateX(-50%)"></span></span>
+    <div style="position:absolute;inset:0;z-index:4;pointer-events:none;border-radius:inherit;padding:1px;background:linear-gradient(150deg,{{ k.line }} 0%,transparent 30%,transparent 70%,{{ k.line }} 100%);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;opacity:.85"></div>
+
+    <div style="position:relative;z-index:3;display:flex;align-items:center;justify-content:space-between;padding:12px 14px 8px;border-bottom:1px solid rgba(255,255,255,.08)">
+      <span style="font-family:Rajdhani,sans-serif;font-size:13px;font-weight:700;color:{{ k.rankColor }}">{{ rankLabel }}</span>
+      <span style="position:relative;overflow:hidden;font-family:Rajdhani,sans-serif;font-weight:700;font-size:16px;color:#14110a;background:linear-gradient(100deg,#ffe9b0,{{ k.accent }} 55%,#ffe9b0 100%);padding:2px 9px;border-radius:3px;transform:skewX(-8deg);box-shadow:0 0 10px {{ k.a }},0 1px 0 rgba(255,255,255,.5) inset">{{ p.rating }}<span class="pc-anim" style="position:absolute;top:-60%;left:-20%;width:40%;height:220%;background:rgba(255,255,255,.55);transform:rotate(20deg);animation:ratingShine 4.5s ease-in-out infinite"></span></span>
+    </div>
+
+    <div style="position:relative;z-index:1;height:236px;overflow:hidden">
+      <div style="position:absolute;z-index:0;left:50%;bottom:4%;width:70%;height:40%;transform:translateX(-50%);background:radial-gradient(ellipse at center,{{ k.a }} 0%,transparent 72%);pointer-events:none;filter:blur(2px)"></div>
+      <span style="position:absolute;z-index:2;top:8px;left:10px;font-size:9px;color:#8a8a8a">top {{ p.pct }}</span>
+      <img src="{{ img }}" alt="{{ p.arch }}" style="position:absolute;inset:0;z-index:1;width:100%;height:100%;object-fit:contain;object-position:50% 100%;filter:drop-shadow(0 10px 18px rgba(0,0,0,.55))">
+      <div style="position:absolute;z-index:2;left:0;right:0;bottom:0;height:46px;background:linear-gradient(to top,#14100a 0%,transparent 100%);pointer-events:none;opacity:.8"></div>
+    </div>
+
+    <div style="position:relative;z-index:3;margin:0 14px;padding:8px 10px;text-align:center;background:rgba(0,0,0,.68);border-top:1px solid {{ k.line }};border-bottom:1px solid {{ k.line }};transform:rotate(-.6deg)">
+      <h3 style="font-family:Rajdhani,sans-serif;font-weight:700;font-size:17px;letter-spacing:.02em;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#e5e5e5">{{ p.name }}</h3>
+      <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:2px;font-size:10px;letter-spacing:.07em">
+        <span style="color:#8f8f8f;font-weight:700">{{ p.team }} · {{ p.pos }}</span><span style="color:#4a4a4a">·</span><span style="color:{{ k.accent }};font-weight:700">{{ p.arch }}</span>
+      </div>
+    </div>
+
+    <div style="position:relative;z-index:3;margin:9px 12px 0;padding:9px 10px;background:rgba(0,0,0,.42);border:1px solid rgba(255,255,255,.06);border-radius:11px">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;text-align:center">
+        <div><div style="font-family:Rajdhani,sans-serif;font-weight:700;font-size:14px;color:{{ k.accent }}">{{ p.pts }}</div><div style="font-size:7.5px;color:#7a7a7a;letter-spacing:.09em;margin-top:1px">PTS</div></div>
+        <div style="border-left:1px solid rgba(255,255,255,.08)"><div style="font-family:Rajdhani,sans-serif;font-weight:700;font-size:14px;color:#e5e5e5">{{ p.reb }}</div><div style="font-size:7.5px;color:#7a7a7a;letter-spacing:.09em;margin-top:1px">REB</div></div>
+        <div style="border-left:1px solid rgba(255,255,255,.08)"><div style="font-family:Rajdhani,sans-serif;font-weight:700;font-size:14px;color:#e5e5e5">{{ p.ast }}</div><div style="font-size:7.5px;color:#7a7a7a;letter-spacing:.09em;margin-top:1px">AST</div></div>
+      </div>
+    </div>
+
+    <div onClick="{{ onToggle }}" style="position:relative;z-index:3;margin:10px 12px {{ peekMb }};padding:7px 10px;background:rgba(0,0,0,.42);border:1px solid rgba(255,255,255,.06);border-bottom-color:{{ peekBb }};border-radius:{{ peekRadius }};display:flex;align-items:center;justify-content:center;gap:6px;font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:{{ k.accent }};font-family:Rajdhani,sans-serif;font-weight:700">
+      <span>Full Profile</span><span style="font-size:8px;display:inline-block;transition:transform .35s;transform:rotate({{ chevDeg }})">▾</span>
+    </div>
+
+    <sc-if value="{{ expanded }}" hint-placeholder-val="{{ false }}">
+      <div onClick="{{ stop }}" style="position:relative;z-index:3;margin:0 12px 12px;background:rgba(0,0,0,.42);border:1px solid rgba(255,255,255,.06);border-top:none;border-radius:0 0 11px 11px">
+        <div style="display:flex;border-bottom:1px solid rgba(255,255,255,.08)">
+          <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="5">
+            <button onClick="{{ t.select }}" style="flex:1;background:none;border:none;border-bottom:2px solid {{ t.border }};padding:7px 1px;font-family:Rajdhani,sans-serif;font-size:9px;font-weight:700;letter-spacing:.02em;color:{{ t.color }};cursor:pointer">{{ t.label }}</button>
+          </sc-for>
+        </div>
+        <div style="padding:11px;min-height:170px">
+          <sc-if value="{{ tabIs.radar }}">
+            <div style="position:relative;width:100%;max-width:210px;margin:0 auto"><svg viewBox="0 0 200 200" style="width:100%;display:block">
+              <sc-for list="{{ radar.rings }}" as="r"><polygon fill="none" stroke="rgba(255,255,255,.06)" points="{{ r }}"></polygon></sc-for>
+              <sc-for list="{{ radar.axes }}" as="a"><line x1="100" y1="100" x2="{{ a.x }}" y2="{{ a.y }}" stroke="rgba(255,255,255,.08)"></line></sc-for>
+              <polygon points="{{ radar.poly }}" fill="{{ k.accent }}" fill-opacity="0.28" stroke="{{ k.accent }}" stroke-width="1.5"></polygon>
+              <sc-for list="{{ radar.dots }}" as="d"><circle cx="{{ d.x }}" cy="{{ d.y }}" r="2.2" fill="{{ k.accent }}"></circle></sc-for>
+              </svg>
+            <sc-for list="{{ radar.labels }}" as="l"><span style="position:absolute;left:{{ l.left }};top:{{ l.top }};transform:translate({{ l.tx }},-50%);font-size:6.5px;line-height:1;color:#9a9a9a;white-space:nowrap">{{ l.label }}</span></sc-for>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:5px;margin-top:9px">
+              <sc-for list="{{ quick }}" as="q"><div style="text-align:center;background:rgba(255,255,255,.03);border-radius:6px;padding:5px 1px"><div style="font-family:Rajdhani,sans-serif;font-weight:700;font-size:11px;color:#e5e5e5">{{ q.v }}</div><div style="font-size:6.5px;color:#7a7a7a;letter-spacing:.07em;margin-top:1px">{{ q.l }}</div></div></sc-for>
+            </div>
+            <div style="text-align:center;font-size:9.5px;color:#9a9a9a;margin-top:8px"><span style="color:{{ k.accent }};font-weight:700">{{ p.arch }}</span> · <span style="color:{{ k.accent }};font-weight:700">{{ p.rating }}</span> top {{ p.pct }}</div>
+          </sc-if>
+          <sc-if value="{{ tabIs.scores }}">
+            <div style="font-family:Rajdhani,sans-serif;font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:#6f6f6f;margin:0 0 6px">Core Archetypes</div>
+            <sc-for list="{{ archs }}" as="a">
+              <div style="display:grid;grid-template-columns:58px 1fr 22px;align-items:center;gap:6px;margin-bottom:5px">
+                <span style="font-size:9.5px;color:{{ a.lblColor }};font-weight:{{ a.weight }}">{{ a.name }}</span>
+                <div style="height:5px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden"><div style="height:100%;border-radius:3px;width:{{ a.w }};background:linear-gradient(90deg,{{ k.accent }},#ffe19c)"></div></div>
+                <span style="font-family:Rajdhani,sans-serif;font-weight:700;font-size:10px;text-align:right;color:{{ a.valColor }}">{{ a.v }}</span>
+              </div>
+            </sc-for>
+          </sc-if>
+          <sc-if value="{{ tabIs.other }}">
+            <div style="text-align:center;padding:20px 0;font-size:10.5px;color:#8a8a8a">Loading…</div>
+          </sc-if>
+        </div>
+      </div>
+    </sc-if>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:320,&quot;height&quot;:520},&quot;player&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;object&quot;},&quot;rank&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:1,&quot;tsType&quot;:&quot;number&quot;}}">
+const ARCH_COLOR = { Engine:"#fb923c", Ecosystem:"#4ade80", Hub:"#2dd4bf", Connector:"#c084fc", Creator:"#fb7185", Anchor:"#60a5fa", Spacer:"#22d3ee", Finisher:"#a3e635", Force:"#f87171", Initiator:"#FFB11B", Stopper:"#d1d5db", "Rim Runner":"#34d399" };
+const CORE = ["Engine","Ecosystem","Hub","Connector","Creator","Anchor","Spacer","Finisher","Force","Initiator","Stopper","Rim Runner"];
+class Component extends DCLogic {
+  state = { expanded: false, tab: "radar" };
+  cardRef = React.createRef();
+  scores(name, arch) {
+    let h = 0; for (const ch of name) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    const out = {};
+    CORE.forEach((c, i) => { h = (h * 1103515245 + 12345) >>> 0; out[c] = c === arch ? 0.9 : 0.15 + ((h >>> 8) % 55) / 100; });
+    return out;
+  }
+  renderVals() {
+    const p = this.props.player || { name:"Nikola Jokić", team:"DEN", pos:"C", arch:"Ecosystem", rating:87, pct:"<1%", pts:"27.7", reb:"12.9", ast:"10.7", gp:62 };
+    const rank = this.props.rank ?? 1;
+    const color = ARCH_COLOR[p.arch] || "#9ca3af";
+    const k = { accent: color, a: color + "48", b: color + "30", line: color + "66", rankColor: rank <= 3 ? color : "#3a3a3a" };
+    const slug = p.arch.toLowerCase().replace(" ", "-");
+    const ex = this.state.expanded;
+    const sc = this.scores(p.name, p.arch);
+    const n = 12, cx = 100, cy = 100, R = 74;
+    const ang = i => (-90 + i * (360 / n)) * Math.PI / 180;
+    const pt = (i, r) => [+(cx + r * Math.cos(ang(i))).toFixed(1), +(cy + r * Math.sin(ang(i))).toFixed(1)];
+    const radar = {
+      rings: [0.33, 0.66, 1].map(f => CORE.map((_, i) => pt(i, R * f).join(",")).join(" ")),
+      axes: CORE.map((_, i) => { const [x, y] = pt(i, R); return { x, y }; }),
+      poly: CORE.map((c, i) => pt(i, R * sc[c]).join(",")).join(" "),
+      dots: CORE.map((c, i) => { const [x, y] = pt(i, R * sc[c]); return { x, y }; }),
+      labels: CORE.map((label, i) => { const [x, y] = pt(i, R + 14); const c = Math.cos(ang(i)); return { left: (x / 2) + "%", top: (y / 2) + "%", label, tx: c > 0.35 ? "0" : c < -0.35 ? "-100%" : "-50%" }; }),
+    };
+    const archs = CORE.map(name => { const v = Math.round(sc[name] * 100); const pr = name === p.arch; return { name, v, w: v + "%", lblColor: pr ? color : "#cfcfcf", valColor: pr ? color : "#d8d8d8", weight: pr ? 700 : 400 }; });
+    const T = [["radar","Radar"],["scores","Archs"],["mods","Mods"],["similar","Similar"],["career","Career"]];
+    const tabs = T.map(([key, label]) => ({ label, color: this.state.tab === key ? color : "#767676", border: this.state.tab === key ? color : "transparent", select: (e) => { e.stopPropagation(); this.setState({ tab: key }); } }));
+    const tabIs = { radar: this.state.tab === "radar", scores: this.state.tab === "scores", other: !["radar","scores"].includes(this.state.tab) };
+    return {
+      p, k, img: `archetypes/${slug}.png`, rankLabel: rank != null ? `#${rank}` : "",
+      expanded: ex, tabs, tabIs, radar, archs,
+      quick: [{ v: p.pts, l: "PTS" }, { v: p.reb, l: "REB" }, { v: p.ast, l: "AST" }, { v: p.gp ?? "—", l: "GP" }],
+      peekRadius: ex ? "11px 11px 0 0" : "11px", peekBb: ex ? "transparent" : "rgba(255,255,255,.06)", peekMb: ex ? "0" : "0",
+      chevDeg: ex ? "180deg" : "0deg",
+      cardRef: this.cardRef,
+      stop: (e) => e.stopPropagation(),
+      onCard: () => { if (!this.state.expanded) this.setState({ expanded: true }); },
+      onToggle: (e) => { e.stopPropagation(); if (this.cardRef.current) this.cardRef.current.style.transform = ""; this.setState(s => ({ expanded: !s.expanded })); },
+      onMove: (e) => { const el = this.cardRef.current; if (this.state.expanded || !el) return; const r = el.getBoundingClientRect(); const x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height; el.style.transform = `rotateX(${(0.5 - y) * 10}deg) rotateY(${(x - 0.5) * 10}deg) scale(1.02)`; },
+      onLeave: () => { if (this.cardRef.current) this.cardRef.current.style.transform = ""; },
+    };
+  }
+}
+</script>
+</body>
+</html>

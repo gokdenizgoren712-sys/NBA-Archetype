@@ -10,6 +10,7 @@ import { SEO } from "../hooks/useSEO";
 import { computeLineupFit, GRADE_COLOR, PILLAR_LABELS, getEra } from "../utils/lineupScoring";
 import "../components/PlayerCard.css";
 import { ARCHETYPE_COLOR as ARCH_HEX } from "../constants/archetypeColors";
+import { POS_COLOR } from "../constants/positionColors";
 
 const SCORE_COLOR = (v) =>
   v >= 0.80 ? "var(--accent)" :
@@ -21,9 +22,6 @@ const SCORE_COLOR = (v) =>
 const FIT_HEX = (v) =>
   v >= 0.80 ? "#4ade80" : v >= 0.65 ? "#facc15" : v >= 0.50 ? "#fb923c" : "#f87171";
 
-const POS_COLOR = {
-  PG: "#a78bfa", SG: "#60a5fa", SF: "#34d399", PF: "#fb923c", C: "#f87171",
-};
 
 // ── İki aşamalı skor (2025-26 custom lineup için) ────────────────────────────
 function TwoStageResult({ result }) {

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<sc-if value="{{ open }}" hint-placeholder-val="{{ true }}">
+<aside style="width:220px;height:100%;box-sizing:border-box;flex-shrink:0;display:flex;flex-direction:column;border-right:1px solid #1a1a1a;padding:18px 14px 16px;font-family:Outfit,ui-sans-serif,sans-serif">
+  <div style="display:flex;align-items:center;gap:10px;padding:2px 6px 20px">
+    <svg width="28" height="28" viewBox="0 0 48 48" fill="none"><polygon points="24,4 34,6.7 41.3,14 44,24 41.3,34 34,41.3 24,44 14,41.3 6.7,34 4,24 6.7,14 14,6.7" stroke="#FFB11B" stroke-width="4" stroke-linejoin="round"></polygon><path d="M 14 6.7 C 22 18 22 30 14 41.3" stroke="#1d428a" stroke-width="4" stroke-linecap="round"></path><path d="M 34 6.7 C 26 18 26 30 34 41.3" stroke="#c8102e" stroke-width="4" stroke-linecap="round"></path><path d="M 6 24 H 42" stroke="#00A3AF" stroke-width="4" stroke-linecap="round"></path></svg>
+    <span style="font-family:Rajdhani,sans-serif;font-size:17px;letter-spacing:.1em;line-height:1;padding-top:2px"><span style="font-weight:600;color:#fff">PRIMARY</span> <span style="font-weight:700;color:#FFB11B">ARCH</span></span>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px;background:#131313;border-radius:10px;padding:3px;margin-bottom:22px">
+    <button style="height:32px;border:none;border-radius:8px;background:{{ sw.bbBg }};color:{{ sw.bbFg }};font-size:13px;font-weight:500;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;font-family:inherit"><dc-import name="PaIcon" icon="nba2" size="15" color="{{ sw.bbIc }}" hint-size="15px,15px"></dc-import>Basketball</button>
+    <button style="height:32px;border:none;border-radius:8px;background:{{ sw.fbBg }};color:{{ sw.fbFg }};font-size:13px;font-weight:500;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;font-family:inherit"><dc-import name="PaIcon" icon="football" size="15" color="{{ sw.fbIc }}" hint-size="15px,15px"></dc-import>Football</button>
+  </div>
+  <nav style="display:flex;flex-direction:column;gap:18px;flex:1">
+    <sc-for list="{{ nav }}" as="g" hint-placeholder-count="3">
+      <div style="display:flex;flex-direction:column;gap:2px">
+        <div style="font-size:12px;color:#8b857e;padding:0 10px 6px">{{ g.title }}</div>
+        <sc-for list="{{ g.items }}" as="it">
+          <div style="position:relative;height:38px;display:flex;align-items:center;gap:12px;padding:0 10px;border-radius:10px;background:{{ it.bg }};color:{{ it.fg }};font-size:14px;font-weight:500;cursor:pointer" style-hover="background:#151515;color:#f2efea">
+            <sc-if value="{{ it.glowOn }}"><span style="position:absolute;left:-14px;top:50%;transform:translateY(-50%);width:3px;height:22px;border-radius:0 3px 3px 0;background:{{ it.accent }};box-shadow:0 0 12px {{ it.accent }}"></span><span style="position:absolute;left:0;top:50%;width:44px;height:44px;margin-top:-22px;border-radius:50%;background:radial-gradient(circle,{{ it.accentA }} 0%,transparent 70%);filter:blur(6px);pointer-events:none"></span></sc-if>
+            <span style="position:relative;display:flex;opacity:{{ it.iop }}"><dc-import name="PaIcon" icon="{{ it.icon }}" size="18" color="{{ it.ic }}" brand="{{ it.brand }}" hint-size="18px,18px"></dc-import></span>
+            <span style="flex:1">{{ it.label }}</span>
+            <sc-if value="{{ it.hasDot }}"><span style="width:6px;height:6px;border-radius:3px;background:{{ it.dot }}"></span></sc-if>
+          </div>
+        </sc-for>
+      </div>
+    </sc-for>
+  </nav>
+  <div style="display:flex;flex-direction:column;gap:2px;border-top:1px solid #1a1a1a;padding-top:12px">
+    <div style="height:38px;display:flex;align-items:center;gap:12px;padding:0 10px;border-radius:10px;color:#b4afa8;font-size:14px"><dc-import name="PaIcon" icon="admin" size="18" color="#8b857e" hint-size="18px,18px"></dc-import>Admin</div>
+    <div style="height:38px;display:flex;align-items:center;gap:12px;padding:0 10px;border-radius:10px;color:#8b857e;font-size:14px;cursor:pointer" style-hover="color:#f2efea"><dc-import name="PaIcon" icon="collapse" size="18" color="#8b857e" hint-size="18px,18px"></dc-import>Collapse</div>
+  </div>
+</aside>
+</sc-if>
+<sc-if value="{{ closed }}" hint-placeholder-val="{{ false }}">
+<aside style="width:72px;height:100%;box-sizing:border-box;flex-shrink:0;display:flex;flex-direction:column;align-items:center;border-right:1px solid #1a1a1a;padding:18px 0 16px;gap:4px;font-family:Outfit,ui-sans-serif,sans-serif">
+  <svg width="30" height="30" viewBox="0 0 48 48" fill="none" style="margin-bottom:18px"><polygon points="24,4 34,6.7 41.3,14 44,24 41.3,34 34,41.3 24,44 14,41.3 6.7,34 4,24 6.7,14 14,6.7" stroke="#FFB11B" stroke-width="4" stroke-linejoin="round"></polygon><path d="M 14 6.7 C 22 18 22 30 14 41.3" stroke="#1d428a" stroke-width="4" stroke-linecap="round"></path><path d="M 34 6.7 C 26 18 26 30 34 41.3" stroke="#c8102e" stroke-width="4" stroke-linecap="round"></path><path d="M 6 24 H 42" stroke="#00A3AF" stroke-width="4" stroke-linecap="round"></path></svg>
+  <div style="display:flex;flex-direction:column;gap:2px;background:#131313;border-radius:12px;padding:3px;margin-bottom:16px">
+    <div style="width:40px;height:36px;border-radius:9px;background:{{ sw.bbBg }};display:flex;align-items:center;justify-content:center"><dc-import name="PaIcon" icon="nba2" size="18" color="{{ sw.bbIc }}" hint-size="18px,18px"></dc-import></div>
+    <div style="width:40px;height:36px;border-radius:9px;background:{{ sw.fbBg }};display:flex;align-items:center;justify-content:center"><dc-import name="PaIcon" icon="football" size="18" color="{{ sw.fbIc }}" hint-size="18px,18px"></dc-import></div>
+  </div>
+  <sc-for list="{{ rail }}" as="it" hint-placeholder-count="9">
+    <div title="{{ it.label }}" style="position:relative;width:44px;height:44px;border-radius:12px;background:{{ it.bg }};display:flex;align-items:center;justify-content:center;cursor:pointer" style-hover="background:#151515">
+      <sc-if value="{{ it.glowOn }}"><span style="position:absolute;left:-14px;top:50%;transform:translateY(-50%);width:3px;height:22px;border-radius:0 3px 3px 0;background:{{ it.accent }};box-shadow:0 0 12px {{ it.accent }}"></span><span style="position:absolute;inset:-4px;border-radius:50%;background:radial-gradient(circle,{{ it.accentA }} 0%,transparent 70%);filter:blur(6px);pointer-events:none"></span></sc-if>
+      <span style="position:relative;display:flex;opacity:{{ it.iop }}"><dc-import name="PaIcon" icon="{{ it.icon }}" size="20" color="{{ it.ic }}" brand="{{ it.brand }}" hint-size="20px,20px"></dc-import></span>
+      <sc-if value="{{ it.hasDot }}"><span style="position:absolute;right:8px;top:8px;width:5px;height:5px;border-radius:3px;background:{{ it.dot }}"></span></sc-if>
+    </div>
+    <sc-if value="{{ it.gap }}"><div style="width:24px;height:1px;background:#1f1f1f;margin:6px 0"></div></sc-if>
+  </sc-for>
+  <div style="flex:1"></div>
+  <div style="width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center"><dc-import name="PaIcon" icon="collapse" size="20" color="#8b857e" hint-size="20px,20px"></dc-import></div>
+  <span style="width:32px;height:32px;border-radius:16px;background:#FFB11B;color:#0b0b0b;display:flex;align-items:center;justify-content:center;font-family:Rajdhani,sans-serif;font-weight:700;font-size:14px;margin-top:8px">G</span>
+</aside>
+</sc-if>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:220,&quot;height&quot;:900},&quot;active&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Game&quot;,&quot;Lineups&quot;,&quot;NBA&quot;,&quot;G League&quot;,&quot;NCAA&quot;,&quot;EuroLeague&quot;,&quot;Explore&quot;,&quot;Blog&quot;,&quot;About&quot;],&quot;default&quot;:&quot;NBA&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;collapsed&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;sport&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;basketball&quot;,&quot;football&quot;],&quot;default&quot;:&quot;basketball&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;glow&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const active = this.props.active || "NBA";
+    const collapsed = !!this.props.collapsed;
+    const fb = this.props.sport === "football";
+    const GOLD = fb ? "#3FB08C" : "#FFB11B";
+    const sw = { bbBg: fb ? "transparent" : "#222", bbFg: fb ? "#8b857e" : "#f2efea", bbIc: fb ? "#8b857e" : "#FFB11B", fbBg: fb ? "#222" : "transparent", fbFg: fb ? "#f2efea" : "#8b857e", fbIc: fb ? "#3FB08C" : "#8b857e" };
+    const glow = !!this.props.glow;
+    const ACC = { Game:"#FFB11B", Lineups:"#FFB11B", NBA:"#e8654c", "G League":"#A8263F", NCAA:"#3D7EC9", EuroLeague:"#FF6900", Explore:"#00A3AF", Blog:"#c8102e", About:"#FFB11B" };
+    const mk = (label, icon, dot, gap) => { const on = label === active; const acc = ACC[label] || GOLD;
+      return { label, icon, gap: !!gap, bg: on ? (glow ? "linear-gradient(100deg," + acc + "22,transparent 75%)" : GOLD + "1a") : "transparent", fg: on ? "#f2efea" : "#b4afa8", ic: on ? (glow ? acc : GOLD) : "#8b857e", brand: glow && !["Lineups","About"].includes(label), iop: glow && !on ? 0.75 : 1, glowOn: glow && on, accent: acc, accentA: acc + "40", hasDot: !glow && !!dot, dot }; };
+    const nav = [
+      { title: "Play", items: [mk("Game","game"), mk("Lineups","lineups")] },
+      { title: "Scout", items: [mk("NBA","nba2"), mk("G League","gleague2","#A8263F"), mk("NCAA","ncaa2","#3D7EC9"), mk("EuroLeague","eur2","#FF6900")] },
+      { title: "Learn", items: [mk("Explore","explore"), mk("Blog","blog"), mk("About","about")] },
+    ];
+    const rail = [mk("Game","game"), mk("Lineups","lineups",null,true), mk("NBA","nba2"), mk("G League","gleague2","#A8263F"), mk("NCAA","ncaa2","#3D7EC9"), mk("EuroLeague","eur2","#FF6900",true), mk("Explore","explore"), mk("Blog","blog"), mk("About","about")];
+    if (fb) {
+      const fnav = [
+        { title: "Play", items: [mk("Game","game"), mk("Chemistry","lineups")] },
+        { title: "Scout", items: [mk("Players","football")] },
+        { title: "Learn", items: [mk("Explore","explore"), mk("Blog","blog"), mk("About","about")] },
+      ];
+      const frail = [mk("Game","game"), mk("Chemistry","lineups",null,true), mk("Players","football",null,true), mk("Explore","explore"), mk("Blog","blog"), mk("About","about")];
+      return { open: !collapsed, closed: collapsed, nav: fnav, rail: frail, sw };
+    }
+    return { open: !collapsed, closed: collapsed, nav, rail, sw };
+  }
+}
+</script>
+</body>
+</html>

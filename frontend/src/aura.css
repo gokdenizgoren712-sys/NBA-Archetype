@@ -122,14 +122,14 @@
 .aura-search.expanded .aura-search-glow { opacity: 0.85; }
 .aura-search-icon {
   flex-shrink: 0;
-  color: var(--text-muted, #8a8a8a);
+  color: var(--text-muted, #8b857e);
   transition: color 0.25s;
   position: relative; z-index: 1;
 }
 .aura-search.expanded .aura-search-icon { color: var(--yamabuki, #FFB11B); }
 .aura-search-input {
   border: none; outline: none; background: transparent;
-  color: var(--text-primary, #e5e5e5); font-size: 13px;
+  color: var(--text-primary, #f2efea); font-size: 13px;
   margin-left: 0; width: 0; opacity: 0; min-width: 0;
   transition: width 0.35s cubic-bezier(0.2, 0.8, 0.3, 1), opacity 0.2s, margin-left 0.35s;
 }
@@ -158,7 +158,7 @@
    engine also honors option background/color (Chromium, Firefox). */
 .aura-select option {
   background: #17151b;
-  color: var(--text-primary, #e5e5e5);
+  color: var(--text-primary, #f2efea);
 }
 
 /* Ghost number/text input — underline only, no box, until focus. */
@@ -184,7 +184,7 @@
 .aura-pill-btn.active:hover { background: rgba(255, 177, 27, 0.1); }
 .aura-pill-badge {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 16px; height: 16px; border-radius: 50%; font-size: 10px; font-weight: 700;
+  width: 18px; height: 18px; border-radius: 50%; font-size: 12px; font-weight: 700;
   background: var(--yamabuki, #FFB11B); color: #14110a;
 }
 
