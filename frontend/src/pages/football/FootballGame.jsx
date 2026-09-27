@@ -430,53 +430,43 @@ export default function FootballGame() {
           </div>
         ) : (
         <>
-        {/* ── HEADER DOCK — basketbol oyunundaki yapının aynısı:
-            solda kimlik + ilerleme, ortada diziliş, sagda durum. ── */}
-        <div className={`g-dock${setupScreen ? "" : " thin"}`}
-          style={{ "--accent": ACCENT, "--accent-line": ACCENT + "55" }}>
-          <span className="aura-blob" style={{ "--slot-color": ACCENT, left: -30, top: -70, width: 240, height: 150, opacity: 0.16 }} />
-
-          <div className="g-dock-left flex items-center gap-3">
-            <div>
-              <h1 className="g-dock-title" style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                Spin &amp; Build
-                <ModeInfoButton mode="spin" />
-              </h1>
-              <p className="g-dock-sub">Draft eighteen · one club-season at a time</p>
+        {/* ── Handoff 7a başlığı: wordmark + diziliş + ilerleme | sezon · kulüp | jokerler */}
+        <header className="g-draft-head">
+          <div className="g-draft-id">
+            <div className="flex items-center gap-2">
+              <span className="g-wordmark">Spin &amp; Build</span>
+              <ModeInfoButton mode="spin" />
             </div>
-            {filledCount > 0 && (
-              <div className="flex items-center gap-2 min-w-[110px]">
-                <div className="g-progress"><div style={{ width: `${(filledCount / slots.length) * 100}%` }} /></div>
-                <span className="text-[12px] tabular-nums shrink-0" style={{ color: "var(--text-muted)" }}>
-                  {filledCount}/{slots.length}
-                </span>
-              </div>
-            )}
-          </div>
-
-          <div className="g-dock-center">
-            <div className="aura-select-wrap">
-              <select value={shape} onChange={e => { setShape(e.target.value); reset(); }}
-                className="aura-select accent" disabled={filledCount > 0}>
-                {SHAPE_KEYS.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
+            <div className="g-draft-meta">
+              <span className="g-era-chip" style={{ "--c": ACCENT }}>{shape}</span>
+              <span className="g-draft-progress fb"><i style={{ width: `${(filledCount / slots.length) * 100}%` }} /></span>
+              <span className="g-draft-count">{filledCount}/{slots.length}</span>
             </div>
           </div>
-
-          <div className="g-dock-right">
-            {chosen ? (
-              <div className="g-dock-team">
-                <div className="tm">{chosen.team}</div>
-                <div className="yr">{chosen.season}</div>
-              </div>
-            ) : (
-              <span className="g-status"
-                style={{ "--accent": "#E8654C", "--accent-a": "#E8654C1f", "--accent-line": "#E8654C55" }}>
-                Select a team
-              </span>
+          <div className="g-fb-wheels">
+            <div className="v">
+              <b style={{ color: ACCENT, textShadow: `0 0 26px ${ACCENT}8c` }}>{chosen?.season || seasons[spinS] || "—"}</b>
+              <span>Season</span>
+            </div>
+            <div className="v">
+              <b style={{ color: "var(--text-primary)", textShadow: "0 0 26px rgba(255,255,255,.25)" }}>{chosen?.team || teams[spinT] || "—"}</b>
+              <span>{chosen ? `Club · ${LEAGUE_LABEL[chosen.league] || chosen.league}` : "Club"}</span>
+            </div>
+            {!chosen && phase !== "pick_manager" && phase !== "complete" && (
+              <button onClick={() => doSpin()} className="aura-rating-btn g-fb-spin"
+                disabled={spinning || !pairs.length}>{spinning ? "Spinning…" : "Spin"}</button>
             )}
           </div>
-        </div>
+          <div className="g-draft-jokers">
+            {jokerBtn("rt", RefreshIcon,  "Club",     jokerReTeam,  jokers.reTeam && !!chosen)}
+            {jokerBtn("ry", CalendarIcon, "Year",     jokerReYear,  jokers.reYear && !!chosen)}
+            {jokerBtn("rb", BoltIcon,     "Both",     jokerReBoth,  jokers.reBoth && !!chosen)}
+            {jokerBtn("d2", UsersIcon,    "Pick 2",   jokerDouble,
+              jokers.double && phase === "picking" && openSlots.length >= 2)}
+            {jokerBtn("dc", SearchIcon,   "Discover", jokerDiscover, jokers.discover && !!chosen)}
+          </div>
+        </header>
+        <div className="g-divider tight" style={{ marginBottom: 16 }} />
 
         <div className={`fb-hud ${cockpit ? "flex-1 min-h-0" : ""}`}>
 
@@ -533,7 +523,7 @@ export default function FootballGame() {
           </div>
 
           {/* ÇARK / SEÇİM */}
-          <div className={`g-panel p-4 ${cockpit ? "flex flex-col min-h-0 overflow-y-auto" : ""}`}>
+          <div className={`fb-pool ${cockpit ? "flex flex-col min-h-0 overflow-y-auto" : ""}`}>
             {phase === "pick_manager" ? (
               <>
                 <div className="g-label mb-2">
@@ -670,47 +660,6 @@ export default function FootballGame() {
               </div>
             ) : (
               <>
-                {/* İki çark */}
-                <div className="flex gap-3 justify-center text-center py-2">
-                  <div style={{ flex: 1 }}>
-                    <div className="g-label">Season</div>
-                    <div className="font-logo text-base font-bold"
-                      style={{ color: chosen ? "#F2C14E" : "var(--text-muted)", minHeight: 24 }}>
-                      {chosen?.season || seasons[spinS] || "—"}
-                    </div>
-                  </div>
-                  <div style={{ flex: 1.4 }}>
-                    <div className="g-label">Club</div>
-                    <div className="font-logo text-base font-bold"
-                      style={{ color: chosen ? "#3FB08C" : "var(--text-muted)", minHeight: 24 }}>
-                      {chosen?.team || teams[spinT] || "—"}
-                    </div>
-                    {chosen && (
-                      <div className="text-[12px]" style={{ color: "var(--text-faint)" }}>
-                        {LEAGUE_LABEL[chosen.league] || chosen.league}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex gap-2 justify-center mb-2">
-                  <button onClick={() => doSpin()} className="aura-rating-btn"
-                    style={{ padding: "9px 24px" }}
-                    disabled={spinning || !!chosen || !pairs.length}>
-                    Spin
-                  </button>
-                </div>
-
-                {/* Jokerler */}
-                <div className="flex flex-wrap gap-1.5 justify-center">
-                  {jokerBtn("rt", RefreshIcon,  "Club",     jokerReTeam,  jokers.reTeam && !!chosen)}
-                  {jokerBtn("ry", CalendarIcon, "Year",     jokerReYear,  jokers.reYear && !!chosen)}
-                  {jokerBtn("rb", BoltIcon,     "Both",     jokerReBoth,  jokers.reBoth && !!chosen)}
-                  {jokerBtn("d2", UsersIcon,    "Pick 2",   jokerDouble,
-                    jokers.double && phase === "picking" && openSlots.length >= 2)}
-                  {jokerBtn("dc", SearchIcon,   "Discover", jokerDiscover, jokers.discover && !!chosen)}
-                </div>
-
                 {msg && <div className="text-[13px] text-center mt-3"
                   style={{ color: pickingFor ? "#F2C14E" : "#E8654C" }}>{msg}</div>}
 

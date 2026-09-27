@@ -1412,14 +1412,14 @@ button.g-pstep:focus-visible { outline: 2px solid var(--c); outline-offset: 3px;
 }
 
 /* Joker — handoff 5a: 58px kare kutu, ikon + 12px etiket */
-.g-draft .g-joker {
+.g-draft-jokers .g-joker {
   width: 58px; height: 58px; border-radius: 14px; padding: 0; border: 0;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
 }
-.g-draft .g-joker.on { background: rgba(255, 177, 27, 0.08); box-shadow: inset 0 0 0 1px rgba(255, 177, 27, 0.3), 0 0 16px -6px #FFB11B; }
-.g-draft .g-joker.on:hover { border: 0; background: rgba(255, 177, 27, 0.14); }
-.g-draft .g-joker.off { background: rgba(255, 255, 255, 0.03); }
-.g-draft .g-joker .lbl { font-size: 12px; font-weight: 500; letter-spacing: 0; text-transform: none; font-family: var(--font-sans); }
+.g-draft-jokers .g-joker.on { background: rgba(255, 177, 27, 0.08); box-shadow: inset 0 0 0 1px rgba(255, 177, 27, 0.3), 0 0 16px -6px #FFB11B; }
+.g-draft-jokers .g-joker.on:hover { border: 0; background: rgba(255, 177, 27, 0.14); }
+.g-draft-jokers .g-joker.off { background: rgba(255, 255, 255, 0.03); }
+.g-draft-jokers .g-joker .lbl { font-size: 12px; font-weight: 500; letter-spacing: 0; text-transform: none; font-family: var(--font-sans); }
 
 /* Havuz — kutusuz: başlık + tablo */
 .g-draft .g-pool-fill { background: none; box-shadow: none; border-radius: 0; }
@@ -1462,7 +1462,7 @@ button.g-pstep:focus-visible { outline: 2px solid var(--c); outline-offset: 3px;
   .g-spin-lg .g-spin-inline-item { font-size: 32px; }
   .g-spin-lg .g-spin-inline { height: 38px; min-width: 110px; }
   .g-draft-jokers { justify-content: flex-start; }
-  .g-draft .g-joker { width: 56px; height: 56px; }
+  .g-draft-jokers .g-joker { width: 56px; height: 56px; }
 }
 
 /* ═══ Koç seçimi (handoff 12a) ═══════════════════════════════════════════ */
@@ -1765,4 +1765,29 @@ button.g-pstep:focus-visible { outline: 2px solid var(--c); outline-offset: 3px;
 @media (max-width: 640px) {
   .g-fb-idle-h1 { font-size: 32px; }
   .g-fb-go .g-idle-cta { width: 100%; }
+}
+
+/* ═══ Futbol draft (handoff 7a) ═══════════════════════════════════════════
+   Başlıkta sezon · kulüp 44px + Spin; havuz solda 420px, saha sağda. */
+.g-draft-progress.fb i { background: linear-gradient(90deg, #b8f0dc, #3FB08C); box-shadow: 0 0 8px #3FB08C; }
+.g-fb-wheels { display: flex; align-items: flex-end; gap: 36px; justify-content: center; }
+.g-fb-wheels .v { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; }
+.g-fb-wheels .v b { font-family: var(--font-logo); font-size: 44px; font-weight: 700; line-height: 1; white-space: nowrap; max-width: 320px; overflow: hidden; text-overflow: ellipsis; }
+.g-fb-wheels .v span { font-size: 12px; color: var(--text-muted); }
+.g-fb-spin { align-self: center; min-height: 46px; padding: 0 26px; font-size: 17px; letter-spacing: 0.05em; text-transform: uppercase; }
+.fb-pool { position: relative; min-width: 0; }
+@media (min-width: 900px) {
+  .fb-hud { grid-template-columns: minmax(360px, 420px) minmax(0, 1fr); gap: 36px; }
+  .fb-hud > .fb-pool { order: -1; }
+}
+@media (min-width: 1460px) {
+  .fb-hud { grid-template-columns: minmax(360px, 420px) minmax(0, 1fr); }
+  .fb-hud > .fb-board { display: none; }
+}
+@media (max-width: 1100px) {
+  .g-fb-wheels { gap: 20px; }
+  .g-fb-wheels .v b { font-size: 32px; }
+}
+@media (max-width: 640px) {
+  .g-fb-wheels { justify-content: flex-start; flex-wrap: wrap; }
 }
