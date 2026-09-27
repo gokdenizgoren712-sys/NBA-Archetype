@@ -16,6 +16,9 @@ import LineupSlot from "../game/LineupSlot";
 import PlayerRow, { posGroupOf } from "../game/PlayerRow";
 import JokerBtn from "../game/JokerBtn";
 import FullCourtBoard from "../game/FullCourtBoard";
+import { PageGlow } from "../components/states/States";
+import { POS_COLOR } from "../constants/positionColors";
+import { ARCHETYPE_COLOR as ARCH_HEX } from "../constants/archetypeColors";
 import CoachPicker from "../game/CoachPicker";
 import DraftAnalysis from "../game/DraftAnalysis";
 import GameBox from "../game/GameBox";
@@ -416,7 +419,7 @@ export default function SameScreenGame() {
   return (
     <div className="h-full overflow-y-auto">
       <SEO title="Same Screen — Lineup Builder" description="Two players draft head-to-head on one screen — same shared pool, snake order, BAN joker, best-of-7 series." path="/basketball/game/same-screen" />
-      <div className="p-4 sm:p-6 max-w-[1400px] mx-auto space-y-3 pb-6">
+      <div className={["spinning", "drafting", "placing"].includes(gamePhase) ? "g-vs-page" : "p-4 sm:p-6 max-w-[1400px] mx-auto space-y-3 pb-6"}>
         {/* ── HEADER DOCK: başlık + çark alt-modu anahtarı tek barda ── */}
         {gamePhase === "idle" ? (
           <div className="g-dock">
@@ -552,87 +555,82 @@ export default function SameScreenGame() {
           </>
         )}
 
-        {(gamePhase === "spinning" || gamePhase === "drafting" || gamePhase === "placing") && (
-          <div className="space-y-3">
-            {/* ── İNCE DOCK: tur durumu | spin | düşen takım ── */}
-            <div className="g-dock thin">
-              <span className="aura-blob" style={{ "--slot-color": "#FFB11B", left: -30, top: -60, width: 220, height: 130, opacity: isSpinPhase ? 0.24 : 0.12, transition: "opacity .4s ease" }} />
-
-              <div className="g-dock-left flex items-center gap-3">
-                <h1 className="g-dock-title">Round {round}</h1>
-                {simEra && (
-                  <span className="g-status" style={{ "--accent": "#9ca3af", "--accent-a": "rgba(156,163,175,.14)", "--accent-line": "rgba(156,163,175,.4)" }}>
-                    {simEra.short}
-                  </span>
-                )}
+        {(gamePhase === "spinning" || gamePhase === "drafting" || gamePhase === "placing") && (() => {
+          // Handoff 13a: ışık sırası gelen tarafa kayar (sen mavi, rakip kırmızı).
+          const seatHex = activeSeat === 1 ? SEAT_HEX[1] : SEAT_HEX[2];
+          const j = jokers[activeSeat] || {};
+          const canJoke = gamePhase === "drafting";
+          const filledOf = (seat) => ALL_SLOTS.filter(p => lineups[seat][p]).length;
+          const seatProps = (seat) => ({
+            seat,
+            isActive: activeSeat === seat,
+            isWaiting: waitingSeat === seat,
+            lineup: lineups[seat],
+            moveSrc: moveSrc[seat],
+            canRearrange,
+            onSlotTap: (pos) => handleSlotTap(seat, pos),
+            jokers: jokers[seat],
+            chosenTeam, chosenSeason, players,
+            posFilter: activeSeat === seat ? posFilter : "",
+            setPosFilter, sortKey, setSortKey,
+            pickedPlayer: activeSeat === seat ? pickedPlayer : null,
+            gamePhase, doubleActive, discoverActive, bannedName, banVoided,
+            banPicking: waitingSeat === seat && banPicking,
+            onPickPlayer: pickPlayer, onPlacePos: placePos, onCancelPick: cancelPick,
+            onUseJoker: useJoker, onUseCounterJoker: useCounterJoker,
+            onDismissCounter: () => setCounterDismissed(true), onConfirmBan: confirmBan,
+            counterDismissed, onPlayerInfo: setDetailPlayer,
+          });
+          return (
+          <div className="g-vs">
+            <PageGlow tint={seatHex} />
+            <header className="g-draft-head">
+              <div className="g-draft-id">
+                <h1 className="g-wordmark">Same Screen</h1>
+                <div className="g-draft-meta">
+                  <span className="g-draft-count">Snake draft · best-of-7 · round {round} of 9</span>
+                  {simEra && <span className="g-era-chip" style={{ "--c": "#9ca3af" }}>{simEra.label}</span>}
+                </div>
               </div>
+              <div className="g-vs-turn">
+                <span className="who" style={{ color: seatHex }}>Player {activeSeat}'s pick</span>
+                <div className="g-draft-wheels">
+                  <InlineSpin size="lg" items={seasons} spinning={spinS} targetIdx={targetSIdx} label="Season" accent="#FFB11B" />
+                  <InlineSpin size="lg" items={teamPool.length > 0 ? teamPool : ["…"]} spinning={spinT} targetIdx={targetTIdx} label="Team" accent="#f2efea" />
+                </div>
+              </div>
+              <div className="g-draft-jokers">
+                {bannedName && !banVoided && (
+                  <span className="g-ban-chip" title={`${bannedName} is banned this pick`}><b>BAN</b><i>{bannedName.split(" ").slice(-1)[0]}</i></span>
+                )}
+                <JokerBtn Icon={RefreshIcon} label="Team" available={j.reTeam && canJoke} onClick={() => useJoker("reTeam")} />
+                <JokerBtn Icon={CalendarIcon} label="Year" available={j.reYear && canJoke} onClick={() => useJoker("reYear")} />
+                <JokerBtn Icon={BoltIcon} label="Both" available={j.reBoth && canJoke} onClick={() => useJoker("reBoth")} />
+                <JokerBtn Icon={UsersIcon} label="Pick 2" available={j.double && !doubleActive && canJoke} onClick={() => useJoker("double")} />
+                <JokerBtn Icon={SearchIcon} label="Discover" available={j.discover && !discoverActive && canJoke} onClick={() => useJoker("discover")} />
+              </div>
+            </header>
+            <div className="g-divider tight" />
 
-              <div className="g-dock-center">
+            <div className="g-vs-body">
+              <SeatRoster seat={1} active={activeSeat === 1} lineup={lineups[1]} filled={filledOf(1)}
+                moveSrc={moveSrc[1]} canRearrange={canRearrange} onSlotTap={(pos) => handleSlotTap(1, pos)} />
+              <div className="g-vs-center">
                 {isSpinPhase ? (
-                  <div className="g-spin-row flex items-center gap-7">
-                    <InlineSpin items={seasons} spinning={spinS} targetIdx={targetSIdx} label="Season" accent="#FFB11B" />
-                    <InlineSpin items={teamPool.length > 0 ? teamPool : ["…"]} spinning={spinT} targetIdx={targetTIdx} label="Team" accent="#60a5fa" />
-                  </div>
-                ) : waitingSeat ? (
-                  <span className="font-logo text-[12px] font-bold" style={{ color: "var(--yamabuki)" }}>
-                    Player {activeSeat}'s pick — P{waitingSeat} waiting
-                  </span>
-                ) : null}
-              </div>
-
-              <div className="g-dock-right">
-                {chosenTeam && !isSpinPhase && (
-                  <div className="g-dock-team">
-                    <div className="tm">{chosenTeam}</div>
-                    <div className="yr">{chosenSeason}</div>
-                  </div>
+                  <p className="g-vs-status">{statusMsg || "Spinning…"}</p>
+                ) : (
+                  <>
+                    <PlayerSeatPanel compact {...seatProps(activeSeat)} />
+                    {waitingSeat && <PlayerSeatPanel compact {...seatProps(waitingSeat)} />}
+                  </>
                 )}
               </div>
+              <SeatRoster seat={2} active={activeSeat === 2} lineup={lineups[2]} filled={filledOf(2)}
+                moveSrc={moveSrc[2]} canRearrange={canRearrange} onSlotTap={(pos) => handleSlotTap(2, pos)} />
             </div>
-
-            {isSpinPhase && (
-              <p className="text-center text-xs animate-pulse py-8" style={{ color: "var(--text-muted)" }}>{statusMsg || "Spinning…"}</p>
-            )}
-
-            {gamePhase !== "spinning" && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {[1, 2].map(seat => (
-                  <PlayerSeatPanel key={seat}
-                    seat={seat}
-                    isActive={activeSeat === seat}
-                    isWaiting={waitingSeat === seat}
-                    lineup={lineups[seat]}
-                    moveSrc={moveSrc[seat]}
-                    canRearrange={canRearrange}
-                    onSlotTap={(pos) => handleSlotTap(seat, pos)}
-                    jokers={jokers[seat]}
-                    chosenTeam={chosenTeam} chosenSeason={chosenSeason}
-                    players={players}
-                    posFilter={activeSeat === seat ? posFilter : ""}
-                    setPosFilter={setPosFilter}
-                    sortKey={sortKey} setSortKey={setSortKey}
-                    pickedPlayer={activeSeat === seat ? pickedPlayer : null}
-                    gamePhase={gamePhase}
-                    doubleActive={doubleActive}
-                    discoverActive={discoverActive}
-                    bannedName={bannedName}
-                    banVoided={banVoided}
-                    banPicking={waitingSeat === seat && banPicking}
-                    onPickPlayer={pickPlayer}
-                    onPlacePos={placePos}
-                    onCancelPick={cancelPick}
-                    onUseJoker={useJoker}
-                    onUseCounterJoker={useCounterJoker}
-                    onDismissCounter={() => setCounterDismissed(true)}
-                    onConfirmBan={confirmBan}
-                    counterDismissed={counterDismissed}
-                    onPlayerInfo={setDetailPlayer}
-                  />
-                ))}
-              </div>
-            )}
           </div>
-        )}
+          );
+        })()}
 
         {gamePhase === "review" && (
           <RosterReview lineups={lineups} simEra={simEra} moveSrc={moveSrc}
@@ -672,7 +670,7 @@ function PlayerSeatPanel({
   seat, isActive, isWaiting, lineup, moveSrc, canRearrange, onSlotTap, jokers, chosenTeam, chosenSeason, players,
   posFilter, setPosFilter, sortKey, setSortKey, pickedPlayer, gamePhase, doubleActive, discoverActive,
   bannedName, banVoided, banPicking, onPickPlayer, onPlacePos, onCancelPick, onUseJoker,
-  onUseCounterJoker, onDismissCounter, counterDismissed, onConfirmBan, onPlayerInfo,
+  onUseCounterJoker, onDismissCounter, counterDismissed, onConfirmBan, onPlayerInfo, compact = false,
 }) {
   const filtered = posFilter ? players.filter(p => posGroupOf(p) === posFilter) : players;
   const list = [...filtered].sort((a, b) => {
@@ -688,7 +686,8 @@ function PlayerSeatPanel({
   const eligible = pickedPlayer ? getEligiblePos(pickedPlayer) : [];
 
   return (
-    <div className={`rounded-2xl border p-3 space-y-2 ${isActive ? "border-yamabuki/60 bg-yamabuki/[.06] shadow-[0_0_24px_-8px_rgba(255,177,27,.7)]" : "border-white/8 bg-white/[.02]"}`}>
+    <div className={compact ? "space-y-3" : `rounded-2xl border p-3 space-y-2 ${isActive ? "border-yamabuki/60 bg-yamabuki/[.06] shadow-[0_0_24px_-8px_rgba(255,177,27,.7)]" : "border-white/8 bg-white/[.02]"}`}>
+      {!compact && <>
       <div className="flex items-center justify-between">
         <span className="font-logo text-sm font-bold text-white">Player {seat}</span>
         {isActive && <span className="text-[12px] px-2 py-0.5 rounded-full bg-yamabuki/20 border border-yamabuki/50 text-yamabuki font-bold">Your pick</span>}
@@ -727,6 +726,7 @@ function PlayerSeatPanel({
         <JokerBtn Icon={UsersIcon} label="Pick 2" available={isActive && jokers.double && !doubleActive && gamePhase === "drafting"} onClick={() => onUseJoker("double")} />
         <JokerBtn Icon={SearchIcon} label="Discover" available={isActive && jokers.discover && !discoverActive && gamePhase === "drafting"} onClick={() => onUseJoker("discover")} />
       </div>
+      </>}
       {isActive && showBanEffective && (
         <div className="text-[12px] text-[var(--danger)] flex items-center gap-1"><WarnIcon size={11} /> {bannedName} is BANNED this pick — use any joker to counter it.</div>
       )}
@@ -786,13 +786,14 @@ function PlayerSeatPanel({
       {/* Roster listesi: aktif tarafın seçmesi için, ya da bekleyen tarafın BAN seçmesi için */}
       {gamePhase === "drafting" && (isActive || (isWaiting && banPicking)) && (
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-[12px] text-[var(--text-muted)]">{chosenTeam} · {chosenSeason}</span>
-            <span className="ml-auto flex items-center border rounded overflow-hidden" style={{ borderColor: "#262626" }}>
+          <div className="g-pool-head">
+            <span className="g-pool-title">{banPicking ? `Ban a ${chosenTeam} player` : `${chosenTeam} roster`}</span>
+            <span className="g-pool-note">{chosenSeason} · ratings hidden</span>
+            <span className="ml-auto flex items-center gap-1">
               {["G", "F", "C"].map(g => (
                 <button key={g} onClick={() => setPosFilter(f => f === g ? "" : g)}
-                  className={`px-2 py-0.5 font-logo text-[12px] font-bold border-r last:border-r-0 ${posFilter === g ? "bg-yamabuki text-darkBg" : "text-[var(--text-muted)]"}`}
-                  style={{ borderColor: "#262626" }}>{g}</button>
+                  className={`aura-pill-btn${posFilter === g ? " active" : ""}`}
+                  style={{ padding: "5px 12px", fontSize: 13, fontWeight: 600 }}>{g}</button>
               ))}
             </span>
           </div>
@@ -808,7 +809,7 @@ function PlayerSeatPanel({
               ))}
             </div>
           )}
-          <div className="max-h-80 overflow-auto rounded-xl" style={{border:"1px solid rgba(255,255,255,.08)"}}>
+          <div className={compact ? "g-vs-list" : "max-h-80 overflow-auto rounded-xl"}>
             {list.map((p, i) => {
               const banned = isActive && bannedName === p.PLAYER_NAME && !banVoided;
               const cost = priceOf(p);
@@ -826,6 +827,39 @@ function PlayerSeatPanel({
         </div>
       )}
     </div>
+  );
+}
+
+// Handoff 13a: iki taraf — sen mavi, rakip kırmızı.
+const SEAT_HEX = { 1: "#60a5fa", 2: "#f87171" };
+
+// ── Yan kolon: bir oyuncunun 9'luk kadrosu (13a) ─────────────────────────
+// Sırası gelmeyen taraf .7 opaklıkta; satır 44px, yuva etiketi mevki renginde.
+function SeatRoster({ seat, active, lineup, filled, moveSrc, canRearrange, onSlotTap }) {
+  const hex = SEAT_HEX[seat];
+  const { budgetLeft } = capFor(lineup);
+  return (
+    <aside className={`g-seat${active ? " on" : ""}`} style={{ "--c": hex }}>
+      <div className="g-seat-head">
+        <span className="dot" />
+        <span className="name">Player {seat}</span>
+        <span className="count">{filled}/9</span>
+      </div>
+      <div className="g-seat-cap">{budgetLeft}% cap left</div>
+      {ALL_SLOTS.map(pos => {
+        const p = lineup[pos];
+        const bench = pos.startsWith("B");
+        const tap = canRearrange && (p || moveSrc);
+        return (
+          <button key={pos} type="button" className={`g-seat-row${moveSrc === pos ? " sel" : ""}${p ? " filled" : ""}`}
+            onClick={() => tap && onSlotTap(pos)} style={{ cursor: tap ? "pointer" : "default" }}>
+            <span className="slot" style={{ color: bench ? "#8b857e" : POS_COLOR[pos] }}>{pos}</span>
+            <span className="nm">{p ? p.PLAYER_NAME : "Open"}</span>
+            {p && <span className="ar" style={{ color: ARCH_HEX[p.primary_arch] || "#8b857e" }}>{p.primary_arch}</span>}
+          </button>
+        );
+      })}
+    </aside>
   );
 }
 
