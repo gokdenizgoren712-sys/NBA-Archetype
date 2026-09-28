@@ -5,7 +5,7 @@ import Sidebar from "./components/shell/Sidebar";
 import PageBar from "./components/shell/PageBar";
 import MobileDrawer from "./components/shell/MobileDrawer";
 import NotFound from "./components/shell/NotFound";
-import { shellHidden, sportOf } from "./components/shell/nav";
+import { shellHidden, sportOf, isAuthRoute } from "./components/shell/nav";
 import "./components/shell/shell.css";
 import TermsBanner from "./components/TermsBanner";
 
@@ -101,11 +101,12 @@ function Shell({ children }) {
   const closeMenu = useCallback(() => setMenuOpen(false), []);
   const hidden = shellHidden(pathname);
   const bare = pathname === "/";           // kök spor seçimi: kenar çubuğu yok (4a)
+  const auth = isAuthRoute(pathname);      // giriş/kayıt: kenar çubuğu ve üst bar yok (10c/17d)
   return (
     <div className="flex h-screen" style={{ background: "var(--bg-base)", color: "var(--text-primary)" }}>
-      {!hidden && !bare && <Sidebar />}
+      {!hidden && !bare && !auth && <Sidebar />}
       <div className="flex-1 min-w-0 flex flex-col">
-        {!hidden && <PageBar onMenu={() => setMenuOpen(true)} />}
+        {!hidden && !auth && <PageBar onMenu={() => setMenuOpen(true)} />}
         {/* data-sport: sayfanın aksanı sporu izler (handoff kural 6) — bkz. shell.css */}
         <main className="flex-1 min-h-0 overflow-hidden" data-sport={sportOf(pathname) || undefined}>{children}</main>
         <TermsBanner />

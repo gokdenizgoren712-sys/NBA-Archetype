@@ -54,20 +54,16 @@ export default function GoogleSignIn({ successPath = null }) {
   if (!CLIENT_ID) return null;
 
   return (
-    <div>
-      <div className="flex items-center gap-3 my-4">
-        <div className="flex-1 h-px" style={{ background: "var(--border)" }} />
-        <span className="text-xs" style={{ color: "var(--text-muted)" }}>or</span>
-        <div className="flex-1 h-px" style={{ background: "var(--border)" }} />
-      </div>
-      <div ref={btnRef} className="w-full flex justify-center" />
+    <div className="au-google">
+      <div className="au-or">or</div>
+      <div ref={btnRef} className="btn" />
       {/* Google ile ilk giriş hesabı açar: kabul bu satırla (api/main.py TERMS_VERSION). */}
-      <p className="text-xs mt-2 text-center leading-relaxed" style={{ color: "var(--text-muted)" }}>
+      <p>
         By continuing with Google you agree to the{" "}
-        <a href="/terms-of-service" className="underline">Terms of Service</a> and{" "}
-        <a href="/community-guidelines" className="underline">Community Guidelines</a>.
+        <a href="/terms-of-service">Terms of Service</a> and{" "}
+        <a href="/community-guidelines">Community Guidelines</a>.
       </p>
-      {error && <p className="text-sm text-red-400 mt-2 text-center">{error}</p>}
+      {error && <p className="au-error">{error}</p>}
     </div>
   );
 }

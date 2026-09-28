@@ -4,9 +4,11 @@ import { useAuth } from "../contexts/AuthContext";
 import { SEO } from "../hooks/useSEO";
 import { safeNextPath } from "../lib/safeNext";
 import GoogleSignIn from "../components/GoogleSignIn";
+import AuthLayout, { AuthField } from "../components/auth/AuthLayout";
 
 const BASE = "/api";
 
+// Handoff 10c / mobil 20g — ortalı form, kenarlıksız dolgulu alanlar.
 export default function Login() {
   const { login } = useAuth();
   const navigate   = useNavigate();
@@ -27,7 +29,7 @@ export default function Login() {
         body: JSON.stringify(form),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || "Login failed");
+      if (!res.ok) throw new Error(data.detail || "That email and password don't match an account.");
       login(data.token, data.user);
       navigate(nextPath || (data.user.role === "admin" ? "/admin/articles" : "/profile"));
     } catch (e) {
@@ -37,67 +39,27 @@ export default function Login() {
     }
   };
 
+  const reg = nextPath ? `/register?next=${encodeURIComponent(nextPath)}` : "/register";
+
   return (
     <>
-    <SEO title="Log In" description="Log in to your Primary Arch account." path="/login" noindex />
-    <div className="h-full flex items-center justify-center p-6" style={{ background: "var(--bg-base)" }}>
-      <div className="w-full max-w-sm">
-        <h1 className="text-2xl font-bold mb-6 text-center" style={{ color: "var(--text-primary)" }}>
-          Log In
-        </h1>
-
-        {expired && (
-          <p className="text-sm text-center mb-4 px-3 py-2 rounded-[8px]"
-            style={{ color: "var(--yamabuki)", background: "rgba(255,177,27,.1)", border: "1px solid rgba(255,177,27,.3)" }}>
-            Your session expired — log back in to keep going.
-          </p>
-        )}
-
-        <form onSubmit={submit} className="space-y-4">
-          <div>
-            <label className="block text-sm mb-1" style={{ color: "var(--text-muted)" }}>Email</label>
-            <input
-              type="email" required autoFocus
-              value={form.email}
-              onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
-              className="w-full px-3 py-2 rounded-[8px] text-sm outline-none"
-              style={{ background: "var(--bg-elevated)", color: "var(--text-primary)", border: "1px solid var(--border)" }}
-            />
-          </div>
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-sm" style={{ color: "var(--text-muted)" }}>Password</label>
-              <Link to="/forgot-password" className="text-xs" style={{ color: "var(--accent)" }}>
-                Forgot password?
-              </Link>
-            </div>
-            <input
-              type="password" required
-              value={form.password}
-              onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
-              className="w-full px-3 py-2 rounded-[8px] text-sm outline-none"
-              style={{ background: "var(--bg-elevated)", color: "var(--text-primary)", border: "1px solid var(--border)" }}
-            />
-          </div>
-
-          {error && <p className="text-sm" style={{ color: "var(--danger)" }}>{error}</p>}
-
-          <button
-            type="submit" disabled={loading}
-            className="w-full py-2.5 rounded-xl font-logo font-bold text-sm uppercase tracking-wide transition-colors bg-yamabuki text-darkBg hover:bg-white disabled:opacity-50"
-          >
-            {loading ? "Logging in…" : "Log In"}
+      <SEO title="Sign in" description="Sign in to your Primary Arch account." path="/login" noindex />
+      <AuthLayout title="Sign in" sub="Save squads, land on the leaderboard, keep your rosters."
+        foot={<>New here? <Link to={reg}>Create an account</Link></>}>
+        {expired && <p className="au-note">Your session expired — sign back in to keep going.</p>}
+        <form onSubmit={submit} className="au-form" noValidate={false}>
+          <AuthField label="Email" type="email" required autoFocus autoComplete="email"
+            value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
+          <AuthField label="Password" type="password" required autoComplete="current-password"
+            aside={<Link to="/forgot-password">Forgot?</Link>}
+            value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} />
+          {error && <p className="au-error" role="alert">{error}</p>}
+          <button type="submit" disabled={loading} className="aura-rating-btn au-cta">
+            {loading ? "Signing in…" : "Sign in"}
           </button>
         </form>
-
         <GoogleSignIn successPath={nextPath} />
-
-        <p className="text-center text-sm mt-4" style={{ color: "var(--text-muted)" }}>
-          Don't have an account?{" "}
-          <Link to={nextPath ? `/register?next=${encodeURIComponent(nextPath)}` : "/register"} style={{ color: "var(--accent)" }}>Sign up</Link>
-        </p>
-      </div>
-    </div>
+      </AuthLayout>
     </>
   );
 }

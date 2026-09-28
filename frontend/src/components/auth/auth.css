@@ -1,0 +1,59 @@
+/* ═══ Auth (handoff 10c · 17d · mobil 20g) ══════════════════════════════ */
+/* margin:auto ile ortalama — justify-content:center taşmada formun tepesini kırpıyordu */
+.au-page { position: relative; height: 100%; overflow-y: auto; display: flex; flex-direction: column; align-items: center; padding: 72px 20px 40px; }
+.au-page > .g-smoke::before { left: 50%; top: 18%; transform: translateX(-50%); width: min(720px, 90%); height: 460px; opacity: .10; }
+.au-logo { position: absolute; left: 28px; top: 20px; z-index: 2; display: flex; align-items: center; gap: 10px; text-decoration: none; }
+.au-logo span { font-family: var(--font-logo); font-size: 17px; letter-spacing: .1em; padding-top: 2px; }
+.au-logo b { font-weight: 600; color: #fff; }
+.au-logo em { font-style: normal; font-weight: 700; color: #FFB11B; }
+
+.au-box { position: relative; width: 100%; max-width: 400px; margin: auto 0; display: flex; flex-direction: column; gap: 22px; }
+.au-head { display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center; }
+.au-mark { filter: drop-shadow(0 0 14px rgba(255, 177, 27, 0.5)); }
+.au-head h1 { margin: 0; font-family: var(--font-logo); font-size: 36px; font-weight: 700; line-height: 1; color: var(--text-primary); text-wrap: balance; }
+.au-head p { margin: 0; font-size: 14px; line-height: 1.5; color: var(--text-secondary); }
+
+.au-form { display: flex; flex-direction: column; gap: 16px; }
+.au-field { display: flex; flex-direction: column; gap: 6px; }
+.au-lbl { display: flex; align-items: baseline; justify-content: space-between; }
+.au-lbl label { font-size: 12px; color: var(--text-muted); }
+.au-lbl a { font-size: 12px; color: #FFB11B; }
+.au-field input {
+  height: 44px; padding: 0 14px; border: 0; border-radius: 12px; outline: none;
+  background: rgba(255, 255, 255, 0.04); color: var(--text-primary); font-size: 15px;
+  box-shadow: inset 0 0 0 1px transparent; transition: box-shadow .15s, background .15s;
+}
+.au-field input:hover { background: rgba(255, 255, 255, 0.06); }
+.au-field input:focus { box-shadow: inset 0 0 0 1px rgba(255, 177, 27, 0.6); background: rgba(255, 255, 255, 0.05); }
+.au-field.bad input { box-shadow: inset 0 0 0 1px rgba(248, 113, 113, 0.6); }
+.au-msg { font-size: 12px; color: var(--text-muted); }
+.au-msg.ok { color: #4ade80; }
+.au-msg.err { color: #f87171; }
+
+.au-note { margin: 0; padding: 10px 14px; border-radius: 12px; font-size: 13px; line-height: 1.5; color: #FFB11B; background: rgba(255, 177, 27, 0.08); }
+.au-error { margin: 0; font-size: 13px; line-height: 1.5; color: #f87171; }
+.au-check { display: flex; align-items: flex-start; gap: 10px; font-size: 13px; line-height: 1.5; color: var(--text-secondary); cursor: pointer; }
+.au-check input { margin-top: 3px; width: 16px; height: 16px; flex-shrink: 0; accent-color: #FFB11B; }
+.au-check a { color: var(--text-primary); text-decoration: underline; }
+.au-cta { width: 100%; height: 50px; margin-top: 4px; }
+.au-foot { margin: 0; font-size: 14px; color: var(--text-muted); text-align: center; }
+.au-foot a { color: #FFB11B; }
+.au-sent { display: flex; flex-direction: column; gap: 10px; align-items: center; text-align: center; padding: 22px; border-radius: 16px; background: rgba(255, 255, 255, 0.03); }
+.au-sent b { font-size: 15px; color: var(--text-primary); font-weight: 600; }
+.au-sent span { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
+
+/* Google: ayraç + düğme + onay satırı */
+.au-or { display: flex; align-items: center; gap: 14px; font-size: 12px; color: var(--text-faint); }
+.au-or::before, .au-or::after { content: ""; flex: 1; height: 1px; background: rgba(255, 255, 255, 0.08); }
+.au-google { display: flex; flex-direction: column; gap: 10px; }
+.au-google .btn { display: flex; justify-content: center; min-height: 44px; }
+.au-google p { margin: 0; font-size: 12px; line-height: 1.5; color: var(--text-muted); text-align: center; }
+.au-google p a { color: var(--text-secondary); text-decoration: underline; }
+
+@media (max-width: 767px) {
+  .au-page { padding: 110px 20px 40px; }
+  .au-box { margin: 0; }
+  .au-logo { left: 20px; top: 16px; }
+  .au-field input { height: 48px; }
+  .au-cta { height: 54px; }
+}

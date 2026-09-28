@@ -5,43 +5,42 @@ import { SEO } from "../hooks/useSEO";
 import { safeNextPath } from "../lib/safeNext";
 import GoogleSignIn from "../components/GoogleSignIn";
 import { passwordProblem, PASSWORD_HINT } from "../lib/passwordRules";
+import AuthLayout, { AuthField } from "../components/auth/AuthLayout";
 
 const BASE = "/api";
 
+// Handoff 17d (Register) — kurallar alanın altında satır içi: şifre ipucu
+// yazdıkça yeşile döner ya da kırmızı uyarıya; eşleşmeyen onay altında söylenir.
 export default function Register() {
   const { login } = useAuth();
   const navigate   = useNavigate();
   const [searchParams] = useSearchParams();
   const nextPath = safeNextPath(searchParams.get("next"));
-  const [form, setForm] = useState({
-    email: "", username: "", password: "", confirm: ""
-  });
+  const [form, setForm] = useState({ email: "", username: "", password: "", confirm: "" });
   const [error, setError]   = useState("");
   const [loading, setLoading] = useState(false);
+  const [tried, setTried] = useState(false);
   // Zorunlu onay (mağaza UGC şartı): şartlar + Community Guidelines.
   const [agreed, setAgreed] = useState(false);
 
+  const pwProblem = passwordProblem(form.password);
+  const mismatch = form.confirm && form.password !== form.confirm;
+  const set = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }));
+
   const submit = async (e) => {
     e.preventDefault();
-    setError("");
-    if (!agreed) { setError("Agree to the Terms of Service and Community Guidelines to continue"); return; }
-    if (form.password !== form.confirm) { setError("Passwords don't match"); return; }
-    const pwProblem = passwordProblem(form.password);
-    if (pwProblem) { setError(pwProblem); return; }
+    setError(""); setTried(true);
+    if (pwProblem || form.password !== form.confirm) return;
+    if (!agreed) { setError("Agree to the Terms of Service and Community Guidelines to continue."); return; }
     setLoading(true);
     try {
       const res = await fetch(`${BASE}/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: form.email,
-          username: form.username,
-          password: form.password,
-          accept_terms: true,
-        }),
+        body: JSON.stringify({ email: form.email, username: form.username, password: form.password, accept_terms: true }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || "Registration failed");
+      if (!res.ok) throw new Error(data.detail || "The account wasn't created. Try again in a moment.");
       login(data.token, data.user);
       navigate(nextPath || (data.user.role === "admin" ? "/admin/articles" : "/profile"));
     } catch (e) {
@@ -51,66 +50,37 @@ export default function Register() {
     }
   };
 
-  const field = (label, key, type = "text", hint = "") => (
-    <div>
-      <label className="block text-sm mb-1" style={{ color: "var(--text-muted)" }}>
-        {label}{hint && <span className="ml-1 text-xs" style={{ color: "var(--text-muted)" }}>· {hint}</span>}
-      </label>
-      <input
-        type={type} required
-        value={form[key]}
-        onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
-        className="w-full px-3 py-2 rounded-lg text-sm outline-none"
-        style={{ background: "var(--bg-elevated)", color: "var(--text-primary)", border: "1px solid var(--border)" }}
-      />
-    </div>
-  );
+  const signin = nextPath ? `/login?next=${encodeURIComponent(nextPath)}` : "/login";
+  const pwShowErr = form.password && pwProblem && (tried || form.password.length > 18);
 
   return (
     <>
-    <SEO title="Sign Up" description="Create your Primary Arch account." path="/register" noindex />
-    <div className="h-full overflow-y-auto flex items-center justify-center p-6" style={{ background: "var(--bg-base)" }}>
-      <div className="w-full max-w-sm py-8">
-        <h1 className="text-2xl font-bold mb-6 text-center" style={{ color: "var(--text-primary)" }}>
-          Create Account
-        </h1>
+      <SEO title="Create account" description="Create your Primary Arch account." path="/register" noindex />
+      <AuthLayout title="Create your account" sub="Save rosters and squads, and climb the leaderboards."
+        foot={<>Already have one? <Link to={signin}>Sign in</Link></>}>
+        <form onSubmit={submit} className="au-form">
+          <AuthField label="Email" type="email" required autoComplete="email" value={form.email} onChange={set("email")} />
+          <AuthField label="Username" required autoComplete="username" value={form.username} onChange={set("username")} />
+          <AuthField label="Password" type="password" required autoComplete="new-password" value={form.password} onChange={set("password")}
+            hint={PASSWORD_HINT} ok={!!form.password && !pwProblem} error={pwShowErr ? pwProblem : ""} />
+          <AuthField label="Confirm password" type="password" required autoComplete="new-password" value={form.confirm} onChange={set("confirm")}
+            error={mismatch && (tried || form.confirm.length >= form.password.length) ? "Passwords don't match" : ""} />
 
-        <form onSubmit={submit} className="space-y-4">
-          {field("Email", "email", "email")}
-          {field("Username", "username")}
-          {field("Password", "password", "password", PASSWORD_HINT)}
-          {field("Confirm Password", "confirm", "password")}
-
-          <label className="flex items-start gap-2.5 text-sm leading-snug cursor-pointer" style={{ color: "var(--text-muted)" }}>
-            <input type="checkbox" required checked={agreed} onChange={e => setAgreed(e.target.checked)}
-              className="mt-0.5 h-4 w-4 shrink-0" style={{ accentColor: "var(--yamabuki)" }} />
+          <label className="au-check">
+            <input type="checkbox" required checked={agreed} onChange={e => setAgreed(e.target.checked)} />
             <span>
-              I agree to the{" "}
-              <Link to="/terms-of-service" target="_blank" className="underline" style={{ color: "var(--text-primary)" }}>Terms of Service</Link>{" "}
-              and{" "}
-              <Link to="/community-guidelines" target="_blank" className="underline" style={{ color: "var(--text-primary)" }}>Community Guidelines</Link>,
-              including zero tolerance for abusive content.
+              I agree to the <Link to="/terms-of-service" target="_blank">Terms of Service</Link> and{" "}
+              <Link to="/community-guidelines" target="_blank">Community Guidelines</Link>, including zero tolerance for abusive content.
             </span>
           </label>
 
-          {error && <p className="text-sm text-red-400">{error}</p>}
-
-          <button
-            type="submit" disabled={loading}
-            className="w-full py-2.5 rounded-xl font-logo font-bold text-sm uppercase tracking-wide transition-colors bg-yamabuki text-darkBg hover:bg-white disabled:opacity-50"
-          >
-            {loading ? "Creating account…" : "Sign Up"}
+          {error && <p className="au-error" role="alert">{error}</p>}
+          <button type="submit" disabled={loading} className="aura-rating-btn au-cta">
+            {loading ? "Creating account…" : "Create account"}
           </button>
         </form>
-
         <GoogleSignIn successPath={nextPath} />
-
-        <p className="text-center text-sm mt-4" style={{ color: "var(--text-muted)" }}>
-          Already have an account?{" "}
-          <Link to={nextPath ? `/login?next=${encodeURIComponent(nextPath)}` : "/login"} style={{ color: "var(--accent)" }}>Log in</Link>
-        </p>
-      </div>
-    </div>
+      </AuthLayout>
     </>
   );
 }

@@ -3,7 +3,9 @@ import { useSearchParams, useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { SEO } from "../hooks/useSEO";
 import { passwordProblem, PASSWORD_HINT } from "../lib/passwordRules";
+import AuthLayout, { AuthField } from "../components/auth/AuthLayout";
 
+// Handoff 17d (Reset) — ipucu ve eşleşme hatası alanların altında.
 export default function ResetPassword() {
   const [params]    = useSearchParams();
   const { login }   = useAuth();
@@ -14,13 +16,16 @@ export default function ResetPassword() {
   const [confirm, setConfirm]   = useState("");
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState("");
+  const [tried, setTried]       = useState(false);
+
+  const pwProblem = passwordProblem(password);
+  const mismatch = confirm && password !== confirm;
 
   const submit = async (e) => {
     e.preventDefault();
-    if (password !== confirm) { setError("Passwords don't match"); return; }
-    const pwProblem = passwordProblem(password);
-    if (pwProblem) { setError(pwProblem); return; }
-    setLoading(true); setError("");
+    setTried(true); setError("");
+    if (pwProblem || password !== confirm) return;
+    setLoading(true);
     try {
       const res = await fetch("/api/auth/reset-password", {
         method: "POST",
@@ -28,7 +33,7 @@ export default function ResetPassword() {
         body: JSON.stringify({ token: resetToken, password }),
       });
       const d = await res.json();
-      if (!res.ok) throw new Error(d.detail || "Error");
+      if (!res.ok) throw new Error(d.detail || "The password wasn't changed. The link may have expired.");
       login(d.token, d.user);
       navigate("/profile");
     } catch (e) { setError(e.message); }
@@ -36,55 +41,28 @@ export default function ResetPassword() {
   };
 
   if (!resetToken) return (
-    <div className="h-full flex items-center justify-center p-6" style={{ background: "var(--bg-base)" }}>
-      <div className="text-center space-y-3">
-        <p className="text-sm" style={{ color: "var(--text-muted)" }}>Invalid or missing reset link.</p>
-        <Link to="/forgot-password" style={{ color: "var(--accent)" }} className="text-sm block">
-          Request a new one →
-        </Link>
-      </div>
-    </div>
+    <AuthLayout title="This link doesn't work" sub="The reset link is missing or incomplete. Request a new one and use the link from the latest email."
+      foot={<Link to="/login">Back to sign in</Link>}>
+      <Link to="/forgot-password" className="aura-rating-btn au-cta" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>Request a new link</Link>
+    </AuthLayout>
   );
 
   return (
     <>
-    <SEO title="Reset Password" path="/reset-password" noindex />
-    <div className="h-full flex items-center justify-center p-6" style={{ background: "var(--bg-base)" }}>
-      <div className="w-full max-w-sm">
-        <h1 className="text-2xl font-bold mb-6 text-center" style={{ color: "var(--text-primary)" }}>
-          Reset Password
-        </h1>
-        <form onSubmit={submit} className="space-y-4">
-          <div>
-            <label className="block text-sm mb-1" style={{ color: "var(--text-muted)" }}>
-              New Password<span className="ml-1 text-xs" style={{ color: "var(--text-muted)" }}>· {PASSWORD_HINT}</span>
-            </label>
-            <input
-              type="password" required autoFocus
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg text-sm outline-none"
-              style={{ background: "var(--bg-elevated)", color: "var(--text-primary)", border: "1px solid var(--border)" }}
-            />
-          </div>
-          <div>
-            <label className="block text-sm mb-1" style={{ color: "var(--text-muted)" }}>Confirm Password</label>
-            <input
-              type="password" required
-              value={confirm}
-              onChange={e => setConfirm(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg text-sm outline-none"
-              style={{ background: "var(--bg-elevated)", color: "var(--text-primary)", border: "1px solid var(--border)" }}
-            />
-          </div>
-          {error && <p className="text-sm text-red-400">{error}</p>}
-          <button type="submit" disabled={loading}
-            className="w-full py-2.5 rounded-xl font-logo font-bold text-sm uppercase tracking-wide transition-colors bg-yamabuki text-darkBg hover:bg-white disabled:opacity-50">
-            {loading ? "Resetting…" : "Reset Password"}
-          </button>
+      <SEO title="Set a new password" path="/reset-password" noindex />
+      <AuthLayout title="Set a new password" sub="Choose a password you haven't used here before."
+        foot={<Link to="/login">Back to sign in</Link>}>
+        <form onSubmit={submit} className="au-form">
+          <AuthField label="New password" type="password" required autoFocus autoComplete="new-password"
+            value={password} onChange={e => setPassword(e.target.value)}
+            hint={PASSWORD_HINT} ok={!!password && !pwProblem} error={password && pwProblem && (tried || password.length > 18) ? pwProblem : ""} />
+          <AuthField label="Confirm password" type="password" required autoComplete="new-password"
+            value={confirm} onChange={e => setConfirm(e.target.value)}
+            error={mismatch && (tried || confirm.length >= password.length) ? "Passwords don't match" : ""} />
+          {error && <p className="au-error" role="alert">{error}</p>}
+          <button type="submit" disabled={loading} className="aura-rating-btn au-cta">{loading ? "Saving…" : "Save password"}</button>
         </form>
-      </div>
-    </div>
+      </AuthLayout>
     </>
   );
 }
