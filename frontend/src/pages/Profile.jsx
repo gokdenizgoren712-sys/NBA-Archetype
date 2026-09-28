@@ -2,227 +2,179 @@ import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { SEO } from "../hooks/useSEO";
+import { PageGlow, EmptyState, ErrorState } from "../components/states/States";
+import { ARCHETYPE_COLOR } from "../constants/archetypeColors";
+import { PHASE_COLOR } from "../game/football/theme";
+import "./profile.css";
+
+// ── Profil (handoff 11d) ────────────────────────────────────────────────────
+// Başlık: 84px avatar, kullanıcı adı, üyelik tarihi, sağda sayılar. Alt çizgili
+// sekmeler; her kayıt 68px'lik bir satır (ad + meta · arketip noktaları · mod ·
+// not · skor). Kadro tablosu iki sporu `sport` kolonuyla tutuyor — sekmeler
+// buna göre ayrılıyor. Skorlar doğru adıyla: basketbolda 100 üzerinden Lineup
+// Fit (persantil değil), futbolda 100 üzerinden kimya.
 
 const BASE = "/api";
-
 function authFetch(path, token, opts = {}) {
   return fetch(`${BASE}${path}`, {
     ...opts,
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, ...opts.headers },
   });
 }
+const fmtDate = (d, day = true) => new Date(d).toLocaleDateString("en-US", day ? { year: "numeric", month: "short", day: "numeric" } : { year: "numeric", month: "long" });
+const fitHex = (v) => (v >= 80 ? "#4ade80" : v >= 65 ? "#facc15" : v >= 50 ? "#fb923c" : "#f87171");
+const SOURCE = { single: "Single Player", same_screen: "Same Screen", with_a_friend: "With a Friend" };
+
+function Row({ title, meta, dots = [], mode, modeC, grade, score, scoreLabel, onRemove, children }) {
+  const [confirm, setConfirm] = useState(false);
+  return (
+    <div className="pf-row">
+      <div className="nm"><b>{title}</b>{meta && <span>{meta}</span>}{children}</div>
+      <div className="dots">{dots.map((d, i) => <i key={i} title={d.a} style={{ background: d.c, boxShadow: `0 0 8px ${d.c}` }} />)}</div>
+      <span className="mode" style={modeC ? { color: modeC } : undefined}>{mode}</span>
+      <span className="grade">{grade || ""}</span>
+      <span className="sc" title={scoreLabel}>
+        {score != null && <b style={{ color: fitHex(score) }}>{score}</b>}
+        {scoreLabel && score != null && <em>{scoreLabel}</em>}
+      </span>
+      {onRemove && (confirm ? (
+        <span className="rm">
+          <button className="yes" onClick={onRemove}>Delete</button>
+          <button onClick={() => setConfirm(false)}>Keep</button>
+        </span>
+      ) : (
+        <button className="x" onClick={() => setConfirm(true)} aria-label={`Delete ${title}`}>×</button>
+      ))}
+    </div>
+  );
+}
 
 export default function Profile() {
-  const { token, user, isLoggedIn, logout } = useAuth();
+  const { token, isLoggedIn, logout } = useAuth();
   const navigate = useNavigate();
   const [data, setData]   = useState(null);
-  const [tab, setTab]     = useState("players");
+  const [tab, setTab]     = useState("bb");
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
+  const load = () => {
+    setLoading(true); setError(false);
+    authFetch("/profile", token).then(r => { if (!r.ok) throw new Error(); return r.json(); })
+      .then(setData).catch(() => setError(true)).finally(() => setLoading(false));
+  };
   useEffect(() => {
-    if (!isLoggedIn) { navigate("/login"); return; }
-    authFetch("/profile", token).then(r => r.json()).then(setData).finally(() => setLoading(false));
+    if (!isLoggedIn) { navigate("/login?next=/profile"); return; }
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoggedIn]);
 
-  const removePlayer = async (id) => {
-    await authFetch(`/profile/saved-players/${id}`, token, { method: "DELETE" });
-    setData(d => ({ ...d, saved_players: d.saved_players.filter(p => p.id !== id) }));
+  const remove = async (path, key, id) => {
+    const r = await authFetch(path, token, { method: "DELETE" });
+    if (r.ok) setData(d => ({ ...d, [key]: d[key].filter(x => x.id !== id) }));
   };
 
-  const removeLineup = async (id) => {
-    await authFetch(`/profile/saved-lineups/${id}`, token, { method: "DELETE" });
-    setData(d => ({ ...d, saved_lineups: d.saved_lineups.filter(l => l.id !== id) }));
-  };
+  if (loading) return <div className="pf-page"><div className="pf-inner"><div className="pa-skel" style={{ height: 84, width: 420, borderRadius: 42 }} /></div></div>;
+  if (error || !data) return <ErrorState title="Your profile didn't load" body="The server didn't answer. Try again in a moment." onRetry={load} />;
 
-  const removeRoster = async (id) => {
-    await authFetch(`/rosters/${id}`, token, { method: "DELETE" });
-    setData(d => ({ ...d, saved_rosters: d.saved_rosters.filter(r => r.id !== id) }));
-  };
+  const rosters = data.saved_rosters || [];
+  const bb = rosters.filter(r => (r.sport || "basketball") === "basketball");
+  const fb = rosters.filter(r => r.sport === "football");
+  const u = data.user || {};
 
   const TABS = [
-    { key: "players",  label: "Players"  },
-    { key: "rosters",  label: "Rosters"  },
-    { key: "lineups",  label: "Lineups"  },
-    { key: "comments", label: "Comments" },
+    ["bb", "Basketball rosters", bb.length], ["fb", "Football squads", fb.length],
+    ["lineups", "Lineups", data.saved_lineups.length], ["players", "Players", data.saved_players.length],
+    ["comments", "Comments", data.comments.length],
   ];
-
-  if (loading) return <div className="h-full flex items-center justify-center" style={{ color: "var(--text-muted)" }}>Loading…</div>;
-  if (!data) return null;
+  const STATS = [
+    { v: bb.length, l: "Rosters", c: "#FFB11B" }, { v: fb.length, l: "Squads", c: "#3FB08C" },
+    { v: data.saved_lineups.length, l: "Lineups", c: "#60a5fa" },
+  ];
 
   return (
     <>
-    <SEO title="Profile" path="/profile" noindex />
-    <div className="h-full overflow-y-auto" style={{ background: "var(--bg-base)" }}>
-      <div className="p-6 max-w-3xl mx-auto">
+      <SEO title="Profile" path="/profile" noindex />
+      <div className="pf-page">
+        <PageGlow tint="#FFB11B" />
+        <div className="pf-inner">
+          <header className="pf-head">
+            <span className="av" aria-hidden="true">{(u.username || "?")[0].toUpperCase()}</span>
+            <div className="who">
+              <h1>{u.username}</h1>
+              <span>{u.role === "admin" ? "Admin · " : ""}Member since {fmtDate(u.created_at, false)}</span>
+            </div>
+            <div className="stats">
+              {STATS.map(s => <div key={s.l}><b style={{ color: s.c }}>{s.v}</b><span>{s.l}</span></div>)}
+            </div>
+          </header>
+          <div className="pf-actions">
+            {u.role === "admin" && <Link to="/admin/articles" className="pa-btn-secondary">Admin panel</Link>}
+            <button className="pa-btn-secondary" onClick={logout}>Sign out</button>
+            {/* Hesap silme ayrı sayfada (Play Console bağlantısı da o) */}
+            <Link to="/account/delete" className="pf-del">Delete account</Link>
+          </div>
 
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>
-              {data.user?.username}
-            </h1>
-            <p className="text-sm mt-0.5" style={{ color: "var(--text-muted)" }}>
-              {data.user?.email} · {data.user?.role === "admin" ? "Admin" : "Member"} ·
-              Joined {new Date(data.user?.created_at).toLocaleDateString("en-US", { year: "numeric", month: "short" })}
-            </p>
-          </div>
-          <div className="flex gap-2">
-            {data.user?.role === "admin" && (
-              <Link to="/admin/articles"
-                className="px-3 py-1.5 rounded-[8px] font-logo text-sm font-bold uppercase tracking-wide bg-yamabuki text-darkBg hover:bg-white transition-colors">
-                Admin Panel
-              </Link>
-            )}
-            <button onClick={logout}
-              className="px-3 py-1.5 rounded-[8px] text-sm"
-              style={{ background: "var(--bg-elevated)", color: "var(--text-muted)", border: "1px solid var(--border)" }}>
-              Sign out
-            </button>
-          </div>
+          <nav className="pf-tabs" role="tablist">
+            {TABS.map(([k, l, n]) => (
+              <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? "on" : ""} onClick={() => setTab(k)}>
+                {l}{n > 0 && <em>{n}</em>}
+              </button>
+            ))}
+          </nav>
+
+          <section className="pf-list">
+            {tab === "bb" && (bb.length ? bb.map(r => {
+              const score = r.overall_pct != null ? Math.round(r.overall_pct) : null;
+              return (
+                <Row key={r.id} title={r.name}
+                  meta={[fmtDate(r.created_at), SOURCE[r.source_mode] || null, r.sim_era ? `${r.sim_era} era` : null].filter(Boolean).join(" · ")}
+                  dots={(r.roster || []).slice(0, 9).map(p => ({ a: `${p.PLAYER_NAME} · ${p.primary_arch || ""}`, c: ARCHETYPE_COLOR[p.primary_arch] || "#5a5650" }))}
+                  mode={r.mode === "salarycap" ? "Salary Cap" : "Classic"} modeC={r.mode === "salarycap" ? "#FFB11B" : "#60a5fa"}
+                  grade={r.grade} score={score} scoreLabel="Lineup Fit"
+                  onRemove={() => remove(`/rosters/${r.id}`, "saved_rosters", r.id)} />
+              );
+            }) : <EmptyState title="No saved rosters yet" body="Draft a roster in the game and save it from the result screen."
+                    actions={[{ label: "Play the game", primary: true, onClick: () => navigate("/basketball/game") }]} />)}
+
+            {tab === "fb" && (fb.length ? fb.map(r => {
+              const raw = r.overall_pct ?? null;
+              const score = raw == null ? null : Math.round(raw <= 1 ? raw * 100 : raw);
+              const starters = (r.roster || []).filter(p => !String(p._slot || "").startsWith("SUB")).slice(0, 11);
+              return (
+                <Row key={r.id} title={r.name}
+                  meta={[fmtDate(r.created_at), SOURCE[r.source_mode] || null].filter(Boolean).join(" · ")}
+                  dots={starters.map(p => ({ a: `${p.PLAYER_NAME} · ${p.primary_arch || ""}`, c: PHASE_COLOR[p.PHASE] || "#5a5650" }))}
+                  mode={r.mode} modeC="#3FB08C" score={score} scoreLabel="Chemistry"
+                  onRemove={() => remove(`/rosters/${r.id}`, "saved_rosters", r.id)} />
+              );
+            }) : <EmptyState tint="#3FB08C" title="No saved squads yet" body="Build an eleven in Spin & Build and save it from the result screen."
+                    actions={[{ label: "Play football", primary: true, onClick: () => navigate("/football/game") }]} />)}
+
+            {tab === "lineups" && (data.saved_lineups.length ? data.saved_lineups.map(l => {
+              const score = l.pct != null ? Math.round(l.pct) : null;
+              return (
+                <Row key={l.id} title={l.label || l.players.join(" · ")} meta={fmtDate(l.created_at)}
+                  mode={`${l.players.length} players`} grade={l.grade} score={score} scoreLabel="Lineup Fit"
+                  onRemove={() => remove(`/profile/saved-lineups/${l.id}`, "saved_lineups", l.id)} />
+              );
+            }) : <EmptyState title="No saved lineups yet" body="Build a five on the Lineups page and save it."
+                    actions={[{ label: "Open Lineups", primary: true, onClick: () => navigate("/basketball/lineups") }]} />)}
+
+            {tab === "players" && (data.saved_players.length ? data.saved_players.map(p => (
+              <Row key={p.id} title={<Link to={`/basketball/players/${encodeURIComponent(p.player_name)}`}>{p.player_name}</Link>}
+                meta={p.season} onRemove={() => remove(`/profile/saved-players/${p.id}`, "saved_players", p.id)} />
+            )) : <EmptyState title="No saved players yet" body="Open a player card and use the bookmark to keep it here." />)}
+
+            {tab === "comments" && (data.comments.length ? data.comments.map(c => (
+              <div key={c.id} className="pf-comment">
+                <Link to={`/blog/${c.article_slug}`}>{c.article_title}</Link>
+                <p>{c.content}</p>
+                <span>{fmtDate(c.created_at)}</span>
+              </div>
+            )) : <EmptyState title="No comments yet" body="Comments you leave on blog posts show up here." />)}
+          </section>
         </div>
-        {/* Hesap silme ayrı sayfada (Play Console bağlantısı da o): /account/delete */}
-        <p className="-mt-3 mb-6 text-right">
-          <Link to="/account/delete" className="text-xs underline" style={{ color: "var(--text-muted)" }}>Delete account</Link>
-        </p>
-
-        {/* Tabs */}
-        <div className="flex gap-1 mb-4 border-b" style={{ borderColor: "var(--border)" }}>
-          {TABS.map(t => (
-            <button key={t.key} onClick={() => setTab(t.key)}
-              className="px-4 py-2 text-sm font-medium transition-colors"
-              style={{
-                color: tab === t.key ? "var(--accent)" : "var(--text-muted)",
-                borderBottom: tab === t.key ? "2px solid var(--accent)" : "2px solid transparent",
-                marginBottom: "-1px",
-              }}>
-              {t.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Saved Players */}
-        {tab === "players" && (
-          <div className="space-y-2">
-            {data.saved_players.length === 0 ? (
-              <p className="text-sm py-4" style={{ color: "var(--text-muted)" }}>
-                No saved players yet. Open a player card and click the bookmark icon to save.
-              </p>
-            ) : data.saved_players.map(p => (
-              <div key={p.id} className="flex items-center justify-between p-3 rounded-[8px]"
-                style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
-                <div>
-                  <Link to={`/basketball/players?q=${encodeURIComponent(p.player_name)}`}
-                    className="font-logo font-medium text-sm hover:underline"
-                    style={{ color: "var(--text-primary)" }}>
-                    {p.player_name}
-                  </Link>
-                  <span className="text-xs ml-2" style={{ color: "var(--text-muted)" }}>{p.season}</span>
-                </div>
-                <button onClick={() => removePlayer(p.id)} className="text-xs" style={{ color: "var(--danger)" }}>✕</button>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Saved Rosters — drafted 9-man rosters (Single Player), kept full arch/score
-            data so they can be challenged (Board) or battled (Quick Battle, later). */}
-        {tab === "rosters" && (
-          <div className="space-y-3">
-            {data.saved_rosters.length === 0 ? (
-              <p className="text-sm py-4" style={{ color: "var(--text-muted)" }}>
-                No saved rosters yet. Draft a lineup in the game and hit "Save this roster" on the result screen.
-              </p>
-            ) : data.saved_rosters.map(r => (
-              <div key={r.id} className="p-3 rounded-[8px]"
-                style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="font-logo font-medium text-sm" style={{ color: "var(--text-primary)" }}>{r.name}</span>
-                  <div className="flex items-center gap-2">
-                    {r.grade && <span className="font-logo font-bold text-base" style={{ color: "var(--accent)" }}>{r.grade}</span>}
-                    <span className="text-xs" style={{ color: "var(--text-muted)" }}>
-                      {new Date(r.created_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
-                    </span>
-                    <button onClick={() => removeRoster(r.id)} className="text-xs" style={{ color: "var(--danger)" }}>✕</button>
-                  </div>
-                </div>
-                <p className="text-xs mb-2" style={{ color: "var(--text-muted)" }}>
-                  {r.mode === "salarycap" ? "Salary Cap" : "Classic"}
-                  {r.overall_pct != null ? ` · ${Math.round(r.overall_pct)}%` : ""}
-                </p>
-                <div className="flex flex-wrap gap-1">
-                  {r.roster.map((p, i) => (
-                    <span key={i} className="px-2 py-0.5 rounded text-xs"
-                      style={{ background: "var(--bg-surface)", color: "var(--text-primary)", border: "1px solid var(--border)" }}>
-                      {p.PLAYER_NAME}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Saved Lineups */}
-        {tab === "lineups" && (
-          <div className="space-y-3">
-            {data.saved_lineups.length === 0 ? (
-              <p className="text-sm py-4" style={{ color: "var(--text-muted)" }}>
-                No saved lineups yet. Build a custom lineup on the Lineups page and save it.
-              </p>
-            ) : data.saved_lineups.map(l => (
-              <div key={l.id} className="p-3 rounded-[8px]"
-                style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="font-logo font-bold text-lg" style={{ color: "var(--accent)" }}>{l.grade}</span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs" style={{ color: "var(--text-muted)" }}>
-                      {new Date(l.created_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
-                    </span>
-                    <button onClick={() => removeLineup(l.id)} className="text-xs" style={{ color: "var(--danger)" }}>✕</button>
-                  </div>
-                </div>
-                <p className="text-xs mb-2" style={{ color: "var(--text-muted)" }}>
-                  Score: {l.pct ? Math.round(l.pct) : "—"}%{l.label ? ` · ${l.label}` : ""}
-                </p>
-                <div className="flex flex-wrap gap-1">
-                  {l.players.map((p, i) => (
-                    <span key={i} className="px-2 py-0.5 rounded text-xs"
-                      style={{ background: "var(--bg-surface)", color: "var(--text-primary)", border: "1px solid var(--border)" }}>
-                      {p}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Comments */}
-        {tab === "comments" && (
-          <div className="space-y-2">
-            {data.comments.length === 0 ? (
-              <p className="text-sm py-4" style={{ color: "var(--text-muted)" }}>
-                No comments yet.
-              </p>
-            ) : data.comments.map(c => (
-              <div key={c.id} className="p-3 rounded-[8px]"
-                style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
-                <Link to={`/blog/${c.article_slug}`}
-                  className="text-xs font-medium hover:underline"
-                  style={{ color: "var(--accent)" }}>
-                  {c.article_title}
-                </Link>
-                <p className="text-sm mt-1" style={{ color: "var(--text-primary)" }}>{c.content}</p>
-                <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
-                  {new Date(c.created_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
-                </p>
-              </div>
-            ))}
-          </div>
-        )}
-
       </div>
-    </div>
     </>
   );
 }
