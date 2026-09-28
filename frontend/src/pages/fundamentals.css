@@ -129,3 +129,43 @@
   .fg-era .desc, .fg-era .body { margin-left: 0; }
   .fa-main h2 { font-size: 22px; }
 }
+
+/* ── Futbol Fundamentals (16c) ─────────────────────────────────────────── */
+.ffg-intro { margin: 0 0 22px; max-width: 80ch; font-size: 14px; line-height: 1.55; color: var(--text-secondary); }
+.ffg-intro span { color: var(--text-muted); }
+.ffg-cols { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 40px; align-items: start; }
+.ffg-cols section { display: flex; flex-direction: column; min-width: 0; }
+.ffg-h { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.ffg-h i { width: 10px; height: 10px; border-radius: 5px; background: var(--c); box-shadow: 0 0 10px var(--c); }
+.ffg-h b { font-family: var(--font-logo); font-size: 22px; font-weight: 700; color: var(--c); }
+.ffg-h span { font-size: 13px; color: var(--text-muted); }
+.ffg-role { display: flex; flex-direction: column; gap: 4px; padding: 12px 0; box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.05); }
+.ffg-role > button { display: flex; align-items: center; justify-content: space-between; gap: 8px; border: 0; background: none; padding: 0; cursor: pointer; text-align: left; }
+.ffg-role > button b { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+.ffg-role > button svg { transition: transform .2s; flex-shrink: 0; }
+.ffg-role.open > button svg { transform: rotate(180deg); }
+.ffg-role.open > button b { color: var(--c); }
+.ffg-role > p { margin: 0; font-size: 13px; line-height: 1.5; color: var(--text-secondary); }
+.ffg-role .pos { font-size: 12px; color: var(--text-muted); }
+.ffg-metrics { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.ffg-metrics .k { font-size: 12px; color: var(--text-muted); margin-bottom: 2px; }
+.ffg-metrics > div { display: grid; grid-template-columns: minmax(0, 1fr) 56px 26px; align-items: center; gap: 8px; }
+.ffg-metrics > div span { font-size: 12px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ffg-metrics > div span em { font-style: normal; color: #E8654C; }
+.ffg-metrics .tr { height: 4px; border-radius: 2px; background: var(--frame, #1a1a1a); overflow: hidden; }
+.ffg-metrics .tr i { display: block; height: 100%; background: var(--c); }
+.ffg-metrics b { font-family: var(--font-logo); font-size: 13px; text-align: right; color: var(--c); font-variant-numeric: tabular-nums; }
+.ffg-metrics .thin { opacity: .55; }
+.ffg-none { margin: 0; font-size: 13px; color: var(--text-faint); }
+.fg-note a { color: var(--accent, #3FB08C); }
+.fa-main ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 8px; }
+.fa-main li { font-size: 15px; line-height: 1.6; color: var(--text-secondary); }
+.fa-aside { font-size: 13px !important; color: var(--text-muted) !important; }
+.ffa-phases { display: flex; flex-direction: column; gap: 14px; margin-top: 8px; max-width: 420px; }
+.ffa-phases .k { font-size: 12px; color: var(--text-muted); }
+.ffa-phases > div b { display: flex; align-items: center; gap: 8px; font-family: var(--font-logo); font-size: 18px; font-weight: 700; color: var(--c); }
+.ffa-phases > div b i { width: 8px; height: 8px; border-radius: 4px; background: var(--c); box-shadow: 0 0 8px var(--c); }
+.ffa-phases > div b em { font-style: normal; font-family: var(--font-body, inherit); font-size: 12px; font-weight: 400; color: var(--text-muted); }
+.ffa-phases > div p { margin: 4px 0 0; font-size: 13px; line-height: 1.5; color: var(--text-secondary); }
+@media (max-width: 1280px) { .ffg-cols { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 767px) { .ffg-cols { grid-template-columns: minmax(0, 1fr); gap: 28px; } }

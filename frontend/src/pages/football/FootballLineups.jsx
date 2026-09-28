@@ -198,7 +198,9 @@ export default function FootballLineups() {
                   )}
                   <div className="ch-bars">
                     <Bar label="Role slots" value={fit?.slots} />
-                    <Bar label="Pair affinity" value={fit?.pairs} />
+                    {/* API pairs_in_score=false: gösteriliyor ama skora girmiyor (bkz. About) */}
+                    <Bar label={fit?.pairs_in_score === false ? "Pairs · not scored" : "Pair affinity"} value={fit?.pairs}
+                      c={fit?.pairs_in_score === false ? "#8b857e" : undefined} />
                     <Bar label="Shape" value={fit?.shape} />
                     <Bar label="Role diversity" value={fit?.diversity} />
                   </div>
