@@ -1,39 +1,43 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { SEO } from "../../hooks/useSEO";
+import "./legal.css";
 
-// 2026-08 (roadmap Faz 2.1): siteye ilk kez eklenen yasal sayfaların ortak
-// kabuğu. Metinler TASLAK — hukuki inceleme yapılmadan yayına alınmamalı,
-// bu yüzden hem SEO noindex hem de görünür bir uyarı bandı taşıyor. Gerçek
-// metin onaylanınca: bu banner + `noindex` kaldırılır, sitemap.xml'e
-// (api/main.py STATIC_ROUTES) eklenir.
+// Yasal sayfaların ortak kabuğu (handoff 11f): solda 220px "Legal" menüsü,
+// ortada 680px okuma sütunu (44px başlık, 22px bölüm başlıkları, 16px/1.75).
+// 2026-08 (roadmap Faz 2.1): metinler TASLAK — hukuki inceleme yapılmadan
+// yayına alınmamalı; SEO noindex + görünür uyarı bu yüzden duruyor. Gerçek
+// metin onaylanınca: uyarı + `noindex` kaldırılır, sitemap.xml'e (api/main.py
+// STATIC_ROUTES) eklenir.
+
+export const LEGAL_NAV = [
+  { to: "/privacy-policy", label: "Privacy policy" },
+  { to: "/terms-of-service", label: "Terms of service" },
+  { to: "/community-guidelines", label: "Community guidelines" },
+  { to: "/contact", label: "Contact" },
+  { to: "/affiliate-disclosure", label: "Affiliate disclosure" },
+];
+
 export default function LegalPageLayout({ title, description, path, children }) {
+  const { pathname } = useLocation();
   return (
-    <div className="h-full overflow-y-auto" style={{ background: "var(--bg-base)" }}>
+    <div className="lg-page">
       <SEO title={title} description={description} path={path} noindex />
-      <div className="max-w-2xl mx-auto px-6 py-10 sm:py-12">
-        <div className="mb-6 rounded-xl px-4 py-3 text-[12.5px] leading-relaxed"
-          style={{ background: "rgba(255,177,27,.08)", border: "1px solid rgba(255,177,27,.35)", color: "var(--yamabuki)" }}>
-          <strong>Draft — not yet legally reviewed.</strong> This page is a placeholder prepared
-          for review. Do not treat it as final or binding until a qualified reviewer has
-          approved the text and it has been published for real.
-        </div>
-
-        <h1 className="text-2xl sm:text-3xl font-bold mb-2" style={{ color: "var(--text-primary)" }}>
-          {title}
-        </h1>
-        <p className="text-[12px] mb-8" style={{ color: "var(--text-faint)" }}>
-          Draft prepared 2026-08-09
-        </p>
-
-        <div className="space-y-6 text-[14px] leading-relaxed" style={{ color: "var(--text-secondary,#d1d5db)" }}>
+      <div className="lg-grid">
+        <nav className="lg-nav" aria-label="Legal">
+          <span>Legal</span>
+          {LEGAL_NAV.map(n => (
+            <Link key={n.to} to={n.to} className={pathname === n.to ? "on" : ""} aria-current={pathname === n.to ? "page" : undefined}>{n.label}</Link>
+          ))}
+        </nav>
+        <article className="lg-article">
+          <h1>{title}</h1>
+          <span className="lg-date">Draft prepared August 9, 2026</span>
+          <p className="lg-draft">
+            <b>Draft — not yet legally reviewed.</b> This page is a placeholder prepared for review.
+            Don't treat it as final or binding until a qualified reviewer has approved the text and it has been published for real.
+          </p>
           {children}
-        </div>
-
-        <div className="mt-12 pt-6" style={{ borderTop: "1px solid var(--border)" }}>
-          <Link to="/" className="text-[12.5px] hover:underline" style={{ color: "var(--yamabuki)" }}>
-            ← Back to Primary Arch
-          </Link>
-        </div>
+        </article>
       </div>
     </div>
   );
@@ -41,13 +45,9 @@ export default function LegalPageLayout({ title, description, path, children }) 
 
 export function Section({ heading, children }) {
   return (
-    <section>
-      {heading && (
-        <h2 className="text-[15px] font-semibold mb-2" style={{ color: "var(--text-primary)" }}>
-          {heading}
-        </h2>
-      )}
-      <div className="space-y-2.5">{children}</div>
+    <section className="lg-sec">
+      {heading && <h2>{heading}</h2>}
+      {children}
     </section>
   );
 }
