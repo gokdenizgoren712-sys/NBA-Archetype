@@ -3594,13 +3594,25 @@ def list_articles(limit: int = Query(20), offset: int = Query(0)):
     with get_conn() as conn:
         rows = conn.execute(
             """SELECT a.id, a.title, a.slug, a.cover_image_url, a.created_at, a.updated_at,
-                      u.username as author
+                      a.content, u.username as author
                FROM articles a LEFT JOIN users u ON a.author_id=u.id
                WHERE a.status='published'
                ORDER BY a.created_at DESC LIMIT ? OFFSET ?""",
             (limit, offset)
         ).fetchall()
-    return {"articles": [_row(r) for r in rows]}
+    # Blog dizini (handoff 10b) özet + okuma süresi istiyor; şemada alan yok,
+    # içerikten türetiliyor. Tam içerik liste yanıtına KONMUYOR.
+    import re as _re, html as _html
+    out = []
+    for r in rows:
+        d = _row(r)
+        text = _html.unescape(_re.sub(r"<[^>]+>", " ", d.pop("content", "") or ""))
+        text = _re.sub(r"\s+", " ", text).strip()
+        words = len(text.split())
+        d["excerpt"] = (text[:180].rsplit(" ", 1)[0] + "…") if len(text) > 180 else text
+        d["read_minutes"] = max(1, round(words / 220)) if words else None
+        out.append(d)
+    return {"articles": out}
 
 @app.get("/api/articles/{slug}")
 def get_article(slug: str, user=Depends(get_optional_user)):

@@ -1,11 +1,17 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import DOMPurify from "dompurify";
 import { SEO } from "../hooks/useSEO";
+import { PageGlow, EmptyState } from "../components/states/States";
+import { articleTheme, fmtDate } from "./Blog";
+import "./blog.css";
 
+// ── Blog yazısı (handoff 11e / mobil 21d) ───────────────────────────────────
+// Ortalı 720px makale: kırıntı, 48px başlık, yazar satırı, görsel, 17px/1.75
+// gövde. Yorumlar altta, aynı dilde (kutusuz satırlar).
 export default function BlogPost() {
-  const { slug }          = useParams();
+  const { slug } = useParams();
   const { token, user, isLoggedIn } = useAuth();
   const [article, setArticle] = useState(null);
   const [comments, setComments] = useState([]);
@@ -13,17 +19,25 @@ export default function BlogPost() {
   const [loading, setLoading] = useState(true);
   const [posting, setPosting] = useState(false);
   const [error, setError]   = useState("");
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
+    setLoading(true);
     Promise.all([
       fetch(`/api/articles/${slug}`).then(r => { if (!r.ok) throw new Error(); return r.json(); }),
       fetch(`/api/articles/${slug}/comments`).then(r => r.json()),
-    ]).then(([art, com]) => {
-      setArticle(art);
-      setComments(com.comments || []);
-    }).catch(() => setArticle(null))
+    ]).then(([art, com]) => { setArticle(art); setComments(com.comments || []); })
+      .catch(() => setArticle(null))
       .finally(() => setLoading(false));
   }, [slug]);
+
+  // Sunucu da temizliyor (nh3); burada ikinci kat — HTML'e script/olay
+  // özniteliği sızarsa okuyanın oturumu (localStorage token) çalınırdı.
+  const html = useMemo(() => DOMPurify.sanitize(article?.content || "", { USE_PROFILES: { html: true } }), [article]);
+  const minutes = useMemo(() => {
+    const words = (html.replace(/<[^>]+>/g, " ").match(/\S+/g) || []).length;
+    return words ? Math.max(1, Math.round(words / 220)) : null;
+  }, [html]);
 
   const submitComment = async () => {
     if (!comment.trim()) return;
@@ -34,121 +48,80 @@ export default function BlogPost() {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ content: comment }),
       });
-      if (!res.ok) throw new Error("Failed to post comment");
+      if (!res.ok) throw new Error("Your comment wasn't posted. Try again.");
       const data = await res.json();
-      setComments(c => [...c, {
-        id: data.id, content: comment,
-        username: user.username,
-        created_at: new Date().toISOString(),
-      }]);
+      setComments(c => [...c, { id: data.id, content: comment, username: user.username, user_id: user.id, created_at: new Date().toISOString() }]);
       setComment("");
     } catch (e) { setError(e.message); }
     finally { setPosting(false); }
   };
 
   const deleteComment = async (id) => {
-    await fetch(`/api/comments/${id}`, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    setComments(c => c.filter(x => x.id !== id));
+    const r = await fetch(`/api/comments/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+    if (r.ok) setComments(c => c.filter(x => x.id !== id));
   };
 
-  if (loading) return <div className="h-full flex items-center justify-center" style={{ color: "var(--text-muted)" }}>Loading…</div>;
+  const share = async () => {
+    const url = window.location.href;
+    if (navigator.share) await navigator.share({ title: article?.title, url }).catch(() => {});
+    else { await navigator.clipboard.writeText(url).catch(() => {}); setCopied(true); setTimeout(() => setCopied(false), 2000); }
+  };
+
+  if (loading) return <div className="bl-page"><div className="bp-article"><div className="pa-skel" style={{ height: 48, width: "80%" }} /><div className="pa-skel" style={{ height: 260, borderRadius: 20 }} /></div></div>;
   if (!article) return (
-    <div className="h-full flex flex-col items-center justify-center gap-3">
-      <p style={{ color: "var(--text-muted)" }}>Article not found.</p>
-      <Link to="/blog" style={{ color: "var(--accent)" }}>← Back to Blog</Link>
-    </div>
+    <EmptyState title="That post isn't here" body="It may have been unpublished or the link is wrong."
+      actions={[{ label: "Back to the blog", primary: true, onClick: () => { window.location.href = "/blog"; } }]} />
   );
+
+  const th = articleTheme(article.title);
 
   return (
     <>
-    <SEO title={article.title} description={article.title} path={`/blog/${slug}`} />
-    <div className="h-full overflow-y-auto" style={{ background: "var(--bg-base)" }}>
-      <div className="p-6 max-w-3xl mx-auto pb-16">
-
-        {article.cover_image_url && (
-          <img src={article.cover_image_url} alt={article.title}
-            className="w-full h-64 object-cover rounded-xl mb-6" />
-        )}
-
-        <Link to="/blog" className="text-sm hover:underline mb-4 block" style={{ color: "var(--accent)" }}>
-          ← Blog
-        </Link>
-
-        <h1 className="font-logo text-3xl font-bold mb-2 tracking-wide" style={{ color: "var(--text-primary)" }}>
-          {article.title}
-        </h1>
-        <p className="text-sm mb-6" style={{ color: "var(--text-muted)" }}>
-          {article.author} · {new Date(article.created_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
-          {user?.role === "admin" && (
-            <Link to={`/admin/articles/${article.id}/edit`}
-              className="ml-3 underline" style={{ color: "var(--accent)" }}>
-              Edit
-            </Link>
-          )}
-        </p>
-
-        {/* Article body — TipTap HTML output. Sunucu da temizliyor (nh3); burada
-            ikinci kat: HTML'e script/olay özniteliği sızarsa okuyanın oturumu
-            (localStorage'daki token) çalınırdı. */}
-        <div
-          className="prose-nba"
-          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(article.content || "", { USE_PROFILES: { html: true } }) }}
-          style={{ color: "var(--text-primary)" }}
-        />
-
-        {/* Comments */}
-        <div className="mt-12 border-t pt-8" style={{ borderColor: "var(--border)" }}>
-          <h2 className="font-logo font-semibold mb-4 text-base tracking-wide" style={{ color: "var(--text-primary)" }}>
-            Comments ({comments.length})
-          </h2>
-
-          {isLoggedIn ? (
-            <div className="mb-6">
-              <textarea
-                value={comment}
-                onChange={e => setComment(e.target.value)}
-                rows={3}
-                placeholder="Write a comment…"
-                className="w-full px-3 py-2 rounded-lg text-sm outline-none resize-none"
-                style={{ background: "var(--bg-elevated)", color: "var(--text-primary)", border: "1px solid var(--border)" }}
-              />
-              {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
-              <button onClick={submitComment} disabled={posting || !comment.trim()}
-                className="aura-rating-btn mt-2 disabled:opacity-50">
-                {posting ? "Posting…" : "Post"}
-              </button>
+      <SEO title={article.title} description={article.title} path={`/blog/${slug}`} />
+      <div className="bl-page" style={{ "--c": th.c }}>
+        <PageGlow tint={th.c} />
+        <article className="bp-article">
+          <div className="bp-crumb">
+            <span><Link to="/blog">Blog</Link>{th.tag && <> <i>/</i> <em>{th.tag}</em></>}</span>
+            <button onClick={share}>{copied ? "Link copied" : "Share"}</button>
+          </div>
+          <h1>{article.title}</h1>
+          <div className="bp-by">
+            <span className="av">{(article.author || "?")[0].toUpperCase()}</span>
+            <span>{[article.author, fmtDate(article.created_at), minutes ? `${minutes} min read` : null].filter(Boolean).join(" · ")}</span>
+            {user?.role === "admin" && <Link to={`/admin/articles/${article.id}/edit`}>Edit</Link>}
+          </div>
+          {(article.cover_image_url || th.art) && (
+            <div className="bp-hero">
+              {article.cover_image_url ? <img className="cover" src={article.cover_image_url} alt="" /> : <img className="art" src={th.art} alt="" />}
             </div>
-          ) : (
-            <p className="text-sm mb-6" style={{ color: "var(--text-muted)" }}>
-              <Link to="/login" style={{ color: "var(--accent)" }}>Log in</Link> to comment.
-            </p>
           )}
+          <div className="prose-nba bp-prose" dangerouslySetInnerHTML={{ __html: html }} />
 
-          <div className="space-y-3">
-            {comments.map(c => (
-              <div key={c.id} className="aura-glass p-3 rounded">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-semibold" style={{ color: "var(--accent)" }}>{c.username}</span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs" style={{ color: "var(--text-muted)" }}>
-                      {new Date(c.created_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
-                    </span>
-                    {(user?.id === c.user_id || user?.role === "admin") && (
-                      <button onClick={() => deleteComment(c.id)} className="text-xs text-red-400 hover:text-red-300">✕</button>
-                    )}
-                  </div>
+          <section className="bp-comments">
+            <h2>Comments{comments.length > 0 && <em>{comments.length}</em>}</h2>
+            {isLoggedIn ? (
+              <div className="bp-write">
+                <textarea value={comment} onChange={e => setComment(e.target.value)} rows={3} placeholder="Add to the conversation" aria-label="Write a comment" />
+                {error && <p className="bp-err">{error}</p>}
+                <button onClick={submitComment} disabled={posting || !comment.trim()} className="pa-btn-primary">{posting ? "Posting…" : "Post comment"}</button>
+              </div>
+            ) : (
+              <p className="bp-signin"><Link to={`/login?next=/blog/${slug}`}>Sign in</Link> to comment.</p>
+            )}
+            {comments.length === 0 ? <p className="bp-none">No comments yet — be the first.</p> : comments.map(c => (
+              <div key={c.id} className="bp-c">
+                <div className="h">
+                  <b>{c.username}</b>
+                  <span>{fmtDate(c.created_at)}</span>
+                  {(user?.id === c.user_id || user?.role === "admin") && <button onClick={() => deleteComment(c.id)}>Delete</button>}
                 </div>
-                <p className="text-sm" style={{ color: "var(--text-primary)" }}>{c.content}</p>
+                <p>{c.content}</p>
               </div>
             ))}
-          </div>
-        </div>
-
+          </section>
+        </article>
       </div>
-    </div>
     </>
   );
 }
