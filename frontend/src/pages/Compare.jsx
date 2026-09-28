@@ -1,105 +1,92 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Search } from "lucide-react";
 import { api } from "../api";
-import RadarProfile from "../components/RadarProfile";
 import PlayerCard from "../components/PlayerCard";
+import PaIcon from "../components/shell/PaIcon";
+import ExploreHeader from "../components/explore/ExploreHeader";
 import { useLang } from "../contexts/LanguageContext";
 import { ARCHETYPE_COLOR as ARCH_COLOR } from "../constants/archetypeColors";
 
+// ── Explore · Compare (handoff 8b / mobil 19e) ──────────────────────────────
+// İki kart, ortada VS + rol benzerliği (12 arketip skorunun merkezlenmiş
+// kosinüsü) ve veriden kurulan tek cümle. Altta üst üste 12 eksenli radar |
+// kazanan tarafın parladığı H2H satırları. Her oyuncu kendi sezonundan
+// seçilebilir (eralar arası). URL: ?a=&as=&b=&bs=
+// İlk açılışta boş sayfa yerine sezonun ilk iki oyuncusu yüklenir.
+
 const CORE = ["Engine","Ecosystem","Hub","Connector","Creator","Anchor","Spacer","Finisher","Force","Initiator","Stopper","Rim Runner"];
+const CURRENT = "2025-26";
+const YOU = "#60a5fa", OPP = "#f87171";
 
-const A_COLOR = "#FFB11B";
-const B_COLOR = "#60a5fa";
+const lastName = (n = "") => n.split(" ").slice(-1)[0];
+const initials = (n = "") => n.split(" ").filter(Boolean).slice(0, 2).map(w => w[0]).join("").toUpperCase();
 
-function SeasonSelect({ value, onChange, seasons }) {
-  return (
-    <div className="aura-select-wrap" style={{ width: "100%" }}>
-      <select value={value} onChange={e => onChange(e.target.value)}
-        className="aura-select" style={{ width: "100%" }}>
-        {seasons.map(s => <option key={s} value={s}>{s}</option>)}
-      </select>
-    </div>
-  );
-}
-
-function toCardShape(detail, season) {
-  if (!detail) return null;
+function toCardShape(d) {
+  if (!d) return null;
   return {
-    PLAYER_NAME: detail.name,
-    TEAM_ABBREVIATION: detail.team,
-    POSITION: detail.position,
-    primary_arch: detail.primary_arch,
-    overall_score: detail.overall_score,
-    overall_pct: detail.overall_pct,
-    PTS: detail.pts, REB: detail.reb, AST: detail.ast, GP: detail.gp,
+    PLAYER_NAME: d.name, TEAM_ABBREVIATION: d.team, POSITION: d.position,
+    primary_arch: d.primary_arch, overall_score: d.overall_score, overall_pct: d.overall_pct,
+    PTS: d.pts, REB: d.reb, AST: d.ast, GP: d.gp, overall_tier: d.overall_tier || "",
   };
 }
 
-function PlayerSearch({ side, season, onSelect, lang }) {
-  const [query, setQuery]   = useState("");
-  const [results, setResults] = useState([]);
-  const [open, setOpen]     = useState(false);
+function centered(scores) {
+  const v = CORE.map(c => Number(scores?.[c] ?? 0));
+  const m = v.reduce((a, b) => a + b, 0) / v.length;
+  return v.map(x => x - m);
+}
+function cosine(a, b) {
+  let d = 0, na = 0, nb = 0;
+  for (let i = 0; i < a.length; i++) { d += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i]; }
+  return na && nb ? d / Math.sqrt(na * nb) : 0;
+}
+
+/* Oyuncu seçici: sezon + arama (sonuçlar açılır liste) */
+function Picker({ season, seasons, onSeason, onPick, color, lang }) {
+  const [q, setQ] = useState("");
+  const [res, setRes] = useState([]);
+  const [open, setOpen] = useState(false);
   const timer = useRef(null);
-  const ref   = useRef(null);
+  const ref = useRef(null);
 
   useEffect(() => {
-    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    const h = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
   }, []);
+  useEffect(() => { setQ(""); setRes([]); setOpen(false); }, [season]);
 
-  // Sezon değişince arama sıfırla
-  useEffect(() => { setQuery(""); setResults([]); setOpen(false); }, [season]);
-
-  const handleChange = (val) => {
-    setQuery(val);
+  const change = (v) => {
+    setQ(v);
     clearTimeout(timer.current);
-    if (val.length < 2) { setResults([]); setOpen(false); return; }
+    if (v.trim().length < 2) { setRes([]); setOpen(false); return; }
     timer.current = setTimeout(async () => {
       try {
-        const d = await api.historical(season, { search: val, limit: 8 });
-        setResults(d.players || []);
-        setOpen(true);
-      } catch {}
+        const d = await api.historical(season, { search: v, limit: 8 });
+        setRes(d.players || []); setOpen(true);
+      } catch { /* sessiz: liste boş kalır */ }
     }, 280);
   };
 
-  const pick = (p) => { setQuery(p.PLAYER_NAME); setOpen(false); onSelect(p.PLAYER_NAME); };
-  const sideColor = side === "a" ? A_COLOR : B_COLOR;
-  const label = side === "a"
-    ? (lang === "tr" ? "Oyuncu A ara..." : "Search player A...")
-    : (lang === "tr" ? "Oyuncu B ara..." : "Search player B...");
-
   return (
-    <div ref={ref} className="relative">
-      <div className="relative flex items-center gap-2 pb-1.5" style={{ borderBottom: `1px solid ${sideColor}40` }}>
-        <Search size={13} style={{ color: sideColor, flexShrink: 0 }} />
-        <input value={query} onChange={e => handleChange(e.target.value)}
-          onFocus={() => results.length && setOpen(true)}
-          placeholder={label}
-          className="w-full bg-transparent text-sm focus:outline-none"
-          style={{ color: "var(--text-primary)" }}
-        />
-      </div>
-      {open && results.length > 0 && (
-        <div className="aura-glass absolute top-full left-0 right-0 z-20 rounded-xl mt-1.5 overflow-hidden"
-          style={{ boxShadow: "0 14px 30px -10px rgba(0,0,0,.6)" }}>
-          {results.map((p, i) => (
-            <button key={i} onClick={() => pick(p)}
-              className="w-full flex items-center justify-between px-4 py-2.5 text-left transition-colors"
-              onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,.06)"}
-              onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-              <div>
-                <div className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{p.PLAYER_NAME}</div>
-                <div className="text-[10px]" style={{ color: "var(--text-muted)" }}>
-                  {p.TEAM_ABBREVIATION} · {p.POSITION}
-                </div>
-              </div>
-              <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium"
-                style={{ color: ARCH_COLOR[p.primary_arch] || "var(--accent)", border: `1px solid ${ARCH_COLOR[p.primary_arch] || "var(--accent)"}50` }}>
-                {p.primary_arch}
-              </span>
+    <div ref={ref} className="cmp-picker" style={{ "--c": color }}>
+      <label className="cmp-season">
+        <select value={season} onChange={e => onSeason(e.target.value)} aria-label="Season">
+          {seasons.map(s => <option key={s} value={s}>{s}</option>)}
+        </select>
+        <PaIcon name="chevron" size={14} color="var(--text-muted)" />
+      </label>
+      <label className="ex-search cmp-q" style={{ "--tint": color }}>
+        <PaIcon name="search" size={15} color="var(--text-muted)" />
+        <input value={q} onChange={e => change(e.target.value)} onFocus={() => res.length && setOpen(true)}
+          placeholder={lang === "tr" ? "Oyuncu değiştir" : "Change player"} aria-label="Change player" />
+      </label>
+      {open && res.length > 0 && (
+        <div className="cmp-results" role="listbox">
+          {res.map(p => (
+            <button key={p.PLAYER_NAME} role="option" onClick={() => { setOpen(false); setQ(""); onPick(p.PLAYER_NAME); }}>
+              <span className="nm">{p.PLAYER_NAME}<em>{p.TEAM_ABBREVIATION} · {p.POSITION}</em></span>
+              <span className="ar" style={{ color: ARCH_COLOR[p.primary_arch] || "var(--text-muted)" }}>{p.primary_arch}</span>
             </button>
           ))}
         </div>
@@ -108,225 +95,202 @@ function PlayerSearch({ side, season, onSelect, lang }) {
   );
 }
 
-function StatCell({ label, valA, valB, fmt = (v) => v?.toFixed?.(1) ?? v, higherBetter = true }) {
-  if (valA == null && valB == null) return null;
-  const a = valA != null ? Number(valA) : null;
-  const b = valB != null ? Number(valB) : null;
-  const aWins = a != null && b != null && (higherBetter ? a > b : a < b);
-  const bWins = a != null && b != null && (higherBetter ? b > a : b < a);
+/* 12 eksenli üst üste radar */
+function Radar({ a, b, ca, cb }) {
+  const N = CORE.length, R = 78, C = 100;
+  const pt = (i, v) => {
+    const ang = (Math.PI * 2 * i) / N - Math.PI / 2;
+    return [C + Math.cos(ang) * R * v, C + Math.sin(ang) * R * v];
+  };
+  const poly = (sc) => CORE.map((k, i) => pt(i, Math.max(0.02, Number(sc?.[k] ?? 0))).join(",")).join(" ");
+  const ring = (v) => CORE.map((_, i) => pt(i, v).join(",")).join(" ");
   return (
-    <div className="grid grid-cols-3 items-center py-1.5 border-b text-xs" style={{ borderColor: "var(--border)" }}>
-      <div className="text-right pr-3 font-semibold" style={{ color: aWins ? A_COLOR : "var(--text-primary)" }}>
-        {a != null ? fmt(a) : "—"}
-      </div>
-      <div className="text-center text-[10px] uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>{label}</div>
-      <div className="text-left pl-3 font-semibold" style={{ color: bWins ? B_COLOR : "var(--text-primary)" }}>
-        {b != null ? fmt(b) : "—"}
-      </div>
+    <div className="cmp-radar">
+      <svg viewBox="0 0 200 200" aria-hidden="true">
+        {[0.25, 0.5, 0.75, 1].map(v => <polygon key={v} points={ring(v)} fill="none" stroke="rgba(255,255,255,.07)" />)}
+        {CORE.map((_, i) => { const [x, y] = pt(i, 1); return <line key={i} x1={C} y1={C} x2={x} y2={y} stroke="rgba(255,255,255,.04)" />; })}
+        <polygon points={poly(a)} fill={ca} fillOpacity=".18" stroke={ca} strokeWidth="1.4" style={{ filter: `drop-shadow(0 0 6px ${ca})` }} />
+        <polygon points={poly(b)} fill={cb} fillOpacity=".16" stroke={cb} strokeWidth="1.4" style={{ filter: `drop-shadow(0 0 6px ${cb})` }} />
+      </svg>
+      {CORE.map((k, i) => {
+        const [x, y] = pt(i, 1.2);
+        const tx = x < 90 ? "-100%" : x > 110 ? "0%" : "-50%";
+        return <span key={k} style={{ left: `${x / 2}%`, top: `${y / 2}%`, transform: `translate(${tx}, -50%)` }}>{k}</span>;
+      })}
     </div>
   );
 }
 
-function VSBar({ label, scoreA, scoreB }) {
-  const a = (scoreA || 0) * 100;
-  const b = (scoreB || 0) * 100;
-  const aWins = a > b, bWins = b > a;
+function H2HRow({ label, a, b, ca, cb, fmt = (v) => Math.round(v), bar = true, lowerBetter = false }) {
+  if (a == null && b == null) return null;
+  const aw = a != null && b != null && (lowerBetter ? a < b : a > b);
+  const bw = a != null && b != null && (lowerBetter ? b < a : b > a);
+  const pct = (v) => `${Math.max(0, Math.min(100, v ?? 0))}%`;
   return (
-    <div className="flex items-center gap-2 py-1">
-      <div className="flex-1 flex items-center justify-end gap-1.5">
-        <span className="text-xs font-bold w-8 text-right" style={{ color: aWins ? A_COLOR : "var(--text-muted)" }}>
-          {Math.round(a)}
-        </span>
-        <div className="w-24 rounded-full h-1.5 overflow-hidden flex justify-end" style={{ background: "var(--bg-elevated)" }}>
-          <div className="h-full rounded-full transition-all"
-            style={{ width: `${a}%`, background: aWins ? A_COLOR : "var(--border)" }} />
-        </div>
-      </div>
-      <div className="w-20 text-center text-[10px] shrink-0" style={{ color: "var(--text-muted)" }}>{label}</div>
-      <div className="flex-1 flex items-center gap-1.5">
-        <div className="w-24 rounded-full h-1.5 overflow-hidden" style={{ background: "var(--bg-elevated)" }}>
-          <div className="h-full rounded-full transition-all"
-            style={{ width: `${b}%`, background: bWins ? B_COLOR : "var(--border)" }} />
-        </div>
-        <span className="text-xs font-bold w-8" style={{ color: bWins ? B_COLOR : "var(--text-muted)" }}>
-          {Math.round(b)}
-        </span>
-      </div>
+    <div className={`cmp-row${bar ? "" : " nobar"}`}>
+      <b style={{ color: aw ? ca : "var(--text-secondary)", textShadow: aw ? `0 0 12px ${ca}88` : "none" }}>{a != null ? fmt(a) : "—"}</b>
+      {bar && <div className="tr l"><i style={{ width: pct(a), background: ca, opacity: aw ? 1 : 0.45, boxShadow: aw ? `0 0 10px ${ca}` : "none" }} /></div>}
+      <span>{label}</span>
+      {bar && <div className="tr"><i style={{ width: pct(b), background: cb, opacity: bw ? 1 : 0.45, boxShadow: bw ? `0 0 10px ${cb}` : "none" }} /></div>}
+      <b className="r" style={{ color: bw ? cb : "var(--text-secondary)", textShadow: bw ? `0 0 12px ${cb}88` : "none" }}>{b != null ? fmt(b) : "—"}</b>
     </div>
   );
-}
-
-function PlayerHeader({ detail, loading, side, season }) {
-  const sideColor = side === "a" ? A_COLOR : B_COLOR;
-  if (loading) return (
-    <div className="aura-glass rounded-2xl p-6 w-[280px] h-[120px] animate-pulse" />
-  );
-  if (!detail) return (
-    <div className="rounded-2xl p-6 text-center w-[280px] h-[120px] flex items-center justify-center"
-      style={{ border: `1px dashed ${sideColor}40`, color: "var(--text-faint)" }}>
-      {side === "a" ? "Player A" : "Player B"}
-    </div>
-  );
-  return <PlayerCard player={toCardShape(detail, season)} season={season !== "2025-26" ? season : undefined} />;
 }
 
 export default function CompareContent() {
   const { lang } = useLang();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const [seasons, setSeasons]   = useState(["2025-26"]);
-  const [seasonA, setSeasonA]   = useState("2025-26");
-  const [seasonB, setSeasonB]   = useState("2025-26");
-  const [detailA, setDetailA]   = useState(null);
-  const [detailB, setDetailB]   = useState(null);
-  const [loadingA, setLoadingA] = useState(false);
-  const [loadingB, setLoadingB] = useState(false);
+  const [seasons, setSeasons] = useState([CURRENT]);
+  const [side, setSide] = useState({
+    a: { name: searchParams.get("a"), season: searchParams.get("as") || CURRENT, detail: null, loading: false },
+    b: { name: searchParams.get("b"), season: searchParams.get("bs") || CURRENT, detail: null, loading: false },
+  });
+  const [copied, setCopied] = useState(false);
 
-  // Sezonları yükle
   useEffect(() => {
-    api.seasons().then(d => setSeasons(d.seasons || ["2025-26"])).catch(() => {});
+    api.seasons().then(d => setSeasons([CURRENT, ...(d.seasons || []).filter(s => s !== CURRENT)])).catch(() => {});
   }, []);
 
-  const loadPlayer = async (side, name, season) => {
-    const setDetail  = side === "a" ? setDetailA : setDetailB;
-    const setLoading = side === "a" ? setLoadingA : setLoadingB;
-    setLoading(true);
+  const load = async (k, name, season) => {
+    setSide(s => ({ ...s, [k]: { ...s[k], name, season, loading: true } }));
     try {
-      const data = await api.historicalPlayer(season, name);
-      setDetail(data);
-      const p = new URLSearchParams(searchParams);
-      p.set(side, name);
-      p.set(side + "s", season);
-      setSearchParams(p, { replace: true });
-    } catch (e) { console.error(e); }
-    setLoading(false);
+      const d = await api.historicalPlayer(season, name);
+      setSide(s => ({ ...s, [k]: { name, season, detail: d, loading: false } }));
+    } catch {
+      setSide(s => ({ ...s, [k]: { ...s[k], loading: false } }));
+    }
   };
 
-  // URL params'tan restore
+  // İlk yükleme: URL'dekiler, yoksa sezonun en yüksek iki overall'ı
   useEffect(() => {
-    const a  = searchParams.get("a");
-    const b  = searchParams.get("b");
-    const as_ = searchParams.get("as") || "2025-26";
-    const bs_ = searchParams.get("bs") || "2025-26";
-    if (a) { setSeasonA(as_); loadPlayer("a", a, as_); }
-    if (b) { setSeasonB(bs_); loadPlayer("b", b, bs_); }
+    const a = searchParams.get("a"), b = searchParams.get("b");
+    if (a) load("a", a, side.a.season);
+    if (b) load("b", b, side.b.season);
+    if (!a || !b) {
+      api.players({ limit: 2, sort_by: "overall_score" }).then(d => {
+        const [p1, p2] = d.players || [];
+        if (!a && p1) load("a", p1.PLAYER_NAME, CURRENT);
+        if (!b && p2) load("b", p2.PLAYER_NAME, CURRENT);
+      }).catch(() => {});
+    }
   }, []); // eslint-disable-line
 
-  const bothLoaded = detailA && detailB;
+  // URL'yi senkron tut (paylaşılabilir karşılaştırma)
+  useEffect(() => {
+    const p = new URLSearchParams();
+    if (side.a.detail) { p.set("a", side.a.name); p.set("as", side.a.season); }
+    if (side.b.detail) { p.set("b", side.b.name); p.set("bs", side.b.season); }
+    setSearchParams(p, { replace: true });
+  }, [side.a.detail, side.b.detail]); // eslint-disable-line
 
-  const bpmFmt = (v) => v != null ? (v > 0 ? `+${v.toFixed(1)}` : v.toFixed(1)) : null;
+  const A = side.a.detail, B = side.b.detail;
+  const archA = A?.primary_arch, archB = B?.primary_arch;
+  // Aynı arketipse iki taraf aynı renge düşmesin
+  const ca = archA && archA !== archB ? ARCH_COLOR[archA] : YOU;
+  const cb = archB && archA !== archB ? ARCH_COLOR[archB] : OPP;
+
+  const sim = useMemo(() => (A && B ? cosine(centered(A.scores), centered(B.scores)) : null), [A, B]);
+  const verdict = useMemo(() => {
+    if (!A || !B) return "";
+    const rows = CORE.map(k => ({ k, a: Number(A.scores?.[k] ?? 0), b: Number(B.scores?.[k] ?? 0) }));
+    const shared = [...rows].sort((x, y) => Math.min(y.a, y.b) - Math.min(x.a, x.b))[0];
+    const split = [...rows].sort((x, y) => Math.abs(y.a - y.b) - Math.abs(x.a - x.b))[0];
+    const who = split.a > split.b ? lastName(A.name) : lastName(B.name);
+    const both = Math.min(shared.a, shared.b) >= 0.7
+      ? `Both rate high as ${shared.k}.`
+      : `Their closest ground is ${shared.k}.`;
+    return `${both} They split most on ${split.k}, where ${who} is far ahead.`;
+  }, [A, B]);
+
+  const swap = () => setSide(s => ({ a: s.b, b: s.a }));
+  const share = async () => {
+    const url = window.location.href;
+    if (navigator.share) await navigator.share({ title: "Primary Arch comparison", url }).catch(() => {});
+    else { await navigator.clipboard.writeText(url).catch(() => {}); setCopied(true); setTimeout(() => setCopied(false), 2000); }
+  };
+  const sameSeason = side.a.season === side.b.season;
+  const bpmFmt = (v) => (v > 0 ? `+${v.toFixed(1)}` : v.toFixed(1));
+
+  // Bileşen değil düz fonksiyon: her render'da yeniden kurulup aramayı sıfırlamasın
+  const renderSide = (k, d, color) => (
+    <div className="cmp-side">
+      <div className="cmp-card">
+        {d ? <PlayerCard player={toCardShape(d)} season={side[k].season !== CURRENT ? side[k].season : undefined} expandable />
+           : <div className="cmp-slot">{side[k].loading ? "Loading…" : "Pick a player"}</div>}
+      </div>
+      <div className="cmp-av" style={{ "--c": color }}>
+        <span className="av">{d ? initials(d.name) : "?"}</span>
+        <b>{d?.name || "Pick a player"}</b>
+        {d && <em>{d.primary_arch}</em>}
+      </div>
+      <Picker season={side[k].season} seasons={seasons} color={color} lang={lang}
+        onSeason={(s) => setSide(st => ({ ...st, [k]: { ...st[k], season: s } }))}
+        onPick={(n) => load(k, n, side[k].season)} />
+    </div>
+  );
 
   return (
-    <div className="h-full overflow-y-auto">
-      <div className="p-4 md:p-6 max-w-4xl mx-auto">
-        <div className="mb-5">
-          <h2 className="font-semibold text-base" style={{ color: "var(--text-primary)" }}>
-            {lang === "tr" ? "Oyuncu Karşılaştırma" : "Player Comparison"}
-          </h2>
-          <p className="text-sm mt-0.5" style={{ color: "var(--text-muted)" }}>
-            {lang === "tr"
-              ? "Farklı eralardan iki oyuncuyu karşılaştır — sezon bağımsız"
-              : "Compare players across eras — each player can be from a different season"}
-          </p>
+    <div className="ex-page">
+      <div className="cmp-glow" aria-hidden="true" style={{ "--a": ca, "--b": cb }} />
+      <div className="ex-inner">
+        <ExploreHeader active="compare" />
+
+        <div className="cmp-top">
+          {renderSide("a", A, ca)}
+          <div className="cmp-vs">
+            <span className="vs">VS</span>
+            {sim != null && (
+              <>
+                <span className="lbl">Role similarity</span>
+                {/* kosinüs [-1,1] → 0–100: zıt profil 0, ilgisiz 50, aynı 100 */}
+                <span className="pct">{Math.round(((sim + 1) / 2) * 100)}%</span>
+                <p>{verdict}</p>
+              </>
+            )}
+            <div className="cmp-actions">
+              <button className="pa-btn-secondary" onClick={swap} disabled={!A && !B}>Swap sides</button>
+              <button className="pa-btn-secondary cmp-share" onClick={share} disabled={!A || !B}>{copied ? "Link copied" : "Share comparison"}</button>
+            </div>
+          </div>
+          {renderSide("b", B, cb)}
         </div>
 
-        {/* Season selectors */}
-        <div className="grid grid-cols-2 gap-3 mb-2">
-          <SeasonSelect value={seasonA} onChange={s => { setSeasonA(s); setDetailA(null); }} seasons={seasons} />
-          <SeasonSelect value={seasonB} onChange={s => { setSeasonB(s); setDetailB(null); }} seasons={seasons} />
-        </div>
-
-        {/* Player search */}
-        <div className="grid grid-cols-2 gap-3 mb-5">
-          <PlayerSearch side="a" season={seasonA} onSelect={n => loadPlayer("a", n, seasonA)} lang={lang} />
-          <PlayerSearch side="b" season={seasonB} onSelect={n => loadPlayer("b", n, seasonB)} lang={lang} />
-        </div>
-
-        {/* Player headers — real cards, front face only */}
-        <div className="flex flex-wrap justify-center gap-4 mb-5">
-          <PlayerHeader detail={detailA} loading={loadingA} side="a" season={seasonA} />
-          <PlayerHeader detail={detailB} loading={loadingB} side="b" season={seasonB} />
-        </div>
-
-        {bothLoaded && (
+        {A && B && (
           <>
-            {/* Dual Radar */}
-            <div className="aura-glass rounded-2xl p-4 mb-4">
-              <div className="text-[10px] uppercase tracking-wider mb-2 text-center" style={{ color: "var(--text-faint)" }}>
-                Archetype Radar
-              </div>
-              <RadarProfile
-                scores={detailA.scores} scores2={detailB.scores}
-                name={detailA.name} name2={detailB.name}
-                primaryArch={detailA.primary_arch} primaryArch2={detailB.primary_arch}
-              />
-            </div>
-
-            {/* Stats */}
-            <div className="aura-glass rounded-2xl p-4 mb-4">
-              <div className="text-[10px] uppercase tracking-wider mb-3 text-center" style={{ color: "var(--text-faint)" }}>
-                Stats
-              </div>
-              <div className="grid grid-cols-3 text-[10px] mb-1">
-                <div className="text-right pr-3 font-medium" style={{ color: A_COLOR }}>
-                  {detailA.name?.split(" ").pop()}
-                  {seasonA !== "2025-26" && <span className="ml-1 opacity-60">'{seasonA.slice(2,4)}</span>}
+            <div className="ex-divider" />
+            <div className="cmp-bottom">
+              <section className="ex-panel">
+                <div className="ex-h">
+                  <span>Archetype profile</span>
+                  <span className="cmp-legend"><i style={{ color: ca }}>● {lastName(A.name)}</i><i style={{ color: cb }}>● {lastName(B.name)}</i></span>
                 </div>
-                <div />
-                <div className="text-left pl-3 font-medium" style={{ color: B_COLOR }}>
-                  {detailB.name?.split(" ").pop()}
-                  {seasonB !== "2025-26" && <span className="ml-1 opacity-60">'{seasonB.slice(2,4)}</span>}
-                </div>
-              </div>
-              <StatCell label="PTS"     valA={detailA.pts}          valB={detailB.pts}          fmt={(v) => v?.toFixed(1)} />
-              <StatCell label="REB"     valA={detailA.reb}          valB={detailB.reb}          fmt={(v) => v?.toFixed(1)} />
-              <StatCell label="AST"     valA={detailA.ast}          valB={detailB.ast}          fmt={(v) => v?.toFixed(1)} />
-              <StatCell label="BPM"     valA={detailA.bpm}          valB={detailB.bpm}          fmt={bpmFmt} />
-              <StatCell label="OBPM"    valA={detailA.obpm}         valB={detailB.obpm}         fmt={bpmFmt} />
-              <StatCell label="DBPM"    valA={detailA.dbpm}         valB={detailB.dbpm}         fmt={bpmFmt} />
-              <StatCell label="GP"      valA={detailA.gp}           valB={detailB.gp}           fmt={(v) => v} />
-              <StatCell label="Overall" valA={detailA.overall_score} valB={detailB.overall_score} fmt={(v) => v != null ? Math.round(v * 100) : null} />
-            </div>
+                <Radar a={A.scores} b={B.scores} ca={ca} cb={cb} />
+              </section>
 
-            {/* VS bars */}
-            <div className="aura-glass rounded-2xl p-4">
-              <div className="text-[10px] uppercase tracking-wider mb-3 text-center" style={{ color: "var(--text-faint)" }}>
-                Component Scores
-              </div>
-              <div className="flex items-center gap-2 mb-2">
-                <div className="flex-1 text-right text-[10px] font-medium pr-2 truncate" style={{ color: A_COLOR }}>{detailA.name}</div>
-                <div className="w-20 shrink-0" />
-                <div className="flex-1 text-left text-[10px] font-medium pl-2 truncate" style={{ color: B_COLOR }}>{detailB.name}</div>
-              </div>
-              {CORE.map(c => (
-                <VSBar key={c} label={c} scoreA={detailA.scores?.[c]} scoreB={detailB.scores?.[c]} />
-              ))}
-              <div className="mt-4 pt-3 border-t grid grid-cols-2 gap-2" style={{ borderColor: "var(--border)" }}>
-                {[["a", detailA, A_COLOR], ["b", detailB, B_COLOR]].map(([side, detail, color]) => (
-                  <div key={side}>
-                    <div className="text-[9px] uppercase tracking-wide mb-1" style={{ color }}>Modifiers</div>
-                    <div className="flex flex-wrap gap-1">
-                      {(detail.active_modifiers || []).map(m => (
-                        <span key={m} className="text-[9px] px-1.5 py-0.5 rounded"
-                          style={{ color, background: `${color}15`, border: `1px solid ${color}30` }}>{m}</span>
-                      ))}
-                      {!detail.active_modifiers?.length && (
-                        <span className="text-[9px]" style={{ color: "var(--text-faint)" }}>—</span>
-                      )}
-                    </div>
-                  </div>
+              <section className="ex-panel cmp-h2h">
+                <div className="ex-h">
+                  <span>Head to head</span>
+                  <em>{sameSeason ? `Percentile within the ${side.a.season} season` : "Percentile within each player's own season"}</em>
+                </div>
+                {CORE.map(k => (
+                  <H2HRow key={k} label={k} ca={ca} cb={cb}
+                    a={A.scores?.[k] != null ? A.scores[k] * 100 : null}
+                    b={B.scores?.[k] != null ? B.scores[k] * 100 : null} />
                 ))}
-              </div>
+                <div className="ex-h cmp-sub"><span>Season stats</span></div>
+                <H2HRow bar={false} label="Overall" ca={ca} cb={cb}
+                  a={A.overall_score != null ? A.overall_score * 100 : null} b={B.overall_score != null ? B.overall_score * 100 : null} />
+                <H2HRow bar={false} label="Points" a={A.pts} b={B.pts} ca={ca} cb={cb} fmt={v => v.toFixed(1)} />
+                <H2HRow bar={false} label="Rebounds" a={A.reb} b={B.reb} ca={ca} cb={cb} fmt={v => v.toFixed(1)} />
+                <H2HRow bar={false} label="Assists" a={A.ast} b={B.ast} ca={ca} cb={cb} fmt={v => v.toFixed(1)} />
+                <H2HRow bar={false} label="BPM" a={A.bpm} b={B.bpm} ca={ca} cb={cb} fmt={bpmFmt} />
+                <H2HRow bar={false} label="Offensive BPM" a={A.obpm} b={B.obpm} ca={ca} cb={cb} fmt={bpmFmt} />
+                <H2HRow bar={false} label="Defensive BPM" a={A.dbpm} b={B.dbpm} ca={ca} cb={cb} fmt={bpmFmt} />
+                <H2HRow bar={false} label="Games" a={A.gp} b={B.gp} ca={ca} cb={cb} fmt={v => v} />
+              </section>
             </div>
           </>
-        )}
-
-        {!detailA && !detailB && (
-          <div className="text-center py-16 text-sm" style={{ color: "var(--text-faint)" }}>
-            {lang === "tr"
-              ? "Sezon seçip iki oyuncu ara, era'lar arası karşılaştır"
-              : "Select a season and search two players to compare across eras"}
-          </div>
         )}
       </div>
     </div>

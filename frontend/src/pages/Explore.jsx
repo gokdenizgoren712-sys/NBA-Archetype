@@ -1,10 +1,18 @@
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { api } from "../api";
 import { useLang } from "../contexts/LanguageContext";
-import ScoreBar from "../components/ScoreBar";
-import SplitPane from "../components/SplitPane";
-import { Logo } from "../components/BrandIcons";
+import PlayerCard from "../components/PlayerCard";
+import PaIcon from "../components/shell/PaIcon";
+import { PageGlow } from "../components/states/States";
+import ExploreHeader from "../components/explore/ExploreHeader";
 import { ARCHETYPE_COLOR as ARCH_COLORS } from "../constants/archetypeColors";
+
+// ── Explore · Map (handoff 8a / mobil 19d) ──────────────────────────────────
+// Lejant çipleri artık haritayı filtreliyor (önceden yalnızca açıklamaydı,
+// filtre ayrı bir açılır kutudaydı); seçili olmayanlar söner, sayfa ışığı
+// o arketipin rengine geçer. Sağda seçili oyuncunun kartı + en yakın profiller;
+// mobilde alttan seçili oyuncu şeridi.
 
 const CORE = ["Engine","Ecosystem","Hub","Connector","Creator","Anchor","Spacer",
               "Finisher","Force","Initiator","Stopper","Rim Runner"];
@@ -25,16 +33,8 @@ const ARCH_ANCHORS = {
 };
 
 const INFO = {
-  en: {
-    xLeft: "Off-ball specialist", xRight: "Ball-dominant / Creator",
-    yBottom: "Interior / Big",    yTop: "Perimeter / Wing",
-    tip: "Each dot is a player positioned by their 12-dimensional archetype score vector. Nearby players share similar role profiles. Click a dot to inspect, scroll/pinch to zoom.",
-  },
-  tr: {
-    xLeft: "Off-ball / Rol oyuncusu", xRight: "Topla dominant / Yaratıcı",
-    yBottom: "İç saha / Büyük",       yTop: "Dış hat / Kanat",
-    tip: "Her nokta bir oyuncu; 12 arketip skoru ağırlıklı ortalamayla konumlandırılır. Yakın oyuncular benzer rolleri paylaşır. Tıkla detayı gör, kaydır/sıkıştır zoom yap.",
-  },
+  en: { xLeft: "Off-ball specialist", xRight: "Ball-dominant / Creator", yBottom: "Interior / Big", yTop: "Perimeter / Wing" },
+  tr: { xLeft: "Off-ball / Rol oyuncusu", xRight: "Topla dominant / Yaratıcı", yBottom: "İç saha / Büyük", yTop: "Dış hat / Kanat" },
 };
 
 function playerPos(player) {
@@ -57,85 +57,25 @@ function playerPos(player) {
   return { x: Math.max(0.02, Math.min(0.98, x)), y: Math.max(0.02, Math.min(0.98, y)) };
 }
 
-/* ── Player detail panel ─────────────────────────────────────────── */
-function PlayerDetail({ player }) {
-  if (!player) return (
-    <div className="flex items-center justify-center h-full">
-      <div className="text-center">
-        <div className="flex justify-center mb-3 opacity-10"><Logo size={44} /></div>
-        <div className="text-sm" style={{ color: "var(--text-muted)" }}>Click a dot on the map</div>
-      </div>
-    </div>
-  );
-
-  const archColor = ARCH_COLORS[player.primary_arch] || "var(--accent)";
-  const overall = player.overall_score != null ? Math.round(player.overall_score * 100) : null;
-
-  const scores = CORE.map(c => ({
-    arch: c,
-    val: parseFloat(player[`score_${c}`] || 0),
-  })).sort((a, b) => b.val - a.val);
-
-  return (
-    <div className="p-4">
-      {/* Header */}
-      <div className="mb-4 pb-4">
-        <div className="font-logo font-bold text-base" style={{ color: "var(--text-primary)" }}>
-          {player.PLAYER_NAME}
-        </div>
-        <div className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
-          {player.TEAM_ABBREVIATION} · {player.POSITION}
-        </div>
-        <div className="flex items-center gap-3 mt-2">
-          <span className="text-sm font-semibold px-2 py-0.5 rounded"
-            style={{ color: archColor, border: `1px solid ${archColor}50`, background: `${archColor}15` }}>
-            {player.primary_arch}
-          </span>
-          {overall != null && (
-            <span className="font-logo text-2xl font-bold tabular-nums" style={{ color: "var(--accent)" }}>{overall}</span>
-          )}
-        </div>
-      </div>
-
-      {/* Secondary archetypes */}
-      <div className="mb-2 text-[10px] uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>
-        Archetype Scores
-      </div>
-      <div className="space-y-1">
-        {scores.map(({ arch, val }) => (
-          <ScoreBar key={arch} label={arch} value={val}
-            highlight={arch === player.primary_arch} />
-        ))}
-      </div>
-
-      {/* Modifier tags */}
-      {(() => {
-        const tags = CORE.filter(c => c !== player.primary_arch && parseFloat(player[`score_${c}`] || 0) >= 0.70);
-        if (!tags.length) return null;
-        return (
-          <div className="mt-4">
-            <div className="mb-2 text-[10px] uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>
-              Secondary Strengths
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {tags.sort((a, b) => parseFloat(player[`score_${b}`]) - parseFloat(player[`score_${a}`])).map(c => (
-                <span key={c} className="text-[10px] px-2 py-0.5 rounded font-medium"
-                  style={{ color: ARCH_COLORS[c], border: `1px solid ${ARCH_COLORS[c]}40`, background: `${ARCH_COLORS[c]}15` }}>
-                  {c}
-                </span>
-              ))}
-            </div>
-          </div>
-        );
-      })()}
-    </div>
-  );
+// 12 arketip skorunun ortalamadan arındırılmış kosinüs benzerliği — ham
+// persantil vektörlerinde herkes ~0.9 çıkıyor, merkezleyince ayrışıyor
+// (comparables.py'deki desenle aynı).
+function centered(p) {
+  const v = CORE.map(c => parseFloat(p[`score_${c}`] ?? 0) || 0);
+  const m = v.reduce((a, b) => a + b, 0) / v.length;
+  return v.map(x => x - m);
 }
+function cosine(a, b) {
+  let d = 0, na = 0, nb = 0;
+  for (let i = 0; i < a.length; i++) { d += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i]; }
+  return na && nb ? d / Math.sqrt(na * nb) : 0;
+}
+const initials = (n = "") => n.split(" ").filter(Boolean).slice(0, 2).map(w => w[0]).join("").toUpperCase();
 
-/* ── Main ────────────────────────────────────────────────────────── */
 export default function ExploreContent() {
   const { lang } = useLang();
   const info = INFO[lang] || INFO.en;
+  const navigate = useNavigate();
 
   const [players, setPlayers]   = useState([]);
   const [loading, setLoading]   = useState(true);
@@ -150,10 +90,8 @@ export default function ExploreContent() {
   const mapWrapRef      = useRef(null);
   const [camAnimating, setCamAnimating] = useState(false);
   const camTimerRef     = useRef(null);
-  // focusMode: sadece filtrelenen arketipin oyuncuları, kendi bağımsız
-  // (yeniden ölçeklenmiş) düzeninde gösteriliyor — aralarındaki gerçek
-  // boşluğu görmek için tüm alanı kullanır. Aynı x/y ekseni ANLAMI korunur,
-  // sadece o alt-kümenin min-max aralığına yeniden ölçeklenir.
+  // focusMode: yalnızca filtrelenen arketipin oyuncuları, kendi min-max
+  // aralığına yeniden ölçeklenmiş düzende (aynı eksen anlamı, dolu alan).
   const [focusMode, setFocusMode] = useState(false);
   const focusTimerRef = useRef(null);
   const flyTo = useCallback((nextZoom, nextPan) => {
@@ -165,10 +103,17 @@ export default function ExploreContent() {
   }, []);
   const resetView = useCallback(() => flyTo(1, { x: 0, y: 0 }), [flyTo]);
 
-  const onWheel = useCallback(e => {
-    e.preventDefault();
-    setZoom(z => Math.max(0.5, Math.min(8, z * (e.deltaY < 0 ? 1.15 : 1 / 1.15))));
-  }, []);
+  // wheel React'te pasif — preventDefault için yerel dinleyici
+  useEffect(() => {
+    const el = mapWrapRef.current;
+    if (!el) return;
+    const onWheel = (e) => {
+      e.preventDefault();
+      setZoom(z => Math.max(0.5, Math.min(8, z * (e.deltaY < 0 ? 1.15 : 1 / 1.15))));
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, [loading]);
 
   const onTouchStart = useCallback(e => {
     if (e.touches.length === 2) {
@@ -181,7 +126,6 @@ export default function ExploreContent() {
   }, [zoom, pan]);
 
   const onTouchMove = useCallback(e => {
-    e.preventDefault();
     if (e.touches.length === 2 && touchRef.current.startDist) {
       const dx = e.touches[0].clientX - e.touches[1].clientX;
       const dy = e.touches[0].clientY - e.touches[1].clientY;
@@ -190,77 +134,85 @@ export default function ExploreContent() {
       setPan({ x: e.touches[0].clientX - touchRef.current.startPan.x, y: e.touches[0].clientY - touchRef.current.startPan.y });
     }
   }, []);
-
   const onTouchEnd = useCallback(() => { touchRef.current = {}; }, []);
 
   useEffect(() => {
-    api.players({ limit: 500, sort_by: "overall_score" }).then(d => {
-      setPlayers(d.players || []);
-      setLoading(false);
-    });
+    api.players({ limit: 500, sort_by: "overall_score" })
+      .then(d => setPlayers(d.players || []))
+      .catch(() => setPlayers([]))
+      .finally(() => setLoading(false));
   }, []);
 
-  const W = 720, H = 520, PAD = 56;
+  // viewBox yüksekliği kutunun oranını izler — sabit 720×520 dar/uzun mobil
+  // kutuda haritayı ince bir şeride sıkıştırıyordu (ResizeObserver panelde
+  // güvenilmez, pencere resize'ı yeterli).
+  const [H, setH] = useState(520);
+  useLayoutEffect(() => {
+    const fit = () => {
+      const r = mapWrapRef.current?.getBoundingClientRect();
+      if (r?.width && r?.height) setH(Math.round(Math.max(360, Math.min(1100, 720 * (r.height / r.width)))));
+    };
+    fit();
+    window.addEventListener("resize", fit);
+    return () => window.removeEventListener("resize", fit);
+  }, [loading]);
+  const W = 720, PAD = 40;
   const toSvgX = x => PAD + x * (W - PAD * 2);
   const toSvgY = y => H - PAD - y * (H - PAD * 2);
 
-  const projected = useMemo(() => players.map(p => ({ ...p, ...playerPos(p) })), [players]);
+  const projected = useMemo(() => players.map(p => ({ ...p, ...playerPos(p), _v: centered(p) })), [players]);
 
-  const filtered = useMemo(() =>
-    projected.filter(p => {
-      if (filter && p.primary_arch !== filter) return false;
-      if (searchQ && !p.PLAYER_NAME?.toLowerCase().includes(searchQ.toLowerCase())) return false;
-      return true;
-    })
-  , [projected, filter, searchQ]);
+  const q = searchQ.trim().toLowerCase();
+  const matchCount = useMemo(() => projected.filter(p =>
+    (!filter || p.primary_arch === filter) && (!q || p.PLAYER_NAME?.toLowerCase().includes(q))).length,
+  [projected, filter, q]);
 
-  // Filtre değişince: (1) kamerayı hedef kümenin üstüne uçur (eski global
-  // koordinatlarla — "o kümeye doğru" swoop hissi), (2) varış anında bağımsız
-  // yeniden-ölçeklenmiş düzene geç ve kamerayı 1x'e sıfırla (artık zaten
-  // tüm alanı dolduruyor) — iki aşamalı "yakınlaş, sonra genişle" hareketi.
+  // Arama tek oyuncuya inince onu seç (8a'da arama kutusu seçili oyuncuyu gösteriyor)
+  useEffect(() => {
+    if (!q) return;
+    const hits = projected.filter(p => p.PLAYER_NAME?.toLowerCase().includes(q));
+    if (hits.length === 1) setSelected(hits[0]);
+  }, [q, projected]);
+
+  const nearest = useMemo(() => {
+    if (!selected) return [];
+    return projected
+      .filter(p => p.PLAYER_NAME !== selected.PLAYER_NAME)
+      .map(p => ({ p, s: cosine(selected._v || centered(selected), p._v) }))
+      .sort((a, b) => b.s - a.s)
+      .slice(0, 3);
+  }, [selected, projected]);
+
+  // Filtre değişince: kamerayı kümeye uçur, varınca bağımsız düzene geç.
   useEffect(() => {
     const wrap = mapWrapRef.current;
     clearTimeout(focusTimerRef.current);
     if (!wrap || !projected.length) return;
-
     if (!filter) {
       setFocusMode(false);
       if (zoom !== 1 || pan.x !== 0 || pan.y !== 0) flyTo(1, { x: 0, y: 0 });
       return;
     }
-
     setFocusMode(false);
     const rect = wrap.getBoundingClientRect();
     if (!rect.width || !rect.height) return;
     const pxPerUnit = Math.min(rect.width / W, rect.height / H);
-
     const matches = projected.filter(p => p.primary_arch === filter);
     const anchor = ARCH_ANCHORS[filter];
     const pts = matches.length ? matches.map(p => ({ x: toSvgX(p.x), y: toSvgY(p.y) }))
       : anchor ? [{ x: toSvgX(anchor.x), y: toSvgY(anchor.y) }] : [];
     if (!pts.length) return;
-
     const minX = Math.min(...pts.map(p => p.x)), maxX = Math.max(...pts.map(p => p.x));
     const minY = Math.min(...pts.map(p => p.y)), maxY = Math.max(...pts.map(p => p.y));
     const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
-    const spanX = Math.max(maxX - minX, 70);
-    const spanY = Math.max(maxY - minY, 70);
-    const spanPxX = spanX * pxPerUnit, spanPxY = spanY * pxPerUnit;
-
+    const spanPxX = Math.max(maxX - minX, 70) * pxPerUnit, spanPxY = Math.max(maxY - minY, 70) * pxPerUnit;
     const fitZoom = Math.max(1.4, Math.min(6, Math.min((rect.width * 0.55) / spanPxX, (rect.height * 0.55) / spanPxY)));
     flyTo(fitZoom, { x: -(cx - W / 2) * pxPerUnit, y: -(cy - H / 2) * pxPerUnit });
-
-    focusTimerRef.current = setTimeout(() => {
-      setFocusMode(true);
-      flyTo(1, { x: 0, y: 0 });
-    }, 680);
-
+    focusTimerRef.current = setTimeout(() => { setFocusMode(true); flyTo(1, { x: 0, y: 0 }); }, 680);
     return () => clearTimeout(focusTimerRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter, projected.length]);
 
-  // Focus modundaki bağımsız grafik: sadece filtrelenen arketipin oyuncuları,
-  // kendi min-max aralığına yeniden ölçeklenmiş (aynı eksen anlamı, dolu alan).
   const focusPositions = useMemo(() => {
     if (!filter) return null;
     const matches = projected.filter(p => p.primary_arch === filter);
@@ -280,122 +232,81 @@ export default function ExploreContent() {
     return map;
   }, [filter, projected]);
 
+  const tint = filter ? ARCH_COLORS[filter] : selected ? ARCH_COLORS[selected.primary_arch] : "#FFB11B";
+  const selColor = selected ? ARCH_COLORS[selected.primary_arch] || "#FFB11B" : null;
+  const moved = zoom !== 1 || pan.x !== 0 || pan.y !== 0;
+
   return (
-    <SplitPane
-      detail={selected ? <PlayerDetail player={selected} /> : null}
-      onClose={() => setSelected(null)}
-    >
-      <div className="flex flex-col h-full min-h-0 overflow-hidden">
-        {/* Controls */}
-        <div className="flex flex-wrap items-center gap-1 px-4 py-2.5 shrink-0">
+    <div className="ex-page fill">
+      <PageGlow tint={tint} />
+      <div className="ex-inner">
+        <ExploreHeader active="map" aside={
+          <>
+            <label className="ex-search" style={{ "--tint": tint }}>
+              <PaIcon name="search" size={16} color="var(--text-muted)" />
+              <input value={searchQ} onChange={e => setSearchQ(e.target.value)}
+                placeholder={lang === "tr" ? "Oyuncu ara" : "Search player"} aria-label="Search player" />
+            </label>
+            <span className="ex-count">{loading ? "Loading…" : `${matchCount} players · 2025-26`}</span>
+          </>
+        } />
 
-          <input value={searchQ} onChange={e => setSearchQ(e.target.value)}
-            placeholder={lang === "tr" ? "Oyuncu ara..." : "Search player..."}
-            className="aura-ghost-input w-36"
-          />
-
-          <div className="aura-select-wrap">
-            <select value={filter} onChange={e => setFilter(e.target.value)} className="aura-select">
-              <option value="">{lang === "tr" ? "Tüm arketipler" : "All archetypes"}</option>
-              {CORE.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
-
-          {(zoom !== 1 || pan.x !== 0 || pan.y !== 0) && (
-            <button onClick={resetView} className="aura-pill-btn">
-              {lang === "tr" ? "Sıfırla" : "Reset view"}
+        <div className={`ex-legend${filter ? " filtered" : ""}`} role="radiogroup" aria-label="Filter by archetype">
+          {CORE.map(arch => (
+            <button key={arch} role="radio" aria-checked={filter === arch}
+              className={`ex-chip${filter === arch ? " on" : ""}`} style={{ "--c": ARCH_COLORS[arch] }}
+              onClick={() => setFilter(f => (f === arch ? "" : arch))}>
+              <i />{arch}
             </button>
-          )}
-
-          <span className="ml-auto text-xs" style={{ color: "var(--text-faint)" }}>
-            {filtered.length} players
-          </span>
+          ))}
         </div>
 
-        {/* Map */}
-        <div className="flex-1 min-h-0 overflow-hidden relative" style={{ minHeight: 220 }}>
-          {loading ? (
-            <div className="flex items-center justify-center h-full text-sm" style={{ color: "var(--text-muted)" }}>
-              Loading...
-            </div>
-          ) : (
-            <div ref={mapWrapRef} className="w-full h-full touch-none overflow-hidden relative"
-              onWheel={onWheel}
-              onTouchStart={onTouchStart}
-              onTouchMove={onTouchMove}
-              onTouchEnd={onTouchEnd}
-            >
-              {/* Spotlight vignette — dims the periphery while the camera is focused on a cluster */}
-              <div className="absolute inset-0 pointer-events-none z-10" style={{
-                background: "radial-gradient(circle at 50% 50%, transparent 30%, rgba(0,0,0,.55) 100%)",
-                opacity: filter ? 1 : 0,
-                transition: "opacity 0.7s cubic-bezier(0.2,0.7,0.3,1)",
-              }} />
+        <div className="ex-map-grid">
+          <div ref={mapWrapRef} className="ex-map"
+            onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
+            <span className="ex-axis top">{info.yTop}</span>
+            <span className="ex-axis bottom">{info.yBottom}</span>
+            <span className="ex-axis left">← {info.xLeft}</span>
+            <span className="ex-axis right">{info.xRight} →</span>
 
-              <svg viewBox={`0 0 ${W} ${H}`} width="100%" height="100%"
+            {!loading && (
+              <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet"
                 style={{
-                  display: "block",
                   transform: `scale(${zoom}) translate(${pan.x/zoom}px,${pan.y/zoom}px)`,
                   transformOrigin: "center center",
                   transition: camAnimating ? "transform 0.7s cubic-bezier(0.2,0.7,0.3,1)" : "transform 0.05s ease",
                 }}>
+                <line x1={PAD / 2} y1={H/2} x2={W - PAD / 2} y2={H/2} stroke="rgba(255,255,255,.07)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
+                <line x1={W/2} y1={PAD / 2} x2={W/2} y2={H - PAD / 2} stroke="rgba(255,255,255,.07)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
 
-                {/* Grid */}
-                {[0.25, 0.5, 0.75].map(v => (
-                  <g key={v}>
-                    <line x1={toSvgX(v)} y1={PAD} x2={toSvgX(v)} y2={H-PAD}
-                      stroke="var(--border)" strokeWidth={1} strokeDasharray="4 4"/>
-                    <line x1={PAD} y1={toSvgY(v)} x2={W-PAD} y2={toSvgY(v)}
-                      stroke="var(--border)" strokeWidth={1} strokeDasharray="4 4"/>
-                  </g>
-                ))}
-
-                {/* Axes */}
-                <line x1={PAD} y1={H/2} x2={W-PAD} y2={H/2} stroke="var(--bg-elevated)" strokeWidth={1}/>
-                <line x1={W/2} y1={PAD} x2={W/2} y2={H-PAD} stroke="var(--bg-elevated)" strokeWidth={1}/>
-
-                {/* Axis labels */}
-                <text x={PAD+4} y={H/2-6} fill="var(--text-faint)" fontSize={9}>← {info.xLeft}</text>
-                <text x={W-PAD-4} y={H/2-6} fill="var(--text-faint)" fontSize={9} textAnchor="end">{info.xRight} →</text>
-                <text x={W/2+6} y={PAD+12} fill="var(--text-faint)" fontSize={9}>{info.yTop}</text>
-                <text x={W/2+6} y={H-PAD-6} fill="var(--text-faint)" fontSize={9}>{info.yBottom}</text>
-
-                {/* Player dots — non-matching players fade rather than vanish during the
-                    swoop, then fully hide once focusMode lands on the independent graph.
-                    Matching players glide (CSS cx/cy transition) to their rescaled spot. */}
-                {projected.map((p, i) => {
+                {projected.map((p) => {
                   const local = focusMode ? focusPositions?.get(p.PLAYER_NAME) : null;
                   const cx = toSvgX(local ? local.x : p.x), cy = toSvgY(local ? local.y : p.y);
                   const col = ARCH_COLORS[p.primary_arch] || "#9ca3af";
                   const isHover    = hover?.PLAYER_NAME === p.PLAYER_NAME;
                   const isSelected = selected?.PLAYER_NAME === p.PLAYER_NAME;
-                  const isSearch   = searchQ && p.PLAYER_NAME?.toLowerCase().includes(searchQ.toLowerCase());
+                  const isSearch   = q && p.PLAYER_NAME?.toLowerCase().includes(q);
                   const matchesArch = !filter || p.primary_arch === filter;
-                  const matchesSearch = !searchQ || isSearch;
-                  const dimmed = !matchesArch || !matchesSearch;
+                  const dimmed = !matchesArch || (q && !isSearch);
                   const hiddenInFocus = focusMode && !matchesArch;
-                  const highlight  = isHover || isSelected || (searchQ && isSearch);
+                  const highlight  = isHover || isSelected || isSearch;
                   return (
-                    <g key={i}
-                      style={{ cursor: dimmed ? "default" : "pointer", transition: "opacity 0.5s ease" }}
-                      opacity={hiddenInFocus ? 0 : dimmed ? 0.07 : 1}
+                    <g key={p.PLAYER_NAME}
+                      style={{ cursor: dimmed ? "default" : "pointer", transition: "opacity 0.3s ease" }}
+                      opacity={hiddenInFocus ? 0 : dimmed ? 0.08 : 1}
                       onMouseEnter={() => !dimmed && setHover(p)}
                       onMouseLeave={() => setHover(null)}
-                      onClick={() => !dimmed && setSelected(p === selected ? null : p)}
-                    >
+                      onClick={() => !dimmed && setSelected(isSelected ? null : p)}>
+                      {isSelected && <circle cx={cx} cy={cy} r={11} fill="none" stroke="#f2efea" strokeWidth={2}
+                        style={{ filter: `drop-shadow(0 0 8px ${col})` }} />}
                       <circle cx={cx} cy={cy}
-                        r={isSelected ? 7 : isHover ? 5.5 : 3.5}
-                        fill={col}
-                        fillOpacity={highlight ? 1 : 0.55}
-                        stroke={isSelected ? "#fff" : isHover ? col : "none"}
-                        strokeWidth={isSelected ? 2 : 1.5}
-                        strokeOpacity={0.8}
-                        style={{ transition: "cx 0.6s cubic-bezier(0.2,0.8,0.3,1), cy 0.6s cubic-bezier(0.2,0.8,0.3,1)" }}
-                      />
+                        r={isSelected ? 5 : isHover ? 5.5 : 4}
+                        fill={col} fillOpacity={highlight || !filter ? 0.9 : 0.75}
+                        style={{ filter: `drop-shadow(0 0 4px ${col}88)`,
+                          transition: "cx 0.6s cubic-bezier(0.2,0.8,0.3,1), cy 0.6s cubic-bezier(0.2,0.8,0.3,1)" }} />
                       {highlight && (
-                        <text x={cx+9} y={cy+4} fill="var(--text-primary)" fontSize={10}
-                          fontWeight={isSelected ? 700 : 400}
-                          style={{ pointerEvents: "none" }}>
+                        <text x={cx + 16} y={cy + 4} fill="#f2efea" fontSize={12} fontWeight={600}
+                          style={{ pointerEvents: "none", paintOrder: "stroke", stroke: "#0b0b0b", strokeWidth: 3 }}>
                           {p.PLAYER_NAME}
                         </text>
                       )}
@@ -403,38 +314,59 @@ export default function ExploreContent() {
                   );
                 })}
               </svg>
+            )}
 
-              {/* Hover tooltip (bottom-left of map) */}
-              {hover && hover.PLAYER_NAME !== selected?.PLAYER_NAME && (
-                <div className="aura-glass absolute left-4 bottom-4 px-3 py-2 rounded-xl text-xs pointer-events-none">
-                  <div className="font-semibold" style={{ color: "var(--text-primary)" }}>{hover.PLAYER_NAME}</div>
-                  <div style={{ color: "var(--text-muted)" }}>{hover.TEAM_ABBREVIATION} · {hover.POSITION}</div>
-                  <div className="font-medium mt-0.5" style={{ color: ARCH_COLORS[hover.primary_arch] || "var(--accent)" }}>
-                    {hover.primary_arch}
+            {hover && hover.PLAYER_NAME !== selected?.PLAYER_NAME && (
+              <div className="ex-tip">
+                <b>{hover.PLAYER_NAME}</b>
+                <span>
+                  <span style={{ color: ARCH_COLORS[hover.primary_arch] }}>{hover.primary_arch}</span>
+                  {" · "}{hover.TEAM_ABBREVIATION}
+                  {hover.overall_score != null && ` · Overall ${Math.round(hover.overall_score * 100)}`}
+                </span>
+              </div>
+            )}
+            {moved && <button className="pa-btn-secondary ex-reset" onClick={resetView}>Reset view</button>}
+          </div>
+
+          <aside className="ex-side">
+            {selected ? (
+              <>
+                <span className="lbl">Selected</span>
+                <PlayerCard player={{ ...selected, overall_tier: selected.overall_tier || "" }} expandable />
+                {nearest.length > 0 && (
+                  <div className="ex-panel ex-near" style={{ "--pc": selColor }}>
+                    <span className="ex-muted" style={{ fontSize: 12, marginBottom: 4 }}>Closest profiles</span>
+                    {nearest.map(({ p, s }) => (
+                      <button key={p.PLAYER_NAME} className="ex-near-row" style={{ "--c": ARCH_COLORS[p.primary_arch] }}
+                        onClick={() => setSelected(p)}>
+                        <i /><span>{p.PLAYER_NAME}</span><b>{Math.round(((s + 1) / 2) * 100)}%</b>
+                      </button>
+                    ))}
                   </div>
-                  {hover.overall_score != null && (
-                    <div style={{ color: "var(--accent)" }}>Overall: {Math.round(hover.overall_score * 100)}</div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Legend — glossary only, doesn't drive the graph (use the dropdown above for that) */}
-        <div className="flex flex-wrap justify-center gap-1 px-4 py-2 shrink-0">
-          {Object.entries(ARCH_COLORS).map(([arch, col]) => (
-            <span key={arch} className="flex items-center gap-1 text-xs px-2 py-1 rounded-full"
-              style={{
-                background: filter === arch ? `${col}20` : "transparent",
-                color: filter === arch ? col : "var(--text-muted)",
-              }}>
-              <span style={{ background: col, width: 6, height: 6, borderRadius: "50%", display: "inline-block" }}/>
-              {arch}
-            </span>
-          ))}
+                )}
+              </>
+            ) : (
+              <div className="ex-empty-side">
+                <b>Pick a player</b>
+                <p className="ex-muted">Click any dot, or search a name. Nearby dots share a role profile across all 12 archetype scores.</p>
+              </div>
+            )}
+          </aside>
         </div>
       </div>
-    </SplitPane>
+
+      {selected && (
+        <button className="ex-msel" style={{ "--c": selColor }}
+          onClick={() => navigate(`/basketball/players/${encodeURIComponent(selected.PLAYER_NAME)}`)}>
+          <span className="av">{initials(selected.PLAYER_NAME)}</span>
+          <span className="tx">
+            <b>{selected.PLAYER_NAME}</b>
+            <span><em>{selected.primary_arch}</em>{nearest[0] ? ` · nearest ${nearest[0].p.PLAYER_NAME.split(" ").slice(-1)[0]}` : ""}</span>
+          </span>
+          {selected.overall_score != null && <span className="ov">{Math.round(selected.overall_score * 100)}</span>}
+        </button>
+      )}
+    </div>
   );
 }
