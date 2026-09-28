@@ -1,50 +1,29 @@
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { SEO } from "../hooks/useSEO";
 import GlossaryContent from "./Glossary";
 import AboutContent from "./About";
 
-const TABS = [
-  {
-    key: "glossary", path: "/basketball/glossary", label: "Glossary",
-    seo: {
-      title: "Archetype Glossary",
-      description: "Full glossary of NBA archetype components: 12 core roles and 22 modifier tags explained with the metrics and thresholds used to classify every player.",
-    },
+const SEO_BY_PATH = {
+  "/basketball/glossary": {
+    key: "glossary", title: "Archetype Glossary",
+    description: "Full glossary of NBA archetype components: 12 core roles and the modifier tags, explained with the metrics and thresholds used to classify every player.",
   },
-  {
-    key: "about", path: "/basketball/about", label: "About",
-    seo: {
-      title: "About",
-      description: "Learn how the Primary Arch system works: 12 core roles, 22 modifier tags, percentile-based scoring across every season since 1983. Full changelog and methodology.",
-    },
+  "/basketball/about": {
+    key: "about", title: "About",
+    description: "Learn how the Primary Arch system works: 12 core roles, modifier tags, percentile-based scoring across every season since 1983. Full changelog and methodology.",
   },
-];
+};
 
-/* ── Glossary + About — the site's fundamentals, one shell ──────────
-   Same consolidation pattern as ExploreHub: both keep their canonical
-   URL, switching tabs just navigates between them. */
+/* ── Glossary + About — tek nav girişi, iki kanonik URL ──────────────────
+   Başlık + sekmeler (handoff 9b/17a) her içerikte ExploreHeader ile çiziliyor. */
 export default function FundamentalsHub() {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const active = TABS.find(t => t.path === location.pathname) || TABS[0];
-
+  const { pathname } = useLocation();
+  const path = pathname.replace(/\/+$/, "");
+  const active = SEO_BY_PATH[path] || SEO_BY_PATH["/basketball/glossary"];
   return (
-    <div className="h-full flex flex-col min-h-0">
-      <SEO title={active.seo.title} description={active.seo.description} path={active.path} />
-
-      <div className="flex items-center gap-1 px-4 pt-3 pb-1 shrink-0">
-        {TABS.map(t => (
-          <button key={t.key} onClick={() => navigate(t.path)}
-            className={`aura-pill-btn${active.key === t.key ? " active" : ""}`}>
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="flex-1 min-h-0 overflow-hidden">
-        {active.key === "glossary" && <GlossaryContent />}
-        {active.key === "about" && <AboutContent />}
-      </div>
+    <div className="h-full min-h-0">
+      <SEO title={active.title} description={active.description} path={path in SEO_BY_PATH ? path : "/basketball/glossary"} />
+      {active.key === "glossary" ? <GlossaryContent /> : <AboutContent />}
     </div>
   );
 }

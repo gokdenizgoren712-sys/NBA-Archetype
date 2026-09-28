@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import { api } from "../api";
 import { SEO } from "../hooks/useSEO";
 import PlayerCard from "../components/PlayerCard";
@@ -20,13 +21,16 @@ const PAGE = 24;
 const GOLD = "#FFB11B";
 
 export default function Players() {
+  // ?arch=Engine — Glossary'deki "Top players →" bu filtreyle açılır
+  const [params] = useSearchParams();
+  const initialArch = CORE.includes(params.get("arch")) ? params.get("arch") : "";
   const [seasons, setSeasons]   = useState([]);
   const [season, setSeason]     = useState(CURRENT);
 
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [pos, setPos]       = useState("");
-  const [arch, setArch]     = useState("");
+  const [arch, setArch]     = useState(initialArch);
   const [team, setTeam]     = useState("");
   const [tier, setTier]     = useState("");
   const [minGp, setMinGp]   = useState("");
