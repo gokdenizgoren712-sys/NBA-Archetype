@@ -171,7 +171,7 @@
 .cmp-row > span { font-size: 13px; color: var(--text-secondary); text-align: center; }
 .cmp-row .tr { height: 6px; border-radius: 3px; background: var(--frame, #1a1a1a); overflow: hidden; display: flex; }
 .cmp-row .tr.l { justify-content: flex-end; }
-.cmp-row .tr i { height: 100%; border-radius: 3px; transition: width .4s; }
+.cmp-row .tr i { height: 100%; border-radius: 3px; }
 
 @media (max-width: 1180px) {
   .cmp-bottom { grid-template-columns: minmax(0, 1fr); }
