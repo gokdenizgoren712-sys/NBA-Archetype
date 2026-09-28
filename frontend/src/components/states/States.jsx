@@ -9,10 +9,10 @@ export function PageGlow({ tint }) {
 }
 
 /** Kart ızgarası için yükleniyor iskeleti — kademeli gecikmeli shimmer. */
-export function SkeletonGrid({ count = 6, height = 250, min = 280 }) {
+export function SkeletonGrid({ count = 6, height = 250, min = 280, label }) {
   return (
     <div className="pa-skel-grid" style={{ gridTemplateColumns: `repeat(auto-fill, minmax(${min}px, 1fr))` }}
-      aria-busy="true" aria-label="Loading">
+      aria-busy="true" aria-label={label || "Loading"}>
       {Array.from({ length: count }, (_, i) => (
         <div key={i} className="pa-skel-item">
           <div className="pa-skel" style={{ height, animationDelay: `${i * 0.12}s` }} />
@@ -20,6 +20,7 @@ export function SkeletonGrid({ count = 6, height = 250, min = 280 }) {
           <div className="pa-skel line sm" style={{ width: "45%", animationDelay: `${i * 0.12}s` }} />
         </div>
       ))}
+      {label && <span className="pa-skel-label">{label}</span>}
     </div>
   );
 }
@@ -55,18 +56,20 @@ export function EmptyState({ title = "Nothing here", body, tint = "#22d3ee", act
   );
 }
 
-/** Hata + yeniden dene. */
-export function ErrorState({ title = "That didn't load", body = "The server didn't answer. Your filters are kept.", onRetry }) {
+/** Hata + yeniden dene (18d): kırmızı "!" rozeti, açık düğme, isteğe bağlı kod ve saat. */
+export function ErrorState({ title = "That didn't load", body = "The server didn't answer. Your filters are kept.", onRetry, code }) {
+  const at = new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
   return (
-    <div className="pa-empty" style={{ "--tint": "#f87171" }}>
-      <span className="pa-empty-ic"><PaIcon name="refresh" size={40} color="#f87171" /></span>
+    <div className="pa-empty pa-error" style={{ "--tint": "#f87171" }} role="alert">
+      <span className="pa-error-ic" aria-hidden="true">!</span>
       <span className="pa-state-title">{title}</span>
       <span className="pa-state-body">{body}</span>
       {onRetry && (
         <div className="pa-state-actions">
-          <button className="pa-btn-primary" onClick={onRetry}>Try again</button>
+          <button className="pa-btn-light" onClick={onRetry}>Try again</button>
         </div>
       )}
+      <span className="pa-error-meta">{code ? `Error ${code} · ` : ""}{at}</span>
     </div>
   );
 }

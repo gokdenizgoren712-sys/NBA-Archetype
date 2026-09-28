@@ -231,7 +231,7 @@ export default function Players() {
         {error ? (
           <ErrorState onRetry={load} />
         ) : loading ? (
-          <SkeletonGrid count={6} height={380} />
+          <SkeletonGrid count={6} height={380} label={`Loading ${season} players…`} />
         ) : players.length === 0 ? (
           <EmptyState tint={tint} title="No players match"
             body={search ? `Nobody called "${search}" with these filters in ${season}.` : `No ${season} player fits all of these filters.`}

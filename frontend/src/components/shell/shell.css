@@ -275,3 +275,10 @@ main[data-sport="football"] {
   border-radius: 50%; filter: blur(80px);
 }
 
+
+/* 18d hata durumu + iskelet etiketi */
+.pa-error-ic { position: relative; width: 56px; height: 56px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: var(--font-logo); font-size: 30px; font-weight: 700; color: #f87171; background: rgba(248, 113, 113, 0.12); box-shadow: 0 0 24px -6px #f87171; }
+.pa-error-meta { position: relative; font-size: 12px; color: var(--text-faint); }
+.pa-btn-light { height: 42px; padding: 0 20px; border: 0; border-radius: 11px; background: var(--text-primary); color: #0b0b0b; font-size: 14px; font-weight: 600; cursor: pointer; }
+.pa-btn-light:hover { background: #fff; }
+.pa-skel-label { grid-column: 1 / -1; font-size: 13px; color: var(--text-muted); text-align: center; margin-top: 10px; }

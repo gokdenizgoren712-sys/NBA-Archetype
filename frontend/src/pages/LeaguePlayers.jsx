@@ -261,7 +261,7 @@ export default function LeaguePlayers({ league }) {
         {error ? (
           <ErrorState onRetry={load} />
         ) : loading ? (
-          <SkeletonGrid count={6} height={380} />
+          <SkeletonGrid count={6} height={380} label={`Loading ${season} players…`} />
         ) : noData ? (
           <EmptyState tint={L.accent} title={`No ${L.name} data for ${season}`}
             body={`This season hasn't been fetched yet. Run ${L.fetchCmd} --season ${season}, then clear the API cache.`} />
