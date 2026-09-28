@@ -1,14 +1,19 @@
 import { useState, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { api } from "../../api";
 import { SEO } from "../../hooks/useSEO";
+import FootballPlayerCard from "../../components/FootballPlayerCard";
+import PaIcon from "../../components/shell/PaIcon";
+import { PageGlow } from "../../components/states/States";
+import ExploreHeader from "../../components/explore/ExploreHeader";
 import { MAP_ANCHORS, placeOnMap } from "../../game/football/mapAnchors";
 import { LEAGUE_LABEL } from "../../game/football/leagues";
 
-// ── Arketip haritası — FAZ BAŞINA ────────────────────────────────────────────
-// Basketbolun Explore haritası tek düzlem, çünkü orada bütün oyuncular aynı 12
-// boyutla ölçülüyor. Futbolda tek harita yanlış olurdu: bir kaleciyle bir
-// santraforun ortak ekseni yok, eksenlerin anlamı bulanıklaşırdı. Kullanıcı
-// kararı da bu yöndeydi — dört ayrı harita, her biri kendi gerilimiyle.
+// ── Futbol arketip haritası (handoff 16a / mobil 21f) — FAZ BAŞINA ──────────
+// Basketbolun haritası tek düzlem (herkes aynı 12 boyutla ölçülüyor); futbolda
+// kaleciyle santraforun ortak ekseni yok — kullanıcı kararı: dört ayrı harita.
+// Arketip çapaları (halka + isim) haritada YOK (kullanıcı kararı, kalabalık);
+// bir arketip seçilince yalnızca onun çapası referans olarak beliriyor.
+// Görsel dil basketbol haritasıyla aynı (explore.css).
 
 const PHASES = [
   { key: "gk",  label: "Goalkeepers", color: "#F2C14E" },
@@ -16,6 +21,17 @@ const PHASES = [
   { key: "mid", label: "Midfielders", color: "#3FB08C" },
   { key: "fwd", label: "Attackers",   color: "#E8654C" },
 ];
+export const FOOTBALL_EXPLORE_TABS = [
+  { key: "map",     path: "/football/map",     label: "Map" },
+  { key: "compare", path: "/football/compare", label: "Compare" },
+];
+
+const initials = (n = "") => n.split(" ").filter(Boolean).slice(0, 2).map(w => w[0]).join("").toUpperCase();
+function cosine(a, b) {
+  let d = 0, na = 0, nb = 0;
+  for (let i = 0; i < a.length; i++) { d += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i]; }
+  return na && nb ? d / Math.sqrt(na * nb) : 0;
+}
 
 export default function FootballMap() {
   const [meta, setMeta]     = useState(null);
@@ -23,11 +39,10 @@ export default function FootballMap() {
   const [phase, setPhase]   = useState("mid");
   const [league, setLeague] = useState("");
   const [rows, setRows]     = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [hover, setHover]   = useState(null);
   const [sel, setSel]       = useState(null);
   const [q, setQ]           = useState("");
-  // Arketip filtresi — seçilince harita o role odaklanır
   const [arch, setArch]     = useState("");
 
   useEffect(() => {
@@ -37,23 +52,21 @@ export default function FootballMap() {
     }).catch(() => setMeta({ available: false }));
   }, []);
 
+  // Harita tüm fazı bir arada gösteriyor (sayfalı liste değil) — tek istek, faz başına
   useEffect(() => {
     if (!season) return;
     setLoading(true); setSel(null);
-    api.footballPlayers({ season, phase, limit: 600,
-                          ...(league ? { league } : {}) })
+    api.footballPlayers({ season, phase, limit: 800, ...(league ? { league } : {}) })
       .then(r => setRows(r.players || []))
       .catch(() => setRows([]))
       .finally(() => setLoading(false));
   }, [season, phase, league]);
 
-  // Arketipler faza özgü: faz değişince eski seçim anlamsız kalır.
   useEffect(() => { setArch(""); }, [phase]);
 
   const cfg = MAP_ANCHORS[phase];
-  // Bu fazın arketip listesi — çapa tanımları zaten faz bazlı, tek kaynak.
-  const archOptions = Object.keys(MAP_ANCHORS[phase]?.points || {});
-  const archPoint = arch ? MAP_ANCHORS[phase]?.points?.[arch] : null;
+  const archOptions = Object.keys(cfg?.points || {});
+  const archPoint = arch ? cfg?.points?.[arch] : null;
   const accent = PHASES.find(p => p.key === phase)?.color || "#3FB08C";
 
   const dots = useMemo(() => rows.map(p => {
@@ -62,196 +75,179 @@ export default function FootballMap() {
   }).filter(Boolean), [rows, phase]);
 
   const qq = q.trim().toLowerCase();
+  useEffect(() => {
+    if (!qq) return;
+    const hits = dots.filter(p => p.PLAYER_NAME.toLowerCase().includes(qq));
+    if (hits.length === 1) setSel(hits[0]);
+  }, [qq, dots]);
 
-  // Kutu olcusu layout-effect ile aliniyor (ResizeObserver DEGIL): observer
-  // frame dongusune bagli, ilk boyamada gec kalabiliyor. Filtre paneli sarinca
-  // haritanin yuksekligi degistigi icin meta/faz degisiminde de yeniden olculuyor.
+  // En yakınlar: bu fazın arketip skorlarında merkezlenmiş kosinüs
+  const nearest = useMemo(() => {
+    if (!sel || !archOptions.length) return [];
+    const vec = (p) => {
+      const v = archOptions.map(a => Number(p[`score_${a}`] ?? 0));
+      const m = v.reduce((x, y) => x + y, 0) / v.length;
+      return v.map(x => x - m);
+    };
+    const sv = vec(sel);
+    return dots.filter(p => p.PLAYER_ID !== sel.PLAYER_ID)
+      .map(p => ({ p, s: cosine(sv, vec(p)) }))
+      .sort((a, b) => b.s - a.s).slice(0, 3);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sel, dots, phase]);
+
+  // Kutu ölçüsü layout-effect ile (ResizeObserver ilk boyamada geç kalabiliyor)
   const wrapRef = useRef(null);
   const [box, setBox] = useState({ w: 760, h: 560 });
   useLayoutEffect(() => {
     const measure = () => {
-      const el = wrapRef.current;
-      if (!el) return;
-      const r = el.getBoundingClientRect();
-      const w = Math.round(r.width - 16), h = Math.round(r.height - 16);  // p-2
-      if (w > 40 && h > 40)
-        setBox(b => (b.w === w && b.h === h ? b : { w, h }));
+      const r = wrapRef.current?.getBoundingClientRect();
+      if (!r) return;
+      const w = Math.round(r.width), h = Math.round(r.height);
+      if (w > 40 && h > 40) setBox(b => (b.w === w && b.h === h ? b : { w, h }));
     };
     measure();
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
   }, [meta, loading, phase, arch, league]);
 
-  // Kisa kutuda sabit 54px kenar payi cizim alanini bogar — yukseklikle olcekle.
   const W = box.w, H = box.h;
-  const PAD = Math.max(26, Math.min(54, Math.round(H * 0.1)));
+  const PAD = Math.max(28, Math.min(48, Math.round(H * 0.08)));
   const sx = v => PAD + v * (W - PAD * 2);
   const sy = v => PAD + v * (H - PAD * 2);
+  const count = arch ? dots.filter(d => d.primary_arch === arch).length : dots.length;
 
   return (
-    <div className="h-full flex flex-col overflow-hidden relative">
+    <div className="ex-page fill">
       <SEO title="Football — Archetype Map"
         description="Every player placed by role. Nearby players play the same way."
         path="/football/map" noindex />
+      <PageGlow tint={accent} />
+      <div className="ex-inner">
+        <ExploreHeader active="map" tabs={FOOTBALL_EXPLORE_TABS} aside={
+          <>
+            <label className="ex-search" style={{ "--tint": accent }}>
+              <PaIcon name="search" size={16} color="var(--text-muted)" />
+              <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search player" aria-label="Search player" />
+            </label>
+            <span className="ex-count">
+              {loading ? "Loading…" : `${count.toLocaleString("en-US")} ${arch || "players"} · ${season}`}
+            </span>
+          </>
+        } />
 
-      <div className="relative max-w-5xl w-full mx-auto p-4 md:p-6 flex-1 flex flex-col min-h-0 gap-3">
-        <div className="flex items-center justify-between flex-wrap gap-3 shrink-0">
-          <div>
-            <h1 className="font-semibold text-base" style={{ color: "var(--text-primary)" }}>Archetype Map</h1>
-            <p className="text-sm mt-0.5" style={{ color: "var(--text-muted)" }}>One map per phase · nearby dots play alike</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="aura-select-wrap">
-              <select value={season} onChange={e => setSeason(e.target.value)}
-                className="aura-select accent">
-                {(meta?.seasons || []).map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </div>
-            <div className="flex gap-1">
-              {[["/football/map", "Map"], ["/football/compare", "Compare"]].map(([to, l]) => (
-                <a key={to} href={to}
-                  className={`aura-pill-btn${window.location.pathname === to ? " active" : ""}`}>{l}</a>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <div className="shrink-0 flex flex-wrap gap-2 items-center py-1">
-          <span className="text-xs shrink-0" style={{ color: "var(--text-faint)" }}>Phase</span>
+        {/* Faz lejantı: hangi haritanın açık olduğunu seçer (renk = faz) */}
+        <div className="ex-legend fb-map-phases" role="radiogroup" aria-label="Phase">
           {PHASES.map(p => (
-            <button key={p.key} onClick={() => setPhase(p.key)}
-              className={`aura-pill-btn${phase === p.key ? " active" : ""}`}>
-              {p.label}
+            <button key={p.key} role="radio" aria-checked={phase === p.key}
+              className={`ex-chip${phase === p.key ? " on" : ""}`} style={{ "--c": p.color }}
+              onClick={() => setPhase(p.key)}>
+              <i />{p.label}
             </button>
           ))}
-          {/* Arketip filtresi — seçilince harita o role geçiyor: yalnızca o
-              roldeki oyuncular renkli kalıyor, çapası referans olarak
-              beliriyor ve eksen etiketleri aynı kalıyor (aynı düzlem). */}
-          <span className="text-xs shrink-0" style={{ color: "var(--text-faint)", marginLeft: 8 }}>Archetype</span>
-          <div className="aura-select-wrap">
-            <select value={arch} onChange={e => setArch(e.target.value)}
-              className={`aura-select${arch ? " accent" : ""}`}>
-              <option value="">All archetypes</option>
-              {archOptions.map(a => <option key={a} value={a}>{a}</option>)}
-            </select>
+          <span className="fb-map-sep" />
+          {(meta?.leagues || []).map(l => (
+            <button key={l} className={`ex-chip plain${league === l ? " on" : ""}`} style={{ "--c": "#f2efea" }}
+              onClick={() => setLeague(league === l ? "" : l)}>{LEAGUE_LABEL[l] || l}</button>
+          ))}
+        </div>
+        {/* Bu fazın arketipleri: seçilince yalnız o roldekiler renkli kalır */}
+        <div className="ex-legend fb-map-archs" role="radiogroup" aria-label="Archetype">
+          {archOptions.map(a => (
+            <button key={a} role="radio" aria-checked={arch === a}
+              className={`ex-chip small${arch === a ? " on" : ""}`} style={{ "--c": accent }}
+              onClick={() => setArch(x => (x === a ? "" : a))}>{a}</button>
+          ))}
+        </div>
+
+        <div className="ex-map-grid">
+          <div ref={wrapRef} className="ex-map">
+            <span className="ex-axis top">↑ {cfg?.axes.y[0]}</span>
+            <span className="ex-axis bottom">↓ {cfg?.axes.y[1]}</span>
+            <span className="ex-axis left">← {cfg?.axes.x[0]}</span>
+            <span className="ex-axis right">{cfg?.axes.x[1]} →</span>
+            {!loading && (
+              <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet">
+                <line x1={W / 2} y1={PAD / 2} x2={W / 2} y2={H - PAD / 2} stroke="rgba(255,255,255,.07)" />
+                <line x1={PAD / 2} y1={H / 2} x2={W - PAD / 2} y2={H / 2} stroke="rgba(255,255,255,.07)" />
+                {archPoint && (
+                  <g>
+                    <circle cx={sx(archPoint.x)} cy={sy(archPoint.y)} r="9" fill="none" stroke={accent}
+                      strokeWidth="1.4" opacity="0.8" strokeDasharray="3 3" />
+                    <text x={sx(archPoint.x)} y={sy(archPoint.y) - 15} fontSize="12" textAnchor="middle"
+                      fill={accent} style={{ fontWeight: 700, paintOrder: "stroke", stroke: "#0b0b0b", strokeWidth: 3 }}>{arch}</text>
+                  </g>
+                )}
+                {dots.map(p => {
+                  const match = !qq || p.PLAYER_NAME.toLowerCase().includes(qq);
+                  const inArch = !arch || p.primary_arch === arch;
+                  const isSel = sel?.PLAYER_ID === p.PLAYER_ID;
+                  const isHover = hover?.PLAYER_ID === p.PLAYER_ID;
+                  const dimmed = (qq && !match) || !inArch;
+                  const lit = isSel || isHover || (qq && match) || (arch && inArch);
+                  return (
+                    <g key={`${p.PLAYER_ID}-${p.PHASE}-${p.LEAGUE}`} opacity={dimmed ? 0.08 : 1}
+                      style={{ cursor: dimmed ? "default" : "pointer", transition: "opacity .3s" }}
+                      onMouseEnter={() => !dimmed && setHover(p)} onMouseLeave={() => setHover(null)}
+                      onClick={() => !dimmed && setSel(isSel ? null : p)}>
+                      {isSel && <circle cx={sx(p.x)} cy={sy(p.y)} r="11" fill="none" stroke="#f2efea" strokeWidth="2"
+                        style={{ filter: `drop-shadow(0 0 8px ${accent})` }} />}
+                      <circle cx={sx(p.x)} cy={sy(p.y)} r={isSel ? 5 : lit ? 4.6 : 3.6}
+                        fill={accent} fillOpacity={lit ? 1 : 0.7} style={{ filter: `drop-shadow(0 0 4px ${accent}88)` }} />
+                      {(isSel || isHover || (qq && match)) && (
+                        <text x={sx(p.x) + 14} y={sy(p.y) + 4} fontSize="12" fontWeight="600" fill="#f2efea"
+                          style={{ pointerEvents: "none", paintOrder: "stroke", stroke: "#0b0b0b", strokeWidth: 3 }}>{p.PLAYER_NAME}</text>
+                      )}
+                    </g>
+                  );
+                })}
+              </svg>
+            )}
+            {hover && hover.PLAYER_ID !== sel?.PLAYER_ID && (
+              <div className="ex-tip">
+                <b>{hover.PLAYER_NAME}</b>
+                <span><span style={{ color: accent }}>{hover.primary_arch}</span> · {hover.TEAM} · {hover.POSITION}
+                  {` · Overall ${Math.round((hover.overall_score || 0) * 100)}`}</span>
+              </div>
+            )}
           </div>
 
-          <input value={q} onChange={e => setQ(e.target.value)}
-            placeholder="Highlight a player…" className="aura-ghost-input"
-            style={{ width: 150 }} />
-          {(meta?.leagues || []).map(l => (
-            <button key={l} onClick={() => setLeague(league === l ? "" : l)}
-              className={`aura-pill-btn${league === l ? " active" : ""}`}>
-              {LEAGUE_LABEL[l] || l}
-            </button>
-          ))}
-          <span className="text-[11px] ml-auto" style={{ color: "var(--text-faint)" }}>
-            {arch
-              ? <><b style={{ color: accent }}>{dots.filter(d => d.primary_arch === arch).length}</b> {arch} · {dots.length} total</>
-              : <>{dots.length} players</>}
-          </span>
-          {arch && (
-            <button onClick={() => setArch("")} className="aura-pill-btn">✕ Clear role</button>
-          )}
+          <aside className="ex-side">
+            {sel ? (
+              <>
+                <span className="lbl">Selected</span>
+                <FootballPlayerCard player={sel} season={season} />
+                {nearest.length > 0 && (
+                  <p className="ex-muted fb-near">
+                    Nearest: {nearest.map(({ p }, i) => (
+                      <span key={p.PLAYER_ID}>{i > 0 && ", "}<button onClick={() => setSel(p)}>{p.PLAYER_NAME}</button></span>
+                    ))}
+                  </p>
+                )}
+              </>
+            ) : (
+              <div className="ex-empty-side">
+                <b>Pick a player</b>
+                <p className="ex-muted">Click any dot, or search a name. Each phase has its own map: a player sits at the weighted average of the roles he matches.</p>
+              </div>
+            )}
+          </aside>
         </div>
-
-        <div ref={wrapRef} className="flex-1 min-h-0 overflow-hidden relative"
-          style={{ minHeight: 260, border: "1px solid var(--border)", borderRadius: 18 }}>
-          {loading ? (
-            <div className="h-full grid place-items-center text-sm" style={{ color: "var(--text-muted)" }}>
-              Loading…
-            </div>
-          ) : (
-            <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet"
-              style={{ width: "100%", height: "100%", display: "block" }}>
-              {/* Eksen etiketleri */}
-              <text x={PAD} y={H - 12} fontSize="11" fill="var(--text-faint)">
-                ← {cfg?.axes.x[0]}
-              </text>
-              <text x={W - PAD} y={H - 12} fontSize="11" fill="var(--text-faint)"
-                textAnchor="end">{cfg?.axes.x[1]} →</text>
-              <text x={14} y={PAD - 14} fontSize="11" fill="var(--text-faint)">
-                ↑ {cfg?.axes.y[0]}
-              </text>
-              <text x={14} y={H - PAD + 22} fontSize="11" fill="var(--text-faint)">
-                ↓ {cfg?.axes.y[1]}
-              </text>
-              <rect x={PAD} y={PAD} width={W - PAD * 2} height={H - PAD * 2}
-                fill="none" stroke="var(--border)" strokeWidth="1" rx="6" />
-
-              {/* Arketip çapaları (halka + isim) KALDIRILDI — kullanıcı kararı:
-                  haritayı kalabalıklaştırıyordu. Yerine, bir arketip
-                  seçildiğinde YALNIZCA onun çapası referans olarak gösteriliyor
-                  (aşağıda), böylece "bu rol haritanın neresinde" sorusu
-                  cevaplanıyor ama boştaki harita temiz kalıyor. */}
-              {archPoint && (
-                <g>
-                  <circle cx={sx(archPoint.x)} cy={sy(archPoint.y)} r="7"
-                    fill="none" stroke={accent} strokeWidth="1.4" opacity="0.75"
-                    strokeDasharray="3 3" />
-                  <text x={sx(archPoint.x)} y={sy(archPoint.y) - 12} fontSize="11"
-                    textAnchor="middle" fill={accent} style={{ fontWeight: 700 }}>
-                    {arch}
-                  </text>
-                </g>
-              )}
-
-              {/* Oyuncular */}
-              {dots.map(p => {
-                const match = !qq || p.PLAYER_NAME.toLowerCase().includes(qq);
-                // Arketip seçiliyse o role ait olmayanlar geri plana düşer —
-                // silinmiyor, çünkü rolün komşularını görmek haritanın anlamı.
-                const inArch = !arch || p.primary_arch === arch;
-                const isSel = sel?.PLAYER_ID === p.PLAYER_ID;
-                const dimmed = (qq && !match) || !inArch;
-                return (
-                  <circle key={`${p.PLAYER_ID}-${p.PHASE}-${p.LEAGUE}`}
-                    cx={sx(p.x)} cy={sy(p.y)}
-                    r={isSel ? 6 : (qq && match) || (arch && inArch) ? 4.6 : 3.2}
-                    fill={isSel || (qq && match) || (arch && inArch) ? accent : `${accent}88`}
-                    stroke={isSel ? "#fff" : "none"} strokeWidth="1.5"
-                    opacity={dimmed ? 0.07 : 0.85}
-                    style={{ cursor: "pointer" }}
-                    onMouseEnter={() => setHover(p)}
-                    onMouseLeave={() => setHover(null)}
-                    onClick={() => setSel(isSel ? null : p)} />
-                );
-              })}
-            </svg>
-          )}
-
-          {(hover || sel) && (
-            <div className="aura-glass absolute px-3 py-2.5 rounded-[8px]"
-              style={{ right: 12, top: 12, minWidth: 190, pointerEvents: "none" }}>
-              {(() => {
-                const p = hover || sel;
-                return (
-                  <>
-                    <div className="text-[12.5px] font-bold" style={{ color: "var(--text-primary)" }}>{p.PLAYER_NAME}</div>
-                    <div className="text-[10.5px]" style={{ color: "var(--text-faint)" }}>
-                      {p.TEAM} · {p.POSITION}
-                    </div>
-                    <div className="text-[11.5px] mt-1" style={{ color: accent }}>
-                      {p.primary_arch}
-                    </div>
-                    <div className="text-[10.5px]" style={{ color: "var(--text-muted)" }}>
-                      overall {Math.round((p.overall_score || 0) * 100)} ·
-                      fit {Math.round((p.primary_score || 0) * 100)}
-                      {p.alt_arch ? ` · then ${p.alt_arch}` : ""}
-                    </div>
-                  </>
-                );
-              })()}
-            </div>
-          )}
-        </div>
-
-        <div className="text-[10.5px] shrink-0 leading-snug" style={{ color: "var(--text-faint)" }}>
-          Each phase gets its own map — keepers and strikers share no axis. A player
-          sits at the weighted average of the roles he matches; anchors are laid out
-          by hand for readability, not a measured embedding.
-        </div>
+        <p className="ex-muted fb-map-note">
+          Keepers and strikers share no axis, so every phase gets its own map. Role anchors are laid out by hand for readability, not a measured embedding.
+        </p>
       </div>
+
+      {sel && (
+        <div className="ex-msel" style={{ "--c": accent }}>
+          <span className="av">{initials(sel.PLAYER_NAME)}</span>
+          <span className="tx">
+            <b>{sel.PLAYER_NAME}</b>
+            <span><em>{sel.primary_arch}</em> · {sel.TEAM}</span>
+          </span>
+          <span className="ov">{Math.round((sel.overall_score || 0) * 100)}</span>
+        </div>
+      )}
     </div>
   );
 }

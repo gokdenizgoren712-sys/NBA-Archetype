@@ -13,7 +13,7 @@
   font-size: 15px; font-weight: 500; color: var(--text-muted); box-shadow: inset 0 -2px 0 transparent; transition: color .15s, box-shadow .15s;
 }
 .ex-tabs button:hover { color: var(--text-secondary); }
-.ex-tabs button.on { color: var(--text-primary); box-shadow: inset 0 -2px 0 #FFB11B; }
+.ex-tabs button.on { color: var(--text-primary); box-shadow: inset 0 -2px 0 var(--accent, #FFB11B); }
 .ex-head-r { display: flex; align-items: center; gap: 20px; }
 .ex-count { font-size: 13px; color: var(--text-muted); white-space: nowrap; }
 
@@ -272,4 +272,36 @@
   .af-heat .rl { font-size: 12px; gap: 6px; }
   .af-heat .cell { border-radius: 5px; }
   .af-scale .prior-key { margin-left: 0; }
+}
+
+/* ── Futbol haritası (16a / 21f) ───────────────────────────────────────── */
+.fb-map-phases { align-items: center; }
+.fb-map-sep { width: 1px; height: 18px; margin: 0 6px; background: rgba(255, 255, 255, 0.1); }
+.ex-chip.plain { color: var(--text-muted); }
+.ex-chip.plain.on { color: var(--text-primary); background: rgba(255, 255, 255, 0.08); }
+.fb-map-archs { margin-top: -4px; }
+.ex-chip.small { height: 28px; font-size: 13px; color: var(--text-muted); background: rgba(255, 255, 255, 0.03); }
+.ex-chip.small.on { color: var(--c); background: color-mix(in srgb, var(--c) 16%, transparent); }
+.fb-near { text-align: center; font-size: 13px; }
+.fb-near button { background: none; border: 0; padding: 0; color: var(--text-primary); cursor: pointer; font-size: 13px; }
+.fb-near button:hover { text-decoration: underline; }
+.fb-map-note { font-size: 12px; margin-top: 10px; }
+@media (max-width: 767px) {
+  .fb-map-sep { display: none; }
+  .fb-map-archs { margin-top: 8px; }
+  .fb-map-note { display: none; }
+}
+
+/* ── Futbol Compare (16b) ──────────────────────────────────────────────── */
+.fbc-pick { width: 280px; }
+.fbc-pick .aura-ghost-input { width: 100%; }
+.fbc-rule { font-size: 12px !important; color: var(--text-muted) !important; margin-top: 8px !important; }
+.fbc-sections { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 56px; row-gap: 32px; align-items: start; }
+.fbc-sections section { display: flex; flex-direction: column; min-width: 0; }
+.fbc-sections .ex-h { margin-bottom: 8px; }
+.fbc-sections .cmp-row { grid-template-columns: 44px minmax(0, 1fr) 130px minmax(0, 1fr) 44px; }
+@media (max-width: 1180px) { .fbc-sections { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 900px) { .fbc-pick { width: 100%; } }
+@media (max-width: 767px) {
+  .fbc-sections .cmp-row { grid-template-columns: 36px minmax(0, 1fr) 36px; }
 }

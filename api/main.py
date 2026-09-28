@@ -4627,7 +4627,10 @@ def get_football_best_xi(
                       quality_weight=quality_weight, restarts=restarts)
     res["season"] = season
     res["pool_size"] = int(len(df))
-    return res
+    # Aynı gerçek ilk-11 dağılımına karşı persantil (lineup-fit ile aynı referans)
+    if isinstance(res.get("fit"), dict):
+        res["fit"]["reference"] = _chem_percentiles(res["fit"])
+    return _json_safe(res)
 
 
 @lru_cache(maxsize=4)
