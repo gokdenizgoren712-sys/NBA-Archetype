@@ -31,10 +31,6 @@ export function SportSwitch({ sport, compact = false }) {
   );
 }
 
-function refreshData() {
-  fetch("/api/admin/clear-cache", { method: "POST" }).finally(() => window.location.reload());
-}
-
 export default function Sidebar() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
@@ -87,11 +83,9 @@ export default function Sidebar() {
 
       <div className="pa-side-foot">
         {item({ to: "/rankit", label: "RankIt", custom: <RankItMark size={collapsed ? 20 : 18} /> })}
-        {isAdmin && item({ to: "/admin/articles", icon: "admin", label: "Admin",
+        {isAdmin && item({ to: "/admin/data", icon: "admin", label: "Admin",
                            also: pathname.startsWith("/admin") ? [pathname.replace(/\/+$/, "")] : [] })}
-        {/* Handoff: veri yenileme kabuktan Admin › Data'ya taşınıyor. O sayfa
-            gelene kadar yalnız yöneticilere, burada. */}
-        {isAdmin && item({ icon: "refresh", label: "Refresh data", onClick: refreshData })}
+        {/* Veri yenileme Admin › Data'da (handoff) — kabukta artık yok. */}
         {item({ icon: collapsed ? "expand" : "collapse", label: collapsed ? "Expand" : "Collapse", onClick: toggle })}
       </div>
     </aside>

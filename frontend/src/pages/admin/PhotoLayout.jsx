@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import AdminLayout from "./AdminLayout";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { SEO } from "../../hooks/useSEO";
@@ -46,7 +47,7 @@ function Preview({ src, lay, name }) {
           etkilediği için önizlemede de var. */}
       <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 46,
         background: "linear-gradient(to top, rgba(12,11,14,.96), transparent)" }} />
-      <div style={{ position: "absolute", left: 8, right: 8, bottom: 6, fontSize: 11,
+      <div style={{ position: "absolute", left: 8, right: 8, bottom: 6, fontSize: 12,
         fontWeight: 700, color: "#fff", whiteSpace: "nowrap", overflow: "hidden",
         textOverflow: "ellipsis" }}>{name}</div>
     </div>
@@ -134,19 +135,7 @@ export default function PhotoLayout() {
   const adjusted = Object.keys(meta?.layouts || {}).length;
 
   return (
-    <div className="h-full overflow-y-auto">
-      <SEO title="Photo layout" noindex />
-      <div className="max-w-4xl mx-auto p-5 space-y-4">
-        <div className="flex items-baseline gap-3 flex-wrap">
-          <h1 className="font-logo text-2xl font-bold text-white">Photo layout</h1>
-          <Link to="/admin/articles" className="aura-pill-btn" style={{ fontSize: 11 }}>
-            &larr; Admin
-          </Link>
-          <span style={{ fontSize: 11, color: "var(--text-faint)" }}>
-            {adjusted} player{adjusted === 1 ? "" : "s"} adjusted
-          </span>
-        </div>
-
+    <AdminLayout title="Photos" aside={<span className="ad-note">{adjusted} player{adjusted === 1 ? "" : "s"} adjusted</span>}>
         <p style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.6, maxWidth: 640 }}>
           Cut-out photos come in different crops &mdash; some from the shoulders, some
           from the waist, some with the player off to one side. Adjust how one sits in
@@ -184,7 +173,7 @@ export default function PhotoLayout() {
                   <div style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>
                     {sel.PLAYER_NAME}
                   </div>
-                  <div style={{ fontSize: 11, color: "var(--text-faint)" }}>
+                  <div style={{ fontSize: 12, color: "var(--text-faint)" }}>
                     {sel.TEAM} · {PHASE_LABEL[sel.PHASE] || sel.PHASE} · {sel.POSITION}
                     {!credit ? " · no photo"
                       : credit.modified ? " · cut-out" : " · raw photo"}
@@ -203,12 +192,12 @@ export default function PhotoLayout() {
                     style={{ borderColor: ACC, color: ACC }}>Save</button>
                   <button onClick={() => setLay(DEF)} className="aura-pill-btn">Default</button>
                   <button onClick={clearSaved} className="aura-pill-btn">Clear saved</button>
-                  {msg && <span style={{ fontSize: 11, color: "var(--text-muted)",
+                  {msg && <span style={{ fontSize: 12, color: "var(--text-muted)",
                     alignSelf: "center" }}>{msg}</span>}
                 </div>
 
                 {!src && (
-                  <div style={{ fontSize: 11, color: "#E8654C", lineHeight: 1.6 }}>
+                  <div style={{ fontSize: 12, color: "#E8654C", lineHeight: 1.6 }}>
                     No photo for this player. Either Wikimedia has none under a free
                     licence, or the fetch has not reached him yet &mdash; there is
                     nothing to position until one exists.
@@ -218,7 +207,6 @@ export default function PhotoLayout() {
             </div>
           )}
         </div>
-      </div>
-    </div>
+    </AdminLayout>
   );
 }

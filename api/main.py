@@ -142,6 +142,10 @@ app.include_router(_rankit_releases_router)
 from .rankit import router as _rankit_router
 app.include_router(_rankit_router)
 
+# Basketbol fantezi (Yahoo formatları) — api/fantasy.py, plan: docs/FANTASY_PLAN.md
+from .fantasy import router as _fantasy_router
+app.include_router(_fantasy_router)
+
 # Güvenlik header'ları
 # CSP önce YALNIZ RAPOR modunda (hiçbir şeyi engellemez): ihlaller
 # /api/csp-report'a düşer, bir süre izlenip temizlenince zorunlu yapılır.
@@ -5484,6 +5488,35 @@ def trigger_refresh(season: str = "2025-26", user=Depends(require_admin)):
     start_refresh(season)
     from datetime import datetime as _dt, timezone as _tz
     return {"ok": True, "started_at": _dt.now(_tz.utc).isoformat()}
+
+@app.get("/api/admin/data-sources")
+def get_data_sources(user=Depends(require_admin)):
+    """Admin › Data (handoff 15a) için kaynak listesi. Kaynak başına ayrı bir
+    çalışma kaydı YOK — yalnızca NBA güncel sezonu trigger-refresh hattıyla
+    yenileniyor, diğerleri elle koşulan fetch_*.py betikleri. Bu yüzden
+    uydurmak yerine her kaynağın cache dosyalarının gerçek değişiklik zamanı
+    ve dosya sayısı döner (parquet okunmaz, ucuz)."""
+    from datetime import datetime as _dt, timezone as _tz
+    sources = [
+        ("nba", "NBA · current season", "2025-26__player_scores.parquet", "Scores used across the site", "trigger-refresh"),
+        ("nba_raw", "NBA · box score + tracking", "2025-26__player_*.parquet", "stats.nba.com via nba_api", "trigger-refresh"),
+        ("history", "NBA · historical seasons", "*__hist_merged.parquet", "Every season since 1983-84", "src/fetch_historical.py"),
+        ("bref", "Basketball-Reference BPM", "*__bref_advanced.parquet", "Real BPM for NBA seasons", "src/fetch_bref.py"),
+        ("gleague", "G League", "gleague__*__player_scores.parquet", "Scores + prospect grades", "src/fetch_gleague.py"),
+        ("ncaa", "NCAA Division I", "ncaa__*__player_scores.parquet", "Torvik, with strength of schedule", "src/fetch_ncaa.py"),
+        ("euroleague", "EuroLeague", "euroleague__*__player_scores.parquet", "euroleague-api", "src/fetch_euroleague.py"),
+        ("football", "Football · five leagues", "football__*__scores.parquet", "FotMob match data", "src/football/fetch_fotmob.py"),
+    ]
+    out = []
+    for key, name, pattern, desc, how in sources:
+        files = [p for p in DATA.glob(pattern) if p.is_file()]
+        latest = max((p.stat().st_mtime for p in files), default=None)
+        out.append({
+            "key": key, "name": name, "desc": desc, "how": how, "files": len(files),
+            "updated_at": _dt.fromtimestamp(latest, _tz.utc).isoformat() if latest else None,
+        })
+    return {"sources": out}
+
 
 @app.get("/api/admin/refresh-status")
 def get_refresh_status(user=Depends(require_admin)):

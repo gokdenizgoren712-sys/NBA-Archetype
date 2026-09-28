@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import AdminLayout from "./AdminLayout";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { SEO } from "../../hooks/useSEO";
@@ -74,23 +75,13 @@ export default function RankItBroadcasts() {
   const label = (b) => `${b.name}${b.kind === "streaming" ? " (streaming)" : ""}`;
 
   return (
-    <div className="h-full overflow-y-auto">
-      <SEO title="RankIt broadcasters" noindex />
-      <div className="max-w-5xl mx-auto p-5 space-y-4">
-        <div className="flex items-baseline gap-3 flex-wrap">
-          <h1 className="font-logo text-2xl font-bold text-white">RankIt broadcasters</h1>
-          <Link to="/admin/articles" className="aura-pill-btn" style={{ fontSize: 11 }}>&larr; Admin</Link>
-          <div className="flex gap-1.5 ml-auto">
-            {["GB", "US", "TR"].map((c) => (
-              <button key={c} onClick={() => setCountry(c)} className="aura-pill-btn"
-                style={{ fontSize: 11, ...(country === c
-                  ? { borderColor: ACC, color: ACC, background: `${ACC}14` } : null) }}>
-                {c}
-              </button>
-            ))}
-          </div>
-        </div>
-
+    <AdminLayout title="Broadcasters" aside={
+      <div className="ad-subtabs" style={{ marginBottom: 0 }} role="tablist" aria-label="Country">
+        {["GB", "US", "TR"].map((c) => (
+          <button key={c} role="tab" aria-selected={country === c} className={country === c ? "on" : ""} onClick={() => setCountry(c)}>{c}</button>
+        ))}
+      </div>
+    }>
         <p style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.6, maxWidth: 720 }}>
           Where a match can be watched in <b>{COUNTRY_LABEL[country]}</b>. This is not
           provider data — it is typed here and RankIt reads it back. A competition rule
@@ -141,14 +132,14 @@ export default function RankItBroadcasts() {
                 <span className="flex-1 truncate">{r.competition} <span style={{ color: "var(--text-faint)" }}>{r.season}</span></span>
                 <b style={{ color: ACC }}>{r.broadcaster}</b>
                 {r.note && <span style={{ color: "var(--text-faint)" }}>({r.note})</span>}
-                <button className="aura-pill-btn" style={{ fontSize: 10, padding: "2px 8px" }}
+                <button className="aura-pill-btn" style={{ fontSize: 12, padding: "2px 8px" }}
                   onClick={() => remove(`competition_id=${r.competition_id}&broadcaster_id=${r.broadcaster_id}`)}>
                   remove
                 </button>
               </div>
             ))}
             {!data?.rules?.length && (
-              <div style={{ fontSize: 11.5, color: "var(--text-faint)" }}>
+              <div style={{ fontSize: 12, color: "var(--text-faint)" }}>
                 No rules for {country} yet — every match resolves empty.
               </div>
             )}
@@ -185,25 +176,24 @@ export default function RankItBroadcasts() {
                   <span style={{ color: "var(--text-faint)" }}> · {r.competition}</span></span>
                 <b style={{ color: "#3FB08C" }}>{r.broadcaster}</b>
                 <span style={{ color: "var(--text-faint)" }}>{(r.verified_at || "").slice(0, 10)}</span>
-                <button className="aura-pill-btn" style={{ fontSize: 10, padding: "2px 8px" }}
+                <button className="aura-pill-btn" style={{ fontSize: 12, padding: "2px 8px" }}
                   onClick={() => remove(`match_id=${r.match_id}&broadcaster_id=${r.broadcaster_id}`)}>
                   remove
                 </button>
               </div>
             ))}
             {!data?.matches?.length && (
-              <div style={{ fontSize: 11.5, color: "var(--text-faint)" }}>
+              <div style={{ fontSize: 12, color: "var(--text-faint)" }}>
                 No match records for {country}.
               </div>
             )}
           </div>
         </div>
 
-        <p style={{ fontSize: 10.5, color: "var(--text-faint)", lineHeight: 1.7 }}>
+        <p style={{ fontSize: 12, color: "var(--text-faint)", lineHeight: 1.7 }}>
           Rights move during a season, so match records keep the date they were entered.
           A rule that has gone stale is worse than no rule — RankIt will state it as fact.
         </p>
-      </div>
-    </div>
+    </AdminLayout>
   );
 }

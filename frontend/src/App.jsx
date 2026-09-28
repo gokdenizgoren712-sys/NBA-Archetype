@@ -27,6 +27,7 @@ const Login          = lazy(() => import("./pages/Login"));
 const Register       = lazy(() => import("./pages/Register"));
 const Profile        = lazy(() => import("./pages/Profile"));
 const ArticleList    = lazy(() => import("./pages/admin/ArticleList"));
+const AdminData      = lazy(() => import("./pages/admin/AdminData"));
 const ArticleEditor  = lazy(() => import("./pages/admin/ArticleEditor"));
 const UserList       = lazy(() => import("./pages/admin/UserList"));
 const RankItBroadcasts = lazy(() => import("./pages/admin/RankItBroadcasts"));
@@ -217,7 +218,8 @@ function AppInner() {
               <Route path="/reset-password"           element={<ResetPassword />} />
               <Route path="/account/delete"           element={<AccountDelete />} />
               {/* Admin */}
-              <Route path="/admin"                    element={<Navigate to="/admin/articles" replace />} />
+              <Route path="/admin"                    element={<Navigate to="/admin/data" replace />} />
+              <Route path="/admin/data"               element={<AdminData />} />
               <Route path="/admin/articles"           element={<ArticleList />} />
               <Route path="/admin/articles/new"       element={<ArticleEditor />} />
               <Route path="/admin/articles/:id/edit"  element={<ArticleEditor />} />

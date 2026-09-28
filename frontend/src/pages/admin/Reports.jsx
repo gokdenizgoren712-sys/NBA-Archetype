@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import AdminLayout from "./AdminLayout";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { SEO } from "../../hooks/useSEO";
@@ -96,16 +97,7 @@ export default function Reports() {
 
   return (
     <>
-      <SEO title="Admin — Reports" noindex path="/admin/reports" />
-      <div className="h-full overflow-y-auto" style={{ background: "var(--bg-base)" }}>
-        <div className="p-6 max-w-4xl mx-auto">
-          <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
-            <h1 className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>RankIt reports</h1>
-            <div className="flex gap-2">
-              <Link to="/admin/users" className="px-3 py-1.5 rounded-[8px] text-sm" style={chip}>Users</Link>
-              <Link to="/admin/articles" className="px-3 py-1.5 rounded-[8px] text-sm" style={chip}>Articles</Link>
-            </div>
-          </div>
+      <AdminLayout title="Reports">
           <p className="text-sm mb-5" style={{ color: "var(--text-muted)" }}>
             Answer every open report within 24 hours. Content reported by three established accounts is
             already hidden; dismiss restores it, hide keeps it down.
@@ -174,8 +166,7 @@ export default function Reports() {
               );
             })}
           </div>
-        </div>
-      </div>
+      </AdminLayout>
     </>
   );
 }

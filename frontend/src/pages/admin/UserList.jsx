@@ -1,189 +1,101 @@
-import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "../../contexts/AuthContext";
-import { SEO } from "../../hooks/useSEO";
+import AdminLayout, { authFetch, fmtDate } from "./AdminLayout";
+import PaIcon from "../../components/shell/PaIcon";
+import { EmptyState, SkeletonRows } from "../../components/states/States";
 
-function authFetch(path, token, opts = {}) {
-  return fetch(`/api${path}`, {
-    ...opts,
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, ...opts.headers },
-  });
-}
-
+// ── Admin · Users (handoff 15b) ─────────────────────────────────────────────
+// Arama + tablo (kullanıcı · e-posta · rol · durum · katılım · aksiyonlar).
+// Yıkıcı işlemler iki adımlı: satırda "Delete" → "Delete for good".
+// Sunucu kuralları aynı: kendi rolünü kaldıramazsın, son admin düşmez.
 export default function UserList() {
-  const { token, isAdmin, isLoggedIn, user: me } = useAuth();
-  const navigate = useNavigate();
+  const { token, user: me } = useAuth();
   const [users, setUsers]     = useState([]);
   const [loading, setLoading] = useState(true);
+  const [q, setQ] = useState("");
+  const [confirm, setConfirm] = useState(null);   // {id, kind}
+  const [err, setErr] = useState("");
 
   useEffect(() => {
-    if (!isLoggedIn || !isAdmin) { navigate("/login"); return; }
-    authFetch("/admin/users", token)
-      .then(r => r.json())
-      .then(d => setUsers(d.users || []))
-      .finally(() => setLoading(false));
-  }, []);
+    authFetch("/admin/users", token).then(r => r.json()).then(d => setUsers(d.users || []))
+      .catch(() => {}).finally(() => setLoading(false));
+  }, [token]);
 
-  const toggleBan = async (u) => {
-    await authFetch(`/admin/users/${u.id}`, token, {
-      method: "PATCH",
-      body: JSON.stringify({ is_banned: u.is_banned ? 0 : 1 }),
-    });
-    setUsers(prev => prev.map(x => x.id === u.id ? { ...x, is_banned: u.is_banned ? 0 : 1 } : x));
+  const shown = useMemo(() => {
+    const n = q.trim().toLowerCase();
+    return n ? users.filter(u => `${u.username} ${u.email}`.toLowerCase().includes(n)) : users;
+  }, [users, q]);
+
+  const patch = async (u, body, apply) => {
+    setErr("");
+    const r = await authFetch(`/admin/users/${u.id}`, token, { method: "PATCH", body: JSON.stringify(body) });
+    if (!r.ok) { const d = await r.json().catch(() => ({})); setErr(d.detail || "That change wasn't saved."); return; }
+    setUsers(prev => prev.map(x => (x.id === u.id ? { ...x, ...apply } : x)));
+    setConfirm(null);
   };
-
-  // Admin atama (davet kodunun yerine): yalnız adminler görür, sunucu da
-  // rolü DB'den denetler; kendi yetkini kaldıramaz, son admini düşüremezsin.
-  const toggleRole = async (u) => {
-    const next = u.role === "admin" ? "user" : "admin";
-    const ask = next === "admin"
-      ? `Make ${u.username} an admin? They will be able to manage users, articles and releases.`
-      : `Remove admin rights from ${u.username}?`;
-    if (!confirm(ask)) return;
-    const r = await authFetch(`/admin/users/${u.id}`, token, {
-      method: "PATCH",
-      body: JSON.stringify({ role: next }),
-    });
-    if (!r.ok) {
-      const d = await r.json().catch(() => ({}));
-      alert(d.detail || "Could not change the role.");
-      return;
-    }
-    setUsers(prev => prev.map(x => x.id === u.id ? { ...x, role: next } : x));
-  };
-
   const deleteUser = async (id) => {
-    if (!confirm("Delete this user and all their data?")) return;
-    await authFetch(`/admin/users/${id}`, token, { method: "DELETE" });
-    setUsers(prev => prev.filter(x => x.id !== id));
+    const r = await authFetch(`/admin/users/${id}`, token, { method: "DELETE" });
+    if (r.ok) setUsers(prev => prev.filter(x => x.id !== id));
+    setConfirm(null);
+  };
+  const deleteAll = async () => {
+    const r = await authFetch("/admin/users/all", token, { method: "DELETE" });
+    const d = await r.json().catch(() => ({}));
+    if (r.ok) { setUsers([]); setErr(`Deleted ${d.deleted ?? 0} users.`); }
+    setConfirm(null);
   };
 
-  const deleteAll = async () => {
-    if (!confirm("Delete ALL users? This cannot be undone.")) return;
-    const r = await authFetch("/admin/users/all", token, { method: "DELETE" });
-    const d = await r.json();
-    setUsers([]);
-    alert(`Deleted ${d.deleted} users.`);
-  };
+  const ask = (id, kind) => confirm?.id === id && confirm?.kind === kind;
 
   return (
-    <>
-    <SEO title="Admin — Users" noindex path="/admin/users" />
-    <div className="h-full overflow-y-auto" style={{ background: "var(--bg-base)" }}>
-      <div className="p-6 max-w-5xl mx-auto">
-
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>
-            Users <span className="text-sm font-normal ml-1" style={{ color: "var(--text-muted)" }}>({users.length})</span>
-          </h1>
-          <div className="flex gap-2">
-            <Link to="/admin/articles"
-              className="px-3 py-1.5 rounded-[8px] text-sm"
-              style={{ background: "var(--bg-elevated)", color: "var(--text-muted)", border: "1px solid var(--border)" }}>
-              Articles
-            </Link>
-            <Link to="/admin/corrections"
-              className="px-3 py-1.5 rounded-[8px] text-sm"
-              style={{ background: "var(--bg-elevated)", color: "var(--text-muted)", border: "1px solid var(--border)" }}>
-              Corrections
-            </Link>
-            <Link to="/admin/reports"
-              className="px-3 py-1.5 rounded-[8px] text-sm"
-              style={{ background: "var(--bg-elevated)", color: "var(--text-muted)", border: "1px solid var(--border)" }}>
-              Reports
-            </Link>
-            <Link to="/admin/lineups"
-              className="px-3 py-1.5 rounded-[8px] text-sm"
-              style={{ background: "var(--bg-elevated)", color: "var(--text-muted)", border: "1px solid var(--border)" }}>
-              Leaderboards
-            </Link>
-            <button onClick={deleteAll}
-              className="px-3 py-1.5 rounded-[8px] text-sm font-medium"
-              style={{ color: "var(--danger)", border: "1px solid rgba(248,113,113,.3)" }}>
-              Delete All
-            </button>
-          </div>
+    <AdminLayout title="Users" aside={
+      <label className="ad-search">
+        <PaIcon name="search" size={16} color="var(--text-muted)" />
+        <input value={q} onChange={e => setQ(e.target.value)} placeholder={`Search ${users.length} users`} aria-label="Search users" />
+      </label>
+    }>
+      {err && <p className="ad-note" role="status" style={{ marginBottom: 12 }}>{err}</p>}
+      {loading ? <SkeletonRows count={8} height={52} /> : shown.length === 0 ? (
+        <EmptyState tint="#f2efea" title={q ? "No user matches" : "No users yet"} body={q ? "Try part of the username or the email." : null} />
+      ) : (
+        <div className="ad-table scroll" style={{ "--cols": "minmax(0,1fr) minmax(0,1fr) 80px 90px 110px 250px" }}>
+          <div className="ad-th"><span>User</span><span>Email</span><span>Role</span><span>Status</span><span>Joined</span><span /></div>
+          {shown.map(u => (
+            <div key={u.id} className="ad-tr">
+              <div className="ad-user"><span className="ad-av">{(u.username || "?")[0].toUpperCase()}</span><div className="ad-cell-main"><b>{u.username}</b><span>#{u.id}</span></div></div>
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.email}</span>
+              <span style={{ color: u.role === "admin" ? "#FFB11B" : undefined }}>{u.role === "admin" ? "Admin" : "Member"}</span>
+              <span className="ad-status" style={{ "--c": u.is_banned ? "#f87171" : "#4ade80" }}><i />{u.is_banned ? "Banned" : "Active"}</span>
+              <span>{fmtDate(u.created_at)}</span>
+              <div className="ad-actions">
+                {ask(u.id, "del") ? (
+                  <><button className="ad-sm bad" onClick={() => deleteUser(u.id)}>Delete for good</button><button className="ad-sm" onClick={() => setConfirm(null)}>Keep</button></>
+                ) : ask(u.id, "role") ? (
+                  <><button className="ad-sm good" onClick={() => patch(u, { role: u.role === "admin" ? "user" : "admin" }, { role: u.role === "admin" ? "user" : "admin" })}>
+                    {u.role === "admin" ? "Confirm remove" : "Confirm admin"}</button><button className="ad-sm" onClick={() => setConfirm(null)}>Cancel</button></>
+                ) : (
+                  <>
+                    <button className={`ad-sm${u.is_banned ? "" : " warn"}`} onClick={() => patch(u, { is_banned: u.is_banned ? 0 : 1 }, { is_banned: u.is_banned ? 0 : 1 })}>{u.is_banned ? "Unban" : "Ban"}</button>
+                    {u.id !== me?.id && <button className="ad-sm" onClick={() => setConfirm({ id: u.id, kind: "role" })}>{u.role === "admin" ? "Remove admin" : "Make admin"}</button>}
+                    <button className="ad-sm" onClick={() => setConfirm({ id: u.id, kind: "del" })}>Delete</button>
+                  </>
+                )}
+              </div>
+            </div>
+          ))}
         </div>
-
-        {loading ? (
-          <p style={{ color: "var(--text-muted)" }}>Loading…</p>
-        ) : users.length === 0 ? (
-          <p style={{ color: "var(--text-muted)" }}>No users yet.</p>
-        ) : (
-          <div className="rounded-[8px] overflow-hidden border" style={{ borderColor: "var(--border)" }}>
-            <table className="w-full text-sm">
-              <thead style={{ background: "var(--bg-elevated)" }}>
-                <tr>
-                  {["ID", "Username", "Email", "Role", "Status", "Joined", "Actions"].map(h => (
-                    <th key={h} className="text-left px-4 py-2 font-medium" style={{ color: "var(--text-muted)" }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {users.map((u, i) => (
-                  <tr key={u.id}
-                    style={{ background: i % 2 === 0 ? "var(--bg-surface)" : "var(--bg-elevated)", borderTop: "1px solid var(--border)" }}>
-                    <td className="px-4 py-3 text-xs font-mono" style={{ color: "var(--text-muted)" }}>{u.id}</td>
-                    <td className="px-4 py-3 font-medium" style={{ color: "var(--text-primary)" }}>{u.username}</td>
-                    <td className="px-4 py-3 text-xs" style={{ color: "var(--text-muted)" }}>{u.email}</td>
-                    <td className="px-4 py-3">
-                      <span className="px-2 py-0.5 rounded-[8px] text-xs font-medium"
-                        style={{
-                          background: u.role === "admin" ? "rgba(255,177,27,.15)" : "rgba(156,163,175,.15)",
-                          color: u.role === "admin" ? "var(--accent)" : "var(--text-muted)",
-                        }}>
-                        {u.role}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="px-2 py-0.5 rounded-[8px] text-xs font-medium"
-                        style={{
-                          background: u.is_banned ? "rgba(239,68,68,.15)" : "rgba(34,197,94,.15)",
-                          color: u.is_banned ? "var(--danger)" : "#4ade80",
-                        }}>
-                        {u.is_banned ? "Banned" : "Active"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-xs" style={{ color: "var(--text-muted)" }}>
-                      {new Date(u.created_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex gap-2">
-                        <button onClick={() => toggleBan(u)}
-                          className="px-2 py-1 rounded-[8px] text-xs transition-colors"
-                          style={{
-                            background: "var(--bg-elevated)",
-                            color: u.is_banned ? "#4ade80" : "#f97316",
-                            border: "1px solid var(--border)",
-                          }}>
-                          {u.is_banned ? "Unban" : "Ban"}
-                        </button>
-                        {u.id !== me?.id && (
-                          <button onClick={() => toggleRole(u)}
-                            className="px-2 py-1 rounded-[8px] text-xs transition-colors"
-                            style={{
-                              background: "var(--bg-elevated)",
-                              color: u.role === "admin" ? "var(--text-muted)" : "var(--accent)",
-                              border: "1px solid var(--border)",
-                            }}>
-                            {u.role === "admin" ? "Remove admin" : "Make admin"}
-                          </button>
-                        )}
-                        <button onClick={() => deleteUser(u.id)}
-                          className="px-2 py-1 rounded-[8px] text-xs"
-                          style={{ color: "var(--danger)", border: "1px solid rgba(248,113,113,.3)" }}>
-                          Delete
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      )}
+      <div className="ad-block">
+        <span>Danger zone</span>
+        {confirm?.kind === "all" ? (
+          <div className="ad-actions" style={{ justifyContent: "flex-start" }}>
+            <button className="ad-sm bad" onClick={deleteAll}>Delete every user, admins and you included</button>
+            <button className="ad-sm" onClick={() => setConfirm(null)}>Cancel</button>
           </div>
+        ) : (
+          <button className="ad-link bad" style={{ alignSelf: "flex-start" }} onClick={() => setConfirm({ id: null, kind: "all" })}>Delete all users…</button>
         )}
       </div>
-    </div>
-    </>
+    </AdminLayout>
   );
 }

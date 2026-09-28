@@ -1,265 +1,87 @@
-import { useState, useEffect, useRef } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useState, useEffect, useCallback } from "react";
+import { Link } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
-import { SEO } from "../../hooks/useSEO";
+import AdminLayout, { authFetch, fmtDate } from "./AdminLayout";
+import { EmptyState, SkeletonRows } from "../../components/states/States";
+import { ARCHETYPE_COLOR } from "../../constants/archetypeColors";
 
-function authFetch(path, token, opts = {}) {
-  return fetch(`/api${path}`, {
-    ...opts,
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, ...opts.headers },
-  });
-}
-
-function RefreshPanel({ token }) {
-  const [status, setStatus] = useState(null);
-  const [triggering, setTriggering] = useState(false);
-  const pollRef = useRef(null);
-
-  const fetchStatus = () =>
-    authFetch("/admin/refresh-status", token)
-      .then(r => r.json())
-      .then(setStatus)
-      .catch(() => {});
-
-  useEffect(() => {
-    fetchStatus();
-    return () => clearInterval(pollRef.current);
-  }, []);
-
-  useEffect(() => {
-    if (status?.running) {
-      pollRef.current = setInterval(fetchStatus, 5000);
-    } else {
-      clearInterval(pollRef.current);
-    }
-    return () => clearInterval(pollRef.current);
-  }, [status?.running]);
-
-  const trigger = async () => {
-    setTriggering(true);
-    try {
-      await authFetch("/admin/trigger-refresh", token, { method: "POST" });
-      await fetchStatus();
-    } finally {
-      setTriggering(false);
-    }
-  };
-
-  const running = status?.running || triggering;
-
-  return (
-    <div className="p-4 rounded-[8px] space-y-3" style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
-      <div className="text-[10px] uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>Data Pipeline</div>
-
-      <div className="flex items-center gap-3">
-        <button onClick={trigger} disabled={running}
-          className="text-xs px-4 py-1.5 rounded-[8px] font-medium"
-          style={{ background: running ? "var(--border)" : "var(--accent)", color: running ? "var(--text-faint)" : "#000" }}>
-          {running ? "Running…" : "Refresh Now"}
-        </button>
-        {running && (
-          <span className="text-xs animate-pulse" style={{ color: "var(--accent)" }}>
-            Fetching data + rebuilding scores…
-          </span>
-        )}
-      </div>
-
-      {status && (
-        <div className="text-[11px] space-y-0.5" style={{ color: "var(--text-muted)" }}>
-          {status.last_run && (
-            <div>Last run: <span style={{ color: "var(--text-primary)" }}>{status.last_run.slice(0, 19).replace("T", " ")} UTC</span></div>
-          )}
-          {status.duration_s && (
-            <div>Duration: {status.duration_s}s</div>
-          )}
-          <div>Status: <span style={{ color: status.status === "ok" ? "#4ade80" : status.status === "error" ? "var(--danger)" : "var(--accent)" }}>
-            {status.status === "running" || running ? "running" : status.status}
-          </span></div>
-          {status.errors?.length > 0 && (
-            <div className="text-[10px] mt-1 p-2 rounded-[8px]" style={{ background: "rgba(239,68,68,.08)", color: "var(--danger)" }}>
-              {status.errors[0]}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-const TABS = ["pending", "approved", "rejected"];
+// ── Admin · Corrections (handoff 17g) ───────────────────────────────────────
+// Oyuncu · mevcut → önerilen (not) · kim/ne zaman · aksiyonlar. Sekme:
+// bekleyen / onaylı / reddedilen. "Apply approved" onaylıları skorlara
+// uygular. Buradaki veri-yenileme paneli Admin › Data'ya taşındı.
+const STATES = [["pending", "Waiting"], ["approved", "Approved"], ["rejected", "Rejected"]];
 
 export default function CorrectionList() {
-  const { token, isAdmin, isLoggedIn } = useAuth();
-  const navigate = useNavigate();
+  const { token } = useAuth();
   const [tab, setTab] = useState("pending");
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [applying, setApplying] = useState(false);
-  const [applyMsg, setApplyMsg] = useState(null);
+  const [msg, setMsg] = useState("");
 
-  const load = (status) => {
+  const load = useCallback((status) => {
     setLoading(true);
-    authFetch(`/admin/corrections?status=${status}`, token)
-      .then(r => r.json())
-      .then(d => setRows(d.corrections || []))
-      .finally(() => setLoading(false));
-  };
-
-  useEffect(() => {
-    if (!isLoggedIn || !isAdmin) { navigate("/login"); return; }
-    load(tab);
-  }, [tab]);
+    authFetch(`/admin/corrections?status=${status}`, token).then(r => r.json())
+      .then(d => setRows(d.corrections || [])).catch(() => setRows([])).finally(() => setLoading(false));
+  }, [token]);
+  useEffect(() => { load(tab); }, [tab, load]);
 
   const patch = async (id, status) => {
-    await authFetch(`/admin/corrections/${id}`, token, {
-      method: "PATCH",
-      body: JSON.stringify({ status }),
-    });
-    setRows(prev => prev.filter(r => r.id !== id));
+    const r = await authFetch(`/admin/corrections/${id}`, token, { method: "PATCH", body: JSON.stringify({ status }) });
+    if (r.ok) setRows(prev => prev.filter(x => x.id !== id));
   };
-
   const applyApproved = async () => {
-    setApplying(true);
-    setApplyMsg(null);
+    setApplying(true); setMsg("");
     try {
-      const res = await authFetch("/admin/apply-corrections", token, { method: "POST" });
-      const d = await res.json();
-      setApplyMsg(d.ok ? `Applied ${d.applied} correction(s). Scores rebuilding in background.` : "Failed.");
-    } catch {
-      setApplyMsg("Error — check server logs.");
-    } finally {
-      setApplying(false);
-    }
+      const d = await authFetch("/admin/apply-corrections", token, { method: "POST" }).then(r => r.json());
+      setMsg(d.ok ? `Applied ${d.applied} correction${d.applied === 1 ? "" : "s"}. Scores are rebuilding in the background.` : "Nothing was applied.");
+    } catch { setMsg("That didn't run — check the server logs."); }
+    setApplying(false);
   };
 
   return (
-    <>
-    <SEO title="Admin — Corrections" noindex path="/admin/corrections" />
-    <div className="h-full overflow-y-auto" style={{ background: "var(--bg-base)" }}>
-      <div className="p-6 max-w-4xl mx-auto">
+    <AdminLayout title="Corrections" aside={
+      tab === "approved"
+        ? <button className="ad-btn" onClick={applyApproved} disabled={applying || !rows.length}>{applying ? "Applying…" : "Apply approved"}</button>
+        : tab === "pending" && !loading ? <span className="ad-note" style={{ color: rows.length ? "#FFB11B" : undefined }}>{rows.length} waiting</span> : null
+    }>
+      <nav className="ad-subtabs" role="tablist">
+        {STATES.map(([k, l]) => (
+          <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? "on" : ""} onClick={() => setTab(k)}>{l}</button>
+        ))}
+      </nav>
+      {msg && <p className="ad-note" role="status" style={{ marginBottom: 12 }}>{msg}</p>}
 
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>
-            Tag Corrections
-          </h1>
-          <div className="flex gap-2">
-            <Link to="/admin/articles"
-              className="text-xs px-3 py-1.5 rounded-[8px]"
-              style={{ border: "1px solid var(--border)", color: "var(--text-muted)" }}>
-              Articles
-            </Link>
-            <Link to="/admin/users"
-              className="text-xs px-3 py-1.5 rounded-[8px]"
-              style={{ border: "1px solid var(--border)", color: "var(--text-muted)" }}>
-              Users
-            </Link>
-            <Link to="/admin/lineups"
-              className="text-xs px-3 py-1.5 rounded-[8px]"
-              style={{ border: "1px solid var(--border)", color: "var(--text-muted)" }}>
-              Leaderboards
-            </Link>
-          </div>
-        </div>
-
-        {/* Tabs */}
-        <div className="flex gap-1 mb-4">
-          {TABS.map(t => (
-            <button key={t} onClick={() => setTab(t)}
-              className="text-xs px-4 py-1.5 rounded-[8px] capitalize"
-              style={{
-                background: tab === t ? "var(--accent-dim)" : "transparent",
-                color: tab === t ? "var(--accent)" : "var(--text-muted)",
-                border: `1px solid ${tab === t ? "var(--accent-border)" : "var(--border)"}`,
-              }}>
-              {t}
-            </button>
+      {loading ? <SkeletonRows count={5} height={70} /> : rows.length === 0 ? (
+        <EmptyState tint="#f2efea" title={tab === "pending" ? "Nothing waiting" : `No ${tab} corrections`}
+          body={tab === "pending" ? "Suggestions from player profiles land here." : null} />
+      ) : (
+        <div className="ad-table scroll" style={{ "--cols": "minmax(0,1fr) minmax(0,1.2fr) 150px 190px" }}>
+          <div className="ad-th"><span>Player · season</span><span>Current → suggested</span><span>From</span><span /></div>
+          {rows.map(r => (
+            <div key={r.id} className="ad-tr" style={{ minHeight: 70 }}>
+              <div className="ad-cell-main">
+                <b><Link to={`/basketball/players/${encodeURIComponent(r.player_name)}`}>{r.player_name}</Link></b>
+                <span>{r.season} · primary archetype</span>
+              </div>
+              <div className="ad-cell-main">
+                <b style={{ fontWeight: 500 }}>
+                  <s style={{ color: "var(--text-muted)" }}>{r.current_arch}</s>
+                  <span style={{ color: "var(--ink-divider)", margin: "0 6px" }}>→</span>
+                  <span style={{ color: ARCHETYPE_COLOR[r.suggested_arch] || "var(--text-primary)" }}>{r.suggested_arch}</span>
+                </b>
+                {r.note && <span title={r.note}>“{r.note}”</span>}
+              </div>
+              <span>{r.username || "unknown"} · {fmtDate(r.created_at)}</span>
+              <div className="ad-actions">
+                {tab === "pending" && <><button className="ad-sm" onClick={() => patch(r.id, "rejected")}>Reject</button><button className="ad-sm good" onClick={() => patch(r.id, "approved")}>Approve</button></>}
+                {tab === "approved" && <button className="ad-sm" onClick={() => patch(r.id, "rejected")}>Revoke</button>}
+                {tab === "rejected" && <button className="ad-sm" onClick={() => patch(r.id, "pending")}>Re-open</button>}
+              </div>
+            </div>
           ))}
         </div>
-
-        {/* Apply button (only on approved tab) */}
-        {tab === "approved" && (
-          <div className="flex items-center gap-3 mb-4">
-            <button onClick={applyApproved} disabled={applying}
-              className="text-xs px-4 py-1.5 rounded-[8px] font-medium"
-              style={{ background: "var(--accent)", color: "#000" }}>
-              {applying ? "Applying…" : "Apply Approved →"}
-            </button>
-            {applyMsg && (
-              <span className="text-xs" style={{ color: "var(--text-muted)" }}>{applyMsg}</span>
-            )}
-          </div>
-        )}
-
-        {/* Data refresh panel */}
-        <div className="mb-6">
-          <RefreshPanel token={token} />
-        </div>
-
-        {loading ? (
-          <div className="py-12 text-center text-sm" style={{ color: "var(--text-muted)" }}>Loading…</div>
-        ) : rows.length === 0 ? (
-          <div className="py-12 text-center text-sm" style={{ color: "var(--text-muted)" }}>No {tab} corrections.</div>
-        ) : (
-          <div className="space-y-2">
-            {rows.map(r => (
-              <div key={r.id} className="p-4 rounded-[8px] flex items-start justify-between gap-4"
-                style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
-                <div className="min-w-0 space-y-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
-                      {r.player_name}
-                    </span>
-                    <span className="text-xs" style={{ color: "var(--text-faint)" }}>{r.season}</span>
-                    <span className="text-xs px-2 py-0.5 rounded-[8px]" style={{ background: "rgba(239,68,68,.15)", color: "var(--danger)" }}>
-                      {r.current_arch}
-                    </span>
-                    <span className="text-[10px]" style={{ color: "var(--text-faint)" }}>→</span>
-                    <span className="text-xs px-2 py-0.5 rounded-[8px]" style={{ background: "rgba(74,222,128,.12)", color: "#4ade80" }}>
-                      {r.suggested_arch}
-                    </span>
-                  </div>
-                  {r.note && (
-                    <div className="text-xs" style={{ color: "var(--text-muted)" }}>"{r.note}"</div>
-                  )}
-                  <div className="text-[10px]" style={{ color: "var(--text-faint)" }}>
-                    by {r.username || "unknown"} · {r.created_at?.slice(0, 10)}
-                  </div>
-                </div>
-
-                {tab === "pending" && (
-                  <div className="flex gap-2 shrink-0">
-                    <button onClick={() => patch(r.id, "approved")}
-                      className="text-xs px-3 py-1 rounded-[8px]"
-                      style={{ background: "rgba(74,222,128,.15)", color: "#4ade80", border: "1px solid rgba(74,222,128,.3)" }}>
-                      Approve
-                    </button>
-                    <button onClick={() => patch(r.id, "rejected")}
-                      className="text-xs px-3 py-1 rounded-[8px]"
-                      style={{ background: "rgba(239,68,68,.12)", color: "var(--danger)", border: "1px solid rgba(239,68,68,.25)" }}>
-                      Reject
-                    </button>
-                  </div>
-                )}
-                {tab === "approved" && (
-                  <button onClick={() => patch(r.id, "rejected")}
-                    className="text-xs px-3 py-1 rounded-[8px]"
-                    style={{ color: "var(--text-faint)", border: "1px solid var(--border)" }}>
-                    Revoke
-                  </button>
-                )}
-                {tab === "rejected" && (
-                  <button onClick={() => patch(r.id, "pending")}
-                    className="text-xs px-3 py-1 rounded-[8px]"
-                    style={{ color: "var(--text-faint)", border: "1px solid var(--border)" }}>
-                    Re-open
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-    </>
+      )}
+    </AdminLayout>
   );
 }

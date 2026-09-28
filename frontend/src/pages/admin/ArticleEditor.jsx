@@ -6,7 +6,7 @@ import Image from "@tiptap/extension-image";
 import TipTapLink from "@tiptap/extension-link";
 import Placeholder from "@tiptap/extension-placeholder";
 import { useAuth } from "../../contexts/AuthContext";
-import { SEO } from "../../hooks/useSEO";
+import AdminLayout from "./AdminLayout";
 
 const CLOUD = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
 const PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
@@ -44,51 +44,31 @@ async function cloudinaryUpload(file, token) {
 
 function Toolbar({ editor, onImageUpload, uploading }) {
   if (!editor) return null;
-
-  const btn = (action, label, active = false) => (
-    <button type="button"
-      onClick={action}
-      title={label}
-      className="px-2 py-1 rounded-[8px] text-xs font-medium transition-colors"
-      style={{
-        background: active ? "var(--accent)" : "var(--bg-elevated)",
-        color: active ? "#000" : "var(--text-primary)",
-        border: "1px solid var(--border)",
-      }}>
-      {label}
-    </button>
+  const btn = (action, label, active = false, title = label) => (
+    <button type="button" onClick={action} title={title} aria-pressed={active} className={active ? "on" : ""}>{label}</button>
   );
-
   const addLink = () => {
-    const url = prompt("URL gir:");
+    const url = prompt("Link URL");
     if (url) editor.chain().focus().setLink({ href: url }).run();
   };
-
   return (
-    <div className="flex flex-wrap gap-1 p-2 border-b" style={{ background: "var(--bg-elevated)", borderColor: "var(--border)" }}>
-      {btn(() => editor.chain().focus().toggleHeading({ level: 1 }).run(), "H1", editor.isActive("heading", { level: 1 }))}
-      {btn(() => editor.chain().focus().toggleHeading({ level: 2 }).run(), "H2", editor.isActive("heading", { level: 2 }))}
-      {btn(() => editor.chain().focus().toggleHeading({ level: 3 }).run(), "H3", editor.isActive("heading", { level: 3 }))}
-      <div className="w-px mx-1" style={{ background: "var(--border)" }} />
-      {btn(() => editor.chain().focus().toggleBold().run(), "B", editor.isActive("bold"))}
-      {btn(() => editor.chain().focus().toggleItalic().run(), "I", editor.isActive("italic"))}
-      {btn(() => editor.chain().focus().toggleStrike().run(), "S̶", editor.isActive("strike"))}
-      {btn(() => editor.chain().focus().toggleCode().run(), "`", editor.isActive("code"))}
-      <div className="w-px mx-1" style={{ background: "var(--border)" }} />
-      {btn(() => editor.chain().focus().toggleBulletList().run(), "• Liste", editor.isActive("bulletList"))}
-      {btn(() => editor.chain().focus().toggleOrderedList().run(), "1. Liste", editor.isActive("orderedList"))}
-      {btn(() => editor.chain().focus().toggleBlockquote().run(), "❝", editor.isActive("blockquote"))}
-      {btn(() => editor.chain().focus().setHorizontalRule().run(), "──")}
-      <div className="w-px mx-1" style={{ background: "var(--border)" }} />
-      {btn(addLink, "🔗 Link")}
-      <label className="px-2 py-1 rounded-[8px] text-xs font-medium cursor-pointer transition-colors"
-        style={{
-          background: "var(--bg-elevated)",
-          color: uploading ? "var(--text-muted)" : "var(--text-primary)",
-          border: "1px solid var(--border)",
-        }}>
-        {uploading ? "Yükleniyor…" : "📷 Fotoğraf"}
-        <input type="file" accept="image/*" className="hidden" onChange={onImageUpload} disabled={uploading} />
+    <div className="ae-tools" role="toolbar" aria-label="Formatting">
+      {btn(() => editor.chain().focus().toggleHeading({ level: 2 }).run(), "H2", editor.isActive("heading", { level: 2 }), "Heading")}
+      {btn(() => editor.chain().focus().toggleHeading({ level: 3 }).run(), "H3", editor.isActive("heading", { level: 3 }), "Subheading")}
+      <i />
+      {btn(() => editor.chain().focus().toggleBold().run(), "B", editor.isActive("bold"), "Bold")}
+      {btn(() => editor.chain().focus().toggleItalic().run(), "I", editor.isActive("italic"), "Italic")}
+      {btn(() => editor.chain().focus().toggleStrike().run(), "S", editor.isActive("strike"), "Strikethrough")}
+      <i />
+      {btn(() => editor.chain().focus().toggleBulletList().run(), "List", editor.isActive("bulletList"), "Bulleted list")}
+      {btn(() => editor.chain().focus().toggleOrderedList().run(), "1.", editor.isActive("orderedList"), "Numbered list")}
+      {btn(() => editor.chain().focus().toggleBlockquote().run(), "Quote", editor.isActive("blockquote"), "Pull quote")}
+      {btn(() => editor.chain().focus().setHorizontalRule().run(), "Rule", false, "Divider")}
+      <i />
+      {btn(addLink, "Link", editor.isActive("link"))}
+      <label className="ae-upload">
+        {uploading ? "Uploading…" : "Image"}
+        <input type="file" accept="image/*" hidden onChange={onImageUpload} disabled={uploading} />
       </label>
     </div>
   );
@@ -107,19 +87,19 @@ export default function ArticleEditor() {
   const [uploading, setUploading] = useState(false);
   const [error, setError]       = useState("");
   const [saved, setSaved]       = useState(false);
+  const [savedAt, setSavedAt]   = useState(null);
 
   const editor = useEditor({
     extensions: [
       StarterKit,
       Image.configure({ inline: false, allowBase64: false }),
       TipTapLink.configure({ openOnClick: false }),
-      Placeholder.configure({ placeholder: "Makaleyi buraya yaz…" }),
+      Placeholder.configure({ placeholder: "Start writing…" }),
     ],
     content: "",
     editorProps: {
       attributes: {
-        class: "outline-none min-h-[400px] p-4",
-        style: "color: var(--text-primary)",
+        class: "outline-none ae-body",
       },
     },
   });
@@ -146,7 +126,7 @@ export default function ArticleEditor() {
     try {
       const url = await cloudinaryUpload(file, token);
       editor?.chain().focus().setImage({ src: url }).run();
-    } catch (err) { alert(`Image upload failed: ${err.message}`); }
+    } catch (err) { setError(`Image upload failed: ${err.message}`); }
     finally { setUploading(false); e.target.value = ""; }
   }, [editor, token]);
 
@@ -157,7 +137,7 @@ export default function ArticleEditor() {
     try {
       const url = await cloudinaryUpload(file, token);
       setMeta(m => ({ ...m, cover_image_url: url }));
-    } catch (err) { alert(`Image upload failed: ${err.message}`); }
+    } catch (err) { setError(`Image upload failed: ${err.message}`); }
     finally { setUploading(false); e.target.value = ""; }
   };
 
@@ -170,103 +150,70 @@ export default function ArticleEditor() {
       const method = isEdit ? "PUT" : "POST";
       const res = await authFetch(path, token, { method, body: JSON.stringify(body) });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || "Kaydedilemedi");
-      setSaved(true); setTimeout(() => setSaved(false), 2000);
+      if (!res.ok) throw new Error(data.detail || "It wasn't saved. Try again.");
+      setSaved(true); setSavedAt(Date.now());
       if (!isEdit) navigate(`/admin/articles/${data.id}/edit`, { replace: true });
     } catch (e) { setError(e.message); }
     finally { setSaving(false); }
   };
 
-  if (loading) return <div className="h-full flex items-center justify-center" style={{ color: "var(--text-muted)" }}>Yükleniyor…</div>;
+  if (loading) return <AdminLayout title="Content"><div className="pa-skel" style={{ height: 420, borderRadius: 16 }} /></AdminLayout>;
 
+  const live = meta.status === "published" && meta.slug;
   return (
     <>
-    <SEO title={isEdit ? "Makale Düzenle" : "Yeni Makale"} noindex path="/admin/articles/new" />
-    <div className="h-full overflow-y-auto" style={{ background: "var(--bg-base)" }}>
-      <div className="p-4 max-w-4xl mx-auto">
-
-        {/* Top bar */}
-        <div className="flex items-center gap-3 mb-4">
-          <Link to="/admin/articles" className="text-sm hover:underline" style={{ color: "var(--accent)" }}>
-            ← Makaleler
-          </Link>
-          <div className="ml-auto flex items-center gap-2">
-            {error && <span className="text-xs" style={{ color: "var(--danger)" }}>{error}</span>}
-            {saved && <span className="text-xs text-green-400">Kaydedildi ✓</span>}
-            <button onClick={() => save("draft")} disabled={saving}
-              className="px-3 py-1.5 rounded-[8px] text-sm"
-              style={{ background: "var(--bg-elevated)", color: "var(--text-primary)", border: "1px solid var(--border)", opacity: saving ? 0.6 : 1 }}>
-              Taslak Kaydet
-            </button>
-            <button onClick={() => save("published")} disabled={saving}
-              className="px-3 py-1.5 rounded-[8px] text-sm font-semibold"
-              style={{ background: "var(--accent)", color: "#000", opacity: saving ? 0.6 : 1 }}>
-              {saving ? "Kaydediliyor…" : "Yayınla"}
-            </button>
-          </div>
-        </div>
-
-        {/* Meta */}
-        <div className="space-y-3 mb-4">
-          <input
-            type="text"
-            placeholder="Başlık"
-            value={meta.title}
-            onChange={e => setMeta(m => ({ ...m, title: e.target.value, slug: slugify(e.target.value) }))}
-            className="w-full px-3 py-2 rounded-[8px] text-lg font-bold outline-none"
-            style={{ background: "var(--bg-elevated)", color: "var(--text-primary)", border: "1px solid var(--border)" }}
-          />
-          <div className="flex gap-2">
-            <input
-              type="text"
-              placeholder="slug (otomatik)"
-              value={meta.slug}
-              onChange={e => setMeta(m => ({ ...m, slug: e.target.value }))}
-              className="flex-1 px-3 py-1.5 rounded-[8px] text-sm font-mono outline-none"
-              style={{ background: "var(--bg-elevated)", color: "var(--text-muted)", border: "1px solid var(--border)" }}
-            />
-            <select
-              value={meta.status}
-              onChange={e => setMeta(m => ({ ...m, status: e.target.value }))}
-              className="px-3 py-1.5 rounded-[8px] text-sm outline-none"
-              style={{ background: "var(--bg-elevated)", color: "var(--text-primary)", border: "1px solid var(--border)" }}>
-              <option value="draft">Taslak</option>
-              <option value="published">Yayında</option>
-            </select>
-          </div>
-
-          {/* Kapak fotoğrafı */}
-          <div className="flex items-center gap-3">
-            {meta.cover_image_url ? (
-              <img src={meta.cover_image_url} alt="Kapak" className="h-16 w-28 object-cover rounded-[8px]" />
-            ) : (
-              <div className="h-16 w-28 rounded-[8px] flex items-center justify-center text-xs"
-                style={{ background: "var(--bg-elevated)", color: "var(--text-muted)", border: "1px dashed var(--border)" }}>
-                Kapak yok
-              </div>
-            )}
-            <label className="px-3 py-1.5 rounded-[8px] text-sm cursor-pointer"
-              style={{ background: "var(--bg-elevated)", color: "var(--text-primary)", border: "1px solid var(--border)" }}>
-              {uploading ? "Yükleniyor…" : "Kapak Fotoğrafı Seç"}
-              <input type="file" accept="image/*" className="hidden" onChange={uploadCover} disabled={uploading} />
-            </label>
-            {meta.cover_image_url && (
-              <button type="button" onClick={() => setMeta(m => ({ ...m, cover_image_url: "" }))}
-                className="text-xs" style={{ color: "var(--danger)" }}>Kaldır</button>
-            )}
-          </div>
-        </div>
-
-        {/* Editor */}
-        <div className="rounded-[8px] overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+    <AdminLayout title={isEdit ? "Edit article" : "New article"} wide aside={
+      <span className="ad-note" role="status">
+        {error ? <span style={{ color: "#f87171" }}>{error}</span> : saving ? "Saving…" : savedAt ? `Saved ${new Date(savedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}` : isEdit ? "No unsaved changes" : "Not saved yet"}
+      </span>
+    }>
+      <div className="ae-grid">
+        <div className="ae-main">
+          <Link to="/admin/articles" className="ae-back">← All articles</Link>
           <Toolbar editor={editor} onImageUpload={uploadImage} uploading={uploading} />
-          <div style={{ background: "var(--bg-surface)", minHeight: "500px" }}>
-            <EditorContent editor={editor} />
-          </div>
+          <textarea className="ae-title" rows={1} placeholder="Title" aria-label="Title"
+            value={meta.title}
+            onChange={e => setMeta(m => ({ ...m, title: e.target.value, slug: isEdit ? m.slug : slugify(e.target.value) }))} />
+          <div className="ae-content"><EditorContent editor={editor} /></div>
         </div>
 
+        <aside className="ae-side">
+          <div className="ae-btns">
+            {live
+              ? <a className="ad-btn ghost" href={`/blog/${meta.slug}`} target="_blank" rel="noopener noreferrer">View live</a>
+              : <button className="ad-btn ghost" onClick={() => save("draft")} disabled={saving}>Save draft</button>}
+            <button className="ad-btn" onClick={() => save("published")} disabled={saving || !meta.title.trim()}>
+              {meta.status === "published" ? "Update" : "Publish"}
+            </button>
+          </div>
+          {meta.status === "published" && (
+            <button className="ad-link" style={{ alignSelf: "flex-start" }} onClick={() => save("draft")} disabled={saving}>Unpublish (back to draft)</button>
+          )}
+          <label className="ae-field">
+            <span>Slug</span>
+            <input value={meta.slug} onChange={e => setMeta(m => ({ ...m, slug: e.target.value }))} placeholder="made from the title" />
+            <em>/blog/{meta.slug || "…"}</em>
+          </label>
+          <div className="ae-field">
+            <span>Status</span>
+            <b className="ad-status" style={{ "--c": meta.status === "published" ? "#4ade80" : "#b4afa8" }}><i />{meta.status === "published" ? "Published" : "Draft"}</b>
+          </div>
+          <div className="ae-field">
+            <span>Cover image</span>
+            {meta.cover_image_url
+              ? <img src={meta.cover_image_url} alt="" className="ae-cover" />
+              : <div className="ae-cover empty">No cover — the blog uses archetype art if the title names one</div>}
+            <div className="ad-actions" style={{ justifyContent: "flex-start" }}>
+              <label className="ad-sm" style={{ display: "inline-flex", alignItems: "center", cursor: "pointer" }}>
+                {uploading ? "Uploading…" : meta.cover_image_url ? "Replace" : "Upload"}
+                <input type="file" accept="image/*" hidden onChange={uploadCover} disabled={uploading} />
+              </label>
+              {meta.cover_image_url && <button className="ad-sm" onClick={() => setMeta(m => ({ ...m, cover_image_url: "" }))}>Remove</button>}
+            </div>
+          </div>
+        </aside>
       </div>
-    </div>
+    </AdminLayout>
 
     <style>{`
       .tiptap h1 { font-size:1.8em; font-weight:700; margin:1em 0 .5em; }
@@ -275,7 +222,7 @@ export default function ArticleEditor() {
       .tiptap p  { margin:.5em 0; line-height:1.7; }
       .tiptap ul { list-style:disc; padding-left:1.5em; margin:.5em 0; }
       .tiptap ol { list-style:decimal; padding-left:1.5em; margin:.5em 0; }
-      .tiptap blockquote { border-left:3px solid var(--accent); padding-left:1em; opacity:.8; margin:.5em 0; }
+      .tiptap blockquote { margin:1em 0; font-family:var(--font-logo); font-size:1.6em; font-weight:700; line-height:1.2; color:#FFB11B; }
       .tiptap code { font-family:monospace; background:var(--bg-elevated); padding:.1em .3em; border-radius:3px; font-size:.9em; }
       .tiptap img { max-width:100%; border-radius:6px; margin:1em 0; }
       .tiptap hr { border:none; border-top:1px solid var(--border); margin:1.5em 0; }

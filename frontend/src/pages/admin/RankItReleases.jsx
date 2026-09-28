@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import AdminLayout from "./AdminLayout";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { SEO } from "../../hooks/useSEO";
@@ -92,17 +93,7 @@ export default function RankItReleases() {
   };
 
   return (
-    <div className="h-full overflow-y-auto">
-      <SEO title="RankIt builds" noindex />
-      <div className="max-w-4xl mx-auto p-5 space-y-4">
-        <div className="flex items-baseline gap-3 flex-wrap">
-          <h1 className="font-logo text-2xl font-bold text-white">RankIt builds</h1>
-          <Link to="/admin/articles" className="aura-pill-btn" style={{ fontSize: 11 }}>&larr; Admin</Link>
-          <span style={{ fontSize: 11, color: "var(--text-faint)" }}>
-            {releases.length} build{releases.length === 1 ? "" : "s"}
-          </span>
-        </div>
-
+    <AdminLayout title="Builds" aside={<span className="ad-note">{releases.length} build{releases.length === 1 ? "" : "s"}</span>}>
         <p style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.6, maxWidth: 700 }}>
           Android builds live here rather than on one laptop. Each one keeps its SHA-256,
           so whoever installs it can check the file arrived intact. The download link is
@@ -121,7 +112,7 @@ export default function RankItReleases() {
             onChange={(e) => pickFile(e.target.files?.[0] || null)}
             style={{ fontSize: 12, color: "var(--text-muted)" }} />
           {file && (
-            <div style={{ fontSize: 11.5, color: "var(--text-faint)" }}>
+            <div style={{ fontSize: 12, color: "var(--text-faint)" }}>
               {file.name} · {mb(file.size)}
             </div>
           )}
@@ -167,27 +158,27 @@ export default function RankItReleases() {
                   "--accent-a": "rgba(156,163,175,.14)", "--accent-line": "rgba(156,163,175,.4)" }}>
                   {r.channel} · code {r.version_code}
                 </span>
-                <span style={{ fontSize: 11, color: "var(--text-faint)" }}>{mb(r.size_bytes)}</span>
+                <span style={{ fontSize: 12, color: "var(--text-faint)" }}>{mb(r.size_bytes)}</span>
                 {!r.file_present && (
-                  <span style={{ fontSize: 11, color: "#E8654C" }}>file missing on disk</span>
+                  <span style={{ fontSize: 12, color: "#E8654C" }}>file missing on disk</span>
                 )}
                 <div className="ml-auto flex gap-1.5">
-                  <button className="aura-pill-btn" style={{ fontSize: 10.5 }}
+                  <button className="aura-pill-btn" style={{ fontSize: 12 }}
                     onClick={() => copyLink(r)}>{copied === r.id ? "copied" : "copy link"}</button>
-                  <a className="aura-pill-btn" style={{ fontSize: 10.5 }}
+                  <a className="aura-pill-btn" style={{ fontSize: 12 }}
                     href={r.download_url}>download</a>
-                  <button className="aura-pill-btn" style={{ fontSize: 10.5, color: "#E8654C" }}
+                  <button className="aura-pill-btn" style={{ fontSize: 12, color: "#E8654C" }}
                     onClick={() => remove(r.id, r.version_name)}>delete</button>
                 </div>
               </div>
               {r.notes && (
-                <div style={{ fontSize: 11.5, color: "var(--text-muted)" }}>{r.notes}</div>
+                <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{r.notes}</div>
               )}
-              <div style={{ fontSize: 10, color: "var(--text-faint)", fontFamily: "monospace",
+              <div style={{ fontSize: 12, color: "var(--text-faint)", fontFamily: "monospace",
                 wordBreak: "break-all" }}>
                 sha256 {r.sha256}
               </div>
-              <div style={{ fontSize: 10, color: "var(--text-faint)" }}>
+              <div style={{ fontSize: 12, color: "var(--text-faint)" }}>
                 {(r.created_at || "").slice(0, 16)}{r.uploader ? ` · @${r.uploader}` : ""}
               </div>
             </div>
@@ -200,11 +191,10 @@ export default function RankItReleases() {
         </div>
 
         {dir && (
-          <p style={{ fontSize: 10.5, color: "var(--text-faint)" }}>
+          <p style={{ fontSize: 12, color: "var(--text-faint)" }}>
             Stored at <code>{dir}</code> on the server volume — kept across deploys, never in git.
           </p>
         )}
-      </div>
-    </div>
+    </AdminLayout>
   );
 }

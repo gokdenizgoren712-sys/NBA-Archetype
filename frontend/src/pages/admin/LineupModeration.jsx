@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import AdminLayout from "./AdminLayout";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { SEO } from "../../hooks/useSEO";
@@ -48,33 +49,7 @@ export default function LineupModeration() {
 
   return (
     <>
-    <SEO title="Admin — Leaderboards" noindex path="/admin/lineups" />
-    <div className="h-full overflow-y-auto" style={{ background: "var(--bg-base)" }}>
-      <div className="p-6 max-w-5xl mx-auto">
-
-        <div className="flex items-center justify-between mb-6 flex-wrap gap-2">
-          <h1 className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>
-            Leaderboards <span className="text-sm font-normal ml-1" style={{ color: "var(--text-muted)" }}>({entries.length})</span>
-          </h1>
-          <div className="flex gap-2">
-            <Link to="/admin/articles"
-              className="px-3 py-1.5 rounded-[8px] text-sm"
-              style={{ background: "var(--bg-elevated)", color: "var(--text-muted)", border: "1px solid var(--border)" }}>
-              Articles
-            </Link>
-            <Link to="/admin/users"
-              className="px-3 py-1.5 rounded-[8px] text-sm"
-              style={{ background: "var(--bg-elevated)", color: "var(--text-muted)", border: "1px solid var(--border)" }}>
-              Users
-            </Link>
-            <Link to="/admin/corrections"
-              className="px-3 py-1.5 rounded-[8px] text-sm"
-              style={{ background: "var(--bg-elevated)", color: "var(--text-muted)", border: "1px solid var(--border)" }}>
-              Corrections
-            </Link>
-          </div>
-        </div>
-
+    <AdminLayout title="Leaderboards" aside={<span className="ad-note">{entries.length} entries</span>}>
         {/* Mode filter */}
         <div className="flex gap-2 mb-4">
           {[["all", "All"], ["classic", "Classic"], ["salarycap", "Salary Cap"]].map(([key, label]) => (
@@ -173,8 +148,7 @@ export default function LineupModeration() {
             </button>
           </div>
         </div>
-      </div>
-    </div>
+    </AdminLayout>
     </>
   );
 }
