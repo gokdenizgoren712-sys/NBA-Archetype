@@ -137,6 +137,26 @@ def _enrich_plans(b: dr.Board, plans: dict) -> dict:
     return {**plans, "players": {str(i): _player(b, i) for i in ids if i in b.row}}
 
 
+def strategy_validation(fmt: dict) -> dict:
+    """Bu formatta draft ÖNERİLERİMİZİN gerçek sezonlarda doğrulanıp doğrulanmadığı.
+    Kaynak: src/fantasy/strategy_backtest.py (2024-25 ve 2025-26, gerçekçi piyasa varsayımı) —
+    kategori/H2H: piyasadan +0.076 haftalık eşleşme oranı (dört piyasa varsayımının hepsinde pozitif);
+    puan: −0.014 (fark yok); High Score ve roto hiç test edilmedi. Öneri her durumda verilir, yalnızca
+    güven düzeyi söylenir. Sonuçlar değişirse burası ve docs/FANTASY_MODEL_IMPROVEMENTS.md birlikte güncellenir."""
+    kind, matchup = fmt.get("kind"), fmt.get("matchup")
+    if kind == "categories" and matchup == "h2h":
+        return {"status": "validated"}
+    if kind == "points":
+        return {"status": "unvalidated", "title": "Picks not yet proven for points leagues",
+                "body": "In our test on the 2024-25 and 2025-26 seasons, drafting by our points ranking finished level "
+                        "with drafting by average draft position. Treat these picks as a starting point and trust your own read."}
+    if kind == "high_score":
+        return {"status": "unvalidated", "title": "Picks not yet tested for High Score leagues",
+                "body": "We have not yet checked this format against real seasons. Treat these picks as a starting point."}
+    return {"status": "unvalidated", "title": "Picks not yet tested for roto leagues",
+            "body": "Our real-season test covers head-to-head leagues only. Treat these picks as a starting point."}
+
+
 def _plans(fmt: dict, slot: int, basis: str) -> dict:
     b = _board(fmt, basis)
     _check_slot(b, slot)
@@ -146,7 +166,8 @@ def _plans(fmt: dict, slot: int, basis: str) -> dict:
             and str(b.teams) in pre["formats"][key]
             and FORMATS.get(key, {}).get("roster") == fmt["roster"]):
         plans = pre["formats"][key][str(b.teams)][str(slot)]
-        return {**_enrich_plans(b, plans), "source": "precomputed", "built_at": pre["built_at"]}
+        return {**_enrich_plans(b, plans), "source": "precomputed", "built_at": pre["built_at"],
+                "validation": strategy_validation(fmt)}
     ck = json.dumps([fmt, slot, basis], sort_keys=True, default=str)
     with _lock:
         hit = _plans_cache.get(ck)
@@ -156,7 +177,7 @@ def _plans(fmt: dict, slot: int, basis: str) -> dict:
             _plans_cache[ck] = hit
             while len(_plans_cache) > 64:
                 _plans_cache.popitem(last=False)
-    return {**_enrich_plans(b, hit), "source": "on_demand"}
+    return {**_enrich_plans(b, hit), "source": "on_demand", "validation": strategy_validation(fmt)}
 
 
 @router.get("/draft/plans")
@@ -202,6 +223,7 @@ def _recommend_response(b: dr.Board, taken: list[int], mine: list[int], current_
         r["player"] = _player(b, r["player_id"])
     rec["my_roster"] = [_player(b, p) for p in mine]
     rec["lineup"] = _lineup(b, list(mine))
+    rec["validation"] = strategy_validation(b.fmt)
     return rec
 
 
@@ -284,7 +306,8 @@ def mock_advance(body: MockBody):
     out = {"season": SEASON, "format": fmt, "seed": body.seed, "bot_styles": {str(k): v for k, v in styles.items()},
            "picks": _picks_view(b, picks), "done": done,
            "on_the_clock": None if done else len(picks) + 1,
-           "my_roster": [_player(b, p) for p in mine], "lineup": _lineup(b, mine)}
+           "my_roster": [_player(b, p) for p in mine], "lineup": _lineup(b, mine),
+           "validation": strategy_validation(fmt)}
     if not done:
         others = [p for p in picks if p not in set(mine)]
         rec = _recommend_response(b, others, mine, len(picks) + 1, body.slot, (), body.n)
@@ -338,7 +361,7 @@ def draft_grade(body: GradeBody):
                       "value_vs_adp": round(overall - adp, 1)})   # + → ADP'sinden geç aldın (çalıntı)
     moves.sort(key=lambda m: -m["value_vs_adp"])
     return {
-        "season": SEASON, "format": fmt, "slot": body.slot,
+        "season": SEASON, "format": fmt, "slot": body.slot, "validation": strategy_validation(fmt),
         "grade": dr.letter_grade(me["projected_rank"], b.teams),
         "me": me,
         "league": [{"slot": s, **league[s]} for s in sorted(league, key=lambda s: league[s]["projected_rank"])],

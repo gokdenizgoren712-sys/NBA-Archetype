@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { SEO } from "../../hooks/useSEO";
 import { fz } from "./fantasyApi";
-import { ArchChip, ErrorNote, GOOD, BAD, Meter, ProbBar, ordinal, pct } from "./ui";
+import { ArchChip, ErrorNote, GOOD, BAD, Meter, ProbBar, ValidationNotice, ordinal, pct } from "./ui";
 import { useAsync, useFantasy, useIsPhone } from "./useFantasy";
 
 const NOTES = {
@@ -127,6 +127,7 @@ export default function FantasyDraftPlan() {
       <SEO title="Fantasy draft plan" description="Your snake draft pick numbers and three simulated builds for your slot." path="/basketball/fantasy/draft-plan" />
       <div className="fz-page" style={{ gap: 26 }}>
         {head}
+        <ValidationNotice v={data?.validation} />
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <span className="fz-sub" style={{ fontSize: 13 }}>Your picks · snake</span>
           <div style={{ display: phone ? "flex" : "grid", gridTemplateColumns: `repeat(${f.picks.length}, minmax(0,1fr))`, gap: 4, overflowX: phone ? "auto" : "visible" }}>

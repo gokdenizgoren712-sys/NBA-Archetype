@@ -8,7 +8,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { SEO } from "../../hooks/useSEO";
 import { fz } from "./fantasyApi";
 import {
-  ArchChip, BAD, ErrorNote, GOOD, Meter, ProbBar, SkeletonList, fmt1, ordinal, pct,
+  ArchChip, BAD, ErrorNote, GOOD, Meter, ProbBar, SkeletonList, ValidationNotice, fmt1, ordinal, pct,
 } from "./ui";
 import { pickOwner, useFantasy, useIsPhone } from "./useFantasy";
 
@@ -147,6 +147,7 @@ function Result({ f, run, grade, onAgain }) {
           : <button className="fz-btn lg" onClick={() => navigate("/login")}>Sign in to save</button>}
         {typeof saved === "string" && <span className="fz-err">{saved.slice(6)}</span>}
       </div>
+      <ValidationNotice v={grade.validation} />
       <span className="fz-meta" style={{ lineHeight: 1.6 }}>{grade.notes?.[0]}</span>
       <div className="fz-pinned"><button className="fz-gold" onClick={onAgain}>Run another mock</button></div>
     </div>
@@ -245,6 +246,7 @@ export default function FantasyMock() {
       </div>
       <span style={{ fontSize: 14, lineHeight: 1.45 }}>{reason}</span>
       {state.next_pick && <span className="fz-meta">Chance still there at pick {state.next_pick}: {pct(rec.available_next_pick)}</span>}
+      <ValidationNotice v={state.validation} compact />
       <button className="fz-gold" style={phone ? { height: 54, borderRadius: 12, fontSize: 18 } : undefined} disabled={busy}
         onClick={() => draft(rec.player_id)}>Draft {shortName(rec.player.name)}</button>
     </div>

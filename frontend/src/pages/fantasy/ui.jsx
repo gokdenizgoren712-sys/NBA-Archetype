@@ -158,6 +158,20 @@ export function SkeletonList({ rows = 8, height = 52 }) {
   );
 }
 
+// Bu formatta önerilerimiz gerçek sezonlarda kanıtlanmadıysa (API `validation`) — öneri yine verilir, yalnız güven söylenir.
+export function ValidationNotice({ v, compact = false }) {
+  if (!v || v.status === "validated") return null;
+  return (
+    <div className="fz-notice" role="note" style={{ alignItems: "flex-start", padding: compact ? "8px 10px" : "10px 12px" }}>
+      <span className="dot" style={{ marginTop: 6, flexShrink: 0, background: "#FFB11B" }} />
+      <span style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+        <span style={{ fontWeight: 600 }}>{v.title}</span>
+        {!compact && <span className="fz-sub" style={{ fontSize: 13, lineHeight: 1.45 }}>{v.body}</span>}
+      </span>
+    </div>
+  );
+}
+
 export function ErrorNote({ error, onRetry, what = "projections" }) {
   return (
     <div className="fz-state" role="alert">
