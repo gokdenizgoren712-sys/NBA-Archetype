@@ -49,6 +49,12 @@ data/*
 !data/gleague__2025-26__player_scores.parquet
 !data/euroleague__2025-26__player_scores.parquet
 !data/ncaa__2025-26__player_scores.parquet
+# Basketbol fantezi — api/fantasy.py'nin okuduğu türetilmiş dosyalar (~445 KB).
+# Ham maç logları ve kadrolar deploy'a girmez; üretim: python -m src.fantasy.build
+!data/2026-27__fantasy_projections.parquet
+!data/2026-27__fantasy_team_weeks.parquet
+!data/2026-27__fantasy_weeks.parquet
+!data/fantasy_backtest.json
 
 # Tracking-era tarihsel sezonlar (2013-14+) — zengin percentile skorlama ile
 # geri-doldurulmuş sezonlar, get_historical() bunları öncelikli okur (bkz.

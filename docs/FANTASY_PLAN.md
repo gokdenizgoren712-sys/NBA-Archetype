@@ -50,7 +50,39 @@ Notlar:
 - Bu dosyalar `.gitignore`'daki `data/*` kuralı yüzünden deploy'a girmiyor. Faz 1'de API'nin okuyacağı
   türetilmiş dosyalar allowlist'e eklenecek (ham maç logları değil).
 
-### Faz 1 — Projeksiyon ve sıralamalar (hedef ~7 Ekim)
+### Faz 1 — Projeksiyon ve sıralamalar ✅ backend (2026-09-29)
+
+**Durum:** Backend ve API bitti. Arayüz Claude Design'dan gelecek. Açık kalanlar aşağıdaki "Faz 1 — kalanlar" listesinde.
+
+Backtest (`data/fantasy_backtest.json`, `python -m src.fantasy.backtest`):
+
+| Hedef sezon | Rol | Maç başı Yahoo puanı MAE | Geçen sezon ortalaması tabanı | Fark |
+|---|---|---|---|---|
+| 2024-25 | ayar | 3.86 | 4.21 | −8% |
+| 2025-26 | **test (hiç dokunulmadı)** | **4.57** | 5.02 | **−9%** |
+
+Model 2025-26'da tabanı PTS, REB, AST, STL, BLK, TOV, FG%, FT% ve dakikada yeniyor, 3PM'de berabere.
+Oynanacak maç özünde tahmin edilemiyor (korelasyon 0.40). O yüzden maç, geçmişe göre ayrılmış
+p10-p90 aralığıyla gösteriliyor: maçlarının %80'inden fazlasında oynayanlarda ×0.54-1.14,
+%60'ın altında kalanlarda ×0.23-2.0.
+
+Seçilen ayar: sezon ağırlıkları 7/2/1, çekme ölçeği 0.5. Yaş eğrisi 2013-14'ten beri delta yöntemiyle.
+Gençlerin dakika artışı, 36 dakikaya kalan boşlukla sınırlandı.
+
+Uç noktalar (`api/fantasy.py`): `GET /formats`, `GET /meta`, `GET /rankings` (format, teams, punt,
+basis, position, team, search, flag, archetype, limit, offset), `POST /rankings` (özel lig),
+`GET /players/{id}`, `GET /schedule`, `GET /backtest`. Hepsi `/api/fantasy` altında.
+
+Kendi ADP modelimiz (`valuation.market_adp`): formata duyarlı "piyasa" sırası. Geçen sezonun maç
+başı üretimi o formatın ölçüsüyle; oynanacak maç riskini görmez, bizim sıralamamız değildir.
+`adp_diff` bu yüzden anlamlı.
+
+**Faz 1 — kalanlar:**
+- Çaylak projeksiyonu şimdilik draft sırası kovası. Comparables motoruyla zenginleştirme açık.
+- Takas edilen oyuncular için elle dakika/rol düzeltme tablosu henüz yok (`config/`'e dosya ya da admin tablosu).
+- Arketip → fantezi kategori açıklama metinleri frontend'le birlikte yazılacak.
+
+Orijinal Faz 1 kapsamı:
 - Projeksiyon: son 3 sezonun dakika başı üretimi 5/3/2 ağırlıklı, örneklem küçükse ortalamaya çekme,
   yaş eğrisi; dakika ve oynanacak maç projeksiyonu (sakatlık geçmişi).
 - Çaylaklar: `src/prospect.py` + `src/comparables.py` üzerinden benzer oyuncuların çaylak sezonları.
