@@ -167,6 +167,53 @@ class SeasonSim:
         scatter = (1.0 - sum(BLOCK_SHARES)) * missed / T[None, :]          # (S × P) dağınık kayıp oranı
         return played * (1.0 - scatter)[:, :, None]
 
+    # ── Tek hafta, iki takım (haftalık eşleşme) ─────────────────────────────
+
+    def week_draws(self, rows: np.ndarray, week: int, sims: int, seed: int) -> tuple[np.ndarray, np.ndarray]:
+        """Oyuncu satırları için o haftanın gerçekleşmesi: (üretim çarpanı S×P, oynanan maç S×P; kesirli)."""
+        U = self._uniforms(sims, seed)
+        mult, frac = self._season_draws(rows, U)
+        return mult, self._weekly_games(rows, frac, U)[:, :, self.weeks.index(week)]
+
+    def week_values(self, rosters_list: list[list[int]], week: int, sims: int = 300, seed: int = 0) -> tuple[np.ndarray, np.ndarray]:
+        """Verilen kadroların o haftaki değerleri: (S × T × kategori) — yüzdeler oran, TO işaret çevrili (büyük = iyi);
+        puan formatında (S × T × 1). İkinci çıktı: (T,) takım başına beklenen oynanan oyuncu-maçı. `simulate` ile
+        aynı sezon gerçekleşmeleri ve gürültü; yalnız tek hafta, gerekli takımlar için."""
+        b, fmt = self.b, self.fmt
+        T = len(rosters_list)
+        rows = np.array([b.row[p] for r in rosters_list for p in r], dtype=int)
+        sizes = [len(r) for r in rosters_list]
+        owner = np.repeat(np.arange(T), sizes)
+        onehot = np.zeros((T, len(rows)))
+        onehot[owner, np.arange(len(rows))] = 1.0
+        U = self._uniforms(sims, seed)
+        mult, frac = self._season_draws(rows, U)
+        n_w = self._weekly_games(rows, frac, U)[:, :, self.weeks.index(week)][:, :, None]      # (S × P × 1)
+        rng = np.random.default_rng([seed, 5])
+        games = np.einsum("tp,spw->stw", onehot, n_w, optimize=True).mean(axis=0)[:, 0]
+
+        def tsum(x: np.ndarray) -> np.ndarray:
+            return np.einsum("tp,spw,spc->stwc", onehot, n_w, x, optimize=True)[:, :, 0, :]
+
+        if fmt["kind"] == "categories":
+            mu = self.mean[rows][None] * mult[:, :, None]
+            sd = self.sd[rows][None] * mult[:, :, None]
+            tot = tsum(mu)
+            tot = np.maximum(tot + np.sqrt(tsum(sd ** 2)) * rng.standard_normal(tot.shape), 0.0)
+            ix = {c: j for j, c in enumerate(STATS)}
+            cols = []
+            for c in fmt["categories"]:
+                spec = CAT_OF[c]
+                if isinstance(spec, tuple):
+                    cols.append(tot[..., ix[spec[0]]] / np.maximum(tot[..., ix[spec[1]]], 1e-9))
+                else:
+                    cols.append(-tot[..., ix[spec]] if c == "TO" else tot[..., ix[spec]])
+            return np.stack(cols, axis=-1), games
+        mu = (self.fp_mean[rows][None] * mult)[:, :, None]
+        sd = (self.fp_sd[rows][None] * mult)[:, :, None]
+        pts = tsum(mu)
+        return np.maximum(pts + np.sqrt(tsum(sd ** 2)) * rng.standard_normal(pts.shape), 0.0), games
+
     # ── Simülasyon ──────────────────────────────────────────────────────────
 
     def simulate(self, rosters: dict[int, list[int]], sims: int = 100, seed: int = 0) -> dict[int, dict]:

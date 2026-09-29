@@ -65,6 +65,7 @@ export const fz = {
   simulate: (body) => req("POST", "/season/simulate", { body }),
   leagueRosters: (body) => req("POST", "/league/rosters", { body }),
   trade: (body) => req("POST", "/trade/analyze", { body }),
+  week: (body) => req("POST", "/week/analyze", { body }),
 
   drafts: {
     list: () => req("GET", "/drafts", { auth: true }),

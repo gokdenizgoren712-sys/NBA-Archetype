@@ -30,6 +30,7 @@ from config.fantasy_formats import FORMATS, LIMITS, FormatError, get_format, val
 from src.fantasy import draft as dr
 from src.fantasy.season_sim import SeasonSim, complete_league
 from src.fantasy.trade import analyze_trade
+from src.fantasy.week import analyze_week
 
 from .auth import get_current_user
 from .db import get_conn
@@ -158,7 +159,8 @@ def strategy_validation(fmt: dict) -> dict:
                         "Treat these picks as a starting point and trust your own read."}
     if kind == "high_score":
         return {"status": "unvalidated", "title": "Picks not yet tested for High Score leagues",
-                "body": "We have not yet checked this format against real seasons. Treat these picks as a starting point."}
+                "body": "We have not yet checked this format against real seasons. The weekly matchup and lineup on This week count each starter's best game, "
+                        "but the season simulator and trade analyzer still score every game, so treat their numbers as a rough guide."}
     return {"status": "unvalidated", "title": "Picks not yet tested for roto leagues",
             "body": "Our real-season test covers head-to-head leagues only. Treat these picks as a starting point."}
 
@@ -527,6 +529,37 @@ def trade_analyze(body: TradeBody):
     return {"season": SEASON, "format": fmt, "slot": body.slot, "sims": body.sims, "mode": mode,
             "categories_in_format": list(b.cats) if b.is_categories else [],
             "give": [_player(b, p) for p in body.give], "get": [_player(b, p) for p in body.get],
+            "validation": strategy_validation(fmt), **out}
+
+
+class WeekBody(SimBody):
+    week: int = Field(1, ge=1, le=24)
+    opponent: int = Field(..., ge=1, le=LIMITS["teams"][1], description="Slot of this week's opponent")
+    sims: int = Field(300, ge=50, le=MAX_SIMS)
+
+
+@router.post("/week/analyze")
+def week_analyze(body: WeekBody):
+    """Bu hafta: rakibe karşı beklenen kategoriler / puan, High Score haftalık kadro ve serbest oyuncu (streamer) listesi."""
+    fmt = _resolve(body.format, body.teams)
+    b = _board(fmt, body.basis)
+    _check_slot(b, body.slot)
+    if not 1 <= body.opponent <= b.teams or body.opponent == body.slot:
+        raise HTTPException(422, "opponent must be another team in the league")
+    rosters, mode = _league_rosters(b, body)
+    sim = _season_sim(b, fmt)
+    if body.week not in sim.weeks:
+        raise HTTPException(422, f"Week {body.week} is not on the 2026-27 fantasy calendar")
+    with _sim_slots:
+        out = analyze_week(sim, rosters, body.slot, body.opponent, body.week, sims=body.sims, seed=body.seed)
+    wk = _load()["weeks"]
+    row = wk[wk["WEEK"] == body.week].iloc[0]
+    out["players"] = [{**r, **_player(b, r["player_id"])} for r in out["players"]]
+    out["free_agents"] = [{**r, **_player(b, r["player_id"])} for r in out["free_agents"]]
+    return {"season": SEASON, "format": fmt, "slot": body.slot, "mode": mode, "sims": body.sims,
+            "week_info": {"week": body.week, "start": str(row["START"]), "end": str(row["END"]),
+                          "playoff": body.week in sim.playoff_weeks},
+            "categories_in_format": list(b.cats) if b.is_categories else [],
             "validation": strategy_validation(fmt), **out}
 
 

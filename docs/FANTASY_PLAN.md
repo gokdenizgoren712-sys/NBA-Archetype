@@ -181,9 +181,20 @@ Kullanıcı isteklerinden (hepsi bitti):
   `/draft/grade` lig satırlarında harf notu.
 - Not: hız sınırlayıcı IP başına dakikada 120 istek; bu akışlar pick başına 1 istek yapar.
 
-### Faz 4 — Sezon içi araçlar (sürekli)
-Haftalık maç sayısına göre waiver önerileri, High Score haftalık kadro seçici, simülasyonla takas
-analizi, günlük veri güncelleme job'u.
+### Faz 4 — Sezon içi araçlar (sürekli) — kısmen bitti (2026-09-30)
+Bitenler (ikisi de sezondan önce de kullanılabilir; kadro kaynağı mock / asistan / kayıtlı draft, Yahoo bağlanınca gerçek lig):
+- **Takas analizi (tasarım 12)** — `src/fantasy/trade.py`, `POST /league/rosters`, `POST /trade/analyze`, `FantasyTrade.jsx`.
+  Takas öncesi / sonrası kadrolar AYNI sezonlardan geçer (oyuncu bazlı ortak rastgele sayılar); karar haftalık maç kazanma
+  oranı farkına bağlı (300 simülasyonda tohumdan tohuma sapma 0.002–0.005; playoff olasılığında 0.02 — bu yüzden karar ona bağlanmadı).
+  Eşitsiz takaslarda kadro otomatik tamamlanır / kırpılır ve ekranda yazılır. Aratılan herhangi bir oyuncu "almak" tarafına eklenebilir.
+- **Bu hafta (tasarım 11)** — `src/fantasy/week.py`, `POST /week/analyze`, `FantasyWeek.jsx`. Rakibe karşı kategori başına kazanma olasılığı
+  (sallantıdaki en çekişmeli 3 kategori), puan formatı için beklenen puan; High Score için haftalık tavana göre pozisyon kısıtlı en iyi kadro
+  (açgözlü + eşleştirme = optimal) ve Start / Bench; serbest oyuncular (ligde hiçbir kadroda olmayan) o hafta maç sayısı ve sallantıdaki
+  kategorilere göre sıralı ("4+ games only"). Ekleme yok: Yahoo yalnız okuma izni veriyor.
+- Bilinen kısıt: High Score'da haftalık eşleşme doğru puanlanıyor (her starter'ın en iyi tek maçı) ama sezon simülatörü ve takas analizi
+  hâlâ her maçı sayıyor; format zaten "test edilmedi" uyarısı taşıyor ve uyarı metni bunu söylüyor.
+Bekleyenler: sezon içi projeksiyon güncelleme (oynanan maçlarla harmanlama) ve günlük veri güncelleme işi — projede zamanlanmış iş yok
+(yalnız `ci.yml`); veri elle commit'leniyor, stats.nba.com bulut IP'lerini sık engelliyor. Altyapı kararı gerekiyor.
 
 ### Faz 5 — Yahoo lig bağlantısı (Yahoo onayına bağlı)
 OAuth ile lig içe aktarma: ayarlar, kadrolar, draft sonuçları, gerçek ADP (`draft_analysis`),
