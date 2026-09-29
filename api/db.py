@@ -1033,3 +1033,23 @@ def init_db():
             conn.execute("ALTER TABLE rankit_diary_entries ADD COLUMN reviewed_at TEXT")
         except Exception:
             pass
+        # Basketbol fantezi: kullanıcının kaydettiği mock draftlar, canlı draft
+        # asistanı oturumları ve ligleri (api/fantasy_draft.py). ON DELETE
+        # CASCADE: hesap silinince kendiliğinden gider (_delete_account'a ek
+        # satır gerekmez). state_json istemcinin yeniden kurabileceği her şeyi
+        # taşır (pickler, seçili/alınan oyuncular, tohum, bot stilleri).
+        conn.execute("""CREATE TABLE IF NOT EXISTS fantasy_drafts (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            kind        TEXT NOT NULL,          -- 'mock' | 'assistant' | 'league'
+            name        TEXT NOT NULL,
+            season      TEXT NOT NULL,
+            format_json TEXT NOT NULL,
+            teams       INTEGER NOT NULL,
+            slot        INTEGER,
+            state_json  TEXT NOT NULL,
+            result_json TEXT,
+            created_at  TEXT DEFAULT (datetime('now')),
+            updated_at  TEXT DEFAULT (datetime('now'))
+        )""")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_fantasy_drafts_user ON fantasy_drafts(user_id, updated_at)")

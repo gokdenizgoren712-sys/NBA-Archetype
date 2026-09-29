@@ -117,8 +117,14 @@ def category_values(proj: pd.DataFrame, fmt: dict, g_week: pd.Series,
             mu_bar = mu.loc[pool].mean()
             sigma = mu.loc[pool].std(ddof=0)
             tau_rms = math.sqrt(float((tau.loc[pool] ** 2).mean()))
+            g_denom = math.sqrt(sigma ** 2 + kappa * tau_rms ** 2)
             out[f"Z_{c}"] = direction * (mu - mu_bar) / sigma
-            out[f"G_{c}"] = direction * (mu - mu_bar) / math.sqrt(sigma ** 2 + kappa * tau_rms ** 2)
+            out[f"G_{c}"] = direction * (mu - mu_bar) / g_denom
+            # Mutlak üretim, G ve Z biriminde (yön uygulanmadan): draft
+            # simülasyonu oyuncunun gerçekleşen sezonunu örneklerken
+            # G' = G + yön·(çarpan − 1)·GA ile kaydırıyor (src/fantasy/draft.py).
+            out[f"GA_{c}"] = mu / g_denom
+            out[f"ZA_{c}"] = mu / sigma
             if c not in punt:
                 z_total += out[f"Z_{c}"]
         pool = z_total.nlargest(size).index

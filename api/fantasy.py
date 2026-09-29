@@ -367,3 +367,11 @@ def fantasy_backtest():
     if not st.get("backtest"):
         raise HTTPException(503, "Backtest report is not built yet.")
     return st["backtest"]
+
+
+# Draft uç noktaları (api/fantasy_draft.py) bu router'a eklenir; main.py'de ayrı
+# satır yok. Dosyanın SONUNDA olmalı: fantasy_draft bu modülün yardımcılarını
+# (_load, _valued, _num) import ediyor.
+from .fantasy_draft import router as _draft_router  # noqa: E402
+
+router.include_router(_draft_router)

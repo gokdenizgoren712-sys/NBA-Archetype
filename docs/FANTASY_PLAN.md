@@ -94,7 +94,33 @@ Orijinal Faz 1 kapsamı:
 - Arketip katmanı: kategori profilini arketiple açıkla; takım/rol değiştirenleri işaretle.
 - API: `/api/fantasy/...` (arayüz Claude Design'dan gelecek, `/basketball/fantasy` altında).
 
-### Faz 2 — Draft Lab (hedef ~14 Ekim)
+### Faz 2 — Draft Lab ✅ backend (2026-09-29)
+
+**Durum:** Backend ve API bitti; arayüz Claude Design'dan gelecek. Motor: `src/fantasy/draft.py`.
+Uç noktalar: `api/fantasy_draft.py`, `/api/fantasy` router'ına dahil.
+
+| Uç nokta | Ne yapar |
+|---|---|
+| `GET/POST /draft/plans` | Draft sırasına göre 3 plan: tur tur hedefler ve payları, beklenen sıra, p10-p90, ilk yarı olasılığı, standart hata, "en iyiyle berabere" işareti |
+| `POST /draft/recommend` | Canlı asistan: alınanlar ve seninkiler verilir; öneri, bir sonraki pickine kalma olasılığı, kategori profili, punt önerisi, slot dolumu döner |
+| `POST /mock/advance` | Durumsuz mock draft: botlar sıra sana gelene kadar seçer, aynı tohum aynı draftı verir |
+| `POST /draft/grade` | Biten draftın notu, lig tablosu, çalıntı ve erken seçimler |
+| `/drafts` (CRUD) | Kayıtlı draftlar: giriş gerekli, yalnız sahibine görünür, kullanıcı başı 100, durum en fazla 64 KB, hesap silinince gider |
+
+Nasıl çalışıyor:
+- **9-cat önerisi dinamik.** Takımın ortalama rakibe karşı her kategoride kazanma olasılığındaki artışa bakıyor
+  (Φ, G-score biriminde). Umutsuz kategorinin getirisi düştüğü için punt'u kendiliğinden öğreniyor.
+- **Rakipler karışık.** Yarısı piyasa (ADP + gürültü), yarısı bizim değerimizle (keskin) draft ediyor.
+  Hepsi ADP'yle oynasaydı kullanıcı her planda 1. çıkıyordu.
+- **Sezon belirsizlikle oynatılıyor.** Her simülasyonda oyuncuların üretimi ve maç sayısı, backtest'te ölçülen
+  hata dağılımından yeniden çekiliyor (lognormal).
+- **Planlar önceden hesaplı.** Yahoo'nun 3 varsayılan formatı × 10/12 takım × her draft sırası, plan başına 60 simülasyon
+  (`data/2026-27__fantasy_plans.json`, build ~2.5 dk). Özel ligler istek anında 15 simülasyonla hesaplanıp önbelleğe alınıyor.
+
+Bulgu: 12 takım, 7. sırada ilk üç plan istatistiksel olarak berabere. Arayüz planları
+"yakın, tercihe göre seç" diye sunmalı, tek bir "doğru plan" gibi değil.
+
+Orijinal Faz 2 kapsamı:
 - Draft sırasına göre plan: snake pick numaraları, rakipler ADP + gürültüyle, pick başına
   "oyuncu sende kalır mı" olasılığı, beam search ile 3 alternatif kadro planı.
 - Botlara karşı mock draft; canlı draft asistanı (seçilenleri işaretle, H-score mantığıyla yeniden hesap).
@@ -133,9 +159,9 @@ paralel yürür.
    (`YAHOO_CLIENT_ID`, `YAHOO_CLIENT_SECRET`). Repo'ya, sohbete ya da ekran görüntüsüne koyma.
    Ayrıca saklanacak Yahoo token'larını şifrelemek için bir `TOKEN_ENCRYPTION_KEY` eklenecek
    (değerini ben üretmeyeceğim; komutunu vereceğim, sen Railway'e gireceksin).
-4. **Önce kapanması gereken açık** — `api/auth.py:11`: `JWT_SECRET` tanımlı değilse repo'da yazan
-   varsayılan anahtara düşüyor. Üçüncü taraf token'ı saklamadan önce bu fail-fast'e çevrilmeli ve
-   Railway'de `JWT_SECRET`'ın tanımlı olduğunu teyit etmelisin.
+4. **`JWT_SECRET`** — kod tarafı kapandı (2026-09-29'da görüldü): `api/auth.py` production'da
+   `JWT_SECRET` yoksa ya da bilinen varsayılan anahtarsa açılmayı reddediyor. Senin yapman gereken:
+   Railway'de `JWT_SECRET`'ın uzun, rastgele bir değerle tanımlı olduğunu teyit etmek (32+ karakter).
 5. **Atıf zorunluluğu** — Yahoo verisi gösterilen her yerde "Fantasy data provided by Yahoo Fantasy"
    yazısı, Yahoo Fantasy bağlantısı ve **yalnızca resmi logo** (döndürme, renk değişimi, efekt,
    başka markayla birleştirme yasak). Yahoo verisi olmayan sayfalarda Yahoo'yu marka olarak kullanmıyoruz;

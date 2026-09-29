@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 """Fantezi veri hattı: maç logları → kadrolar → takvim → pozisyonlar →
-backtest → projeksiyon (API'nin okuduğu dosya).
+backtest → projeksiyon → draft planları (API'nin okuduğu dosyalar).
 
 Kullanım:
     python -m src.fantasy.build                     # cache'lenmiş olanı atla
     python -m src.fantasy.build --refresh-rosters   # kadroları yenile (sezon öncesi sık değişir)
     python -m src.fantasy.build --skip-backtest     # ayarı yeniden seçmeden projeksiyonu yenile
+    python -m src.fantasy.build --skip-plans        # draft planlarını (~3 dk) atla
 
 Maç logu sezonları: projeksiyon son 3 sezonu kullanacak, backtest ise
 2025-26'yı ve 2024-25'i kendilerinden önceki üçer sezondan tahmin
@@ -26,6 +27,7 @@ from config.fantasy_formats import FORMATS, DEFAULT_FORMAT  # noqa: E402
 from src.fantasy.backtest import run as run_backtest  # noqa: E402
 from src.fantasy.calendar import build_calendar  # noqa: E402
 from src.fantasy.fetch import fetch_player_gamelogs, fetch_rosters  # noqa: E402
+from src.fantasy.plans import build_plans  # noqa: E402
 from src.fantasy.positions import build_positions  # noqa: E402
 from src.fantasy.publish import build_projections  # noqa: E402
 
@@ -41,6 +43,7 @@ def main(argv=None):
     ap.add_argument("--refresh-rosters", action="store_true")
     ap.add_argument("--refresh-gamelogs", action="store_true")
     ap.add_argument("--skip-backtest", action="store_true")
+    ap.add_argument("--skip-plans", action="store_true")
     a = ap.parse_args(argv)
 
     for season in GAMELOG_SEASONS:
@@ -51,6 +54,8 @@ def main(argv=None):
     if not a.skip_backtest:
         run_backtest()          # sezon ağırlıkları + çekme ölçeği + belirsizlik aralıkları
     build_projections(TARGET_SEASON)
+    if not a.skip_plans:
+        build_plans(TARGET_SEASON)   # projeksiyon değiştiyse planlar da eskidi
 
 
 if __name__ == "__main__":
