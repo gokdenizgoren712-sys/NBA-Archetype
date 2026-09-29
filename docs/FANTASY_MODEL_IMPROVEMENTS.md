@@ -60,7 +60,7 @@ sezon simülatörüne ait olanlar Faz 3'ün içinde, geri kalanlar sonra.
 ### Faz 2.5 — Draft sezonundan önce (hedef ~5 Ekim, Faz 3'ten ÖNCE)
 | # | İş | Neden şimdi |
 |---|---|---|
-| 1 | **Strateji backtest'i:** 2024-25 bilgisiyle draft et, gerçek 2025-26 istatistikleriyle puanla | Döngüselliği kaldırır; planların ve notların gerçekten işe yarayıp yaramadığını söyleyen tek test. Sonuca göre not ölçeği de kalibre edilir. |
+| 1 ✅ | **Strateji backtest'i (bitti, aşağıya bak):** her sezon öncesi bilgiyle draft et, gerçek sezon istatistikleriyle puanla | Döngüselliği kaldırır; planların ve notların gerçekten işe yarayıp yaramadığını söyleyen tek test. Sonuca göre not ölçeği de kalibre edilir. |
 | 2 | **Takım dakika bütçesi:** takım başı maç başına 240 dk'ya normalize et, takaslarla boşalan dakikayı dağıt | En büyük hata kaynağı; takas edilen oyuncuların sıralamasını doğrudan bozuyor. |
 | 3 | **Aralık kalibrasyonu:** out-of-sample %80 kapsama; istatistik bazında bantlar; yüzdelere ayrı oynaklık | Aralıklar sıralama, plan riski ve mock notunda kullanılıyor. |
 | 10 | **Plan karşılaştırmasında ortak rastgele çekilişler** (common random numbers) | Planlar arası farkı daha az simülasyonla ayırır; şu an çoğu "berabere". |
@@ -83,3 +83,42 @@ sezon simülatörüne ait olanlar Faz 3'ün içinde, geri kalanlar sonra.
 - Faz 0-2 commit'leri (`fdeea83`, `533ca55`, `057c98d`, `a88958b`) push edilmedi. Faz 2.5 bitmeden canlıya
   alınırsa draft notları ve plan sıralamaları doğrulanmamış bir güvenle yayına girer; alternatif olarak
   notlar geçici olarak "deneysel" etiketiyle çıkabilir.
+
+## Faz 2.5 #1 sonuçları — strateji backtest'i (2026-09-29)
+
+`python -m src.fantasy.strategy_backtest` → `data/fantasy_strategy_backtest.json`, testler `tests/test_fantasy_strategy_backtest.py`.
+İki katlama: hedef 2024-25 (2021-22…2023-24 verisiyle) ve 2025-26 (2022-23…2024-25). Her katta 12 sıra × 10 tohum,
+üç strateji aynı bot tahtalarına karşı (ortak rastgele sayılar), gerçek maç loglarıyla hafta hafta all-play (son 3 hafta = playoff, dışarıda).
+Karşılaştırma ölçüsü: piyasa (ADP) stratejisine göre haftalık eşleşme kazanma oranı farkı.
+
+| Format / lig | Strateji − piyasa (havuzlanmış) | 2024-25 | 2025-26 |
+|---|---|---|---|
+| 9-cat, karışık botlar | dinamik **+0.128 ± 0.013**, statik +0.092 ± 0.014 | +0.161 | +0.095 |
+| 9-cat, hepsi ADP botu | dinamik +0.055 ± 0.013 | +0.152 | **−0.041** |
+| Puan, karışık botlar | statik +0.071 ± 0.016 | +0.015 | +0.126 |
+| Puan, hepsi ADP botu | statik +0.068 ± 0.015 | **−0.029** | +0.166 |
+
+**Okuma**
+- 9-cat'te bizim değerleme + dinamik öneri piyasadan tutarlı biçimde iyi (karışık ligde iki sezonda da). Dinamik, statikten +0.036 daha iyi.
+  Ama botların hepsi ADP ise 2025-26'da piyasanın altında kaldı: avantaj rakip tahtasına duyarlı.
+- Puan formatında avantaj **kanıtlanmadı**: 2024-25'te sıfır, 2025-26'daki kazanç tek sezona ait.
+- Sıralama kalitesi (ilk 36 oyuncunun gerçek 9-cat değeri): 2024-25'te bizim tahta +0.74 önde, 2025-26'da −0.42 geride.
+  İkinci sezonu sakatlıklar belirledi (Haliburton 0 maç, Tatum 16, Sabonis 19, Trae Young 15 — hepsi bizim ilk 10'umuzdaydı).
+  Piyasamız da sezon öncesi sakatlığı bilmiyor; gerçek Yahoo ADP bilir, yani gerçek dünyadaki avantaj bundan küçük olabilir.
+
+**Ürün tahmini aşırı emin (asıl bulgu)**
+
+| | Tahmin ettiği | Gerçekleşen |
+|---|---|---|
+| 9-cat, ortalama sıra / playoff olasılığı | 3.67 / %86.6 | 4.58 / %74.6 |
+| Puan, ortalama sıra / playoff olasılığı | 4.08 / %81.1 | 5.21 / %65.4 |
+
+- Playoff olasılığının Brier'ı 0.208 (9-cat) ve 0.243 (puan); "herkese gerçekleşen oranı söyle" referansı 0.190 / 0.226 — yani mevcut tahmin bu referanstan **kötü**.
+- Lojistik kalibrasyon eğimi b ≈ 0.41 (9-cat) / 0.33 (puan): tahmin edilen logit farklarının yalnızca üçte biri-yarısı gerçek. Sıra için gerçek ≈ 2.66 + 0.58·tahmin (9-cat), 3.39 + 0.40·tahmin (puan).
+- Nedenler (tahmin): (1) gerçekleşme örneklemesi oyuncular arası bağımsız, sakatlık/rol şokları takım içinde ve sezon içinde korelasyonlu; (2) aralıklar dar (#3);
+  (3) rakip takımlar gerçekte sezon içinde waiver/takasla düzeliyor, biz sabit draft kadrosuyla kıyaslıyoruz ama kendi takımımız da sabit — ikisi simetrik, yani ana neden (1)-(2).
+- `fit_calibration` / `apply_calibration` (strategy_backtest.py) bu eşlemeyi hesaplıyor; henüz ürüne **bağlanmadı**. Önce kaynağı (#2, #3, sakatlık modeli #5) düzeltip backtest'i yeniden koşmak, sonra kalan farkı kalibrasyonla kapatmak daha sağlam.
+
+**Yöntem sınırları:** piyasa = bizim geçen-sezon ADP modelimiz (gerçek Yahoo ADP değil); pozisyon kodları güncel kadro/eski bios/boy tahmininden (küçük sızıntı);
+çaylak havuzu güncel kadrodan (ligden düşen çaylaklar yok); iki sezon = az örnek (sıra başına SE ≈ 0.3), sezona özgü sakatlık şansı sonucu belirliyor.
+Bu backtest artık #2, #3, #5 için ölçü çubuğu: her iyileştirmeden sonra yeniden koşulup Brier / kalibrasyon eğimi kıyaslanacak.
