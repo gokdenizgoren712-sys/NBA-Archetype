@@ -163,7 +163,8 @@ def test_web_surfaces_carry_every_field_the_screens_read(rich):
     # 8a Discover — rayda sayilarla filtreler + siralar
     catalog = api.get("/api/rankit/catalog?facets=true&sort=hottest&limit=10").json()
     assert has(catalog, "matches", "total", "sort", "facets")
-    assert set(catalog["facets"]) == {"sport", "status", "competition", "season"}
+    # "when" = Discover tarih filtresi (630d9f5: Today / Tomorrow / This weekend…)
+    assert set(catalog["facets"]) == {"sport", "status", "competition", "season", "when"}
     assert all(has(f, "value", "count") for f in catalog["facets"]["sport"])
     heats = [m["community_rating"] for m in catalog["matches"] if m["community_rating"] is not None]
     assert heats == sorted(heats, reverse=True)

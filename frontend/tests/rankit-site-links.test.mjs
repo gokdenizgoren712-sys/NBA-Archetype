@@ -48,13 +48,16 @@ test("≤820: öbek 390'a sığar, aramada gizlenir", () => {
 });
 
 test("site rayı ve çekmece: RankIt girişi, rayın dibine sabit", () => {
-  const app = src("App.jsx");
-  assert.match(app, /const RANKIT_NAV = \{ to: "\/rankit", Icon: RankItNavIcon, label: "RankIt", pin: true \};/);
-  const side = app.slice(app.indexOf("function SideNav()"), app.indexOf("function MobileDrawer("));
-  assert.match(side, /\.\.\.\(isAdmin \? \[[^\]]*\] : \[\]\),\s*RANKIT_NAV,\s*\];/);
-  assert.match(side, /\$\{n\.pin \? " mt-auto" : ""\}/);
-  const drawer = app.slice(app.indexOf("function MobileDrawer("), app.indexOf("function PageLoading("));
-  assert.match(drawer, /\.\.\.\(isAdmin \? \[[^\]]*\] : \[\]\),\s*RANKIT_NAV,\s*\];/);
+  // UI yeniden tasarımı (handoff v2): ray components/shell/ altına taşındı.
+  // RankIt girişi rayın dibindeki sabit ayak bölümünde, esnek nav'ın altında.
+  const side = src("components", "shell", "Sidebar.jsx");
+  const foot = side.slice(side.indexOf('<div className="pa-side-foot">'));
+  assert.match(foot, /item\(\{ to: "\/rankit", label: "RankIt", custom: <RankItMark/);
+  assert.match(side, /<nav className="pa-nav"/);
+  assert.match(src("components", "shell", "shell.css"), /\.pa-nav \{[^}]*flex: 1;/);
+  // Telefon çekmecesinde de var.
+  assert.match(src("components", "shell", "MobileDrawer.jsx"), /row\(\{ to: "\/rankit", label: "RankIt", custom: <RankItMark/);
   // RankIt'in içinde site rayı yok (RankIt kendi rayını taşır) — değişmedi.
-  assert.match(app, /if \(isRankItApp\(pathname\)\) return \[\];/);
+  assert.match(src("components", "shell", "nav.js"), /export function shellHidden\(pathname\) \{\s*return isRankItApp\(pathname\);/);
+  assert.match(src("App.jsx"), /\{!hidden && !bare && !auth && <Sidebar \/>\}/);
 });

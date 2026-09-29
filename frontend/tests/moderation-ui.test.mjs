@@ -95,7 +95,8 @@ test("kayit: sartlar onay kutusu zorunlu ve sunucuya gidiyor", () => {
 
 test("admin sikayet kuyrugu: rota, menu baglantisi, bes eylem", () => {
   assert.match(src("App.jsx"), /path="\/admin\/reports"/);
-  assert.match(src("pages", "admin", "ArticleList.jsx"), /to="\/admin\/reports"/);
+  // Admin sekmeleri (handoff 15a) tek yerde: AdminLayout — kuyruk her admin sayfasından bir tık.
+  assert.match(src("pages", "admin", "AdminLayout.jsx"), /\{ to: "\/admin\/reports", label: "Reports" \}/);
   const page = src("pages", "admin", "Reports.jsx");
   for (const action of ["hide", "unhide", "dismiss", "delete", "ban"]) {
     assert.match(page, new RegExp(`btn\\("${action}"`), action);

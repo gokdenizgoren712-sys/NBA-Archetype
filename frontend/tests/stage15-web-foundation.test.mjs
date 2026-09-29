@@ -64,14 +64,19 @@ test("iki yüzey tek eşleme: fromApiMatch ve RankIt günü paylaşılıyor", ()
 });
 
 test("7a sitenin üst barı RankIt web rotalarında çekilir; /rankit/app kapsam dışı", () => {
+  // UI yeniden tasarımı: üst bar (PageBar) kabuğun parçası; RankIt web ve
+  // /rankit/app rotalarında kabuğun tamamı çekilir (nav.js shellHidden).
   const app = src("App.jsx");
-  assert.match(app, /if \(isRankItWeb\(location\.pathname\)\) return null;/);
+  const nav = src("components", "shell", "nav.js");
+  assert.match(app, /const hidden = shellHidden\(pathname\);/);
+  assert.match(app, /\{!hidden && !auth && <PageBar /);
+  assert.match(nav, /return isRankItWeb\(pathname\) \|\| cleanPath\(pathname\) === "\/rankit\/app";/);
   // Aşama 17: sabit küme yerine /rankit öneki; sıradan sayfalar açıkça dışarıda.
-  const plain = app.match(/const RANKIT_PLAIN_PAGES = \[([\s\S]*?)\];/)[1];
+  const plain = nav.match(/const RANKIT_PLAIN_PAGES = \[([\s\S]*?)\];/)[1];
   for (const page of ["/rankit/app", "/rankit/download", "/rankit/mobile-auth", "/rankit/_preview"]) {
     assert.match(plain, new RegExp(`"${page}"`));
   }
-  assert.match(app, /if \(path !== "\/rankit" && !path\.startsWith\("\/rankit\/"\)\) return false;/);
+  assert.match(nav, /if \(path !== "\/rankit" && !path\.startsWith\("\/rankit\/"\)\) return false;/);
 });
 
 test("§25 ≤820: telefonun beşlisi altta, Rank ortada (2026-09-02 kararı)", () => {

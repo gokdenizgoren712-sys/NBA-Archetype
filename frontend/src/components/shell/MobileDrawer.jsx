@@ -92,7 +92,7 @@ export default function MobileDrawer({ open, onClose }) {
           <div className="pa-nav-group">
             <span className="pa-nav-title">More</span>
             {row({ to: "/rankit", label: "RankIt", custom: <RankItMark size={20} /> })}
-            {isAdmin && row({ to: "/admin/articles", icon: "admin", label: "Admin" })}
+            {isAdmin && row({ to: "/admin/data", icon: "admin", label: "Admin" })}
           </div>
         </div>
 

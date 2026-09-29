@@ -98,9 +98,12 @@ test("7h RATING SPREAD: 20 altı yok (§5.5); beş çubuk, en yüksek %100, ramp
 
 test("yönlendirme: /rankit öneki web yüzeyi, sıradan sayfalar dışarıda; dört yeni rota", () => {
   const app = src("App.jsx").replace(/\r\n/g, "\n");
-  const body = app.match(/function cleanPath[\s\S]*?\n}\n\nfunction isRankItWeb\(pathname\) \{[\s\S]*?\n}\n/)[0];
-  const plain = app.match(/const RANKIT_PLAIN_PAGES = \[[\s\S]*?\];/)[0];
-  const isRankItWeb = new Function(`${plain}\n${body}\nreturn isRankItWeb;`)();
+  // UI yeniden tasarımı: rota yardımcıları components/shell/nav.js'e taşındı.
+  const nav = src("components", "shell", "nav.js").replace(/\r\n/g, "\n");
+  const clean = nav.match(/export function cleanPath[\s\S]*?\n}\n/)[0].replace("export ", "");
+  const web = nav.match(/export function isRankItWeb\(pathname\) \{[\s\S]*?\n}\n/)[0].replace("export ", "");
+  const plain = nav.match(/const RANKIT_PLAIN_PAGES = \[[\s\S]*?\];/)[0];
+  const isRankItWeb = new Function(`${plain}\n${clean}\n${web}\nreturn isRankItWeb;`)();
   for (const path of ["/rankit", "/rankit/", "/rankit/shelf", "/rankit/member/4/shelf", "/rankit/competition/2/heat", "/rankit/match/9/reviews"]) {
     assert.equal(isRankItWeb(path), true, path);
   }
