@@ -200,3 +200,30 @@ Sorun: ürünün "playoff olasılığı %78" dediği yerde gerçekleşen %62'ydi
 - Puan: tahminler dürüst ama ayırt edici değil (iki sezon, avantaj rakiplerin nasıl draft ettiğine bağlı). "Doğrulanmamış" uyarısı kalıyor.
 - Sınır: büzme hedefi backtest'te model tabanlı piyasa (geçmiş sezonlarda gerçek ADP yok). Canlıda gerçek Yahoo ADP daha bilgili; κ muhtemelen çok yanlış değil ama yeni ADP verisi gelince yeniden ölçülmeli.
 - Yapılmayanlar (#3'ün alt maddeleri): istatistik bazında bantlar ve yüzdelere ayrı oynaklık — kalibrasyon hedefi (tahmin = gerçekleşen) tutturulduğu için ertelendi.
+
+## Faz 3 — sezon simülatörü, backend (2026-09-29, gece)
+
+`src/fantasy/season_sim.py` · `POST /api/fantasy/season/simulate` · testler `tests/test_fantasy_season_sim.py` · doğrulama `python -m src.fantasy.strategy_backtest --sim-calibration`.
+
+**Ne yapıyor:** draft edilen ligi 2026-27 fikstürüyle hafta hafta oynatır (22 fantezi haftası, son 3'ü playoff): oyuncu başına sezon gerçekleşmesi (ampirik kantil tablolarından, #3 ile aynı),
+kaçırılan maçların haftalara dağıtımı, haftalık takım toplamları, all-play + rastgele round-robin H2H, playoff tek eleme (üst tohumlar bay). Çıktı: sıra dağılımı, playoff / şampiyonluk olasılığı,
+hafta × kategori kazanma olasılığı, hafta başına oynanan maç (ligin ortalamasıyla), en zayıf haftalar için veri. 100 simülasyon ≈ 0.6 sn (9-cat), sunucuda; en çok 2 eşzamanlı, en çok 500 simülasyon/istek.
+
+**Sakatlık modeli (ölçüldü):** 986 rotasyon oyuncu-sezonunda (2023-24…2025-26, ≥8 kaçırılan maç) kaçırılan maçların yalnız **%41'i tek ardışık blokta** — sakatlıklar parça parça.
+Simülatör bu yüzden iki ardışık blok (%42 + %25) ve kalan %33 dağınık kayıp kullanır; blok payları veriyle seçildi, blok uzunluk dağılımı ayrıca kalibre edilmedi.
+
+**Doğrulama (2024-25 + 2025-26, 120 draft/format, aynı draftlarda statik değerlendirmeyle):**
+
+| 9-cat | Statik | Simülatör |
+|---|---|---|
+| Playoff tahmini (gerçekleşen %66.7) | %68.5 | %69.0 |
+| Brier (sabit referans 0.2222) | 0.2140 | **0.2125** |
+| Kalibrasyon eğimi | 0.96 | 1.15 |
+| Sıra tahmini (gerçekleşen 5.03) / sıra korelasyonu | 4.95 / 0.317 | 4.92 / 0.337 |
+
+Puan formatında ikisi de ayırt gücü göstermiyor (eğim 0.23 / −0.01) — 9-cat'in aksine; "doğrulanmamış" uyarısı kalıyor.
+
+**Bilerek basit:** günlük kadro sınırı yok (nadiren devreye giriyor), pozisyon slotu kısıtı yok, sezon içi waiver/takas yok, maçtan maça gürültü oyuncular arası bağımsız, High Score simüle edilmiyor.
+Dış kadrolar: mock'tan tam draft ya da yalnız kullanıcı kadrosu verilirse diğer 11 kadro botlarla tamamlanır (her `seed` farklı rakip seti).
+
+**#5 (maç sayısı modeli) durumu:** kısmen — `K_GP` ve tek seferlik sakatlık kuralı ile projeksiyon düzeldi (bu belgenin önceki bölümleri). Yapılmayan: elle girilebilen sezon öncesi sakatlık tablosu, yaş/dakika yükü etkileri.

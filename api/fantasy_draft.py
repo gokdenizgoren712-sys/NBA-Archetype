@@ -28,6 +28,7 @@ from pydantic import BaseModel, Field
 
 from config.fantasy_formats import FORMATS, LIMITS, FormatError, get_format, validate_format
 from src.fantasy import draft as dr
+from src.fantasy.season_sim import SeasonSim, complete_league
 
 from .auth import get_current_user
 from .db import get_conn
@@ -36,6 +37,7 @@ from .fantasy import DATA_DIR, SEASON, _load, _num, _valued
 router = APIRouter()
 
 MAX_REC = 25
+MAX_SIMS = 500
 PLAN_SIMS_ON_DEMAND = 15
 GRADE_SIMS = 150
 MAX_DRAFTS_PER_USER = 100
@@ -46,6 +48,8 @@ _lock = threading.Lock()
 _boards: "OrderedDict[str, dr.Board]" = OrderedDict()
 _plans_cache: "OrderedDict[str, dict]" = OrderedDict()
 _precomputed = {"mtime": None, "data": None}
+_sims: "OrderedDict[str, SeasonSim]" = OrderedDict()
+_sim_slots = threading.Semaphore(2)          # aynı anda en çok 2 sezon simülasyonu (tek worker, 512MB)
 
 
 # ── Format ve tahta ─────────────────────────────────────────────────────────
@@ -373,6 +377,75 @@ def draft_grade(body: GradeBody):
                   "(our picks did worse than raw projections implied in past seasons), then each player's season is "
                   f"re-drawn {GRADE_SIMS} times from measured projection errors; rank is the average over draws."],
     }
+
+
+# ── Sezon simülatörü ────────────────────────────────────────────────────────
+
+class SimBody(BaseModel):
+    format: FormatIn = "yahoo_h2h_9cat"
+    teams: Optional[int] = Field(None, ge=LIMITS["teams"][0], le=LIMITS["teams"][1])
+    slot: int = Field(..., ge=1, le=LIMITS["teams"][1])
+    picks: Optional[list[int]] = Field(None, max_length=400)     # biten draftın tüm pickleri (mock) ya da
+    roster: Optional[list[int]] = Field(None, max_length=40)     # yalnız kullanıcının kadrosu (rakipler simüle edilir)
+    sims: int = Field(200, ge=20, le=MAX_SIMS)
+    seed: int = Field(0, ge=0, le=2_000_000_000)
+    basis: str = Field("total", pattern="^(total|per_game)$")
+
+
+def _season_sim(b: dr.Board, fmt: dict) -> SeasonSim:
+    key = json.dumps([fmt, _load()["mtime"]], sort_keys=True, default=str)
+    with _lock:
+        if key in _sims:
+            _sims.move_to_end(key)
+            return _sims[key]
+    sim = SeasonSim(b, _load()["team_weeks"], playoff_weeks=list(fmt.get("playoff_weeks") or ()))
+    with _lock:
+        _sims[key] = sim
+        while len(_sims) > 8:
+            _sims.popitem(last=False)
+    return sim
+
+
+@router.post("/season/simulate")
+def season_simulate(body: SimBody):
+    """Kadroyu 2026-27 fikstürüyle hafta hafta oynatır. Yanıt `sims` sayısıyla birlikte gelir: istemci
+    birden çok partiyi (farklı `seed`) sims-ağırlıklı ortalayarak canlı ilerleme / iptalde kısmi sonuç gösterir."""
+    fmt = _resolve(body.format, body.teams)
+    b = _board(fmt, body.basis)
+    _check_slot(b, body.slot)
+    if body.picks is not None:
+        _check_ids(b, body.picks, "picks")
+        if len(body.picks) != b.total_picks:
+            raise HTTPException(422, f"A finished {b.teams}-team draft has {b.total_picks} picks, got {len(body.picks)}")
+        rosters: dict[int, list[int]] = {s: [] for s in range(1, b.teams + 1)}
+        for i, p in enumerate(body.picks):
+            rosters[dr.pick_owner(i + 1, b.teams)].append(p)
+        mode = "draft"
+    elif body.roster is not None:
+        _check_ids(b, body.roster, "roster")
+        if len(body.roster) != b.rounds:
+            raise HTTPException(422, f"A roster has {b.rounds} players in this format, got {len(body.roster)}")
+        rosters = complete_league(b, list(body.roster), body.slot, seed=body.seed)
+        mode = "simulated_rivals"
+    else:
+        raise HTTPException(422, "Send either the finished draft's picks or your roster")
+    sim = _season_sim(b, fmt)
+    with _sim_slots:
+        res = sim.simulate(rosters, sims=body.sims, seed=body.seed)
+    me = res[body.slot]
+    nteams = len(res)
+    for k, w in enumerate(me["weekly"]):   # ligin haftalık ortalaması: "ortalama takıma göre" çubuk / işaret için
+        w["league_games"] = round(sum(res[t]["weekly"][k]["games"] for t in res) / nteams, 2)
+        if "cats_won" in w:
+            w["league_cats_won"] = round(sum(res[t]["weekly"][k]["cats_won"] for t in res) / nteams, 2)
+    return {"season": SEASON, "format": fmt, "slot": body.slot, "sims": body.sims, "seed": body.seed, "mode": mode,
+            "teams": b.teams, "playoff_teams": min(int(fmt.get("playoff_teams", 6)), b.teams),
+            "categories": list(b.cats) if b.is_categories else [],
+            "validation": strategy_validation(fmt),
+            "me": me,
+            "league": [{"slot": t, **{k: v for k, v in res[t].items() if k != "weekly"}}
+                       for t in sorted(res, key=lambda t: res[t]["projected_rank"])],
+            "my_roster": [_player(b, p) for p in rosters[body.slot]]}
 
 
 # ── Kayıtlı draftlar ────────────────────────────────────────────────────────

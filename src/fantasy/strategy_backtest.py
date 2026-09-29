@@ -52,6 +52,7 @@ from src.fantasy.positions import eligible_positions, load_profiles  # noqa: E40
 from src.fantasy.projections import SEASON_WEIGHTS, load_gamelogs, prev_season, project  # noqa: E402
 from src.fantasy.publish import last_season_per_game  # noqa: E402
 from src.fantasy import valuation as vl  # noqa: E402
+from src.fantasy.season_sim import SeasonSim  # noqa: E402
 from src.fantasy.valuation import value_players  # noqa: E402
 
 DATA_DIR = ROOT / "data"
@@ -498,9 +499,70 @@ def _run(formats, targets, seeds, write, market, t0) -> dict:
     return report
 
 
+def sim_calibration(formats=("yahoo_h2h_9cat", "yahoo_h2h_points"), targets=TARGETS, seeds: int = 5,
+                    sims: int = 100) -> dict:
+    """Sezon simülatörü (season_sim.SeasonSim) ile statik değerlendirmenin (draft.evaluate_league_mc) gerçek
+    sezonlara karşı kalibrasyonu, AYNI draftlarda. Karşılaştırma ölçüsü: all-play playoff (üst 6) olasılığı ve sıra."""
+    from scipy.optimize import minimize
+    logs = load_gamelogs([prev_season(max(targets), i) for i in range(0, 6)])
+    roster = pd.read_parquet(DATA_DIR / "2026-27__rosters.parquet")
+
+    def slope(pp, ap):
+        pp = np.clip(np.array(pp, float), 0.01, 0.99)
+        ap = np.array(ap, float)
+        x = np.log(pp / (1 - pp))
+
+        def nll(w):
+            z = np.clip(w[0] + w[1] * x, -30, 30)
+            return float(np.sum(np.log1p(np.exp(z)) - ap * z))
+        return float(minimize(nll, np.array([0.0, 1.0]), method="Nelder-Mead").x[1])
+
+    out = {}
+    for key in formats:
+        acc = {"act_p": [], "act_r": [], "static_p": [], "static_r": [], "sim_p": [], "sim_r": []}
+        for target in targets:
+            proj = historical_projections(target, logs, roster)
+            weeks, tw = season_calendar(target)
+            fmt = get_format(key)
+            b = dr.make_board(value_players(proj, fmt, tw), fmt)
+            sim = SeasonSim(b, tw)
+            season = ActualSeason(logs[target], weeks, fmt, b)
+            pk = strategy_pickers(b)
+            picker = pk.get("ours_dynamic", pk["ours_static"])
+            n_po = int(fmt.get("playoff_teams", 6))
+            for slot in range(1, b.teams + 1):
+                for s_ in range(seeds):
+                    seed = 1000 * slot + s_
+                    ros = run_draft(b, slot, picker, seed, "mixed")
+                    a = season.score_league(ros)[slot]
+                    st = dr.evaluate_league_mc(b, ros, sims=60, seed=seed)[slot]
+                    sm = sim.simulate(ros, sims=sims, seed=seed)[slot]
+                    acc["act_p"].append(float(a["rank"] <= n_po))
+                    acc["act_r"].append(a["rank"])
+                    acc["static_p"].append(st["playoff_prob"])
+                    acc["static_r"].append(st["rank_mean"])
+                    acc["sim_p"].append(sm["all_play_playoff_prob"])
+                    acc["sim_r"].append(sm["all_play_rank_mean"])
+        ap, ar = np.array(acc["act_p"]), np.array(acc["act_r"])
+        res = {"n": int(len(ap)), "actual_playoff": round(float(ap.mean()), 3), "actual_rank": round(float(ar.mean()), 2),
+               "brier_constant": round(float(ap.mean() * (1 - ap.mean())), 4)}
+        for name in ("static", "sim"):
+            pp, pr = np.array(acc[f"{name}_p"]), np.array(acc[f"{name}_r"])
+            res[name] = {"pred_playoff": round(float(pp.mean()), 3), "brier": round(float(((pp - ap) ** 2).mean()), 4),
+                         "slope": round(slope(pp, ap), 2), "pred_rank": round(float(pr.mean()), 2),
+                         "rank_corr": round(float(np.corrcoef(pr, ar)[0, 1]), 3)}
+        out[key] = res
+        print(f"[sim_calibration] {key}: {res}")
+    (DATA_DIR / "fantasy_sim_calibration.json").write_text(json.dumps(out, indent=2), encoding="utf-8")
+    return out
+
+
 if __name__ == "__main__":
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
+    if "--sim-calibration" in sys.argv:
+        sim_calibration()
+        sys.exit(0)
     if "--sensitivity" in sys.argv:
         for n, v in sensitivity().items():
             print(n, v["market"])

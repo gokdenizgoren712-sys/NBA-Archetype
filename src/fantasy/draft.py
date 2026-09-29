@@ -194,25 +194,26 @@ class Board:
 SHRINK = {"categories": 0.5, "points": 0.25, "high_score": 0.25}
 
 
-def _shrink_to_market(b: "Board", k: float) -> None:
-    """value / G / base_total → piyasa-ima edilen + k·(bizim − piyasa-ima edilen)."""
-    order = np.argsort(b.adp)
+def local_market_mean(adp: np.ndarray, x: np.ndarray) -> np.ndarray:
+    """x'in ADP sırasındaki komşuları (±M_WINDOW) üzerinden yerel ortalaması, oyuncu sırasına geri hizalı."""
+    order = np.argsort(adp)
     pos = np.empty(len(order), dtype=int)
     pos[order] = np.arange(len(order))
     n = len(order)
+    xs = x[order]
+    wm = np.array([xs[max(0, i - M_WINDOW): min(n, i + M_WINDOW + 1)].mean(axis=0) for i in range(n)])
+    return wm[pos]
 
-    def local_mean(x: np.ndarray) -> np.ndarray:
-        xs = x[order]
-        wm = np.array([xs[max(0, i - M_WINDOW): min(n, i + M_WINDOW + 1)].mean(axis=0) for i in range(n)])
-        return wm[pos]
 
-    m = local_mean(b.value)
+def _shrink_to_market(b: "Board", k: float) -> None:
+    """value / G / base_total → piyasa-ima edilen + k·(bizim − piyasa-ima edilen)."""
+    m = local_market_mean(b.adp, b.value)
     b.value = m + k * (b.value - m)
     if b.G is not None:
-        g = local_mean(b.G)
+        g = local_market_mean(b.adp, b.G)
         b.G = g + k * (b.G - g)
     if b.base_total is not None:
-        t = local_mean(b.base_total)
+        t = local_market_mean(b.adp, b.base_total)
         b.base_total = t + k * (b.base_total - t)
 
 
