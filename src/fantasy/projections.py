@@ -45,8 +45,16 @@ K_RATE = {"PTS": 1500, "REB": 1500, "OREB": 2500, "DREB": 1500, "AST": 1500,
           "FGA": 1500, "FTA": 2500, "PF": 2500}
 K_PCT = {"FG": 1500, "FT": 800}      # ağırlıklı deneme birimi
 K_MPG_GAMES = 60                     # ağırlıklı maç birimi
-K_GP = 2 * TEAM_GAMES                # ağırlıklı takım-maçı birimi
+K_GP = 500                          # ağırlıklı takım-maçı birimi (maç sayısı çekmesi)
+# K_GP backtest ile seçildi (2026-09-29, 3 kat: 23-24/24-25/25-26, rotasyon oyuncuları): eski değer 164
+# sakatlık geçmişini fazla kalıcı sayıyordu — geçen sezon <40 maç oynayanı ~5.6 maç eksik, 72+ oynayanı
+# ~7.5 maç fazla tahmin ediyordu. 500'de sapmalar −0.6 / +2.9, MAE optimumun (300) yanında.
 K_DD = 150                           # DD2/TD3 maç başı oranı için ağırlıklı maç
+# Tek seferlik sakatlık dönüşü: rotasyon oyuncusu (geçen sezon ≥26 dk) geçen sezon <45, bir önceki sezon ≥62
+# maç oynadıysa maç oranı, sakat sezon HARİÇ geçmiş ortalamayla yarı yarıya karıştırılır. Backtest
+# (2023-24…2025-26, n=28): gerçekleşen 51 maç; model 46 (MAE 21.8), "sağlıklı geçmiş" 68 (21.9),
+# yarı yarıya karışım MAE 18.8. Küçük örnek — kural sade tutuldu, tek parametre yok.
+ONEOFF_LAST_GP, ONEOFF_PRIOR_GP, ONEOFF_MIN_MPG, ONEOFF_BLEND = 45, 62, 26.0, 0.5
 MPG_CEILING = 36.0                   # dakika artışının sıfırlandığı seviye
 
 ROTATION_MIN = 500                   # lig ortalaması için sezonluk dakika tabanı
@@ -332,11 +340,20 @@ def project(target: str, logs: dict[str, pd.DataFrame], roster: pd.DataFrame,
             mpg *= mpg_mult
             gp_rate = (wgp + K_GP * base["GP_RATE"]) / (sum(w for w, _ in hist) * TEAM_GAMES + K_GP)
             dd = {k: (sum(w * h[k] for w, h in hist) + K_DD * base[k]) / (wgp + K_DD) for k in ("DD2", "TD3")}
+            gps = [h["GP"] for _, h in hist]
+            last_mpg = hist[0][1]["MIN"] / max(hist[0][1]["GP"], 1)
+            gp_adj = None
+            if (len(gps) >= 2 and gps[0] < ONEOFF_LAST_GP and gps[1] >= ONEOFF_PRIOR_GP
+                    and last_mpg >= ONEOFF_MIN_MPG):
+                healthy = float(np.mean(gps[1:])) / TEAM_GAMES
+                gp_rate = (1 - ONEOFF_BLEND) * gp_rate + ONEOFF_BLEND * healthy
+                gp_adj = "injury_return"
             source = "history"
             recent = hist[0][1]
             rec["LAST_TEAM"] = recent["LAST_TEAM"]
             rec["SEASONS_USED"] = len(hist)
             rec["HIST_GP_RATE"] = wgp / (sum(w for w, _ in hist) * TEAM_GAMES)
+            rec["GP_ADJ"] = gp_adj
         else:
             b = rookies.get(pick_bucket(rinfo.at[pid, "DRAFT_NUMBER"]) if pid in rinfo.index else "undrafted")
             if b is None:
@@ -348,6 +365,7 @@ def project(target: str, logs: dict[str, pd.DataFrame], roster: pd.DataFrame,
             rec["LAST_TEAM"] = None
             rec["SEASONS_USED"] = 0
             rec["HIST_GP_RATE"] = None
+            rec["GP_ADJ"] = None
 
         mpg = float(np.clip(mpg, 0, 40))
         gp = float(np.clip(gp_rate, 0, 1) * TEAM_GAMES)

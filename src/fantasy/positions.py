@@ -34,6 +34,7 @@ if str(ROOT) not in sys.path:
 
 from config.fantasy_formats import POSITIONS  # noqa: E402
 from config.fantasy_position_overrides import POSITION_OVERRIDES  # noqa: E402
+from src.fantasy.reference import norm_name, yahoo_positions  # noqa: E402
 
 DATA_DIR = ROOT / "data"
 
@@ -95,11 +96,15 @@ def load_profiles(stats_season: str) -> dict[int, dict]:
 def build_positions(rosters: pd.DataFrame, stats_season: str = "2025-26",
                     target_season: str = "2026-27", write: bool = True) -> pd.DataFrame:
     profiles = load_profiles(stats_season)
+    yahoo_pos = yahoo_positions(target_season)
     rows = []
     for r in rosters.itertuples(index=False):
         pid = int(r.PLAYER_ID)
         if pid in POSITION_OVERRIDES:
             elig, source = list(POSITION_OVERRIDES[pid]), "override"
+        elif norm_name(r.PLAYER_NAME) in yahoo_pos:
+            # Yahoo'nun kendi uygunluğu (config/reference/) kural tabanlı tahminden önce gelir.
+            elig, source = list(yahoo_pos[norm_name(r.PLAYER_NAME)]), "yahoo"
         else:
             prof = profiles.get(pid)
             elig = eligible_positions(r.POSITION_RAW, prof)
@@ -117,5 +122,6 @@ def build_positions(rosters: pd.DataFrame, stats_season: str = "2025-26",
     if write:
         out.to_parquet(DATA_DIR / f"{target_season}__fantasy_positions.parquet", index=False)
         print(f"[build] {target_season} pozisyon uygunluğu: {len(out)} oyuncu "
-              f"({(out['SOURCE'] == 'profile').sum()} profil, {(out['SOURCE'] == 'raw').sum()} yalnız NBA kodu)")
+              f"({(out['SOURCE'] == 'yahoo').sum()} Yahoo, {(out['SOURCE'] == 'profile').sum()} profil, "
+              f"{(out['SOURCE'] == 'raw').sum()} yalnız NBA kodu)")
     return out

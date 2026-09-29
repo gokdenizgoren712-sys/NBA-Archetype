@@ -139,3 +139,35 @@ Ama düzeltmek doğruluğu artırmadı. Test: 2024-25 ve 2025-26, takım = sezon
 - Fazla dakika ağırlıkla ortalamaya çekmenin şişirdiği kenar oyuncularda (10 günlükler, ikiyol) — bunlar draftta zaten alakasız.
 - Takas edilen yıldızların hatası (2025-26'da 6.6) dakika toplamından değil, rol/kullanım değişiminden geliyor; bunu bütçe çözmüyor.
 - Karar: canlı projeksiyona bağlanmadı. Yeniden denenecekse rol değişimi (kullanım devri) modeliyle, #6-#7 ile birlikte.
+
+## Faz 2.5 — düzeltmeler ve gerçek Yahoo verisi (2026-09-29, akşam)
+
+Kullanıcı gerçek Yahoo verisini verdi (`config/reference/`, README'sine bak): **gerçek ADP** (ekran görüntüsü) ve
+format başına **Yahoo değer sıralamaları** (9-cat, puan, High Score; pozisyon + takımla). İkisi farklı şeyler: ADP = insanların draftı, sıralama = Yahoo'nun tahmini.
+
+**Bulunan hatalar ve düzeltmeler**
+1. **Sahte piyasa (ADP) modeli saftı.** Kawhi'yi 4. sıraya koyuyordu (gerçek Yahoo ADP'si 29.9). Artık ADP'si güvenilir (%Drafted ≥ 50) 126 oyuncu için gerçek Yahoo ADP'si kullanılıyor
+   (`valuation.market_adp` → `reference.load_adp`); kalanlar onların arkasına, model sırasıyla. Geçmiş backtest tahtaları gerçek ADP taşımaz, modele düşer;
+   o model Yahoo listesine uydurulup (çıpa 0.4, maç karışımı 0.25; Spearman 0.656 → 0.705) hâlâ kullanılıyor.
+2. **Pozisyon uygunluğu:** kural tabanlı tahmin Yahoo'yla yalnız %36 birebir örtüşüyordu (çoğunlukla alt küme). 261 oyuncu için artık Yahoo'nun kendi pozisyonları kullanılıyor (`SOURCE = yahoo`); takımlar 249/250 uyuşuyor.
+3. **Maç sayısı çekmesi fazla zayıftı:** `K_GP` 164 → 500. Geçen sezon <40 maç oynayanı ~5.6 maç eksik, 72+ oynayanı ~7.5 maç fazla tahmin ediyorduk (rotasyon oyuncuları, 3 kat, n=671). Yeni sapmalar −0.6 / +2.9.
+   Korelasyon değişmedi (0.39): maç sayısı zaten zor öngörülüyor. Sezonlara eşit ağırlık vermek daha kötü (MAE 14.9 → 16.2), geri alındı.
+4. **Tek seferlik sakatlık dönüşü:** geçen sezon <45, öncesi ≥62 maç oynayan rotasyon oyuncusu (n=28): gerçekleşen 51, model 46, "sağlıklı geçmiş" 68. Yarı yarıya karışım MAE'yi 21.8 → 18.8'e indirdi. Küçük örnek; kural bilerek basit (`ONEOFF_*`).
+   Etkisi: Giannis 47 → 59 maç, Sabonis 38 → 59, Tatum 36 → 56. Bu kural bu katlardan çıktı, bağımsız doğrulanmadı.
+5. **Yahoo sakat dönen yıldızları iskonto etmiyor** (Tatum ADP 9.4, Haliburton 15.8, Giannis 7.7; ekran görüntüsünde çoğunda sakatlık etiketi yok). Bizim modelimiz ediyor. Doğrusu ikisinin arası (yukarıdaki n=28 sonucu): "sağlıklıymış gibi" de tutmuyor.
+   Hâlâ ayrılanlar (iki sezondur sakat): Trae Young (ADP 27, bizde 184), Kessler (39, 222), Edey (75, 263), Dejounte Murray, Ja Morant, Ty Jerome. Çaylaklarda da fark büyük (Khaman Maluach ADP 119, bizde 396): çaylak tabanı üniversite verisini görmüyor (#7).
+6. Değer sıralamamız gerçek ADP ile Spearman 0.729 (9-cat), 0.789 (puan), 0.807 (High Score). Yahoo'nun kendi sıralamalarıyla: 0.73 / 0.77 / 0.81.
+
+**Strateji backtest'i yenilendi (gerçekçi piyasa + yeni maç modeliyle) — önceki "+0.128" saf piyasaya karşıydı**
+
+| Piyasa varsayımı | 9-cat: dinamik − piyasa | Puan: statik − piyasa |
+|---|---|---|
+| Saf (geçen sezon per-game) | +0.165 | +0.033 |
+| İlk elle tahmin | +0.101 | +0.035 |
+| **Yahoo'ya uydurulmuş (varsayılan)** | **+0.076 ± 0.017** | **−0.014 ± 0.017** |
+| Şüpheci (kalabalık sakatlığı çok fiyatlıyor) | +0.127 | +0.090 |
+
+- 9-cat avantajımız her piyasa varsayımında pozitif (+0.04…+0.17), gerçekçi olanda +0.076: **güvenilir sonuç**.
+- Puan formatında **avantaj kanıtlanamadı**: gerçekçi piyasada sıfır, yalnızca kalabalığın sakatlığı çok fiyatladığı varsayımda pozitif. Puan formatı için "piyasayı yeniyoruz" iddiası yapılmamalı.
+- Ürünün kendi tahminleri hâlâ fazla emin: 9-cat playoff olasılığı tahmini %78, gerçekleşen %62; Brier 0.259, sabit referans 0.236. Puan formatında tahmin neredeyse hiç bilgi taşımıyor (kalibrasyon eğimi 0.08).
+  Kalibrasyon (`fit_calibration`) hâlâ ürüne bağlı değil; nedenler (bağımsız oyuncu çekilişi, dar aralıklar) #3 ve Faz 3'te.

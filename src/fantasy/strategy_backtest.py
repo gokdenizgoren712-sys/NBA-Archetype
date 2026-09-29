@@ -51,6 +51,7 @@ from src.fantasy.calendar import build_team_weeks, build_weeks  # noqa: E402
 from src.fantasy.positions import eligible_positions, load_profiles  # noqa: E402
 from src.fantasy.projections import SEASON_WEIGHTS, load_gamelogs, prev_season, project  # noqa: E402
 from src.fantasy.publish import last_season_per_game  # noqa: E402
+from src.fantasy import valuation as vl  # noqa: E402
 from src.fantasy.valuation import value_players  # noqa: E402
 
 DATA_DIR = ROOT / "data"
@@ -424,11 +425,41 @@ def run_format(fmt_key: str, proj: pd.DataFrame, tw: pd.DataFrame, weeks: pd.Dat
     return out
 
 
-def run(formats=("yahoo_h2h_9cat", "yahoo_h2h_points"), targets=TARGETS, seeds: int = 10, write: bool = True) -> dict:
+MARKETS = {                       # (anchor, gp_blend) — piyasa modeli varsayımı, bkz. valuation.MARKET_ANCHOR
+    "naive": (1.0, 0.0),           # yalniz gecen sezon mac basi, herkes 82 mac (eski)
+    "prior_guess": (0.6, 0.5),     # ilk elle tahminim
+    "default": (vl.MARKET_ANCHOR, vl.MARKET_GP_BLEND),   # Yahoo listesine uydurulmus
+    "skeptical": (0.4, 0.75),      # kalabalik yas/sakatligi daha cok fiyatliyor
+}
+
+
+def run(formats=("yahoo_h2h_9cat", "yahoo_h2h_points"), targets=TARGETS, seeds: int = 10, write: bool = True,
+        market: str = "default") -> dict:
     t0 = time.time()
+    saved = (vl.MARKET_ANCHOR, vl.MARKET_GP_BLEND)
+    vl.MARKET_ANCHOR, vl.MARKET_GP_BLEND = MARKETS[market]
+    try:
+        return _run(formats, targets, seeds, write, market, t0)
+    finally:
+        vl.MARKET_ANCHOR, vl.MARKET_GP_BLEND = saved
+
+
+def sensitivity(seeds: int = 6) -> dict:
+    """Aynı backtest, üç piyasa varsayımıyla: 'piyasayı yendik' farkı ne kadar varsayıma bağlı?"""
+    out = {}
+    for name in MARKETS:
+        rep = run(seeds=seeds, write=False, market=name)
+        out[name] = {"market": MARKETS[name], "pooled": {k: v["paired_vs_market"] for k, v in rep["pooled"].items()},
+                     "folds": {t: {k: r["paired_vs_market"] for k, r in f["results"].items()} for t, f in rep["folds"].items()}}
+        print(f"[sensitivity] {name} tamam")
+    (DATA_DIR / "fantasy_strategy_backtest_markets.json").write_text(json.dumps(out, indent=2), encoding="utf-8")
+    return out
+
+
+def _run(formats, targets, seeds, write, market, t0) -> dict:
     logs = load_gamelogs([prev_season(max(targets), i) for i in range(0, 6)])
     roster = pd.read_parquet(DATA_DIR / "2026-27__rosters.parquet")
-    report = {"targets": list(targets), "generated_at": pd.Timestamp.now(tz="UTC").isoformat(timespec="seconds"),
+    report = {"targets": list(targets), "market": {"name": market, "anchor_gp_blend": MARKETS[market]}, "generated_at": pd.Timestamp.now(tz="UTC").isoformat(timespec="seconds"),
               "folds": {}, "pooled": {}}
     pooled: dict[str, dict] = {}
     for target in targets:
@@ -469,6 +500,12 @@ def run(formats=("yahoo_h2h_9cat", "yahoo_h2h_points"), targets=TARGETS, seeds: 
 if __name__ == "__main__":
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
+    if "--sensitivity" in sys.argv:
+        for n, v in sensitivity().items():
+            print(n, v["market"])
+            for k, d in v["pooled"].items():
+                print("  ", k, {s: f"{x['mean']:+.3f}±{x['se']:.3f}" for s, x in d.items()})
+        sys.exit(0)
     rep = run()
     for target, fold in rep["folds"].items():
         for k, r in fold["results"].items():

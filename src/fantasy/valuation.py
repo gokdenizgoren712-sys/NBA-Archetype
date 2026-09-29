@@ -230,24 +230,63 @@ def value_players(proj: pd.DataFrame, fmt: dict, team_weeks: pd.DataFrame,
 LAST_COLS = ["PTS", "REB", "AST", "STL", "BLK", "TOV", "FG3M", "FGM", "FGA", "FTM", "FTA"]
 
 
-def market_adp(proj: pd.DataFrame, fmt: dict, team_weeks: pd.DataFrame) -> pd.DataFrame:
+# "Piyasa" varsayımları — Yahoo API gelene kadar (Faz 5) Yahoo'nun sezon öncesi "Top 200 Default
+# Rankings" listesine (config/reference/yahoo_default_top200_2026-27.txt) UYDURULDU:
+#   ANCHOR   : kalabalık ne kadar geçen sezonun maç başı ortalamasına çıpalı (1.0 = yalnız o),
+#              kalanı bizim projeksiyonumuz (yaş, takım değişikliği, ortalamaya dönüş).
+#   GP_BLEND : beklenen maç sayısı = (1−b)·82 + b·geçen sezon oynanan maç (b=0 → herkes 82 oynar).
+# Uydurma sonucu: Spearman 0.705 (kaba tahmin 0.60/0.50 → 0.677, eski saf model → 0.656). Yüzey
+# düz — hiçbir ayar 0.70'i geçmiyor; kalan fark bu iki sayıyla kapanmaz (sakatlıktan dönen
+# yıldızlar ve çaylaklar; bkz. docs/FANTASY_MODEL_IMPROVEMENTS.md). Tek sezon, tek liste.
+MARKET_ANCHOR = 0.4
+MARKET_GP_BLEND = 0.25
+
+
+def market_adp(proj: pd.DataFrame, fmt: dict, team_weeks: pd.DataFrame,
+               anchor: float | None = None, gp_blend: float | None = None) -> pd.DataFrame:
     """"Piyasa" draft sırası — bizim sıralamamız DEĞİL (docs/FANTASY_PLAN.md).
 
-    Çoğunluk oyuncuyu geçen sezonun MAÇ BAŞI üretimine göre, o formatın
-    kendi ölçüsüyle draft eder; oynanacak maç riskini ve haftalık oynaklığı
-    görmez. O yüzden: geçen sezon ≥20 maçı olan için LAST_* maç başı
-    istatistikleri, olmayan (çaylak, sakat geçen sezon) için bizim maç başı
-    projeksiyonu; format ölçüsü maç başı (kategori: Z-score, puan: puan).
-    ADP_SD = 0.12·ADP + 2 — sezgisel, Yahoo ADP'si gelince ölçülecek."""
+    Kalabalık oyuncuyu ağırlıkla geçen sezonun MAÇ BAŞI üretimine göre, o formatın
+    kendi ölçüsüyle draft eder (geçen sezon ≥20 maçı olanlar için; olmayanlarda
+    bizim projeksiyonumuz). MARKET_ANCHOR kadar geçen sezona, kalanı projeksiyona
+    dayanır; oynanacak maç sayısı geçen sezonun oynanan maçına kısmen çekilir.
+    Haftalık oynaklığı görmez. ADP_SD = 0.12·ADP + 2 — sezgisel."""
+    anchor = MARKET_ANCHOR if anchor is None else anchor
+    gp_blend = MARKET_GP_BLEND if gp_blend is None else gp_blend
     m = proj.copy()
     has_last = m["LAST_GP"].fillna(0) >= 20 if "LAST_GP" in m.columns else pd.Series(False, index=m.index)
     for c in LAST_COLS:
         if f"LAST_{c}" in m.columns:
-            m[c] = m[f"LAST_{c}"].where(has_last, m[c])
+            m[c] = (anchor * m[f"LAST_{c}"] + (1 - anchor) * m[c]).where(has_last, m[c])
+    last_gp = m["LAST_GP"].fillna(82.0).clip(upper=82.0) if "LAST_GP" in m.columns else 82.0
+    games = ((1 - gp_blend) * 82.0 + gp_blend * last_gp).where(has_last, m["PROJ_GP"])
+    m["PROJ_GP"] = games
     if fmt["kind"] == "categories":
-        m["PROJ_GP"] = 82.0
-        score = category_values(m, fmt, games_per_week(m, team_weeks, fmt, "per_game"))["VALUE_Z"]
+        score = category_values(m, fmt, games_per_week(m, team_weeks, fmt, "total"))["VALUE_Z"]
     else:
-        score = sum(m[k] * v for k, v in fmt["weights"].items() if k in m.columns)
+        score = sum(m[k] * v for k, v in fmt["weights"].items() if k in m.columns) * games / 82.0
     adp = score.rank(ascending=False, method="first")
-    return pd.DataFrame({"ADP": adp, "ADP_SD": (0.12 * adp + 2).round(1)}, index=proj.index)
+    source = pd.Series("model", index=proj.index)
+    real = _real_adp(proj)
+    if real is not None:
+        # Güvenilir gerçek Yahoo ADP'si olanlar aynen; kalanlar (az draft edilmiş / listede yok)
+        # onların ARKASINA, model sırasıyla dizilir.
+        have = real.notna()
+        rest = adp[~have].rank(method="first")
+        adp = real.where(have, float(real.max()) + rest)
+        source[have] = "yahoo"
+    return pd.DataFrame({"ADP": adp, "ADP_SD": (0.12 * adp + 2).round(1), "ADP_SOURCE": source}, index=proj.index)
+
+
+def _real_adp(proj: pd.DataFrame) -> pd.Series | None:
+    """Projeksiyon satırlarına hizalı gerçek Yahoo ADP'si (config/reference/); yoksa None.
+    Yalnızca proj["SEASON"] ile eşleşen bir dosya varsa (canlı sezon); tarihsel backtest tahtaları
+    SEASON taşımaz, modele düşer."""
+    if "SEASON" not in proj.columns or "PLAYER_NAME" not in proj.columns or proj.empty:
+        return None
+    from src.fantasy import reference as ref
+    d = ref.load_adp(str(proj["SEASON"].iloc[0]))
+    if d is None:
+        return None
+    d = d[d["reliable"]].drop_duplicates("key").set_index("key")["adp"]
+    return proj["PLAYER_NAME"].map(ref.norm_name).map(d).astype(float)
