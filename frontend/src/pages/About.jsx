@@ -13,6 +13,29 @@ import "./fundamentals.css";
 // açılır kartlar kalktı; her bölüm doğrudan ilgili sayfaya bağlanıyor.
 
 const CHANGELOG = [
+  // v1.5.0 notlarından (b33b267, 31 Temmuz) bu yana bu dala giren 214 commit,
+  // kullanıcıya görünen haliyle gruplandı. RankIt'in kendi sürüm notları ayrı.
+  {
+    version: "v1.6.0", date: "September 2026",
+    label: "Football, fantasy basketball, and a redesigned site",
+    items: [
+      "Two sports on one site: everything basketball now lives under /basketball, a new football section under /football, and the home page lets you pick. Every old link still redirects to its new address",
+      "Football is live: Europe's big five leagues across ten seasons, 24 archetypes built for each phase of the game, player cards with licensed cut-out photos and credits, a glossary generated straight from the scoring engine, and an About page that says what the numbers can and can't tell you",
+      "Squad chemistry for football, measured rather than assumed — every XI is ranked against the 28,388 starting elevens clubs actually fielded, and the page is honest that chemistry doesn't predict results on its own",
+      "Football Spin & Build: draft an eleven from spun seasons and clubs, hire a manager, then play a full league season whose goal model is fitted to real matches (home advantage comes out at +0.31 goals). Same Screen, With a Friend rooms and Online head-to-heads are played as two-legged ties, with extra time and penalties, resolved on the server",
+      "Basketball fantasy, brand new: rankings for 9-cat, 8-cat and points leagues with G- and Z-scores, punting and tiers; projections with honest ranges from game logs, backtested against a season they never saw; a draft plan for your slot, a mock draft with a graded result, a live draft assistant, a schedule heatmap, and saved leagues and drafts",
+      "Online Opponent is live: matchmaking against another fan, or Board Challenge — draft against the 25 best Salary Cap rosters ever submitted. Rosters can now be saved to your profile",
+      "Rewrite History grew up: it now replays the whole league on the real schedule, every one of the 30 rosters simulated, through a real play-in and playoff bracket with box scores, awards and a champion",
+      "The whole site redesigned: a sidebar you can collapse, one sport switch, player lists with a filter column, archetype counts and Load more (football used to load 600 cards at once), a new player profile with a career chart and similar players, and a new Explore map, Compare and Affinity heat map",
+      "The game screens rebuilt for both sports — mode select, draft, coach pick, results, rooms and lobbies — with no page asking you to scroll on arrival, and every game playable on a phone",
+      "Numbers labelled for what they are: Lineup Fit is a score out of 100, not a percentile; football chemistry is shown as a percentile only where it truly is one; role similarity and head-to-head bars say how they're drawn",
+      "Accounts: new sign-in and sign-up screens, delete your own account from the web, new passwords of 6–18 characters, and a profile that keeps basketball rosters and football squads apart",
+      "Security hardening: stricter sign-in and rate limits, sanitised blog content, signed image uploads, and a test that keeps API keys out of the web bundle",
+      "Blog, legal pages and contact rebuilt: a featured post and read times on the blog, one reading layout for the (still draft) legal pages, and a contact page that opens a ready-to-send email",
+      "Admin: a Data page that shows how fresh every source is and refreshes the NBA season (the old sidebar button never had the rights to), one tab bar for every admin page, and confirmation before anything is deleted",
+      "RankIt, our match-rating app, launched alongside: a web version at /rankit and Android alpha builds up to 0.7.1",
+    ],
+  },
   {
     version: "v1.5.0", date: "Late July 2026",
     label: "With a Friend (Online) live, counter-jokers, real award badges",
