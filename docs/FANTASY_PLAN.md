@@ -147,6 +147,12 @@ Kaynak: Claude Design "Primary Arch Fantasy (standalone)" mockup'ı. `frontend/s
 - **Backend eklemeleri:** 9-cat/points değer aralıkları, `metric=g|z` ile bütün havuzda yeniden sıralama, özel lig için
   `POST /players/{id}`, plan hedeflerinde `available`, notta `rank_dist`/`playoff_prob`/`category_rank`.
 
+### Faz 2.5 — Model iyileştirmeleri (draft sezonundan önce, Faz 3'ten ÖNCE)
+
+Ayrıntı: `docs/FANTASY_MODEL_IMPROVEMENTS.md`. Karar (2026-09-29): draft kararlarını etkileyen iyileştirmeler
+(strateji backtest'i, takım dakika bütçesi, aralık kalibrasyonu, ortak rastgele çekilişler) Faz 3'ten önce;
+sezon simülasyonuna ait olanlar Faz 3'ün içinde; geri kalanlar sezon içinde ve Faz 5 ile.
+
 ### Faz 3 — Sezon simülatörü (sezonun ilk 2 haftası)
 Draft edilen ligi gerçek fikstürle Monte Carlo oynatma: günlük kadro optimizasyonu, maç loglarından
 örnekleme, sakatlık riski → playoff olasılığı, beklenen sıralama, kategori kazanma olasılıkları.
