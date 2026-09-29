@@ -61,7 +61,7 @@ sezon simülatörüne ait olanlar Faz 3'ün içinde, geri kalanlar sonra.
 | # | İş | Neden şimdi |
 |---|---|---|
 | 1 ✅ | **Strateji backtest'i (bitti, aşağıya bak):** her sezon öncesi bilgiyle draft et, gerçek sezon istatistikleriyle puanla | Döngüselliği kaldırır; planların ve notların gerçekten işe yarayıp yaramadığını söyleyen tek test. Sonuca göre not ölçeği de kalibre edilir. |
-| 2 | **Takım dakika bütçesi:** takım başı maç başına 240 dk'ya normalize et, takaslarla boşalan dakikayı dağıt | En büyük hata kaynağı; takas edilen oyuncuların sıralamasını doğrudan bozuyor. |
+| 2 ❌ | **Takım dakika bütçesi — denendi, işe yaramadı, gönderilmedi (aşağıya bak)** | Hipotez: en büyük hata kaynağı. Backtest: değil. |
 | 3 | **Aralık kalibrasyonu:** out-of-sample %80 kapsama; istatistik bazında bantlar; yüzdelere ayrı oynaklık | Aralıklar sıralama, plan riski ve mock notunda kullanılıyor. |
 | 10 | **Plan karşılaştırmasında ortak rastgele çekilişler** (common random numbers) | Planlar arası farkı daha az simülasyonla ayırır; şu an çoğu "berabere". |
 
@@ -122,3 +122,20 @@ Karşılaştırma ölçüsü: piyasa (ADP) stratejisine göre haftalık eşleşm
 **Yöntem sınırları:** piyasa = bizim geçen-sezon ADP modelimiz (gerçek Yahoo ADP değil); pozisyon kodları güncel kadro/eski bios/boy tahmininden (küçük sızıntı);
 çaylak havuzu güncel kadrodan (ligden düşen çaylaklar yok); iki sezon = az örnek (sıra başına SE ≈ 0.3), sezona özgü sakatlık şansı sonucu belirliyor.
 Bu backtest artık #2, #3, #5 için ölçü çubuğu: her iyileştirmeden sonra yeniden koşulup Brier / kalibrasyon eğimi kıyaslanacak.
+
+## Faz 2.5 #2 sonucu — takım dakika bütçesi (2026-09-29): işe yaramadı
+
+Sorun gerçek: güncel kadroda projeksiyonlu takım dakika toplamı ortalama 269 (243–313), gerçek bütçe ≈ 241.
+Ama düzeltmek doğruluğu artırmadı. Test: 2024-25 ve 2025-26, takım = sezon açılışı takımı, hepsi sezon öncesi bilgiyle.
+
+| Ayar | Maç başı puan MAE (tüm oyuncular, 24-25 / 25-26) | İlk 150 (24-25 / 25-26) | Takas edilenler, ilk 150 |
+|---|---|---|---|
+| Bütçe yok (mevcut) | 4.288 / 4.726 | 4.219 / 4.341 | 4.27 / 6.60 |
+| Orantılı, tam (λ=1) | 4.502 / 4.900 | 5.077 / 4.531 | 5.54 / 6.16 |
+| Yalnız <26 dk oyuncuları kısar | 4.327 / 4.998 | 4.458 / 4.438 | 4.42 / 7.06 |
+| Yalnız <22 dk oyuncuları kısar | 4.493 / 5.050 | 4.197 / 4.275 | 4.27 / 6.74 |
+
+- Hiçbir varyant iki sezonda birden anlamlı iyileşme getirmedi; orantılı kısma yıldızları (−2.4 puan sapma) yanlış aşağı çekiyor.
+- Fazla dakika ağırlıkla ortalamaya çekmenin şişirdiği kenar oyuncularda (10 günlükler, ikiyol) — bunlar draftta zaten alakasız.
+- Takas edilen yıldızların hatası (2025-26'da 6.6) dakika toplamından değil, rol/kullanım değişiminden geliyor; bunu bütçe çözmüyor.
+- Karar: canlı projeksiyona bağlanmadı. Yeniden denenecekse rol değişimi (kullanım devri) modeliyle, #6-#7 ile birlikte.
