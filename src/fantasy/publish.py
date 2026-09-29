@@ -24,6 +24,7 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from src.fantasy.backtest import bucket_quantiles  # noqa: E402
 from src.fantasy.projections import (  # noqa: E402
     SEASON_WEIGHTS, load_gamelogs, prev_season, project,
 )
@@ -98,6 +99,9 @@ def build_projections(target: str = "2026-27", write: bool = True) -> pd.DataFra
         return gp_by.get(name, gp_all)
 
     bands = [_gp_band(r) for r in proj["HIST_GP_RATE"]]
+    tables = bt.get("ratio_tables")
+    if tables:
+        proj["FP_RATIO_Q"], proj["GP_RATIO_Q"] = bucket_quantiles(tables, proj["PROJ_MPG"], proj["HIST_GP_RATE"])
     proj["GP_P10"] = (proj["PROJ_GP"] * [b["p10"] for b in bands]).clip(0, 82).round(1)
     proj["GP_P90"] = (proj["PROJ_GP"] * [b["p90"] for b in bands]).clip(0, 82).round(1)
     roster_fetched = roster["FETCHED_AT"].iloc[0] if "FETCHED_AT" in roster.columns else None

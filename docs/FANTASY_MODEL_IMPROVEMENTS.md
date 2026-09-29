@@ -62,7 +62,7 @@ sezon simülatörüne ait olanlar Faz 3'ün içinde, geri kalanlar sonra.
 |---|---|---|
 | 1 ✅ | **Strateji backtest'i (bitti, aşağıya bak):** her sezon öncesi bilgiyle draft et, gerçek sezon istatistikleriyle puanla | Döngüselliği kaldırır; planların ve notların gerçekten işe yarayıp yaramadığını söyleyen tek test. Sonuca göre not ölçeği de kalibre edilir. |
 | 2 ❌ | **Takım dakika bütçesi — denendi, işe yaramadı, gönderilmedi (aşağıya bak)** | Hipotez: en büyük hata kaynağı. Backtest: değil. |
-| 3 | **Aralık kalibrasyonu:** out-of-sample %80 kapsama; istatistik bazında bantlar; yüzdelere ayrı oynaklık | Aralıklar sıralama, plan riski ve mock notunda kullanılıyor. |
+| 3 ✅ | **Aralık/tahmin kalibrasyonu (bitti, aşağıya bak):** ürünün playoff/sıra tahminleri artık gerçekleşenle uyuşuyor (9-cat) | Aralıklar sıralama, plan riski ve mock notunda kullanılıyor. |
 | 10 | **Plan karşılaştırmasında ortak rastgele çekilişler** (common random numbers) | Planlar arası farkı daha az simülasyonla ayırır; şu an çoğu "berabere". |
 
 ### Faz 3 içinde — sezon simülatörü
@@ -171,3 +171,32 @@ format başına **Yahoo değer sıralamaları** (9-cat, puan, High Score; pozisy
 - Puan formatında **avantaj kanıtlanamadı**: gerçekçi piyasada sıfır, yalnızca kalabalığın sakatlığı çok fiyatladığı varsayımda pozitif. Puan formatı için "piyasayı yeniyoruz" iddiası yapılmamalı.
 - Ürünün kendi tahminleri hâlâ fazla emin: 9-cat playoff olasılığı tahmini %78, gerçekleşen %62; Brier 0.259, sabit referans 0.236. Puan formatında tahmin neredeyse hiç bilgi taşımıyor (kalibrasyon eğimi 0.08).
   Kalibrasyon (`fit_calibration`) hâlâ ürüne bağlı değil; nedenler (bağımsız oyuncu çekilişi, dar aralıklar) #3 ve Faz 3'te.
+
+## Faz 2.5 #3 sonucu — tahmin kalibrasyonu (2026-09-29, gece)
+
+Sorun: ürünün "playoff olasılığı %78" dediği yerde gerçekleşen %62'ydi. Üç olası neden ölçüldü; ikisi bulundu.
+
+1. **Gürültü kalın kuyruklu değildi.** Simülatör oyuncu sezonlarını backtest artıklarının p10/p90'ına uydurulmuş lognormal ile çekiyordu; sezonu tümden kaçıranlar (Haliburton 2025-26'da 0 maç) neredeyse hiç üretilmiyordu.
+   Üstelik backtest'in maç oranı artıkları hedef sezonda hiç oynamayanları dışarıda bırakıyordu (en kötü kuyruk ölçülmüyordu). Düzeltme: `run_fold` artık güncel kadroda kalan sıfır maçlı oyuncuları içeriyor;
+   `backtest.ratio_tables` 101 kantillik gerçek oran tabloları çıkarıyor (üretim oranı MPG kovasına, maç oranı sakatlık geçmişi kovasına göre); `draft.sample_multipliers` bunlardan ters-CDF ile ÖRNEKLER.
+   Etki (9-cat, aynı draftlar): kalibrasyon eğimi 0.63 → 1.05, playoff Brier 0.258 → 0.235 (sabit referans 0.234).
+2. **Kazananın laneti.** Simülatör herkesin yaptığı draft (ADP stratejisi) için doğru kalibreydi (tahmin 7.06 / gerçek 7.18) ama BİZİM takımımız için iyimserdi (4.44 / 5.41): iddia ettiğimiz avantajın 9-cat'te %56'sı, puanda %0'ı gerçekleşti
+   (modelimizin piyasadan ayrıldığı yerlerde haklı olma oranı <1). Düzeltme: `draft.SHRINK` — değerler aynı ADP sırasındaki oyuncuların yerel ortalamasına doğru büzülüyor (`value = piyasa + κ·(bizim − piyasa)`).
+   κ tahmin edilen ile gerçekleşeni eşitleyecek şekilde seçildi: **9-cat 0.5, puan 0.25, High Score 0.25 (test edilmedi, muhafazakâr).** Gerçekleşen avantaj κ = 0.25–1.0 arasında değişmedi; büzme sonucu bozmuyor, iddiayı dürüstleştiriyor.
+   Ekranda gösterilen değer/sıra ham kalır; yalnız draft motoru (öneri, simülasyon, not) büzülmüş değerleri kullanır.
+3. **Aralık kapsamı:** bantlar bir önceki sezondan kurulup sonrakinde sınandı: FP/maç bandı %74–78, maç sayısı bandı %72–77 (hedef %80). Hafif dar. Metodoloji sayfası artık bu dışarıdan sayıyı gösteriyor (%74).
+
+**Sonuç (strateji backtest'i, 2024-25 + 2025-26, gerçekçi piyasa, 240/120 draft)**
+
+| | 9-cat (dinamik) | Puan (statik) |
+|---|---|---|
+| Tahmin edilen / gerçekleşen sıra | 4.96 / 4.92 | 5.55 / 5.75 |
+| Tahmin edilen / gerçekleşen playoff | %68.4 / %67.9 | %61.4 / %59.2 |
+| Playoff Brier (sabit referans) | 0.2135 (0.2179) — **referansı yeniyor** | 0.2471 (0.2416) — eşit |
+| Kalibrasyon eğimi | 0.84 | 0.28 (ayırt gücü zayıf) |
+| Piyasadan avantaj: karışık botlar / hepsi ADP botu | +0.098 ± 0.013 / +0.051 | +0.040 ± 0.012 / −0.040 |
+
+- 9-cat: ürünün tahminleri artık güvenilir; `fit_calibration` düzeltmesi gerekmiyor (eğim 0.84, kayma −0.10).
+- Puan: tahminler dürüst ama ayırt edici değil (iki sezon, avantaj rakiplerin nasıl draft ettiğine bağlı). "Doğrulanmamış" uyarısı kalıyor.
+- Sınır: büzme hedefi backtest'te model tabanlı piyasa (geçmiş sezonlarda gerçek ADP yok). Canlıda gerçek Yahoo ADP daha bilgili; κ muhtemelen çok yanlış değil ama yeni ADP verisi gelince yeniden ölçülmeli.
+- Yapılmayanlar (#3'ün alt maddeleri): istatistik bazında bantlar ve yüzdelere ayrı oynaklık — kalibrasyon hedefi (tahmin = gerçekleşen) tutturulduğu için ertelendi.

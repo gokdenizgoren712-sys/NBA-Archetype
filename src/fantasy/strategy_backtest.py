@@ -46,7 +46,7 @@ if str(ROOT) not in sys.path:
 
 from config.fantasy_formats import get_format  # noqa: E402
 from src.fantasy import draft as dr  # noqa: E402
-from src.fantasy.backtest import GP_HISTORY_BUCKETS, MPG_BUCKETS, run_fold  # noqa: E402
+from src.fantasy.backtest import GP_HISTORY_BUCKETS, MPG_BUCKETS, bucket_quantiles, ratio_tables, run_fold  # noqa: E402
 from src.fantasy.calendar import build_team_weeks, build_weeks  # noqa: E402
 from src.fantasy.positions import eligible_positions, load_profiles  # noqa: E402
 from src.fantasy.projections import SEASON_WEIGHTS, load_gamelogs, prev_season, project  # noqa: E402
@@ -90,7 +90,7 @@ def _positions(pool: list[int], roster: pd.DataFrame, target: str) -> dict[int, 
     return {pid: ",".join(eligible_positions(raw.get(pid), prof.get(pid))) for pid in pool}
 
 
-def _tune_ranges(target: str, logs, roster) -> tuple[dict, dict, dict]:
+def _tune_ranges(target: str, logs, roster) -> tuple[dict, dict, dict, dict]:
     """Belirsizlik bantları YALNIZ bir önceki sezonun katından — hedef sezonun artıkları sızmasın."""
     fold = run_fold(prev_season(target), logs, roster, SEASON_WEIGHTS, 0.5)
     fp, mpg = fold["fp_ratio"], fold["mpg"]
@@ -102,7 +102,7 @@ def _tune_ranges(target: str, logs, roster) -> tuple[dict, dict, dict]:
                 "p90": float(gp[(hist >= lo) & (hist < hi)].dropna().quantile(.9))}
             for lo, hi, n in GP_HISTORY_BUCKETS if gp[(hist >= lo) & (hist < hi)].dropna().size >= 20}
     gp_all = {"p10": float(gp.dropna().quantile(.1)), "p90": float(gp.dropna().quantile(.9))}
-    return fp_r, gp_r, gp_all
+    return fp_r, gp_r, gp_all, ratio_tables([fold])
 
 
 def historical_projections(target: str, logs: dict, roster: pd.DataFrame) -> pd.DataFrame:
@@ -122,7 +122,8 @@ def historical_projections(target: str, logs: dict, roster: pd.DataFrame) -> pd.
     proj["ELIGIBLE"] = proj["PLAYER_ID"].map(_positions(pool, roster, target))
     proj["ARCHETYPE"] = None
 
-    fp_r, gp_r, gp_all = _tune_ranges(target, logs, roster)
+    fp_r, gp_r, gp_all, tables = _tune_ranges(target, logs, roster)
+    proj["FP_RATIO_Q"], proj["GP_RATIO_Q"] = bucket_quantiles(tables, proj["PROJ_MPG"], proj["HIST_GP_RATE"])
     bucket = lambda m: next(n for lo, hi, n in MPG_BUCKETS if lo <= m < hi)   # noqa: E731
     band = [fp_r.get(bucket(m), {"p10": .6, "p90": 1.4}) for m in proj["PROJ_MPG"]]
     proj["FP_RATIO_P10"], proj["FP_RATIO_P90"] = [b["p10"] for b in band], [b["p90"] for b in band]
@@ -381,9 +382,9 @@ def _calibration(calib: dict, main: str) -> dict:
 
 
 def run_format(fmt_key: str, proj: pd.DataFrame, tw: pd.DataFrame, weeks: pd.DataFrame, actual_logs: pd.DataFrame,
-               seeds: int = 6, bot_mix: str = "mixed", calib_sims: int = 60) -> dict:
+               seeds: int = 6, bot_mix: str = "mixed", calib_sims: int = 60, shrink: float | None = None) -> dict:
     fmt = get_format(fmt_key)
-    b = dr.make_board(value_players(proj, fmt, tw), fmt)
+    b = dr.make_board(value_players(proj, fmt, tw), fmt, shrink=shrink)
     season = ActualSeason(actual_logs, weeks, fmt, b)
     pickers = strategy_pickers(b)
     res = {k: {"rank": [], "matchup": [], "top_half": [], "playoff": []} for k in pickers}

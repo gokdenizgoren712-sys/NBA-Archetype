@@ -94,19 +94,54 @@ def run_fold(target: str, logs: dict, roster: pd.DataFrame, weights, k_scale) ->
         res["model"][pct] = _metrics(proj[pct].reindex(ok.index), ok[pct])
         res["baseline_last_season"][pct] = _metrics(last[pct].reindex(ok.index), ok[pct])
 
-    # Oynanan maç: hedefte oynayan ve önceki sezonda da oynamış herkes (0'lar dahil değil).
-    both = act.index.intersection(last.index)
+    # Oynanan maç: geçen sezon oynamış herkes. Hedef sezonda HİÇ oynamayanlar da dahil (0 maç =
+    # sezon boyu sakat, ör. Haliburton 2025-26) — yoksa dağılımın en kötü kuyruğunu ölçemeyiz.
+    # Ligden ayrılanlar (emekli, kesilen) hariç: hâlâ güncel kadroda olanlar sayılır.
+    active = set(roster["PLAYER_ID"].astype(int))
+    zero_gp = [p for p in last.index if p not in act.index and int(p) in active]
+    both = act.index.intersection(last.index).union(pd.Index(zero_gp))
+    act_gp = act["GP"].reindex(both).fillna(0)
     gp_full = project(target, logs, roster, players=[int(p) for p in both],
                       weights=weights, k_scale=k_scale).set_index("PLAYER_ID")
     gp_proj = gp_full["PROJ_GP"]
-    res["model"]["GP"] = _metrics(gp_proj, act.loc[both, "GP"])
-    res["baseline_last_season"]["GP"] = _metrics(last.loc[both, "GP"], act.loc[both, "GP"])
+    res["model"]["GP"] = _metrics(gp_proj, act_gp)
+    res["baseline_last_season"]["GP"] = _metrics(last["GP"].reindex(both), act_gp)
 
     ratios = (evalp["FP"] / proj["FP"]).replace([np.inf, -np.inf], np.nan)
-    gp_ratio = (act.loc[both, "GP"] / gp_proj.reindex(both)).replace([np.inf, -np.inf], np.nan)
+    gp_ratio = (act_gp / gp_proj.reindex(both)).replace([np.inf, -np.inf], np.nan)
     return {"metrics": res, "fp_ratio": ratios, "mpg": proj["PROJ_MPG"], "gp_ratio": gp_ratio,
             "hist_gp_rate": gp_full["HIST_GP_RATE"],
             "proj_fp": proj["FP"], "act_fp": evalp["FP"]}
+
+
+RATIO_Q = np.linspace(0, 1, 101)
+
+
+def ratio_tables(folds: list[dict]) -> dict:
+    """Gerçek/proje oranlarının 101 kantil tablosu (kova başına) — simülasyon bunlardan ÖRNEKLER
+    (lognormal p10/p90 uydurması sezonu tümden kaçıranları üretemiyordu, bkz. docs)."""
+    fpd = pd.concat([pd.DataFrame({"r": f["fp_ratio"], "m": f["mpg"]}) for f in folds]).dropna()
+    gpd = pd.concat([pd.DataFrame({"r": f["gp_ratio"], "h": f["hist_gp_rate"].reindex(f["gp_ratio"].index)})
+                     for f in folds]).dropna(subset=["r"])
+    q = lambda s: [round(float(x), 4) for x in np.quantile(s.clip(0, 4), RATIO_Q)]   # noqa: E731
+    fp = {n: q(fpd[(fpd["m"] >= lo) & (fpd["m"] < hi)]["r"]) for lo, hi, n in MPG_BUCKETS
+          if ((fpd["m"] >= lo) & (fpd["m"] < hi)).sum() >= 30}
+    gp = {n: q(gpd[(gpd["h"] >= lo) & (gpd["h"] < hi)]["r"]) for lo, hi, n in GP_HISTORY_BUCKETS
+          if ((gpd["h"] >= lo) & (gpd["h"] < hi)).sum() >= 30}
+    return {"fp": fp, "gp": gp, "gp_all": q(gpd["r"]), "fp_all": q(fpd["r"])}
+
+
+def bucket_quantiles(tables: dict, mpg, hist_gp_rate) -> tuple[list, list]:
+    """Oyuncu başına (FP oran kantilleri, GP oran kantilleri)."""
+    fp_q, gp_q = [], []
+    for m, h in zip(mpg, hist_gp_rate):
+        name = next((n for lo, hi, n in MPG_BUCKETS if lo <= m < hi), None)
+        fp_q.append(tables["fp"].get(name, tables["fp_all"]))
+        if h is None or (isinstance(h, float) and np.isnan(h)):
+            gp_q.append(tables["gp_all"])
+        else:
+            gp_q.append(tables["gp"].get("<60%" if h < 0.6 else "60-80%" if h < 0.8 else "80%+", tables["gp_all"]))
+    return fp_q, gp_q
 
 
 def _summary(fold: dict, ranges: dict) -> dict:
@@ -128,6 +163,17 @@ def _summary(fold: dict, ranges: dict) -> dict:
             "band_coverage": round(float(np.mean(inside)), 3) if inside else None,
             "band_coverage_in_sample": True,
             "top50_in_top75": len(proj_top & act_top), "top_n": 50, "within_n": 75}
+
+
+def _oos_coverage(tune: dict, test: dict) -> float:
+    """Dışarıdan kapsam: p10–p90 bantları YALNIZ ayar katından çıkarılıp test katında sınanır."""
+    inside = []
+    for lo, hi, _ in MPG_BUCKETS:
+        src = tune["fp_ratio"][(tune["mpg"] >= lo) & (tune["mpg"] < hi)].dropna()
+        dst = test["fp_ratio"][(test["mpg"] >= lo) & (test["mpg"] < hi)].dropna()
+        if len(src) >= 10 and len(dst):
+            inside.extend(((dst >= src.quantile(0.1)) & (dst <= src.quantile(0.9))).tolist())
+    return round(float(np.mean(inside)), 3) if inside else None
 
 
 def _score(fold: dict) -> float:
@@ -178,7 +224,8 @@ def run(write: bool = True) -> dict:
                   TEST_FOLD: {"role": "test", **test["metrics"]}},
         "fp_ratio_ranges_by_mpg": ranges,
         "gp_ratio_ranges_by_history": gp_ranges,
-        "summary": {TEST_FOLD: _summary(test, ranges)},
+        "ratio_tables": ratio_tables([tune, test]),
+        "summary": {TEST_FOLD: {**_summary(test, ranges), "band_coverage_out_of_sample": _oos_coverage(tune, test)}},
         "gp_ratio_range": {"p10": round(float(gp_r.quantile(0.1)), 3),
                            "p90": round(float(gp_r.quantile(0.9)), 3), "n": int(len(gp_r))},
         "notes": [

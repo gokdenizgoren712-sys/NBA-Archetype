@@ -140,16 +140,17 @@ def _enrich_plans(b: dr.Board, plans: dict) -> dict:
 def strategy_validation(fmt: dict) -> dict:
     """Bu formatta draft ÖNERİLERİMİZİN gerçek sezonlarda doğrulanıp doğrulanmadığı.
     Kaynak: src/fantasy/strategy_backtest.py (2024-25 ve 2025-26, gerçekçi piyasa varsayımı) —
-    kategori/H2H: piyasadan +0.076 haftalık eşleşme oranı (dört piyasa varsayımının hepsinde pozitif);
-    puan: −0.014 (fark yok); High Score ve roto hiç test edilmedi. Öneri her durumda verilir, yalnızca
+    kategori/H2H: piyasadan +0.098 haftalık eşleşme oranı (karışık botlara karşı; tüm piyasa varsayımlarında pozitif);
+    puan: karışık botlara karşı +0.04, hepsi-ADP botlarına karşı −0.04 (kanıtlanmadı); High Score ve roto hiç test edilmedi. Öneri her durumda verilir, yalnızca
     güven düzeyi söylenir. Sonuçlar değişirse burası ve docs/FANTASY_MODEL_IMPROVEMENTS.md birlikte güncellenir."""
     kind, matchup = fmt.get("kind"), fmt.get("matchup")
     if kind == "categories" and matchup == "h2h":
         return {"status": "validated"}
     if kind == "points":
         return {"status": "unvalidated", "title": "Picks not yet proven for points leagues",
-                "body": "In our test on the 2024-25 and 2025-26 seasons, drafting by our points ranking finished level "
-                        "with drafting by average draft position. Treat these picks as a starting point and trust your own read."}
+                "body": "In our test on the 2024-25 and 2025-26 seasons, drafting by our points ranking finished about level "
+                        "with drafting by average draft position: slightly ahead in some leagues, behind in others. "
+                        "Treat these picks as a starting point and trust your own read."}
     if kind == "high_score":
         return {"status": "unvalidated", "title": "Picks not yet tested for High Score leagues",
                 "body": "We have not yet checked this format against real seasons. Treat these picks as a starting point."}
@@ -368,8 +369,9 @@ def draft_grade(body: GradeBody):
         "steals": moves[:3], "reaches": moves[::-1][:3],
         "my_roster": [_player(b, p) for p in rosters[body.slot]],
         "lineup": _lineup(b, rosters[body.slot]),
-        "notes": ["Every team is scored with our projections, then each player's season is re-drawn "
-                  f"{GRADE_SIMS} times from our measured projection error; rank is the average over draws."],
+        "notes": ["Every team is scored with our projections, blended with the market where we disagree "
+                  "(our picks did worse than raw projections implied in past seasons), then each player's season is "
+                  f"re-drawn {GRADE_SIMS} times from measured projection errors; rank is the average over draws."],
     }
 
 

@@ -96,7 +96,7 @@ export default function FantasyMethodology() {
                   </div>
                   <div className="fz-card" style={{ padding: "16px 18px", display: "flex", flexDirection: "column", gap: 2 }}>
                     <span className="fz-meta">Inside 10–90 band</span>
-                    <span className="fz-num" style={{ fontSize: 30 }}>{Math.round(sum.band_coverage * 100)}% <span style={{ fontSize: 14, color: "#8a8a8a" }}>target 80</span></span>
+                    <span className="fz-num" style={{ fontSize: 30 }}>{Math.round((sum.band_coverage_out_of_sample ?? sum.band_coverage) * 100)}% <span style={{ fontSize: 14, color: "#8a8a8a" }}>target 80</span></span>
                   </div>
                   <div className="fz-card" style={{ padding: "16px 18px", display: "flex", flexDirection: "column", gap: 2, gridColumn: phone ? "span 2" : "auto" }}>
                     <span className="fz-meta">Top {sum.top_n} → finished top {sum.within_n}</span>
@@ -104,7 +104,9 @@ export default function FantasyMethodology() {
                   </div>
                 </div>
               )}
-              {sum?.band_coverage_in_sample && (
+              {sum?.band_coverage_out_of_sample != null ? (
+                <span className="fz-meta" style={{ lineHeight: 1.5 }}>The band's width comes from the season before, then is tested on this one, so the coverage figure is out-of-sample. It runs a few points under the 80% target: the bands are slightly narrow.</span>
+              ) : sum?.band_coverage_in_sample && (
                 <span className="fz-meta" style={{ lineHeight: 1.5 }}>The band's width is itself set from these test seasons, so the coverage figure is in-sample and slightly flattering.</span>
               )}
               {fold && (

@@ -172,6 +172,8 @@ class Board:
     gp_mu: np.ndarray | None = None   # maç çarpanı ~ lognormal(gp_mu, gp_sigma), 82'de kesilir
     gp_sigma: np.ndarray | None = None
     gp_cap: np.ndarray | None = None
+    fp_q: np.ndarray | None = None    # ampirik oran kantilleri (n × 101); varsa lognormal yerine bunlardan örneklenir
+    gp_q: np.ndarray | None = None
     row: dict[int, int] = field(default_factory=dict)
 
     @property
@@ -183,7 +185,38 @@ class Board:
         return self.teams * self.rounds
 
 
-def make_board(valued: pd.DataFrame, fmt: dict) -> Board:
+# Değerlerimizi piyasaya (aynı ADP sırasındaki oyuncuların tipik değerine) doğru büzme ağırlığı: 1.0 = büzme yok.
+# Strateji backtest'i: piyasadan ayrıldığımız yerlerde haklı olma oranımız <1 (kazananın laneti):
+# 9-cat'te iddia ettiğimiz avantajın %56'sı gerçekleşti, puanda %0. κ, tahmin ettiğimiz playoff/sıra ile
+# gerçekleşeni eşitleyecek şekilde seçildi (2024-25 + 2025-26, 120 draft/format): 9-cat κ=0.5 → playoff
+# tahmini %68 / gerçek %67, Brier 0.214 (sabit 0.222); puan κ=0.25 → %60 / %61. High Score hiç test
+# edilmedi: puanla aynı (muhafazakâr). Ayrıntı: docs/FANTASY_MODEL_IMPROVEMENTS.md.
+SHRINK = {"categories": 0.5, "points": 0.25, "high_score": 0.25}
+
+
+def _shrink_to_market(b: "Board", k: float) -> None:
+    """value / G / base_total → piyasa-ima edilen + k·(bizim − piyasa-ima edilen)."""
+    order = np.argsort(b.adp)
+    pos = np.empty(len(order), dtype=int)
+    pos[order] = np.arange(len(order))
+    n = len(order)
+
+    def local_mean(x: np.ndarray) -> np.ndarray:
+        xs = x[order]
+        wm = np.array([xs[max(0, i - M_WINDOW): min(n, i + M_WINDOW + 1)].mean(axis=0) for i in range(n)])
+        return wm[pos]
+
+    m = local_mean(b.value)
+    b.value = m + k * (b.value - m)
+    if b.G is not None:
+        g = local_mean(b.G)
+        b.G = g + k * (b.G - g)
+    if b.base_total is not None:
+        t = local_mean(b.base_total)
+        b.base_total = t + k * (b.base_total - t)
+
+
+def make_board(valued: pd.DataFrame, fmt: dict, shrink: float | None = None) -> Board:
     df = valued.reset_index(drop=True)
     rounds = len(fmt["roster"]["starters"]) + fmt["roster"].get("bench", 0)
     elig = [tuple(p for p in str(e or "").split(",") if p) for e in df["ELIGIBLE"]]
@@ -202,6 +235,9 @@ def make_board(valued: pd.DataFrame, fmt: dict) -> Board:
     ghi = np.maximum(df["GP_P90"].to_numpy(float), 1.0) / gp
     b.gp_mu, b.gp_sigma = (np.log(glo) + np.log(ghi)) / 2, (np.log(ghi) - np.log(glo)) / (2 * z90)
     b.gp_cap = 82.0 / gp
+    if "FP_RATIO_Q" in df.columns and "GP_RATIO_Q" in df.columns:
+        b.fp_q = np.array([list(x) for x in df["FP_RATIO_Q"]], float)
+        b.gp_q = np.array([list(x) for x in df["GP_RATIO_Q"]], float)
     if b.is_categories:
         b.cats = list(fmt["categories"])
         col = "G_" if fmt["matchup"] == "h2h" else "Z_"
@@ -215,16 +251,33 @@ def make_board(valued: pd.DataFrame, fmt: dict) -> Board:
                         for i in range(n)])
     else:
         b.base_total = df["FP_TOTAL" if fmt["kind"] == "points" else "HS_WEEK_AVG"].to_numpy(float)
+    k = SHRINK.get(fmt["kind"], 1.0) if shrink is None else shrink
+    if k < 1.0:
+        _shrink_to_market(b, k)
     return b
 
 
 def sample_multipliers(b: Board, rng: np.random.Generator, basis: str = "total") -> np.ndarray:
     """Her oyuncu için bir gerçekleşen-sezon çarpanı: üretim × (toplam bazında) maç."""
     n = len(b.ids)
+    if b.fp_q is not None:
+        m = _draw_quantile(b.fp_q, rng.random(n))
+        if basis == "total":
+            m = m * np.minimum(_draw_quantile(b.gp_q, rng.random(n)), b.gp_cap)
+        return m
     m = np.exp(b.fp_mu + b.fp_sigma * rng.standard_normal(n))
     if basis == "total":
         m = m * np.minimum(np.exp(b.gp_mu + b.gp_sigma * rng.standard_normal(n)), b.gp_cap)
     return m
+
+
+def _draw_quantile(q: np.ndarray, u: np.ndarray) -> np.ndarray:
+    """Her satırın kantil tablosundan u ∈ [0,1) ile ters-CDF örneği (doğrusal aradeğer)."""
+    pos = u * (q.shape[1] - 1)
+    lo = np.minimum(pos.astype(int), q.shape[1] - 2)
+    f = pos - lo
+    idx = np.arange(len(q))
+    return q[idx, lo] * (1 - f) + q[idx, lo + 1] * f
 
 
 def _future_sum(b: Board, future_picks: list[int]) -> np.ndarray:
