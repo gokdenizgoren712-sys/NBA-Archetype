@@ -319,6 +319,16 @@ def draft_grade(body: GradeBody):
         rosters[dr.pick_owner(i + 1, b.teams)].append(p)
     league = dr.evaluate_league_mc(b, rosters, sims=GRADE_SIMS, seed=len(body.picks), basis=body.basis)
     me = league[body.slot]
+    if b.is_categories:
+        # Kategori başına lig sırası (projeksiyonla): G'de yön zaten uygulanmış,
+        # büyük = iyi (TO dahil).
+        sums = {s: b.G[[b.row[p] for p in r]].sum(axis=0) for s, r in rosters.items()}
+        me["category_rank"] = {
+            c: 1 + sum(1 for s in sums if s != body.slot and sums[s][j] > sums[body.slot][j])
+            for j, c in enumerate(b.cats)}
+        weeks = int(fmt.get("regular_season_weeks", 19))
+        wins = me["expected_category_wins"]
+        me["expected_category_record"] = [round(wins * weeks), round((len(b.cats) - wins) * weeks)]
 
     my_picks = dr.snake_picks(b.teams, b.rounds, body.slot)
     moves = []

@@ -96,17 +96,38 @@ def run_fold(target: str, logs: dict, roster: pd.DataFrame, weights, k_scale) ->
 
     # Oynanan maç: hedefte oynayan ve önceki sezonda da oynamış herkes (0'lar dahil değil).
     both = act.index.intersection(last.index)
-    gp_proj = project(target, logs, roster, players=[int(p) for p in both],
-                      weights=weights, k_scale=k_scale).set_index("PLAYER_ID")["PROJ_GP"]
+    gp_full = project(target, logs, roster, players=[int(p) for p in both],
+                      weights=weights, k_scale=k_scale).set_index("PLAYER_ID")
+    gp_proj = gp_full["PROJ_GP"]
     res["model"]["GP"] = _metrics(gp_proj, act.loc[both, "GP"])
     res["baseline_last_season"]["GP"] = _metrics(last.loc[both, "GP"], act.loc[both, "GP"])
 
     ratios = (evalp["FP"] / proj["FP"]).replace([np.inf, -np.inf], np.nan)
-    gp_full = project(target, logs, roster, players=[int(p) for p in both],
-                      weights=weights, k_scale=k_scale).set_index("PLAYER_ID")
     gp_ratio = (act.loc[both, "GP"] / gp_proj.reindex(both)).replace([np.inf, -np.inf], np.nan)
     return {"metrics": res, "fp_ratio": ratios, "mpg": proj["PROJ_MPG"], "gp_ratio": gp_ratio,
-            "hist_gp_rate": gp_full["HIST_GP_RATE"]}
+            "hist_gp_rate": gp_full["HIST_GP_RATE"],
+            "proj_fp": proj["FP"], "act_fp": evalp["FP"]}
+
+
+def _summary(fold: dict, ranges: dict) -> dict:
+    """Metodoloji sayfasındaki üç kutu — test katından:
+      - maç başı puan korelasyonu,
+      - gerçek sonucun p10–p90 bandına düşme oranı (bantlar iki katın
+        artıklarından çıktığı için ÖRNEKLEM İÇİ; hedef %80),
+      - tahminde ilk 50'nin kaçı gerçekte ilk 75'te bitti."""
+    ratio, mpg = fold["fp_ratio"], fold["mpg"]
+    inside = []
+    for lo, hi, name in MPG_BUCKETS:
+        band = ranges.get(name)
+        r = ratio[(mpg >= lo) & (mpg < hi)].dropna()
+        if band is not None and len(r):
+            inside.extend(((r >= band["p10"]) & (r <= band["p90"])).tolist())
+    proj_top = set(fold["proj_fp"].nlargest(50).index)
+    act_top = set(fold["act_fp"].nlargest(75).index)
+    return {"fp_corr": fold["metrics"]["model"]["FP"].get("corr"),
+            "band_coverage": round(float(np.mean(inside)), 3) if inside else None,
+            "band_coverage_in_sample": True,
+            "top50_in_top75": len(proj_top & act_top), "top_n": 50, "within_n": 75}
 
 
 def _score(fold: dict) -> float:
@@ -157,6 +178,7 @@ def run(write: bool = True) -> dict:
                   TEST_FOLD: {"role": "test", **test["metrics"]}},
         "fp_ratio_ranges_by_mpg": ranges,
         "gp_ratio_ranges_by_history": gp_ranges,
+        "summary": {TEST_FOLD: _summary(test, ranges)},
         "gp_ratio_range": {"p10": round(float(gp_r.quantile(0.1)), 3),
                            "p90": round(float(gp_r.quantile(0.9)), 3), "n": int(len(gp_r))},
         "notes": [

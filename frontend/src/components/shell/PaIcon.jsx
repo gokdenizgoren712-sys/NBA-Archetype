@@ -35,6 +35,14 @@ const PATHS = {
     </g>
   ),
   lineups:  (c) => <path stroke={c.gray} d="M4 7h16M7 12h13M10 17h10" />,
+  // Fantezi: draft tahtası (Claude Design "Primary Arch Fantasy", PaIcon is.fantasy)
+  fantasy:  (c) => (
+    <g stroke={c.gray}>
+      <rect x="3.5" y="3.5" width="17" height="17" rx="2.5" />
+      <path d="M3.5 9.2h17M3.5 14.8h17M9.2 3.5v17M14.8 3.5v17" />
+      <rect x="10.6" y="10.6" width="2.8" height="2.8" fill={c.gray} />
+    </g>
+  ),
   explore:  (c) => <g stroke={c.asagi}><circle cx="12" cy="12" r="8" /><circle cx="12" cy="12" r="4" /></g>,
   blog:     (c) => <path stroke={c.red} d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4 12.5-12.5z" />,
   about:    (c) => <path stroke={c.gray} d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01" />,

@@ -1,0 +1,361 @@
+/* ── Basketbol fantezi — sessiz veri register'ı ──────────────────────────────
+   Kaynak: Claude Design "Primary Arch Fantasy" (2026-09-29).
+   Tasarım kararı 06: fantezi DESIGN.md token'larını kullanır (#e5e5e5 mürekkep,
+   #131313 kart, ortam ışığı yok); paylaşılan kabuk kendi token'larında kalır.
+   İki paleti birleştirmek için yalnız aşağıdaki --fz-* değerlerini değiştirmek
+   yeter — sayfalar bu değişkenler dışında renk kullanmaz.
+   Altın yalnız üç yerde: birincil CTA, sıradaki pick ve not açılışı. */
+
+.fz {
+  --fz-ink: #e5e5e5;
+  --fz-muted: #8a8a8a;
+  --fz-faint: #3a3a3a;      /* yalnız çizgi, iz, dolgu — metin değil (karar 01) */
+  --fz-bg: #0b0b0b;
+  --fz-card: #131313;
+  --fz-raised: #1a1a1a;
+  --fz-line: #262626;
+  --fz-track: #1f1f1f;
+  --fz-good: #4ade80;
+  --fz-bad: #f87171;
+  --fz-gold: #FFB11B;
+  --fz-read: #c9c9c9;
+  --fz-display: var(--font-logo, Rajdhani), sans-serif;
+  height: 100%;
+  overflow-y: auto;
+  background: var(--fz-bg);
+  color: var(--fz-ink);
+  font-family: var(--font-sans, Outfit), ui-sans-serif, sans-serif;
+}
+.fz *, .fz *::before, .fz *::after { box-sizing: border-box; }
+.fz button { font-family: inherit; }
+
+/* ── Tipografi ─────────────────────────────────────────────────────────── */
+.fz-d { font-family: var(--fz-display); font-weight: 700; }
+.fz-h1 { margin: 0; font-family: var(--fz-display); font-size: 40px; font-weight: 700; line-height: 1; }
+.fz-h2 { margin: 0; font-family: var(--fz-display); font-size: 20px; font-weight: 700; }
+.fz-h3 { font-family: var(--fz-display); font-size: 18px; font-weight: 700; }
+.fz-sub { font-size: 14px; color: var(--fz-muted); }
+.fz-meta { font-size: 12px; color: var(--fz-muted); }
+.fz-muted { color: var(--fz-muted); }
+.fz-link {
+  background: none; border: 0; padding: 0; cursor: pointer;
+  font-size: 13px; color: var(--fz-ink);
+  text-decoration: underline; text-decoration-color: var(--fz-faint); text-underline-offset: 3px;
+}
+.fz-num { font-family: var(--fz-display); font-weight: 700; font-variant-numeric: tabular-nums; }
+
+/* ── Yerleşim ──────────────────────────────────────────────────────────── */
+.fz-page { padding: 28px 36px 40px; display: flex; flex-direction: column; gap: 22px; max-width: 1220px; }
+.fz-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; flex-wrap: wrap; }
+.fz-head-l { display: flex; flex-direction: column; gap: 6px; }
+.fz-two { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 32px; }
+.fz-card { background: var(--fz-card); border-radius: 12px; padding: 20px 22px; }
+.fz-row { box-shadow: inset 0 -1px 0 var(--fz-raised); }
+.fz-divider { height: 1px; background: var(--fz-line); }
+
+/* ── Format çubuğu (FantasyBar) ────────────────────────────────────────── */
+.fz-bar {
+  position: sticky; top: 0; z-index: 5; height: 64px;
+  display: flex; align-items: center; gap: 8px; padding: 0 36px;
+  background: var(--fz-bg); box-shadow: inset 0 -1px 0 var(--fz-raised);
+}
+.fz-bar-title { font-size: 14px; font-weight: 500; }
+.fz-pill {
+  position: relative; height: 40px; display: flex; align-items: center; gap: 8px; padding: 0 12px;
+  border: 0; border-radius: 10px; background: var(--fz-card); color: var(--fz-ink); cursor: pointer;
+}
+.fz-pill:hover, .fz-pill[aria-expanded="true"] { background: var(--fz-raised); }
+.fz-pill .k { font-size: 12px; color: var(--fz-muted); }
+.fz-pill .v { font-family: var(--fz-display); font-size: 15px; font-weight: 700; }
+.fz-pill .v.txt { font-family: inherit; font-size: 14px; font-weight: 500; }
+.fz-icon-btn {
+  width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
+  border: 0; border-radius: 10px; background: transparent; cursor: pointer;
+}
+.fz-icon-btn:hover { background: var(--fz-card); }
+.fz-bar-sep { width: 1px; height: 24px; background: var(--fz-line); margin: 0 6px; }
+.fz-bar-phone { display: none; }
+
+.fz-pop {
+  position: absolute; top: calc(100% + 6px); right: 0; z-index: 20; min-width: 300px;
+  background: var(--fz-raised); border-radius: 12px; padding: 6px;
+  box-shadow: 0 24px 60px -20px #000; text-align: left;
+}
+.fz-pop-item {
+  width: 100%; min-height: 52px; display: flex; flex-direction: column; justify-content: center; gap: 2px;
+  padding: 0 12px; border: 0; border-radius: 8px; background: transparent; color: var(--fz-ink);
+  cursor: pointer; text-align: left;
+}
+.fz-pop-item:hover, .fz-pop-item.on { background: var(--fz-line); }
+.fz-pop-item .t { display: flex; justify-content: space-between; gap: 12px; font-family: var(--fz-display); font-size: 15px; font-weight: 700; }
+.fz-pop-item .cur { font-family: inherit; font-size: 12px; font-weight: 400; color: var(--fz-gold); }
+.fz-pop-item .d { font-size: 12px; color: var(--fz-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 320px; }
+.fz-pop-sep { height: 1px; background: var(--fz-line); margin: 6px 4px; }
+
+/* ── Kontroller ────────────────────────────────────────────────────────── */
+.fz-seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: 10px; background: var(--fz-card); align-self: flex-start; }
+.fz-seg.dark { background: var(--fz-bg); }
+.fz-seg button {
+  height: 34px; padding: 0 13px; border: 0; border-radius: 8px; background: transparent;
+  color: var(--fz-muted); font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap;
+}
+.fz-seg button.on { background: var(--fz-line); color: var(--fz-ink); }
+.fz-seg.lg button { height: 36px; padding: 0 14px; font-size: 14px; }
+.fz-seg.sm button { height: 28px; padding: 0 10px; border-radius: 7px; }
+
+.fz-btn {
+  height: 42px; padding: 0 18px; border: 0; border-radius: 10px; background: var(--fz-raised);
+  color: var(--fz-ink); font-size: 14px; font-weight: 500; cursor: pointer; white-space: nowrap;
+}
+.fz-btn:hover { background: var(--fz-line); }
+.fz-btn:disabled { color: var(--fz-faint); cursor: default; background: var(--fz-raised); }
+.fz-btn.quiet { background: transparent; }
+.fz-btn.quiet:hover { background: var(--fz-raised); }
+.fz-btn.sm { height: 36px; padding: 0 14px; border-radius: 9px; font-size: 13px; }
+.fz-btn.lg { height: 48px; border-radius: 11px; }
+.fz-btn.danger:hover { color: var(--fz-bad); }
+.fz-btn.light { background: var(--fz-ink); color: var(--fz-bg); font-weight: 600; }
+.fz-btn.light:hover { background: #fff; }
+
+/* Tek altın CTA. Kural 09: döngülü parlama yok, yalnız hover'da parlar. */
+.fz-gold {
+  position: relative; overflow: hidden; height: 48px; padding: 0 24px; border: 0; border-radius: 11px;
+  background: linear-gradient(100deg, #ffe9b0, var(--fz-gold) 55%, #ffe9b0 100%);
+  color: #14110a; font-family: var(--fz-display); font-size: 17px; font-weight: 700;
+  box-shadow: 0 0 22px rgba(255, 177, 27, .3); cursor: pointer; white-space: nowrap;
+  transition: box-shadow .2s;
+}
+.fz-gold:hover { box-shadow: 0 0 30px rgba(255, 177, 27, .5); }
+.fz-gold:disabled { background: var(--fz-raised); color: var(--fz-muted); box-shadow: none; cursor: default; }
+
+.fz-stepper { display: inline-flex; align-items: center; gap: 4px; background: var(--fz-bg); border-radius: 10px; padding: 3px; }
+.fz-stepper button {
+  width: 40px; height: 36px; border: 0; border-radius: 8px; background: transparent;
+  color: var(--fz-ink); font-size: 18px; cursor: pointer;
+}
+.fz-stepper button:hover:not(:disabled) { background: var(--fz-raised); }
+.fz-stepper button:disabled { color: var(--fz-faint); cursor: default; }
+.fz-stepper .v { width: 40px; text-align: center; font-family: var(--fz-display); font-size: 20px; font-weight: 700; }
+
+.fz-slots { display: flex; gap: 4px; flex-wrap: wrap; }
+.fz-slots button {
+  width: 40px; height: 40px; border: 0; border-radius: 9px; background: var(--fz-raised);
+  color: var(--fz-muted); font-family: var(--fz-display); font-size: 16px; font-weight: 700; cursor: pointer;
+}
+.fz-slots button.on { background: var(--fz-ink); color: var(--fz-bg); }
+
+.fz-search {
+  height: 38px; width: 240px; display: flex; align-items: center; gap: 8px; padding: 0 10px;
+  border-radius: 9px; background: transparent; cursor: text;
+}
+.fz-search:hover, .fz-search.filled, .fz-search:focus-within { background: var(--fz-card); }
+.fz-search input {
+  flex: 1; min-width: 0; background: transparent; border: 0; outline: none; color: var(--fz-ink); font-size: 14px;
+}
+.fz-search input::placeholder { color: var(--fz-muted); }
+/* Kural 05: ana arama (asistan) hep dolu, dokunmada görünür */
+.fz-search.primary {
+  width: 100%; height: 52px; padding: 0 16px; border-radius: 12px; background: var(--fz-card);
+  box-shadow: inset 0 0 0 1px var(--fz-line);
+}
+.fz-search.primary input { font-size: 17px; }
+
+.fz-chipbtn {
+  height: 34px; padding: 0 11px; border: 0; border-radius: 8px; background: transparent;
+  color: var(--fz-muted); font-size: 13px; font-weight: 500; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+}
+.fz-chipbtn:hover { background: var(--fz-card); }
+.fz-chipbtn.on { background: var(--fz-raised); color: var(--fz-ink); }
+
+/* Punt: sayılan = dolu çip; punt edilen = üstü çizili, dolgusuz. */
+.fz-punt {
+  height: 32px; padding: 0 11px; border: 0; border-radius: 8px; cursor: pointer;
+  font-family: var(--fz-display); font-size: 14px; font-weight: 700;
+  background: var(--fz-card); color: var(--fz-ink);
+}
+.fz-punt.off { background: transparent; color: var(--fz-muted); text-decoration: line-through; }
+.fz-punt:disabled { cursor: default; }
+
+/* ── Çipler ───────────────────────────────────────────────────────────── */
+/* Karar 02: arketip çipi = renkli nokta + mürekkep etiket; altın sızmaz. */
+.fz-arch {
+  height: 20px; display: inline-flex; align-items: center; gap: 5px; padding: 0 7px; border-radius: 5px;
+  background: var(--fz-raised); color: var(--fz-ink); font-size: 12px; font-weight: 500; white-space: nowrap;
+}
+.fz-arch i { width: 6px; height: 6px; border-radius: 3px; flex-shrink: 0; }
+.fz-flag {
+  height: 20px; display: inline-flex; align-items: center; padding: 0 6px; border-radius: 5px;
+  background: var(--fz-raised); font-size: 12px; color: var(--fz-ink); white-space: nowrap;
+}
+.fz-flag.bad { color: var(--fz-bad); }
+.fz-status-chip { height: 26px; padding: 0 10px; border-radius: 13px; background: var(--fz-raised); font-size: 12px; display: inline-flex; align-items: center; }
+.fz-clock { height: 28px; padding: 0 10px; border-radius: 14px; background: rgba(255, 177, 27, .12); color: var(--fz-gold); font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; }
+
+/* ── Çubuklar ─────────────────────────────────────────────────────────── */
+/* Kategori gücü: −3…+3 SD, ortada sıfır çizgisi; yeşil/kırmızı düz, parlamaz. */
+.fz-cbar { display: grid; grid-template-columns: 40px minmax(0, 1fr) 40px; align-items: center; gap: 10px; min-height: 26px; }
+.fz-cbar .c { font-family: var(--fz-display); font-size: 14px; font-weight: 700; color: var(--fz-muted); }
+.fz-cbar .v { font-family: var(--fz-display); font-size: 15px; font-weight: 700; text-align: right; }
+.fz-track { position: relative; height: 8px; border-radius: 4px; background: var(--fz-track); }
+.fz-track.sm { height: 6px; border-radius: 3px; }
+.fz-track .zero { position: absolute; left: 50%; top: -3px; width: 1px; height: 14px; background: var(--fz-faint); }
+.fz-track.sm .zero { top: -2px; height: 10px; }
+.fz-track .fill { position: absolute; top: 0; height: 100%; border-radius: inherit; }
+
+.fz-mini { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+.fz-mini .t { font-family: var(--fz-display); font-size: 14px; font-weight: 600; }
+.fz-mini .tr { position: relative; width: 40px; height: 4px; border-radius: 2px; background: var(--fz-track); }
+.fz-mini .tr .zero { position: absolute; left: 50%; top: -2px; width: 1px; height: 8px; background: var(--fz-faint); }
+.fz-mini .tr .fill { position: absolute; top: 0; height: 4px; border-radius: 2px; }
+
+/* Projeksiyon aralığı: bant p10–p90, işaret nokta tahmin. */
+.fz-range { position: relative; height: 8px; border-radius: 4px; background: var(--fz-raised); }
+.fz-range .band { position: absolute; top: 0; height: 8px; border-radius: 4px; background: var(--fz-faint); }
+.fz-range .mark { position: absolute; top: -3px; width: 3px; height: 14px; border-radius: 2px; margin-left: -1px; background: var(--fz-ink); }
+.fz-range.lg { height: 10px; border-radius: 5px; }
+.fz-range.lg .band { height: 10px; border-radius: 5px; }
+.fz-range.lg .mark { height: 16px; }
+
+/* Kalma olasılığı: ≥65 yeşil · 35–64 nötr · <35 kırmızı */
+.fz-meter { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+.fz-meter .tr { width: 52px; height: 6px; border-radius: 3px; background: var(--fz-track); overflow: hidden; }
+.fz-meter .tr div { height: 100%; border-radius: 3px; }
+.fz-meter .t { font-family: var(--fz-display); font-size: 14px; font-weight: 700; width: 36px; text-align: right; }
+
+/* ── Tablolar ─────────────────────────────────────────────────────────── */
+.fz-thead { display: grid; gap: 6px; align-items: center; height: 40px; box-shadow: inset 0 -1px 0 var(--fz-line); font-size: 12px; color: var(--fz-muted); }
+.fz-tr { display: grid; gap: 6px; align-items: center; min-height: 56px; box-shadow: inset 0 -1px 0 var(--fz-raised); cursor: pointer; }
+.fz-tr:hover { background: #101010; }
+.fz-tier { display: flex; align-items: center; gap: 12px; height: 40px; margin-top: 6px; }
+.fz-tier .l { font-family: var(--fz-display); font-size: 14px; font-weight: 700; color: var(--fz-muted); }
+.fz-tier .rule { flex: 1; height: 1px; background: var(--fz-line); }
+.fz-pname { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fz-pmeta { display: flex; align-items: center; gap: 6px; overflow: hidden; }
+.fz-pmeta .tp { font-size: 12px; color: var(--fz-muted); white-space: nowrap; }
+
+/* ── Fikstür ısı hücresi ──────────────────────────────────────────────── */
+.fz-heat {
+  position: relative; height: 30px; border-radius: 5px; display: flex; align-items: center; justify-content: center;
+  font-family: var(--fz-display); font-size: 14px; font-weight: 700;
+}
+.fz-heat.dotted { text-decoration: underline dotted; text-underline-offset: 3px; }
+.fz-heat .b2b { position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%); display: flex; gap: 2px; }
+.fz-heat .b2b i { width: 3px; height: 3px; border-radius: 2px; background: var(--fz-ink); }
+
+/* ── Durumlar ─────────────────────────────────────────────────────────── */
+@keyframes fzSkel { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+.fz-skel {
+  border-radius: 3px; background: linear-gradient(90deg, var(--fz-raised) 25%, var(--fz-line) 50%, var(--fz-raised) 75%);
+  background-size: 200% 100%; animation: fzSkel 1.4s linear infinite;
+}
+.fz-notice { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 9px; background: var(--fz-raised); font-size: 13px; }
+.fz-notice .dot { width: 6px; height: 6px; border-radius: 3px; background: var(--fz-ink); }
+.fz-state { display: flex; flex-direction: column; gap: 6px; padding: 32px 0; align-items: flex-start; }
+.fz-state .t { font-size: 15px; font-weight: 600; }
+.fz-state .t.err { color: var(--fz-bad); }
+.fz-state .b { font-size: 13px; color: var(--fz-muted); }
+
+/* ── Kaplamalar ───────────────────────────────────────────────────────── */
+.fz-overlay { position: fixed; inset: 0; z-index: 60; background: rgba(0, 0, 0, .66); display: flex; align-items: center; justify-content: center; }
+.fz-modal {
+  width: 720px; max-width: calc(100vw - 32px); max-height: min(920px, calc(100vh - 48px)); background: var(--fz-card);
+  border-radius: 16px; box-shadow: 0 40px 100px -30px #000; display: flex; flex-direction: column; overflow: hidden;
+}
+.fz-modal-head { display: flex; align-items: center; justify-content: space-between; padding: 22px 28px 16px; }
+.fz-modal-body { flex: 1; overflow: auto; padding: 0 28px 20px; display: flex; flex-direction: column; gap: 26px; }
+.fz-modal-foot { display: flex; align-items: center; gap: 10px; padding: 16px 28px 22px; box-shadow: inset 0 1px 0 var(--fz-line); }
+.fz-close { width: 40px; height: 40px; border: 0; border-radius: 10px; background: transparent; color: var(--fz-muted); font-size: 22px; cursor: pointer; }
+.fz-close:hover { background: var(--fz-raised); }
+.fz-field { display: flex; flex-direction: column; gap: 6px; }
+.fz-field > span:first-child { font-size: 13px; color: var(--fz-muted); }
+.fz-input {
+  height: 44px; padding: 0 12px; border: 0; border-radius: 10px; background: var(--fz-raised);
+  color: var(--fz-ink); font-size: 15px; outline: none;
+}
+.fz-input:focus { box-shadow: inset 0 0 0 1px var(--fz-muted); }
+.fz-input.bad { box-shadow: inset 0 0 0 1px var(--fz-bad); }
+.fz-err { font-size: 13px; color: var(--fz-bad); line-height: 1.4; }
+
+.fz-sheet-root { position: fixed; inset: 0; z-index: 60; background: rgba(0, 0, 0, .6); display: flex; flex-direction: column; justify-content: flex-end; }
+.fz-sheet {
+  background: var(--fz-card); border-radius: 16px 16px 0 0; padding: 8px 16px 20px; max-height: 88vh; overflow: auto;
+  display: flex; flex-direction: column; gap: 14px; box-shadow: 0 -20px 60px -20px #000;
+}
+.fz-grip { width: 36px; height: 4px; border-radius: 2px; background: var(--fz-faint); align-self: center; margin-bottom: 4px; }
+
+/* Büyük an: not açılışı (.92 → 1, glow 600ms; hareket azaltmada anında) */
+@keyframes fzGrade { from { transform: scale(.92); text-shadow: 0 0 0 rgba(255, 177, 27, 0); opacity: .2; } to { transform: scale(1); text-shadow: 0 0 40px rgba(255, 177, 27, .45); opacity: 1; } }
+.fz-grade {
+  font-family: var(--fz-display); font-size: 112px; font-weight: 800; line-height: .9; color: var(--fz-gold);
+  text-shadow: 0 0 40px rgba(255, 177, 27, .45); animation: fzGrade .6s ease-out both; transform-origin: left center;
+}
+.fz-kicker { font-family: var(--fz-display); font-size: 15px; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; color: var(--fz-muted); }
+
+/* Sıradaki pick hücresi: altının üçüncü izinli yeri */
+.fz-cell {
+  position: relative; height: 50px; border-radius: 7px; background: var(--fz-card); padding: 6px 7px 0 9px;
+  display: flex; flex-direction: column; gap: 2px; overflow: hidden;
+}
+.fz-cell .acc { position: absolute; left: 0; top: 8px; bottom: 8px; width: 3px; border-radius: 0 2px 2px 0; }
+.fz-cell .n { font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fz-cell .s { font-size: 12px; color: var(--fz-muted); }
+.fz-cell.empty { background: transparent; box-shadow: inset 0 0 0 1px var(--fz-raised); }
+.fz-cell.mine { background: var(--fz-raised); }
+.fz-cell.clock { background: rgba(255, 177, 27, .1); box-shadow: inset 0 0 0 1px rgba(255, 177, 27, .55), 0 0 18px -6px rgba(255, 177, 27, .6); }
+
+.fz-pinned { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .fz-grade { animation: none; }
+  .fz-skel { animation: none; }
+}
+
+/* ── Telefon (≤767px) ─────────────────────────────────────────────────── */
+@media (max-width: 767px) {
+  .fz-bar { display: none; }
+  .fz-bar-phone {
+    display: flex; position: sticky; top: 0; z-index: 5; height: 52px; align-items: center; gap: 8px;
+    padding: 0 16px; background: var(--fz-bg); box-shadow: inset 0 -1px 0 var(--fz-raised);
+  }
+  .fz-bar-phone .status { flex: 1; min-width: 0; font-size: 12px; color: var(--fz-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .fz-fmtchip {
+    height: 36px; display: flex; align-items: center; gap: 6px; padding: 0 12px; border: 0; border-radius: 18px;
+    background: var(--fz-card); color: var(--fz-ink); cursor: pointer;
+  }
+  .fz-fmtchip .f { font-family: var(--fz-display); font-size: 14px; font-weight: 700; }
+  .fz-fmtchip .m { font-size: 12px; color: var(--fz-muted); }
+  .fz-page { padding: 16px 16px 24px; gap: 18px; }
+  .fz-h1 { font-size: 30px; }
+  .fz-two { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+  .fz-card { padding: 16px; }
+  .fz-seg.scroll { display: flex; overflow-x: auto; background: transparent; padding: 0; gap: 6px; align-self: stretch; }
+  .fz-seg.scroll button { height: 36px; border-radius: 18px; background: var(--fz-card); flex-shrink: 0; }
+  .fz-seg.scroll button.on { background: var(--fz-line); }
+  .fz-search { width: auto; flex: 1; height: 44px; background: var(--fz-card); padding: 0 12px; border-radius: 10px; }
+  .fz-search input { font-size: 15px; }
+  .fz-btn { height: 44px; }
+  .fz-slots { display: grid; grid-template-columns: repeat(6, 1fr); }
+  .fz-slots button { width: auto; height: 44px; }
+  .fz-stepper button { width: 44px; height: 40px; }
+  .fz-pinned {
+    display: block; position: sticky; bottom: 0; z-index: 4; padding: 12px 16px 20px;
+    background: var(--fz-bg); box-shadow: inset 0 1px 0 var(--fz-raised);
+  }
+  .fz-pinned .fz-gold { width: 100%; height: 54px; border-radius: 12px; font-size: 18px; }
+  .fz-desk-only { display: none !important; }
+  .fz-modal { width: 100%; max-width: none; max-height: calc(100vh - 22px); border-radius: 16px 16px 0 0; align-self: flex-end; }
+  .fz-overlay { align-items: flex-end; }
+  .fz-modal-head { padding: 10px 12px 8px 16px; }
+  .fz-modal-body { padding: 0 16px 16px; gap: 20px; }
+  .fz-modal-foot { padding: 12px 16px 20px; flex-wrap: wrap; }
+  .fz-grade { font-size: 104px; transform-origin: center; }
+  .fz-player { grid-template-columns: minmax(0, 1fr) !important; gap: 24px !important; }
+  .fz-player .pcard-stage, .fz-player > div:first-child > :first-child { align-self: center; }
+  .fz-grid2 { grid-template-columns: minmax(0, 1fr) !important; gap: 28px !important; }
+  .fz-weeks { grid-template-columns: repeat(12, minmax(0, 1fr)) !important; row-gap: 10px !important; }
+  .fz-cols3 { grid-template-columns: minmax(0, 1fr) !important; }
+}
+@media (min-width: 768px) {
+  .fz-phone-only { display: none !important; }
+}

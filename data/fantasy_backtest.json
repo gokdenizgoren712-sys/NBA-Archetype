@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-28T20:38:35+00:00",
+  "generated_at": "2026-09-29T09:02:41+00:00",
   "chosen": {
     "weights": [
       7,
@@ -642,6 +642,16 @@
       "p10": 0.542,
       "p90": 1.138,
       "n": 296
+    }
+  },
+  "summary": {
+    "2025-26": {
+      "fp_corr": 0.8505,
+      "band_coverage": 0.772,
+      "band_coverage_in_sample": true,
+      "top50_in_top75": 45,
+      "top_n": 50,
+      "within_n": 75
     }
   },
   "gp_ratio_range": {

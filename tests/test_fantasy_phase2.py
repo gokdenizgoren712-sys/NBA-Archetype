@@ -261,3 +261,54 @@ def test_account_deletion_removes_saved_drafts(client, users):
         conn.execute("DELETE FROM users WHERE id=?", (uid,))
         left = conn.execute("SELECT COUNT(*) FROM fantasy_drafts WHERE user_id=?", (uid,)).fetchone()[0]
     assert left == 0
+
+
+# ── Frontend entegrasyonu için eklenen alanlar (2026-09-29) ─────────────────
+
+def test_z_metric_resorts_the_whole_pool(client):
+    body = client.get("/api/fantasy/rankings?metric=z&limit=60").json()
+    vals = [p["value_z"] for p in body["players"]]
+    assert body["metric"] == "value_z"
+    assert vals == sorted(vals, reverse=True)
+    assert [p["rank"] for p in body["players"]] == list(range(1, 61))
+
+
+def test_value_ranges_bracket_the_point_estimate(client):
+    cats = client.get("/api/fantasy/rankings?limit=30").json()["players"]
+    for p in cats:
+        lo, hi = p["value_g_range"]
+        assert lo <= p["value_g"] + 1e-6 and p["value_g"] <= hi + 1e-6
+    pts = client.get("/api/fantasy/rankings?format=yahoo_h2h_points&limit=30").json()["players"]
+    for p in pts:
+        lo, hi = p["fp_total_range"]
+        assert lo <= p["fp_total"] <= hi
+
+
+def test_custom_format_player_profile(client):
+    fmt = {"kind": "points", "teams": 10, "weights": {"PTS": 1, "REB": 1, "AST": 1},
+           "roster": {"starters": ["PG", "SG", "SF", "PF", "C"], "bench": 3, "il": 1}}
+    pid = client.get("/api/fantasy/rankings?limit=1").json()["players"][0]["player_id"]
+    r = client.post(f"/api/fantasy/players/{pid}", json={"format": fmt})
+    assert r.status_code == 200
+    p = r.json()["player"]
+    pg = p["per_game"]
+    assert p["fp_game"] == pytest.approx(pg["pts"] + pg["reb"] + pg["ast"], abs=0.05)
+    assert client.post(f"/api/fantasy/players/{pid}", json={"format": {**fmt, "teams": 40}}).status_code == 422
+
+
+def test_grade_has_rank_distribution_and_playoff_odds(client):
+    picks, _ = _mock_to_end(client, seed=5)
+    me = client.post("/api/fantasy/draft/grade", json={"slot": 7, "picks": picks}).json()["me"]
+    assert len(me["rank_dist"]) == 12 and sum(me["rank_dist"]) == pytest.approx(1, abs=0.01)
+    assert 0 <= me["playoff_prob"] <= 1
+    assert set(me["category_rank"]) == {"FG%", "FT%", "3PM", "PTS", "REB", "AST", "STL", "BLK", "TO"}
+
+
+def test_plan_targets_carry_availability(client):
+    plans = client.get("/api/fantasy/draft/plans?format=yahoo_h2h_9cat&teams=12&slot=7").json()["plans"]
+    for pl in plans:
+        for r in pl["rounds"]:
+            for t in r["targets"]:
+                assert 0 <= t["available"] <= 1
+    # Birinci turda senin pickin 7: listenin tepesindeki oyuncunun kalma şansı düşük olmalı
+    assert plans[0]["rounds"][0]["targets"][0]["available"] < 1

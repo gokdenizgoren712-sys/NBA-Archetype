@@ -37,6 +37,17 @@ const PhotoLayout     = lazy(() => import("./pages/admin/PhotoLayout"));
 const CorrectionList = lazy(() => import("./pages/admin/CorrectionList"));
 const LineupModeration = lazy(() => import("./pages/admin/LineupModeration"));
 const AdminReports   = lazy(() => import("./pages/admin/Reports"));
+// Basketbol fantezi — /basketball/fantasy/* (plan: docs/FANTASY_PLAN.md)
+const FantasyLayout      = lazy(() => import("./pages/fantasy/FantasyLayout"));
+const FantasyHome        = lazy(() => import("./pages/fantasy/FantasyHome"));
+const FantasyRankings    = lazy(() => import("./pages/fantasy/FantasyRankings"));
+const FantasyPlayer      = lazy(() => import("./pages/fantasy/FantasyPlayer"));
+const FantasyDraftPlan   = lazy(() => import("./pages/fantasy/FantasyDraftPlan"));
+const FantasyMock        = lazy(() => import("./pages/fantasy/FantasyMock"));
+const FantasyAssistant   = lazy(() => import("./pages/fantasy/FantasyAssistant"));
+const FantasySchedule    = lazy(() => import("./pages/fantasy/FantasySchedule"));
+const FantasySaved       = lazy(() => import("./pages/fantasy/FantasySaved"));
+const FantasyMethodology = lazy(() => import("./pages/fantasy/FantasyMethodology"));
 const GLeague        = lazy(() => import("./pages/GLeague"));
 const NCAAPage       = lazy(() => import("./pages/NCAAPage"));
 const EuroLeaguePage = lazy(() => import("./pages/EuroLeaguePage"));
@@ -151,6 +162,17 @@ function AppInner() {
               {/* ── Basketbol (mevcut ürünün tamamı) ── */}
               <Route path="/basketball"                     element={<Navigate to="/basketball/game" replace />} />
               <Route path="/basketball/game"                element={<GameModeSelect />} />
+              <Route path="/basketball/fantasy"             element={<FantasyLayout />}>
+                <Route index                                element={<FantasyHome />} />
+                <Route path="rankings"                      element={<FantasyRankings />} />
+                <Route path="player/:id"                    element={<FantasyPlayer />} />
+                <Route path="draft-plan"                    element={<FantasyDraftPlan />} />
+                <Route path="mock"                          element={<FantasyMock />} />
+                <Route path="assistant"                     element={<FantasyAssistant />} />
+                <Route path="schedule"                      element={<FantasySchedule />} />
+                <Route path="saved"                         element={<FantasySaved />} />
+                <Route path="methodology"                   element={<FantasyMethodology />} />
+              </Route>
               <Route path="/basketball/game/single"         element={<LineupGame />} />
               <Route path="/basketball/game/same-screen"    element={<SameScreenGame />} />
               <Route path="/basketball/game/friend"         element={<WithAFriendGame />} />

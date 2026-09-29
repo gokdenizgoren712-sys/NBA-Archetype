@@ -34,15 +34,33 @@ export default function MobileDrawer({ open, onClose }) {
   // Rota değişince kendiliğinden kapansın
   useEffect(() => { onClose(); }, [pathname]);   // eslint-disable-line react-hooks/exhaustive-deps
 
-  const row = ({ to, icon, label, dot, also, custom }) => {
+  const row = ({ to, icon, label, dot, also, custom, kids }) => {
     const on = isActive({ to, also }, pathname);
-    return (
+    const link = (
       <NavLink key={to} to={to} onClick={onClose} className={`pa-drawer-item${on ? " on" : ""}`}
-        aria-current={on ? "page" : undefined}>
+        aria-current={on && !kids ? "page" : undefined}>
         {custom || <PaIcon name={icon} size={20} color={on ? accent : "#8b857e"} />}
         <span className="lbl">{label}</span>
         {dot && <span className="pa-nav-dot" style={{ background: dot }} />}
       </NavLink>
+    );
+    // Tasarım L1-4: telefonda fantezi alt sayfaları çekmecede yaşar.
+    if (!kids || !on) return link;
+    return (
+      <div key={to} className="pa-nav-kids-wrap">
+        {link}
+        <div className="pa-nav-kids">
+          {kids.map((k) => {
+            const kOn = isActive(k, pathname);
+            return (
+              <NavLink key={k.to} to={k.to} end={!!k.exact} onClick={onClose} className={`pa-nav-kid${kOn ? " on" : ""}`}
+                aria-current={kOn ? "page" : undefined}>
+                <span>{k.label}</span>{kOn && <i />}
+              </NavLink>
+            );
+          })}
+        </div>
+      </div>
     );
   };
 

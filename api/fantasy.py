@@ -37,7 +37,7 @@ if str(ROOT) not in sys.path:
 from config.fantasy_formats import (  # noqa: E402
     CATEGORIES, DEFAULT_FORMAT, FORMATS, LIMITS, FormatError, get_format, validate_format,
 )
-from src.fantasy.valuation import value_players  # noqa: E402
+from src.fantasy.valuation import _tiers, pool_size, value_players  # noqa: E402
 
 router = APIRouter(prefix="/api/fantasy", tags=["fantasy"])
 
@@ -144,7 +144,35 @@ def _per_game(r) -> dict:
             "dd2": _num(r["DD2"], 3), "td3": _num(r["TD3"], 3)}
 
 
-def _row(r, fmt: dict) -> dict:
+_Z90 = 1.2815516
+
+
+def _season_multipliers(r, basis: str) -> tuple[float, float]:
+    """Gerçekleşen sezon çarpanının p10/p90'ı: üretim (FP_RATIO) × maç (GP),
+    ikisi de backtest artıklarından lognormal — draft simülasyonundaki
+    örneklemeyle aynı model (src/fantasy/draft.py sample_multipliers)."""
+    lo, hi = float(r["FP_RATIO_P10"]), float(r["FP_RATIO_P90"])
+    mu, s = (math.log(lo) + math.log(hi)) / 2, (math.log(hi) - math.log(lo)) / (2 * _Z90)
+    if basis == "total":
+        gp = max(float(r["PROJ_GP"]), 1.0)
+        glo, ghi = max(float(r["GP_P10"]), 1.0) / gp, max(float(r["GP_P90"]), 1.0) / gp
+        mu += (math.log(glo) + math.log(ghi)) / 2
+        s = math.hypot(s, (math.log(ghi) - math.log(glo)) / (2 * _Z90))
+    return math.exp(mu - _Z90 * s), math.exp(mu + _Z90 * s)
+
+
+def _value_range(r, fmt: dict, punt: tuple, basis: str, prefix: str) -> list:
+    """Kategori değerinin p10/p90'ı. Değer, çarpan m'de doğrusal:
+    değer(m) = değer + (m − 1)·Σ yön·mutlak_üretim (punt edilenler hariç)."""
+    m10, m90 = _season_multipliers(r, basis)
+    base = float(r["VALUE_G" if prefix == "GA_" else "VALUE_Z"])
+    slope = sum((-1.0 if c == "TO" else 1.0) * float(r[f"{prefix}{c}"])
+                for c in fmt["categories"] if c not in punt)
+    a, b = base + (m10 - 1) * slope, base + (m90 - 1) * slope
+    return [_num(min(a, b), 2), _num(max(a, b), 2)]
+
+
+def _row(r, fmt: dict, punt: tuple = (), basis: str = "total") -> dict:
     lo, hi = r["FP_RATIO_P10"], r["FP_RATIO_P90"]
     out = {
         "rank": int(r["RANK"]), "tier": int(r["TIER"]),
@@ -165,10 +193,14 @@ def _row(r, fmt: dict) -> dict:
         out["value_g"] = _num(r["VALUE_G"], 3)
         out["categories"] = {c: {"z": _num(r[f"Z_{c}"], 3), "g": _num(r[f"G_{c}"], 3)}
                              for c in fmt["categories"]}
+        out["value_g_range"] = _value_range(r, fmt, punt, basis, "GA_")
+        out["value_z_range"] = _value_range(r, fmt, punt, basis, "ZA_")
     elif fmt["kind"] == "points":
         out["fp_game"] = _num(r["FP_GAME"])
         out["fp_game_range"] = [_num(r["FP_GAME"] * lo), _num(r["FP_GAME"] * hi)]
         out["fp_total"] = _num(r["FP_TOTAL"], 1)
+        m10, m90 = _season_multipliers(r, basis)
+        out["fp_total_range"] = [_num(r["FP_TOTAL"] * m10, 0), _num(r["FP_TOTAL"] * m90, 0)]
         out["value_over_replacement"] = _num(r["VALUE"], 1)
     else:
         out["fp_game"] = _num(r["FP_GAME"])
@@ -195,19 +227,27 @@ def _filter(df: pd.DataFrame, position, team, search, flag, archetype) -> pd.Dat
     return df
 
 
-def _rankings_response(fmt, punt, basis, position, team, search, flag, archetype, limit, offset):
+def _rankings_response(fmt, punt, basis, position, team, search, flag, archetype, limit, offset, metric=None):
     df = _valued(fmt, punt, basis)
     st = _state
     total = len(df)
+    # Kategori formatında G/Z seçimi: sıra ve kademeler BÜTÜN havuzda yeniden
+    # hesaplanır (sayfalı listenin yalnız yüklenen kısmını sıralamak yanlış olurdu).
+    default_metric = "g" if fmt["kind"] == "categories" and fmt["matchup"] == "h2h" else "z"
+    if fmt["kind"] == "categories" and metric and metric != default_metric:
+        col = "VALUE_Z" if metric == "z" else "VALUE_G"
+        df = df.sort_values(col, ascending=False).reset_index(drop=True).copy()
+        df["RANK"] = range(1, len(df) + 1)
+        df["TIER"] = _tiers(df[col], pool_size(fmt)).to_numpy()
+        df["ADP_DIFF"] = df["ADP"] - df["RANK"]
     df = _filter(df, position, team, search, flag, archetype)
     page = df.iloc[offset: offset + limit]
     return {
         "season": SEASON, "format": fmt, "punt": list(punt), "basis": basis,
-        "metric": ("value_g" if fmt["kind"] == "categories" and fmt["matchup"] == "h2h"
-                   else "value_z" if fmt["kind"] == "categories" else "value"),
+        "metric": (f"value_{metric or default_metric}" if fmt["kind"] == "categories" else "value"),
         "built_at": str(st["proj"]["BUILT_AT"].iloc[0]) if "BUILT_AT" in st["proj"].columns else None,
         "total_players": total, "matched": len(df), "offset": offset, "limit": limit,
-        "players": [_row(r, fmt) for _, r in page.iterrows()],
+        "players": [_row(r, fmt, punt, basis) for _, r in page.iterrows()],
     }
 
 
@@ -242,11 +282,13 @@ def fantasy_rankings(
     search: Optional[str] = Query(None, max_length=60),
     flag: Optional[str] = Query(None, max_length=30),
     archetype: Optional[str] = Query(None, max_length=30),
+    metric: Optional[str] = Query(None, pattern="^(g|z)$", description="Category formats: sort by G- or Z-score"),
     limit: int = Query(200, ge=1, le=MAX_LIMIT),
     offset: int = Query(0, ge=0),
 ):
     fmt = _preset(format, teams)
-    return _rankings_response(fmt, _punt(punt, fmt), basis, position, team, search, flag, archetype, limit, offset)
+    return _rankings_response(fmt, _punt(punt, fmt), basis, position, team, search, flag, archetype,
+                              limit, offset, metric)
 
 
 class CustomRankingsBody(BaseModel):
@@ -255,13 +297,16 @@ class CustomRankingsBody(BaseModel):
     basis: str = Field("total", pattern="^(total|per_game)$")
     position: Optional[str] = Field(None, pattern="^(PG|SG|SF|PF|C)$")
     search: Optional[str] = Field(None, max_length=60)
+    flag: Optional[str] = Field(None, max_length=30)
+    archetype: Optional[str] = Field(None, max_length=30)
+    metric: Optional[str] = Field(None, pattern="^(g|z)$")
     limit: int = Field(200, ge=1, le=MAX_LIMIT)
     offset: int = Field(0, ge=0)
 
 
-@router.post("/rankings")
-def fantasy_rankings_custom(body: CustomRankingsBody):
-    fmt = {**body.format}
+def _custom_format(raw: dict) -> dict:
+    """İstemcinin gönderdiği tam format tanımı → doğrulanmış format (422'li)."""
+    fmt = {**raw}
     fmt.setdefault("matchup", "h2h")
     fmt.setdefault("playoff_weeks", (20, 21, 22))
     fmt["playoff_weeks"] = tuple(fmt["playoff_weeks"])
@@ -272,11 +317,17 @@ def fantasy_rankings_custom(body: CustomRankingsBody):
     if not all(isinstance(w, int) and 1 <= w <= 24 for w in fmt["playoff_weeks"]):
         raise HTTPException(422, "playoff_weeks must be week numbers between 1 and 24")
     fmt["key"] = "custom"
+    return fmt
+
+
+@router.post("/rankings")
+def fantasy_rankings_custom(body: CustomRankingsBody):
+    fmt = _custom_format(body.format)
     punt = tuple(body.punt)
     if punt and fmt["kind"] != "categories":
         raise HTTPException(422, "Punting only applies to category formats.")
-    return _rankings_response(fmt, punt, body.basis, body.position, None, body.search, None, None,
-                              body.limit, body.offset)
+    return _rankings_response(fmt, punt, body.basis, body.position, None, body.search, body.flag,
+                              body.archetype, body.limit, body.offset, body.metric)
 
 
 @router.get("/players/{player_id}")
@@ -288,7 +339,27 @@ def fantasy_player(
     basis: str = Query("total", pattern="^(total|per_game)$"),
 ):
     fmt = _preset(format, teams)
-    df = _valued(fmt, _punt(punt, fmt), basis)
+    return _player_response(player_id, fmt, _punt(punt, fmt), basis)
+
+
+class CustomPlayerBody(BaseModel):
+    format: dict
+    punt: list[str] = Field(default_factory=list, max_length=8)
+    basis: str = Field("total", pattern="^(total|per_game)$")
+
+
+@router.post("/players/{player_id}")
+def fantasy_player_custom(player_id: int, body: CustomPlayerBody):
+    """Özel lig formatıyla oyuncu profili (POST /rankings ile aynı doğrulama)."""
+    fmt = _custom_format(body.format)
+    punt = tuple(body.punt)
+    if punt and fmt["kind"] != "categories":
+        raise HTTPException(422, "Punting only applies to category formats.")
+    return _player_response(player_id, fmt, punt, body.basis)
+
+
+def _player_response(player_id: int, fmt: dict, punt: tuple, basis: str) -> dict:
+    df = _valued(fmt, punt, basis)
     hit = df[df["PLAYER_ID"] == player_id]
     if hit.empty:
         raise HTTPException(404, "Player not found in the 2026-27 fantasy pool.")
@@ -324,7 +395,7 @@ def fantasy_player(
 
     return {
         "season": SEASON, "format": fmt,
-        "player": _row(r, fmt),
+        "player": _row(r, fmt, punt, basis),
         "last_season_per_game": last,
         "rookie_baseline": rookie,
         # Maç puanı dağılımı (41 quantile, 0..1): Yahoo Points ve High Score

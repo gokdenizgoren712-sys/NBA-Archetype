@@ -126,6 +126,27 @@ Orijinal Faz 2 kapsamı:
 - Botlara karşı mock draft; canlı draft asistanı (seçilenleri işaretle, H-score mantığıyla yeniden hesap).
 - Mock draft ve kadrolar kullanıcı hesabına kaydedilir (yeni tablo, `api/db.py`).
 
+### Frontend entegrasyonu ✅ (2026-09-29)
+
+Kaynak: Claude Design "Primary Arch Fantasy (standalone)" mockup'ı. `frontend/src/pages/fantasy/`, `/basketball/fantasy/*`.
+
+- **Entegre edilen sayfalar:** 1 Home · 2 League settings · 3 Rankings · 4 Player · 5 Draft plan · 6-7 Mock draft + sonuç ·
+  8 Assistant · 10 Schedule · 13 Saved · 14 Methodology.
+- **Bekleyen sayfalar:** 9 Simulator (Faz 3), 11 This week ve 12 Trade (Faz 4), 15 Yahoo (Faz 5). Arkalarındaki backend
+  gelince eklenecek; mockup'ın kendi notu da sezon içi sayfaların açılış gecesinden sonra menüye girmesi.
+- **Tasarımdan bilinçli sapmalar:**
+  - Metodoloji metni gerçek yönteme göre yeniden yazıldı. Mockup'taki örnek metin 5:3:2 ağırlık, derinlik şeması ve
+    public mock'lardan ADP diyordu; hiçbiri doğru değildi.
+  - Backtest kutuları canlı rakam gösteriyor: korelasyon 0.85, bant kapsaması %77 (örneklem içi, hedef %80),
+    ilk 50'nin 45'i ilk 75'te.
+  - Çaylak profilinde comparables yok (motor bağlı değil). Yerine draft sırası tabanı açıkça yazılıyor.
+  - "Game-by-game" histogramı gerçek maç logu değil: projeksiyonun maç dağılımı (son iki sezonun şekli) olarak etiketlendi.
+  - Mock'ta kuyruk (queue), paylaşım linki ve "Simulate season" yok; silme 6 sn geri alınabilir, "30 gün" iddiası yok.
+- **Tasarım kararı 06:** fantezi kendi token'larında (`--fz-*`, `fantasy.css`), kabuk site token'larında. Birleştirmek
+  için yalnız `--fz-*` değerlerini değiştirmek yeter.
+- **Backend eklemeleri:** 9-cat/points değer aralıkları, `metric=g|z` ile bütün havuzda yeniden sıralama, özel lig için
+  `POST /players/{id}`, plan hedeflerinde `available`, notta `rank_dist`/`playoff_prob`/`category_rank`.
+
 ### Faz 3 — Sezon simülatörü (sezonun ilk 2 haftası)
 Draft edilen ligi gerçek fikstürle Monte Carlo oynatma: günlük kadro optimizasyonu, maç loglarından
 örnekleme, sakatlık riski → playoff olasılığı, beklenen sıralama, kategori kazanma olasılıkları.

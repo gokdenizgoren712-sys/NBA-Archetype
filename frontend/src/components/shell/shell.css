@@ -67,6 +67,20 @@
 .pa-nav-lbl { flex: 1; white-space: nowrap; }
 .pa-nav-dot { width: 6px; height: 6px; border-radius: 3px; flex-shrink: 0; }
 
+/* Alt sayfalar (Fantasy): etkin öğenin altında, 34px, etkin olanda aksan nokta */
+.pa-nav-kids-wrap { display: flex; flex-direction: column; }
+.pa-nav-kids { display: flex; flex-direction: column; gap: 1px; padding: 2px 0 4px; }
+.pa-nav-kid {
+  height: 34px; display: flex; align-items: center; gap: 10px; padding: 0 10px 0 40px; border-radius: 9px;
+  font-size: 13px; font-weight: 500; color: var(--text-muted); text-decoration: none;
+}
+.pa-nav-kid span { flex: 1; }
+.pa-nav-kid:hover { color: var(--text-primary); }
+.pa-nav-kid.on { background: #1a1a1a; color: var(--text-primary); }
+.pa-nav-kid i { width: 5px; height: 5px; border-radius: 3px; background: var(--acc, #FFB11B); }
+.pa-drawer .pa-nav-kid { height: 44px; padding-left: 46px; font-size: 14px; border-radius: 12px; }
+.pa-nav-kid:focus-visible { outline: 2px solid var(--acc, #FFB11B); outline-offset: 2px; }
+
 .pa-side.collapsed .pa-nav-item { width: 44px; height: 44px; padding: 0; justify-content: center; border-radius: 12px; }
 .pa-side.collapsed .pa-nav-dot { position: absolute; right: 8px; top: 8px; width: 5px; height: 5px; }
 

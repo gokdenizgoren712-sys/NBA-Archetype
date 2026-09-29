@@ -9,6 +9,17 @@ export const NAV = {
     { title: "Play", items: [
       { to: "/basketball/game",    icon: "game",    label: "Game" },
       { to: "/basketball/lineups", icon: "lineups", label: "Lineups" },
+      // Fantezi: etkinken alt sayfaları açılır (tasarım L1-1). Sezon içi
+      // sayfalar (This week, Trade) açılış gecesinden sonra eklenecek.
+      { to: "/basketball/fantasy", icon: "fantasy", label: "Fantasy", kids: [
+        { to: "/basketball/fantasy",             label: "Home", exact: true },
+        { to: "/basketball/fantasy/rankings",    label: "Rankings", also: ["/basketball/fantasy/player"] },
+        { to: "/basketball/fantasy/draft-plan",  label: "Draft plan" },
+        { to: "/basketball/fantasy/mock",        label: "Mock draft" },
+        { to: "/basketball/fantasy/assistant",   label: "Assistant" },
+        { to: "/basketball/fantasy/schedule",    label: "Schedule" },
+        { to: "/basketball/fantasy/methodology", label: "Methodology" },
+      ] },
     ] },
     { title: "Scout", items: [
       { to: "/basketball/players",    icon: "nba",        label: "NBA" },
@@ -83,7 +94,9 @@ export function isPlayRoute(pathname) {
 
 export function isActive(item, pathname) {
   const p = cleanPath(pathname);
-  return p === item.to || p.startsWith(item.to + "/") || (item.also || []).includes(p);
+  if (item.exact) return p === item.to;
+  return p === item.to || p.startsWith(item.to + "/")
+    || (item.also || []).some((a) => p === a || p.startsWith(a + "/"));
 }
 
 /* ── Breadcrumb ─────────────────────────────────────────────────────
@@ -102,6 +115,15 @@ const CRUMBS = [
   [/^\/basketball\/affinity$/,        ["Explore", "Affinity"]],
   [/^\/basketball\/glossary$/,        ["About", "Glossary"]],
   [/^\/basketball\/about$/,           ["About", "Methodology"]],
+  [/^\/basketball\/fantasy$/,             ["Fantasy"]],
+  [/^\/basketball\/fantasy\/rankings$/,    ["Fantasy", "Rankings"]],
+  [/^\/basketball\/fantasy\/player\/.+$/,  ["Fantasy", "Rankings", "Player"]],
+  [/^\/basketball\/fantasy\/draft-plan$/,  ["Fantasy", "Draft plan"]],
+  [/^\/basketball\/fantasy\/mock$/,        ["Fantasy", "Mock draft"]],
+  [/^\/basketball\/fantasy\/assistant$/,   ["Fantasy", "Draft assistant"]],
+  [/^\/basketball\/fantasy\/schedule$/,    ["Fantasy", "Schedule"]],
+  [/^\/basketball\/fantasy\/saved$/,       ["Fantasy", "My leagues and drafts"]],
+  [/^\/basketball\/fantasy\/methodology$/, ["Fantasy", "Methodology"]],
   [/^\/basketball\/gleague$/,         ["G League"]],
   [/^\/basketball\/ncaa$/,            ["NCAA"]],
   [/^\/basketball\/euroleague$/,      ["EuroLeague"]],

@@ -42,8 +42,27 @@ export default function Sidebar() {
 
   // Bileşen değil düz fonksiyon: her render'da yeni bir bileşen tipi yaratıp
   // NavLink'leri yeniden bağlamasın.
-  const item = ({ to, icon, label, dot, also, custom, onClick }) => {
+  const item = ({ to, icon, label, dot, also, custom, onClick, kids }) => {
     const on = !onClick && isActive({ to, also }, pathname);
+    // Alt sayfalar (Fantasy): öğe etkinken ve çubuk açıkken altında listelenir.
+    if (kids && on && !collapsed) {
+      return (
+        <div key={to} className="pa-nav-kids-wrap">
+          {item({ to, icon, label, dot, also, custom })}
+          <div className="pa-nav-kids">
+            {kids.map((k) => {
+              const kOn = isActive(k, pathname);
+              return (
+                <NavLink key={k.to} to={k.to} end={!!k.exact} className={`pa-nav-kid${kOn ? " on" : ""}`}
+                  aria-current={kOn ? "page" : undefined}>
+                  <span>{k.label}</span>{kOn && <i />}
+                </NavLink>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
     const body = (
       <>
         <span className="pa-nav-ic">

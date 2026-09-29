@@ -163,6 +163,7 @@ class Board:
     G: np.ndarray | None = None
     M: np.ndarray | None = None       # ADP sırasındaki beklenen G (pick → kategori vektörü)
     masks: list[int] = field(default_factory=list)   # oyuncu → uygun starter slotları (bit)
+    _adp_ranks: np.ndarray | None = None              # adp_ranks() önbelleği
     GA: np.ndarray | None = None      # mutlak üretim, G biriminde (gerçekleşme örneklemesi için)
     dirs: np.ndarray | None = None    # kategori yönleri (+1 / TO için −1)
     base_total: np.ndarray | None = None   # puan formatlarında gerçekleşmeye açık toplam
@@ -450,10 +451,28 @@ def evaluate_league(b: Board, rosters: dict[int, list[int]], mult: np.ndarray | 
     return out
 
 
+def adp_ranks(b: Board, sims: int = 400, seed: int = 0) -> np.ndarray:
+    """ADP + gürültü tahtalarında her oyuncunun kaçıncı alındığı (n × sims),
+    tahta başına bir kez hesaplanıp saklanır."""
+    if b._adp_ranks is None:
+        rng = np.random.default_rng(seed)
+        noisy = b.adp[:, None] + b.adp_sd[:, None] * rng.standard_normal((len(b.adp), sims))
+        b._adp_ranks = noisy.argsort(axis=0).argsort(axis=0)
+    return b._adp_ranks
+
+
+def pick_availability(b: Board, row: int, opp_before: int) -> float:
+    """Draftın başından, senden önceki `opp_before` rakip pickinden sonra oyuncunun
+    hâlâ duruyor olma olasılığı (rakipler ADP + gürültüyle seçer)."""
+    if opp_before <= 0:
+        return 1.0
+    return float((adp_ranks(b)[row] >= opp_before).mean())
+
+
 def evaluate_league_mc(b: Board, rosters: dict[int, list[int]], sims: int = 200, seed: int = 0,
                        basis: str = "total") -> dict[int, dict]:
     """Gerçekleşme belirsizliğiyle `sims` çekiliş: ortalama güç, sıra dağılımı,
-    ilk yarı ve 1.lik olasılığı."""
+    ilk yarı, playoff (formatın playoff takım sayısı) ve 1.lik olasılığı."""
     rng = np.random.default_rng(seed)
     teams = sorted(rosters)
     ranks = {t: [] for t in teams}
@@ -465,12 +484,15 @@ def evaluate_league_mc(b: Board, rosters: dict[int, list[int]], sims: int = 200,
             ranks[t].append(ev[t]["projected_rank"])
             strength[t].append(ev[t]["strength"])
     out = {}
+    playoff_teams = min(int(b.fmt.get("playoff_teams", 6)), len(teams))
     for t in teams:
         r = np.array(ranks[t])
         out[t] = {**point[t], "strength": float(np.mean(strength[t])),
                   "rank_mean": round(float(r.mean()), 2),
                   "rank_p10_p90": [float(np.percentile(r, 10)), float(np.percentile(r, 90))],
+                  "rank_dist": [round(float((r == k).mean()), 3) for k in range(1, len(teams) + 1)],
                   "top_half_prob": round(float((r <= len(teams) / 2).mean()), 3),
+                  "playoff_prob": round(float((r <= playoff_teams).mean()), 3),
                   "first_place_prob": round(float((r == 1).mean()), 3)}
     order = sorted(teams, key=lambda t: out[t]["rank_mean"])
     for i, t in enumerate(order, start=1):
@@ -532,7 +554,6 @@ def draft_plans(b: Board, slot: int, sims: int = 30, seed: int = 0, n_plans: int
     for si, strat in enumerate(strategies):
         rng = np.random.default_rng(seed + si * 7919)
         per_round: list[dict[int, int]] = [dict() for _ in range(b.rounds)]
-        seen_at: list[dict[int, int]] = [dict() for _ in range(b.rounds)]
         strengths, ranks, profiles = [], [], []
         for _ in range(sims):
             rosters = simulate_draft(b, slot, strat, rng, bots)
@@ -547,8 +568,14 @@ def draft_plans(b: Board, slot: int, sims: int = 30, seed: int = 0, n_plans: int
         rounds = []
         for r in range(b.rounds):
             common = sorted(per_round[r].items(), key=lambda kv: -kv[1])[:3]
+            # share: bu planda o turda bu oyuncunun seçildiği simülasyon payı.
+            # available: senin pickinden önceki rakip pickleri ADP + gürültüyle
+            # oynanınca hâlâ duruyor olma olasılığı (tasarımdaki "Availability").
+            opp_before = my_picks[r] - 1 - r
             rounds.append({"round": r + 1, "pick": my_picks[r],
-                           "targets": [{"player_id": int(p), "share": round(c / sims, 3)} for p, c in common]})
+                           "targets": [{"player_id": int(p), "share": round(c / sims, 3),
+                                        "available": round(pick_availability(b, b.row[int(p)], opp_before), 3)}
+                                       for p, c in common]})
         res = {"key": strat["key"], "label": strat["label"], "punt": list(strat.get("punt", ())),
                "rounds": rounds, "expected_rank": round(float(np.mean(ranks)), 2),
                "top_half_prob": round(float((np.array(ranks) <= b.teams / 2).mean()), 3),
