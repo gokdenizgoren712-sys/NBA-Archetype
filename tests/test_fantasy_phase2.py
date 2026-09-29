@@ -215,7 +215,7 @@ def test_plans_endpoint_precomputed_and_custom(client):
     r = client.get("/api/fantasy/draft/plans?format=yahoo_h2h_points&teams=10&slot=1")
     assert r.status_code == 200
     j = r.json()
-    assert len(j["plans"]) == 3 and j["picks"][:2] == [1, 20]
+    assert len(j["plans"]) == 3 and j["picks"][:2] == [1, 20]      # puan formatında 3 değer planı
     tid = str(j["plans"][0]["rounds"][0]["targets"][0]["player_id"])
     assert "name" in j["players"][tid]
     assert client.get("/api/fantasy/draft/plans?slot=15&teams=12").status_code == 422

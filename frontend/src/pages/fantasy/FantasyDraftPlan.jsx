@@ -48,6 +48,31 @@ function RoundRow({ r, players, compact }) {
   );
 }
 
+function planSummary(pl, data) {
+  const n = pl.category_win_prob ? Object.keys(pl.category_win_prob).length : 0;
+  return n
+    ? `${pl.expected_category_wins.toFixed(1)} of ${n} cats a week · top half ${pct(pl.top_half_prob)}`
+    : `${ordinal(Math.round(pl.expected_rank))} of ${data.teams} · top half ${pct(pl.top_half_prob)}`;
+}
+
+function PlanList({ plans, sel, onPick, data }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      <span className="fz-sub" style={{ fontSize: 13, paddingBottom: 2 }}>{plans.length} builds · best to worst</span>
+      {plans.map((pl, i) => (
+        <button key={pl.key} className={`fz-planrow${sel.key === pl.key ? " on" : ""}`} onClick={() => onPick(pl.key)}>
+          <span className="fz-num rank">{i + 1}</span>
+          <span className="body">
+            <span className="t">{pl.label}</span>
+            <span className="fz-meta">{planSummary(pl, data)}</span>
+          </span>
+          <span className="fz-meta">{i === 0 ? "Best" : pl.tied_with_best ? "Close call" : ""}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function PlanBody({ plan, data, compact }) {
   const [all, setAll] = useState(false);
   const rk = risk(plan, data.teams);
@@ -106,17 +131,29 @@ export default function FantasyDraftPlan() {
   const f = useFantasy();
   const navigate = useNavigate();
   const phone = useIsPhone();
-  const [tab, setTab] = useState(0);
+  const [selKey, setSelKey] = useState(null);
   const { data, error, loading, reload } = useAsync(
     () => fz.plans(f.apiFormat, f.apiTeams, f.s), JSON.stringify([f.apiFormat, f.apiTeams, f.s]));
+  const plans = data?.plans || [];
+  const sel = plans.find((p) => p.key === selKey) || plans[0];
+
+  // Seçilen planı mock'a taşı: mock o planın önerilerini verir; süren mock varsa sıfırlanır.
+  const mockPlan = (key) => {
+    const tag = JSON.stringify([f.apiFormat, f.t, f.s]);
+    try {
+      sessionStorage.setItem(`fz_mockplan_${tag}`, key);
+      sessionStorage.removeItem(`fz_mock_${tag}`);
+    } catch { /* özel mod */ }
+    navigate(`/basketball/fantasy/mock${f.query}`);
+  };
 
   const head = (
     <div className="fz-head">
       <div className="fz-head-l">
         <h1 className="fz-h1">Draft plan · slot {f.s} of {f.t}</h1>
-        <span className="fz-sub">Three builds for your picks. Availability = chance the target is still there when you pick.</span>
+        <span className="fz-sub">Every build we simulated for your picks, ranked best to worst. Pick one to mock it. Availability = chance the target is still there when you pick.</span>
       </div>
-      <button className="fz-btn fz-desk-only" onClick={() => navigate("/basketball/fantasy/mock")}>Mock this plan</button>
+      <button className="fz-btn fz-desk-only" disabled={!sel} onClick={() => mockPlan(sel.key)}>{sel ? `Mock ${sel.label}` : "Mock this plan"}</button>
     </div>
   );
 
@@ -147,40 +184,43 @@ export default function FantasyDraftPlan() {
           </div>
         )}
 
-        {data && !phone && (
-          <div className="fz-cols3" style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 14, opacity: loading ? 0.55 : 1 }}>
-            {data.plans.map((pl, i) => (
-              <div key={pl.key} className="fz-card" style={{ padding: 22, display: "flex", flexDirection: "column", gap: 18 }}>
-                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
-                    <span className="fz-d" style={{ fontSize: 22 }}>{pl.label}</span>
-                    <span className="fz-meta">{i === 0 ? "Best by simulation" : pl.tied_with_best ? "Close call" : ""}</span>
+        {data && sel && !phone && (
+          <div style={{ display: "grid", gridTemplateColumns: "300px minmax(0,1fr)", gap: 20, alignItems: "start", opacity: loading ? 0.55 : 1 }}>
+            <PlanList plans={plans} sel={sel} onPick={setSelKey} data={data} />
+            <div className="fz-card" style={{ padding: 24, display: "flex", flexDirection: "column", gap: 18 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
+                    <span className="fz-d" style={{ fontSize: 24 }}>{sel.label}</span>
+                    <span className="fz-meta">{plans[0].key === sel.key ? "Best by simulation" : sel.tied_with_best ? "Close call" : `Ranked ${plans.indexOf(sel) + 1} of ${plans.length}`}</span>
                   </div>
-                  <span className="fz-sub" style={{ fontSize: 13, lineHeight: 1.45, minHeight: 38 }}>{NOTES[pl.key] || ""}</span>
+                  <span className="fz-sub" style={{ fontSize: 13, lineHeight: 1.45 }}>{NOTES[sel.key] || ""}</span>
                 </div>
-                <PlanBody plan={pl} data={data} />
+                <button className="fz-gold" onClick={() => mockPlan(sel.key)}>Mock this plan</button>
               </div>
-            ))}
+              <PlanBody key={sel.key} plan={sel} data={data} />
+            </div>
           </div>
         )}
 
-        {data && phone && (
+        {data && sel && phone && (
           <>
-            <div className="fz-seg" style={{ alignSelf: "stretch" }}>
-              {data.plans.map((pl, i) => (
-                <button key={pl.key} style={{ flex: 1, height: 40 }} className={tab === i ? "on" : ""} onClick={() => setTab(i)}>{pl.label}</button>
+            <div className="fz-seg scroll" style={{ alignSelf: "stretch" }}>
+              {plans.map((pl, i) => (
+                <button key={pl.key} style={{ flexShrink: 0, height: 40 }} className={sel.key === pl.key ? "on" : ""} onClick={() => setSelKey(pl.key)}>{i + 1} · {pl.label}</button>
               ))}
             </div>
-            <span className="fz-sub" style={{ lineHeight: 1.45 }}>{NOTES[data.plans[tab].key]}</span>
-            <PlanBody plan={data.plans[tab]} data={data} compact />
+            <span className="fz-sub" style={{ lineHeight: 1.45 }}>{NOTES[sel.key]}</span>
+            <PlanBody key={sel.key} plan={sel} data={data} compact />
+            <button className="fz-gold" style={{ height: 54, borderRadius: 12, fontSize: 18 }} onClick={() => mockPlan(sel.key)}>Mock {sel.label}</button>
           </>
         )}
 
         {data && (
           <span className="fz-meta" style={{ lineHeight: 1.6 }}>
             Each build is drafted {data.sims_per_plan} times against rivals who draft by ADP or by our values, then every season is replayed with
-            our measured projection error. {data.plans.every((p) => p.tied_with_best)
-              ? "All three builds finish within simulation noise of each other — pick the one that fits how you like to draft."
+            our measured projection error. {plans.every((p) => p.tied_with_best)
+              ? `All ${plans.length} builds finish within simulation noise of each other — pick the one that fits how you like to draft.`
               : "Builds marked “Close call” finish within simulation noise of the best one."}
           </span>
         )}

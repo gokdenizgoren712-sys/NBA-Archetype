@@ -19,6 +19,14 @@ from src.fantasy import season_sim as ss  # noqa: E402
 from src.fantasy import valuation as vl  # noqa: E402
 
 client = TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limit():
+    """Tek TestClient IP'si dakikada 120 istek sınırını doldurur; her test temiz sayaçla başlasın."""
+    from api import main as api_main
+    api_main._RL.clear()
+    yield
 LIVE = ROOT / "data" / "2026-27__fantasy_projections.parquet"
 TW = ROOT / "data" / "2026-27__fantasy_team_weeks.parquet"
 needs_live = pytest.mark.skipif(not (LIVE.exists() and TW.exists()), reason="cache'lenmiş projeksiyon yok")
@@ -115,11 +123,16 @@ def test_api_simulate_from_roster_and_full_draft():
     assert client.post("/api/fantasy/season/simulate", json={**body, "roster": [999999999] * 13}).status_code == 422
     assert client.post("/api/fantasy/season/simulate", json={**body, "roster": ids, "sims": 5000}).status_code == 422
     # Tam draft (mock'tan): her turda önerilen oyuncuyu seç
-    m = client.post("/api/fantasy/mock/advance", json={"format": "yahoo_h2h_9cat", "slot": 4, "picks": [], "seed": 1}).json()
+    def advance(picks):
+        r = client.post("/api/fantasy/mock/advance", json={"format": "yahoo_h2h_9cat", "slot": 4, "picks": picks, "seed": 1})
+        assert r.status_code == 200, r.text
+        return r.json()
+
+    m = advance([])
     picks = [p["player"]["player_id"] for p in m["picks"]]
     while not m["done"]:
         picks.append(m["recommendations"][0]["player_id"])
-        m = client.post("/api/fantasy/mock/advance", json={"format": "yahoo_h2h_9cat", "slot": 4, "picks": picks, "seed": 1}).json()
+        m = advance(picks)
         picks = [p["player"]["player_id"] for p in m["picks"]]
     full = client.post("/api/fantasy/season/simulate", json={**body, "picks": picks})
     assert full.status_code == 200 and full.json()["mode"] == "draft"

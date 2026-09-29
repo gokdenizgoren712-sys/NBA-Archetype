@@ -359,3 +359,21 @@
 @media (min-width: 768px) {
   .fz-phone-only { display: none !important; }
 }
+
+/* Draft planı — sıralı plan listesi */
+.fz-planrow { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; gap: 10px; align-items: center; text-align: left;
+  padding: 12px 14px; border: 0; border-radius: 10px; background: var(--fz-card); color: var(--fz-ink); cursor: pointer; }
+.fz-planrow:hover { background: var(--fz-raised); }
+.fz-planrow.on { background: var(--fz-line); }
+.fz-planrow .rank { font-size: 20px; color: var(--fz-muted); }
+.fz-planrow.on .rank { color: var(--fz-ink); }
+.fz-planrow .body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.fz-planrow .t { font-size: 15px; font-weight: 600; }
+
+/* Mock: yeni açılan bot pick'i kısa bir vurguyla gelir */
+.fz-cell.new { animation: fzPick .55s ease-out; }
+@keyframes fzPick {
+  0% { transform: scale(.92); box-shadow: 0 0 0 1px rgba(255, 177, 27, .8), 0 0 22px -4px rgba(255, 177, 27, .7); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 177, 27, 0); }
+}
+@media (prefers-reduced-motion: reduce) { .fz-cell.new { animation: none; } }

@@ -348,8 +348,9 @@ def availability(b: Board, taken: set[int], rows: list[int], opp_picks: int,
 
 
 def recommend(b: Board, taken: set[int], mine: list[int], current_pick: int, slot: int,
-              punt: tuple[str, ...] = (), n: int = 10, seed: int = 0) -> dict:
-    """Şu an sıradaki kullanıcı için öneriler + kategori profili + punt önerisi."""
+              punt: tuple[str, ...] = (), n: int = 10, seed: int = 0, score: np.ndarray | None = None) -> dict:
+    """Şu an sıradaki kullanıcı için öneriler + kategori profili + punt önerisi.
+    `score`: kategori dışı formatlarda planın oyuncu skoru (düşük risk / yüksek tavan); yoksa b.value."""
     my_picks = snake_picks(b.teams, b.rounds, slot)
     remaining = [p for p in my_picks if p >= current_pick]
     if not remaining:
@@ -364,8 +365,9 @@ def recommend(b: Board, taken: set[int], mine: list[int], current_pick: int, slo
         gain, after, before = dynamic_scores(b, mine, cand, future, punt)
         order = np.argsort(-gain)
     else:
-        cand = _candidates(b, taken_all, mine, picks_left_after, b.value, k=CAND_POOL)
-        gain = b.value[cand]
+        sc = b.value if score is None else score
+        cand = _candidates(b, taken_all, mine, picks_left_after, sc, k=CAND_POOL)
+        gain = sc[cand]
         order = np.argsort(-gain)
         after = before = None
 
@@ -595,11 +597,23 @@ def _value_plans(b: Board) -> list[dict]:
     ]
 
 
-def draft_plans(b: Board, slot: int, sims: int = 30, seed: int = 0, n_plans: int = 3) -> dict:
+def plan_pool(b: Board) -> list[dict]:
+    """Bu tahtada denenen tüm stratejiler (kategori: punt planları; puan / High Score: değer planları)."""
+    if b.is_categories:
+        return [dict(s) for s in CATEGORY_PLANS if all(c in b.cats for c in s["punt"])]
+    return _value_plans(b)
+
+
+def plan_strategy(b: Board, key: str) -> dict | None:
+    """Plan anahtarı → strateji sözlüğü ({punt} ya da {score}); bilinmiyorsa None."""
+    return next((s for s in plan_pool(b) if s["key"] == key), None)
+
+
+def draft_plans(b: Board, slot: int, sims: int = 30, seed: int = 0, n_plans: int | None = None) -> dict:
     """Draft sırasına göre alternatif planlar. Her plan `sims` kez tam draft
-    oynanarak değerlendirilir; en güçlü `n_plans` plan döner."""
-    strategies = [dict(s) for s in CATEGORY_PLANS if all(c in b.cats for c in s["punt"])] \
-        if b.is_categories else _value_plans(b)
+    oynanarak değerlendirilir. Denenen HER plan, beklenen sıraya göre en iyiden en kötüye döner
+    (`n_plans` verilirse yalnız en iyi o kadarı)."""
+    strategies = plan_pool(b)
     my_picks = snake_picks(b.teams, b.rounds, slot)
     # Rakiplerin yarısı piyasa (ADP), yarısı bizim değerimizle (keskin) draft eder —
     # hepsi ADP'yle oynasa kullanıcı her planda 1. çıkıyordu (döngüsel sonuç).

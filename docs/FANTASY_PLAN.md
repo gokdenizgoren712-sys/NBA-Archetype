@@ -166,6 +166,21 @@ Ayrıntı ve doğrulama: `docs/FANTASY_MODEL_IMPROVEMENTS.md` ("Faz 3").
     İstemci 250'lik partiler gönderip sims-ağırlıklı birleştirir: ilerleme çubuğu canlı, İptal kısmi sonucu korur.
   - Metin "Runs on your device" yerine "Runs on our servers".
 
+### Faz 3 sonrası kullanıcı geri bildirimi — mock ve plan iyileştirmeleri (2026-09-30)
+Kullanıcı isteklerinden (hepsi bitti):
+- **Tüm planlar:** draft planı artık denenen HER planı en iyiden en kötüye sıralı gösterir (kategori formatında 6, puan / High Score'da 3);
+  istediğin plan seçilip "Mock this plan" ile mock'a taşınır. Önceden yalnız en iyi 3 dönüyordu ve düğme planı mock'a HİÇ taşımıyordu
+  (mock her zaman dengeli öneri veriyordu): `plan` anahtarı artık `/mock/advance` ve `/draft/recommend`'de öneriyi gerçekten belirler
+  (kategori: punt; puan: değer / düşük risk / tavan skoru). Mock başlığındaki açılır menüden plan sürerken değiştirilebilir.
+- **Botların pickleri tek tek açılır:** kimin ne seçtiği görülür (Slow / Normal / Fast / Instant, Skip; hız tarayıcıda hatırlanır).
+  Bu yalnız istemci animasyonu; sunucu isteği aynı.
+- **Best available 19 oyuncu** (önceden 7): sütun başlıkları "Value" ve "Left at N"; yüzde = oyuncunun SIRADAKİ pickinde hâlâ duruyor olma
+  olasılığı (rakipler ortalama drafter gibi seçerse). Açıklama listenin altında.
+- **Aynı ekranda 2–4 kişilik mock ("Play with friends"):** kurulumda isim, sıra ve plan seçilir; draft her insanın pickinde durur ve o kişinin
+  planına göre öneri verir, kadro sekmeleri, sonuç ekranında herkesin notu ve kadrosu. Sunucu: `/mock/advance` `humans` + `plans`;
+  `/draft/grade` lig satırlarında harf notu.
+- Not: hız sınırlayıcı IP başına dakikada 120 istek; bu akışlar pick başına 1 istek yapar.
+
 ### Faz 4 — Sezon içi araçlar (sürekli)
 Haftalık maç sayısına göre waiver önerileri, High Score haftalık kadro seçici, simülasyonla takas
 analizi, günlük veri güncelleme job'u.

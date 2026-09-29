@@ -219,11 +219,22 @@ class RecommendBody(BaseModel):
     punt: list[str] = Field(default_factory=list, max_length=8)
     basis: str = Field("total", pattern="^(total|per_game)$")
     n: int = Field(10, ge=1, le=MAX_REC)
+    plan: Optional[str] = Field(None, max_length=30, description="Draft plan key (see /draft/plans); overrides punt")
+
+
+def _plan_args(b: dr.Board, plan: Optional[str], punt: tuple) -> tuple[tuple, Optional[np.ndarray], Optional[dict]]:
+    """Plan anahtarı → (punt, oyuncu skoru, {key,label}). Anahtar bu formatta yoksa 422."""
+    if not plan:
+        return punt, None, None
+    strat = dr.plan_strategy(b, plan)
+    if strat is None:
+        raise HTTPException(422, f"Unknown plan '{plan}'. Options: {', '.join(s['key'] for s in dr.plan_pool(b))}")
+    return tuple(strat.get("punt", ())) or punt, strat.get("score"), {"key": strat["key"], "label": strat["label"]}
 
 
 def _recommend_response(b: dr.Board, taken: list[int], mine: list[int], current_pick: int,
-                        slot: int, punt: tuple, n: int) -> dict:
-    rec = dr.recommend(b, set(taken), list(mine), current_pick, slot, punt=punt, n=n)
+                        slot: int, punt: tuple, n: int, score: Optional[np.ndarray] = None) -> dict:
+    rec = dr.recommend(b, set(taken), list(mine), current_pick, slot, punt=punt, n=n, score=score)
     for r in rec.get("recommendations", []):
         r["player"] = _player(b, r["player_id"])
     rec["my_roster"] = [_player(b, p) for p in mine]
@@ -246,11 +257,12 @@ def draft_recommend(body: RecommendBody):
     bad = [c for c in punt if c not in b.cats]
     if bad:
         raise HTTPException(422, f"cannot punt categories outside the format: {bad}")
+    punt, score, plan = _plan_args(b, body.plan, punt)
     current = body.current_pick or len(body.taken) + len(body.mine) + 1
     if current > b.total_picks:
         raise HTTPException(422, "The draft is already complete")
-    return {"season": SEASON, "format": fmt,
-            **_recommend_response(b, body.taken, body.mine, current, body.slot, punt, body.n)}
+    return {"season": SEASON, "format": fmt, "plan": plan,
+            **_recommend_response(b, body.taken, body.mine, current, body.slot, punt, body.n, score)}
 
 
 # ── Mock draft ──────────────────────────────────────────────────────────────
@@ -264,6 +276,9 @@ class MockBody(BaseModel):
     bot_style: str = Field("mixed", pattern="^(mixed|adp|value)$")
     basis: str = Field("total", pattern="^(total|per_game)$")
     n: int = Field(10, ge=1, le=MAX_REC)
+    plan: Optional[str] = Field(None, max_length=30, description="Draft plan key the recommendations follow")
+    humans: Optional[list[int]] = Field(None, max_length=4, description="Human slots for a same-screen mock (must include `slot`)")
+    plans: Optional[dict[str, str]] = Field(None, description="Human slot -> plan key (same-screen mock)")
 
 
 def _bot_styles(b: dr.Board, slot: int, style: str) -> dict[int, str]:
@@ -286,7 +301,13 @@ def mock_advance(body: MockBody):
     _check_ids(b, body.picks, "picks")
     if len(body.picks) > b.total_picks:
         raise HTTPException(422, f"A {b.teams}-team draft has {b.total_picks} picks")
-    styles = _bot_styles(b, body.slot, body.bot_style)
+    humans = sorted(set(body.humans or [body.slot]))
+    if body.slot not in humans or any(not 1 <= h <= b.teams for h in humans):
+        raise HTTPException(422, "humans must be valid slots and include your own slot")
+    plans_by_slot = {int(k): v for k, v in (body.plans or {}).items() if str(k).isdigit()}
+    if body.plan and body.slot not in plans_by_slot:
+        plans_by_slot[body.slot] = body.plan
+    styles = {s: st for s, st in _bot_styles(b, body.slot, body.bot_style).items() if s not in humans}
     # Her botun tahtası yalnız (tohum, sıra) ile belirlenir — istekten isteğe aynı.
     orders = {s: dr._bot_order(b, st, np.random.default_rng([body.seed, s])) for s, st in styles.items()}
 
@@ -298,7 +319,7 @@ def mock_advance(body: MockBody):
     while len(picks) < b.total_picks:
         overall = len(picks) + 1
         owner = dr.pick_owner(overall, b.teams)
-        if owner == body.slot:
+        if owner in humans:
             break
         left_after = b.rounds - len(rosters[owner]) - 1
         pid = dr._bot_pick(b, orders[owner], taken, rosters[owner], left_after)
@@ -307,15 +328,22 @@ def mock_advance(body: MockBody):
         rosters[owner].append(pid)
 
     done = len(picks) >= b.total_picks
-    mine = rosters[body.slot]
+    clock_slot = None if done else dr.pick_owner(len(picks) + 1, b.teams)
+    who = clock_slot if clock_slot in humans else body.slot        # kadro / öneri sırası gelen insanın
+    mine = rosters[who]
     out = {"season": SEASON, "format": fmt, "seed": body.seed, "bot_styles": {str(k): v for k, v in styles.items()},
            "picks": _picks_view(b, picks), "done": done,
-           "on_the_clock": None if done else len(picks) + 1,
+           "on_the_clock": None if done else len(picks) + 1, "on_the_clock_slot": clock_slot,
+           "humans": humans, "plan_options": [{"key": s["key"], "label": s["label"]} for s in dr.plan_pool(b)],
+           "human_rosters": {str(h): {"roster": [_player(b, p) for p in rosters[h]], "lineup": _lineup(b, rosters[h])}
+                             for h in humans},
            "my_roster": [_player(b, p) for p in mine], "lineup": _lineup(b, mine),
            "validation": strategy_validation(fmt)}
     if not done:
         others = [p for p in picks if p not in set(mine)]
-        rec = _recommend_response(b, others, mine, len(picks) + 1, body.slot, (), body.n)
+        punt, score, plan = _plan_args(b, plans_by_slot.get(who), ())
+        out["plan"] = plan
+        rec = _recommend_response(b, others, mine, len(picks) + 1, who, punt, body.n, score)
         out["recommendations"] = rec["recommendations"]
         out["next_pick"] = rec.get("next_pick")
         if b.is_categories:
@@ -369,7 +397,8 @@ def draft_grade(body: GradeBody):
         "season": SEASON, "format": fmt, "slot": body.slot, "validation": strategy_validation(fmt),
         "grade": dr.letter_grade(me["projected_rank"], b.teams),
         "me": me,
-        "league": [{"slot": s, **league[s]} for s in sorted(league, key=lambda s: league[s]["projected_rank"])],
+        "league": [{"slot": s, **league[s], "letter": dr.letter_grade(league[s]["projected_rank"], b.teams)}
+                   for s in sorted(league, key=lambda s: league[s]["projected_rank"])],
         "steals": moves[:3], "reaches": moves[::-1][:3],
         "my_roster": [_player(b, p) for p in rosters[body.slot]],
         "lineup": _lineup(b, rosters[body.slot]),
