@@ -62,6 +62,7 @@ export const fz = {
   recommend: (body) => req("POST", "/draft/recommend", { body }),
   mock: (body) => req("POST", "/mock/advance", { body }),
   grade: (body) => req("POST", "/draft/grade", { body }),
+  simulate: (body) => req("POST", "/season/simulate", { body }),
 
   drafts: {
     list: () => req("GET", "/drafts", { auth: true }),

@@ -132,7 +132,7 @@ Kaynak: Claude Design "Primary Arch Fantasy (standalone)" mockup'ı. `frontend/s
 
 - **Entegre edilen sayfalar:** 1 Home · 2 League settings · 3 Rankings · 4 Player · 5 Draft plan · 6-7 Mock draft + sonuç ·
   8 Assistant · 10 Schedule · 13 Saved · 14 Methodology.
-- **Bekleyen sayfalar:** 9 Simulator (Faz 3), 11 This week ve 12 Trade (Faz 4), 15 Yahoo (Faz 5). Arkalarındaki backend
+- **Bekleyen sayfalar:** 11 This week ve 12 Trade (Faz 4), 15 Yahoo (Faz 5). (9 Simulator Faz 3'te eklendi.) Arkalarındaki backend
   gelince eklenecek; mockup'ın kendi notu da sezon içi sayfaların açılış gecesinden sonra menüye girmesi.
 - **Tasarımdan bilinçli sapmalar:**
   - Metodoloji metni gerçek yönteme göre yeniden yazıldı. Mockup'taki örnek metin 5:3:2 ağırlık, derinlik şeması ve
@@ -153,10 +153,18 @@ Ayrıntı: `docs/FANTASY_MODEL_IMPROVEMENTS.md`. Karar (2026-09-29): draft karar
 (strateji backtest'i, takım dakika bütçesi, aralık kalibrasyonu, ortak rastgele çekilişler) Faz 3'ten önce;
 sezon simülasyonuna ait olanlar Faz 3'ün içinde; geri kalanlar sezon içinde ve Faz 5 ile.
 
-### Faz 3 — Sezon simülatörü (sezonun ilk 2 haftası)
-Draft edilen ligi gerçek fikstürle Monte Carlo oynatma: günlük kadro optimizasyonu, maç loglarından
-örnekleme, sakatlık riski → playoff olasılığı, beklenen sıralama, kategori kazanma olasılıkları.
-Simülasyon tarayıcıda Web Worker'da (Railway sunucusu tek worker, 512MB).
+### Faz 3 — Sezon simülatörü ✅ (2026-09-29/30)
+Draft edilen ligi gerçek fikstürle haftalık Monte Carlo ile oynatma: sakatlık riski → playoff olasılığı,
+beklenen sıralama, hafta × kategori kazanma olasılıkları, en zayıf haftalar, hafta başına maç.
+Backend `src/fantasy/season_sim.py` + `POST /api/fantasy/season/simulate`, arayüz tasarım 9 (`FantasySimulator.jsx`).
+Ayrıntı ve doğrulama: `docs/FANTASY_MODEL_IMPROVEMENTS.md` ("Faz 3").
+- **Plandan sapmalar (bilerek):**
+  - Web Worker yerine **sunucuda numpy**: doğrulanmış modelin tek kopyası korunur, JS'e port modeli ikiye böler.
+    100 simülasyon ≈ 0.6 sn; istek başına en çok 500, eşzamanlı en çok 2.
+  - Günlük kadro optimizasyonu yok; haftalık çözünürlük (günlük sınır backtest'te nadiren devreye giriyor, günlük fikstür yayında yok).
+  - Arayüzde sezon sayıları 500 / 1,000 / 2,000 (mockup 1,000 / 10,000 / 50,000): 10,000 sezon sunucuda ~1 dk sürerdi.
+    İstemci 250'lik partiler gönderip sims-ağırlıklı birleştirir: ilerleme çubuğu canlı, İptal kısmi sonucu korur.
+  - Metin "Runs on your device" yerine "Runs on our servers".
 
 ### Faz 4 — Sezon içi araçlar (sürekli)
 Haftalık maç sayısına göre waiver önerileri, High Score haftalık kadro seçici, simülasyonla takas

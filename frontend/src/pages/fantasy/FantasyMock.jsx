@@ -20,6 +20,10 @@ function storeKey(f) { return `fz_mock_${JSON.stringify([f.apiFormat, f.t, f.s])
 function readRun(f) {
   try { return JSON.parse(sessionStorage.getItem(storeKey(f)) || "null"); } catch { return null; }
 }
+// Biten draft simülatör için saklanır (aynı sekme); yeni mock başlayınca üzerine yazılır.
+function writeLastMock(f, picks) {
+  try { sessionStorage.setItem(`fz_lastmock_${JSON.stringify([f.apiFormat, f.t, f.s])}`, JSON.stringify({ picks })); } catch { /* özel mod */ }
+}
 function writeRun(f, run) {
   try { run ? sessionStorage.setItem(storeKey(f), JSON.stringify(run)) : sessionStorage.removeItem(storeKey(f)); } catch { /* özel mod */ }
 }
@@ -142,6 +146,7 @@ function Result({ f, run, grade, onAgain }) {
 
       <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
         <button className="fz-gold fz-desk-only" onClick={onAgain}>Run another mock</button>
+        <button className="fz-btn lg" onClick={() => navigate(`/basketball/fantasy/simulator${f.query}`)}>Simulate this season</button>
         {isLoggedIn
           ? <button className="fz-btn lg" disabled={typeof saved === "number"} onClick={save}>{typeof saved === "number" ? "Saved" : "Save"}</button>
           : <button className="fz-btn lg" onClick={() => navigate("/login")}>Sign in to save</button>}
@@ -182,6 +187,7 @@ export default function FantasyMock() {
       writeRun(f, d.done ? null : { seed, picks: ids });
       setLeft(PICK_SECONDS);
       if (d.done) {
+        writeLastMock(f, ids);
         const g = await fz.grade({ format: f.apiFormat, teams: f.apiTeams, slot: f.s, picks: ids });
         if (my === seq.current) setGrade(g);
       }
