@@ -47,6 +47,7 @@ const FantasyMock        = lazy(() => import("./pages/fantasy/FantasyMock"));
 const FantasyAssistant   = lazy(() => import("./pages/fantasy/FantasyAssistant"));
 const FantasySchedule    = lazy(() => import("./pages/fantasy/FantasySchedule"));
 const FantasySimulator   = lazy(() => import("./pages/fantasy/FantasySimulator"));
+const FantasyTrade       = lazy(() => import("./pages/fantasy/FantasyTrade"));
 const FantasySaved       = lazy(() => import("./pages/fantasy/FantasySaved"));
 const FantasyMethodology = lazy(() => import("./pages/fantasy/FantasyMethodology"));
 const GLeague        = lazy(() => import("./pages/GLeague"));
@@ -172,6 +173,7 @@ function AppInner() {
                 <Route path="assistant"                     element={<FantasyAssistant />} />
                 <Route path="schedule"                      element={<FantasySchedule />} />
                 <Route path="simulator"                      element={<FantasySimulator />} />
+                <Route path="trade"                      element={<FantasyTrade />} />
                 <Route path="saved"                         element={<FantasySaved />} />
                 <Route path="methodology"                   element={<FantasyMethodology />} />
               </Route>

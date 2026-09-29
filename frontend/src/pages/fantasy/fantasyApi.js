@@ -63,6 +63,8 @@ export const fz = {
   mock: (body) => req("POST", "/mock/advance", { body }),
   grade: (body) => req("POST", "/draft/grade", { body }),
   simulate: (body) => req("POST", "/season/simulate", { body }),
+  leagueRosters: (body) => req("POST", "/league/rosters", { body }),
+  trade: (body) => req("POST", "/trade/analyze", { body }),
 
   drafts: {
     list: () => req("GET", "/drafts", { auth: true }),

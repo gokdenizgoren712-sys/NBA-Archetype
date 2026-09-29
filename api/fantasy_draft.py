@@ -29,6 +29,7 @@ from pydantic import BaseModel, Field
 from config.fantasy_formats import FORMATS, LIMITS, FormatError, get_format, validate_format
 from src.fantasy import draft as dr
 from src.fantasy.season_sim import SeasonSim, complete_league
+from src.fantasy.trade import analyze_trade
 
 from .auth import get_current_user
 from .db import get_conn
@@ -418,7 +419,28 @@ class SimBody(BaseModel):
     roster: Optional[list[int]] = Field(None, max_length=40)     # yalnız kullanıcının kadrosu (rakipler simüle edilir)
     sims: int = Field(200, ge=20, le=MAX_SIMS)
     seed: int = Field(0, ge=0, le=2_000_000_000)
+    league_seed: Optional[int] = Field(None, ge=0, le=2_000_000_000, description="Which simulated rival set (roster mode); defaults to seed")
     basis: str = Field("total", pattern="^(total|per_game)$")
+
+
+def _league_rosters(b: dr.Board, body) -> tuple[dict[int, list[int]], str]:
+    """Tam draft (picks) ya da yalnız kullanıcının kadrosu (roster) → 12 takımın kadrosu.
+    `roster` modunda diğer takımlar botlarla tamamlanır; `league_seed` (yoksa `seed`) hangi rakip setini verir."""
+    if body.picks is not None:
+        _check_ids(b, body.picks, "picks")
+        if len(body.picks) != b.total_picks:
+            raise HTTPException(422, f"A finished {b.teams}-team draft has {b.total_picks} picks, got {len(body.picks)}")
+        rosters: dict[int, list[int]] = {s: [] for s in range(1, b.teams + 1)}
+        for i, p in enumerate(body.picks):
+            rosters[dr.pick_owner(i + 1, b.teams)].append(p)
+        return rosters, "draft"
+    if body.roster is not None:
+        _check_ids(b, body.roster, "roster")
+        if len(body.roster) != b.rounds:
+            raise HTTPException(422, f"A roster has {b.rounds} players in this format, got {len(body.roster)}")
+        seed = body.league_seed if getattr(body, "league_seed", None) is not None else body.seed
+        return complete_league(b, list(body.roster), body.slot, seed=seed), "simulated_rivals"
+    raise HTTPException(422, "Send either the finished draft's picks or your roster")
 
 
 def _season_sim(b: dr.Board, fmt: dict) -> SeasonSim:
@@ -442,22 +464,7 @@ def season_simulate(body: SimBody):
     fmt = _resolve(body.format, body.teams)
     b = _board(fmt, body.basis)
     _check_slot(b, body.slot)
-    if body.picks is not None:
-        _check_ids(b, body.picks, "picks")
-        if len(body.picks) != b.total_picks:
-            raise HTTPException(422, f"A finished {b.teams}-team draft has {b.total_picks} picks, got {len(body.picks)}")
-        rosters: dict[int, list[int]] = {s: [] for s in range(1, b.teams + 1)}
-        for i, p in enumerate(body.picks):
-            rosters[dr.pick_owner(i + 1, b.teams)].append(p)
-        mode = "draft"
-    elif body.roster is not None:
-        _check_ids(b, body.roster, "roster")
-        if len(body.roster) != b.rounds:
-            raise HTTPException(422, f"A roster has {b.rounds} players in this format, got {len(body.roster)}")
-        rosters = complete_league(b, list(body.roster), body.slot, seed=body.seed)
-        mode = "simulated_rivals"
-    else:
-        raise HTTPException(422, "Send either the finished draft's picks or your roster")
+    rosters, mode = _league_rosters(b, body)
     sim = _season_sim(b, fmt)
     with _sim_slots:
         res = sim.simulate(rosters, sims=body.sims, seed=body.seed)
@@ -475,6 +482,52 @@ def season_simulate(body: SimBody):
             "league": [{"slot": t, **{k: v for k, v in res[t].items() if k != "weekly"}}
                        for t in sorted(res, key=lambda t: res[t]["projected_rank"])],
             "my_roster": [_player(b, p) for p in rosters[body.slot]]}
+
+
+class TradeBody(SimBody):
+    give: list[int] = Field(..., min_length=1, max_length=5, description="Players you send (on your roster)")
+    get: list[int] = Field(..., min_length=1, max_length=5, description="Players you receive")
+    sims: int = Field(300, ge=50, le=MAX_SIMS)
+
+
+@router.post("/league/rosters")
+def league_rosters(body: SimBody):
+    """Bir kaynağın (tam draft ya da kendi kadron) 12 takımlık kadroları, oyuncu ayrıntısıyla — takas sayfası
+    iki tarafı buradan kurar. `roster` modunda `league_seed` aynı rakip setini yeniden verir."""
+    fmt = _resolve(body.format, body.teams)
+    b = _board(fmt, body.basis)
+    _check_slot(b, body.slot)
+    rosters, mode = _league_rosters(b, body)
+    return {"season": SEASON, "format": fmt, "slot": body.slot, "mode": mode, "teams": b.teams,
+            "rosters": {str(t): [_player(b, p) for p in r] for t, r in rosters.items()}}
+
+
+@router.post("/trade/analyze")
+def trade_analyze(body: TradeBody):
+    """Takas öncesi / sonrası kadroyla AYNI sezonları (ortak rastgele sayılar) oynatıp farkı verir."""
+    fmt = _resolve(body.format, body.teams)
+    b = _board(fmt, body.basis)
+    _check_slot(b, body.slot)
+    _check_ids(b, body.give + body.get, "players")
+    rosters, mode = _league_rosters(b, body)
+    mine = set(rosters[body.slot])
+    if not set(body.give) <= mine:
+        raise HTTPException(422, "You can only give players who are on your roster")
+    if set(body.get) & mine or set(body.give) & set(body.get):
+        raise HTTPException(422, "You cannot get a player you already have")
+    sim = _season_sim(b, fmt)
+    try:
+        with _sim_slots:
+            out = analyze_trade(sim, rosters, body.slot, list(body.give), list(body.get), sims=body.sims, seed=body.seed)
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+    out["my_roster_after"] = [_player(b, p) for p in out["my_roster_after"]]
+    out["dropped"] = [_player(b, p) for p in out["dropped"]]
+    out["added"] = [_player(b, p) for p in out["added"]]
+    return {"season": SEASON, "format": fmt, "slot": body.slot, "sims": body.sims, "mode": mode,
+            "categories_in_format": list(b.cats) if b.is_categories else [],
+            "give": [_player(b, p) for p in body.give], "get": [_player(b, p) for p in body.get],
+            "validation": strategy_validation(fmt), **out}
 
 
 # ── Kayıtlı draftlar ────────────────────────────────────────────────────────

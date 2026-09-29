@@ -2,25 +2,20 @@
 // Sunucu hesaplar (numpy, Faz 3); istek partilere bölünür: ilerleme çubuğu canlı güncellenir,
 // İptal o ana kadarki kısmi sonucu korur. Tasarımdan bilinçli sapma: "Runs on your device" yerine
 // sunucu, sezon sayıları 500 / 1,000 / 2,000 (10,000 sezon sunucuda ~1 dk sürerdi).
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { SEO } from "../../hooks/useSEO";
 import { fz } from "./fantasyApi";
 import { BAD, ErrorNote, SkeletonList, ValidationNotice, ordinal } from "./ui";
+import RosterSourceBar from "./RosterSourceBar";
 import { useFantasy, useIsPhone } from "./useFantasy";
+import { useRosterSource } from "./useRosterSource";
 
 const COUNTS = [500, 1000, 2000];
 const BATCH = 250;
 const fmtInt = (n) => Math.round(n).toLocaleString("en-US");
 const pctText = (p) => `${Math.round(p * 100)}%`;
-
-const lastMockKey = (f) => `fz_lastmock_${JSON.stringify([f.apiFormat, f.t, f.s])}`;
-const assistKey = (f) => `fz_assist_${JSON.stringify([f.apiFormat, f.t, f.s])}`;
-
-function readJson(store, key) {
-  try { return JSON.parse(store.getItem(key) || "null"); } catch { return null; }
-}
 
 /** sims-ağırlıklı birleştirme: yeni parti eskisiyle ortalanır (ortalamalar ve olasılıklar). */
 function merge(a, b) {
@@ -49,28 +44,6 @@ function merge(a, b) {
 function heat(p) {
   const i = Math.min(Math.abs(p - 0.5) / 0.35, 1);
   return p >= 0.5 ? `rgba(74,222,128,${0.08 + 0.32 * i})` : `rgba(248,113,113,${0.08 + 0.32 * i})`;
-}
-
-function SourceBar({ sources, sel, onPick, saved, savedId, onSaved, isLoggedIn }) {
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-      <span className="fz-meta">Roster</span>
-      <div className="fz-seg dark scroll">
-        {sources.map((s) => (
-          <button key={s.k} className={sel === s.k ? "on" : ""} disabled={!s.ok} onClick={() => onPick(s.k)}
-            title={s.ok ? undefined : s.hint}>{s.l}</button>
-        ))}
-      </div>
-      {sel === "saved" && (
-        isLoggedIn ? (
-          <select className="fz-btn sm" value={savedId || ""} onChange={(e) => onSaved(Number(e.target.value))} aria-label="Saved draft">
-            <option value="" disabled>{saved?.length ? "Pick a saved draft" : "No saved drafts yet"}</option>
-            {(saved || []).map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-          </select>
-        ) : <span className="fz-meta">Sign in to use a saved draft.</span>
-      )}
-    </div>
-  );
 }
 
 function Distribution({ dist, playoffTeams }) {
@@ -195,57 +168,13 @@ export default function FantasySimulator() {
   const phone = useIsPhone();
   const navigate = useNavigate();
   const { isLoggedIn } = useAuth();
-  const [srcPick, setSrc] = useState(null);
+  const rs = useRosterSource(f, isLoggedIn);
+  const { src, body, ctxKey } = rs;
   const [n, setN] = useState(1000);
   const [runState, setRunState] = useState({ key: null, status: "idle", agg: null, done: 0, error: null, eta: null });
-  const [saved, setSaved] = useState(null);
-  const [savedId, setSavedId] = useState(null);
-  const [savedBody, setSavedBody] = useState(null);
   const cancelled = useRef(false);
   const runId = useRef(0);
 
-  const mock = useMemo(() => readJson(sessionStorage, lastMockKey(f)), [f.apiFormat, f.t, f.s]);   // eslint-disable-line react-hooks/exhaustive-deps
-  const assist = useMemo(() => {
-    const order = readJson(localStorage, assistKey(f)) || [];
-    return order.filter((o) => o.mine).map((o) => o.id);
-  }, [f.apiFormat, f.t, f.s]);   // eslint-disable-line react-hooks/exhaustive-deps
-  const mockOk = !!mock && mock.picks?.length === f.t * f.rosterSize;
-  const assistOk = assist.length === f.rosterSize;
-
-  const sources = [
-    { k: "mock", l: "Latest mock", ok: mockOk, hint: "Finish a mock draft first" },
-    { k: "assistant", l: "Assistant", ok: assistOk, hint: "Fill your roster in the assistant first" },
-    { k: "saved", l: "Saved draft", ok: true },
-  ];
-
-  // Varsayılan kaynak: kullanılabilir ilki
-  const src = srcPick ?? (mockOk ? "mock" : assistOk ? "assistant" : isLoggedIn ? "saved" : "mock");
-
-  useEffect(() => {
-    if (src !== "saved" || !isLoggedIn || saved) return;
-    fz.drafts.list().then((d) => setSaved((d.drafts || []).filter((x) => x.kind === "mock" || x.kind === "assistant"))).catch(() => setSaved([]));
-  }, [src, isLoggedIn, saved]);
-
-  const loadSaved = useCallback(async (id) => {
-    setSavedId(id); setSavedBody(null);
-    try {
-      const d = await fz.drafts.get(id);
-      const format = d.format.key === "custom" ? { ...d.format, teams: d.teams } : d.format.key;
-      const teams = d.format.key === "custom" ? undefined : d.teams;
-      if (d.kind === "mock") setSavedBody({ format, teams, slot: d.slot, picks: d.state?.picks || [] });
-      else setSavedBody({ format, teams, slot: d.slot, roster: (d.state?.order || []).filter((o) => o.mine).map((o) => o.id) });
-    } catch (e) { setRunState((r) => ({ ...r, error: e })); }
-  }, []);
-
-  const body = useMemo(() => {
-    if (src === "mock" && mockOk) return { format: f.apiFormat, teams: f.apiTeams, slot: f.s, picks: mock.picks };
-    if (src === "assistant" && assistOk) return { format: f.apiFormat, teams: f.apiTeams, slot: f.s, roster: assist };
-    if (src === "saved" && savedBody) return savedBody;
-    return null;
-  }, [src, mock, assist, mockOk, assistOk, savedBody, f.apiFormat, f.apiTeams, f.s]);
-
-  // Sonuç yalnız üretildiği bağlamda geçerli: kaynak/format/slot değişince kendiliğinden boşa düşer.
-  const ctxKey = JSON.stringify([src, savedId, f.apiFormat, f.t, f.s]);
   const cur = runState.key === ctxKey ? runState : { key: ctxKey, status: "idle", agg: null, done: 0, error: null, eta: null };
   const { status, agg, done, error, eta } = cur;
   useEffect(() => { cancelled.current = true; }, [ctxKey]);   // bağlam değişince süren koşu durur (ref, state değil)
@@ -286,8 +215,7 @@ export default function FantasySimulator() {
 
   const controls = (
     <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-      <SourceBar sources={sources} sel={src} onPick={(k) => { setSrc(k); if (k !== "saved") setSavedBody(null); }} saved={saved}
-        savedId={savedId} onSaved={loadSaved} isLoggedIn={isLoggedIn} />
+      <RosterSourceBar rs={rs} />
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <span className="fz-meta">Seasons</span>
         <div className="fz-seg dark">{COUNTS.map((c) => <button key={c} className={n === c ? "on" : ""} onClick={() => setN(c)} disabled={status === "running"}>{fmtInt(c)}</button>)}</div>
@@ -371,12 +299,8 @@ export default function FantasySimulator() {
             </span>
           </>
         )}
-        {loadingSaved(src, isLoggedIn, saved) && <SkeletonList rows={3} height={36} />}
+        {src === "saved" && isLoggedIn && rs.saved === null && <SkeletonList rows={3} height={36} />}
       </div>
     </>
   );
-}
-
-function loadingSaved(src, isLoggedIn, saved) {
-  return src === "saved" && isLoggedIn && saved === null;
 }

@@ -26,6 +26,7 @@ import math
 
 import numpy as np
 import pandas as pd
+from scipy.special import ndtri
 
 from src.fantasy import draft as dr
 
@@ -101,6 +102,7 @@ class SeasonSim:
             qp = np.array([list(x) for x in df["Q_POINTS"]], float)                   # maç puanı kantilleri
             self.fp_sd = np.nan_to_num(qp.std(axis=1))
         self.gp = gp
+        self._u_cache: dict = {}
         self.fp_q, self.gp_q = b.fp_q, b.gp_q
         if self.fp_q is None:                       # ampirik tablo yoksa lognormal yedeği
             self.fp_q = None
@@ -120,19 +122,33 @@ class SeasonSim:
 
     # ── Gerçekleşme ─────────────────────────────────────────────────────────
 
-    def _season_draws(self, rows: np.ndarray, rng: np.random.Generator, sims: int):
+    def _uniforms(self, sims: int, seed: int) -> dict[str, np.ndarray]:
+        """OYUNCU BAZLI ortak rastgele sayılar (S × tüm havuz): aynı `seed` ile bir oyuncu, hangi kadroda
+        olursa olsun aynı sezonu (çarpan, maç sayısı, sakatlık blokları) yaşar. Takas gibi "önce / sonra"
+        karşılaştırmalarında farkın gürültüde kaybolmaması için (common random numbers)."""
+        key = (sims, seed)
+        hit = self._u_cache.get(key)
+        if hit is None:
+            rng = np.random.default_rng([seed, 11])
+            n = len(self.gp)
+            hit = {k: rng.random((sims, n)) for k in ("fp", "gp", "b1", "b2")}
+            if len(self._u_cache) >= 4:
+                self._u_cache.pop(next(iter(self._u_cache)))
+            self._u_cache[key] = hit
+        return hit
+
+    def _season_draws(self, rows: np.ndarray, U: dict[str, np.ndarray]):
         """(oyuncu sezon çarpanı S×P, oynanan maç oranı S×P)."""
-        P = len(rows)
         if self.fp_q is not None:
-            m = _draw_q(self.fp_q[rows], rng.random((sims, P)))
-            r = _draw_q(self.gp_q[rows], rng.random((sims, P)))
+            m = _draw_q(self.fp_q[rows], U["fp"][:, rows])
+            r = _draw_q(self.gp_q[rows], U["gp"][:, rows])
         else:
-            m = np.exp(self.b.fp_mu[rows] + self.b.fp_sigma[rows] * rng.standard_normal((sims, P)))
-            r = np.exp(self.b.gp_mu[rows] + self.b.gp_sigma[rows] * rng.standard_normal((sims, P)))
+            m = np.exp(self.b.fp_mu[rows] + self.b.fp_sigma[rows] * ndtri(np.clip(U["fp"][:, rows], 1e-9, 1 - 1e-9)))
+            r = np.exp(self.b.gp_mu[rows] + self.b.gp_sigma[rows] * ndtri(np.clip(U["gp"][:, rows], 1e-9, 1 - 1e-9)))
         games = np.minimum(self.gp[rows][None, :] * np.maximum(r, 0.0), TEAM_GAMES)
         return m, games / TEAM_GAMES
 
-    def _weekly_games(self, rows: np.ndarray, frac: np.ndarray, rng: np.random.Generator) -> np.ndarray:
+    def _weekly_games(self, rows: np.ndarray, frac: np.ndarray, U: dict[str, np.ndarray]) -> np.ndarray:
         """(S × P × W) o hafta oynanan maç: takım maçları − sakatlık blokları − dağınık kayıp."""
         S, P = frac.shape
         G = self.G[rows]                                        # (P × W)
@@ -141,9 +157,9 @@ class SeasonSim:
         c_lo = c_hi - G
         missed = np.clip((1.0 - frac), 0.0, 1.0) * T[None, :]   # (S × P) kaçırılan takım maçı
         lost = np.zeros((S, P, G.shape[1]))
-        for share in BLOCK_SHARES:
+        for share, ukey in zip(BLOCK_SHARES, ("b1", "b2")):
             length = share * missed                             # (S × P)
-            start = rng.random((S, P)) * np.maximum(T[None, :] - length, 0.0)
+            start = U[ukey][:, rows] * np.maximum(T[None, :] - length, 0.0)
             end = start + length
             ov = np.minimum(end[:, :, None], c_hi[None]) - np.maximum(start[:, :, None], c_lo[None])
             lost += np.clip(ov, 0.0, None)
@@ -163,15 +179,26 @@ class SeasonSim:
         onehot[owner, np.arange(len(rows))] = 1.0
         rng = np.random.default_rng(seed)
 
-        mult, frac = self._season_draws(rows, rng, sims)
-        n_spw = self._weekly_games(rows, frac, rng)                 # (S × P × W)
+        sizes = [len(rosters[t]) for t in teams]
+        R = sizes[0]
+        blocks = len(set(sizes)) == 1          # oyuncular takım takım sıralı ve kadrolar eşit boyda → toplu matris çarpımı
+
+        def tsum(n: np.ndarray, x: np.ndarray) -> np.ndarray:
+            """Takım toplamı: n (S × P × W) maç sayıları, x (S × P × C) oyuncu değerleri → (S × T × W × C)."""
+            if blocks:
+                return np.matmul(n.reshape(sims, T, R, -1).transpose(0, 1, 3, 2), x.reshape(sims, T, R, -1))
+            return np.einsum("tp,spw,spc->stwc", onehot, n, x, optimize=True)
+
+        U = self._uniforms(sims, seed)
+        mult, frac = self._season_draws(rows, U)
+        n_spw = self._weekly_games(rows, frac, U)                   # (S × P × W)
         W = n_spw.shape[2]
 
         if fmt["kind"] == "categories":
             mu = self.mean[rows][None] * mult[:, :, None]           # (S × P × C)
             sd = self.sd[rows][None] * mult[:, :, None]
-            tot = np.einsum("tp,spw,spc->stwc", onehot, n_spw, mu)
-            var = np.einsum("tp,spw,spc->stwc", onehot, n_spw, sd ** 2)
+            tot = tsum(n_spw, mu)
+            var = tsum(n_spw, sd ** 2)
             tot = np.maximum(tot + np.sqrt(var) * rng.standard_normal(tot.shape), 0.0)
             ix = {s: j for j, s in enumerate(STATS)}
             cols = []
@@ -185,8 +212,8 @@ class SeasonSim:
         else:
             mu = (self.fp_mean[rows][None] * mult)                  # (S × P)
             sd = self.fp_sd[rows][None] * mult
-            pts = np.einsum("tp,spw,sp->stw", onehot, n_spw, mu)
-            var = np.einsum("tp,spw,sp->stw", onehot, n_spw, sd ** 2)
+            pts = tsum(n_spw, mu[:, :, None])[..., 0]
+            var = tsum(n_spw, (sd ** 2)[:, :, None])[..., 0]
             V = (pts + np.sqrt(var) * rng.standard_normal(pts.shape))[..., None]   # (S × T × W × 1)
 
         weeks_ix = {w: i for i, w in enumerate(self.weeks)}
@@ -228,21 +255,21 @@ class SeasonSim:
         if is_cat:
             cw = (Au > Bu).astype(float) + 0.5 * (Au == Bu)                                       # (S,T,T,Wu,cats)
             cw = np.where(eye_u[..., None], 0.0, cw).sum(axis=2).mean(axis=0) / opp_n            # (T × Wu × cats)
-        games_pw = np.einsum("tp,spw->stw", onehot, n_spw).mean(axis=0)[:, used]                  # (T × Wu)
+        games_pw = (n_spw.reshape(sims, T, R, -1).sum(axis=2) if blocks
+                    else np.einsum("tp,spw->stw", onehot, n_spw, optimize=True)).mean(axis=0)[:, used]                  # (T × Wu)
 
         # H2H: rastgele round-robin programı
         rr = _round_robin(T if T % 2 == 0 else T + 1)
         h2h = np.zeros((sims, T))
-        for s in range(sims):
-            perm = rng.permutation(T)                                 # takım → konum
-            inv = np.argsort(perm)
-            for k, wi in enumerate(reg):
-                opp_pos = rr[k % len(rr)][perm]
-                opp = np.where(opp_pos < T, inv[np.minimum(opp_pos, T - 1)], np.arange(T))
-                a, o = V[s, :, wi, :], V[s, opp, wi, :]
-                r = result(a, o)
-                r = np.where(opp == np.arange(T), 0.0, r)
-                h2h[s] += r
+        perm = rng.random((sims, T)).argsort(axis=1)                  # her simülasyonda takım → konum (rastgele program)
+        inv = np.argsort(perm, axis=1)                                # konum → takım
+        self_ix = np.arange(T)[None, :]
+        for k, wi in enumerate(reg):
+            opp_pos = rr[k % len(rr)][perm]                           # (S × T) rakibin konumu
+            opp = np.where(opp_pos < T, np.take_along_axis(inv, np.minimum(opp_pos, T - 1), axis=1), self_ix)
+            a = V[:, :, wi, :]
+            o = np.take_along_axis(a, opp[:, :, None], axis=1)
+            h2h += np.where(opp == self_ix, 0.0, result(a, o))
         # Sıralama: H2H galibiyeti, eşitlikte all-play gücü, sonra rastgele
         key = h2h * 1000 + ap_wins + rng.random((sims, T)) * 1e-3
         order = np.argsort(-key, axis=1)
@@ -308,19 +335,24 @@ class SeasonSim:
         return out
 
 
-def complete_league(b: dr.Board, my_roster: list[int], slot: int, seed: int = 0) -> dict[int, list[int]]:
+def complete_league(b: dr.Board, my_roster: list[int], slot: int, seed: int = 0,
+                    fixed: dict[int, list[int]] | None = None) -> dict[int, list[int]]:
     """Yalnız kullanıcının kadrosu biliniyorsa (asistan / kayıtlı liste) diğer takımların kadrolarını botlarla
     tamamlar: kullanıcının oyuncuları havuzdan çıkarılır, kalan takımlar draft.mixed_bot_styles ile snake sırasında
-    seçer. Her `seed` farklı bir rakip seti verir ("11 simüle rakip")."""
+    seçer. Her `seed` farklı bir rakip seti verir ("11 simüle rakip"). `fixed`: bilinen rakip kadroları
+    (slot → oyuncu listesi) — bunlar olduğu gibi kalır, botlar geri kalanı doldurur."""
+    fixed = fixed or {}
     rng = np.random.default_rng(seed)
     styles = dr.mixed_bot_styles(b.teams, slot)
     orders = {t: dr._bot_order(b, st, rng) for t, st in styles.items()}
     rosters: dict[int, list[int]] = {t: [] for t in range(1, b.teams + 1)}
     rosters[slot] = list(my_roster)
-    taken: set[int] = set(my_roster)
+    for t, r in fixed.items():
+        rosters[t] = list(r)
+    taken: set[int] = set(my_roster) | {p for r in fixed.values() for p in r}
     for overall in range(1, b.total_picks + 1):
         owner = dr.pick_owner(overall, b.teams)
-        if owner == slot:
+        if owner == slot or owner in fixed:
             continue
         left_after = b.rounds - len(rosters[owner]) - 1
         pid = dr._bot_pick(b, orders[owner], taken, rosters[owner], left_after)
