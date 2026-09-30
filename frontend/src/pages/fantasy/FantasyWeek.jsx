@@ -224,7 +224,7 @@ export default function FantasyWeek() {
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-          <RosterSourceBar rs={rs} />
+          <RosterSourceBar rs={rs} scope={false} />
           {others.length > 0 && (
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <span className="fz-meta">Opponent</span>

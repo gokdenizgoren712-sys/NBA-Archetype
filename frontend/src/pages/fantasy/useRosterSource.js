@@ -3,6 +3,8 @@
 //   assistant — asistanda "Mine" işaretlediğin oyuncular (yalnız senin kadron; rakipler simüle edilir)
 //   saved     — hesabındaki kayıtlı mock / asistan draftı
 // `body`: /season/simulate ve /trade/analyze isteklerinin ortak temeli (format, teams, slot + picks | roster).
+// Sezon içindeyken (meta.rest_of_season_from_week) `scope` (kalan sezon | tam sezon) ve isteğe bağlı `records`
+// (takım → şimdiye kadarki H2H galibiyeti) da body'ye girer; değişince ctxKey değişir, eski sonuç boşa düşer.
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { fz } from "./fantasyApi";
 
@@ -19,6 +21,15 @@ export function useRosterSource(f, isLoggedIn) {
   const [savedId, setSavedId] = useState(null);
   const [savedBody, setSavedBody] = useState(null);
   const [error, setError] = useState(null);
+  const [scopePick, setScopePick] = useState("rest");
+  const [records, setRecords] = useState({});
+  const restFrom = f.meta?.rest_of_season_from_week ?? null;
+  const inSeason = restFrom != null;
+  const scope = inSeason ? scopePick : "full";
+  const recordsBody = useMemo(() => {
+    const e = Object.entries(records).filter(([, v]) => v !== "" && Number.isFinite(Number(v)));
+    return scope === "rest" && e.length ? Object.fromEntries(e.map(([k, v]) => [k, Number(v)])) : null;
+  }, [records, scope]);
 
   const mock = useMemo(() => readJson(sessionStorage, lastMockKey(f)), [f.apiFormat, f.t, f.s]);   // eslint-disable-line react-hooks/exhaustive-deps
   const assist = useMemo(() => {
@@ -56,13 +67,18 @@ export function useRosterSource(f, isLoggedIn) {
   const setSrc = useCallback((k) => { setSrcPick(k); if (k !== "saved") setSavedBody(null); }, []);
 
   const body = useMemo(() => {
-    if (src === "mock" && mockOk) return { format: f.apiFormat, teams: f.apiTeams, slot: f.s, picks: mock.picks };
-    if (src === "assistant" && assistOk) return { format: f.apiFormat, teams: f.apiTeams, slot: f.s, roster: assist };
-    if (src === "saved" && savedBody) return savedBody;
-    return null;
-  }, [src, mock, assist, mockOk, assistOk, savedBody, f.apiFormat, f.apiTeams, f.s]);
+    let b = null;
+    if (src === "mock" && mockOk) b = { format: f.apiFormat, teams: f.apiTeams, slot: f.s, picks: mock.picks };
+    else if (src === "assistant" && assistOk) b = { format: f.apiFormat, teams: f.apiTeams, slot: f.s, roster: assist };
+    else if (src === "saved" && savedBody) b = savedBody;
+    if (!b || !inSeason) return b;
+    return { ...b, scope, ...(recordsBody ? { records: recordsBody } : {}) };
+  }, [src, mock, assist, mockOk, assistOk, savedBody, f.apiFormat, f.apiTeams, f.s, inSeason, scope, recordsBody]);
 
   // Sonuç yalnız üretildiği bağlamda geçerli: kaynak/format/slot değişince kendiliğinden boşa düşer.
-  const ctxKey = JSON.stringify([src, savedId, f.apiFormat, f.t, f.s]);
-  return { sources, src, setSrc, body, saved, savedId, loadSaved, ctxKey, error, isLoggedIn };
+  const ctxKey = JSON.stringify([src, savedId, f.apiFormat, f.t, f.s, scope, recordsBody]);
+  return {
+    sources, src, setSrc, body, saved, savedId, loadSaved, ctxKey, error, isLoggedIn,
+    inSeason, restFrom, scope, setScope: setScopePick, records, setRecords, teams: f.t, slot: f.s,
+  };
 }

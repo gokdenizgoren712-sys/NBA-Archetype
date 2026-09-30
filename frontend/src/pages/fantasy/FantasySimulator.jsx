@@ -90,7 +90,7 @@ function WeekGrid({ agg, phone }) {
       </div>
       <div style={{ display: "grid", gridTemplateColumns: cols, gap: 3 }}>
         <span />{shown.map((w) => <span key={w.week} style={{ fontSize: 12, fontWeight: 600, textAlign: "center", color: w.playoff ? "#e5e5e5" : "#8a8a8a" }}>{w.week}</span>)}
-        <span className="fz-meta" style={{ textAlign: "right" }}>Season</span>
+        <span className="fz-meta" style={{ textAlign: "right" }}>{agg.scope?.mode === "rest" ? "Rest" : "Season"}</span>
       </div>
       {rows.map((r, ri) => (
         <div key={r.label} style={{ display: "grid", gridTemplateColumns: cols, gap: 3 }}>
@@ -232,11 +232,22 @@ export default function FantasySimulator() {
         <div className="fz-head">
           <div className="fz-head-l">
             <h1 className="fz-h1">Season simulator</h1>
-            <span className="fz-sub">Plays the 2026-27 schedule week by week against 11 simulated rosters.</span>
+            <span className="fz-sub">
+              {rs.inSeason && rs.scope === "rest"
+                ? `Plays the rest of the 2026-27 schedule, from week ${rs.restFrom}, against 11 simulated rosters.`
+                : "Plays the 2026-27 schedule week by week against 11 simulated rosters."}
+            </span>
           </div>
         </div>
         {controls}
         <ValidationNotice v={agg?.validation} />
+        {agg?.scope?.mode === "rest" && (
+          <span className="fz-meta" style={{ lineHeight: 1.6, maxWidth: 760 }}>
+            Rest of season · weeks {agg.scope.from_week}–{agg.me.weekly.filter((w) => !w.playoff).slice(-1)[0]?.week} ({agg.scope.regular_weeks_left} regular-season weeks left) plus the playoffs.
+            {agg.records_used ? " Standings include the records you entered." : " No records entered, so every team starts level: playoff and title odds show the outlook from here, not the table today."}
+            {" "}Injuries and hot streaks are drawn only over the games still to play; the week in progress is left to This week.
+          </span>
+        )}
 
         {status === "running" && (
           <div className="fz-card" style={{ display: "flex", flexDirection: "column", gap: 10, padding: "16px 20px" }}>

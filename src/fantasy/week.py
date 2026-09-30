@@ -25,21 +25,22 @@ MAX_SWING = 3
 MAX_FA = 30
 
 
-def _availability(b: dr.Board, row: int) -> float:
-    return float(np.clip(b.df["PROJ_GP"].iloc[row] / 82.0, 0.0, 1.0))
+def _availability(sim: SeasonSim, row: int, from_week: int | None) -> float:
+    """Oynama olasılığı: tam sezonda PROJ_GP/82; sezon içinde kalan oyuncu maçı / kalan takım maçı."""
+    return sim.availability(row, from_week)
 
 
 def team_games_in_week(sim: SeasonSim, row: int, week: int) -> float:
     return float(sim.G[row][sim.weeks.index(week)])
 
 
-def hs_ceiling(b: dr.Board, sim: SeasonSim, row: int, week: int) -> tuple[float, float]:
+def hs_ceiling(b: dr.Board, sim: SeasonSim, row: int, week: int, from_week: int | None = None) -> tuple[float, float]:
     """(o haftaki tavan = beklenen en iyi tek maç puanı, beklenen oynanan maç). Binom(n, p) üzerinden karışım."""
     fmt = b.fmt
     fp_game = float(sum(b.df[k].iloc[row] * v for k, v in fmt["weights"].items() if k in b.df.columns))
     table = expected_max_table(list(b.df["Q_HIGH_SCORE"].iloc[row])) * fp_game
     n = int(min(round(team_games_in_week(sim, row, week)), len(table) - 1))
-    p = _availability(b, row)
+    p = _availability(sim, row, from_week)
     ks = np.arange(n + 1)
     probs = np.array([math.comb(n, k) * p ** k * (1 - p) ** (n - k) for k in ks])
     return float((probs * table[ks]).sum()), float(n * p)
@@ -58,16 +59,17 @@ def best_lineup(b: dr.Board, roster: list[int], score: dict[int, float]) -> list
     return chosen
 
 
-def hs_matchup(sim: SeasonSim, mine: list[int], theirs: list[int], week: int, sims: int, seed: int) -> dict:
+def hs_matchup(sim: SeasonSim, mine: list[int], theirs: list[int], week: int, sims: int, seed: int,
+               from_week: int | None = None) -> dict:
     """High Score haftalık eşleşme: her starter'ın skoru = o hafta oynadığı maçların EN İYİSİ. İki takım da
     tavana göre en iyi kadrosunu kurar. Maç sayısı: takım maçları − sakatlık / dinlenme (kesirli kısım Bernoulli)."""
     b = sim.b
     picks = []
     for roster in (mine, theirs):
-        ceil = {p: hs_ceiling(b, sim, b.row[p], week)[0] for p in roster}
+        ceil = {p: hs_ceiling(b, sim, b.row[p], week, from_week)[0] for p in roster}
         picks.append(best_lineup(b, roster, ceil))
     rows = np.array([b.row[p] for team in picks for p in team], dtype=int)
-    mult, n_w = sim.week_draws(rows, week, sims, seed)
+    mult, n_w = sim.week_draws(rows, week, sims, seed, from_week)
     rng = np.random.default_rng([seed, 9])
     k = np.floor(n_w) + (rng.random(n_w.shape) < (n_w - np.floor(n_w)))              # (S × P) tam sayı maç
     u_max = rng.random(n_w.shape) ** (1.0 / np.maximum(k, 1.0))                     # k maçın en iyisinin yüzdeliği
@@ -81,11 +83,11 @@ def hs_matchup(sim: SeasonSim, mine: list[int], theirs: list[int], week: int, si
 
 
 def analyze_week(sim: SeasonSim, rosters: dict[int, list[int]], slot: int, opp: int, week: int,
-                 sims: int = 300, seed: int = 0) -> dict:
+                 sims: int = 300, seed: int = 0, from_week: int | None = None) -> dict:
     b, fmt = sim.b, sim.fmt
     kind = fmt["kind"]
     mine, theirs = rosters[slot], rosters[opp]
-    V, games = sim.week_values([mine, theirs], week, sims=sims, seed=seed)
+    V, games = sim.week_values([mine, theirs], week, sims=sims, seed=seed, from_week=from_week)
     rostered = {p for r in rosters.values() for p in r}
     out: dict = {"kind": kind, "week": week, "opponent": opp, "games": [round(float(games[0]), 1), round(float(games[1]), 1)]}
 
@@ -106,7 +108,7 @@ def analyze_week(sim: SeasonSim, rosters: dict[int, list[int]], slot: int, opp: 
                           "win_prob": round(float((won_a > len(b.cats) / 2).mean() + 0.5 * (won_a == len(b.cats) / 2).mean()), 3),
                           "swing": swing}
     elif kind == "high_score":
-        out["matchup"] = hs_matchup(sim, mine, theirs, week, sims, seed)
+        out["matchup"] = hs_matchup(sim, mine, theirs, week, sims, seed, from_week)
     else:
         a, o = V[:, 0, 0], V[:, 1, 0]
         out["matchup"] = {"exp_points": [round(float(a.mean()), 1), round(float(o.mean()), 1)],
@@ -119,10 +121,10 @@ def analyze_week(sim: SeasonSim, rosters: dict[int, list[int]], slot: int, opp: 
     for pid in mine:
         r = b.row[pid]
         g = team_games_in_week(sim, r, week)
-        p = _availability(b, r)
+        p = _availability(sim, r, from_week)
         row = {"player_id": pid, "games": int(round(g)), "exp_games": round(g * p, 2)}
         if kind == "high_score":
-            c, _ = hs_ceiling(b, sim, r, week)
+            c, _ = hs_ceiling(b, sim, r, week, from_week)
             row["ceiling"] = round(c, 1)
             ceil[pid] = c
         elif kind == "points":
@@ -144,7 +146,7 @@ def analyze_week(sim: SeasonSim, rosters: dict[int, list[int]], slot: int, opp: 
         g = team_games_in_week(sim, int(i), week)
         if g < 1:
             continue
-        p = _availability(b, int(i))
+        p = _availability(sim, int(i), from_week)
         item = {"player_id": pid, "games": int(round(g)), "exp_games": round(g * p, 2)}
         if kind == "categories":
             # G-skoru sezon toplamı bazlı; o haftanın maç sayısı ligin ortalamasına oranlanır. Sallantıdaki
@@ -153,7 +155,7 @@ def analyze_week(sim: SeasonSim, rosters: dict[int, list[int]], slot: int, opp: 
             item["helps"] = [c for c, v in sorted(score_cats, key=lambda kv: -kv[1])[:2] if v > 0]
             item["week_value"] = round(sum(v for c, v in score_cats), 2)
         elif kind == "high_score":
-            c, _ = hs_ceiling(b, sim, int(i), week)
+            c, _ = hs_ceiling(b, sim, int(i), week, from_week)
             item["week_value"] = round(c, 1)
         else:
             item["week_value"] = round(fp_w(int(i)) * g * p, 1)

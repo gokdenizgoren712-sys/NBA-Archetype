@@ -265,10 +265,19 @@ def fantasy_meta():
     proj = st["proj"]
     # Kadro tarihi projeksiyon dosyasının içinde: rosters.parquet deploy'a girmiyor.
     fetched = proj["ROSTERS_FETCHED_AT"].iloc[0] if "ROSTERS_FETCHED_AT" in proj.columns else None
+    as_of = str(proj["INSEASON_AS_OF"].iloc[0]) if "INSEASON_AS_OF" in proj.columns else None
+    wk = st["weeks"]
+    rest_from = None
+    if as_of:
+        nxt = wk[pd.to_datetime(wk["START"]) > pd.Timestamp(as_of)]
+        rest_from = int(nxt["WEEK"].min()) if len(nxt) else None
+    today = pd.Timestamp.now(tz="UTC").tz_localize(None).normalize()
+    cur = wk[(pd.to_datetime(wk["START"]) <= today) & (pd.to_datetime(wk["END"]) >= today)]
     return {"season": SEASON, "players": len(proj),
             "built_at": str(proj["BUILT_AT"].iloc[0]) if "BUILT_AT" in proj.columns else None,
             "rosters_fetched_at": fetched, "opening_night": str(st["weeks"]["START"].iloc[0]),
-            "inseason_as_of": (str(proj["INSEASON_AS_OF"].iloc[0]) if "INSEASON_AS_OF" in proj.columns else None),
+            "inseason_as_of": as_of, "rest_of_season_from_week": rest_from,
+            "current_week": int(cur["WEEK"].iloc[0]) if len(cur) else None,
             "weeks": int(st["weeks"]["WEEK"].max())}
 
 

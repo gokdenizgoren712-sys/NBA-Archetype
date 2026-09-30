@@ -423,6 +423,35 @@ class SimBody(BaseModel):
     seed: int = Field(0, ge=0, le=2_000_000_000)
     league_seed: Optional[int] = Field(None, ge=0, le=2_000_000_000, description="Which simulated rival set (roster mode); defaults to seed")
     basis: str = Field("total", pattern="^(total|per_game)$")
+    scope: str = Field("rest", pattern="^(rest|full)$",
+                       description="rest = only the weeks still to play (in season); full = the whole season")
+    records: Optional[dict[str, float]] = Field(None, max_length=LIMITS["teams"][1],
+                                                description="Head-to-head wins so far by team slot (rest scope only)")
+
+
+def _scope(sim: SeasonSim, body, week: int | None = None) -> tuple[int | None, dict | None]:
+    """(from_week, base_wins). Sezon öncesinde ya da scope=full iken (None, None). `week`: tek hafta analizi — görünüm o haftadan başlar."""
+    fw = sim.default_from_week() if body.scope == "rest" else None
+    if fw is None:
+        return None, None
+    base = None
+    if body.records:
+        base = {}
+        for k, v in body.records.items():
+            if not k.isdigit() or not 1 <= int(k) <= sim.b.teams:
+                raise HTTPException(422, "records keys must be team slots")
+            if not 0 <= v <= 60:
+                raise HTTPException(422, "records must be between 0 and 60 wins")
+            base[int(k)] = float(v)
+        if set(base) != set(range(1, sim.b.teams + 1)):
+            raise HTTPException(422, "records must cover every team, or be left out")
+    return (week if week is not None else fw), base
+
+
+def _scope_info(sim: SeasonSim, from_week: int | None) -> dict:
+    left = [w for w in sim.reg_weeks if from_week is not None and w >= from_week]
+    return {"mode": "rest" if from_week is not None else "full", "from_week": from_week, "as_of": sim.as_of,
+            "regular_weeks_left": len(left) if from_week is not None else len(sim.reg_weeks)}
 
 
 def _league_rosters(b: dr.Board, body) -> tuple[dict[int, list[int]], str]:
@@ -451,7 +480,9 @@ def _season_sim(b: dr.Board, fmt: dict) -> SeasonSim:
         if key in _sims:
             _sims.move_to_end(key)
             return _sims[key]
-    sim = SeasonSim(b, _load()["team_weeks"], playoff_weeks=list(fmt.get("playoff_weeks") or ()))
+    st = _load()
+    as_of = str(st["proj"]["INSEASON_AS_OF"].iloc[0]) if "INSEASON_AS_OF" in st["proj"].columns else None
+    sim = SeasonSim(b, st["team_weeks"], playoff_weeks=list(fmt.get("playoff_weeks") or ()), weeks=st["weeks"], as_of=as_of)
     with _lock:
         _sims[key] = sim
         while len(_sims) > 8:
@@ -468,8 +499,12 @@ def season_simulate(body: SimBody):
     _check_slot(b, body.slot)
     rosters, mode = _league_rosters(b, body)
     sim = _season_sim(b, fmt)
-    with _sim_slots:
-        res = sim.simulate(rosters, sims=body.sims, seed=body.seed)
+    fw, base = _scope(sim, body)
+    try:
+        with _sim_slots:
+            res = sim.simulate(rosters, sims=body.sims, seed=body.seed, from_week=fw, base_wins=base)
+    except ValueError as e:
+        raise HTTPException(422, str(e))
     me = res[body.slot]
     nteams = len(res)
     for k, w in enumerate(me["weekly"]):   # ligin haftalık ortalaması: "ortalama takıma göre" çubuk / işaret için
@@ -479,7 +514,7 @@ def season_simulate(body: SimBody):
     return {"season": SEASON, "format": fmt, "slot": body.slot, "sims": body.sims, "seed": body.seed, "mode": mode,
             "teams": b.teams, "playoff_teams": min(int(fmt.get("playoff_teams", 6)), b.teams),
             "categories": list(b.cats) if b.is_categories else [],
-            "validation": strategy_validation(fmt),
+            "validation": strategy_validation(fmt), "scope": _scope_info(sim, fw), "records_used": bool(base),
             "me": me,
             "league": [{"slot": t, **{k: v for k, v in res[t].items() if k != "weekly"}}
                        for t in sorted(res, key=lambda t: res[t]["projected_rank"])],
@@ -518,9 +553,11 @@ def trade_analyze(body: TradeBody):
     if set(body.get) & mine or set(body.give) & set(body.get):
         raise HTTPException(422, "You cannot get a player you already have")
     sim = _season_sim(b, fmt)
+    fw, base = _scope(sim, body)
     try:
         with _sim_slots:
-            out = analyze_trade(sim, rosters, body.slot, list(body.give), list(body.get), sims=body.sims, seed=body.seed)
+            out = analyze_trade(sim, rosters, body.slot, list(body.give), list(body.get), sims=body.sims, seed=body.seed,
+                                from_week=fw, base_wins=base)
     except ValueError as e:
         raise HTTPException(422, str(e))
     out["my_roster_after"] = [_player(b, p) for p in out["my_roster_after"]]
@@ -529,7 +566,7 @@ def trade_analyze(body: TradeBody):
     return {"season": SEASON, "format": fmt, "slot": body.slot, "sims": body.sims, "mode": mode,
             "categories_in_format": list(b.cats) if b.is_categories else [],
             "give": [_player(b, p) for p in body.give], "get": [_player(b, p) for p in body.get],
-            "validation": strategy_validation(fmt), **out}
+            "validation": strategy_validation(fmt), "scope": _scope_info(sim, fw), "records_used": bool(base), **out}
 
 
 class WeekBody(SimBody):
@@ -550,8 +587,9 @@ def week_analyze(body: WeekBody):
     sim = _season_sim(b, fmt)
     if body.week not in sim.weeks:
         raise HTTPException(422, f"Week {body.week} is not on the 2026-27 fantasy calendar")
+    fw, _ = _scope(sim, body, week=body.week)
     with _sim_slots:
-        out = analyze_week(sim, rosters, body.slot, body.opponent, body.week, sims=body.sims, seed=body.seed)
+        out = analyze_week(sim, rosters, body.slot, body.opponent, body.week, sims=body.sims, seed=body.seed, from_week=fw)
     wk = _load()["weeks"]
     row = wk[wk["WEEK"] == body.week].iloc[0]
     out["players"] = [{**r, **_player(b, r["player_id"])} for r in out["players"]]

@@ -61,7 +61,8 @@ def _summary(me: dict) -> dict:
 
 
 def analyze_trade(sim: SeasonSim, rosters: dict[int, list[int]], slot: int, give: list[int], get: list[int],
-                  sims: int = 300, seed: int = 0) -> dict:
+                  sims: int = 300, seed: int = 0, from_week: int | None = None,
+                  base_wins: dict[int, float] | None = None) -> dict:
     b = sim.b
     own = owners(rosters)
     partner_slots = {own[p] for p in get if p in own and own[p] != slot}
@@ -94,8 +95,8 @@ def analyze_trade(sim: SeasonSim, rosters: dict[int, list[int]], slot: int, give
         pf, pd_, pa = fit_roster(b, after[partner], rostered | set(give) | set(get), size, set(give))
         after[partner] = pf
 
-    before_res = sim.simulate(rosters, sims=sims, seed=seed)
-    after_res = sim.simulate(after, sims=sims, seed=seed)
+    before_res = sim.simulate(rosters, sims=sims, seed=seed, from_week=from_week, base_wins=base_wins)
+    after_res = sim.simulate(after, sims=sims, seed=seed, from_week=from_week, base_wins=base_wins)
     b0, a0 = before_res[slot], after_res[slot]
     cb, ca = _cat_win(b0), _cat_win(a0)
     cats = []

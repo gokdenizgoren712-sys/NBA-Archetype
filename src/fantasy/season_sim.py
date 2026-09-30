@@ -17,6 +17,12 @@ Basitleştirmeler (bilerek): günlük kadro sınırı yok (backtest'te sınır n
 kadro 30 takıma dağılmış), pozisyon slotu kısıtı yok (draft.py'nin lineup atamasıyla değerlendirilir),
 sezon içi waiver/takas yok. Doğrulama: strateji backtest'inin gerçek sezonlarıyla (bkz. strategy_backtest).
 
+KALAN SEZON (sezon içi): `from_week` verilirse yalnız o haftadan sonrası oynanır (geçmiş haftalar atlanır).
+Oyuncunun kalan maçı PROJ_GP − INSEASON_GP'den gelir (sezon öncesinde toplamın kalan payı), sakatlık blokları
+yalnız kalan takım maçlarına yayılır; üretim şansı (çarpan) kalan payın karekökü kadar daralır (sezon içi backtest'te
+hata 4.97→3.61, yani ~0.73 ≈ √0.5) ve piyasaya büzme (draft.SHRINK) kanıt biriktikçe gevşer.
+`base_wins` mevcut H2H galibiyetlerini sıralamaya ekler.
+
 Girdi: draft.Board (projeksiyon + değer + ADP) ve takım-hafta maç sayıları (calendar.build_team_weeks).
 """
 
@@ -77,9 +83,18 @@ def _bracket(n: int) -> list[tuple[int, int | None]]:
     return [(a, b if b < n else None) for a, b in zip(order[::2], order[1::2])]
 
 
+class _View:
+    """Simülasyonun baktığı sezon dilimi: hangi haftalar oynanacak, oyuncu başına kalan maç / ortalama."""
+    __slots__ = ("G", "T", "gp", "denom", "spread", "mean", "fp_mean", "from_week")
+
+    def __init__(self, G, T, gp, denom, spread, mean, fp_mean, from_week):
+        self.G, self.T, self.gp, self.denom, self.spread = G, T, gp, denom, spread
+        self.mean, self.fp_mean, self.from_week = mean, fp_mean, from_week
+
+
 class SeasonSim:
     def __init__(self, b: dr.Board, team_weeks: pd.DataFrame, shrink: float | None = None,
-                 playoff_weeks: list[int] | None = None):
+                 playoff_weeks: list[int] | None = None, weeks: pd.DataFrame | None = None, as_of: str | None = None):
         self.b = b
         fmt = b.fmt
         self.fmt = fmt
@@ -89,15 +104,17 @@ class SeasonSim:
         mean = np.stack([df[s].to_numpy(float) for s in STATS], axis=1)                # (n × 11) maç başı
         # Piyasaya büzme (draft.SHRINK) — toplam düzeyinde, draft motoruyla aynı yerel-ortalama üzerinden
         k = dr.SHRINK.get(fmt["kind"], 1.0) if shrink is None else shrink
-        if k < 1.0:
-            tot = mean * gp[:, None]
-            loc = dr.local_market_mean(b.adp, tot)
-            mean = (loc + k * (tot - loc)) / np.maximum(gp, MIN_GP_FOR_SHRINK)[:, None]
-        self.mean = np.maximum(mean, 0.0)
+        self._k = k
+        self.gp = gp
+        self._tot = mean * gp[:, None]
+        self._loc = dr.local_market_mean(b.adp, self._tot) if k < 1.0 else None
+        self._raw_mean = mean
+        self.mean = self._shrunk(k)
         self.sd = np.stack([df[SD_COL[s]].to_numpy(float) if s in SD_COL else np.zeros(n) for s in STATS], axis=1)
         self.sd = np.nan_to_num(self.sd)
+        self._w = np.array([fmt["weights"].get(s, 0.0) for s in STATS]) if fmt["kind"] != "categories" else None
         if fmt["kind"] != "categories":
-            w = np.array([fmt["weights"].get(s, 0.0) for s in STATS])
+            w = self._w
             self.fp_mean = self.mean @ w
             qp = np.array([list(x) for x in df["Q_POINTS"]], float)                   # maç puanı kantilleri
             self.fp_sd = np.nan_to_num(qp.std(axis=1))
@@ -119,6 +136,66 @@ class SeasonSim:
                               else [w for w in self.weeks if bool(po.get(w, False))])
         first_po = min(self.playoff_weeks) if self.playoff_weeks else max(self.weeks) + 1
         self.reg_weeks = [w for w in self.weeks if w < first_po]
+        self.insea_gp = df["INSEASON_GP"].to_numpy(float) if "INSEASON_GP" in df.columns else np.zeros(n)
+        self.as_of = as_of
+        self._week_span = ({int(r.WEEK): (pd.Timestamp(r.START), pd.Timestamp(r.END)) for r in weeks.itertuples()}
+                           if weeks is not None else {})
+        self._views: dict = {}
+        self._full = _View(G=self.G, T=self.total_games, gp=self.gp, denom=np.full(n, TEAM_GAMES), spread=1.0,
+                           mean=self.mean, fp_mean=getattr(self, "fp_mean", None), from_week=None)
+
+    def _shrunk(self, k: float) -> np.ndarray:
+        if self._loc is None:
+            return np.maximum(self._raw_mean, 0.0)
+        return np.maximum((self._loc + k * (self._tot - self._loc)) / np.maximum(self.gp, MIN_GP_FOR_SHRINK)[:, None], 0.0)
+
+    # ── Kalan sezon ─────────────────────────────────────────────────────────
+
+    def default_from_week(self) -> int | None:
+        """Sezon içindeyse (as_of biliniyor) tamamen oynanmamış ilk hafta; sezon öncesinde None (tam sezon).
+        Kısmen oynanmış hafta dışarıda kalır (onun sonuçları 'This week' ekranında)."""
+        if not self.as_of or not self._week_span:
+            return None
+        t = pd.Timestamp(self.as_of)
+        nxt = [w for w in self.weeks if w in self._week_span and self._week_span[w][0] > t]
+        return min(nxt) if nxt else None
+
+    def availability(self, row: int, from_week: int | None = None) -> float:
+        """Bir oyuncunun (satır) görünümdeki maç oynama olasılığı."""
+        v = self.view(from_week)
+        return float(np.clip(v.gp[row] / v.denom[row], 0.0, 1.0))
+
+    def view(self, from_week: int | None) -> _View:
+        """`from_week` ve sonrası için kalan-sezon görünümü; None ya da ilk hafta → tam sezon."""
+        if from_week is None or from_week <= self.weeks[0]:
+            return self._full
+        hit = self._views.get(from_week)
+        if hit is not None:
+            return hit
+        keep = np.array([w >= from_week for w in self.weeks], dtype=float)
+        G = self.G * keep[None, :]
+        T = np.maximum(G.sum(axis=1), 1.0)
+        # Kalan oyuncu maçı: projeksiyon toplamından oynananlar çıkar; sezon öncesinde toplamın kalan payı. as_of ile
+        # from_week arasında kısmen oynanmış / atlanan hafta varsa onun maçları da kalan paydan oranla düşer.
+        raw = np.maximum(self.gp - self.insea_gp, 0.0) if self.insea_gp.any() else self.gp * (T / self.total_games)
+        skipped = np.zeros_like(T)
+        if self.as_of and self._week_span:
+            t = pd.Timestamp(self.as_of)
+            for j, w in enumerate(self.weeks):
+                if w >= from_week or w not in self._week_span:
+                    continue
+                a, e = self._week_span[w]
+                if e <= t:
+                    continue
+                left = 1.0 if a > t else float((e - t).days) / max(float((e - a).days + 1), 1.0)
+                skipped += self.G[:, j] * min(max(left, 0.0), 1.0)
+        gp = np.clip(raw * T / np.maximum(T + skipped, 1.0), 0.0, T)
+        rem = float(np.median(T / self.total_games))
+        mean = self._shrunk(1.0 - (1.0 - self._k) * rem)
+        v = _View(G=G, T=T, gp=gp, denom=T, spread=math.sqrt(rem), mean=mean,
+                  fp_mean=(mean @ self._w) if self._w is not None else None, from_week=from_week)
+        self._views[from_week] = v
+        return v
 
     # ── Gerçekleşme ─────────────────────────────────────────────────────────
 
@@ -137,22 +214,26 @@ class SeasonSim:
             self._u_cache[key] = hit
         return hit
 
-    def _season_draws(self, rows: np.ndarray, U: dict[str, np.ndarray]):
-        """(oyuncu sezon çarpanı S×P, oynanan maç oranı S×P)."""
+    def _season_draws(self, rows: np.ndarray, U: dict[str, np.ndarray], v: _View | None = None):
+        """(oyuncu sezon çarpanı S×P, oynanan maç oranı S×P). `v`: kalan-sezon görünümü (yoksa tam sezon)."""
+        v = v or self._full
         if self.fp_q is not None:
             m = _draw_q(self.fp_q[rows], U["fp"][:, rows])
             r = _draw_q(self.gp_q[rows], U["gp"][:, rows])
         else:
             m = np.exp(self.b.fp_mu[rows] + self.b.fp_sigma[rows] * ndtri(np.clip(U["fp"][:, rows], 1e-9, 1 - 1e-9)))
             r = np.exp(self.b.gp_mu[rows] + self.b.gp_sigma[rows] * ndtri(np.clip(U["gp"][:, rows], 1e-9, 1 - 1e-9)))
-        games = np.minimum(self.gp[rows][None, :] * np.maximum(r, 0.0), TEAM_GAMES)
-        return m, games / TEAM_GAMES
+        games = np.minimum(v.gp[rows][None, :] * np.maximum(r, 0.0), v.denom[rows][None, :])
+        if v.spread != 1.0:
+            m = 1.0 + (m - 1.0) * v.spread                   # gözlenen maç payı kadar üretim belirsizliği daralır
+        return m, games / v.denom[rows][None, :]
 
-    def _weekly_games(self, rows: np.ndarray, frac: np.ndarray, U: dict[str, np.ndarray]) -> np.ndarray:
+    def _weekly_games(self, rows: np.ndarray, frac: np.ndarray, U: dict[str, np.ndarray], v: _View | None = None) -> np.ndarray:
         """(S × P × W) o hafta oynanan maç: takım maçları − sakatlık blokları − dağınık kayıp."""
+        v = v or self._full
         S, P = frac.shape
-        G = self.G[rows]                                        # (P × W)
-        T = self.total_games[rows]                              # (P,)
+        G = v.G[rows]                                           # (P × W)
+        T = v.T[rows]                                           # (P,)
         c_hi = np.cumsum(G, axis=1)
         c_lo = c_hi - G
         missed = np.clip((1.0 - frac), 0.0, 1.0) * T[None, :]   # (S × P) kaçırılan takım maçı
@@ -169,13 +250,15 @@ class SeasonSim:
 
     # ── Tek hafta, iki takım (haftalık eşleşme) ─────────────────────────────
 
-    def week_draws(self, rows: np.ndarray, week: int, sims: int, seed: int) -> tuple[np.ndarray, np.ndarray]:
+    def week_draws(self, rows: np.ndarray, week: int, sims: int, seed: int, from_week: int | None = None) -> tuple[np.ndarray, np.ndarray]:
         """Oyuncu satırları için o haftanın gerçekleşmesi: (üretim çarpanı S×P, oynanan maç S×P; kesirli)."""
+        v = self.view(from_week)
         U = self._uniforms(sims, seed)
-        mult, frac = self._season_draws(rows, U)
-        return mult, self._weekly_games(rows, frac, U)[:, :, self.weeks.index(week)]
+        mult, frac = self._season_draws(rows, U, v)
+        return mult, self._weekly_games(rows, frac, U, v)[:, :, self.weeks.index(week)]
 
-    def week_values(self, rosters_list: list[list[int]], week: int, sims: int = 300, seed: int = 0) -> tuple[np.ndarray, np.ndarray]:
+    def week_values(self, rosters_list: list[list[int]], week: int, sims: int = 300, seed: int = 0,
+                    from_week: int | None = None) -> tuple[np.ndarray, np.ndarray]:
         """Verilen kadroların o haftaki değerleri: (S × T × kategori) — yüzdeler oran, TO işaret çevrili (büyük = iyi);
         puan formatında (S × T × 1). İkinci çıktı: (T,) takım başına beklenen oynanan oyuncu-maçı. `simulate` ile
         aynı sezon gerçekleşmeleri ve gürültü; yalnız tek hafta, gerekli takımlar için."""
@@ -186,9 +269,10 @@ class SeasonSim:
         owner = np.repeat(np.arange(T), sizes)
         onehot = np.zeros((T, len(rows)))
         onehot[owner, np.arange(len(rows))] = 1.0
+        v = self.view(from_week)
         U = self._uniforms(sims, seed)
-        mult, frac = self._season_draws(rows, U)
-        n_w = self._weekly_games(rows, frac, U)[:, :, self.weeks.index(week)][:, :, None]      # (S × P × 1)
+        mult, frac = self._season_draws(rows, U, v)
+        n_w = self._weekly_games(rows, frac, U, v)[:, :, self.weeks.index(week)][:, :, None]   # (S × P × 1)
         rng = np.random.default_rng([seed, 5])
         games = np.einsum("tp,spw->stw", onehot, n_w, optimize=True).mean(axis=0)[:, 0]
 
@@ -196,7 +280,7 @@ class SeasonSim:
             return np.einsum("tp,spw,spc->stwc", onehot, n_w, x, optimize=True)[:, :, 0, :]
 
         if fmt["kind"] == "categories":
-            mu = self.mean[rows][None] * mult[:, :, None]
+            mu = v.mean[rows][None] * mult[:, :, None]
             sd = self.sd[rows][None] * mult[:, :, None]
             tot = tsum(mu)
             tot = np.maximum(tot + np.sqrt(tsum(sd ** 2)) * rng.standard_normal(tot.shape), 0.0)
@@ -209,15 +293,19 @@ class SeasonSim:
                 else:
                     cols.append(-tot[..., ix[spec]] if c == "TO" else tot[..., ix[spec]])
             return np.stack(cols, axis=-1), games
-        mu = (self.fp_mean[rows][None] * mult)[:, :, None]
+        mu = (v.fp_mean[rows][None] * mult)[:, :, None]
         sd = (self.fp_sd[rows][None] * mult)[:, :, None]
         pts = tsum(mu)
         return np.maximum(pts + np.sqrt(tsum(sd ** 2)) * rng.standard_normal(pts.shape), 0.0), games
 
     # ── Simülasyon ──────────────────────────────────────────────────────────
 
-    def simulate(self, rosters: dict[int, list[int]], sims: int = 100, seed: int = 0) -> dict[int, dict]:
+    def simulate(self, rosters: dict[int, list[int]], sims: int = 100, seed: int = 0, from_week: int | None = None,
+                 base_wins: dict[int, float] | None = None) -> dict[int, dict]:
+        """`from_week`: kalan-sezon görünümü (None → tam sezon). `base_wins`: takım → şimdiye kadarki H2H galibiyeti
+        (sıralamaya eklenir; yalnız kalan-sezon görünümünde anlamlı)."""
         b, fmt = self.b, self.fmt
+        v = self.view(from_week)
         teams = sorted(rosters)
         T = len(teams)
         rows = np.array([b.row[p] for t in teams for p in rosters[t]], dtype=int)
@@ -237,12 +325,12 @@ class SeasonSim:
             return np.einsum("tp,spw,spc->stwc", onehot, n, x, optimize=True)
 
         U = self._uniforms(sims, seed)
-        mult, frac = self._season_draws(rows, U)
-        n_spw = self._weekly_games(rows, frac, U)                   # (S × P × W)
+        mult, frac = self._season_draws(rows, U, v)
+        n_spw = self._weekly_games(rows, frac, U, v)                # (S × P × W)
         W = n_spw.shape[2]
 
         if fmt["kind"] == "categories":
-            mu = self.mean[rows][None] * mult[:, :, None]           # (S × P × C)
+            mu = v.mean[rows][None] * mult[:, :, None]              # (S × P × C)
             sd = self.sd[rows][None] * mult[:, :, None]
             tot = tsum(n_spw, mu)
             var = tsum(n_spw, sd ** 2)
@@ -257,15 +345,19 @@ class SeasonSim:
                     cols.append(-tot[..., ix[spec]] if c == "TO" else tot[..., ix[spec]])
             V = np.stack(cols, axis=-1)                              # (S × T × W × cats), büyük = iyi
         else:
-            mu = (self.fp_mean[rows][None] * mult)                  # (S × P)
+            mu = (v.fp_mean[rows][None] * mult)                     # (S × P)
             sd = self.fp_sd[rows][None] * mult
             pts = tsum(n_spw, mu[:, :, None])[..., 0]
             var = tsum(n_spw, (sd ** 2)[:, :, None])[..., 0]
             V = (pts + np.sqrt(var) * rng.standard_normal(pts.shape))[..., None]   # (S × T × W × 1)
 
         weeks_ix = {w: i for i, w in enumerate(self.weeks)}
-        reg = [weeks_ix[w] for w in self.reg_weeks]
+        reg_all = [weeks_ix[w] for w in self.reg_weeks]
+        reg = [weeks_ix[w] for w in self.reg_weeks if v.from_week is None or w >= v.from_week]
         po = [weeks_ix[w] for w in self.playoff_weeks]
+        if not reg:
+            raise ValueError("No regular-season weeks are left to simulate.")
+        base = np.array([float((base_wins or {}).get(t, 0.0)) for t in teams])[None, :]
         is_cat = fmt["kind"] == "categories"
         ncat = V.shape[-1]
 
@@ -311,13 +403,15 @@ class SeasonSim:
         perm = rng.random((sims, T)).argsort(axis=1)                  # her simülasyonda takım → konum (rastgele program)
         inv = np.argsort(perm, axis=1)                                # konum → takım
         self_ix = np.arange(T)[None, :]
-        for k, wi in enumerate(reg):
+        for wi in reg:
+            k = reg_all.index(wi)                                     # program tam sezondaki sırasıyla sürer
             opp_pos = rr[k % len(rr)][perm]                           # (S × T) rakibin konumu
             opp = np.where(opp_pos < T, np.take_along_axis(inv, np.minimum(opp_pos, T - 1), axis=1), self_ix)
             a = V[:, :, wi, :]
             o = np.take_along_axis(a, opp[:, :, None], axis=1)
             h2h += np.where(opp == self_ix, 0.0, result(a, o))
         # Sıralama: H2H galibiyeti, eşitlikte all-play gücü, sonra rastgele
+        h2h = h2h + base
         key = h2h * 1000 + ap_wins + rng.random((sims, T)) * 1e-3
         order = np.argsort(-key, axis=1)
         rank = np.empty_like(order)

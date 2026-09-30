@@ -66,7 +66,10 @@ function Result({ r, f }) {
           : <Delta label="Matchup win rate" now={r.before.all_play_rate} after={r.after.all_play_rate} fmt={(v) => pct(v)} dfmt={(d) => `${(d * 100).toFixed(1)}`} eps={0.004} />}
         <Delta label="Standing" now={r.before.rank_mean} after={r.after.rank_mean} fmt={(v) => ordinal(Math.round(v))} dfmt={(d) => d.toFixed(1)} higherBetter={false} eps={0.1} />
         <Delta label="Playoff odds" now={r.before.playoff_prob} after={r.after.playoff_prob} fmt={(v) => pct(v)} dfmt={(d) => `${Math.round(d * 100)}`} eps={0.01} />
-        <span className="fz-meta">Average finish is over {r.sims} simulated seasons; the verdict rests on weekly matchup win rate, the steadiest of these.</span>
+        <span className="fz-meta">
+          {r.scope?.mode === "rest" ? `Rest of season, from week ${r.scope.from_week}: only games still to play count. ` : ""}
+          Average finish is over {r.sims} simulated seasons; the verdict rests on weekly matchup win rate, the steadiest of these.
+        </span>
       </div>
       {cats.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>

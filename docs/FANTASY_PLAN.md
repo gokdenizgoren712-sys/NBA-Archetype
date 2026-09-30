@@ -207,7 +207,15 @@ Bitenler (ikisi de sezondan önce de kullanılabilir; kadro kaynağı mock / asi
   (ya da `RANKIT_BACKGROUND_JOBS=0`). Karar (2026-09-30): yerel zamanlanmış görev yerine sunucu worker'ı — bilgisayara bağımlılık yok.
 - **Elle / yedek** — `python -m src.fantasy.update [--no-fetch] [--push]`. `--push`, çalışma dizinine dokunmadan `origin/main` üzerinde geçici bir
   git worktree'de yalnız güncellenen dosyayı commit'leyip gönderir (sunucu engellenirse yerelden yayınlamak için); yerel commit'ler yayına gitmez.
-- Kısıt: takas analizi ve simülatör tam sezonu oynatır (geçmiş haftaları atlamaz); sezon içinde "kalan sezon" görünümü sonraki iş.
+- **Kalan sezon görünümü** — simülatör, takas analizi ve hafta analizi sezon içinde (`/meta.rest_of_season_from_week` dolu) varsayılan olarak
+  yalnız oynanmamış haftaları oynatır (`scope=rest`; "Full season" ile eski davranış). `season_sim.SeasonSim.view(from_week)`: geçmiş haftalar atlanır,
+  oyuncunun kalan maçı `PROJ_GP − INSEASON_GP`, sakatlık blokları yalnız kalan takım maçlarına yayılır. İki ayar (sezon içi backtest'e dayalı sezgisel):
+  üretim şansı çarpanı √(kalan pay) kadar daralır (gözlenen maçlar belirsizliği azaltır: hata 4.97→3.61 ≈ 0.73 ≈ √0.5) ve piyasaya büzme (`draft.SHRINK`)
+  kalan payla gevşer (sezon sonunda 1.0). Kısmen oynanmış hafta simülatörden çıkar (o hafta "This week" ekranında); hafta analizi seçilen haftadan
+  başlayan görünümü kullanır. Mevcut H2H galibiyetleri isteğe bağlı girilir (`records`, ya tüm takımlar ya hiçbiri), sıralamaya eklenir; girilmezse
+  herkes eşit başlar ve playoff / şampiyonluk olasılıkları "buradan sonrası" görünümüdür, bugünkü tablo değil. Sezon öncesinde tam sezon
+  (`from_week=None`) yolu değişmedi. Doğrulama: birim testleri + sezon içi taklidiyle tarayıcı; gerçek sezon verisiyle kalibrasyon sezon başlayınca yapılabilir.
+- Kısıt: High Score'da simülatör / takas hâlâ her maçı sayar (sonraki iş); sakatlık haberi yok.
 
 ### Faz 5 — Yahoo lig bağlantısı (Yahoo onayına bağlı)
 OAuth ile lig içe aktarma: ayarlar, kadrolar, draft sonuçları, gerçek ADP (`draft_analysis`),
