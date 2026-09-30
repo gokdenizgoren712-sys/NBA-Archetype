@@ -23,6 +23,11 @@ yalnız kalan takım maçlarına yayılır; üretim şansı (çarpan) kalan pay�
 hata 4.97→3.61, yani ~0.73 ≈ √0.5) ve piyasaya büzme (draft.SHRINK) kanıt biriktikçe gevşer.
 `base_wins` mevcut H2H galibiyetlerini sıralamaya ekler.
 
+HIGH SCORE: haftalık takım skoru = her starter'ın o hafta oynadığı maçların EN İYİSİ (toplam değil). Kadro her hafta
+maç sayısına göre kurulur (beklenen tavana göre açgözlü + pozisyon eşleştirmesi, week.best_lineup ile aynı mantık);
+o hafta hiç oynamayan starter'ın yerine öncelik sırasındaki ilk uygun yedek girer (pozisyon kısıtı yedek girişinde
+gevşek: yedek çoğunlukla esnek). Oyuncu skoru = ortalama × üretim çarpanı × Q_HIGH_SCORE'un k-maç maksimum kantili.
+
 Girdi: draft.Board (projeksiyon + değer + ADP) ve takım-hafta maç sayıları (calendar.build_team_weeks).
 """
 
@@ -33,6 +38,7 @@ import math
 import numpy as np
 import pandas as pd
 from scipy.special import ndtri
+from scipy.stats import binom
 
 from src.fantasy import draft as dr
 
@@ -85,11 +91,12 @@ def _bracket(n: int) -> list[tuple[int, int | None]]:
 
 class _View:
     """Simülasyonun baktığı sezon dilimi: hangi haftalar oynanacak, oyuncu başına kalan maç / ortalama."""
-    __slots__ = ("G", "T", "gp", "denom", "spread", "mean", "fp_mean", "from_week")
+    __slots__ = ("G", "T", "gp", "denom", "spread", "mean", "fp_mean", "from_week", "_hs_ceil")
 
     def __init__(self, G, T, gp, denom, spread, mean, fp_mean, from_week):
         self.G, self.T, self.gp, self.denom, self.spread = G, T, gp, denom, spread
         self.mean, self.fp_mean, self.from_week = mean, fp_mean, from_week
+        self._hs_ceil = None
 
 
 class SeasonSim:
@@ -298,6 +305,80 @@ class SeasonSim:
         pts = tsum(mu)
         return np.maximum(pts + np.sqrt(tsum(sd ** 2)) * rng.standard_normal(pts.shape), 0.0), games
 
+    # ── High Score ──────────────────────────────────────────────────────────
+
+    def _hs_ceilings(self, v: _View) -> np.ndarray:
+        """(oyuncu × hafta) beklenen haftalık tavan: Σ_k Binom(takım maçı, oynama olasılığı)[k] × E[k maçın en iyisi]."""
+        if v._hs_ceil is not None:
+            return v._hs_ceil
+        if not hasattr(self, "_etab"):
+            from src.fantasy.valuation import expected_max_table
+            self._etab = np.array([expected_max_table(list(q)) for q in self.b.df["Q_HIGH_SCORE"]])     # (n × 8), ortalamaya oranlı
+            self._qhs = np.array([list(q) for q in self.b.df["Q_HIGH_SCORE"]], float)
+        kmax = self._etab.shape[1] - 1
+        n_games = np.minimum(np.rint(v.G), kmax).astype(int)                     # (n × W)
+        p = np.clip(v.gp / v.denom, 0.0, 1.0)[:, None, None]
+        pmf = binom.pmf(np.arange(kmax + 1)[None, None, :], n_games[:, :, None], p)   # (n × W × K)
+        ceil = (pmf * self._etab[:, None, :]).sum(axis=2) * v.fp_mean[:, None]
+        v._hs_ceil = ceil
+        return ceil
+
+    def _hs_priority(self, v: _View, rows: np.ndarray, sizes: list[int]) -> np.ndarray:
+        """(T × W × R) her takım-hafta için oyuncu öncelik sırası (takım içi yerel indeks; -1 = dolgu):
+        önce pozisyon kısıtı altında tavanı en yüksek starter'lar, sonra kalanlar tavana göre."""
+        b = self.b
+        n_slots = len(b.slots)
+        ceil = self._hs_ceilings(v)
+        W, R = ceil.shape[1], max(sizes)
+        out = np.full((len(sizes), W, R), -1, dtype=int)
+        cache = self.__dict__.setdefault("_hs_prio", {})
+        off = 0
+        for t, size in enumerate(sizes):
+            r = rows[off:off + size]
+            off += size
+            key = (v.from_week, tuple(int(x) for x in r))
+            hit = cache.get(key)
+            if hit is None:
+                hit = np.full((W, size), -1, dtype=int)
+                masks = [b.masks[x] for x in r]
+                for w in range(W):
+                    c = ceil[r, w]
+                    order = list(np.argsort(-c, kind="stable"))
+                    chosen: list[int] = []
+                    for j in order:
+                        if len(chosen) >= n_slots:
+                            break
+                        if dr._max_filled_masks(tuple(masks[i] for i in chosen + [j]), n_slots) == len(chosen) + 1:
+                            chosen.append(j)
+                    hit[w] = chosen + [j for j in order if j not in chosen]
+                if len(cache) >= 512:
+                    cache.pop(next(iter(cache)))
+                cache[key] = hit
+            out[t, :, :size] = hit
+        return out
+
+    def _hs_scores(self, v: _View, rows: np.ndarray, sizes: list[int], n_spw: np.ndarray, mult: np.ndarray,
+                   rng: np.random.Generator) -> np.ndarray:
+        """(S × T × W) haftalık High Score takım skoru."""
+        S, P, W = n_spw.shape
+        n_slots = len(self.b.slots)
+        k = np.floor(n_spw) + (rng.random(n_spw.shape) < (n_spw - np.floor(n_spw)))       # tam sayı maç
+        u_max = rng.random(n_spw.shape) ** (1.0 / np.maximum(k, 1.0))                      # k maçın en iyisinin yüzdeliği
+        _ = self._hs_ceilings(v)                                                            # _qhs / _etab hazır
+        q = np.repeat(self._qhs[rows], W, axis=0)                                           # (P·W × K), p-büyük sırada
+        draw = _draw_q(q, u_max.reshape(S, P * W)).reshape(S, P, W)
+        score = np.where(k > 0, v.fp_mean[rows][None, :, None] * mult[:, :, None] * draw, 0.0)
+        prio = self._hs_priority(v, rows, sizes)                                            # (T × W × R)
+        offs = np.concatenate([[0], np.cumsum(sizes)[:-1]])
+        pad = prio < 0
+        g = np.where(pad, P, prio + offs[:, None, None])                                    # global oyuncu indeksi; P = boş
+        wi = np.broadcast_to(np.arange(W)[None, :, None], g.shape)
+        score_x = np.concatenate([score, np.zeros((S, 1, W))], axis=1)
+        avail_x = np.concatenate([k > 0, np.zeros((S, 1, W), dtype=bool)], axis=1)
+        sc, av = score_x[:, g, wi], avail_x[:, g, wi]                                      # (S × T × W × R)
+        take = av & (np.cumsum(av, axis=-1) <= n_slots)
+        return (sc * take).sum(axis=-1)
+
     # ── Simülasyon ──────────────────────────────────────────────────────────
 
     def simulate(self, rosters: dict[int, list[int]], sims: int = 100, seed: int = 0, from_week: int | None = None,
@@ -344,6 +425,8 @@ class SeasonSim:
                 else:
                     cols.append(-tot[..., ix[spec]] if c == "TO" else tot[..., ix[spec]])
             V = np.stack(cols, axis=-1)                              # (S × T × W × cats), büyük = iyi
+        elif fmt["kind"] == "high_score":
+            V = self._hs_scores(v, rows, [len(rosters[t]) for t in teams], n_spw, mult, rng)[..., None]   # (S × T × W × 1)
         else:
             mu = (v.fp_mean[rows][None] * mult)                     # (S × P)
             sd = self.fp_sd[rows][None] * mult

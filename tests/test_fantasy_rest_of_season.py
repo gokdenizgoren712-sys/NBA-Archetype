@@ -159,3 +159,61 @@ def test_api_scope_and_records_validation(monkeypatch, env):
     assert client.post("/api/fantasy/season/simulate", json={**body, "records": {"99": 8}}).status_code == 422
     assert client.post("/api/fantasy/season/simulate", json={**body, "records": {"5": 99}}).status_code == 422
     assert client.post("/api/fantasy/season/simulate", json={**body, "records": {"5": 8}}).status_code == 422      # yalnız bir takım: eksik
+
+
+# ── High Score ──────────────────────────────────────────────────────────────
+
+@pytest.fixture(scope="module")
+def hs():
+    proj, tw = pd.read_parquet(LIVE), pd.read_parquet(TW)
+    fmt = get_format("yahoo_high_score")
+    b = dr.make_board(vl.value_players(proj, fmt, tw), fmt)
+    return b, ss.SeasonSim(b, tw, playoff_weeks=list(fmt["playoff_weeks"])), ss.SeasonSim(b, tw, shrink=1.0, playoff_weeks=list(fmt["playoff_weeks"]))
+
+
+@needs_live
+def test_high_score_sim_matches_the_analytic_weekly_ceiling(hs):
+    """Piyasa büzmesi kapalıyken (shrink=1) simüle haftalık skor, week.py'nin analitik tavan toplamıyla uyumlu."""
+    from src.fantasy.week import best_lineup, hs_ceiling
+    b, _, sim = hs
+    ros = _league(b)
+    teams = sorted(ros)
+    rows = np.array([b.row[p] for t in teams for p in ros[t]])
+    sizes = [len(ros[t]) for t in teams]
+    v = sim.view(None)
+    U = sim._uniforms(400, 3)
+    mult, frac = sim._season_draws(rows, U, v)
+    V = sim._hs_scores(v, rows, sizes, sim._weekly_games(rows, frac, U, v), mult, np.random.default_rng(1))
+    assert V.shape == (400, len(teams), len(sim.weeks))
+    wk = sim.weeks.index(5)
+    for t in teams:
+        ceil = {p: hs_ceiling(b, sim, b.row[p], 5)[0] for p in ros[t]}
+        analytic = sum(ceil[p] for p in best_lineup(b, ros[t], ceil))
+        assert abs(V[:, teams.index(t), wk].mean() / analytic - 1) < 0.07, t
+
+
+@needs_live
+def test_high_score_simulation_is_a_coherent_league(hs):
+    b, sim, _ = hs
+    ros = _league(b)
+    a = sim.simulate(ros, sims=80, seed=7)
+    c = sim.simulate(ros, sims=80, seed=7)
+    assert a[5]["rank_mean"] == c[5]["rank_mean"]
+    assert abs(sum(o["champion_prob"] for o in a.values()) - 1.0) < 0.01
+    assert abs(np.mean([o["rank_mean"] for o in a.values()]) - (b.teams + 1) / 2) < 0.01
+    ceil = sim._hs_ceilings(sim.view(None))[:, :22].mean(axis=1)                          # simülatörün kendi (büzülmüş) tavanları
+    strength = lambda t: sum(sorted((ceil[b.row[p]] for p in ros[t]), reverse=True)[:6])   # noqa: E731  yedekler sayılmaz
+    strong, weak = max(ros, key=strength), min(ros, key=strength)
+    assert a[strong]["rank_mean"] < a[weak]["rank_mean"]
+
+
+@needs_live
+def test_high_score_trade_and_rest_view_run(hs):
+    b, sim, _ = hs
+    ros = _league(b)
+    top = max(ros[6], key=lambda p: b.value[b.row[p]])
+    worst = min(ros[5], key=lambda p: b.value[b.row[p]])
+    out = analyze_trade(sim, ros, 5, [worst], [top], sims=100, seed=2)
+    assert out["verdict"] in ("Good for you", "Bad for you", "About even") and out["delta"]["win_rate"] > -0.01
+    res = sim.simulate(ros, sims=60, seed=1, from_week=8)
+    assert res[5]["weekly"][0]["week"] == 8

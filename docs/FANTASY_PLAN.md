@@ -215,7 +215,12 @@ Bitenler (ikisi de sezondan önce de kullanılabilir; kadro kaynağı mock / asi
   başlayan görünümü kullanır. Mevcut H2H galibiyetleri isteğe bağlı girilir (`records`, ya tüm takımlar ya hiçbiri), sıralamaya eklenir; girilmezse
   herkes eşit başlar ve playoff / şampiyonluk olasılıkları "buradan sonrası" görünümüdür, bugünkü tablo değil. Sezon öncesinde tam sezon
   (`from_week=None`) yolu değişmedi. Doğrulama: birim testleri + sezon içi taklidiyle tarayıcı; gerçek sezon verisiyle kalibrasyon sezon başlayınca yapılabilir.
-- Kısıt: High Score'da simülatör / takas hâlâ her maçı sayar (sonraki iş); sakatlık haberi yok.
+- **High Score simülatörü / takas** — `SeasonSim._hs_scores`: haftalık takım skoru = her starter'ın o hafta oynadığı maçların en iyisi (k maç → Q_HIGH_SCORE'un
+  k-maç maksimum kantili × üretim çarpanı). Kadro her hafta beklenen tavana göre kurulur (`_hs_priority`: pozisyon eşleştirmeli açgözlü, `week.best_lineup`
+  ile aynı); hiç oynamayan starter'ın yerine öncelik sırasındaki ilk uygun yedek girer (yedek girişinde pozisyon kısıtı gevşek). Tutarlılık: simüle haftalık skor,
+  analitik tavan toplamıyla (`week.hs_ceiling`) %2 içinde. Takas analizi aynı simülatörü kullandığı için otomatik High Score'a uygun. Draft önerilerinin
+  kendisi hâlâ gerçek sezonlarda test edilmedi (uyarı sürüyor).
+- Kısıt: sakatlık haberi yok.
 
 ### Faz 5 — Yahoo lig bağlantısı (Yahoo onayına bağlı)
 OAuth ile lig içe aktarma: ayarlar, kadrolar, draft sonuçları, gerçek ADP (`draft_analysis`),

@@ -306,6 +306,7 @@ export default function FantasySimulator() {
             <GamesChart weekly={me.weekly} />
             <span className="fz-meta" style={{ lineHeight: 1.6, maxWidth: 760 }}>
               Injuries are simulated as one or two multi-game absences plus scattered rest days, sized from real 2023-26 seasons. No waiver or trade moves are made in-season.
+              {f.kind === "high_score" ? " High Score: each starter counts only their best game of the week, and the lineup is set every week for the games played." : ""}
               {agg.mode === "simulated_rivals" ? " Rival rosters are drafted by simulated bots, so each batch faces a different league." : ""}
             </span>
           </>

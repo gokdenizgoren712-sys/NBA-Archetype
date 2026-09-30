@@ -159,8 +159,8 @@ def strategy_validation(fmt: dict) -> dict:
                         "Treat these picks as a starting point and trust your own read."}
     if kind == "high_score":
         return {"status": "unvalidated", "title": "Picks not yet tested for High Score leagues",
-                "body": "We have not yet checked this format against real seasons. The weekly matchup and lineup on This week count each starter's best game, "
-                        "but the season simulator and trade analyzer still score every game, so treat their numbers as a rough guide."}
+                "body": "We have not yet checked this format against real seasons. The season simulator, trade analyzer and This week all score a team by each "
+                        "starter's best game of the week, but the draft picks themselves are untested. Treat them as a starting point."}
     return {"status": "unvalidated", "title": "Picks not yet tested for roto leagues",
             "body": "Our real-season test covers head-to-head leagues only. Treat these picks as a starting point."}
 
