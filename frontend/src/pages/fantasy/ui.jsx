@@ -212,7 +212,8 @@ export function seasonStatus(meta) {
   const now = new Date();
   if (now >= opening) {
     const week = Math.max(1, Math.floor((now - opening) / 6048e5) + 1);
-    return `Week ${week} · in season`;
+    const through = meta.inseason_as_of ? new Date(`${meta.inseason_as_of}T00:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : null;
+    return `Week ${week} · in season${through ? ` · data through ${through}` : ""}`;
   }
   const built = meta.built_at ? new Date(meta.built_at) : null;
   return `Pre-season${built ? ` · projections ${built.toLocaleDateString("en-US", { month: "short", day: "numeric" })}` : ""}`;

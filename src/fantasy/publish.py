@@ -130,6 +130,8 @@ def build_projections(target: str = "2026-27", write: bool = True) -> pd.DataFra
     proj["ROSTERS_FETCHED_AT"] = roster_fetched
     if write:
         proj.to_parquet(DATA_DIR / f"{target}__fantasy_projections.parquet", index=False)
+        # Sezon öncesi anlık görüntü: sezon içi güncelleme HER ZAMAN buradan başlar (idempotent; bkz. inseason.py).
+        proj.to_parquet(DATA_DIR / f"{target}__fantasy_projections_pre.parquet", index=False)
         print(f"[build] {target} projeksiyon: {len(proj)} oyuncu "
               f"({(proj['SOURCE'] == 'rookie_baseline').sum()} çaylak tabanı), weights={weights} k_scale={k_scale}")
     return proj

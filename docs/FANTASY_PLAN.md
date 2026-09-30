@@ -193,8 +193,17 @@ Bitenler (ikisi de sezondan önce de kullanılabilir; kadro kaynağı mock / asi
   kategorilere göre sıralı ("4+ games only"). Ekleme yok: Yahoo yalnız okuma izni veriyor.
 - Bilinen kısıt: High Score'da haftalık eşleşme doğru puanlanıyor (her starter'ın en iyi tek maçı) ama sezon simülatörü ve takas analizi
   hâlâ her maçı sayıyor; format zaten "test edilmedi" uyarısı taşıyor ve uyarı metni bunu söylüyor.
-Bekleyenler: sezon içi projeksiyon güncelleme (oynanan maçlarla harmanlama) ve günlük veri güncelleme işi — projede zamanlanmış iş yok
-(yalnız `ci.yml`); veri elle commit'leniyor, stats.nba.com bulut IP'lerini sık engelliyor. Altyapı kararı gerekiyor.
+- **Sezon içi projeksiyon güncelleme** — `src/fantasy/inseason.py`: sezon öncesi projeksiyon "ön bilgi", oynanan maçlar kanıt (Bayes).
+  Üç bileşen ayrı hızla öğrenir: dakika başı üretim (400 dk ön bilgi), maç başı dakika (4 maç ön bilgi + son 10 maç), oynama oranı (20 maç).
+  Parametreler backtest ile seçildi (2024-25 + 2025-26, takım başına 15 / 30 / 45 / 60 maçta kesme, 8 vaka): kalan sezonda oyuncu başına Yahoo
+  puanı hatası 4.97 → 3.61, dakika 4.61 → 3.25, kalan maç 9.5 → 8.2; her vakada iyileşme, eğriler iç noktada minimum. Sakatlık haberi yok.
+  Takas edilen oyuncunun `TEAM` alanı güncellenir (haftalık maç sayısı buradan).
+- **Günlük iş** — `python -m src.fantasy.update [--push]` (`src/fantasy/update.py`). Maç loglarını çeker, HER ZAMAN sezon öncesi anlık görüntüden
+  (`..._projections_pre.parquet`, `build` yazar) başlayıp projeksiyonu yeniler (idempotent), `INSEASON_AS_OF` ile işaretler. `--push`, çalışma
+  dizinine dokunmadan `origin/main` üzerinde geçici bir git worktree'de yalnız o dosyayı commit'ler ve gönderir; yerel commit'ler yayına gitmez.
+  Sezon başlamadıysa hiçbir şey yazmaz. Karar (2026-09-30): bilgisayarda zamanlanmış görev — `scripts/register_fantasy_update_task.ps1 -Time 07:30`
+  bir kez çalıştırılır; bilgisayar kapalıysa açılınca çalışır. Bulut cron seçilmedi: stats.nba.com bulut IP'lerini sık engelliyor.
+- Kısıt: takas analizi ve simülatör tam sezonu oynatır (geçmiş haftaları atlamaz); sezon içinde "kalan sezon" görünümü sonraki iş.
 
 ### Faz 5 — Yahoo lig bağlantısı (Yahoo onayına bağlı)
 OAuth ile lig içe aktarma: ayarlar, kadrolar, draft sonuçları, gerçek ADP (`draft_analysis`),
