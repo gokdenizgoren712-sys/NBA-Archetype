@@ -198,11 +198,15 @@ Bitenler (ikisi de sezondan önce de kullanılabilir; kadro kaynağı mock / asi
   Parametreler backtest ile seçildi (2024-25 + 2025-26, takım başına 15 / 30 / 45 / 60 maçta kesme, 8 vaka): kalan sezonda oyuncu başına Yahoo
   puanı hatası 4.97 → 3.61, dakika 4.61 → 3.25, kalan maç 9.5 → 8.2; her vakada iyileşme, eğriler iç noktada minimum. Sakatlık haberi yok.
   Takas edilen oyuncunun `TEAM` alanı güncellenir (haftalık maç sayısı buradan).
-- **Günlük iş** — `python -m src.fantasy.update [--push]` (`src/fantasy/update.py`). Maç loglarını çeker, HER ZAMAN sezon öncesi anlık görüntüden
-  (`..._projections_pre.parquet`, `build` yazar) başlayıp projeksiyonu yeniler (idempotent), `INSEASON_AS_OF` ile işaretler. `--push`, çalışma
-  dizinine dokunmadan `origin/main` üzerinde geçici bir git worktree'de yalnız o dosyayı commit'ler ve gönderir; yerel commit'ler yayına gitmez.
-  Sezon başlamadıysa hiçbir şey yazmaz. Karar (2026-09-30): bilgisayarda zamanlanmış görev — `scripts/register_fantasy_update_task.ps1 -Time 07:30`
-  bir kez çalıştırılır; bilgisayar kapalıysa açılınca çalışır. Bulut cron seçilmedi: stats.nba.com bulut IP'lerini sık engelliyor.
+- **Sunucuda otomatik güncelleme** — `api/fantasy_live.py`, RankIt canlı skor mekanizmasıyla aynı düzen (uygulama açılırken arka plan iş parçacığı,
+  `rankit_sync_state` tablosunda `fantasy_inseason` claim satırı; saatte bir). Açılış gecesinden bir gün öncesine kadar hiçbir şey çağırmaz. Her tur
+  `src/fantasy/update.py::run_update`: maç loglarını çeker (nba_api, tek çağrı), HER ZAMAN sezon öncesi anlık görüntüden (`..._projections_pre.parquet`)
+  başlayıp projeksiyonu yeniler (idempotent), dosyayı atomik yazar; API mtime'a bakıp kendiliğinden yeniden yükler, `INSEASON_AS_OF` "data through"
+  olarak görünür. Railway diski geçici: her deploy'da image'daki sezon öncesi dosyadan başlanır, ilk turda yeniden hesaplanır. stats.nba.com sunucuyu
+  engellerse yayındaki dosyaya dokunulmaz (sezon öncesi projeksiyon kalır), sonraki saatte yeniden denenir. Kapatma: `FANTASY_LIVE_UPDATES=0`
+  (ya da `RANKIT_BACKGROUND_JOBS=0`). Karar (2026-09-30): yerel zamanlanmış görev yerine sunucu worker'ı — bilgisayara bağımlılık yok.
+- **Elle / yedek** — `python -m src.fantasy.update [--no-fetch] [--push]`. `--push`, çalışma dizinine dokunmadan `origin/main` üzerinde geçici bir
+  git worktree'de yalnız güncellenen dosyayı commit'leyip gönderir (sunucu engellenirse yerelden yayınlamak için); yerel commit'ler yayına gitmez.
 - Kısıt: takas analizi ve simülatör tam sezonu oynatır (geçmiş haftaları atlamaz); sezon içinde "kalan sezon" görünümü sonraki iş.
 
 ### Faz 5 — Yahoo lig bağlantısı (Yahoo onayına bağlı)

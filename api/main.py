@@ -3034,6 +3034,12 @@ except Exception as _e:
     print(f"[startup] RankIt live sync failed to start: {_e}", flush=True)
 
 try:
+    from .fantasy_live import start_fantasy_live as _start_fantasy_live
+    _start_fantasy_live()
+except Exception as _e:
+    print(f"[startup] Fantasy live update failed to start: {_e}", flush=True)
+
+try:
     from .rankit_catalog_sync import start_rankit_catalog_sync as _start_rankit_catalog_sync
     _start_rankit_catalog_sync()
 except Exception as _e:

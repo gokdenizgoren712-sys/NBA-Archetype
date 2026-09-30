@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
-"""Günlük sezon içi güncelleme (Faz 4): yeni maç loglarını çek → projeksiyonu yenile → (isteğe bağlı) yayınla.
+"""Sezon içi güncelleme (Faz 4): yeni maç loglarını çek → projeksiyonu yenile → dosyayı atomik yaz.
+
+Asıl çalıştırıcı sunucudaki arka plan worker'ı (api/fantasy_live.py, saatte bir, RankIt canlı skor düzeniyle); bu CLI elle
+kullanım / yedek içindir (`--push`: sunucu yerine yerelden main'e yayınlamak istenirse).
 
     python -m src.fantasy.update            # veriyi çeker, data/2026-27__fantasy_projections.parquet'i günceller
     python -m src.fantasy.update --push     # ayrıca YALNIZ o dosyayı main'e gönderir (Railway deploy eder)
@@ -17,11 +20,13 @@ Tasarım:
 from __future__ import annotations
 
 import argparse
+import os
 import shutil
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
+from typing import Callable
 
 import pandas as pd
 
@@ -43,6 +48,42 @@ def refresh_projections(cur: pd.DataFrame, base: pd.DataFrame, params: dict | No
     new["INSEASON_AS_OF"] = str(cur["GAME_DATE"].max())
     new["BUILT_AT"] = pd.Timestamp.now(tz="UTC").isoformat(timespec="seconds")
     return new
+
+
+def _atomic_write(df: pd.DataFrame, path: Path) -> None:
+    """Geçici dosya + os.replace: API (mtime ile yeniden yükler) yarım dosya görmez."""
+    tmp = path.with_name(path.name + ".tmp")
+    df.to_parquet(tmp, index=False)
+    os.replace(tmp, path)
+
+
+def run_update(data_dir: Path = DATA_DIR, season: str = SEASON, fetcher: Callable[[str], pd.DataFrame] | None = None,
+               log: Callable[[str], None] = print) -> dict:
+    """Bir güncelleme turu (sunucu worker'ı ve CLI ortak kullanır).
+    Dönüş: {"status": "updated" | "no_games" | "fetch_failed" | "no_base", ...}. Hata durumunda yayındaki dosyaya dokunmaz."""
+    published = data_dir / f"{season}__fantasy_projections.parquet"
+    pre = data_dir / f"{season}__fantasy_projections_pre.parquet"
+    if not pre.exists():
+        if not published.exists():
+            return {"status": "no_base", "detail": "önce python -m src.fantasy.build"}
+        snap = pd.read_parquet(published)
+        if "INSEASON_AS_OF" in snap.columns:
+            return {"status": "no_base", "detail": "yayındaki dosya zaten güncellenmiş ve _pre yok: build'i yeniden koş"}
+        _atomic_write(snap, pre)
+        log(f"[update] sezon öncesi anlık görüntü yazıldı: {pre.name}")
+    if fetcher is None:
+        from src.fantasy.fetch import fetch_player_gamelogs
+        fetcher = lambda s: fetch_player_gamelogs(s, refresh=True)   # noqa: E731
+    try:
+        cur = fetcher(season)
+    except Exception as e:      # noqa: BLE001 — sezon başlamamış ya da API hatası: dosyaya dokunma
+        return {"status": "fetch_failed", "detail": f"{type(e).__name__}: {e}"}
+    if cur is None or len(cur) == 0 or int((cur["MIN"] > 0).sum()) == 0:
+        return {"status": "no_games"}
+    new = refresh_projections(cur, pd.read_parquet(pre))
+    _atomic_write(new, published)
+    return {"status": "updated", "as_of": str(new["INSEASON_AS_OF"].iloc[0]),
+            "players_updated": int((new["INSEASON_GP"] > 0).sum()), "players": int(len(new))}
 
 
 def _git(*args: str, cwd: Path) -> str:
@@ -87,43 +128,18 @@ def main(argv: list[str] | None = None) -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
 
-    if not PRE.exists():
-        if not PUBLISHED.exists():
-            print("[update] projeksiyon yok: önce python -m src.fantasy.build")
-            return 1
-        published = pd.read_parquet(PUBLISHED)
-        if "INSEASON_AS_OF" in published.columns:
-            print("[update] sezon öncesi anlık görüntü (_pre) yok ve yayındaki dosya zaten güncellenmiş: build'i yeniden koş")
-            return 1
-        published.to_parquet(PRE, index=False)
-        print(f"[update] sezon öncesi anlık görüntü yazıldı: {PRE.name}")
     if args.dry_run:
         print("[update] dry-run: loglar çekilir, projeksiyon güncellenir" + (", main'e gönderilir" if args.push else ""))
         return 0
-
-    from src.fantasy.fetch import fetch_player_gamelogs
-    logs_path = DATA_DIR / f"{SEASON}__player_gamelogs.parquet"
-    if args.no_fetch and logs_path.exists():
-        cur = pd.read_parquet(logs_path)
-    else:
-        try:
-            cur = fetch_player_gamelogs(SEASON, refresh=True)
-        except Exception as e:      # noqa: BLE001 — sezon başlamamış ya da API hatası: dosyaya dokunma
-            print(f"[update] maç logları alınamadı ({type(e).__name__}: {e}); değişiklik yok")
-            return 0
-    if cur is None or len(cur) == 0 or int((cur["MIN"] > 0).sum()) == 0:
-        print("[update] henüz oynanmış maç yok; değişiklik yok")
-        return 0
-
-    base = pd.read_parquet(PRE)
-    new = refresh_projections(cur, base)
-    new.to_parquet(PUBLISHED, index=False)
-    n_upd = int((new["INSEASON_GP"] > 0).sum())
-    print(f"[update] {SEASON}: {new['INSEASON_AS_OF'].iloc[0]} tarihine kadar, {n_upd} oyuncu güncellendi ({len(new)} toplam)")
-
-    if args.push:
-        msg = f"Fantasy: sezon ici projeksiyon guncellemesi ({new['INSEASON_AS_OF'].iloc[0]})"
-        pushed = publish([PUBLISHED], msg)
+    fetcher = None
+    if args.no_fetch:
+        fetcher = lambda s: pd.read_parquet(DATA_DIR / f"{s}__player_gamelogs.parquet")   # noqa: E731
+    res = run_update(fetcher=fetcher)
+    print(f"[update] {res}")
+    if res["status"] == "no_base":
+        return 1
+    if res["status"] == "updated" and args.push:
+        pushed = publish([PUBLISHED], f"Fantasy: sezon ici projeksiyon guncellemesi ({res['as_of']})")
         print("[update] main'e gönderildi" if pushed else "[update] yayında değişiklik yok")
     return 0
 
