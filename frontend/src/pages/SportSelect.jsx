@@ -17,7 +17,7 @@ const SPORTS = [
     icon: "nba",
     title: "Basketball",
     leagues: "NBA · G League · NCAA · EuroLeague",
-    desc: "12 core archetypes and 22 modifiers across four leagues, every season back to 1983 — plus the Lineup Builder game.",
+    desc: "See what each player really is, not just where they line up. Archetypes for every NBA season since 1983, plus G League, NCAA and EuroLeague prospects.",
     path: "/basketball",
     accent: "#FFB11B",
   },
@@ -26,7 +26,7 @@ const SPORTS = [
     icon: "football",
     title: "Football",
     leagues: "Premier League · La Liga · Serie A · Bundesliga · Ligue 1",
-    desc: "Player cards for Europe's big five, built on a separate archetype dictionary with its own roles for every phase of the game.",
+    desc: "Find the role behind the stats. Archetype cards for every player in Europe's big five leagues, with roles written for football, not borrowed from basketball.",
     path: "/football",
     accent: "#3FB08C",
   },
@@ -43,7 +43,7 @@ export default function SportSelect() {
       {/* title verilmiyor — SEO bileşeni varsayılan marka başlığını kuruyor;
           vermek "Primary Arch | Primary Arch" gibi çift başlık üretiyordu. */}
       <SEO
-        description="Identify every player's true role — archetype scouting for basketball and football."
+        description="Identify every player's true role. Archetype scouting for basketball and football, plus RankIt for rating the matches you watch."
         path="/"
       />
       <span className="ss-glow gold" />
@@ -51,7 +51,7 @@ export default function SportSelect() {
 
       <header className="ss-hero">
         <h1>Primary Arch</h1>
-        <p>Scout a sport, or rate the matches you watch</p>
+        <p>Stats show what a player did. Archetypes show what they are.</p>
       </header>
 
       <div className="ss-sports">
@@ -75,7 +75,7 @@ export default function SportSelect() {
         <RankItMark size={34} />
         <div className="ss-rankit-text">
           <span className="name">RankIt <b>New</b></span>
-          <span className="desc">Rate the matches you watch, keep a record of them, and follow the people whose taste you recognise.</span>
+          <span className="desc">Rate every match you watch, keep your own diary, and follow the people whose taste you trust.</span>
         </div>
         <span className="ss-rankit-go">Open →</span>
       </div>
