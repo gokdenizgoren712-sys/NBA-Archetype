@@ -26,7 +26,7 @@ const SPORTS = [
     icon: "football",
     title: "Football",
     leagues: "Premier League · La Liga · Serie A · Bundesliga · Ligue 1",
-    desc: "Find the role behind the stats. Archetype cards for every player in Europe's big five leagues, with roles written for football, not borrowed from basketball.",
+    desc: "Find the role behind the stats. Archetype cards for every player in Europe's big five leagues, with roles built around how football is actually played.",
     path: "/football",
     accent: "#3FB08C",
   },
