@@ -93,7 +93,14 @@ Kurulum, dönem, draft (saha önce, havuz alt sayfa, puanlar gizli), pozisyon se
 
 ## 4. Doğrulanması gereken boşluklar (kod yazmadan önce)
 
-1. **Futbol With a Friend / Online odası — mevcut bir hata var.** `pages/football/FootballVersus.jsx` `RoomPanel`, ikinci oyuncu gelince `RoomDraft`'a geçiyor, ama koşul `bothIn = Boolean(room.p2_name || room.p2_ready)`. `api/main.py` `join_h2h_room` yalnız `p2_user_id` yazıyor, **`p2_name` yazmıyor**, `p2_ready` de ancak kadro gönderilince doğru oluyor. Sonuç: iki hesapla oda kurulup katılınca iki taraf da "Open seat / Waiting to join" lobisinde takılıyor (2026-10-02'de iki gerçek oturumla yeniden üretildi). `RoomDraft` ve `api/football_ws.py` var, yani akış büyük ölçüde yazılmış; bağlayan koşul/alan eksik. 5b–5f, 5s, 5t, 5u kareleri bu akışın doğru çalışmasını ister. Tasarım fazından önce ayrı küçük düzeltme olarak ele alınır (ör. `join`'de `p2_name` yazmak veya `bothIn`'i `status === "building"` ile türetmek) — kullanıcı onayıyla.
+1. **Futbol With a Friend / Online odası — mevcut bir hata var.** `pages/football/FootballVersus.jsx` `RoomPanel`, ikinci oyuncu gelince `RoomDraft`'a geçiyor, ama koşul `bothIn = Boolean(room.p2_name || room.p2_ready)`. `api/main.py` `join_h2h_room` yalnız `p2_user_id` yazıyor, **`p2_name` yazmıyor**, `p2_ready` de ancak kadro gönderilince doğru oluyor. Sonuç: iki hesapla oda kurulup katılınca iki taraf da "Open seat / Waiting to join" lobisinde takılıyor (2026-10-02'de iki gerçek oturumla yeniden üretildi). `RoomDraft` ve `api/football_ws.py` var, yani akış büyük ölçüde yazılmış; bağlayan koşul/alan eksik. 5b–5f, 5s, 5t, 5u kareleri bu akışın doğru çalışmasını ister. **Karar: bu işte düzeltilmez.**
+
+   Ek bulgular (futbol çok oyunculu, 2026-10-04 kod incelemesi):
+   - `p2_name` veritabanında tanımlı ama hiçbir yerde yazılmıyor (`api/main.py` create yalnız `p1_name`'i, `body.name`'den yazar; join ve `football_ws._make_room` yazmaz). `bothIn` bu yüzden yalnız `p2_ready` ile açılabilir, o da ancak kadro gönderilince — ki kadro gönderme `RoomDraft` içinde olur. Yani `RoomDraft`'a **arayüzden hiç ulaşılamıyor**.
+   - Futbol **Online** modunun arayüzünde eşleştirme (matchmaking) yok: `api/football_ws.py` içinde `/ws/football/matchmaking` ve kuyruk kodu hazır, ama `api.js`'te bunu çağıran bir şey ve ona bağlı bir ekran yok. `/football/game/online` aslında With a Friend ile aynı REST `RoomPanel`'i gösteriyor, yalnız `mode: "online"` etiketiyle; "açık oda bul" yok, rakibin kodunu bilmen gerekiyor. Mockup'taki Online Live (5k–5n: arama, maç bulundu, geri sayım) ve Board (5w–5x) futbolda **hiç yok**.
+   - Host, oda kodunu paylaşıp beklerken lobi ekranında 4 sn'lik REST yoklaması yapıyor; yoklama yanıtında da `p2_name` boş döndüğü için host ikinci oyuncuyu hiç görmüyor.
+   - Misafir "Leave room" der ve `room` state'ini sıfırlarsa sunucu satırı `building` kalır; tekrar katılması (`join`: "zaten içeride" dalı) çalışır ama host için oda ölü kalır. Süpürme (`sweep_stale_football_rooms`) yalnız bayat satırları `abandoned` yapar.
+   - WS tarafı sağlam görünüyor (sunucu otoriter, durum DB'ye yazılıyor, `_reject` ile temiz hata kodları: `room_not_found`, `waiting`, `invalid_token`, `banned`); sorun bağlantıyı kuran istemci koşulunda.
 2. **Counter 15 sn otomatik pas** (5t/6s): `CounterJokerPrompt` ve `api/game_ws.py` içinde sayaç/otomatik pas var mı bakılacak.
 3. **`src/arcade/`** (uygulama içi oyun yüzeyi, `arc-*` sınıfları, `DraftScreens/SeasonScreens` — THREEPEAT, Rewrite History, rotasyon): mockup ile büyük örtüşme olabilir; bileşenleri yeniden yazmadan önce **yeniden kullanım** değerlendirilecek (`docs/GAMES_IN_APP_PLAN.md`).
 4. **Sıralama chip'leri**: basketbolda `sortKey` var (varsayılan PTS); mockup "Default, Minutes, PTS/REB/AST/3P% (futbol: Goals/Assists/Prog.)" ister. Futbolda yok → yeni.
@@ -133,9 +140,9 @@ Duyarlı çapalar: 1440 ve 390; aradaki kırılımlar brief'teki gibi.
 - Yakalama araçları ve geçici dosyalar scratchpad'de kalır; repoya girmez. Başsız Edge profil klasörleri iş bitince silinir (diski dolduran sorun 2026-10'da yaşandı).
 - Faz başı karar noktaları: bölüm 4'teki boşluklar ve metin farkları kullanıcıya sorulur.
 
-## 7. İlk sorular (Faz 0'a başlamadan)
+## 7. Kararlar (2026-10-04, kullanıcı)
 
-1. Futbol With a Friend/Online'daki "ikinci oyuncu katılınca lobide takılma" hatası (bölüm 4.1) tasarım işinden **önce ayrı küçük düzeltme** olarak yapılsın mı?
-2. `src/arcade/` yüzeyi yeni tasarımın hedefi mi, yoksa yalnız `/basketball/game` ve `/football/game` sayfaları mı?
-3. Mevcut `game.css` kuralları ekran taşındıkça silinsin mi (önerilen), yoksa geçiş boyunca iki stil bir arada mı tutulsun?
-4. Faz sırası brief'teki gibi (tek oyunculu → çok oyunculu → online) uygun mu?
+1. Futbol oda hatası (bölüm 4.1) **bu işte düzeltilmez**; yalnız belgelenir. Tasarım, hatanın düzelmiş olduğu varsayımıyla yapılır; ilgili kareler (5b–5f, 5s–5u) kod tarafında çalışır hâle gelene kadar yalnız görsel olarak doğrulanır.
+2. `src/arcade/` yüzeyi **kapsama dahil** (yeni tasarımın hedefi).
+3. Eski `game.css` kuralları ekran taşındıkça **silinir** (çift dil yok).
+4. Faz sırası brief'tekiyle aynı: tek oyunculu → Same Screen/Friend → odalar → Online → cila.
