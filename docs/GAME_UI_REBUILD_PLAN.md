@@ -174,3 +174,7 @@ Bitti: basketbol draft ekranı (`game/ui/BasketballDraft.jsx`, `DraftScreen`, `P
 4. Mobilde yedek slotu için havuz sayfasında "Or send to the bench" B1–B4 butonları.
 
 Kalan: futbol draft (11b, Draft Flow futbol, mobil 13b/13c), Same Screen/Friend draft'ı Faz 4'te.
+
+**Faz 2 (futbol) — bitti (2026-10-05):** `game/ui/FootballDraft.jsx`; masaüstünde yatay saha, mobilde (≤700px) dikey saha. Havuz satırlarında per-90 / clean-sheet satırı, seçilen oyuncu kartı (11b) ve slot maliyetleri (natural / −5 / −11 / −20).
+Sapmalar: sıralama chip'lerinde **"Prog." yok** (oyun roster uç noktası ilerleme verisi döndürmüyor; yalnız Default/Minutes/Goals/Assists). Futbolda ödül rozeti ve mevki filtresi yok (veri/özellik yok). Arketip rozet rengi eski faz renginden (GK/DEF/MID/FWD) geliyor.
+Kalan (Faz 3): menajer seçimi, sonuç, sezon; eski `FootballGame` draft JSX'inin silinmesi.

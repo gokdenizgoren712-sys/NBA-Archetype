@@ -230,10 +230,10 @@
   .sb-progress .bar { flex: 1; }
 
   .sb-draw { display: grid; grid-template-columns: 1fr 104px; gap: 8px; }
-  .sb-draw-strip { padding: 8px 12px; gap: 10px; display: grid; grid-template-columns: 96px 1fr; }
+  .sb-draw-strip { padding: 8px 12px; gap: 10px; display: grid; grid-template-columns: auto minmax(0, 1fr); }
   .sb-draw-season { width: auto; } .sb-draw-div { display: none; }
   .sb-draw-col .lbl { margin-bottom: 0; }
-  .sb-draw-season .val { font-size: 28px; }
+  .sb-draw-season .val { font-size: 26px; }
   .sb-draw-team .val { font-size: 21px; height: 46px; }
   .sb-spin { width: auto; min-height: 56px; font-size: 22px; letter-spacing: .1em; }
   .sb-spin small { display: none; }
@@ -259,4 +259,23 @@
   .sb-reels { gap: 10px; flex-direction: column; }
   .sb-reel.a { width: 200px; } .sb-reel.b { width: 300px; }
   .sb-reel.b .it { font-size: 28px; }
+}
+
+/* Futbol tahtası: şeritli çim, 44px slotlar */
+.sb-bpanel.pitch .sb-bboard {
+  background: repeating-linear-gradient(90deg, rgba(var(--sb-accent-rgb), .10) 0 12.5%, rgba(var(--sb-accent-rgb), .04) 12.5% 25%);
+}
+.sb-bpanel.pitch.vertical .sb-bboard {
+  background: repeating-linear-gradient(180deg, rgba(var(--sb-accent-rgb), .10) 0 12.5%, rgba(var(--sb-accent-rgb), .04) 12.5% 25%);
+}
+.sb-bpanel.pitch .sb-bboard path { stroke: rgba(255, 255, 255, .2); }
+.sb-bpanel.pitch .sb-bslot .dot { width: 44px; height: 44px; font-size: 14px; }
+.sb-bpanel.pitch .sb-bench-row { gap: 6px; }
+
+/* Seçilen oyuncu kartı (futbol 11b): havuzun yerine geçer */
+.sb-pickwrap { display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+.sb-pickwrap .sb-locked-note { flex: 1; }
+.sb-picked .cancel {
+  min-height: 44px; border: 1.5px solid rgba(255, 255, 255, .3); border-radius: 4px; background: transparent; color: var(--sb-text);
+  font: 700 17px var(--sb-font-display); letter-spacing: .1em; text-transform: uppercase; cursor: pointer;
 }

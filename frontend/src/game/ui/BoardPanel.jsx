@@ -1,9 +1,9 @@
 // Tahta (mockup 3c): kort/saha çizgileri, slotlar, yedekler.
 //   slots: [{ key, x, y, label, center, state, tap, cost, costTone }]  state: empty | filled | target
 //   bench: [{ key, label, state, tap }]
-export default function BoardPanel({ title, filled, total, lines, slots, bench, onSlot, movingKey, className = "" }) {
+export default function BoardPanel({ title, filled, total, lines, slots, bench, onSlot, movingKey, variant = "court", className = "" }) {
   return (
-    <section className={`sb-panel sb-bpanel ${className}`.trim()}>
+    <section className={`sb-panel sb-bpanel ${variant} ${className}`.trim()}>
       <div className="sb-bhead">
         <span className="sb-card-title">{title}</span>
         <span className="filled">{filled}/{total} filled</span>

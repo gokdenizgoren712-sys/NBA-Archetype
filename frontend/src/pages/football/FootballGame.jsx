@@ -5,6 +5,8 @@ import useMediaQuery from "../../hooks/useMediaQuery";
 import { useAuth } from "../../contexts/AuthContext";
 import Pitch from "../../game/football/Pitch";
 import ShapeStep from "../../game/ui/ShapeStep";
+import FootballDraft from "../../game/ui/FootballDraft";
+import ModeAbout from "../../game/football/ModeAbout";
 import { FORMATIONS, SHAPE_KEYS, allSlots, BENCH_COUNT } from "../../game/football/formations";
 import { posPenaltyFor, isPrimarySlot, canPlace, PENALTY_LABEL } from "../../game/football/positions";
 import { drawManagers, managerBonus } from "../../game/football/managers";
@@ -91,6 +93,10 @@ export default function FootballGame() {
   const [mgrOptions, setMgrOptions] = useState([]);
   const [saveName, setSaveName] = useState("");
   const [saveMsg, setSaveMsg]   = useState("");
+  const [spinSeq, setSpinSeq]   = useState(0);          // çark başlangıç sayacı: arayüz animasyonu buna bağlı
+  const [spinKind, setSpinKind] = useState("both");
+  const [rosterReady, setRosterReady] = useState(false);
+  const [rulesOpen, setRulesOpen] = useState(false);
 
   // Jokerler — basketbolla aynı set
   const [jokers, setJokers] = useState({
@@ -154,10 +160,10 @@ export default function FootballGame() {
         const avail = (r.players || []).filter(p =>
           !inSquad.has(p.PLAYER_ID) &&
           openSlots.some(s => canPlace(p, s)));
-        setRoster(avail);
+        setRoster(avail); setRosterReady(true);
         if (!avail.length) setMsg(`${team} ${season} has nobody you can still use — spin again.`);
       })
-      .catch(() => setMsg("Could not load that squad."));
+      .catch(() => { setRosterReady(true); setMsg("Could not load that squad."); });
   }, [squad, openSlots]);
 
   const doSpin = useCallback((lockSeason = null, lockTeam = null) => {
@@ -181,6 +187,8 @@ export default function FootballGame() {
     }
 
     spinningRef.current = true;
+    setSpinSeq((q) => q + 1); setRosterReady(false);
+    setSpinKind(lockSeason && !lockTeam ? "team" : lockTeam && !lockSeason ? "season" : "both");
     setSpinning(true); setMsg(""); setRoster([]); setChosen(null);
     setPhase("spin");
     const target = pool[Math.floor(Math.random() * pool.length)];
@@ -359,7 +367,7 @@ export default function FootballGame() {
   const cockpit = playing && wide;
   // Giriş blokları (anlatım, kalibrasyon uyarısı, çark havuzu) yalnızca
   // kurulum ekranına ait: çark ilk kez döndüğü an oyun başlamış demektir.
-  const setupScreen = !chosen && filledCount === 0;
+  const setupScreen = phase === "idle" && !chosen && filledCount === 0;
 
   const avgOverall = filledCount
     ? Math.round(slots.reduce((a, s) => a + (squad[s.id]?.overall_score || 0), 0)
@@ -390,6 +398,26 @@ export default function FootballGame() {
           poolCount={pairs.length}
           onStart={() => doSpin()} startDisabled={spinning || !pairs.length} spinning={spinning}
           leaderboard={<FootballLeaderboard />} />
+      </>
+    );
+  }
+
+  // Draft ekranı (mockup 11b / Draft Flow): çark → havuz → slot. Menajer ve sonuç eski düzende (Faz 3).
+  if (["idle", "spin", "picking"].includes(phase)) {
+    return (
+      <>
+        <SEO title="Football — Spin & Build"
+          description="Spin for a club and a season, draft eighteen, and see whether the XI fits."
+          path="/football/game" noindex />
+        <FootballDraft shape={shape} squad={squad} phase={phase} spinning={spinning} chosen={chosen}
+          roster={roster} rosterReady={rosterReady} pickingFor={pickingFor} jokers={jokers}
+          doubleLeft={doubleLeft} discover={discover} seasons={seasons} teams={teams}
+          spinSeq={spinSeq} spinKind={spinKind} msg={msg} moveSrc={moveSrc}
+          onSpin={() => doSpin()} jokerReTeam={jokerReTeam} jokerReYear={jokerReYear} jokerReBoth={jokerReBoth}
+          jokerDouble={jokerDouble} jokerDiscover={jokerDiscover}
+          choosePlayer={choosePlayer} cancelPick={() => { setPickingFor(null); setMsg(""); }}
+          onSlotClick={onSlotClick} onInfo={() => setRulesOpen(true)} />
+        {rulesOpen && <ModeAbout mode="spin" onClose={() => setRulesOpen(false)} />}
       </>
     );
   }

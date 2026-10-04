@@ -65,6 +65,12 @@ export function useDrawFlow({ spinSeq, spinKind, seasons, teamPool, targetSIdx, 
     if (t) setStripB((s) => { if (s[36] === t) return s; const n = s.slice(); n[36] = t; return n; });
   }, [teamPool, targetTIdx, stage]);
 
+  // Futbolda sezon hedefi de çark kaydıktan sonra netleşir (kulüp-sezon çifti sona doğru seçilir).
+  useEffect(() => {
+    if (stage !== "spin" || kindRef.current === "team" || !chosenSeason) return;
+    setStripA((s) => { if (s[36] === chosenSeason) return s; const n = s.slice(); n[36] = chosenSeason; return n; });
+  }, [chosenSeason, stage]);
+
   const tryLock = () => {
     const L = live.current;
     if (stageRef.current !== "spin" || !minElapsed.current || !L.ready) return;
