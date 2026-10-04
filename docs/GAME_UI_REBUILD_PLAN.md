@@ -49,15 +49,15 @@ Durum: **S** = var, yalnız yeniden stillenir · **Y** = yeni bileşen/akış ·
 ### Tek oyunculu (basketbol 3x · futbol 4x/11x · mobil 12x/13x)
 | Kare | Ekran | Mevcut kod | Durum |
 |---|---|---|---|
-| 3a / 4a | Başlangıç hub'ı: mod, 4 adım izleyici, kadro önizleme, liderlik | `LineupGame` idle, `FootballGame` idle, `LeaderboardPanel` | S |
-| 3b | Adım 1: dönem seç | `LineupGame` era adımı | S |
-| 4b / 11a | Adım 1: diziliş + lig butonları (giriş ekranında, ayrı adım değil) | `FootballGame` setup | S |
+| 3a | Basketbol hub'ı: kural seti, 4 adım izleyici, kadro önizleme, liderlik (futbolda hub yok, 11a'dan başlar) | `LineupGame` idle → `SetupHub` | **Faz 1 bitti** |
+| 3b | Adım 1: dönem seç | `LineupGame` → `EraStep` | **Faz 1 bitti** |
+| 11a | Futbol girişi: diziliş + lig + liderlik **tek ekranda** (4b'deki ayrı adım kullanılmaz; brief ve `Football.dc.html` 11x'i içe alır) | `FootballGame` setup → `ShapeStep` | **Faz 1 bitti** |
 | 3c / 4c | Draft: sezon+takım, jokerler, cap, oyuncu tablosu, saha | `LineupGame`, `FootballGame`, `CourtBoard`, `Pitch`, `PlayerRow`, `JokerBtn`, `InlineSpin` | S + **Y** (sıralama chip'leri futbolda, animasyon) |
 | 11b | Slot seç: her slot/yedekte pozisyon maliyeti | `Pitch`, `FootballGame` placing | S |
 | 3d / 4d | Koç / menajer | `CoachPicker`, FootballGame manager | S |
 | 3e / 4e / 11c | Sonuç: Lineup Fit, Five Pillars, rotasyon, simüle et / squad fit | `ScoreReveal`(LineupGame), `SquadResult`, `DraftAnalysis`, `SquadAnalysis` | S |
 | 3f / 4f / 11d | Sezon sonucu + playoff / maç akışı, rol kapsamı | `SeasonSimPanel`, `PlayoffBracketView`, `football/SeasonPanel` | S |
-| 3g / 4g | Mod seçimi | `GameModeSelect`, `FootballModeSelect` | S |
+| 3g / 4g | Mod seçimi | `GameModeSelect`, `FootballModeSelect` → `ModeSelect` | **Faz 1 bitti** |
 | 3h / 4h | Spin anı, kilitli | `InlineSpin` | **Y** (Draft Flow zaman çizelgesi) |
 | 3i / 4i | Çok oyunculu lobi | `RoomLobby` | S |
 | 3j / 4j | Versus sonucu | WithAFriend/SameScreen sonuç, `FootballVersus` TieResult | S |
@@ -146,3 +146,19 @@ Duyarlı çapalar: 1440 ve 390; aradaki kırılımlar brief'teki gibi.
 2. `src/arcade/` yüzeyi **kapsama dahil** (yeni tasarımın hedefi).
 3. Eski `game.css` kuralları ekran taşındıkça **silinir** (çift dil yok).
 4. Faz sırası brief'tekiyle aynı: tek oyunculu → Same Screen/Friend → odalar → Online → cila.
+
+---
+
+## 8. Faz 1 sonrası: bilinen sapmalar ve kararlar (2026-10-04)
+
+Uygulandı: mod seçimi (3g/4g), basketbol hub (3a), dönem adımı (3b), futbol girişi (11a); mobil 12a/12b/13a. Eski `ModeGrid`, `ProcessSteps` ve ölü `game.css` kuralları silindi.
+
+**Mockup'tan bilinçli sapmalar (kullanıcı kararı bekliyor):**
+1. **Futbolda "Budget 100% cap" kural seti yok.** `4a` hub'ındaki Classic/Budget anahtarı 11a'da ve futbol kodunda yok (futbolun kural seti tek). Uygulanmadı.
+2. **Futbolda hub ekranı yok.** 4a/4b yerine brief'in dediği gibi 11a (tek giriş ekranı) kullanıldı.
+3. **Dönem bilgi pop-up'ı kaldırıldı.** Eski dönem kartındaki ⓘ düğmesi (arketip ağırlık tablosu) mockup'ta yok. Aynı bilgi Glossary'de duruyor.
+4. **Adım açıklamaları (eski `ProcessSteps` pop-up'ı) kaldırıldı.** Uzun adım metinleri mod kartındaki Rules pop-up'ında zaten var.
+5. **Futbol liderlik tablosunda diziliş filtresi korundu** (mockup'ta tablo üstünde çiplerle gösteriliyor; 11a'da da var) — eksik değil, not.
+6. **Futbol Online'da kural pop-up'ı / eşleştirme** hâlâ yok (bölüm 4.1), Faz 6'da ele alınır.
+
+**Teknik not:** `GET /api/football/game/teams` yerelde ~12 sn sürüyor (974 çift hesaplanıyor); havuz sayısı ve lig filtresi bu süreden sonra güncelleniyor. Bu değişiklikten bağımsız, mevcut davranış.
