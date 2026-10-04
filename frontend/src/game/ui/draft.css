@@ -95,7 +95,7 @@
 .sb-rows { flex: 1; min-height: 0; overflow-y: auto; }
 .sb-row {
   width: 100%; min-height: 64px; box-sizing: border-box; padding: 8px 14px; border: 0; border-bottom: 1px solid rgba(255, 255, 255, .06);
-  display: grid; grid-template-columns: 40px 1fr auto; gap: 10px; align-items: center; text-align: left;
+  display: grid; grid-template-columns: 40px 1fr auto auto; gap: 10px; align-items: center; text-align: left;
   background: transparent; color: inherit; font: inherit; cursor: pointer;
   opacity: 1; transform: none;
   transition: opacity .35s, transform .35s, background .25s;
@@ -109,6 +109,11 @@
 .sb-row .sub { display: flex; gap: 8px; align-items: center; margin-top: 3px; min-width: 0; }
 .sb-row .arch { font: 600 12px var(--sb-font-body); padding: 1px 8px; border-radius: 99px; white-space: nowrap; }
 .sb-row .st { font: 12px var(--sb-font-mono); color: var(--sb-text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sb-row .tags { display: flex; gap: 4px; justify-content: flex-end; min-width: 0; }
+.sb-row .tag {
+  min-width: 22px; height: 22px; box-sizing: border-box; padding: 0 5px; display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid; border-radius: 4px; font: 600 11px var(--sb-font-mono);
+}
 .sb-row .rt { text-align: right; min-width: 52px; }
 .sb-row .rt b {
   display: block; font: 700 22px var(--sb-font-display); color: var(--sb-faint);
@@ -215,7 +220,7 @@
 
 /* ── Mobil (≤ 700px): 12c / 12e ──────────────────────────────────────── */
 @media (max-width: 700px) {
-  .sb-draft { padding: 14px 14px 0; gap: 10px; overflow: hidden; }
+  .sb-draft { padding: 14px 14px 0; gap: 10px; overflow-y: auto; }
   .sb-dhead h1, .sb-dhead .sb-info-btn { display: none; }
   .sb-dhead { gap: 10px; }
   .sb-tagchip { font-size: 12px; padding: 6px 10px; }
@@ -240,10 +245,10 @@
   .sb-joker .st { display: none; }
 
   .sb-dbody { display: flex; flex-direction: column; gap: 0; flex: 1; min-height: 0; margin: 0 -14px; }
-  .sb-bpanel { flex: 1; min-height: 220px; padding: 0 14px; border: 0; background: none; }
+  .sb-bpanel { order: 1; flex: 1; min-height: 220px; padding: 0 14px; border: 0; background: none; }
   .sb-bhead, .sb-bench-row { display: none; }
   .sb-pool {
-    flex: 0 0 auto; height: 44%; min-height: 260px; border-radius: var(--sb-r-sheet) var(--sb-r-sheet) 0 0;
+    order: 2; flex: 0 0 auto; height: 44%; min-height: 260px; border-radius: var(--sb-r-sheet) var(--sb-r-sheet) 0 0;
     border-width: 1px 0 0; border-color: var(--sb-accent);
   }
   .sb-bslot { width: 72px; margin: -24px 0 0 -36px; }

@@ -162,3 +162,15 @@ Uygulandı: mod seçimi (3g/4g), basketbol hub (3a), dönem adımı (3b), futbol
 6. **Futbol Online'da kural pop-up'ı / eşleştirme** hâlâ yok (bölüm 4.1), Faz 6'da ele alınır.
 
 **Teknik not:** `GET /api/football/game/teams` yerelde ~12 sn sürüyor (974 çift hesaplanıyor); havuz sayısı ve lig filtresi bu süreden sonra güncelleniyor. Bu değişiklikten bağımsız, mevcut davranış.
+
+## 9. Faz 2 (basketbol) durumu (2026-10-05)
+
+Bitti: basketbol draft ekranı (`game/ui/BasketballDraft.jsx`, `DraftScreen`, `PoolPanel`, `BoardPanel`, `useDrawFlow`, `useFly`), motorda `autoSpin:false`/`await_spin`/`spinSeq`. Mobil 12c/12e düzeni (tahta üstte, havuz alt sayfada).
+
+**Kullanıcı kararları (mockup'ta olmayan ama korunan özellikler):**
+1. Ödül rozetleri (MVP, yüzük, 6M, V, DD…) **havuz satırında yeni bir sütun** olarak eklendi (mockup diline göre 11px mono rozet, tooltip'te açıklama).
+2. G/F/C mevki filtresi **yeni bir "POS" chip satırı** olarak eklendi (SORT satırının altında).
+3. Arketip renkleri sitenin kanonik paletinden (`constants/archetypeColors.js`).
+4. Mobilde yedek slotu için havuz sayfasında "Or send to the bench" B1–B4 butonları.
+
+Kalan: futbol draft (11b, Draft Flow futbol, mobil 13b/13c), Same Screen/Friend draft'ı Faz 4'te.

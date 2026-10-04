@@ -3,7 +3,7 @@
 //   Sıralama chip'leri GERÇEKTEN sıralar: seçili chip tekrar basılınca Default'a döner.
 export default function PoolPanel({
   title = "Pick one player", count, sortChips, sortKey, onSort, rows, selectedId, onPick,
-  reveal, rowsIn = true, stagger = false, blocked = false, empty, note,
+  reveal, rowsIn = true, stagger = false, blocked = false, empty, note, filters, filterKey, onFilter,
 }) {
   return (
     <section className="sb-panel sb-pool">
@@ -20,6 +20,15 @@ export default function PoolPanel({
           </button>
         ))}
       </div>
+      {filters && (
+        <div className="sb-sort" role="group" aria-label="Filter by position">
+          <span className="lbl">POS</span>
+          {filters.map((f) => (
+            <button key={f.key} type="button" aria-pressed={filterKey === f.key}
+              onClick={() => onFilter(filterKey === f.key ? "all" : f.key)}>{f.label}</button>
+          ))}
+        </div>
+      )}
       {note && <div className="sb-pool-note">{note}</div>}
       <div className="sb-rows" aria-live="polite">
         {rows.length === 0 && <div className="sb-pool-empty">{empty}</div>}
@@ -37,6 +46,12 @@ export default function PoolPanel({
                   <span className="arch" style={{ background: `${r.archColor}29`, color: r.archColor }}>{r.arch}</span>
                   <span className="st">{r.stats}</span>
                 </span>
+              </span>
+              <span className="tags">
+                {(r.tags || []).map((t) => (
+                  <span key={t.key} className="tag" title={`${t.label} — ${t.detail}`}
+                    style={{ color: t.color, background: `${t.color}22`, borderColor: `${t.color}66` }}>{t.abbr}</span>
+                ))}
               </span>
               <span className="rt">
                 <b className={reveal ? "shown" : ""} style={{ transitionDelay: reveal ? `${i * 90}ms` : "0ms" }}>{reveal ? r.right : "??"}</b>

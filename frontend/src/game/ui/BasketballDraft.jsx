@@ -6,7 +6,8 @@ import { useDrawFlow } from "./useDrawFlow";
 import { useFly } from "./useFly";
 import { COURT_LINES, COURT_SLOTS } from "./boardGeometry";
 import { ARCHETYPE_COLOR } from "../../constants/archetypeColors";
-import { POSITIONS, BENCH_SLOTS, ALL_SLOTS, getPrimaryPos, posPenaltyFor } from "../positions";
+import { POSITIONS, BENCH_SLOTS, ALL_SLOTS, getPrimaryPos, posPenaltyFor, posGroupOf } from "../positions";
+import { getPlayerTags } from "../awards";
 import { priceOf } from "../salary";
 import { teamName } from "./teamNames";
 
@@ -16,6 +17,7 @@ const SORTS = [
   { key: "default", label: "Default" }, { key: "MIN", label: "Minutes" }, { key: "PTS", label: "PTS" },
   { key: "REB", label: "REB" }, { key: "AST", label: "AST" }, { key: "FG3_PCT", label: "3P%" },
 ];
+const FILTERS = [{ key: "G", label: "G" }, { key: "F", label: "F" }, { key: "C", label: "C" }];
 const num = (v) => (v == null || isNaN(+v) ? null : +v);
 const fmt = (v, d = 1) => (num(v) == null ? "—" : (+v).toFixed(d));
 const lastName = (n) => (n || "").split(" ").slice(-1)[0];
@@ -26,6 +28,7 @@ const penTone = (pen) => (pen >= 1 ? "good" : pen >= 0.9 ? "warn" : "bad");
 export default function BasketballDraft({ draft, onInfo }) {
   const d = draft;
   const [sortKey, setSortKey] = useState("default");
+  const [posFilter, setPosFilter] = useState("all");
   const [lastJoker, setLastJoker] = useState(null);
   const { fly, token, flying } = useFly();
   const shown = useRef({ season: "—", team: "—" });
@@ -42,7 +45,7 @@ export default function BasketballDraft({ draft, onInfo }) {
   if (flow.poolShown && d.chosenSeason) shown.current = { season: d.chosenSeason, team: teamName(d.chosenTeam) };
   const draw = flow.poolShown && d.chosenSeason ? { season: d.chosenSeason, team: teamName(d.chosenTeam) } : shown.current;
 
-  useEffect(() => { setSortKey("default"); }, [d.spinSeq]);
+  useEffect(() => { setSortKey("default"); setPosFilter("all"); }, [d.spinSeq]);
   useEffect(() => {
     const onKey = (e) => { if (e.key === "Escape" && placing) d.cancelPick(); };
     window.addEventListener("keydown", onKey);
@@ -51,7 +54,7 @@ export default function BasketballDraft({ draft, onInfo }) {
 
   // ── Havuz ──────────────────────────────────────────────────────────────
   const rows = useMemo(() => {
-    const list = [...d.players];
+    const list = d.players.filter((p) => posFilter === "all" || posGroupOf(p) === posFilter);
     if (sortKey !== "default") list.sort((a, b) => (num(b[sortKey]) ?? -1) - (num(a[sortKey]) ?? -1));
     return list.map((p) => {
       const price = salary ? priceOf(p) : null;
@@ -59,13 +62,13 @@ export default function BasketballDraft({ draft, onInfo }) {
       const ovr = p.overall_score != null ? Math.round(p.overall_score * 100) : "—";
       return {
         id: p.PLAYER_NAME, player: p, pos: getPrimaryPos(p), name: p.PLAYER_NAME,
-        arch: p.primary_arch || "—", archColor: archColor(p.primary_arch),
+        tags: getPlayerTags(p), arch: p.primary_arch || "—", archColor: archColor(p.primary_arch),
         stats: `${fmt(p.PTS)} PTS · ${fmt(p.REB)} REB · ${fmt(p.AST)} AST`,
         right: ovr, sub: salary ? `${price}% cap` : num(p.MIN) != null ? `${Math.round(p.MIN)} mpg` : "",
         disabled: insufficient || (salary && d.spendCap != null && price > d.spendCap),
       };
     });
-  }, [d.players, sortKey, salary, d.spendCap]);
+  }, [d.players, sortKey, posFilter, salary, d.spendCap]);
 
   const onPick = (row) => {
     if (placing && d.pickedPlayer?.PLAYER_NAME === row.id) { d.cancelPick(); return; }
@@ -146,6 +149,7 @@ export default function BasketballDraft({ draft, onInfo }) {
         pool={
           <PoolPanel title={placing ? "Pick a slot" : "Pick one player"} count={rows.length}
             sortChips={SORTS} sortKey={sortKey} onSort={setSortKey} rows={rows}
+            filters={FILTERS} filterKey={posFilter} onFilter={setPosFilter}
             selectedId={placing ? d.pickedPlayer.PLAYER_NAME : null} onPick={onPick}
             reveal={d.discoverActive} rowsIn={flow.poolIn && rows.length > 0} stagger={flow.stagger}
             blocked={!flow.poolShown || flying} empty={empty} note={benchPick} />
