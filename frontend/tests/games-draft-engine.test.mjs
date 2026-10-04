@@ -345,3 +345,68 @@ test("aynı oyuncu iki kez alınamaz: yerleştirmeden sonraki 400 ms'de eski lis
   assert.equal(ctx.s().phase, "pick_player");
   assert.equal(ctx.s().pickedPlayer, null);
 });
+
+// ── Elle spin (web arayüzü, mockup 3c): yerleştirmeden sonra otomatik çevirme yok ──
+async function setupManual() {
+  const clock = fakeClock();
+  const api = fakeApi();
+  const draft = createLineupDraft({ fetchJson: api.fetchJson, setTimer: clock.setTimer, clearTimer: clock.clearTimer, random: seq(), autoSpin: false });
+  draft.actions.init();
+  await flush();
+  return { draft, clock, s: () => draft.getState(), d: () => deriveDraft(draft.getState()) };
+}
+
+test("autoSpin:false — yerleştirmeden sonra await_spin'de bekler, Spin'e basınca yeni tur", async () => {
+  const ctx = await setupManual();
+  ctx.draft.actions.chooseEra(ERAS[4]);
+  ctx.draft.actions.startFullSpin();
+  await ctx.clock.advance(SPIN_MS); await ctx.clock.advance(SPIN_MS);
+  assert.equal(ctx.s().phase, "pick_player");
+  ctx.draft.actions.pickPlayer(ctx.s().players[0]);
+  ctx.draft.actions.pickPos("PG");
+  await ctx.clock.advance(NEXT_SPIN_MS * 5);
+  assert.equal(ctx.s().phase, "await_spin", "otomatik çevirmedi");
+  assert.deepEqual(ctx.s().players, [], "eski liste temizlendi");
+  assert.equal(ctx.s().lineup.PG !== null, true);
+  assert.equal(ctx.d().canRearrange, true, "bekleme sırasında kadro düzenlenebilir");
+  ctx.draft.actions.startFullSpin();
+  assert.equal(ctx.s().phase, "spin_season");
+});
+
+test("spinSeq her çark başlangıcında artar; spinKind hangi çarkın döndüğünü söyler", async () => {
+  const ctx = await setupManual();
+  assert.equal(ctx.s().spinSeq, 0);
+  ctx.draft.actions.chooseEra(ERAS[4]);
+  ctx.draft.actions.startFullSpin();
+  assert.equal(ctx.s().spinSeq, 1);
+  assert.equal(ctx.s().spinKind, "both");
+  await ctx.clock.advance(SPIN_MS); await ctx.clock.advance(SPIN_MS);
+  ctx.draft.actions.jokerReTeam();
+  assert.equal(ctx.s().spinSeq, 2);
+  assert.equal(ctx.s().spinKind, "team");
+  await ctx.clock.advance(SPIN_MS * 2);
+  ctx.draft.actions.jokerReYear();
+  assert.equal(ctx.s().spinSeq, 3);
+  assert.equal(ctx.s().spinKind, "season");
+  await ctx.clock.advance(SPIN_MS * 3);
+  ctx.draft.actions.jokerReBoth();
+  assert.equal(ctx.s().spinSeq, 4);
+  assert.equal(ctx.s().spinKind, "both");
+});
+
+test("varsayılan (autoSpin:true) davranış değişmedi: yerleştirmeden sonra kendiliğinden çevirir", async () => {
+  const ctx = await setup();
+  ctx.draft.actions.chooseEra(ERAS[4]);
+  await round(ctx, "PG");
+  assert.equal(["spin_season", "spin_team", "fetching", "pick_player"].includes(ctx.s().phase), true);
+});
+
+test("autoSpin:false — dönem seçince çark kendiliğinden dönmez, await_spin'de Spin beklenir", async () => {
+  const ctx = await setupManual();
+  ctx.draft.actions.chooseEra(ERAS[4]);
+  assert.equal(ctx.s().phase, "await_spin");
+  assert.equal(ctx.s().spinSeq, 0);
+  ctx.draft.actions.startFullSpin();
+  assert.equal(ctx.s().phase, "spin_season");
+  assert.equal(ctx.s().spinSeq, 1);
+});
