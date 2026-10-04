@@ -5,7 +5,6 @@ import { SEO } from "../hooks/useSEO";
 import { ERAS, ERA_META_BLURB, ERA_PILLAR_WEIGHTS, ERA_HEX, getEra } from "../game/eras";
 import { computePlayerFit, computeAffinity } from "../game/lineupScore";
 import SeasonSimPanel from "../game/SeasonSimPanel";
-import { ERA_GUIDE } from "../data/glossary";
 import { getPlayerTags, TAG_INFO } from "../game/awards";
 import CourtBoard from "../game/CourtBoard";
 import { START_BUDGET, MIN_COST, costColor, totalSpent, maxSpendNow, priceOf } from "../game/salary";
@@ -13,7 +12,7 @@ import {
   StarIcon, CoachIcon, TrophyIcon, CapIcon, TargetIcon, WheelIcon,
   TagIcon, RefreshIcon, CalendarIcon, BoltIcon, UsersIcon,
   SearchIcon, EyeIcon, LinkIcon, CheckIcon,
-  DownloadIcon, XLogoIcon, DiceIcon, InfoIcon,
+  DownloadIcon, XLogoIcon, InfoIcon,
 } from "../game/GameIcons";
 import {
   POSITIONS, BENCH_SLOTS, ALL_SLOTS, ARCH_POSITIONS, POS_STRING_MAP,
@@ -24,7 +23,8 @@ import LineupSlot from "../game/LineupSlot";
 import PlayerRow, { posGroupOf } from "../game/PlayerRow";
 import InfoModal from "../game/InfoModal";
 import JokerBtn from "../game/JokerBtn";
-import ProcessSteps from "../game/ProcessSteps";
+import SetupHub from "../game/ui/SetupHub";
+import EraStep from "../game/ui/EraStep";
 import { PageGlow } from "../components/states/States";
 import CoachPicker from "../game/CoachPicker";
 import DraftAnalysis from "../game/DraftAnalysis";
@@ -541,26 +541,18 @@ function ShareCard({ pct, grade, fit, lineup, simEra, coach }) {
 }
 
 // ── Ana bileşen ───────────────────────────────────────────────────────────────
-// Draft süreci (handoff 3a: kutusuz satır). Uzun açıklama + örnek adıma
-// tıklayınca kural penceresinde açılıyor.
+// Hub adımları ve kural setleri (mockup 3a). Metin final; açıklamaların tamamı
+// mod kartındaki Rules pop-up'ında (ModeAboutModal) tek kaynaktan anlatılıyor.
 const DRAFT_STEPS = [
-              ["1",TargetIcon,"","Pick Era","Distance & style fit",
-                "Your whole run is simulated inside one era. Every player's power scales with how far their real prime sits from it — one era off costs about 3%, five eras about 22%. But an archetype the era loves travels one era closer, and one it has no use for travels one further. A season's top-2 players are TIMELESS and ignore distance entirely.",
-                <>Pick <b>Small Ball</b> and a 1995 Spacer plays nearly at full strength, because that era pays for shooting. The same era guts a back-to-the-basket Force.</>],
-              ["2",WheelIcon,"","Spin & Draft 9","5 starters + 4 bench",
-                "Each round two wheels land on a random season and a random team, and you draft one player off that exact roster. Overall ratings stay hidden — you see the archetype, the box score and the tags, and you judge from those. Five jokers let you bend the wheel when it betrays you.",
-                <>Wheel lands on <b>2015-16 GSW</b>. You can take Curry as your Spacer, or grab Draymond because your lineup has no Anchor yet.</>],
-              ["3",CoachIcon,"","Hire Coach","Offense & Defense grades",
-                "After the roster is full you choose from four coaches. Their Offense and Defense grades shift your team rating all season long, and championship rings add playoff DNA — the more rings, the bigger the boost once the postseason lights come on.",
-                <>An <b>A-grade defensive coach with 3 rings</b> lifts a mediocre defense into contention and adds a real edge in a Game 7.</>],
-              ["4",TrophyIcon,"","Simulate 82","Playoffs & awards glory",
-                "Your nine players and coach run a full 82-game regular season, then the playoffs. The sim produces standings, awards, All-Star nods, a champion — and your final Lineup Fit grade, which is what lands on the leaderboard.",
-                <>A balanced roster can win 58 games; stacking three ball-dominant Engines wins fewer despite better raw talent — <b>role redundancy</b> is a real penalty.</>],
-            ];
+  { n: "1", t: "Pick era",       d: "Distance & style fit" },
+  { n: "2", t: "Spin & draft 9", d: "5 starters + 4 bench" },
+  { n: "3", t: "Hire coach",     d: "Offense & defense grades" },
+  { n: "4", t: "Simulate 82",    d: "Playoffs & awards glory" },
+];
 
 const RULESETS = [
-  { key: "classic",   hex: "#60a5fa", label: "Classic",    hint: "Pure luck" },
-  { key: "salarycap", hex: "#FFB11B", label: "Salary Cap", hint: "100% cap" },
+  { key: "classic",   label: "Classic",    hint: "Pure luck" },
+  { key: "salarycap", label: "Salary Cap", hint: "100% cap" },
 ];
 
 export default function LineupGame() {
@@ -582,7 +574,6 @@ export default function LineupGame() {
   const [sortKey, setSortKey] = useState("PTS"); // pick listesi sıralaması
   // Info modals
   const [modal, setModal] = useState(null); // "chemistry" | "jokers" | "archetype" | "tags"
-  const [eraInfo, setEraInfo] = useState(null); // era bilgi pop-up'ı (ⓘ düğmesi)
 
   return (
     <div className="h-full overflow-y-auto">
@@ -592,49 +583,15 @@ export default function LineupGame() {
       path="/basketball/game/single"
     />
     {phase==="idle" ? (
-      <div className="g-idle">
-        <PageGlow tint="#FFB11B" />
-        <header className="g-idle-hero">
-          <div>
-            <h1 className="g-wordmark lg">Lineup Builder</h1>
-            <p>Draft 9 players · 5 starters, 4 bench · 1 coach</p>
-          </div>
-          <div className="g-idle-actions">
-            <div className="g-modebtn-row" role="radiogroup" aria-label="Rule set">
-              {RULESETS.map(r=>(
-                <button key={r.key} role="radio" aria-checked={mode===r.key}
-                  className={`g-modebtn${mode===r.key?" on":""}`} style={{"--c":r.hex}}
-                  onClick={()=>setMode(r.key)}>
-                  <span className="dot" />
-                  <span className="lbl"><b>{r.label}</b><i>{r.hint}</i></span>
-                </button>
-              ))}
-            </div>
-            <button onClick={beginEraPick} disabled={seasons.length===0}
-              className="aura-rating-btn g-idle-cta" style={{opacity:seasons.length===0?0.5:1}}>
-              {seasons.length===0?"Loading…":mode==="salarycap"?"Start cap draft":"Start draft"}
-            </button>
-          </div>
-        </header>
-
-        <ProcessSteps steps={DRAFT_STEPS} />
-        <div className="g-divider" />
-
-        <div className="g-idle-body">
-          <section className="g-idle-roster">
-            <div className="g-idle-roster-head">
-              <span className="t">Your roster</span>
-              <span className="s">0 of 9 drafted</span>
-            </div>
-            <div className="g-idle-court pointer-events-none">
-              <CourtBoard lineup={lineup} coach={null} moveSrc={null} canRearrange={false}
-                onSlotTap={()=>{}} getPrimaryPos={getPrimaryPos} placing={false}
-                placingEligible={[]} placingPenalties={{}} onPlace={()=>{}} bare fit/>
-            </div>
-          </section>
-          <LeaderboardPanel mode={mode} limit={25} fill />
-        </div>
-      </div>
+      <SetupHub sport="basketball" title="Lineup builder"
+        subtitle="Draft 9 players: 5 starters, 4 bench. Then hire a coach."
+        rules={RULESETS} ruleKey={mode} onRule={setMode}
+        startLabel={seasons.length===0?"Loading…":mode==="salarycap"?"Start cap draft":"Start draft"}
+        onStart={beginEraPick} startDisabled={seasons.length===0}
+        steps={DRAFT_STEPS} total={ALL_SLOTS.length}
+        leaderboard={<LeaderboardPanel mode={mode} limit={25} />} />
+    ) : phase==="pick_era" ? (
+      <EraStep eras={ERAS} blurbs={ERA_META_BLURB} onChoose={chooseEra} onRandom={randomEra} />
     ) : (
     <div className={phase==="complete" ? "p-4 sm:p-6 max-w-[1560px] mx-auto space-y-3 pb-6" : "g-draft"}>
       {phase!=="complete"&&<PageGlow tint={isSpinPhase ? "#FFB11B" : (ERA_HEX[simEra?.id] || "#FFB11B")} />}
@@ -793,89 +750,6 @@ export default function LineupGame() {
               </span>
             )}
           </div>
-        );
-      })()}
-
-      {/* === IDLE === */}
-      {/* === PICK SIM ERA === */}
-      {phase==="pick_era"&&(
-        // flex-1: panel sol sütunun kalanını doldurur → alt hattı kortla
-        // hizalanır ve kort iki fazda da aynı boyutta kalır.
-        <div className="g-panel p-5 flex flex-col gap-3 flex-1 min-h-0">
-          <span className="aura-blob" style={{ "--slot-color": "var(--accent)", left: "20%", top: -50, width: 260, height: 140, opacity: 0.16 }} />
-          <div className="shrink-0">
-            <div className="g-section-title mb-2">Step 1 — Pick Your Simulation Era</div>
-            <p className="text-xs leading-relaxed" style={{ color: "var(--text-muted)" }}>
-              Your whole run lives in this era. Every player's power scales with distance from
-              their home decade (one era off ≈ −3%, five eras ≈ −22%) — but an archetype the era
-              loves travels one era closer, one it dumps travels one further. TIMELESS greats
-              (a season's top 2) ignore distance entirely.
-            </p>
-          </div>
-          <div className="grid grid-cols-2 gap-2 flex-1 min-h-0" style={{gridAutoRows:"1fr"}}>
-            {ERAS.map(era=>{
-              const eHex = ERA_HEX[era.id] || "#9ca3af";
-              return (
-                <div key={era.id} className="g-tile"
-                  onClick={()=>chooseEra(era)}
-                  style={{"--accent":eHex,"--accent-a":eHex+"1a","--accent-line":eHex+"55"}}>
-                  <span className="aura-blob" style={{"--slot-color":eHex,right:-24,top:-24,width:120,height:88,opacity:0.26}} />
-                  {/* Bilgi düğmesi — seçim tıklamasını tetiklemez */}
-                  <button className="g-tile-info" title={`About the ${era.label}`}
-                    onClick={(e)=>{e.stopPropagation();setEraInfo(era);}}>
-                    <InfoIcon size={12} />
-                  </button>
-                  <div className="g-tile-title" style={{color:eHex,paddingRight:30}}>{era.label}</div>
-                  <div className="g-tile-sub">{era.years[0]}–{Math.min(era.years[1],2026)}</div>
-                  <div className="g-tile-desc" style={{fontSize:12,marginTop:6}}>{ERA_META_BLURB[era.id]}</div>
-                </div>
-              );
-            })}
-          </div>
-          <button
-            onClick={randomEra}
-            className="aura-pill-btn w-full justify-center shrink-0" style={{padding:"10px"}}>
-            <DiceIcon size={15} /> Random Era
-          </button>
-        </div>
-      )}
-
-      {/* Era bilgi pop-up'ı — Glossary'nin ERA_GUIDE'ından beslenir (tek kaynak) */}
-      {eraInfo&&(()=>{
-        const g = ERA_GUIDE.find(x=>x.short===eraInfo.short);
-        const eHex = ERA_HEX[eraInfo.id] || "#9ca3af";
-        return (
-          <InfoModal open onClose={()=>setEraInfo(null)} accent={eHex}
-            title={<span style={{color:eHex}}>{eraInfo.label}</span>}>
-            <div className="space-y-3">
-              <div className="g-mono" style={{color:"var(--text-faint)"}}>
-                {eraInfo.years[0]}–{Math.min(eraInfo.years[1],2026)}
-              </div>
-              {g?.meta&&<p className="text-[13px] italic" style={{color:eHex}}>{g.meta}</p>}
-              <p className="text-[13px] leading-relaxed" style={{color:"var(--text-muted)"}}>
-                {g?.desc||ERA_META_BLURB[eraInfo.id]}
-              </p>
-              {g&&(
-                <div className="pt-3" style={{borderTop:"1px solid rgba(255,255,255,.08)"}}>
-                  <div className="g-section-title mb-2">Archetype Weights</div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {g.top.map(t=>(
-                      <span key={t} className="text-[12px] px-2 py-0.5 rounded-full font-medium"
-                        style={{color:"#4ade80",border:"1px solid #4ade8040",background:"#4ade8015"}}>{t}</span>
-                    ))}
-                    {g.low?.map(t=>(
-                      <span key={t} className="text-[12px] px-2 py-0.5 rounded-full font-medium"
-                        style={{color:"#f87171",border:"1px solid #f8717140",background:"#f8717115"}}>{t}</span>
-                    ))}
-                  </div>
-                </div>
-              )}
-              <button onClick={()=>{setEraInfo(null);chooseEra(eraInfo);}}
-                className="aura-rating-btn w-full" style={{padding:"11px",fontSize:12.5,}}>
-                Play this era
-              </button>
-            </div>
-          </InfoModal>
         );
       })()}
 

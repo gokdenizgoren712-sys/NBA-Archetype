@@ -25,7 +25,7 @@ test("draft boyutları ve etiketler: 9 (5+4) / 18 (11+7), Team↔Club, Year↔Se
   assert.equal(f.starters + f.bench, f.draftSize);
   assert.deepEqual([b.teamWord, b.yearWord], ["Team", "Year"]);
   assert.deepEqual([f.teamWord, f.yearWord], ["Club", "Season"]);
-  assert.deepEqual([b.simGames, f.simGames], [82, 40]);
+  assert.deepEqual([b.simGames, f.simGames], [82, 38]);
 });
 
 test("bilinmeyen spor basketbola düşer; sarmalayıcı sınıfı doğru", () => {

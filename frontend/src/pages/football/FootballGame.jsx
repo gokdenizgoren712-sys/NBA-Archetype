@@ -4,6 +4,7 @@ import { SEO } from "../../hooks/useSEO";
 import useMediaQuery from "../../hooks/useMediaQuery";
 import { useAuth } from "../../contexts/AuthContext";
 import Pitch from "../../game/football/Pitch";
+import ShapeStep from "../../game/ui/ShapeStep";
 import { FORMATIONS, SHAPE_KEYS, allSlots, BENCH_COUNT } from "../../game/football/formations";
 import { posPenaltyFor, isPrimarySlot, canPlace, PENALTY_LABEL } from "../../game/football/positions";
 import { drawManagers, managerBonus } from "../../game/football/managers";
@@ -375,6 +376,24 @@ export default function FootballGame() {
     </button>
   );
 
+  // Kurulum ekranı (mockup 11a): diziliş + lig + liderlik; kendi sahnesini çizer.
+  if (setupScreen) {
+    return (
+      <>
+        <SEO title="Football — Spin & Build"
+          description="Spin for a club and a season, draft eighteen, and see whether the XI fits."
+          path="/football/game" noindex />
+        <ShapeStep shape={shape} onShape={(k) => { setShape(k); reset(); }}
+          leagues={[{ key: "", label: "All leagues" }, ...(meta?.leagues || []).map((l) => ({ key: l, label: LEAGUE_LABEL[l] || l }))]}
+          league={mode === "open" ? "" : league}
+          onLeague={(k) => { setMode(k ? "league" : "open"); setLeague(k); reset(); }}
+          poolCount={pairs.length}
+          onStart={() => doSpin()} startDisabled={spinning || !pairs.length} spinning={spinning}
+          leaderboard={<FootballLeaderboard />} />
+      </>
+    );
+  }
+
   return (
     <div className={`fb-play${cockpit ? " cockpit" : ""}`}>
       <SEO title="Football — Spin & Build"
@@ -387,49 +406,7 @@ export default function FootballGame() {
           listeler kendi panellerinin içinde kayar. Kadro bitince (complete)
           ekran bir rapora dönüşüyor, orada kaydırma serbest. */}
       <div className={`relative max-w-[1500px] w-full mx-auto p-4 ${cockpit ? "flex-1 min-h-0 flex flex-col gap-3" : "space-y-4"}`}>
-        {setupScreen ? (
-          // ── Handoff 18b: diziliş seçici + saha önizlemesi + çark havuzu | bu hafta
-          <div className="g-fb-idle">
-            <div className="g-fb-idle-main">
-              <div className="flex items-center gap-2">
-                <span className="g-wordmark">Spin &amp; Build</span>
-                <ModeInfoButton mode="spin" />
-              </div>
-              <h1 className="g-fb-idle-h1">Choose your shape</h1>
-              <p className="g-fb-idle-sub">Spin the wheels for a club and a season, pick one player, repeat until all eighteen are in.</p>
-              <div className="g-fb-shapes" role="radiogroup" aria-label="Formation">
-                {SHAPE_KEYS.map(k => (
-                  <button key={k} role="radio" aria-checked={shape === k}
-                    className={`g-fb-shape${shape === k ? " on" : ""}`}
-                    onClick={() => { setShape(k); reset(); }}>{k}</button>
-                ))}
-              </div>
-              <div className="g-fb-preview">
-                <Pitch shape={shape} squad={{}} onSlotClick={() => {}} fill />
-              </div>
-              <div className="g-fb-pool">
-                <span className="lbl">Wheel pool · {pairs.length} club-seasons</span>
-                <div className="chips">
-                  <button onClick={() => { setMode("open"); setLeague(""); reset(); }}
-                    className={`g-fb-chip${mode === "open" ? " on" : ""}`}><i />All leagues</button>
-                  {(meta?.leagues || []).map(l => (
-                    <button key={l} onClick={() => { setMode("league"); setLeague(l); reset(); }}
-                      className={`g-fb-chip${mode === "league" && league === l ? " on" : ""}`}><i />{LEAGUE_LABEL[l] || l}</button>
-                  ))}
-                </div>
-              </div>
-              <div className="g-fb-go">
-                <button className="aura-rating-btn g-idle-cta" onClick={() => doSpin()} disabled={spinning || !pairs.length}>
-                  Start draft · {shape}
-                </button>
-                <span>{slots.length} players · 5 jokers · ratings hidden while you draft</span>
-              </div>
-            </div>
-            <aside className="g-fb-idle-side">
-              <FootballLeaderboard />
-            </aside>
-          </div>
-        ) : phase === "complete" && fit ? (
+        {phase === "complete" && fit ? (
           <SquadResult fit={fit} shape={shape} manager={manager}
             starters={pitchSlots.map(s => squad[s.id]).filter(Boolean)}
             slotOf={(p) => {

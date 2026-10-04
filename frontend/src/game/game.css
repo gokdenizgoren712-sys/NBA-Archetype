@@ -620,50 +620,8 @@
    Numbering is meaningful here: the draft genuinely runs 1→4 in order. */
 /* Handoff 3a: adımlar kutusuz — numara adımın renginde parlıyor, arkasında
    küçük bir renk bulutu; çerçeve ve zemin yok. */
-.g-step {
-  position: relative;
-  display: flex; align-items: center; gap: 14px;
-  padding: 10px 4px; border-radius: 12px;
-}
-.g-step::before {
-  content: ""; position: absolute; left: -14px; top: 50%; width: 110px; height: 70px; margin-top: -35px;
-  background: var(--accent); opacity: 0.12; pointer-events: none;
-  border-radius: 72% 28% 55% 45% / 35% 65% 40% 60%; filter: blur(22px);
-}
-.g-step > * { position: relative; }
-.g-step-idx {
-  flex-shrink: 0; width: 34px; height: 34px; border-radius: 10px;
-  display: flex; align-items: center; justify-content: center;
-  font-family: var(--font-logo); font-size: 16px; font-weight: 700; color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
-  text-shadow: 0 0 12px color-mix(in srgb, var(--accent) 60%, transparent);
-  font-variant-numeric: tabular-nums;
-}
-.g-step.clickable { cursor: pointer; transition: background 0.25s ease; }
-.g-step.clickable:hover { background: rgba(255, 255, 255, 0.03); }
-.g-step-title { font-family: var(--font-logo); font-size: 16px; font-weight: 700; color: var(--text-primary); line-height: 1.2; }
-.g-step-sub { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
-.g-step-chev { margin-left: auto; flex-shrink: 0; font-size: 12px; color: var(--accent);
-  transition: transform 0.35s cubic-bezier(0.2, 0.7, 0.3, 1); }
-.g-step.open .g-step-chev { transform: rotate(180deg); }
 
 /* Card-style expand: 0fr → 1fr grid row, same mechanic as the player card. */
-.g-step-wrap { display: grid; grid-template-rows: 0fr;
-  transition: grid-template-rows 0.4s cubic-bezier(0.2, 0.8, 0.3, 1); }
-.g-step.open .g-step-wrap { grid-template-rows: 1fr; }
-.g-step-inner { overflow: hidden; min-height: 0; }
-.g-step-body { padding-top: 10px; margin-top: 10px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06); }
-.g-step-detail { font-size: 13px; line-height: 1.6; color: var(--text-muted); }
-.g-step-eg {
-  margin-top: 9px; padding: 9px 11px; border-radius: 10px;
-  background: rgba(255, 255, 255, 0.035);
-  font-size: 13px; line-height: 1.55; color: var(--text-muted);
-}
-.g-step-eg b { color: var(--accent); font-weight: 700; }
-.g-step-eg-label {
-  display: block; font-family: var(--font-logo); font-size: 12px; font-weight: 700; color: var(--accent); margin-bottom: 3px;
-}
 
 /* Court panel — the center of gravity. Dot-matrix ground + mono status
    header make it read as an instrument, not a picture frame. */
@@ -982,7 +940,7 @@
   .fb-bench > * { flex: 0 0 calc((100% - 6 * 4px) / 7); }
 }
 
-/* ═══ Handoff v2 — oyun wordmark'ı, mod seçimi (4b/18a), kural penceresi (17c) ═══ */
+/* ═══ Handoff v2 — oyun wordmark'ı, kural penceresi (17c) ═══ */
 
 /* Oyun wordmark'ı — büyük harfin kaldığı tek yer; aksan renginde parlar. */
 .g-wordmark {
@@ -993,74 +951,22 @@
 }
 .g-wordmark.lg { font-size: clamp(34px, 4vw, 48px); letter-spacing: 0.04em; }
 
-.g-modes-page {
-  position: relative; height: 100%; overflow-y: auto;
-  display: flex; flex-direction: column; padding: 16px 40px 28px;
-}
-.g-modes-hero { position: relative; display: flex; flex-direction: column; gap: 10px; margin: 12px 0 32px; }
-.g-modes-hero p { margin: 0; font-size: 16px; color: var(--text-secondary); }
-
-.g-modes {
-  position: relative; flex: 1; min-height: 380px; max-height: 520px;
-  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 22px;
-}
-.g-mode {
-  position: relative; overflow: hidden; border-radius: 22px; cursor: pointer;
-  display: flex; flex-direction: column; align-items: center; padding: 22px 22px 26px;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--m) 14%, transparent) 0%, rgba(255, 255, 255, 0.015) 55%, rgba(255, 255, 255, 0.01) 100%);
-  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--m) 30%, transparent);
-  transition: transform 0.25s ease, box-shadow 0.25s ease;
-}
-.g-mode:hover { transform: translateY(-4px); box-shadow: inset 0 1px 0 color-mix(in srgb, var(--m) 45%, transparent), 0 24px 50px -30px color-mix(in srgb, var(--m) 60%, transparent); }
-.g-mode:focus-visible { outline: 2px solid var(--m); outline-offset: 3px; }
-.g-mode.soon { cursor: default; opacity: 0.6; }
-.g-mode.soon:hover { transform: none; }
-.g-mode > * { position: relative; }
-.g-mode > .g-mode-glow {
-  position: absolute; left: 50%; top: -50px; width: 280px; height: 220px; transform: translateX(-50%);
-  background: var(--m); opacity: 0.26; pointer-events: none;
-  border-radius: 72% 28% 55% 45% / 35% 65% 40% 60%; filter: blur(44px);
-}
-.g-mode-top { align-self: stretch; display: flex; align-items: center; justify-content: space-between; }
-.g-mode-live { display: flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 600; color: var(--m); }
-.g-mode-live i { width: 6px; height: 6px; border-radius: 3px; background: var(--m); box-shadow: 0 0 8px var(--m); }
-.g-mode-rules {
-  display: flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 10px; margin-right: -10px;
-  border: 0; border-radius: 10px; background: transparent; cursor: pointer;
-  font-family: var(--font-sans); font-size: 13px; color: var(--text-secondary);
-}
-.g-mode-rules:hover { background: rgba(255, 255, 255, 0.06); color: var(--text-primary); }
-.g-mode-rules:focus-visible { outline: 2px solid var(--m); outline-offset: 1px; }
-.g-mode-icon { margin: auto 0; padding: 20px 0; filter: drop-shadow(0 0 20px var(--m)); }
-.g-mode-text { display: flex; flex-direction: column; align-items: center; text-align: center; }
-.g-mode-title { font-family: var(--font-logo); font-size: 28px; font-weight: 700; line-height: 1; color: var(--text-primary); }
-.g-mode-tag { font-size: 14px; font-weight: 500; color: var(--m); margin-top: 10px; }
-.g-mode-desc { font-size: 14px; line-height: 1.55; color: var(--text-secondary); margin-top: 12px; text-wrap: pretty; max-width: 280px; }
-.g-mode-play {
-  margin-top: 22px; font-family: var(--font-logo); font-size: 18px; font-weight: 700; letter-spacing: 0.04em;
-  color: var(--m); text-shadow: 0 0 16px color-mix(in srgb, var(--m) 40%, transparent);
-}
-
-@media (max-width: 1180px) {
-  .g-modes { grid-template-columns: repeat(2, minmax(0, 1fr)); max-height: none; }
-  .g-mode-icon { padding: 14px 0; }
-}
 /* Telefon (4c kalıbı): ikon solda, metin sağda, "Play" altta */
 @media (max-width: 640px) {
-  .g-modes-page { padding: 8px 16px 24px; }
-  .g-modes-hero { margin: 6px 0 18px; }
-  .g-modes-hero p { font-size: 15px; }
-  .g-modes { grid-template-columns: 1fr; gap: 14px; min-height: 0; flex: none; }
-  .g-mode { align-items: stretch; padding: 18px 20px 20px; border-radius: 20px; }
-  .g-mode > .g-mode-glow { left: auto; right: -40px; top: -60px; transform: none; width: 220px; height: 180px; }
-  .g-mode > .g-mode-icon { position: absolute; left: 20px; top: 58px; padding: 0; margin: 0; }
-  .g-mode-icon svg { width: 34px; height: 34px; }
-  .g-mode-text { align-items: flex-start; text-align: left; padding-left: 52px; margin-top: 14px; }
-  .g-mode-title { font-size: 24px; }
-  .g-mode-tag { margin-top: 6px; }
-  .g-mode-desc { max-width: none; margin-top: 8px; }
-  .g-mode-play { align-self: flex-end; margin-top: 12px; font-size: 17px; }
-  .g-mode-rules { min-height: 44px; }
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
   .g-info-btn { width: 36px; height: 36px; border-radius: 18px; }
 }
 
@@ -1150,34 +1056,6 @@
 .g-modebtn.on .lbl b { color: var(--text-primary); }
 .g-modebtn .lbl i { font-style: normal; font-size: 12px; color: var(--text-muted); }
 
-/* Adım satırı */
-.g-steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 28px; }
-.g-pstep {
-  position: relative; width: 100%; display: flex; gap: 14px; align-items: flex-start;
-  padding: 6px 8px 6px 0; border: 0; border-radius: 12px; background: transparent; text-align: left;
-  font-family: var(--font-sans);
-}
-button.g-pstep { cursor: pointer; }
-button.g-pstep:hover .g-pstep-title { color: var(--c); }
-button.g-pstep:focus-visible { outline: 2px solid var(--c); outline-offset: 3px; }
-.g-pstep::before {
-  content: ""; position: absolute; left: -20px; top: -26px; width: 120px; height: 80px; pointer-events: none;
-  background: var(--c); opacity: 0.16; border-radius: 72% 28% 55% 45% / 35% 65% 40% 60%; filter: blur(22px);
-}
-.g-pstep > * { position: relative; }
-.g-pstep-idx {
-  width: 40px; height: 40px; flex-shrink: 0; border-radius: 12px;
-  display: flex; align-items: center; justify-content: center;
-  font-family: var(--font-logo); font-size: 16px; font-weight: 700; color: var(--c);
-  background: color-mix(in srgb, var(--c) 12%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 40%, transparent);
-  text-shadow: 0 0 12px color-mix(in srgb, var(--c) 60%, transparent);
-}
-.g-pstep-text { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.g-pstep-title { display: flex; align-items: center; gap: 7px; font-family: var(--font-logo); font-size: 18px; font-weight: 700; color: var(--text-primary); transition: color 0.15s ease; }
-.g-pstep-title svg { color: var(--c); flex-shrink: 0; }
-.g-pstep-sub { font-size: 13px; line-height: 1.45; color: var(--text-secondary); }
-
 .g-divider { height: 1px; flex-shrink: 0; background: var(--divider-fade); margin: 26px 0 0; }
 
 .g-idle-body {
@@ -1194,7 +1072,7 @@ button.g-pstep:focus-visible { outline: 2px solid var(--c); outline-offset: 3px;
 @media (max-width: 1100px) {
   .g-idle { height: auto; min-height: 100%; overflow: visible; padding: 8px 20px 24px; }
   .g-idle-hero { flex-direction: column; align-items: flex-start; }
-  .g-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 24px; }
+  
   .g-idle-body { grid-template-columns: 1fr; gap: 28px; }
 }
 @media (max-width: 640px) {
@@ -1204,52 +1082,13 @@ button.g-pstep:focus-visible { outline: 2px solid var(--c); outline-offset: 3px;
   .g-modebtn-row { width: 100%; }
   .g-modebtn { flex: 1; }
   .g-idle-cta { width: 100%; min-height: 54px; }
-  .g-steps { grid-template-columns: 1fr; gap: 10px; }
-  .g-pstep-title { font-size: 16px; }
+  
+  
 }
 
-/* ═══ Leaderboard — kutusuz sütun (3a) ══════════════════════════════════ */
-.g-lb { position: relative; display: flex; flex-direction: column; min-height: 0; }
-.g-lb.fill { height: 100%; }
-.g-lb-head { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; flex-shrink: 0; }
-.g-lb-pulse { width: 6px; height: 6px; border-radius: 3px; background: #FFB11B; box-shadow: 0 0 8px #FFB11B; animation: gLbPulse2 2s ease-in-out infinite; }
+/* ═══ Ortak animasyon ═══════════════════════════════════════════════════ */
+
 @keyframes gLbPulse2 { 0%, 100% { opacity: 0.45; } 50% { opacity: 1; } }
-@media (prefers-reduced-motion: reduce) { .g-lb-pulse { animation: none; } }
-.g-lb-title { flex: 1; font-family: var(--font-logo); font-size: 20px; font-weight: 700; color: var(--text-primary); }
-.g-lb-mode { font-size: 13px; }
-.g-lb-top { display: flex; align-items: center; gap: 16px; flex-shrink: 0; }
-.g-lb-top-pct {
-  font-family: var(--font-logo); font-size: 64px; font-weight: 700; line-height: 1;
-  color: var(--c); text-shadow: 0 0 28px color-mix(in srgb, var(--c) 40%, transparent);
-  font-variant-numeric: tabular-nums;
-}
-.g-lb-top-name { font-size: 16px; font-weight: 600; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.g-lb-top-sub { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
-.g-lb-ref { font-size: 12px; line-height: 1.45; color: var(--text-muted); margin: 10px 0 14px; flex-shrink: 0; }
-.g-lb-list { display: flex; flex-direction: column; min-height: 0; }
-.g-lb.fill .g-lb-list { flex: 1; overflow-y: auto; margin-right: -6px; padding-right: 6px; }
-.g-lb-empty { font-size: 13px; line-height: 1.55; color: var(--text-muted); margin: 6px 0; }
-.g-lb-row2 {
-  height: 38px; flex-shrink: 0; display: flex; align-items: center; gap: 12px; padding: 0 8px; border-radius: 10px;
-  font-variant-numeric: tabular-nums;
-}
-.g-lb-row2.me { background: linear-gradient(100deg, rgba(255, 177, 27, 0.12), transparent 80%); }
-.g-lb-row2 .rank {
-  width: 24px; height: 24px; flex-shrink: 0; border-radius: 7px;
-  display: flex; align-items: center; justify-content: center;
-  font-family: var(--font-logo); font-size: 14px; font-weight: 700; color: var(--text-muted);
-}
-.g-lb-row2 .rank[data-podium] {
-  color: var(--p); background: color-mix(in srgb, var(--p) 12%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--p) 40%, transparent), 0 0 12px -2px color-mix(in srgb, var(--p) 55%, transparent);
-}
-.g-lb-row2 .name { flex: 1; min-width: 0; font-size: 14px; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.g-lb-row2 .you { font-size: 12px; color: #FFB11B; }
-.g-lb-row2 .cup { display: inline-flex; color: #FFB11B; flex-shrink: 0; }
-.g-lb-row2 .wins { width: 34px; text-align: right; font-size: 13px; color: var(--text-muted); flex-shrink: 0; }
-.g-lb-row2 .pct { width: 26px; text-align: right; font-family: var(--font-logo); font-size: 17px; font-weight: 700; flex-shrink: 0; }
-.g-lb-row2 .grade { width: 18px; font-size: 13px; color: var(--text-muted); flex-shrink: 0; }
-.g-lb-foot { font-size: 12px; line-height: 1.5; color: var(--text-muted); margin: 12px 0 0; flex-shrink: 0; }
 
 /* ═══ Yarım saha + yedekler (handoff 3a / 5a) ════════════════════════════
    60px 12-gen düğümler, altında isim 13px + sezon 12px; kesikli kutu yok.
@@ -1701,12 +1540,8 @@ button.g-pstep:focus-visible { outline: 2px solid var(--c); outline-offset: 3px;
 .g-join input { width: 128px; font-family: var(--font-logo); font-size: 17px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
 .g-join input::placeholder { font-family: var(--font-sans); font-size: 14px; font-weight: 400; letter-spacing: 0; text-transform: none; }
 
-/* ═══ Futbol idle (handoff 18b) ═══════════════════════════════════════════
-   Solda diziliş seçici + saha önizlemesi + çark havuzu + CTA, sağda bu hafta. */
-.g-fb-idle { position: relative; flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 48px; }
-.g-fb-idle-main { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
-.g-fb-idle-h1 { margin: 18px 0 6px; font-family: var(--font-logo); font-size: 44px; font-weight: 700; line-height: 1; color: var(--text-primary); }
-.g-fb-idle-sub { margin: 0 0 16px; font-size: 15px; color: var(--text-secondary); }
+/* ═══ Futbol diziliş düğmeleri (Same Screen draft'ı) ═══════════════════ */
+
 .g-fb-shapes { display: flex; gap: 8px; flex-wrap: wrap; }
 .g-fb-shape {
   height: 40px; padding: 0 18px; border: 0; border-radius: 12px; cursor: pointer;
@@ -1716,35 +1551,6 @@ button.g-pstep:focus-visible { outline: 2px solid var(--c); outline-offset: 3px;
 .g-fb-shape:hover { color: var(--text-primary); }
 .g-fb-shape.on { color: #3FB08C; background: rgba(63, 176, 140, 0.12); box-shadow: inset 0 0 0 1px rgba(63, 176, 140, 0.5), 0 0 18px -6px #3FB08C; }
 .g-fb-shape:focus-visible, .g-fb-chip:focus-visible { outline: 2px solid #3FB08C; outline-offset: 2px; }
-.g-fb-preview {
-  flex: 1; min-height: 200px; margin-top: 18px; border-radius: 22px; padding: 12px;
-  display: flex; align-items: center; justify-content: center;
-  background: linear-gradient(180deg, rgba(63, 176, 140, 0.10), rgba(63, 176, 140, 0.03));
-}
-.g-fb-preview > * { max-height: 100%; }
-.g-fb-pool { display: flex; flex-direction: column; gap: 10px; margin-top: 18px; }
-.g-fb-pool .lbl { font-size: 13px; color: var(--text-muted); }
-.g-fb-pool .chips { display: flex; flex-wrap: wrap; gap: 8px; }
-.g-fb-chip {
-  height: 34px; padding: 0 14px; border: 0; border-radius: 999px; cursor: pointer;
-  display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-sans); font-size: 14px;
-  color: var(--text-secondary); background: rgba(255, 255, 255, 0.04);
-}
-.g-fb-chip i { width: 8px; height: 8px; border-radius: 4px; background: var(--text-faint); }
-.g-fb-chip.on { color: var(--text-primary); background: rgba(63, 176, 140, 0.14); }
-.g-fb-chip.on i { background: #3FB08C; box-shadow: 0 0 8px #3FB08C; }
-.g-fb-go { display: flex; align-items: center; gap: 18px; margin-top: 20px; flex-wrap: wrap; }
-.g-fb-go span { font-size: 13px; color: var(--text-muted); }
-.g-fb-idle-side { min-height: 0; overflow-y: auto; padding-top: 44px; }
-@media (max-width: 1100px) {
-  .g-fb-idle { grid-template-columns: 1fr; gap: 28px; }
-  .g-fb-preview { min-height: 280px; }
-  .g-fb-idle-side { padding-top: 0; }
-}
-@media (max-width: 640px) {
-  .g-fb-idle-h1 { font-size: 32px; }
-  .g-fb-go .g-idle-cta { width: 100%; }
-}
 
 /* ═══ Futbol draft (handoff 7a) ═══════════════════════════════════════════
    Başlıkta sezon · kulüp 44px + Spin; havuz solda 420px, saha sağda. */

@@ -3,6 +3,7 @@
 export const SPORT_THEMES = {
   basketball: {
     key: "basketball",
+    name: "Basketball",
     className: "sport-basketball",
     accent: "#FFB11B",
     teamWord: "Team",          // futbolda "Club"
@@ -18,6 +19,7 @@ export const SPORT_THEMES = {
   },
   football: {
     key: "football",
+    name: "Football",
     className: "sport-football",
     accent: "#3FB08C",
     teamWord: "Club",
@@ -26,7 +28,7 @@ export const SPORT_THEMES = {
     draftSize: 18,             // 11 saha + 7 yedek
     starters: 11,
     bench: 7,
-    simGames: 40,
+    simGames: 38,             // 20 kulüp, çift devre (game/football/seasonSim.js)
     lineupWord: "XI",
     coachWord: "Manager",
     rooms: { seriesWord: "Tie", legWord: "Leg" },
