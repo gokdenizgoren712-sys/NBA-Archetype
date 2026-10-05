@@ -198,7 +198,7 @@ export function VersusCourt({ lines, spots, names, scores, bench }) {
         {bench.map((b) => (
           <div key={b.seat} className={seatClass(b.seat)}>
             <div className="lab">{b.name} · Bench</div>
-            <div className="cells">
+            <div className="cells" style={b.cells.length > 4 ? { gridTemplateColumns: `repeat(${b.cells.length}, minmax(0, 1fr))` } : undefined}>
               {b.cells.map((c) => (
                 <button key={c.key} type="button" className={`sb-vs-bcell${c.name ? "" : " empty"}${c.tap ? " tap" : ""}${c.sel ? " sel" : ""}`}
                   onClick={() => c.tap && c.onClick?.()} tabIndex={c.tap ? 0 : -1}>
@@ -296,13 +296,13 @@ export function VersusMatchup({ eyebrow, title, accent, chip, heroes, parts, pil
         {parts.map((p) => (
           <div key={p.label} className="sb-vs-part">
             <b style={{ color: p.ac }}>{p.a}</b>
-            <span className="m">{p.label}<i>weight {p.weight}</i></span>
+            <span className="m">{p.label}<i>{p.weight}</i></span>
             <b style={{ color: p.bc }}>{p.b}</b>
           </div>
         ))}
       </div>
-      <section className="sb-panel sb-vs-pillars">
-        <h3>{pillarsTitle}</h3>
+      {(pillars.length > 0 || wg.length > 0) && <section className="sb-panel sb-vs-pillars">
+        {pillars.length > 0 && <h3>{pillarsTitle}</h3>}
         {pillars.map((p) => (
           <div key={p.label} className="sb-vs-pl">
             <span className="v l" style={{ color: p.ac }}>{p.a}</span>
@@ -320,7 +320,7 @@ export function VersusMatchup({ eyebrow, title, accent, chip, heroes, parts, pil
             </div>
           ))}
         </div>
-      </section>
+      </section>}
       <div className="sb-vs-play">
         <div className="sr">{seriesLabel}<b>{score}</b></div>
         <button type="button" className="sb-btn solid cta md" onClick={btn.onClick} disabled={btn.disabled}>{btn.label}</button>
@@ -331,7 +331,7 @@ export function VersusMatchup({ eyebrow, title, accent, chip, heroes, parts, pil
 
 // ── Seri / maç ekranı ──────────────────────────────────────────────────────
 //   chips: [{ key, label, score, played, cur }]  boxes: [{ seat, name, pts, win, head: [..], rows: [{ key, name, bench, cells: [..] }], total: [..] }]
-export function VersusSeries({ eyebrow, scoreA, scoreB, lead, leadSeat, chips, selected, onSelect, btn, boxTitle, home, boxes, cols }) {
+export function VersusSeries({ eyebrow, scoreA, scoreB, lead, leadSeat, chips, selected, onSelect, btn, boxTitle, home, boxes, cols, footer }) {
   return (
     <>
       <div className="sb-vs-series">
@@ -365,6 +365,7 @@ export function VersusSeries({ eyebrow, scoreA, scoreB, lead, leadSeat, chips, s
           </section>
         ))}
       </div>
+      {footer}
     </>
   );
 }

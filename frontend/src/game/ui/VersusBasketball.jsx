@@ -228,7 +228,7 @@ export function BasketballVersusMatchup({ title = "Same Screen", names, lineups,
     return { seat, name: names[seat], grade: gradeFor(score), gradeColor: GRADE_COLOR[gradeFor(score)], score, coach: coaches[seat] ? `Coach ${coaches[seat].name}` : "" };
   });
   const parts = [["Quality", "avgQuality", "45%"], ["Coverage", "coverage", "40%"], ["Chemistry", "roleFit", "15%"]].map(([label, k, weight]) => ({
-    label, weight, a: pct100(fits[1][k]), b: pct100(fits[2][k]), ac: valColor(fits[1][k]), bc: valColor(fits[2][k]),
+    label, weight: `weight ${weight}`, a: pct100(fits[1][k]), b: pct100(fits[2][k]), ac: valColor(fits[1][k]), bc: valColor(fits[2][k]),
   }));
   const pillars = PILLARS.map(([k, label]) => ({ label, tag: weightTag(W[k]), a: pct100(fits[1][k]), b: pct100(fits[2][k]), ac: valColor(fits[1][k]), bc: valColor(fits[2][k]) }));
   const wg = [1, 2].map((seat) => {

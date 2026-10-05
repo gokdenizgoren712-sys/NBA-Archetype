@@ -202,8 +202,8 @@ Kalan (Faz 3): menajer seçimi, sonuç, sezon; eski `FootballGame` draft JSX'ini
 
 **Mockup'tan bilinçli sapmalar (mantığa dokunmama kararı):**
 1. **Karşı-joker şeridi** 7b/8b'de "Re-spin Team / Year / Both" yazıyor; oyundaki gerçek karşı-jokerler BAN / Force Team / Force Year (Room Flows 6s ile uyumlu). Şerit gerçek jokerleri gösteriyor, mockup'taki cümle ("…before you pick.") aynen duruyor.
-2. **Futbol Same Screen'de yedek ve menajer yok** (draft.js 11 seçim, `buildSide` menajersiz). Bu yüzden 8i (menajer sırası), 8e (eşleşme/beş sütun), 8f (1. ayak istatistikleri) çizilmedi; sayaç "0/11" (mockup 0/18). Eleme tek seferde çözülüyor; 8g benzeri ekran ayakları, uzatmayı ve penaltı takipçisini gösteriyor, 8h final ekranı kadroları listeliyor. Bunları eklemek oyun mantığı işi (maç içi oyuncu istatistiği + menajer + yedek draftı); karar bekliyor.
-3. **Futbol draft joker şeridi yok** (engine'de joker yok); basketbolda 5 joker duruyor.
+2. **Futbol Same Screen artık tam set (2026-10-05, kullanıcı isteği):** 18'lik kadro (11 + 7 yedek, skor yalnız ilk 11'den), kendi 5 jokeri + karşı-jokerler (BAN / Force Club / Force Year), menajer sırası (8i), eşleşme (8e: kalite, pozisyon uyumu, menajer bonusu, sunucudan rol kapsamı), ayak ayak oynama (8f/8g, penaltı takipçisi ve tekrar oynansa olasılığı altta) ve final. Mantık `draft.js` (18 slot, Pick 2, `swap`), `SameScreenDraft.jsx` (jokerler) ve `versusFit.js` içinde. Dürüst etiketler: kadro puanı eleme motorunun kullandığı kalitedir; oyuncu bazlı gol/asist, skor motordan çıkan golün sezon /90 verisine göre dağıtılmasıdır (basketboldaki box score gibi simüle), şut/kilit pas/müdahale yok. İlk uygulama yalnızca 11 seçimdi ve bu bir eksikti; kullanıcı düzeltti.
+3. **Futbol draft joker şeridi:** var (mockup 8b ile aynı beş joker).
 4. **Basketbol sıralama:** mockup'taki PTS/REB/AST/3P%/STL/BLK çipleri var, eski "TAGGED" sıralaması ve ödül rozeti sütunu yok; G/F/C filtresi korundu.
 5. **Futbol havuz sütunları** MIN, G/90, A/90, CS, APP (veride KP/PASS%/TKL/INT alanları yok).
 6. 7d/8d mockup'ında saha boş çiziliyor; gerçek oyuncular sahada görünüyor ve dokunarak yer değiştirilebiliyor (son düzenleme).

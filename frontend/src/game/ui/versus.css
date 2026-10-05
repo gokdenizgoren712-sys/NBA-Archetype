@@ -241,7 +241,7 @@
 .sb-vs-boxh { display: flex; align-items: baseline; justify-content: space-between; flex: none; }
 .sb-vs-boxh h2 { margin: 0; font: 700 22px var(--sb-font-display); letter-spacing: .1em; text-transform: uppercase; }
 .sb-vs-boxh span { font-size: 12px; color: var(--sb-muted); }
-.sb-vs-boxes { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.sb-vs-boxes { flex: none; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .sb-vs-box { box-sizing: border-box; padding: 14px 16px; border: 1px solid var(--sb-line); border-radius: 4px; background: var(--sb-panel); display: flex; flex-direction: column; min-height: 0; }
 .sb-vs-box.win { border-color: var(--c); box-shadow: 0 0 18px var(--c-a); }
 .sb-vs-box .h { display: flex; justify-content: space-between; align-items: baseline; }

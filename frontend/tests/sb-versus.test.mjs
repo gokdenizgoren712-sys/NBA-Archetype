@@ -43,8 +43,11 @@ test("futbol Same Screen: giriş, draft, kilitli XI, eleme ve final yeni dilde; 
   assert.match(d, /<FootballVersusLocked/);
   assert.match(d, /import \* as D from "\.\/draft"/);
   const v = src("pages", "football", "FootballVersus.jsx");
-  assert.match(v, /<FootballVersusTie/);
-  assert.match(v, /<FootballVersusFinal/);
+  for (const c of ["FootballVersusHire", "FootballVersusMatchup", "FootballVersusLegs", "FootballVersusFinal"]) assert.match(v, new RegExp(`<${c}`), c);
+  // yedek, joker ve menajer artık Same Screen futbolunda da var
+  assert.match(d, /doubleActive/);
+  assert.match(d, /useCounter/);
+  assert.match(v, /drawManagers\(4\)/);
   assert.match(v, /fixedMode === "same"/);
 });
 

@@ -6,7 +6,9 @@ import { useAuth } from "../../contexts/AuthContext";
 import { playTie, tieOdds, buildSide } from "../../game/football/headToHead";
 import { ModeInfoButton } from "../../game/football/ModeAbout";
 import SameScreenDraft from "../../game/football/SameScreenDraft";
-import { FootballVersusTie, FootballVersusFinal } from "../../game/ui/VersusFootball";
+import { FootballVersusHire, FootballVersusMatchup, FootballVersusLegs, FootballVersusFinal } from "../../game/ui/VersusFootball";
+import { drawManagers } from "../../game/football/managers";
+import { sideNumbers, roleCoverage, pillarsOf, legStats } from "../../game/football/versusFit";
 import { PageGlow } from "../../components/states/States";
 import RoomLobby from "../../game/RoomLobby";
 import RoomDraft from "../../game/football/RoomDraft";
@@ -131,26 +133,60 @@ function TieResult({ tie, odds }) {
 // yoktu. Artık basketboldaki gibi gerçek draft: yılan sırası, çark, slot
 // yerleşimi (draft.js + SameScreenDraft.jsx), sonunda aynı eleme motoru.
 function SameScreen({ coeffs }) {
+  const [sq, setSq] = useState(null);                 // iki taraf: oyuncular, yedekler, dizilişler
+  const [mgrs, setMgrs] = useState({ 1: null, 2: null });
+  const [mgrOpts, setMgrOpts] = useState({ 1: [], 2: [] });
+  const [stage, setStage] = useState("draft");        // draft | hire | matchup | legs | final
+  const [cover, setCover] = useState({ 1: null, 2: null });
+  const [covLoading, setCovLoading] = useState(false);
   const [tie, setTie] = useState(null);
   const [odds, setOdds] = useState(null);
-  const [sq, setSq] = useState(null);
-  const [final, setFinal] = useState(false);
+  const [stats, setStats] = useState(null);
+  const [shown, setShown] = useState(0);              // kaç ayak açıldı
+  const [selLeg, setSelLeg] = useState(1);
 
-  const play = (squads) => {
+  const names = sq ? { 1: sq[1].name, 2: sq[2].name } : null;
+  const reset = () => { setSq(null); setMgrs({ 1: null, 2: null }); setMgrOpts({ 1: [], 2: [] }); setStage("draft"); setCover({ 1: null, 2: null }); setTie(null); setOdds(null); setStats(null); setShown(0); setSelLeg(1); };
+
+  const onDraftDone = (squads) => { setSq(squads); setMgrOpts({ 1: drawManagers(4), 2: [] }); setStage("hire"); };
+  const hire = (seat, m) => {
+    const next = { ...mgrs, [seat]: m };
+    setMgrs(next);
+    if (seat === 1) { setMgrOpts((o) => ({ ...o, 2: drawManagers(4) })); return; }
+    setStage("matchup"); setCovLoading(true);
+    Promise.all([roleCoverage(sq[1]), roleCoverage(sq[2])]).then(([a, b]) => { setCover({ 1: a, 2: b }); setCovLoading(false); });
+  };
+  const numbers = sq ? { 1: sideNumbers(sq[1], mgrs[1]), 2: sideNumbers(sq[2], mgrs[2]) } : null;
+
+  const playLeg1 = () => {
     if (!coeffs) return;
-    const a = buildSide(squads[1].name, squads[1].players, null, squads[1].positionPenalty);
-    const b = buildSide(squads[2].name, squads[2].players, null, squads[2].positionPenalty);
+    const a = numbers[1].side, b = numbers[2].side;
     const t = playTie(coeffs, a, b);
     t.sides = { a, b };
-    setSq(squads); setTie(t); setFinal(false);
-    setOdds(tieOdds(coeffs, a, b, 400));
+    // Maç istatistiği: skor motordan, kimin attığı sezon verisinden. Ayak 1'de 1 ev sahibi, ayak 2'de 2.
+    setStats({
+      1: { 1: legStats(sq[1].players, t.legs[0].hg), 2: legStats(sq[2].players, t.legs[0].ag) },
+      2: { 1: legStats(sq[1].players, t.legs[1].ag), 2: legStats(sq[2].players, t.legs[1].hg) },
+    });
+    setTie(t); setOdds(tieOdds(coeffs, a, b, 400)); setShown(1); setSelLeg(1); setStage("legs");
   };
-  const reset = () => { setTie(null); setOdds(null); setSq(null); setFinal(false); };
-  const names = sq ? { 1: sq[1].name, 2: sq[2].name } : null;
+  const playLeg2 = () => { setShown(2); setSelLeg(2); };
 
-  if (!tie) return <SameScreenDraft onDone={play} />;
-  if (final) return <FootballVersusFinal tie={tie} names={names} squads={sq} onAgain={reset} />;
-  return <FootballVersusTie tie={tie} odds={odds} names={names} onFinal={() => setFinal(true)} onRematch={() => play(sq)} />;
+  if (stage === "draft") return <SameScreenDraft onDone={onDraftDone} />;
+  if (stage === "hire") {
+    const active = mgrs[1] ? 2 : 1;
+    return <FootballVersusHire names={names} shapes={{ 1: sq[1].shape, 2: sq[2].shape }} active={active} options={mgrOpts} hired={mgrs} onHire={hire} />;
+  }
+  if (stage === "matchup") {
+    return <FootballVersusMatchup names={names} squads={sq} managers={mgrs} numbers={numbers} coverage={cover}
+      pillars={pillarsOf(cover[1], cover[2])} loading={covLoading || !coeffs} onPlay={playLeg1} />;
+  }
+  if (stage === "legs" && tie) {
+    return <FootballVersusLegs tie={tie} odds={odds} names={names} shown={shown} stats={stats} selected={selLeg} onSelect={setSelLeg}
+      onNext={playLeg2} onSeeResult={() => setStage("final")} />;
+  }
+  if (stage === "final" && tie) return <FootballVersusFinal tie={tie} names={names} squads={sq} managers={mgrs} onAgain={reset} />;
+  return null;
 }
 
 /* ── Oda: With a Friend / Online ───────────────────────────────────────────── */
