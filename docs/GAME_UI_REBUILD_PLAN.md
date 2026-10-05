@@ -191,3 +191,5 @@ Kalan (Faz 3): menajer seçimi, sonuç, sezon; eski `FootballGame` draft JSX'ini
 5. Basketbol sonuç sayfasında "Draft analysis" (oyuncu başına era kaybı rozetleri) sezon başladıktan sonra altta duruyor; mockup'ta yok.
 
 **Geliştirme ortamı notu:** Yerel API bir ara 30–140 sn yanıt verdi; sebep, önceki test betiklerimden kalan ~270 başsız Edge süreciydi (temizlendi, araç artık süreç ağacını kapatıyor). API'nin kendisinde bir hata yok.
+
+**Sezon sonucu (3f) — tamamlandı (2026-10-05):** `ui/SeasonResult.jsx` + `ui/season.css`; Rewrite History için rekor kahramanı, doğrulanmış sıralama (konferans sekmeli), playoff ağacı yan yana turlar (`PlayoffBracketView.jsx`), şampiyon penceresi. Masaüstü 1440×900'de doğrulandı. Açık kalanlar: Quick Sim'de sıralama/ağaç yok (veri yok); mobil (12h) doğrulanmadı; futbol sezon sonrası görünümü yalnızca skin'li.

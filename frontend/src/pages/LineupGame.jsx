@@ -4,9 +4,9 @@ import { useAuth } from "../contexts/AuthContext";
 import { SEO } from "../hooks/useSEO";
 import { ERAS, ERA_META_BLURB, ERA_HEX } from "../game/eras";
 import { computePlayerFit, computeAffinity } from "../game/lineupScore";
-import { SeasonSimView } from "../game/SeasonSimPanel";
 import { useSeasonSim } from "../game/useSeasonSim";
 import ResultStage from "../game/ui/ResultStage";
+import SeasonResult from "../game/ui/SeasonResult";
 import CourtBoard from "../game/CourtBoard";
 import { StarIcon, EyeIcon, LinkIcon, CheckIcon, DownloadIcon, XLogoIcon } from "../game/GameIcons";
 import { POSITIONS, BENCH_SLOTS, ALL_SLOTS, getPrimaryPos } from "../game/positions";
@@ -173,18 +173,17 @@ function ScoreReveal({ fit, lineup, primaryCount, onReset, lang, affinityMatrix,
           chemBonus={chemBonus} primaryCount={primaryCount} lineup={lineup} sim={sim} enableRealHistory
           saveUI={saveUI} loggedIn={isLoggedIn} onShare={() => setShareOpen(true)} onReset={onReset} />
       ) : (
-        <GameStage sport="basketball" className="sb-skin sb-season">
-          <SeasonSimView sim={sim} hideIdle players={starters} bench={benchPlayers} coach={coach}
-            simEra={simEra || ERAS[5]} fit={fit} affinity01={affinityScore != null ? affinityScore / 100 : null}
-            gameScoreId={gameScoreId} enableRealHistory />
-          <DraftAnalysis simEra={simEra} affinity={affinityScore} showHero={false} showParts={false}
-            label="Draft analysis" teams={[{ name: "Your Roster", lineup, coach }]} />
-          <div className="sb-res-actions">
-            <div className="save">{isLoggedIn ? saveUI : <span className="note">Sign in to save rosters and land on the board.</span>}</div>
-            <button type="button" className="sb-btn" onClick={() => setShareOpen(true)}>Share card</button>
-            <button type="button" className="sb-btn solid" onClick={onReset}>Play again</button>
-          </div>
-        </GameStage>
+        <SeasonResult sim={sim} players={starters} bench={benchPlayers} onReset={onReset}
+          extra={
+            <>
+              <DraftAnalysis simEra={simEra} affinity={affinityScore} showHero={false} showParts={false}
+                label="Draft analysis" teams={[{ name: "Your Roster", lineup, coach }]} />
+              <div className="sb-res-actions">
+                <div className="save">{isLoggedIn ? saveUI : <span className="note">Sign in to save rosters and land on the board.</span>}</div>
+                <button type="button" className="sb-btn" onClick={() => setShareOpen(true)}>Share card</button>
+              </div>
+            </>
+          } />
       )}
 
       {shareOpen && (

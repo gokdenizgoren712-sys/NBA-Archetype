@@ -27,7 +27,7 @@ test("basketbol sonuç: Lineup Fit + Five Pillars | rotasyon; sezon motoru Score
   const g = src("pages", "LineupGame.jsx");
   assert.match(g, /const sim = useSeasonSim\(/);
   assert.match(g, /<ResultStage /);
-  assert.match(g, /<SeasonSimView sim=\{sim\} hideIdle/);
+  assert.match(g, /<SeasonResult sim=\{sim\}/);
 });
 
 test("SeasonSimPanel: görünüm ayrıldı, eski kullanım (kendi motorunu kuran) aynı kaldı", () => {
