@@ -4,7 +4,9 @@ import { useAuth } from "../contexts/AuthContext";
 import { SEO } from "../hooks/useSEO";
 import { ERAS, ERA_META_BLURB, ERA_HEX } from "../game/eras";
 import { computePlayerFit, computeAffinity } from "../game/lineupScore";
-import SeasonSimPanel from "../game/SeasonSimPanel";
+import { SeasonSimView } from "../game/SeasonSimPanel";
+import { useSeasonSim } from "../game/useSeasonSim";
+import ResultStage from "../game/ui/ResultStage";
 import CourtBoard from "../game/CourtBoard";
 import { StarIcon, EyeIcon, LinkIcon, CheckIcon, DownloadIcon, XLogoIcon } from "../game/GameIcons";
 import { POSITIONS, BENCH_SLOTS, ALL_SLOTS, getPrimaryPos } from "../game/positions";
@@ -142,80 +144,48 @@ function ScoreReveal({ fit, lineup, primaryCount, onReset, lang, affinityMatrix,
   ];
   const [shareOpen, setShareOpen] = useState(false);
 
+  // Sezon motoru burada kurulur: rotasyon sonuç sayfasında düzenleniyor, sezon aynı motorla oynanıyor.
+  const starters = POSITIONS.map(p => lineup[p]).filter(Boolean);
+  const benchPlayers = BENCH_SLOTS.map(p => lineup[p]).filter(Boolean);
+  const sim = useSeasonSim({
+    players: starters, bench: benchPlayers, simEra: simEra || ERAS[5], fit, coach,
+    affinity01: affinityScore != null ? affinityScore / 100 : null, gameScoreId, isLoggedIn, token,
+  });
+
+  const saveUI = saveStatus === "saved" ? (
+    <span className="sb-fres-note">Roster saved — find it on your Profile page.</span>
+  ) : (
+    <div className="sb-fres-save">
+      <label htmlFor="save-roster">Save this roster</label>
+      <input id="save-roster" type="text" value={saveName} maxLength={60}
+        onChange={e => setSaveName(e.target.value)} placeholder="e.g. Fear the Deer 2011"
+        className="aura-ghost-input" />
+      <button type="button" onClick={saveRoster} disabled={saveStatus === "saving" || !saveName.trim()}
+        className="pa-btn-secondary">{saveStatus === "saving" ? "Saving…" : "Save"}</button>
+      {saveErr && <p className="sb-fres-note">{saveErr}</p>}
+    </div>
+  );
+
   return (
-    <div className="g-result" style={{ "--g": gHex }}>
-      <PageGlow tint={gHex} />
-
-      {/* Ödül anı (12b): tek büyük an — 96px not, kendi renginde parlıyor */}
-      <section className="g-result-hero">
-        <span className="g-result-eyebrow">Lineup Fit{simEra ? ` · built for the ${simEra.label}` : ""}</span>
-        <span className="g-result-grade">{grade}</span>
-        <div className="g-result-score"><b>{pct}</b><i>/ 100</i></div>
-        {refLine && <span className="g-result-ref">{refLine}</span>}
-        {chemBonus > 0 && (
-          <span className="g-result-chem">
-            <StarIcon size={12} /> Chemistry bonus · {primaryCount} primary slot{primaryCount === 1 ? "" : "s"} (+{Math.round(chemBonus * 100)})
-          </span>
-        )}
-        <div className="g-result-parts">
-          {parts.map(([label, val, w]) => (
-            <div key={label}>
-              <b style={{ "--c": VAL_HEX(val / 100) }}>{val}</b>
-              <span>{label}</span>
-              <i>weight {w}</i>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <div className="g-divider" />
-
-      {/* Sezon simülasyonu (v3.5) */}
-      <SeasonSimPanel
-        players={POSITIONS.map(p => lineup[p]).filter(Boolean)}
-        bench={BENCH_SLOTS.map(p => lineup[p]).filter(Boolean)}
-        coach={coach}
-        simEra={simEra || ERAS[5]}
-        fit={fit}
-        affinity01={affinityScore != null ? affinityScore / 100 : null}
-        gameScoreId={gameScoreId}
-        enableRealHistory
-      />
-
-      {/* Draft Analysis — kadro ve era raporu. "Şunu almalıydın" önerisi
-          bilinçli olarak yok (oyun bittikten sonra suçlayıcı duruyordu). */}
-      <DraftAnalysis
-        simEra={simEra}
-        affinity={affinityScore}
-        showHero={false}
-        showParts={false}
-        label="Draft analysis"
-        teams={[{ name: "Your Roster", lineup, coach }]}
-      />
-
-      {/* Aksiyon satırı (12b): kaydet · paylaş · tekrar oyna */}
-      <div className="g-result-actions">
-        {isLoggedIn ? (
-          saveStatus === "saved" ? (
-            <span className="g-result-saved">Roster saved — find it on your Profile page.</span>
-          ) : (
-            <div className="g-result-save">
-              <label htmlFor="save-roster">Save this roster</label>
-              <div>
-                <input id="save-roster" type="text" value={saveName} maxLength={60}
-                  onChange={e => setSaveName(e.target.value)} placeholder="e.g. Fear the Deer 2011"
-                  className="aura-ghost-input" />
-                <button onClick={saveRoster} disabled={saveStatus === "saving" || !saveName.trim()}
-                  className="pa-btn-secondary">{saveStatus === "saving" ? "Saving…" : "Save"}</button>
-              </div>
-              {saveErr && <p className="g-result-err">{saveErr}</p>}
-            </div>
-          )
-        ) : <span className="g-result-saved muted">Sign in to save rosters and land on the board.</span>}
-        <span className="flex-1" />
-        <button className="pa-btn-secondary" onClick={() => setShareOpen(true)}>Share card</button>
-        <button onClick={onReset} className="aura-rating-btn g-result-again">Play again</button>
-      </div>
+    <>
+      {sim.stage === "idle" ? (
+        <ResultStage fit={fit} simEra={simEra || ERAS[5]} grade={grade} pct={pct} refLine={refLine}
+          chemBonus={chemBonus} primaryCount={primaryCount} lineup={lineup} sim={sim} enableRealHistory
+          saveUI={saveUI} loggedIn={isLoggedIn} onShare={() => setShareOpen(true)} onReset={onReset} />
+      ) : (
+        <GameStage sport="basketball" className="sb-skin sb-season">
+          <SeasonSimView sim={sim} hideIdle players={starters} bench={benchPlayers} coach={coach}
+            simEra={simEra || ERAS[5]} fit={fit} affinity01={affinityScore != null ? affinityScore / 100 : null}
+            gameScoreId={gameScoreId} enableRealHistory />
+          <DraftAnalysis simEra={simEra} affinity={affinityScore} showHero={false} showParts={false}
+            label="Draft analysis" teams={[{ name: "Your Roster", lineup, coach }]} />
+          <div className="sb-res-actions">
+            <div className="save">{isLoggedIn ? saveUI : <span className="note">Sign in to save rosters and land on the board.</span>}</div>
+            <button type="button" className="sb-btn" onClick={() => setShareOpen(true)}>Share card</button>
+            <button type="button" className="sb-btn solid" onClick={onReset}>Play again</button>
+          </div>
+        </GameStage>
+      )}
 
       {shareOpen && (
         <div className="g-rules-backdrop" onClick={() => setShareOpen(false)}>
@@ -231,7 +201,7 @@ function ScoreReveal({ fit, lineup, primaryCount, onReset, lang, affinityMatrix,
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
 
@@ -587,18 +557,9 @@ export default function LineupGame() {
       <GameStage sport="basketball">
         <CoachPicker sport="basketball" title="Hire your coach" options={coachOptions} onPick={pickCoach} />
       </GameStage>
-    ) : (
-    <div className={phase==="complete" ? "p-4 sm:p-6 max-w-[1560px] mx-auto space-y-3 pb-6" : "g-draft"}>
-      {phase!=="complete"&&<PageGlow tint={ERA_HEX[simEra?.id] || "#FFB11B"} />}
-
-      {/* === COMPLETE === */}
-      {phase==="complete"&&fitResult&&(
-        <div className="max-w-[1180px] mx-auto">
-          <ScoreReveal fit={fitResult} lineup={lineup} primaryCount={primaryCount} onReset={resetGame} lang={lang} affinityMatrix={affinityMatrix} simEra={simEra} coach={coach} mode={mode}/>
-        </div>
-      )}
-    </div>
-    )}
+    ) : phase==="complete"&&fitResult ? (
+      <ScoreReveal fit={fitResult} lineup={lineup} primaryCount={primaryCount} onReset={resetGame} lang={lang} affinityMatrix={affinityMatrix} simEra={simEra} coach={coach} mode={mode}/>
+    ) : null}
     </div>
   );
 }

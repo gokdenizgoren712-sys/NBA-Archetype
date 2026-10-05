@@ -1,0 +1,87 @@
+/* Basketbol sonuç sayfası (mockup 3e / mobil 12g). */
+.sb-result { gap: 16px; }
+.sb-res-cols { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 420px) minmax(0, 1fr); gap: 16px; align-items: start; }
+.sb-res-left { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+
+.sb-fit { padding: 18px 20px 20px; display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; border-color: color-mix(in srgb, var(--g) 55%, transparent); box-shadow: 0 0 40px color-mix(in srgb, var(--g) 14%, transparent); }
+.sb-fit .eyebrow { letter-spacing: .14em; }
+.sb-fit .grade { font: 700 120px/1 var(--sb-font-display); }
+.sb-fit .score { display: flex; align-items: baseline; gap: 8px; }
+.sb-fit .score b { font: 700 52px/1 var(--sb-font-display); }
+.sb-fit .score i { font: normal 20px var(--sb-font-display); color: var(--sb-muted); }
+.sb-fit .ref { font-size: 13px; color: var(--sb-text-2); }
+.sb-fit .ref b { color: #fff; }
+.sb-fit .chem { font-size: 13px; color: var(--sb-accent); }
+.sb-fit .parts { display: flex; gap: 28px; margin-top: 14px; }
+.sb-fit .parts div { display: flex; flex-direction: column; align-items: center; }
+.sb-fit .parts b { font: 700 38px/1 var(--sb-font-display); }
+.sb-fit .parts span { font: 600 14px var(--sb-font-body); margin-top: 4px; }
+.sb-fit .parts i { font: normal 12px var(--sb-font-mono); color: var(--sb-muted); }
+
+.sb-pillars { padding: 16px 20px; display: flex; flex-direction: column; gap: 10px; }
+.sb-pillars .rows { display: flex; flex-direction: column; gap: 9px; }
+.sb-pillars .row { display: grid; grid-template-columns: 150px minmax(0, 1fr) 30px; gap: 12px; align-items: center; }
+.sb-pillars .lb { font: 500 14px var(--sb-font-body); }
+.sb-pillars .lb em { font: normal 11px var(--sb-font-mono); margin-left: 4px; }
+.sb-pillars .bar { height: 8px; border-radius: 2px; background: rgba(255, 255, 255, .1); }
+.sb-pillars .bar i { display: block; height: 8px; border-radius: 2px; }
+.sb-pillars b { font: 700 16px var(--sb-font-display); text-align: right; }
+.sb-pillars .line { margin: 0; font: 500 14px var(--sb-font-body); }
+.sb-pillars .line.good { color: var(--sb-pos-sf); }
+.sb-pillars .line.bad { color: var(--sb-bad); }
+
+.sb-roster-edit { padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.sb-roster-edit .head { display: flex; justify-content: space-between; align-items: baseline; }
+.sb-modetabs { display: flex; gap: 8px; }
+.sb-modetabs button {
+  min-height: 40px; padding: 0 16px; border-radius: 4px; border: 1.5px solid transparent; background: transparent; color: var(--sb-text-2);
+  font: 600 14px var(--sb-font-body); cursor: pointer;
+}
+.sb-modetabs button[aria-selected="true"] { background: rgba(255, 255, 255, .08); color: var(--sb-text); }
+.sb-rot { display: flex; flex-direction: column; }
+.sb-rot .r { display: grid; grid-template-columns: 46px minmax(0, 1fr) 110px 34px 110px; gap: 12px; align-items: center; min-height: 44px; border-bottom: 1px solid var(--sb-hair); }
+.sb-rot .pos { height: 26px; border-radius: 3px; background: rgba(255, 255, 255, .08); display: flex; align-items: center; justify-content: center; font: 600 12px var(--sb-font-mono); color: var(--sb-muted); }
+.sb-rot .pos.st { color: var(--sb-pos-pg); }
+.sb-rot .who { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.sb-rot .who b { font: 600 15px var(--sb-font-body); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sb-rot .who em { font: normal 600 12px var(--sb-font-body); }
+.sb-rot .bar { height: 8px; border-radius: 2px; background: rgba(255, 255, 255, .1); }
+.sb-rot .bar i { display: block; height: 8px; border-radius: 2px; }
+.sb-rot .q { font: 700 16px var(--sb-font-display); text-align: right; }
+.sb-rot .step { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+.sb-rot .step b { min-width: 24px; text-align: center; font: 700 15px var(--sb-font-display); }
+.sb-rot .step button {
+  width: 32px; height: 32px; border-radius: 4px; border: 1px solid rgba(255, 255, 255, .25); background: transparent; color: var(--sb-text); cursor: pointer; font: 600 16px var(--sb-font-body);
+}
+.sb-rot .step button:disabled { opacity: .3; cursor: not-allowed; }
+.sb-rot-note { margin: 0; font-size: 13px; color: var(--sb-muted); }
+
+.sb-rhpick { display: flex; flex-direction: column; gap: 10px; }
+.sb-rhpick p { margin: 0; font-size: 14px; color: var(--sb-text-2); }
+.sb-rhpick .err { color: var(--sb-bad); }
+.sb-rhpick .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.sb-rhpick .grid.teams { grid-template-columns: repeat(3, 1fr); max-height: 360px; overflow-y: auto; }
+.sb-rhpick .grid button, .sb-rhpick .back {
+  min-height: 44px; border: 1px solid var(--sb-line); border-radius: 4px; background: transparent; color: var(--sb-text); cursor: pointer; font: 600 14px var(--sb-font-body);
+  display: flex; align-items: center; justify-content: space-between; padding: 0 12px;
+}
+.sb-rhpick .grid button:hover { border-color: var(--sb-accent); }
+.sb-rhpick .grid button span { font: 12px var(--sb-font-mono); color: var(--sb-muted); }
+.sb-rhpick .back { border: 0; width: fit-content; padding: 0; color: var(--sb-muted); }
+.sb-standin { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border: 1px solid var(--sb-accent-ln); border-radius: 4px; background: var(--sb-accent-a); font-size: 14px; }
+.sb-standin button { border: 0; background: none; color: var(--sb-muted); cursor: pointer; font: 600 13px var(--sb-font-body); }
+
+.sb-res-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding-top: 4px; }
+.sb-res-actions .save { flex: 1; min-width: 260px; }
+.sb-res-actions .note { font-size: 13px; color: var(--sb-muted); }
+.sb-res-actions .cta { min-height: 56px; }
+
+@media (max-width: 700px) {
+  .sb-res-cols { grid-template-columns: 1fr; }
+  .sb-fit .grade { font-size: 88px; }
+  .sb-pillars .row { grid-template-columns: 112px minmax(0, 1fr) 28px; gap: 8px; }
+  .sb-rot .r { grid-template-columns: 38px minmax(0, 1fr) 34px 100px; gap: 8px; }
+  .sb-rot .bar { display: none; }
+  .sb-res-actions .sb-btn { flex: 1; }
+  .sb-res-actions .cta { width: 100%; flex-basis: 100%; }
+}

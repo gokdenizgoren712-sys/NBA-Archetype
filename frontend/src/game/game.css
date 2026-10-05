@@ -286,21 +286,6 @@
   background: linear-gradient(180deg, color-mix(in srgb, var(--accent, #FFB11B) 10%, transparent), rgba(255, 255, 255, 0.015) 70%);
   box-shadow: inset 0 1px 0 color-mix(in srgb, var(--accent, #FFB11B) 40%, transparent), 0 24px 60px -34px #000; }
 .g-score-hero > *:not(.aura-blob):not(.g-holo) { position: relative; z-index: 3; }
-.g-score-grade {
-  font-family: var(--font-logo); font-weight: 800; font-size: 96px; line-height: 0.85;
-  color: var(--accent); text-shadow: 0 0 46px var(--accent-a), 0 0 90px var(--accent-a);
-  letter-spacing: -0.03em;
-}
-.g-score-pct {
-  font-family: var(--font-logo); font-weight: 700; font-size: 28px;
-  color: var(--text-primary); font-variant-numeric: tabular-nums; letter-spacing: 0.01em;
-}
-.g-score-parts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; margin-top: 22px;
-  background: rgba(255, 255, 255, 0.07); border-radius: 13px; overflow: hidden; }
-.g-score-part { background: #100e13; padding: 11px 6px; }
-.g-score-part .v { font-family: var(--font-logo); font-weight: 700; font-size: 22px; font-variant-numeric: tabular-nums; }
-.g-score-part .l { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
-.g-score-part .w { font-size: 12px; color: var(--text-faint); }
 
 /* Roster breakdown row. */
 .g-roster-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; position: relative; }
@@ -760,7 +745,7 @@
 
   /* Panel iç boşlukları telefonda genişliğin çoğunu yiyordu */
   .g-panel { border-radius: 15px; }
-  .g-score-parts { margin-top: 16px; }
+  
 
   /* Kadro satırı: 5 kolonluk düzen sığmıyor, ham overall'ı gizle
      (aynı bilgi zaten era çipinde ve kalite değerinde var) */
@@ -815,9 +800,9 @@
   .g-modal-backdrop { padding: 10px; }
 
   /* Skor kahramanı: 3 parça 375px'te sıkışıyordu */
-  .g-score-grade { font-size: 64px; }
-  .g-score-pct { font-size: 30px; }
-  .g-score-part .v { font-size: 18px; }
+  
+  
+  
 
   /* Dock'taki spin iki çarkı yan yana sığmıyor */
 
@@ -1284,78 +1269,10 @@
 }
 
 /* ═══ Koç seçimi (handoff 12a) ═══════════════════════════════════════════ */
-.g-coach { --pu: #c084fc; position: relative; display: flex; flex-direction: column; min-height: 0; }
-.g-coach-hero { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; margin: 12px 0 28px; }
-.g-coach-step { font-size: 14px; font-weight: 600; color: var(--pu); }
-.g-coach-hero h2 { margin: 0; font-family: var(--font-logo); font-size: clamp(34px, 3.4vw, 48px); font-weight: 700; line-height: 1; color: var(--text-primary); }
-.g-coach-hero p { margin: 0; font-size: 15px; line-height: 1.5; color: var(--text-secondary); max-width: 560px; }
-.g-coach-wait { text-align: center; padding: 40px 0; font-size: 15px; color: var(--text-muted); animation: gLbPulse2 2s ease-in-out infinite; }
-.g-coach-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 22px; }
-.g-coach-card {
-  position: relative; overflow: hidden; min-height: 300px; border: 0; border-radius: 22px; cursor: pointer;
-  display: flex; flex-direction: column; align-items: center; padding: 26px 20px 22px; text-align: center;
-  font-family: var(--font-sans);
-  background: linear-gradient(180deg, rgba(192, 132, 252, 0.06), rgba(255, 255, 255, 0.015) 60%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  transition: transform .25s ease, box-shadow .25s ease, background .25s ease;
-}
-.g-coach-card:hover { transform: translateY(-4px); }
-.g-coach-card.on {
-  background: linear-gradient(180deg, rgba(192, 132, 252, 0.18), rgba(192, 132, 252, 0.04) 70%);
-  box-shadow: inset 0 0 0 1px rgba(192, 132, 252, 0.6), 0 0 32px -8px var(--pu);
-}
-.g-coach-card:focus-visible { outline: 2px solid var(--pu); outline-offset: 3px; }
-.g-coach-card > * { position: relative; }
-.g-coach-card > .g-coach-glow {
-  position: absolute; left: 50%; top: -50px; width: 260px; height: 200px; transform: translateX(-50%); pointer-events: none;
-  background: var(--pu); opacity: 0.1; border-radius: 50%; filter: blur(44px); transition: opacity .25s ease;
-}
-.g-coach-card.on > .g-coach-glow { opacity: 0.3; }
-.g-coach-ini {
-  width: 76px; height: 76px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-  font-family: var(--font-logo); font-size: 28px; font-weight: 700; color: var(--pu);
-  background: rgba(192, 132, 252, 0.14); box-shadow: 0 0 24px -6px var(--pu);
-}
-.g-coach-name { font-family: var(--font-logo); font-size: 26px; font-weight: 700; line-height: 1.05; color: var(--text-primary); margin-top: 18px; }
-.g-coach-era { font-size: 13px; color: var(--text-muted); margin-top: 6px; }
-.g-coach-grades { display: flex; gap: 34px; margin-top: 24px; }
-.g-coach-grades > span { display: flex; flex-direction: column; align-items: center; gap: 2px; }
-.g-coach-grades b {
-  font-family: var(--font-logo); font-size: 40px; font-weight: 700; line-height: 1; color: var(--c);
-  text-shadow: 0 0 18px color-mix(in srgb, var(--c) 45%, transparent);
-}
-.g-coach-grades i { font-style: normal; font-size: 12px; color: var(--text-muted); }
-.g-coach-rings { margin-top: auto; padding-top: 16px; display: flex; align-items: center; gap: 4px; min-height: 20px; color: #FFB11B; }
-.g-coach-rings em { font-style: normal; font-size: 13px; color: #FFB11B; margin-left: 4px; }
-.g-coach-rings em.none { color: var(--text-faint); margin: 0; }
-.g-coach-actions { display: flex; justify-content: center; margin-top: 26px; flex-shrink: 0; }
-.g-coach-cta { min-height: 54px; padding: 0 36px; font-size: 19px; letter-spacing: 0.05em; text-transform: uppercase; }
-.g-coach-cta.idle { background: rgba(255, 255, 255, 0.05); color: var(--text-faint); box-shadow: none; cursor: default; }
-.g-coach-cta.idle::after { display: none; }
-.g-coach-cta.idle:hover { transform: none; }
 
 /* Tek oyunculu draft içinde: tüm genişlik, kartlar kalan yüksekliği paylaşır */
 .g-draft-body.solo { grid-template-columns: 1fr !important; }
 .g-draft-body.solo > :last-child { display: none; }
-@media (min-width: 1024px) {
-  .g-draft-body.solo .g-coach { height: 100%; }
-  .g-draft-body.solo .g-coach-grid { flex: 1; min-height: 240px; max-height: 400px; }
-  .g-draft-body.solo .g-coach-card { min-height: 0; }
-  .g-draft-body.solo .g-coach-hero { margin: 0 0 22px; }
-}
-@media (max-width: 1100px) { .g-coach-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 640px) {
-  .g-coach-grid { grid-template-columns: 1fr; gap: 12px; }
-  .g-coach-card { min-height: 0; display: grid; grid-template-columns: auto 1fr auto; grid-template-rows: auto auto; column-gap: 14px; row-gap: 2px; align-items: center; text-align: left; padding: 16px; }
-  .g-coach-ini { width: 52px; height: 52px; font-size: 20px; grid-row: span 2; }
-  .g-coach-name { font-size: 20px; margin: 0; }
-  .g-coach-era { margin: 0; grid-column: 2; }
-  .g-coach-grades { grid-column: 3; grid-row: 1 / span 2; margin: 0; gap: 16px; }
-  .g-coach-grades b { font-size: 28px; }
-  .g-coach-rings { grid-column: 1 / -1; padding-top: 8px; }
-  .g-coach-actions { position: sticky; bottom: 0; margin: 16px -16px 0; padding: 14px 16px calc(20px + env(safe-area-inset-bottom)); background: linear-gradient(to top, #0b0b0b 70%, transparent); }
-  .g-coach-cta { width: 100%; }
-}
 
 /* ═══ Sonuç ekranı (handoff 12b) ═════════════════════════════════════════
    Tek büyük an: 96px not kendi renginde; altında puan, referans, üç bileşen.
@@ -1363,47 +1280,16 @@
 .g-result { position: relative; display: flex; flex-direction: column; gap: 22px; padding-bottom: 8px; }
 /* :not(.g-smoke) şart — yoksa bu kural sayfa ışığının position:absolute'unu eziyor */
 .g-result > *:not(.g-smoke) { position: relative; }
-.g-result-hero { display: flex; flex-direction: column; align-items: center; text-align: center; padding-top: 18px; }
-.g-result-eyebrow { font-size: 14px; font-weight: 600; color: var(--g); }
-.g-result-grade {
-  font-family: var(--font-logo); font-size: 96px; font-weight: 700; line-height: 1; letter-spacing: -0.03em;
-  color: var(--g); text-shadow: 0 0 50px color-mix(in srgb, var(--g) 60%, transparent); margin-top: 6px;
-}
-.g-result-score { display: flex; align-items: baseline; gap: 8px; margin-top: 4px; }
-.g-result-score b { font-family: var(--font-logo); font-size: 44px; font-weight: 700; line-height: 1; color: var(--text-primary); }
-.g-result-score i { font-style: normal; font-size: 15px; color: var(--text-muted); }
-.g-result-ref { font-size: 14px; color: var(--text-secondary); margin-top: 10px; }
-.g-result-ref b { color: var(--text-primary); font-weight: 600; }
-.g-result-chem { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: #FFB11B; margin-top: 8px; }
-.g-result-parts { display: flex; gap: 64px; margin-top: 28px; }
-.g-result-parts > div { display: flex; flex-direction: column; align-items: center; gap: 2px; }
-.g-result-parts b {
-  font-family: var(--font-logo); font-size: 36px; font-weight: 700; line-height: 1; color: var(--c);
-  text-shadow: 0 0 18px color-mix(in srgb, var(--c) 40%, transparent);
-}
-.g-result-parts span { font-size: 14px; color: var(--text-primary); }
-.g-result-parts i { font-style: normal; font-size: 12px; color: var(--text-muted); }
 
-.g-result-actions {
-  display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap;
-  padding-top: 20px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
-}
-.g-result-save { display: flex; flex-direction: column; gap: 6px; flex: 1; max-width: 460px; min-width: 240px; }
-.g-result-save label { font-size: 12px; color: var(--text-muted); }
-.g-result-save > div { display: flex; gap: 12px; align-items: center; }
-.g-result-save input { flex: 1; min-width: 0; font-size: 15px; height: 40px; }
-.g-result-err { font-size: 13px; color: var(--danger); margin: 0; }
-.g-result-saved { font-size: 14px; color: #FFB11B; align-self: center; }
-.g-result-saved.muted { color: var(--text-muted); }
 .g-result-again { min-height: 50px; padding: 0 30px; font-size: 18px; letter-spacing: 0.05em; text-transform: uppercase; }
 
 @media (max-width: 640px) {
-  .g-result-grade { font-size: 88px; }
-  .g-result-parts { gap: 28px; }
-  .g-result-parts b { font-size: 30px; }
-  .g-result-actions { position: sticky; bottom: 0; z-index: 20; margin: 0 -16px; padding: 14px 16px calc(20px + env(safe-area-inset-bottom)); background: linear-gradient(to top, #0b0b0b 72%, transparent); box-shadow: none; }
-  .g-result-save { max-width: none; flex-basis: 100%; }
-  .g-result-actions .flex-1 { display: none; }
+  
+  
+  
+  
+  
+  
   .g-result-again { flex: 1; min-height: 54px; }
 }
 
@@ -1581,25 +1467,9 @@
 }
 
 /* ═══ Futbol kadro sonucu (handoff 16d) ══════════════════════════════════ */
-.g-sq { max-width: 1180px; margin: 0 auto; padding: 14px 36px 28px; }
+
 .g-sq-top { display: flex; align-items: center; gap: 14px; }
 .g-sq-top .meta { font-size: 13px; color: var(--text-secondary); }
-.g-result-grade small { font-size: 0.34em; letter-spacing: 0; margin-left: 2px; vertical-align: 0.9em; }
-.g-sq .g-result-ref { max-width: 620px; line-height: 1.5; }
-.g-sq-cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 56px; }
-.g-sq-h { font-family: var(--font-logo); font-size: 20px; font-weight: 700; color: var(--text-primary); margin-bottom: 6px; }
-.g-sq-rep { display: flex; gap: 14px; padding: 12px 0; box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.05); }
-.g-sq-rep i { width: 8px; height: 8px; border-radius: 50%; margin-top: 7px; flex-shrink: 0; background: var(--c); box-shadow: 0 0 8px var(--c); }
-.g-sq-rep div { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.g-sq-rep b { font-size: 15px; font-weight: 600; color: var(--text-primary); }
-.g-sq-rep span { font-size: 13px; line-height: 1.5; color: var(--text-secondary); }
-.g-sq-xi { display: flex; align-items: center; gap: 12px; height: 36px; }
-.g-sq-xi .pos { width: 34px; font-family: var(--font-logo); font-size: 13px; font-weight: 700; flex-shrink: 0; }
-.g-sq-xi .nm { flex: 1; min-width: 0; font-size: 14px; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.g-sq-xi .fit { font-size: 12px; flex-shrink: 0; }
-@media (max-width: 900px) { .g-sq-cols { grid-template-columns: 1fr; gap: 28px; } }
-@media (max-width: 640px) { .g-sq { padding: 8px 16px 24px; } }
-.g-sq-xi .nm em { font-style: normal; font-weight: 400; font-size: 12px; color: var(--text-muted); margin-left: 8px; }
 
 /* ═══ Futbol sezonu (handoff 14b) ═══════════════════════════════════════ */
 .g-fs-hero { display: flex; flex-direction: column; gap: 6px; flex: 0 0 auto; margin-right: 24px; }

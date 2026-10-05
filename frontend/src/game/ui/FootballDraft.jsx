@@ -132,7 +132,9 @@ export default function FootballDraft({
     };
   });
 
-  const canSpin = phase === "idle" && filled > 0;
+  // Seçilebilecek kimse kalmadıysa (kalan slotlara uyan oyuncu yok) tekrar çevirmek serbest.
+  const stuck = phase === "picking" && rosterReady && rows.length === 0 && !placing && !spinning;
+  const canSpin = (phase === "idle" && filled > 0) || stuck;
   const spin = {
     label: canSpin ? "Spin" : flow.overlayOn || spinning ? "Spinning…" : "Locked",
     disabled: !canSpin, idle: false, onClick: () => { setLastJoker(null); onSpin(); },

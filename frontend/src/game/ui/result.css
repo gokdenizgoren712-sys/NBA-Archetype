@@ -45,3 +45,106 @@
   .sb-ccard .sb-btn { width: auto; min-height: 44px; padding: 0 18px; }
   .sb-coach-actions .sb-btn { width: 100%; }
 }
+
+/* ── Eski bileşenlerin içeriğini yeni dile çeviren kapsam (.sb-skin) ───────────
+   Sezon/analiz panelleri yoğun tablolar içeriyor; mantığı ve işaretlemesi korunuyor,
+   yalnız değişkenler ve ortak şekiller (panel, sekme, rozet, bar) mockup diline çekiliyor. */
+.sb-skin {
+  --accent: var(--sb-accent); --accent-line: var(--sb-accent-ln); --accent-a: var(--sb-accent-a);
+  --text-primary: var(--sb-text); --text-secondary: var(--sb-text-2); --text-muted: var(--sb-muted); --text-faint: var(--sb-faint);
+  --font-sans: var(--sb-font-body); --font-logo: var(--sb-font-display); --border: var(--sb-line);
+  --bg-surface: var(--sb-panel); --bg-elevated: var(--sb-chip); --yamabuki: var(--sb-accent);
+}
+.sb-skin .g-panel {
+  border-radius: var(--sb-r-sm); background: var(--sb-panel); border: 1px solid var(--sb-line); box-shadow: none; overflow: visible;
+}
+.sb-skin .g-panel.subtle { background: rgba(255, 255, 255, .02); }
+.sb-skin .aura-blob, .sb-skin .g-holo { display: none; }
+.sb-skin .g-section-title { font: 700 20px var(--sb-font-display); letter-spacing: .08em; text-transform: uppercase; }
+.sb-skin .g-section-title::before { width: 8px; height: 8px; border-radius: 8px; background: var(--sb-text); box-shadow: none; }
+.sb-skin .g-section-title.nodot::before { display: none; }
+.sb-skin .g-status {
+  font: 600 12px var(--sb-font-mono); padding: 5px 10px; border-radius: 99px; background: rgba(255, 255, 255, .08); color: var(--sb-text);
+}
+.sb-skin .g-seg { background: none; padding: 0; gap: 8px; }
+.sb-skin .g-seg-btn {
+  min-height: 40px; padding: 0 16px; border-radius: 4px; border: 1.5px solid transparent; color: var(--sb-text-2); font: 600 14px var(--sb-font-body);
+}
+.sb-skin .g-seg-btn.on { background: rgba(255, 255, 255, .08); color: var(--sb-text); border-color: rgba(255, 255, 255, .08); }
+.sb-skin .g-tile { border-radius: var(--sb-r-sm); background: rgba(255, 255, 255, .03); box-shadow: inset 0 0 0 1px var(--sb-line); }
+.sb-skin .g-bar-fill { background: var(--fill, var(--sb-accent)); background-image: none; box-shadow: none; border-radius: 2px; }
+.sb-skin .g-bar-track { height: 8px; border-radius: 2px; background: rgba(255, 255, 255, .1); }
+.sb-skin .aura-rating-btn {
+  min-height: 56px; padding: 0 40px; border: 0; border-radius: 4px; cursor: pointer; background: var(--sb-accent); color: #0b0b0d;
+  font: 700 22px var(--sb-font-display); letter-spacing: .12em; text-transform: uppercase; box-shadow: 0 0 26px var(--sb-glow);
+}
+.sb-skin .aura-rating-btn:disabled { opacity: .45; cursor: not-allowed; }
+.sb-skin .aura-pill-btn {
+  min-height: 40px; padding: 0 16px; border-radius: 99px; border: 1.5px solid rgba(255, 255, 255, .2); background: transparent;
+  color: var(--sb-text-2); font: 600 14px var(--sb-font-body); cursor: pointer;
+}
+.sb-skin .aura-pill-btn.active { border-color: var(--sb-accent); background: var(--sb-accent-a); color: #fff; }
+.sb-skin .pa-btn-secondary {
+  min-height: 44px; padding: 0 22px; border-radius: 4px; border: 1.5px solid rgba(255, 255, 255, .3); background: transparent;
+  color: var(--sb-text); font: 700 16px var(--sb-font-display); letter-spacing: .1em; text-transform: uppercase; cursor: pointer;
+}
+.sb-skin .aura-ghost-input {
+  min-height: 44px; border: 0; border-bottom: 1px solid rgba(255, 255, 255, .25); background: transparent; color: var(--sb-text);
+  font: 14px var(--sb-font-body); min-width: 0; flex: 1;
+}
+
+/* ── Futbol sonucu (11c) ───────────────────────────────────────────── */
+.sb-fres { display: flex; flex-direction: column; gap: 16px; }
+.sb-fres-hero { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
+.sb-fres-main { display: flex; align-items: center; gap: 22px; flex: 1; min-width: 0; }
+.sb-fres-main .lbl { display: block; font: 600 14px var(--sb-font-body); }
+.sb-fres-big { font: 700 100px/.9 var(--sb-font-display); letter-spacing: .01em; }
+.sb-fres-big small { font-size: 56px; }
+.sb-fres-ref { margin: 0; max-width: 380px; font-size: 14px; line-height: 1.5; color: var(--sb-text-2); }
+.sb-fres-ref b { color: #fff; }
+.sb-fres-parts { display: flex; gap: 34px; margin-left: auto; text-align: center; }
+.sb-fres-parts b { display: block; font: 700 40px/1.1 var(--sb-font-display); }
+.sb-fres-parts span { font: 600 13px var(--sb-font-body); color: var(--sb-text-2); }
+.sb-fres-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 40px; border-top: 1px solid var(--sb-hair); padding-top: 16px; }
+.sb-fres-h { margin: 0 0 12px; font: 700 24px var(--sb-font-display); letter-spacing: .08em; text-transform: uppercase; }
+.sb-fres-rep { display: grid; grid-template-columns: 8px 1fr; gap: 14px; padding: 14px 0; }
+.sb-fres-rep i { width: 8px; height: 8px; border-radius: 8px; margin-top: 7px; background: var(--c); }
+.sb-fres-rep b { display: block; font: 600 16px var(--sb-font-body); }
+.sb-fres-rep span { font-size: 14px; line-height: 1.45; color: var(--sb-text-2); }
+.sb-fres-xi { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 12px; align-items: center; min-height: 44px; border-bottom: 1px solid var(--sb-hair); font-size: 14px; }
+.sb-fres-xi .pos { font: 600 12px var(--sb-font-mono); }
+.sb-fres-xi .nm { font: 600 16px var(--sb-font-body); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sb-fres-xi .nm em { margin-left: 6px; font: normal 12px var(--sb-font-body); color: var(--sb-muted); }
+.sb-fres-xi .fit { font: 600 13px var(--sb-font-body); text-align: right; }
+.sb-fres-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.sb-fres-actions .grow { flex: 1; }
+.sb-fres-save { display: flex; align-items: center; gap: 10px; min-width: 260px; }
+.sb-fres-save label { font: 12px var(--sb-font-mono); color: var(--sb-muted); }
+.sb-fres-note { margin: 0; font-size: 13px; color: var(--sb-muted); }
+.sb-fgrid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.sb-fcol { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+
+@media (max-width: 700px) {
+  .sb-fres-main { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .sb-fres-big { font-size: 80px; }
+  .sb-fres-parts { margin: 0; gap: 18px; flex-wrap: wrap; text-align: left; }
+  .sb-fres-parts b { font-size: 30px; }
+  .sb-fres-cols, .sb-fgrid { grid-template-columns: 1fr; gap: 16px; }
+}
+
+/* ── Şampiyon penceresi (3k / 4k) ──────────────────────────────────── */
+.sb-champ-back {
+  position: fixed; inset: 0; z-index: 70; display: flex; align-items: center; justify-content: center; padding: 16px;
+  background: radial-gradient(ellipse at center, rgba(var(--sb-accent-rgb), .22), rgba(0, 0, 0, .86) 62%);
+}
+.sb-champ {
+  width: min(560px, 100%); box-sizing: border-box; padding: 34px 40px; text-align: center;
+  background: #0c0e10; border: 1.5px solid var(--sb-accent); border-radius: 4px; box-shadow: 0 0 60px var(--sb-glow);
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+}
+.sb-champ .eyebrow { color: var(--sb-accent); letter-spacing: .14em; }
+.sb-champ .big { font: 700 96px/1 var(--sb-font-display); color: var(--sb-accent); }
+.sb-champ h2 { margin: 0; font: 700 36px/1.05 var(--sb-font-display); letter-spacing: .1em; text-transform: uppercase; }
+.sb-champ p { margin: 4px 0 0; font-size: 15px; color: var(--sb-text-2); }
+.sb-champ .acts { display: flex; gap: 10px; margin-top: 18px; }
+.sb-champ .sb-btn { min-height: 56px; padding: 0 40px; font-size: 22px; letter-spacing: .12em; }
