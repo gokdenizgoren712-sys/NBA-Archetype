@@ -40,6 +40,7 @@ ROOM_STATES: dict[str, dict] = {}
 ROOM_LOCKS: dict[str, asyncio.Lock] = {}
 CONNS: dict[str, dict[int, WebSocket]] = {}
 
+REMATCH_LIMIT = 5         # bir odada en fazla bu kadar rövanş
 SPIN_MIN_PLAYERS = 13     # bu kadar oyuncusu olmayan kulüp-sezon çarka girmez
 STALE_HOURS = 12
 
@@ -122,10 +123,11 @@ def _restore(row) -> dict | None:
 
 # ── Durum ────────────────────────────────────────────────────────────────────
 
-def _init_state(row) -> dict:
+def _init_state(row, first: int | None = None) -> dict:
     R = _rules()
     p1, p2 = row["p1_user_id"], row["p2_user_id"]
-    first = 1 if random.random() < 0.5 else 2
+    if first is None:
+        first = 1 if random.random() < 0.5 else 2
     d = R.create_draft(shapes={1: "4-3-3", 2: "4-3-3"}, wheel_mode="round", first=first)
     d.update({
         "seats": {1: p1, 2: p2},
@@ -136,6 +138,14 @@ def _init_state(row) -> dict:
         "stage": "setup",           # setup | drafting | done
         "ready": {"1": False, "2": False},
         "result": None,
+        # İlk seçen koltuk — rövanşta sıra diğerine geçsin diye saklanıyor.
+        "first_seat": first,
+        # Rövanş: user_id (string) -> hazır mı. Önceki sonuçlar history'de:
+        # oda satırındaki result_json yeni elemede ÜZERİNE YAZILIYOR, bu yüzden
+        # eski sonuçların tek kopyası burada.
+        "rematch_ready": {},
+        "rematches": 0,
+        "history": [],
     })
     return d
 
@@ -179,6 +189,11 @@ def _public(code: str, state: dict) -> dict:
         "takenIds": [int(x) for x in state.get("takenIds", [])],
         "connected": list(CONNS.get(code, {})),
         "result": state.get("result"),
+        # Rövanş. rematch_ready: {"<user_id>": bool} (docs/BACKEND_PROMPT_GAME_UI.md).
+        "rematch_ready": state.get("rematch_ready") or {},
+        "rematches": state.get("rematches", 0),
+        "rematch_limit": REMATCH_LIMIT,
+        "history": state.get("history") or [],
     }
 
 
@@ -341,7 +356,59 @@ def _h_pick(state: dict, seat: int, msg: dict) -> str | None:
     return None
 
 
-HANDLERS = {"shape": _h_shape, "wheel": _h_wheel, "ready": _h_ready, "pick": _h_pick}
+def _h_rematch_ready(state: dict, seat: int, msg: dict) -> str | None:
+    """Rövanş "ikisi de dokunmalı": biri hazır olunca bekler, ikisi olunca
+    oda yeni drafta döner. Tek taraflı başlatılsaydı, sonucu henüz görmemiş
+    rakibin ekranı altından çekilirdi."""
+    if state["stage"] != "done":
+        return "The tie is not over yet"
+    if state.get("rematches", 0) >= REMATCH_LIMIT:
+        return f"This room has reached its limit of {REMATCH_LIMIT} rematches"
+    uid = state["seats"][seat]
+    flags = state.setdefault("rematch_ready", {})
+    flags[str(uid)] = bool(msg.get("ready", True))
+    if all(flags.get(str(u)) for u in state["seats"].values()):
+        state["_rematch_go"] = True      # döngü bunu görüp _start_rematch'i çağırır
+    return None
+
+
+def _start_rematch(code: str, state: dict) -> None:
+    """Aynı odada yeni oyun. Koltuklar YER DEĞİŞTİRİR: önceki misafir host olur,
+    ilk ayağı o oynar (p1 ilk ayakta ev sahibi), ilk seçen de öbür oyuncu olur.
+
+    Yer değiştirme DB satırında da yapılıyor (p1/p2 kolonları), yalnız bellekte
+    değil — _resolve_h2h, _h2h_public, leave ve _restore hep satırdan okuyor;
+    yalnız state'te değiştirsek bunlar eski koltuğa göre karar verirdi."""
+    old_seats = dict(state["seats"])
+    a, b = old_seats[1], old_seats[2]
+    prev_first_uid = old_seats.get(state.get("first_seat", 1))
+    history = list(state.get("history") or [])
+    if state.get("result"):
+        history.append(state["result"])
+    rematches = state.get("rematches", 0) + 1
+    wheel = state.get("wheelMode", "round")
+
+    row = _row(code)
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE football_h2h_rooms SET p1_user_id=?, p2_user_id=?, "
+            "p1_name=?, p2_name=?, p1_squad_json=NULL, p2_squad_json=NULL, "
+            "result_json=NULL, status='building', draft_state_json=NULL, "
+            "updated_at=datetime('now') WHERE room_code=?",
+            (b, a, row["p2_name"], row["p1_name"], code))
+    row = _row(code)          # artık p1=b, p2=a
+
+    # Önceki turda İLK seçmeyen şimdi ilk seçsin.
+    want_uid = a if prev_first_uid == b else b
+    first_seat = 1 if want_uid == row["p1_user_id"] else 2
+    fresh = _init_state(row, first=first_seat)
+    fresh.update({"history": history, "rematches": rematches, "wheelMode": wheel})
+    state.clear()
+    state.update(fresh)
+
+
+HANDLERS = {"shape": _h_shape, "wheel": _h_wheel, "ready": _h_ready, "pick": _h_pick,
+            "rematch_ready": _h_rematch_ready}
 
 
 # ── Soket ────────────────────────────────────────────────────────────────────
@@ -422,6 +489,8 @@ async def football_room_socket(ws: WebSocket, room_code: str, token: str = Query
                 if (state["stage"] == "drafting" and state["phase"] == "done"
                         and not state.get("result")):
                     _finish(room_code, state)
+                if state.pop("_rematch_go", False):
+                    _start_rematch(room_code, state)
                 _save(room_code, state)
             await _broadcast(room_code, _public(room_code, ROOM_STATES[room_code]))
 
@@ -433,9 +502,23 @@ async def football_room_socket(ws: WebSocket, room_code: str, token: str = Query
             del conns[uid]
         if not conns:
             CONNS.pop(room_code, None)
+        # Rövanş için "hazırım" demişti ve gitti: işareti düşür. Kalsaydı,
+        # dönen rakip tıklayınca karşı ekranda kimse yokken yeni oyun başlardı.
+        dropped = False
+        st = ROOM_STATES.get(room_code)
+        if st and (st.get("rematch_ready") or {}).get(str(uid)):
+            async with _lock(room_code):
+                st = ROOM_STATES.get(room_code)
+                if st and st.get("rematch_ready"):
+                    dropped = st["rematch_ready"].pop(str(uid), None) is not None
+                    _save(room_code, st)
         # Karşı tarafa haber ver — sessizce düşmek, öbür ekranda sonsuz
         # "sıra rakipte" demek olurdu.
         await _broadcast(room_code, {"type": "opponent_left", "user_id": uid})
+        # Yeni state YALNIZ bir hazır işareti gerçekten düştüyse: her kopmada
+        # fazladan bir state yayınlamak mesaj akışını herkes için değiştirirdi.
+        if dropped and ROOM_STATES.get(room_code):
+            await _broadcast(room_code, _public(room_code, ROOM_STATES[room_code]))
 
 
 # ── Online: eşleştirme kuyruğu ───────────────────────────────────────────────
