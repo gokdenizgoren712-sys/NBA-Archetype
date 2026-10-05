@@ -75,3 +75,13 @@ test("futbol odası: giriş ve kod paylaşımı RoomUi'de", () => {
   assert.match(v, /<RoomShare sport="football"/);
   assert.match(v, /<RoomGate sport="football"/);
 });
+
+test("Online (basketbol): Board ve Live yeni bileşenlerde, ağ mantığı yerinde", () => {
+  const p = src("pages", "OnlineGame.jsx");
+  assert.match(p, /<OnlineBoard /);
+  assert.match(p, /<OnlineLive /);
+  assert.match(p, /\/api\/game\/challenge/);
+  assert.match(p, /\/ws\/game\/matchmaking/);
+  assert.match(p, /board\/at-score/);
+  assert.doesNotMatch(p, /FullCourtBoard|RoomLobby|QueuePanel/);
+});

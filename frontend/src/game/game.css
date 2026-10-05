@@ -20,7 +20,7 @@
    large dark glass surfaces that same value reads as "broken", so every game
    shell re-declares the scale brighter. Scoped here, so data pages keep
    their quieter typography. */
-.g-dock, .g-panel, .g-tile, .g-court-panel, .g-step, .g-modal, .g-score-hero, .g-seg {
+.g-dock, .g-panel, .g-tile, .g-step, .g-modal, .g-score-hero, .g-seg {
   --text-primary: #f2efea;
   --text-muted:   #b4afa8;
   --text-faint:   #8b857e;
@@ -60,8 +60,7 @@
 
 /* Handoff: panel başına blob yok (sayfa başına 1–2 ortam ışığı, bkz.
    .g-smoke). Holo/foil yalnız oyuncu kartında. */
-.g-panel > .aura-blob, .g-tile > .aura-blob, .g-dock > .aura-blob, .g-step > .aura-blob,
-.g-court-panel > .aura-blob, .g-score-hero > .aura-blob, .g-modal > .aura-blob { display: none; }
+.g-panel > .aura-blob, .g-tile > .aura-blob, .g-dock > .aura-blob, .g-step > .aura-blob, .g-score-hero > .aura-blob, .g-modal > .aura-blob { display: none; }
 
 /* Prizm stripe texture, reused from the player card but at list-safe opacity. */
 .g-holo { display: none;
@@ -298,14 +297,6 @@
   font-family: var(--font-logo); font-size: 12px; font-weight: 700; letter-spacing: 0.06em;
   width: 30px; flex-shrink: 0; text-align: center; padding: 4px 0; border-radius: 6px;
   color: var(--accent); background: var(--accent-a); border: 1px solid var(--accent-line);
-}
-
-/* Tam saha 1v1 görünümü — dar ekranda kort 94:50 oranıyla küçüldüğü için
-   düğümler çakışıyor; oranı bozmak yerine düğümü küçültüyoruz. SVG'nin
-   width/height'ı presentation attribute olduğundan CSS onları yener. */
-@media (max-width: 760px) {
-  .g-fc-spot svg { width: 28px; height: 28px; }
-  .g-fc-spot .nm { font-size: 12px; max-width: 50px; margin-top: 2px; }
 }
 
 /* Draft Analysis kadro satırı — düz tablo satırı değil, kart dilinin küçük
@@ -600,25 +591,6 @@
 @media (max-width: 1099px) {
   .g-hud > .col-court { order: -1; }
 }
-
-/* Numbered process step — a horizontal row with a real 01/02 index badge.
-   Numbering is meaningful here: the draft genuinely runs 1→4 in order. */
-/* Handoff 3a: adımlar kutusuz — numara adımın renginde parlıyor, arkasında
-   küçük bir renk bulutu; çerçeve ve zemin yok. */
-
-/* Card-style expand: 0fr → 1fr grid row, same mechanic as the player card. */
-
-/* Court panel — the center of gravity. Dot-matrix ground + mono status
-   header make it read as an instrument, not a picture frame. */
-.g-court-panel {
-  position: relative; overflow: hidden; border-radius: 18px; padding: 16px;
-  /* Vinyet artık resting box-shadow değil (Flat-By-Default kuralı) — aynı
-     görsel etki, radial-gradient katmanı olarak taşındı. */
-  background: radial-gradient(ellipse at 50% 0%, color-mix(in srgb, var(--accent, #FFB11B) 7%, transparent), transparent 65%),
-              rgba(255, 255, 255, 0.015);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 24px 60px -34px #000;
-}
-.g-court-panel > *:not(.g-dotgrid):not(.aura-blob) { position: relative; z-index: 3; }
 /* Handoff: nokta ızgarası dekoratif gürültü — kaldırıldı. */
 .g-dotgrid { display: none;
   position: absolute; inset: 0; z-index: 0; pointer-events: none; opacity: 0.35;
@@ -787,13 +759,6 @@
 
 /* ═══ DAR EKRAN — kort, analiz, modal ═════════════════════════════════ */
 @media (max-width: 640px) {
-  /* Tam saha: 94:50 oranı telefonda 375×200'e düşüyor, isimler okunmuyor.
-     Bench'i tek sütuna alıp korta nefes aldırıyoruz. */
-  .g-fc-spot .nm { font-size: 12px; max-width: 44px; }
-
-  /* Draft Analysis ayna barları: iki bar + ortada etiket 375px'e sığmıyor.
-     Etiket üste, barlar altına tam genişlik. */
-  .g-court-panel { padding: 12px; border-radius: 15px; }
 
   /* Modal telefonda kenardan kenara, köşeler yalnızca üstte */
   .g-modal { max-height: 88vh; border-radius: 16px; }
@@ -806,14 +771,6 @@
 
   /* Dock'taki spin iki çarkı yan yana sığmıyor */
 
-}
-
-/* Tam sahanın bench şeridi: telefonda 2 taraf × 4 slot = 8 hücre yan yana
-   ~34px'e düşüyor, isim diye bir şey kalmıyor. Dar ekranda iki tarafı alt
-   alta alıyoruz — her taraf 4 hücreyi tam genişlikte kullanıyor. */
-@media (max-width: 640px) {
-  .g-fc-bench { grid-template-columns: 1fr; gap: 10px; }
-  .g-fc-bench .g-label { justify-content: flex-start !important; }
 }
 
 /* Draft Analysis — 1v1 ayna barları dar ekranda ═══════════════════════
@@ -925,17 +882,6 @@
   .fb-bench > * { flex: 0 0 calc((100% - 6 * 4px) / 7); }
 }
 
-/* ═══ Handoff v2 — oyun wordmark'ı, kural penceresi (17c) ═══ */
-
-/* Oyun wordmark'ı — büyük harfin kaldığı tek yer; aksan renginde parlar. */
-.g-wordmark {
-  margin: 0; font-family: var(--font-logo); font-weight: 700; line-height: 1;
-  font-size: 24px; letter-spacing: 0.05em; text-transform: uppercase;
-  color: var(--accent, #FFB11B);
-  text-shadow: 0 0 30px color-mix(in srgb, var(--accent, #FFB11B) 35%, transparent);
-}
-.g-wordmark.lg { font-size: clamp(34px, 4vw, 48px); letter-spacing: 0.04em; }
-
 /* Telefon (4c kalıbı): ikon solda, metin sağda, "Play" altta */
 @media (max-width: 640px) {
   
@@ -1019,27 +965,6 @@
 }
 /* :not(.g-smoke) şart — yoksa bu kural sayfa ışığının position:absolute'unu eziyor */
 .g-idle > *:not(.g-smoke) { position: relative; }
-.g-idle-hero { display: flex; align-items: flex-end; justify-content: space-between; gap: 32px; margin: 8px 0 26px; }
-.g-idle-hero p { margin: 10px 0 0; font-size: 15px; color: var(--text-secondary); }
-.g-idle-actions { display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
-.g-idle-cta { min-height: 56px; padding: 0 34px; font-size: 19px; letter-spacing: 0.06em; text-transform: uppercase; }
-
-/* Mod düğmesi — nokta + etiket + ipucu; seçili olan hafif zemin + halka */
-.g-modebtn-row { display: flex; gap: 4px; }
-.g-modebtn {
-  height: 48px; padding: 0 16px; border: 0; border-radius: 12px; cursor: pointer;
-  display: flex; align-items: center; gap: 10px; background: transparent;
-  font-family: var(--font-sans); text-align: left; transition: background 0.15s ease;
-}
-.g-modebtn:hover { background: rgba(255, 255, 255, 0.04); }
-.g-modebtn.on { background: rgba(255, 255, 255, 0.06); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 45%, transparent); }
-.g-modebtn:focus-visible { outline: 2px solid var(--c); outline-offset: 2px; }
-.g-modebtn .dot { width: 8px; height: 8px; border-radius: 4px; background: var(--c); box-shadow: 0 0 10px var(--c); opacity: 0.45; }
-.g-modebtn.on .dot { opacity: 1; }
-.g-modebtn .lbl { display: flex; flex-direction: column; gap: 1px; }
-.g-modebtn .lbl b { font-size: 14px; font-weight: 600; color: var(--text-secondary); }
-.g-modebtn.on .lbl b { color: var(--text-primary); }
-.g-modebtn .lbl i { font-style: normal; font-size: 12px; color: var(--text-muted); }
 
 .g-divider { height: 1px; flex-shrink: 0; background: var(--divider-fade); margin: 26px 0 0; }
 
@@ -1056,17 +981,11 @@
 
 @media (max-width: 1100px) {
   .g-idle { height: auto; min-height: 100%; overflow: visible; padding: 8px 20px 24px; }
-  .g-idle-hero { flex-direction: column; align-items: flex-start; }
   
   .g-idle-body { grid-template-columns: 1fr; gap: 28px; }
 }
 @media (max-width: 640px) {
   .g-idle { padding: 4px 16px 24px; }
-  .g-idle-hero { margin: 4px 0 18px; gap: 16px; }
-  .g-idle-actions { flex-direction: column; align-items: stretch; width: 100%; gap: 10px; }
-  .g-modebtn-row { width: 100%; }
-  .g-modebtn { flex: 1; }
-  .g-idle-cta { width: 100%; min-height: 54px; }
   
   
 }
@@ -1181,28 +1100,13 @@
 /* :not(.g-smoke) şart — yoksa bu kural sayfa ışığının position:absolute'unu eziyor */
 .g-draft > *:not(.g-smoke) { position: relative; }
 @media (min-width: 1024px) { .g-draft { height: 100%; overflow: hidden; } }
-
-.g-draft-head { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 24px; flex-shrink: 0; }
-.g-draft-id { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
-.g-draft-meta { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; font-size: 13px; }
-.g-era-chip {
-  height: 26px; padding: 0 10px; border-radius: 13px; display: inline-flex; align-items: center;
-  font-size: 13px; font-weight: 600; color: var(--c);
-  background: color-mix(in srgb, var(--c) 12%, transparent);
-  box-shadow: 0 0 14px -2px color-mix(in srgb, var(--c) 50%, transparent);
-}
 .g-draft-progress { width: 110px; height: 4px; border-radius: 2px; background: #1f1f1f; overflow: hidden; }
 .g-draft-progress i { display: block; height: 100%; background: linear-gradient(90deg, #ffe9b0, #FFB11B); box-shadow: 0 0 8px #FFB11B; transition: width 0.3s ease; }
-.g-draft-count { color: var(--text-secondary); font-variant-numeric: tabular-nums; }
 .g-draft-star { display: inline-flex; align-items: center; gap: 3px; color: #FFB11B; }
 .g-draft-cap { color: #4ade80; font-weight: 600; }
-
-.g-draft-wheels { display: flex; align-items: flex-end; gap: 36px; justify-content: center; min-height: 64px; }
 .g-spin-lg .g-spin-inline { height: 48px; min-width: 150px; }
 .g-spin-lg .g-spin-inline-item { font-size: 44px; letter-spacing: 0; }
 .g-spin-lg .g-spin-caption { font-size: 12px; margin-top: 2px; }
-
-.g-draft-jokers { display: flex; gap: 6px; justify-content: flex-end; }
 .g-divider.tight { margin-top: 18px; }
 
 .g-draft-body {
@@ -1213,16 +1117,6 @@
   .g-draft-body { grid-template-columns: minmax(580px, 620px) minmax(0, 1fr); gap: 40px; }
   .g-draft-body > * { min-height: 0; }
 }
-
-/* Joker — handoff 5a: 58px kare kutu, ikon + 12px etiket */
-.g-draft-jokers .g-joker {
-  width: 58px; height: 58px; border-radius: 14px; padding: 0; border: 0;
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
-}
-.g-draft-jokers .g-joker.on { background: color-mix(in srgb, var(--accent, #FFB11B) 8%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent, #FFB11B) 30%, transparent), 0 0 16px -6px var(--accent, #FFB11B); }
-.g-draft-jokers .g-joker.on:hover { border: 0; background: color-mix(in srgb, var(--accent, #FFB11B) 14%, transparent); }
-.g-draft-jokers .g-joker.off { background: rgba(255, 255, 255, 0.03); }
-.g-draft-jokers .g-joker .lbl { font-size: 12px; font-weight: 500; letter-spacing: 0; text-transform: none; font-family: var(--font-sans); }
 
 /* Havuz — kutusuz: başlık + tablo */
 .g-draft .g-pool-fill { background: none; box-shadow: none; border-radius: 0; }
@@ -1260,12 +1154,8 @@
   .g-row-pin, .g-row-head .lbl.c-pin { width: 170px; }
   .g-row-stat, .g-row-head .lbl.c-stat { width: 38px; font-size: 14px; }
   .g-draft { padding: 8px 16px 16px; }
-  .g-draft-head { grid-template-columns: 1fr; gap: 12px; }
-  .g-draft-wheels { justify-content: flex-start; gap: 24px; min-height: 0; }
   .g-spin-lg .g-spin-inline-item { font-size: 32px; }
   .g-spin-lg .g-spin-inline { height: 38px; min-width: 110px; }
-  .g-draft-jokers { justify-content: flex-start; }
-  .g-draft-jokers .g-joker { width: 56px; height: 56px; }
 }
 
 /* ═══ Koç seçimi (handoff 12a) ═══════════════════════════════════════════ */
@@ -1305,121 +1195,6 @@
 .g-season-final { text-align: center; padding: 8px 0 4px; }
 .g-season-banner { display: inline-flex; align-items: center; gap: 10px; font-family: var(--font-logo); font-size: 26px; font-weight: 700; color: var(--text-secondary); }
 .g-season-banner.gold { font-size: 30px; color: #FFB11B; filter: drop-shadow(0 0 16px rgba(255, 177, 27, 0.5)); }
-
-/* ═══ İki oyunculu draft (handoff 13a) ═══════════════════════════════════
-   [1. oyuncu kadrosu | havuz | 2. oyuncu kadrosu]; sırası gelmeyen .7. */
-.g-vs-page { height: 100%; }
-.g-vs { position: relative; min-height: 100%; display: flex; flex-direction: column; padding: 14px 36px 18px; }
-/* :not(.g-smoke) şart — yoksa bu kural sayfa ışığının position:absolute'unu eziyor */
-.g-vs > *:not(.g-smoke) { position: relative; }
-@media (min-width: 1024px) { .g-vs { height: 100%; overflow: hidden; } }
-.g-vs-turn { display: flex; flex-direction: column; align-items: center; gap: 4px; }
-.g-vs-turn .who { font-size: 13px; font-weight: 600; }
-.g-vs-turn .g-draft-wheels { min-height: 0; }
-.g-ban-chip {
-  height: 52px; padding: 0 14px; border-radius: 14px; display: flex; flex-direction: column; justify-content: center;
-  background: rgba(248, 113, 113, 0.1); box-shadow: inset 0 0 0 1px rgba(248, 113, 113, 0.4), 0 0 18px -6px #f87171;
-}
-.g-ban-chip b { font-family: var(--font-logo); font-size: 18px; font-weight: 700; color: #f87171; line-height: 1; }
-.g-ban-chip i { font-style: normal; font-size: 12px; color: var(--text-secondary); }
-
-.g-vs-body { flex: 1; min-height: 0; padding-top: 18px; display: grid; grid-template-columns: 1fr; gap: 24px; }
-@media (min-width: 1100px) {
-  .g-vs-body { grid-template-columns: 240px minmax(0, 1fr) 240px; gap: 32px; }
-  .g-vs-body > * { min-height: 0; }
-}
-.g-vs-center { min-height: 0; display: flex; flex-direction: column; gap: 12px; }
-@media (min-width: 1100px) { .g-vs-center { overflow-y: auto; padding-right: 4px; } }
-.g-vs-center > .space-y-3:empty { display: none; }
-.g-vs-status { text-align: center; padding: 48px 0; font-size: 14px; color: var(--text-muted); animation: gLbPulse2 2s ease-in-out infinite; }
-.g-vs-list { overflow: auto; }
-
-.g-seat { display: flex; flex-direction: column; gap: 2px; opacity: 0.7; transition: opacity .3s ease; }
-.g-seat.on { opacity: 1; }
-.g-seat-head { display: flex; align-items: center; gap: 10px; margin-bottom: 2px; }
-.g-seat-head .dot { width: 10px; height: 10px; border-radius: 5px; background: var(--c); box-shadow: 0 0 10px var(--c); }
-.g-seat-head .name { font-family: var(--font-logo); font-size: 20px; font-weight: 700; color: var(--text-primary); }
-.g-seat-head .count { margin-left: auto; font-size: 13px; color: var(--text-secondary); }
-.g-seat-cap { font-size: 12px; color: var(--text-muted); margin-bottom: 8px; padding-left: 20px; }
-.g-seat-row {
-  height: 44px; display: flex; align-items: center; gap: 12px; padding: 0 6px; border: 0; border-radius: 10px;
-  background: transparent; text-align: left; font-family: var(--font-sans); flex-shrink: 0;
-}
-.g-seat-row.sel { box-shadow: inset 0 0 0 1px #FFB11B; background: rgba(255, 177, 27, 0.08); }
-.g-seat-row .slot { width: 28px; font-family: var(--font-logo); font-size: 13px; font-weight: 700; flex-shrink: 0; }
-.g-seat-row .nm { flex: 1; min-width: 0; font-size: 14px; color: var(--text-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.g-seat-row.filled .nm { color: var(--text-primary); font-weight: 500; }
-.g-seat-row .ar { font-size: 12px; flex-shrink: 0; max-width: 78px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-@media (max-width: 1099px) {
-  .g-vs-body { grid-template-columns: 1fr 1fr; }
-  .g-vs-center { grid-column: 1 / -1; order: -1; }
-}
-@media (max-width: 640px) {
-  .g-vs { padding: 8px 16px 16px; }
-  .g-vs-body { grid-template-columns: 1fr; }
-  .g-seat-row { height: 40px; }
-}
-
-/* ═══ Lobi (handoff 14a) ══════════════════════════════════════════════════ */
-.g-lobby { position: relative; min-height: 100%; display: flex; flex-direction: column; align-items: center; padding: 14px 36px 28px; }
-.g-lobby > *:not(.g-smoke) { position: relative; }
-.g-lobby-head { align-self: stretch; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-.g-lobby-head .g-seg-btn { padding: 8px 16px; }
-.g-lobby-hero { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 40px; text-align: center; }
-.g-lobby-kicker { font-size: 14px; font-weight: 600; color: var(--text-secondary); }
-.g-lobby-big {
-  font-family: var(--font-logo); font-size: clamp(64px, 9vw, 112px); font-weight: 700; line-height: 1; letter-spacing: 0.12em;
-  color: var(--accent); text-shadow: 0 0 50px color-mix(in srgb, var(--accent) 45%, transparent);
-}
-.g-lobby-sub { font-size: 14px; color: var(--text-muted); }
-.g-lobby-copy { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; justify-content: center; }
-.g-lobby-vs { display: grid; grid-template-columns: minmax(0, 320px) 80px minmax(0, 320px); align-items: center; margin-top: 52px; width: 100%; justify-content: center; }
-.g-lobby-vs-word { text-align: center; font-family: var(--font-logo); font-size: 30px; font-weight: 700; color: var(--ink-divider); }
-.g-lobby-seat {
-  height: 150px; border-radius: 22px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
-  background: rgba(255, 255, 255, 0.03); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  transition: background .3s ease, box-shadow .3s ease;
-}
-.g-lobby-seat .av {
-  width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-  font-family: var(--font-logo); font-size: 22px; font-weight: 700;
-}
-.g-lobby-seat .nm { font-family: var(--font-logo); font-size: 22px; font-weight: 700; color: var(--text-primary); }
-.g-lobby-seat .st { font-size: 13px; }
-.g-lobby-seat.host { background: linear-gradient(180deg, rgba(96, 165, 250, 0.12), rgba(96, 165, 250, 0.02)); box-shadow: inset 0 0 0 1px rgba(96, 165, 250, 0.35); }
-.g-lobby-seat.host .av { background: #60a5fa; color: #0b0b0b; }
-.g-lobby-seat.host .st { color: #60a5fa; }
-.g-lobby-seat.opp .av { background: rgba(255, 255, 255, 0.06); color: var(--text-faint); }
-.g-lobby-seat.opp .nm { color: var(--text-faint); }
-.g-lobby-seat.opp .st { color: var(--text-muted); animation: gLbPulse2 2s ease-in-out infinite; }
-.g-lobby-seat.opp.joined { background: linear-gradient(180deg, rgba(248, 113, 113, 0.14), rgba(248, 113, 113, 0.03)); box-shadow: inset 0 0 0 1px rgba(248, 113, 113, 0.45), 0 0 30px -10px #f87171; }
-.g-lobby-seat.opp.joined .av { background: #f87171; color: #0b0b0b; }
-.g-lobby-seat.opp.joined .nm { color: var(--text-primary); }
-.g-lobby-seat.opp.joined .st { color: #f87171; animation: none; }
-.g-lobby-rules { display: flex; gap: 48px; margin-top: 36px; flex-wrap: wrap; justify-content: center; }
-.g-lobby-rules > div { display: flex; flex-direction: column; align-items: center; gap: 2px; }
-.g-lobby-rules span { font-size: 12px; color: var(--text-muted); }
-.g-lobby-rules b { font-size: 15px; font-weight: 600; color: var(--text-primary); }
-.g-lobby-cta2 { margin-top: 36px; min-width: 160px; }
-.g-lobby-cta { min-height: 52px; padding: 0 34px; margin-top: 36px; font-size: 18px; letter-spacing: 0.05em; text-transform: uppercase; }
-@media (max-width: 640px) {
-  .g-lobby { padding: 8px 16px 24px; }
-  .g-lobby-hero { margin-top: 24px; }
-  .g-lobby-vs { grid-template-columns: 1fr 44px 1fr; margin-top: 32px; }
-  .g-lobby-seat { height: 128px; border-radius: 18px; }
-  .g-lobby-seat .nm { font-size: 18px; }
-  .g-lobby-vs-word { font-size: 22px; }
-  .g-lobby-rules { gap: 20px 28px; margin-top: 24px; }
-  .g-lobby-cta { width: 100%; min-height: 54px; }
-}
-
-/* Lobi sayfalarının başlığı — tam saha/HUD'a yer kalsın diye kompakt */
-.g-idle-hero.compact { margin: 2px 0 16px; align-items: center; }
-.g-idle-hero.compact .g-wordmark.lg { font-size: 34px; }
-.g-idle-hero.compact p { margin-top: 6px; font-size: 14px; }
-.g-idle-hero.compact .g-idle-cta { min-height: 50px; font-size: 17px; }
-@media (max-width: 1100px) { .g-idle-hero.compact .g-idle-actions { flex-wrap: wrap; } }
 
 /* Odaya katıl — başlıktaki alt çizgili kod girişi */
 .g-join { display: flex; align-items: center; gap: 8px; }
@@ -1542,22 +1317,4 @@
 /* Oda öncesi açıklama — kutusuz, okunur genişlikte */
 .g-room-note { position: relative; max-width: 68ch; margin: 8px auto 0; display: flex; flex-direction: column; gap: 10px; }
 .g-room-note p { margin: 0; font-size: 14px; line-height: 1.6; color: var(--text-secondary); }
-
-/* ═══ Futbol Same Screen kurulumu ═════════════════════════════════════════ */
-.g-fb-ss { position: relative; display: flex; flex-direction: column; min-height: 0; }
-@media (min-width: 1024px) { .g-fb-ss { height: 100%; } }
-.g-fb-ss-cols { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
-.g-fb-ss-seat {
-  min-height: 0; display: flex; flex-direction: column; gap: 12px; padding: 18px 20px; border-radius: 20px;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--c) 9%, transparent), rgba(255, 255, 255, 0.015) 60%);
-  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--c) 40%, transparent);
-}
-.g-fb-ss-head { display: flex; align-items: center; gap: 10px; }
-.g-fb-ss-head .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--c); box-shadow: 0 0 10px var(--c); flex-shrink: 0; }
-.g-fb-ss-head input { flex: 1; font-family: var(--font-logo); font-size: 20px; font-weight: 700; }
 .g-fb-shape.sm { height: 34px; padding: 0 12px; font-size: 15px; }
-.g-fb-ss-seat .g-fb-shape.on { color: var(--c); background: color-mix(in srgb, var(--c) 14%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 50%, transparent); }
-.g-fb-ss-pitch { flex: 1; min-height: 180px; display: flex; align-items: center; justify-content: center; }
-.g-fb-ss-pitch > * { max-height: 100%; }
-.g-fb-ss-note { margin: 14px 0 0; font-size: 13px; line-height: 1.6; color: var(--text-muted); max-width: 90ch; }
-@media (max-width: 900px) { .g-fb-ss-cols { grid-template-columns: 1fr; } .g-fb-ss-pitch { min-height: 240px; } }

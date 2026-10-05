@@ -222,3 +222,16 @@ Kalan (Faz 3): menajer seçimi, sonuç, sezon; eski `FootballGame` draft JSX'ini
 2. **Futbol oda draftı (`RoomDraft`, 5b–5d, 5t, 5u)** ve oda eşleşmesi: bölüm 4.1'deki hata yüzünden (`p2_name` yazılmıyor) arayüzden hiç ulaşılamıyor; doğrulayamayacağım bir ekranı kör restyle etmedim. Hata düzeltilirse yapılır.
 3. Odada kullanıcı adları büyük harfle çıkıyor (taraf başlığı stili); adın kendisi değişmiyor.
 4. `RoomLobby.jsx` hâlâ `OnlineGame` tarafından kullanılıyor (Faz 6'da kalkacak); eski `g-lobby-*` stilleri o zamana kadar duruyor.
+
+---
+
+## 13. Faz 6 durumu — Online (2026-10-05)
+
+**Yapıldı (basketbol):** `game/ui/OnlineUi.jsx` + `online.css`. The Board (6w): ilk 25 tablo, skorla tam eşleşme araması (`/api/game/board/at-score`), seçili kadro önizlemesi ve "Challenge this roster". Live (6j–6l): başlangıç, arama halkası (geçen süre + gerçek kuyruk sayısı), eşleşme bulundu. `OnlineGame.jsx` 573 → ~230 satır; ağ ve WebSocket mantığı değişmedi. Giriş yapılmamışken Board gezilebiliyor, Live giriş kapısı gösteriyor.
+
+**Mockup'tan sapmalar:**
+1. **"Their lineup is frozen. You see it after the draft locks" cümlesi yok:** sunucu challenge modunda rakip kadroyu baştan açık veriyor, oyuncu zaten görüyor. Yanlış bir söz vermemek için mockup'taki metin yerine gerçeği anlatan cümle ("beat the number, not the person") ve kadro listesi var.
+2. **Kabul penceresi, DECLINE, gecikme (ms), "their record 24W–11L", ortalama bekleme ve skill band yok:** sunucu bu verileri üretmiyor, eşleşince oda hemen açılıyor. Gösterilenler: kuyruk sayısı, süre, rakip adı, oynadığı maç sayısı, en iyi skoru. Geri sayım ekranı (6m) çizilmedi (iki tarafın hazır senkronu sunucuda yok). Hepsi `docs/BACKEND_PROMPT_GAME_UI.md` madde 4'te.
+3. **Futbol Online** (5k–5x): arayüz yok; Board ve eşleştirme uçları futbol tarafında hazır değil/bağlı değil. Futbol Online şimdilik With a Friend odasıyla aynı giriş ekranını gösteriyor.
+
+**Temizlik:** artık kullanılmayan `FullCourtBoard`, `RoomLobby`, `CounterJokerPrompt`, `JokerBtn`, `BenchCoverage`, `GameBox`, `LineupSlot` silindi; `game.css`'ten kullanılmayan `g-lobby*`, `g-vs*`, `g-seat*`, `g-fc-*`, `g-fb-ss*`, `g-modebtn*`, `g-idle-*`, `g-wordmark` ve taslak başlık kuralları temizlendi (85 KB → 70 KB).
