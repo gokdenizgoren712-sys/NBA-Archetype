@@ -227,3 +227,33 @@ Puan formatında ikisi de ayırt gücü göstermiyor (eğim 0.23 / −0.01) — 
 Dış kadrolar: mock'tan tam draft ya da yalnız kullanıcı kadrosu verilirse diğer 11 kadro botlarla tamamlanır (her `seed` farklı rakip seti).
 
 **#5 (maç sayısı modeli) durumu:** kısmen — `K_GP` ve tek seferlik sakatlık kuralı ile projeksiyon düzeldi (bu belgenin önceki bölümleri). Yapılmayan: elle girilebilen sezon öncesi sakatlık tablosu, yaş/dakika yükü etkileri.
+
+## Değerleme: kaçırılan maçın yerine yedek (2026-10-05)
+
+**Sorun (kullanıcı geri bildirimi — Trae Young 184.):** değerleme kaçırılan her maçı SIFIR üretim sayıyordu (`mu = maç başı × oynanacak maç`). Gerçek ligde yerine
+yedek / waiver oyuncusu girer. Trae Young: 38.8 maçta 184., 50 maçta 98., 70 maçta 21. — değer maça aşırı duyarlıydı.
+Maç tahminimizin kendisi hatalı değil: geçen sezon <45, öncesinde ≥62 maç oynayanlar (n=55, 2023-26) ertesi sezon ortalama 45 maç oynadı; modelimiz 50 diyordu.
+Piyasa (Yahoo) onları sağlıklı gibi fiyatlıyor; farkın bir kısmı gerçek (haber bilgisi yok), bir kısmı bizim cezanın fazla sert olması.
+
+**Değişiklik:** `valuation.REPL_CREDIT = 0.75` — üretim = oyuncu·oynanan + 0.75·yedek·(takım maçı − oynanan); yedek = havuz dışı ilk `takım × 3` oyuncunun ortalaması
+(kategoride kategori başına, puanda maç başı puan). Puanda toplam − yedek seviyesi yine aynı kredili toplamdan. `basis="per_game"` etkilenmez.
+
+**Doğrulama:** `python -m src.fantasy.valuation_backtest` (sıralamanın gerçekleşen sezon değeriyle uyumu, büzme kapalı, ilk 200) — kredi 0 → 1.0:
+| sezon / format | Spearman |
+|---|---|
+| 2023-24 9-cat | 0.611 → 0.643 |
+| 2024-25 9-cat | 0.539 → 0.600 |
+| 2025-26 9-cat | 0.392 → 0.435 |
+| 2023-24 puan | 0.620 → 0.679 |
+| 2024-25 puan | 0.587 → 0.678 |
+| 2025-26 puan | 0.436 → 0.524 |
+6/6 sezon-format tutarlı artış (eğri 1.0'a kadar monoton). Sakatlıktan dönenlerde (n=12–16/sezon) tahtanın "olduğundan yukarı" koyma hatası: kredi 0'da +17…+100 sıra, 0.75'te sezonlar arası ortalama ≈ 0. 0.75 seçildi: Spearman 1.0'da biraz daha yüksek ama tam kredi (yedek her zaman hazır) iyimser.
+Strateji backtest (2 sezon, 4 tohum/slot — gürültülü, se ≈ 0.02): piyasaya karşı eşleşme kazanma oranı 9-cat karışık botlarda 0.100 → 0.154 (statik 0.088 → 0.156), ADP botlarında 0.044 → 0.115; puanda 0.026 → −0.012 (karışık) ve −0.043 → +0.035 (ADP) — ayırt edilemez.
+Yahoo'nun 9-CAT sırasıyla uyum: Spearman 0.748 → 0.841; Yahoo ADP ile 0.652 → 0.741 (bağımsız doğrulama: piyasanın bilgisi bizim verimizde yok).
+Etki: Trae Young 184 → 99, Embiid 111 → 61, Walker Kessler 222 → 108, Zach Edey 263 → 164, Anthony Davis 123 → 64. Hâlâ Yahoo'nun gerisinde: maç sayıları gerçekten düşük, sakatlık haberi yok.
+
+**Ayrıca ölçüldü ve YAPILMADI:**
+- Saf "track record" sıralaması (son 3 sezonun gerçek ortalaması, projeksiyon yok, çaylak yok): gerçekleşen sezonu projeksiyondan biraz kötü öngördü (Spearman ortalaması 0.48–0.50 vs 0.52; sezondan sezona değişken: 2025-26'da 0.25 vs 0.38). Ayrı sıralama olarak değer katmıyor; trend etiketi daha anlamlı.
+- Maç ağırlıklarını/çekmeyi yeniden ayarlamak: 573 oyuncu-sezonluk grid'de MAE 15.0 civarında düz; slope 0.81 (kalibre), ortalama yanlılık +5 maç (iyimser) — ayar yok.
+
+**Açık:** sophomore'larda piyasadan çok yukarıdayız (Knueppel 15 vs Yahoo 62, Edgecombe 27 vs 75, Jabari Smith 47 vs 100) — ölçülmedi.

@@ -152,7 +152,7 @@ export default function FantasyRankings() {
   const HEAD_TIPS = {
     "vs ADP": "Where we rank the player minus where Yahoo drafters actually take them. Green: we like him more than the market does.",
     ADP: "Average draft position: the pick number drafters take this player at, from Yahoo preseason drafts when we have them.",
-    Games: "Games we expect the player to play this season, after injuries and rest.",
+    Games: "Games we expect the player to play this season, after injuries and rest. Missed games are not counted as zero: a replacement from the waiver wire fills most of them.",
   };
 
   const archOpts = Object.keys(ARCHETYPE_COLOR).map((k) => ({ k, l: k, dot: ARCHETYPE_COLOR[k] }));

@@ -17,8 +17,8 @@ const SECTIONS = [
     "G-score also accounts for how much a category swings week to week. Steals and blocks are noisy in any single week, so an edge there wins fewer head-to-head matchups than the same edge in points. We follow Rosenof's definition; for H2H we default to G-score and you can switch.",
   ] },
   { id: "adp", h: "How ADP is modeled", p: [
-    "We don't copy ADP from any provider. Our ADP estimates where a typical drafter takes a player: by last season's per-game production, measured the way your format scores it. That ignores games-played risk and weekly swings, which is exactly where our rankings disagree with it, so “vs ADP” shows where you can wait and where you'd be reaching.",
-    "Availability percentages simulate the picks before yours with that ADP plus noise that grows with draft position. Once Yahoo leagues can be connected, real average draft positions replace the model.",
+    "ADP is Yahoo's real average draft position from their preseason drafts, copied from their site (last update 5 Oct). Players Yahoo has too few drafts for, and players it doesn't list, fall back to our own estimate: last season's per-game production, measured the way your format scores it. “vs ADP” shows where our ranking disagrees with the market: where you can wait and where you'd be reaching.",
+    "Availability percentages simulate the picks before yours with that ADP plus noise that grows with draft position. Once Yahoo leagues can be connected, ADP will refresh on its own.",
   ] },
 ];
 
@@ -27,7 +27,8 @@ const LIMITS = [
   "Minutes for players who changed teams follow their previous role; we don't read depth charts.",
   "Games played is the hardest number to predict (injuries). Ranges show it: durable players project within about half to 1.15× their estimate, injury-prone players far wider.",
   "Rookies are projected from draft slot only, so their ranges are wide. Comparables-based rookie projections are planned.",
-  "Position eligibility is our approximation of Yahoo's until Yahoo leagues can be connected.",
+  "Position eligibility and the ADP list are copied from Yahoo's site by hand, not read from your league. They refresh when we update, and live once Yahoo leagues can be connected.",
+  "We have no injury news. A player coming off a long injury is valued from his games-played history alone, so he can sit well below Yahoo's ranking until you check his status.",
   "Each team's two NBA Cup games without a date yet are spread as expected games over the Cup weeks.",
 ];
 

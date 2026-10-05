@@ -27,9 +27,9 @@ def test_adp_file_shape_and_reliability_rule():
     a = ref.load_adp("2026-27")
     assert a is not None and len(a) >= 200
     assert a["key"].is_unique
-    # Az draftın ortalaması (Bronny James %3, ADP 98) ADP olarak kullanılmaz
+    # Az draftın ortalaması (Bronny James %4, ADP ~105) ADP olarak kullanılmaz
     bronny = a[a["key"] == ref.norm_name("Bronny James")].iloc[0]
-    assert bronny["adp"] < 100 and not bronny["reliable"]
+    assert bronny["adp"] < 110 and not bronny["reliable"]
     assert a[a["reliable"]]["pct_drafted"].min() >= ref.MIN_PCT_DRAFTED
     # Sıralı: güvenilir ADP'ler yaklaşık artan (en iyi = Wembanyama/Jokić)
     top = a[a["reliable"]].nsmallest(2, "adp")["key"].tolist()
@@ -66,7 +66,7 @@ def test_market_uses_real_adp_where_reliable_and_model_after():
     assert m.loc[m["ADP_SOURCE"] == "model", "ADP"].min() > real["ADP"].max()
     names = proj.set_index(proj.index)["PLAYER_NAME"]
     kawhi = m.loc[names[names == "Kawhi Leonard"].index[0]]
-    assert abs(kawhi["ADP"] - 29.9) < 0.11 and kawhi["ADP_SOURCE"] == "yahoo"
+    assert abs(kawhi["ADP"] - 31.8) < 0.11 and kawhi["ADP_SOURCE"] == "yahoo"
 
 
 @pytest.mark.skipif(not (PROJ.exists() and TW.exists()), reason="cache'lenmiş projeksiyon yok")
