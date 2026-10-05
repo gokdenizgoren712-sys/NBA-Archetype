@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 
 // Draft Flow zaman çizelgesi (mockup "Draft Flow.dc.html"): spin → lock → dock.
-//   t=0      örtü açılır, iki çark kayar (sezon 2.4 sn, takım/kulüp 3 sn)
-//   t≥3300   çarklar iner + oyuncular hazır → LOCKED damgası
-//   +1300    örtü başlık şeridine kapanır (dock), satırlar 55 ms arayla girer
-// Motor zamanlaması (SPIN_MS ×2 ≈ 3.2 sn) zaten bu çizelgeyle örtüşüyor; arayüz yalnız
+//   t=0      örtü açılır, iki çark kayar (sezon 1.7 sn, takım/kulüp 2.2 sn)
+//   t≥2400   çarklar iner + oyuncular hazır → LOCKED damgası
+//   +800     örtü başlık şeridine kapanır (dock), satırlar 55 ms arayla girer
+// Motor zamanlaması (web: spinMs ×2 ≈ 2.2 sn) zaten bu çizelgeyle örtüşüyor; arayüz yalnız
 // "hazır olana kadar" kilidi tutuyor. prefers-reduced-motion: süreler ~%5.
 export const REEL_ITEMS = 38;      // 35 rastgele + hedef + 1 kuyruk, öncesinde eski değer
-const LOCK_AT = 3300, DOCK_AFTER = 1300, SETTLE = 600;
+const LOCK_AT = 2400, DOCK_AFTER = 800, SETTLE = 500;
 
 const pickOne = (arr) => arr[Math.floor(Math.random() * arr.length)];
 export const constantStrip = (v) => Array.from({ length: REEL_ITEMS }, () => v);

@@ -519,7 +519,7 @@ export default function LineupGame() {
 
   // Oyunun kuralları ortak motorda (game/lineupDraft.js): RankIt uygulamasının
   // mobil arayüzü de aynısını kullanıyor, ikisi aynı skor tablosuna yazıyor.
-  const draft = useLineupDraft({ autoSpin: false });
+  const draft = useLineupDraft({ autoSpin: false, spinMs: 1100, jokerSpinMs: 1500 });
   const {
     phase, simEra, mode, coach, coachOptions, seasons,
     players, lineup, fitResult, moveSrc, jokers, affinityMatrix,

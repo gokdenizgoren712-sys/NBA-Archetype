@@ -321,7 +321,7 @@ test("puan: kimya birincil başına +0.02, üst sınır 1; notlar eşiklerde", (
 
 test("web sayfası motoru ve ortak puanı kullanıyor, kendi kopyası yok", () => {
   const page = src("pages", "LineupGame.jsx");
-  assert.match(page, /useLineupDraft\(\{ autoSpin: false \}\)/);
+  assert.match(page, /useLineupDraft\(\{ autoSpin: false, spinMs: 1100, jokerSpinMs: 1500 \}\)/);
   assert.match(page, /finalScore\(fit, primaryCount\)/);
   assert.doesNotMatch(page, /const \[phase, setPhase\]/);
   assert.doesNotMatch(page, /pct>=85\?"S"/);
