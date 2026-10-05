@@ -222,6 +222,35 @@ Bitenler (ikisi de sezondan önce de kullanılabilir; kadro kaynağı mock / asi
   kendisi hâlâ gerçek sezonlarda test edilmedi (uyarı sürüyor).
 - Kısıt: sakatlık haberi yok.
 
+### Faz 6 — Takım simülasyonu: sezon simülatörünün motoru + "Simülasyon" projeksiyonu (plan, 2026-10-05; 0. aşama ✅)
+
+**Amaç.** (1) Sezon simülatörünün oyuncu üretim motorunu `team_sim.py`'deki oyun düzeyindeki NBA takım simülasyonuyla değiştirmek; (2) istatistik projeksiyonunda eski model ağırlığının YANINDA simülasyon projeksiyonunu (ve harmanı) göstermek.
+**Neden.** Şu anki `SeasonSim` her oyuncuya "maç başı ortalama × oynadığı maç + haftalık gürültü" verir ve aynı NBA takımındaki oyuncuları birbirinden bağımsız sayar. Yeni motor önce NBA'yi oynatır (sakatlık, oyun içi dakika dağıtımı, sahadaki takım arkadaşlarına göre kullanım): bir yıldız oynamayınca yedeğin payı yükselir; aynı takımdan iki oyuncusu olan fantezi takımı birlikte inip çıkar.
+**Ölçümler (plana yön veren):** model ↔ simülasyon FP korelasyonu 0.99; rotasyondaki 449 oyuncunun 73'ünde fark ≥2 puan, 29'unda ≥3 (yani "farklı perspektif" çoğu oyuncuda ince, bazılarında net — arayüz farkı öne çıkarmalı). 30 takım × 100 senaryo birkaç saniye; pahalı olan takım bağlamı parametrelerini öğrenmek (~30 sn, build'de bir kez).
+**Altyapı.** Railway Hobby: servis başına 48 GB RAM'e kadar (kullanıma göre faturalanır, $5 aylık kredi), kopya başına 8 GB, 5 GB disk → 100 MB'lık sonuç dizisi sorun değil; diske değil sunucu açılışında bellekte üretilir.
+
+**Mimari.**
+1. *Dünya (NBA simülasyonu), `src/fantasy/world.py`:* 30 takım × K=128 senaryo × 82 oyun. Oyun düzeyi gürültü eklenir (şimdi yok; High Score'un "haftanın en iyi maçı" ve haftalık dalgalanma için şart). Saklanan: oyuncu × hafta × senaryo için istatistik toplamları (FGM, FGA, FTM, FTA, 3PM, PTS, REB, AST, STL, BLK, TOV), oynanan maç ve haftanın en iyi tek maç puanı (High Score ve Yahoo puan ağırlıklarıyla). ≈100 MB (float32).
+2. *Kendi kendine yeten girdi:* simülasyon girdileri (hız, dakika, kullanım eğilimi a_p, eski bağlam yükü L_eski, taşınma bayrağı) projeksiyon dosyasına `SI_*` sütunları olarak yazılır; sunucu maç logları olmadan dünyayı kurabilir.
+3. *Fantezi simülatörü:* hafta / playoff / H2H mantığı kalır; `_season_draws` + `_weekly_games` + haftalık gürültü yerine dünyadan okuma. Eski motor yedek ve `engine=legacy` ile seçilebilir.
+4. *Takas / Bu hafta / High Score:* aynı dünya (takas fantezi kadrosunu değiştirir, NBA sonuçlarını değil → ortak rastgele sayılar kendiliğinden korunur).
+5. *Arayüz:* üstte genel "Projeksiyon: Model | Simülasyon | Harman" (harman = 0.25 simülasyon + 0.75 model: önceki testte tek yolun en iyisinden daha düşük hata); Rankings, oyuncu sayfası, mock tahtası, taslak planı, takas buna uyar. Oyuncu sayfasında yan yana; Rankings'te "model ile simülasyonun ayrıştığı oyuncular" (|ΔFP| ≥ 2).
+
+**Aşamalar ve kapılar.**
+| | İş | Kapı |
+|---|---|---|
+| 0 | Kendi kendine yeten girdi (`SI_*`), oyun düzeyi gürültü, haftalık toplamlar + en iyi maç, bellek / süre testi | `World` kurulur; tutarlılık testleri (haftalık toplamların mevcut `SIM_*` ortalamasıyla uyumu, takım arkadaşı korelasyonu), süre ve bellek bütçesi |
+| 1 | Dünya ↔ `SeasonSim` adaptörü; bağlam kapalıyken (θ = 0, yeniden dağıtım yok) eski motorla aynı dağılım | sıra / playoff dağılımı eski motorla gürültü içinde aynı |
+| 2 | **Karar kapısı:** geçmiş sezon backtest'i, eski motorla yan yana (`strategy_backtest --sim-calibration`): playoff Brier (eski 0.2125), sıra korelasyonu, kalibrasyon eğimi (eski 1.15), High Score haftalık dağılımı | eşit ya da daha iyi; değilse yeni motor varsayılan OLMAZ |
+| 3 | Takas, Bu hafta, High Score yeni motora | ortak rastgele sayılarla öncesi/sonrası farkı kararlı (mevcut testler) |
+| 4 | Genel projeksiyon seçici + yan yana görünüm + ayrışanlar listesi + Harman | tarayıcıda uçtan uca |
+| 5 | Sezon içi: güncelleme sonrası kalan haftalar için dünyayı yeniden koş; Yahoo sakatlık verisi girdi olunca onu da | Yahoo API onayına bağlı |
+**Aşama 0 sonucu (2026-10-05):** `team_sim.team_game_lambdas` (simülasyonun çekirdeği, sonuçları değiştirmeden ayrıldı: tüm eski `SIM_*` sayıları birebir aynı), `team_sim.sim_inputs` / `run_from_inputs` (girdiler projeksiyon dosyasına 27 adet `SI_*` sütunu olarak yazılır; maç logu olmadan aynı `SIM_FP` çıkar — test), `src/fantasy/world.py`.
+Oyun gürültüsü: negatif binom + binom isabetler, PTS = 2FGM + 3PM + FTM kimliği (projeksiyonda da birebir). Ölçümler (K=128, tüm NBA): **12 sn, 94 MB** (dosyaya yazılmaz, sunucu açılışında bellekte); sezon ortalamaları `SIM_*` ile oran 1.000 ± 0.002, korelasyon 0.999; aynı takımdaki oyuncular haftalık sayıda hafif NEGATİF ilişkili (Maxey–Brown −0.13: dakika ve şut payı paylaşılıyor), farklı takımlar ≈ 0 — eski motorun bağımsızlık varsayımının yapamadığı. Testler: `tests/test_fantasy_world.py`.
+Açık (aşama 2'de kalibre edilecek): oyun gürültüsünün aşırı yayılım katsayıları maç loglarından; oyun içi dakika dağılımı gürültüsü ile çift sayım olasılığı; haftalık varyansın gerçek sezonlarla karşılaştırılması.
+**Kararlar (kullanıcı, 2026-10-05):** varsayılan bakış = aşama 2'yi geçerse Simülasyon, geçmezse Model; K = 128; Harman bakışı gösterilir; sunucu belleği yeterli.
+**Riskler.** Model ↔ simülasyon farkı küçük olduğundan faydayı abartmamak; oyun düzeyi gürültü dağılımı (FGA/FTA için sabit varyasyon katsayıları) logdan ölçülmeli; haftalık takım maç sayısı kesirli (NBA Cup) → tam sayıya rastgele yuvarlanır; simülasyon girdileri sezon öncesi kadroya ait → sezon içinde aşama 5 olmadan eskir.
+
 ### Faz 5 — Yahoo lig bağlantısı (Yahoo onayına bağlı)
 OAuth ile lig içe aktarma: ayarlar, kadrolar, draft sonuçları, gerçek ADP (`draft_analysis`),
 gerçek pozisyon uygunluğu. Yahoo API yalnızca **okuma** izni veriyor.

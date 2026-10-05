@@ -86,9 +86,10 @@ def old_loads(proj: pd.DataFrame, logs: dict, target: str, fits: dict, last_team
     return out
 
 
-def simulate_team(df: pd.DataFrame, fits: dict, Lold: dict[str, np.ndarray], gp_q: np.ndarray, fp_q: np.ndarray, P: SimParams,
-                  seed_offset: int = 0) -> dict[str, np.ndarray]:
-    """df: takım kadrosu (PLAYER_ID indeksli; PROJ_MPG, PROJ_GP, STATS sütunları). Dönüş: istatistik → (K × n) sezon ortalaması (oynanan maç başına)."""
+def team_game_lambdas(df: pd.DataFrame, fits: dict, Lold: dict[str, np.ndarray], gp_q: np.ndarray, fp_q: np.ndarray, P: SimParams,
+                      seed_offset: int = 0) -> tuple[dict[str, np.ndarray], np.ndarray, np.ndarray]:
+    """Bir takımın K senaryo × 82 oyunluk beklenen istatistikleri. Dönüş: (λ[istatistik] → (K × G × n), sahada mı (K × G × n), dakika (K × G × n)).
+    λ oyun içi gürültüden ÖNCEKİ beklenen değerdir (sakatlık, dakika dağıtımı, takım bağlamı, yetenek şoku dahil)."""
     n, K, G = len(df), P.scenarios, P.games
     rng = np.random.default_rng(P.seed + seed_offset)
     b = df["PROJ_MPG"].to_numpy(float).clip(min=1.0)
@@ -156,16 +157,25 @@ def simulate_team(df: pd.DataFrame, fits: dict, Lold: dict[str, np.ndarray], gp_
         Lref = np.where(np.isnan(Lo), L.mean(axis=(0, 1), keepdims=True), Lo)
         mu[key] = np.clip((Lref / np.maximum(L, 1e-6)) ** theta[key], 0.5, 1.6)
 
-    # 4. beklenen istatistik (oyun başına), oynanan oyunlar üzerinden ortalama ─────────────
-    out = {}
-    cnt = present.sum(axis=1).astype(float)                                 # (K × n)
+    # 4. beklenen istatistik (oyun başına) ──────────────────────────────
+    lams = {}
     for s in STATS:
         g = GROUP_OF.get(s)
         factor = np.ones((K, G, n)) if g is None else mu[g].copy()
         if s in EFF_STATS:
             factor = factor ** (1.0 - P.eps)
-        lam = rates[s][None, None, :] * m * factor * T[:, None, :]
-        tot = (lam * present).sum(axis=1)
+        lams[s] = rates[s][None, None, :] * m * factor * T[:, None, :]
+    return lams, present, m
+
+
+def simulate_team(df: pd.DataFrame, fits: dict, Lold: dict[str, np.ndarray], gp_q: np.ndarray, fp_q: np.ndarray, P: SimParams,
+                  seed_offset: int = 0) -> dict[str, np.ndarray]:
+    """df: takım kadrosu (PLAYER_ID indeksli; PROJ_MPG, PROJ_GP, STATS sütunları). Dönüş: istatistik → (K × n) sezon ortalaması (oynanan maç başına)."""
+    lams, present, m = team_game_lambdas(df, fits, Lold, gp_q, fp_q, P, seed_offset)
+    out = {}
+    cnt = present.sum(axis=1).astype(float)                                 # (K × n)
+    for s in STATS:
+        tot = (lams[s] * present).sum(axis=1)
         out[s] = np.where(cnt > 0, tot / np.maximum(cnt, 1.0), np.nan)
     out["MPG"] = np.where(cnt > 0, m.sum(axis=1) / np.maximum(cnt, 1.0), np.nan)
     out["GP"] = cnt
@@ -229,9 +239,9 @@ def calibrate_rates(proj: pd.DataFrame, betas: dict) -> pd.DataFrame:
 
 # ── Canlı yol ─────────────────────────────────────────────────────────────────
 
-def build_sim(proj: pd.DataFrame, logs: dict, target: str, model: dict, scenarios: int | None = None) -> pd.DataFrame:
-    """proj: DÜZELTİLMEMİŞ projeksiyon (PLAYER_ID sütunu; TEAM, AGE, PROJ_MPG, PROJ_GP, STATS, FP_RATIO_Q, GP_RATIO_Q).
-    Dönüş: PLAYER_ID indeksli SIM_* tablosu."""
+def sim_inputs(proj: pd.DataFrame, logs: dict, target: str, model: dict) -> pd.DataFrame:
+    """Simülasyonun TÜM girdileri, maç logları olmadan yeniden kurulabilsin diye (World / sunucu): PLAYER_ID indeksli `SI_*` tablosu.
+    proj: DÜZELTİLMEMİŞ projeksiyon (PLAYER_ID sütunu; TEAM, AGE, PROJ_MPG, PROJ_GP, STATS)."""
     from src.fantasy import context as cx
     from src.fantasy.projections import prev_season
     p = proj.set_index("PLAYER_ID").copy()
@@ -241,14 +251,50 @@ def build_sim(proj: pd.DataFrame, logs: dict, target: str, model: dict, scenario
     fits = {k: cx.fit_propensity(st, k) for k in ("usg", "reb", "ast")}
     last_team = cx._main_team(logs[last])
     Lold = old_loads(p, logs, target, fits, last_team)
-    team_new = p["TEAM"]
-    p["MOVER"] = ((team_new != last_team.reindex(p.index)) & last_team.reindex(p.index).notna()).astype(float)
+    lt = last_team.reindex(p.index)
+    p["MOVER"] = ((p["TEAM"] != lt) & lt.notna()).astype(float)
+    p = calibrate_rates(p, model.get("sim", {}).get("rate_calib", {}))
+    out = pd.DataFrame(index=p.index)
+    for s_ in STATS:
+        out[f"SI_{s_}"] = p[s_].astype(float)
+    out["SI_MPG"], out["SI_GP"], out["SI_MOVER"] = p["PROJ_MPG"].astype(float), p["PROJ_GP"].astype(float), p["MOVER"]
+    for k, (a, theta) in fits.items():
+        out[f"SI_A_{k}"] = a.reindex(p.index).fillna(float(a.mean())).astype(float)
+        out[f"SI_L_{k}"] = Lold[k]
+        out[f"SI_THETA_{k}"] = float(theta)
+    return out
+
+
+def _frame_inputs(inp: pd.DataFrame, model: dict, scenarios: int | None = None):
+    """SI_* tablosu (+ TEAM, FP_RATIO_Q, GP_RATIO_Q) → simülasyon girdileri."""
+    ix = inp.set_index("PLAYER_ID") if "PLAYER_ID" in inp.columns else inp
+    p = pd.DataFrame(index=ix.index)
+    for s_ in STATS:
+        p[s_] = ix[f"SI_{s_}"].to_numpy(float)
+    p["PROJ_MPG"], p["PROJ_GP"], p["MOVER"] = ix["SI_MPG"].to_numpy(float), ix["SI_GP"].to_numpy(float), ix["SI_MOVER"].to_numpy(float)
+    fits = {k: (pd.Series(ix[f"SI_A_{k}"].to_numpy(float), index=ix.index), float(ix[f"SI_THETA_{k}"].iloc[0])) for k in ("usg", "reb", "ast")}
+    Lold = {k: ix[f"SI_L_{k}"].to_numpy(float) for k in ("usg", "reb", "ast")}
     sim = model.get("sim", {})
-    p = calibrate_rates(p, sim.get("rate_calib", {}))
     params = SimParams(**{**sim.get("params", {}), **({"scenarios": scenarios} if scenarios else {})})
-    gpq = np.array([list(x) for x in p["GP_RATIO_Q"]], float)
-    fpq = np.array([list(x) for x in p["FP_RATIO_Q"]], float)
-    return simulate_league(p, team_new, fits, Lold, gpq, fpq, params)
+    gpq = np.array([list(x) for x in ix["GP_RATIO_Q"]], float)
+    fpq = np.array([list(x) for x in ix["FP_RATIO_Q"]], float)
+    return p, ix["TEAM"], fits, Lold, gpq, fpq, params
+
+
+def run_from_inputs(inp: pd.DataFrame, model: dict, scenarios: int | None = None) -> pd.DataFrame:
+    """SI_* girdilerinden SIM_* (ortalama, P10/P90) — maç logu gerekmez."""
+    p, team, fits, Lold, gpq, fpq, params = _frame_inputs(inp, model, scenarios)
+    return simulate_league(p, team, fits, Lold, gpq, fpq, params)
+
+
+def build_sim(proj: pd.DataFrame, logs: dict, target: str, model: dict, scenarios: int | None = None) -> pd.DataFrame:
+    """proj: DÜZELTİLMEMİŞ projeksiyon (+ FP_RATIO_Q, GP_RATIO_Q). Dönüş: PLAYER_ID indeksli SI_* + SIM_* tablosu."""
+    inp = sim_inputs(proj, logs, target, model)
+    inp["TEAM"] = proj.set_index("PLAYER_ID")["TEAM"]
+    inp["FP_RATIO_Q"] = proj.set_index("PLAYER_ID")["FP_RATIO_Q"]
+    inp["GP_RATIO_Q"] = proj.set_index("PLAYER_ID")["GP_RATIO_Q"]
+    sim = run_from_inputs(inp, model, scenarios)
+    return inp.drop(columns=["TEAM", "FP_RATIO_Q", "GP_RATIO_Q"]).join(sim)
 
 
 def attach_sim(final: pd.DataFrame, raw: pd.DataFrame, logs: dict, target: str) -> pd.DataFrame:
@@ -264,7 +310,7 @@ def attach_sim(final: pd.DataFrame, raw: pd.DataFrame, logs: dict, target: str) 
         return final
     r = raw.merge(final[["PLAYER_ID", "FP_RATIO_Q", "GP_RATIO_Q"]], on="PLAYER_ID", how="left")
     sim = build_sim(r, logs, target, model)
-    drop = [c for c in final.columns if c.startswith("SIM_")]
+    drop = [c for c in final.columns if c.startswith(("SIM_", "SI_"))]
     return final.drop(columns=drop).merge(sim.reset_index(), on="PLAYER_ID", how="left")
 
 
