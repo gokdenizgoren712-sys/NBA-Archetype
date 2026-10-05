@@ -138,6 +138,14 @@ export default function FantasyPlayer() {
                 </div>
               ))}
               {!flags.length && <span className="fz-sub" style={{ fontSize: 13 }}>No team, role or availability flags.</span>}
+              {p.ctx_min_ratio != null && Math.abs(p.ctx_min_ratio - 1) >= 0.03 && (
+                <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                  <span className="fz-flag" style={{ height: 22, flexShrink: 0 }}>Team context</span>
+                  <span className="fz-sub" style={{ fontSize: 13, lineHeight: 1.45 }}>
+                    Minutes are adjusted ×{p.ctx_min_ratio.toFixed(2)} for this roster: new teams and deep rotations have been over-projected in past seasons, and teammates who share the ball cost usage.
+                  </span>
+                </div>
+              )}
               {series.length > 1 && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 4 }}>
                   <span className="fz-meta">Fantasy points per 36 minutes</span>

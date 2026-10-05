@@ -25,6 +25,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from src.fantasy.backtest import bucket_quantiles  # noqa: E402
+from src.fantasy.context import apply_to_projection as apply_context  # noqa: E402
 from src.fantasy.trends import add_trends  # noqa: E402
 from src.fantasy.projections import (  # noqa: E402
     SEASON_WEIGHTS, load_gamelogs, prev_season, project,
@@ -84,6 +85,7 @@ def build_projections(target: str = "2026-27", write: bool = True) -> pd.DataFra
     proj["ELIGIBLE"] = proj["PLAYER_ID"].map(elig).fillna("")
     last_stats = prev_season(target)
     proj["ARCHETYPE"] = proj["PLAYER_ID"].map(_archetypes(last_stats))
+    proj = apply_context(proj, logs, target)        # takım bağlamı: yeni kadro, dakika bütçesi, kullanım yükü (bkz. context.py)
 
     # Belirsizlik: backtest artıklarından, dakika kovasına göre çarpan.
     ranges = bt.get("fp_ratio_ranges_by_mpg", {})

@@ -188,6 +188,7 @@ def _row(r, fmt: dict, punt: tuple = (), basis: str = "total") -> dict:
         "adp": _num(r["ADP"], 1), "adp_sd": _num(r["ADP_SD"], 1), "adp_diff": _num(r["ADP_DIFF"], 1),
         "flags": _flags(r["FLAGS"]), "source": r["SOURCE"],
         "trend": r["TREND"] if isinstance(r.get("TREND"), str) else None, "trend_pct": _num(r.get("TREND_PCT"), 1),
+        "ctx_min_ratio": _num(r.get("CTX_MIN_RATIO"), 3),
     }
     if fmt["kind"] == "categories":
         out["value_z"] = _num(r["VALUE_Z"], 3)
