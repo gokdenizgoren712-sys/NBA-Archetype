@@ -1,35 +1,19 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { SEO } from "../hooks/useSEO";
-import { ERAS, ERA_META_BLURB, ERA_HEX } from "../game/eras";
+import { ERAS, ERA_META_BLURB } from "../game/eras";
 import { COACHES } from "../game/coaches";
-import { getPlayerTags } from "../game/awards";
-import { ERA_GUIDE } from "../data/glossary";
-import InfoModal from "../game/InfoModal";
 import {
-  POSITIONS, BENCH_SLOTS, ALL_SLOTS, getPrimaryPos, getEligiblePos, posPenaltyFor, isFlex, POS_COLORS,
+  POSITIONS, ALL_SLOTS, getPrimaryPos, posPenaltyFor,
 } from "../game/positions";
 import { START_BUDGET, totalSpent, maxSpendNow, applyTeamPricing, priceOf } from "../game/salary";
-import { computeLineupFit } from "../game/lineupScore";
 import { buildMatchup, simulateOneGame } from "../game/headToHead";
-import InlineSpin from "../game/InlineSpin";
-import LineupSlot from "../game/LineupSlot";
-import PlayerRow, { posGroupOf } from "../game/PlayerRow";
-import JokerBtn from "../game/JokerBtn";
-import FullCourtBoard from "../game/FullCourtBoard";
-import { PageGlow } from "../components/states/States";
-import { POS_COLOR } from "../constants/positionColors";
-import { ARCHETYPE_COLOR as ARCH_HEX } from "../constants/archetypeColors";
-import CoachPicker from "../game/CoachPicker";
-import DraftAnalysis from "../game/DraftAnalysis";
-import GameBox from "../game/GameBox";
-import CounterJokerPrompt from "../game/CounterJokerPrompt";
-import BenchCoverage from "../game/BenchCoverage";
-import PlayerDetailModal from "../game/PlayerDetailModal";
+import SetupHub from "../game/ui/SetupHub";
+import EraStep from "../game/ui/EraStep";
 import {
-  StarIcon, CoachIcon, TrophyIcon, WheelIcon, CapIcon, RefreshIcon,
-  CalendarIcon, BoltIcon, UsersIcon, SearchIcon, WarnIcon, DiceIcon, PlayIcon,
-  EyeIcon, LoopIcon, InfoIcon,
-} from "../game/GameIcons";
+  BasketballVersusDraft, BasketballVersusLocked, BasketballVersusHire, BasketballVersusMatchup,
+  BasketballVersusSeries, BasketballVersusFinal, capFor,
+} from "../game/ui/VersusBasketball";
+import PlayerDetailModal from "../game/PlayerDetailModal";
 import "../game/game.css";
 
 const EMPTY_LINEUP = { PG: null, SG: null, SF: null, PF: null, C: null, B1: null, B2: null, B3: null, B4: null };
@@ -39,22 +23,8 @@ const EMPTY_JOKERS = {
 };
 const other = (seat) => (seat === 1 ? 2 : 1);
 
-const SORT_KEYS = [
-  ["TAGGED", "TAGGED"], ["PTS", "PTS"], ["REB", "REB"], ["AST", "AST"],
-  ["FG3_PCT", "3P%"], ["STL", "STL"], ["BLK", "BLK"],
-];
-
-// Same Screen HER ZAMAN Salary Cap kuralıyla oynanır (Classic yok).
-function capFor(lineup) {
-  const filled = Object.values(lineup).filter(Boolean);
-  const budgetLeft = START_BUDGET - totalSpent(filled);
-  const slotsLeft = ALL_SLOTS.length - filled.length;
-  return { budgetLeft, cap: maxSpendNow(budgetLeft, slotsLeft) };
-}
-
 export default function SameScreenGame() {
   const [detailPlayer, setDetailPlayer] = useState(null);
-  const [eraInfo, setEraInfo] = useState(null);
   const [seasons, setSeasons] = useState([]);
   const [simEra, setSimEra] = useState(null);
   // idle | era | spinning | drafting | placing | review | coach1 | coach2 | series | complete
@@ -82,6 +52,8 @@ export default function SameScreenGame() {
   const [discoverActive, setDiscoverActive] = useState(false);
   const [posFilter, setPosFilter] = useState("");
   const [sortKey, setSortKey] = useState("PTS");
+  const [coachOptions1, setCoachOptions1] = useState([]); // 1. oyuncunun işe alım seçenekleri (7i iki kolon gösterir)
+  const [shownGame, setShownGame] = useState(null);       // box score gösterilen maç (null = en yeni)
 
   const [bannedName, setBannedName] = useState(null);
   const [banVoided, setBanVoided] = useState(false);
@@ -350,7 +322,8 @@ export default function SameScreenGame() {
 
   // ── Draft bitti, roster preview görüldü — koç seçimine geç ──────────────────
   const continueToCoaches = () => {
-    setCoachOptions([...COACHES].sort(() => Math.random() - 0.5).slice(0, 4));
+    const opts = [...COACHES].sort(() => Math.random() - 0.5).slice(0, 4);
+    setCoachOptions(opts); setCoachOptions1(opts);
     setGamePhase("coach1");
   };
 
@@ -395,6 +368,7 @@ export default function SameScreenGame() {
     const gameIndex = seriesGames.length;
     const result = simulateOneGame(matchup, gameIndex);
     setSeriesGames(prev => [result, ...prev]);
+    setShownGame(null);
     setSeriesW(prev => ({ ...prev, [result.winner]: prev[result.winner] + 1 }));
   };
 
@@ -409,663 +383,96 @@ export default function SameScreenGame() {
     setLineups({ 1: { ...EMPTY_LINEUP }, 2: { ...EMPTY_LINEUP } });
     setMoveSrc({ 1: null, 2: null });
     setJokers({ 1: { ...EMPTY_JOKERS }, 2: { ...EMPTY_JOKERS } });
-    setCoachOptions([]); setCoaches({ 1: null, 2: null });
+    setCoachOptions([]); setCoachOptions1([]); setCoaches({ 1: null, 2: null }); setShownGame(null);
     setMatchup(null); setSeriesGames([]); setSeriesW({ 1: 0, 2: 0 });
   };
 
-  const isSpinPhase = gamePhase === "spinning";
   const seriesOver = seriesW[1] >= 4 || seriesW[2] >= 4;
+  const names = { 1: "Player 1", 2: "Player 2" };
+  const rearrange = { 1: canRearrange, 2: canRearrange };
+  const coachSeat = gamePhase === "coach1" ? 1 : 2;
 
-  return (
+  const shell = (body) => (
     <div className="h-full overflow-y-auto">
       <SEO title="Same Screen — Lineup Builder" description="Two players draft head-to-head on one screen — same shared pool, snake order, BAN joker, best-of-7 series." path="/basketball/game/same-screen" />
-      <div className={["spinning", "drafting", "placing"].includes(gamePhase) ? "g-vs-page" : "p-4 sm:p-6 max-w-[1400px] mx-auto space-y-3 pb-6"}>
-        {/* ── HEADER DOCK: başlık + çark alt-modu anahtarı tek barda ── */}
-        {gamePhase === "idle" ? (
-          <header className="g-idle-hero compact">
-            <div>
-              <h1 className="g-wordmark lg">Same Screen</h1>
-              <p>2 players · 1 device · snake draft · best-of-7</p>
-            </div>
-            <div className="g-idle-actions">
-              <div className="g-modebtn-row" role="radiogroup" aria-label="Wheel rule">
-                {[
-                  { key: "round", hex: "#60a5fa", label: "Round", hint: "1 spin / round" },
-                  { key: "pick", hex: "#FFB11B", label: "Pick", hint: "1 spin / pick" },
-                ].map(r => (
-                  <button key={r.key} role="radio" aria-checked={wheelMode === r.key}
-                    className={`g-modebtn${wheelMode === r.key ? " on" : ""}`} style={{ "--c": r.hex }}
-                    onClick={() => setWheelMode(r.key)}>
-                    <span className="dot" /><span className="lbl"><b>{r.label}</b><i>{r.hint}</i></span>
-                  </button>
-                ))}
-              </div>
-              <button onClick={() => setGamePhase("era")} className="aura-rating-btn g-idle-cta">Start draft</button>
-            </div>
-          </header>
-        ) : !["era", "spinning", "drafting", "placing"].includes(gamePhase) ? (
-          // Bu fazların kendi ince dock'u var; başlığı tekrar yazma.
-          <div>
-            <h1 className="font-logo text-2xl font-bold text-white tracking-wide">Same Screen</h1>
-            <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
-              One shared spin each round, both players draft under a Salary Cap budget. Snake order. Each player has their own 5 jokers plus one shared-round BAN. Winner is decided in a best-of-7 series.
-            </p>
-          </div>
-        ) : null}
-
-        {/* ── IDLE: tam saha ───────────────────────────────────────────────
-            Yan paneller (Match Flow / How Scoring Works / Match Mechanics)
-            kaldırıldı — hepsi giriş ekranındaki mod kartının ⓘ'sinde tek
-            kaynaktan anlatılıyor. Bu ekranın işi oyunun şeklini göstermek,
-            o da 1v1: tam saha + iki bench. */}
-        {gamePhase === "idle" && (
-          <FullCourtBoard status="Lobby" />
-        )}
-
-        {gamePhase === "era" && (
-          <>
-            <div className="g-dock thin">
-              <span className="aura-blob" style={{ "--slot-color": "#FFB11B", left: -30, top: -60, width: 220, height: 130, opacity: 0.14 }} />
-              <div className="g-dock-left"><h1 className="g-dock-title">Same Screen</h1></div>
-              <div className="g-dock-center">
-                <span className="g-section-title">Step 1 — Pick Your Simulation Era</span>
-              </div>
-              <div className="g-dock-right" />
-            </div>
-
-            <div className="g-panel p-5 space-y-3 max-w-3xl mx-auto">
-              <span className="aura-blob" style={{ "--slot-color": "#FFB11B", left: "20%", top: -50, width: 260, height: 140, opacity: 0.16 }} />
-              <p className="text-xs leading-relaxed" style={{ color: "var(--text-muted)" }}>
-                Both rosters are simulated inside this era. Every player's power scales with distance from their home decade —
-                but an archetype the era loves travels one era closer, one it dumps travels one further.
-              </p>
-              <div className="grid grid-cols-2 gap-2">
-                {ERAS.map(era => {
-                  const eHex = ERA_HEX[era.id] || "#9ca3af";
-                  return (
-                    <div key={era.id} className="g-tile" onClick={() => pickEra(era)}
-                      style={{ "--accent": eHex, "--accent-a": eHex + "1a", "--accent-line": eHex + "55" }}>
-                      <span className="aura-blob" style={{ "--slot-color": eHex, right: -24, top: -24, width: 120, height: 88, opacity: 0.26 }} />
-                      <button className="g-tile-info" title={`About the ${era.label}`}
-                        onClick={(e) => { e.stopPropagation(); setEraInfo(era); }}>
-                        <InfoIcon size={12} />
-                      </button>
-                      <div className="g-tile-title" style={{ color: eHex, paddingRight: 30 }}>{era.label}</div>
-                      <div className="g-tile-sub">{era.years[0]}–{Math.min(era.years[1], 2026)}</div>
-                      <div className="g-tile-desc" style={{ fontSize: 12, marginTop: 6 }}>{ERA_META_BLURB[era.id]}</div>
-                    </div>
-                  );
-                })}
-              </div>
-              <button onClick={() => pickEra(ERAS[Math.floor(Math.random() * ERAS.length)])}
-                className="aura-pill-btn w-full justify-center" style={{ padding: "10px" }}>
-                <DiceIcon size={15} /> Random Era
-              </button>
-            </div>
-
-            {/* Era bilgi pop-up'ı — Glossary ERA_GUIDE'ından (tek kaynak) */}
-            {eraInfo && (() => {
-              const g = ERA_GUIDE.find(x => x.short === eraInfo.short);
-              const eHex = ERA_HEX[eraInfo.id] || "#9ca3af";
-              return (
-                <InfoModal open onClose={() => setEraInfo(null)} accent={eHex}
-                  title={<span style={{ color: eHex }}>{eraInfo.label}</span>}>
-                  <div className="space-y-3">
-                    <div className="g-mono" style={{ color: "var(--text-faint)" }}>
-                      {eraInfo.years[0]}–{Math.min(eraInfo.years[1], 2026)}
-                    </div>
-                    {g?.meta && <p className="text-[13px] italic" style={{ color: eHex }}>{g.meta}</p>}
-                    <p className="text-[13px] leading-relaxed" style={{ color: "var(--text-muted)" }}>
-                      {g?.desc || ERA_META_BLURB[eraInfo.id]}
-                    </p>
-                    {g && (
-                      <div className="pt-3" style={{ borderTop: "1px solid rgba(255,255,255,.08)" }}>
-                        <div className="g-section-title mb-2">Archetype Weights</div>
-                        <div className="flex flex-wrap gap-1.5">
-                          {g.top.map(t => (
-                            <span key={t} className="text-[12px] px-2 py-0.5 rounded-full font-medium"
-                              style={{ color: "#4ade80", border: "1px solid #4ade8040", background: "#4ade8015" }}>{t}</span>
-                          ))}
-                          {g.low?.map(t => (
-                            <span key={t} className="text-[12px] px-2 py-0.5 rounded-full font-medium"
-                              style={{ color: "#f87171", border: "1px solid #f8717140", background: "#f8717115" }}>{t}</span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    <button onClick={() => { const e = eraInfo; setEraInfo(null); pickEra(e); }}
-                      className="aura-rating-btn w-full" style={{ padding: "11px", fontSize: 12.5, }}>
-                      Play this era
-                    </button>
-                  </div>
-                </InfoModal>
-              );
-            })()}
-          </>
-        )}
-
-        {(gamePhase === "spinning" || gamePhase === "drafting" || gamePhase === "placing") && (() => {
-          // Handoff 13a: ışık sırası gelen tarafa kayar (sen mavi, rakip kırmızı).
-          const seatHex = activeSeat === 1 ? SEAT_HEX[1] : SEAT_HEX[2];
-          const j = jokers[activeSeat] || {};
-          const canJoke = gamePhase === "drafting";
-          const filledOf = (seat) => ALL_SLOTS.filter(p => lineups[seat][p]).length;
-          const seatProps = (seat) => ({
-            seat,
-            isActive: activeSeat === seat,
-            isWaiting: waitingSeat === seat,
-            lineup: lineups[seat],
-            moveSrc: moveSrc[seat],
-            canRearrange,
-            onSlotTap: (pos) => handleSlotTap(seat, pos),
-            jokers: jokers[seat],
-            chosenTeam, chosenSeason, players,
-            posFilter: activeSeat === seat ? posFilter : "",
-            setPosFilter, sortKey, setSortKey,
-            pickedPlayer: activeSeat === seat ? pickedPlayer : null,
-            gamePhase, doubleActive, discoverActive, bannedName, banVoided,
-            banPicking: waitingSeat === seat && banPicking,
-            onPickPlayer: pickPlayer, onPlacePos: placePos, onCancelPick: cancelPick,
-            onUseJoker: useJoker, onUseCounterJoker: useCounterJoker,
-            onDismissCounter: () => setCounterDismissed(true), onConfirmBan: confirmBan,
-            counterDismissed, onPlayerInfo: setDetailPlayer,
-          });
-          return (
-          <div className="g-vs">
-            <PageGlow tint={seatHex} />
-            <header className="g-draft-head">
-              <div className="g-draft-id">
-                <h1 className="g-wordmark">Same Screen</h1>
-                <div className="g-draft-meta">
-                  <span className="g-draft-count">Snake draft · best-of-7 · round {round} of 9</span>
-                  {simEra && <span className="g-era-chip" style={{ "--c": "#9ca3af" }}>{simEra.label}</span>}
-                </div>
-              </div>
-              <div className="g-vs-turn">
-                <span className="who" style={{ color: seatHex }}>Player {activeSeat}'s pick</span>
-                <div className="g-draft-wheels">
-                  <InlineSpin size="lg" items={seasons} spinning={spinS} targetIdx={targetSIdx} label="Season" accent="#FFB11B" />
-                  <InlineSpin size="lg" items={teamPool.length > 0 ? teamPool : ["…"]} spinning={spinT} targetIdx={targetTIdx} label="Team" accent="#f2efea" />
-                </div>
-              </div>
-              <div className="g-draft-jokers">
-                {bannedName && !banVoided && (
-                  <span className="g-ban-chip" title={`${bannedName} is banned this pick`}><b>BAN</b><i>{bannedName.split(" ").slice(-1)[0]}</i></span>
-                )}
-                <JokerBtn Icon={RefreshIcon} label="Team" available={j.reTeam && canJoke} onClick={() => useJoker("reTeam")} />
-                <JokerBtn Icon={CalendarIcon} label="Year" available={j.reYear && canJoke} onClick={() => useJoker("reYear")} />
-                <JokerBtn Icon={BoltIcon} label="Both" available={j.reBoth && canJoke} onClick={() => useJoker("reBoth")} />
-                <JokerBtn Icon={UsersIcon} label="Pick 2" available={j.double && !doubleActive && canJoke} onClick={() => useJoker("double")} />
-                <JokerBtn Icon={SearchIcon} label="Discover" available={j.discover && !discoverActive && canJoke} onClick={() => useJoker("discover")} />
-              </div>
-            </header>
-            <div className="g-divider tight" />
-
-            <div className="g-vs-body">
-              <SeatRoster seat={1} active={activeSeat === 1} lineup={lineups[1]} filled={filledOf(1)}
-                moveSrc={moveSrc[1]} canRearrange={canRearrange} onSlotTap={(pos) => handleSlotTap(1, pos)} />
-              <div className="g-vs-center">
-                {isSpinPhase ? (
-                  <p className="g-vs-status">{statusMsg || "Spinning…"}</p>
-                ) : (
-                  <>
-                    <PlayerSeatPanel compact {...seatProps(activeSeat)} />
-                    {waitingSeat && <PlayerSeatPanel compact {...seatProps(waitingSeat)} />}
-                  </>
-                )}
-              </div>
-              <SeatRoster seat={2} active={activeSeat === 2} lineup={lineups[2]} filled={filledOf(2)}
-                moveSrc={moveSrc[2]} canRearrange={canRearrange} onSlotTap={(pos) => handleSlotTap(2, pos)} />
-            </div>
-          </div>
-          );
-        })()}
-
-        {gamePhase === "review" && (
-          <RosterReview lineups={lineups} simEra={simEra} moveSrc={moveSrc}
-            canRearrange={canRearrange} onSlotTap={handleSlotTap}
-            onContinue={continueToCoaches} onPlayerInfo={setDetailPlayer} />
-        )}
-
-        {(gamePhase === "coach1" || gamePhase === "coach2") && (() => {
-          const seat = gamePhase === "coach1" ? 1 : 2;
-          return (
-            <CoachPicker key={seat}
-              title="Hire a coach" step={`Player ${seat}`} cta={(n) => `Hire ${n}`}
-              options={coachOptions}
-              onPick={(c) => pickCoach(seat, c)}
-            />
-          );
-        })()}
-
-        {gamePhase === "series" && matchup && (
-          <SeriesPanel matchup={matchup} games={seriesGames} seriesW={seriesW} seriesOver={seriesOver}
-            lineups={lineups} coaches={coaches} simEra={simEra}
-            onNextGame={playNextGame} onSeeResult={() => setGamePhase("complete")} />
-        )}
-
-        {gamePhase === "complete" && (
-          <SameScreenResult lineups={lineups} coaches={coaches} seriesW={seriesW} seriesGames={seriesGames} onReset={resetGame} />
-        )}
-
-        <PlayerDetailModal player={detailPlayer} onClose={() => setDetailPlayer(null)} />
-      </div>
+      {body}
+      <PlayerDetailModal player={detailPlayer} onClose={() => setDetailPlayer(null)} />
     </div>
   );
-}
 
-// ── Tek oyuncunun paneli (mobil-tarzı, kortsuz) ──────────────────────────────
-function PlayerSeatPanel({
-  seat, isActive, isWaiting, lineup, moveSrc, canRearrange, onSlotTap, jokers, chosenTeam, chosenSeason, players,
-  posFilter, setPosFilter, sortKey, setSortKey, pickedPlayer, gamePhase, doubleActive, discoverActive,
-  bannedName, banVoided, banPicking, onPickPlayer, onPlacePos, onCancelPick, onUseJoker,
-  onUseCounterJoker, onDismissCounter, counterDismissed, onConfirmBan, onPlayerInfo, compact = false,
-}) {
-  const filtered = posFilter ? players.filter(p => posGroupOf(p) === posFilter) : players;
-  const list = [...filtered].sort((a, b) => {
-    if (sortKey === "TAGGED") {
-      const ta = getPlayerTags(a).length, tb = getPlayerTags(b).length;
-      if (tb !== ta) return tb - ta;
-      return (parseFloat(b.PTS || 0) || 0) - (parseFloat(a.PTS || 0) || 0);
-    }
-    return (parseFloat(b[sortKey] || 0) || 0) - (parseFloat(a[sortKey] || 0) || 0);
-  });
-  const showBanEffective = bannedName && !banVoided;
-  const { budgetLeft, cap } = capFor(lineup);
-  const eligible = pickedPlayer ? getEligiblePos(pickedPlayer) : [];
-
-  return (
-    <div className={compact ? "space-y-3" : `rounded-2xl border p-3 space-y-2 ${isActive ? "border-yamabuki/60 bg-yamabuki/[.06] shadow-[0_0_24px_-8px_rgba(255,177,27,.7)]" : "border-white/8 bg-white/[.02]"}`}>
-      {!compact && <>
-      <div className="flex items-center justify-between">
-        <span className="font-logo text-sm font-bold text-white">Player {seat}</span>
-        {isActive && <span className="text-[12px] px-2 py-0.5 rounded-full bg-yamabuki/20 border border-yamabuki/50 text-yamabuki font-bold">Your pick</span>}
-        {isWaiting && <span className="text-[12px] px-2 py-0.5 rounded-full border border-white/12 text-[var(--text-faint)]">Waiting</span>}
-      </div>
-
-      {/* Salary Cap bütçe barı */}
-      <div className="g-panel subtle px-2 py-1.5">
-        <div className="flex items-center justify-between text-[12px]">
-          <span className="text-[var(--text-muted)] uppercase tracking-wider flex items-center gap-1"><CapIcon size={11} /> Cap</span>
-          <span className={`font-black tabular-nums ${budgetLeft <= 15 ? "text-[var(--danger)]" : budgetLeft <= 35 ? "text-yamabuki" : "text-emerald-300"}`}>{budgetLeft}%</span>
-        </div>
-        <div className="g-bar-track mt-1" style={{height:6}}>
-          <div className="g-bar-fill" style={{ width: `${budgetLeft}%`, "--fill": budgetLeft <= 15 ? "#f87171" : budgetLeft <= 35 ? "#FFB11B" : "#4ade80", "--fill-a": (budgetLeft <= 15 ? "#f87171" : budgetLeft <= 35 ? "#FFB11B" : "#4ade80") + "66" }} />
-        </div>
-      </div>
-
-      {canRearrange && moveSrc && (
-        <p className="text-[12px] text-yamabuki/90">Moving {lineup[moveSrc]?.PLAYER_NAME?.split(" ").slice(-1)[0]} — tap a destination slot</p>
-      )}
-      <div className="flex gap-1">
-        {POSITIONS.map(pos => <LineupSlot key={pos} pos={pos} player={lineup[pos]}
-          selected={moveSrc === pos} canTap={canRearrange} onTap={onSlotTap} onInfo={onPlayerInfo} />)}
-      </div>
-      <div className="flex gap-1 opacity-80">
-        {BENCH_SLOTS.map(pos => <LineupSlot key={pos} pos={pos} player={lineup[pos]} bench
-          selected={moveSrc === pos} canTap={canRearrange} onTap={onSlotTap} onInfo={onPlayerInfo} />)}
-      </div>
-      <BenchCoverage bench={BENCH_SLOTS.map(pos => lineup[pos])} />
-
-      {/* Joker çubuğu — self-joker'lar (aktif taraf) */}
-      <div className="grid grid-cols-5 gap-1">
-        <JokerBtn Icon={RefreshIcon} label="Team" available={isActive && jokers.reTeam && gamePhase === "drafting"} onClick={() => onUseJoker("reTeam")} />
-        <JokerBtn Icon={CalendarIcon} label="Year" available={isActive && jokers.reYear && gamePhase === "drafting"} onClick={() => onUseJoker("reYear")} />
-        <JokerBtn Icon={BoltIcon} label="Both" available={isActive && jokers.reBoth && gamePhase === "drafting"} onClick={() => onUseJoker("reBoth")} />
-        <JokerBtn Icon={UsersIcon} label="Pick 2" available={isActive && jokers.double && !doubleActive && gamePhase === "drafting"} onClick={() => onUseJoker("double")} />
-        <JokerBtn Icon={SearchIcon} label="Discover" available={isActive && jokers.discover && !discoverActive && gamePhase === "drafting"} onClick={() => onUseJoker("discover")} />
-      </div>
-      </>}
-      {isActive && showBanEffective && (
-        <div className="text-[12px] text-[var(--danger)] flex items-center gap-1"><WarnIcon size={11} /> {bannedName} is BANNED this pick — use any joker to counter it.</div>
-      )}
-
-      {/* Karşı-joker pop-up'ı — bekleyen tarafın kendi paneli, aktif tarafın
-          turu başlarken otomatik belirir (bkz. counterDismissed) */}
-      {isWaiting && gamePhase === "drafting" && !counterDismissed && !banPicking && (
-        <CounterJokerPrompt jokers={jokers} activeSeat={other(seat)}
-          onUse={onUseCounterJoker} onDismiss={onDismissCounter} />
-      )}
-      {isWaiting && banPicking && (
-        <div className="text-[12px] text-yamabuki">Pick a player below to BAN from Player {seat === 1 ? 2 : 1}'s options.</div>
-      )}
-
-      {/* Aktif taraf için: pozisyon atama ekranı */}
-      {isActive && gamePhase === "placing" && pickedPlayer && (
-        <div className="rounded-xl border border-yamabuki/40 bg-yamabuki/5 p-2 space-y-2">
-          <div className="flex items-start justify-between gap-2">
-            <div className="text-white text-sm font-semibold">{pickedPlayer.PLAYER_NAME} <span className="text-[13px] text-blue-400 ml-1">{pickedPlayer.primary_arch || "—"}</span></div>
-            <button onClick={onCancelPick} className="text-[var(--text-muted)] hover:text-gray-300 text-[13px] shrink-0">← Back</button>
-          </div>
-          <div className="flex gap-1 flex-wrap items-center">
-            {eligible.map(p => (
-              <span key={p} className={`text-[12px] px-1.5 py-0.5 rounded border font-bold inline-flex items-center gap-0.5 ${POS_COLORS[p] || ""}`}>
-                {p}{p === eligible[0] && <StarIcon size={9} />}
-              </span>
-            ))}
-          </div>
-          <div className="flex gap-1.5 flex-wrap">
-            {POSITIONS.filter(p => !lineup[p]).map(pos => {
-              const isElig = eligible.includes(pos);
-              const isPrim = eligible[0] === pos;
-              const pen = posPenaltyFor(pickedPlayer, pos);
-              const penLabel = pen >= 1 ? null : pen >= 0.90 ? "−10%" : "−25%";
-              return (
-                <button key={pos} onClick={() => onPlacePos(pos)}
-                  className={`flex-1 min-w-[3rem] py-1.5 border rounded-lg font-bold text-xs transition-all
-                    ${isPrim ? "bg-yamabuki/25 border-yamabuki text-yamabuki shadow-[0_0_16px_-5px_#FFB11B]" : isElig ? "bg-white/[.04] border-white/20 text-white" : "border-dashed border-white/12 text-[var(--text-faint)]"}`}>
-                  <div className="inline-flex items-center gap-0.5 justify-center">{pos}{isPrim && <StarIcon size={9} />}</div>
-                  {penLabel && <div className="text-[12px] font-medium leading-tight" style={{ color: "var(--danger)", opacity: 0.9 }}>{penLabel}</div>}
-                  {!penLabel && !isPrim && isFlex(pickedPlayer) && <div className="text-[12px] font-medium text-violet-400 leading-tight">vers.</div>}
-                </button>
-              );
-            })}
-          </div>
-          {BENCH_SLOTS.some(b => !lineup[b]) && (
-            <div className="flex gap-1.5">
-              {BENCH_SLOTS.filter(b => !lineup[b]).map(b => (
-                <button key={b} onClick={() => onPlacePos(b)}
-                  className="flex-1 py-1.5 rounded-xl text-xs transition-all hover:-translate-y-px" style={{color:"var(--text-muted)",border:"1px solid rgba(255,255,255,.12)",background:"rgba(255,255,255,.03)"}}>{b}</button>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Roster listesi: aktif tarafın seçmesi için, ya da bekleyen tarafın BAN seçmesi için */}
-      {gamePhase === "drafting" && (isActive || (isWaiting && banPicking)) && (
-        <div>
-          <div className="g-pool-head">
-            <span className="g-pool-title">{banPicking ? `Ban a ${chosenTeam} player` : `${chosenTeam} roster`}</span>
-            <span className="g-pool-note">{chosenSeason} · ratings hidden</span>
-            <span className="ml-auto flex items-center gap-1">
-              {["G", "F", "C"].map(g => (
-                <button key={g} onClick={() => setPosFilter(f => f === g ? "" : g)}
-                  className={`aura-pill-btn${posFilter === g ? " active" : ""}`}
-                  style={{ padding: "5px 12px", fontSize: 13, fontWeight: 600 }}>{g}</button>
-              ))}
-            </span>
-          </div>
-          {isActive && (
-            <div className="flex items-center gap-1 mb-1 flex-wrap">
-              <span className="font-logo text-[12px] text-[var(--text-muted)] mr-1">Sort</span>
-              {SORT_KEYS.map(([field, label]) => (
-                <button key={field} onClick={() => setSortKey(field)}
-                  className={`px-1.5 py-0.5 rounded font-logo text-[12px] font-semibold transition-colors
-                    ${sortKey === field ? "bg-yamabuki text-darkBg" : "text-[var(--text-muted)] hover:text-white"}`}>
-                  {label}
-                </button>
-              ))}
-            </div>
-          )}
-          <div className={compact ? "g-vs-list" : "max-h-80 overflow-auto rounded-xl"}>
-            {list.map((p, i) => {
-              const banned = isActive && bannedName === p.PLAYER_NAME && !banVoided;
-              const cost = priceOf(p);
-              const overCap = isActive && cost > cap;
-              return (
-                <PlayerRow key={i} player={p} discover={isActive && discoverActive}
-                  onClick={() => isWaiting && banPicking ? onConfirmBan(p) : onPickPlayer(p)}
-                  cost={cost}
-                  unaffordable={banned || overCap}
-                  highlightStat={sortKey === "TAGGED" ? "PTS" : sortKey} />
-              );
-            })}
-            {list.length === 0 && <div className="py-6 text-center text-xs text-[var(--text-faint)]">No players in this group.</div>}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// Handoff 13a: iki taraf — sen mavi, rakip kırmızı.
-const SEAT_HEX = { 1: "#60a5fa", 2: "#f87171" };
-
-// ── Yan kolon: bir oyuncunun 9'luk kadrosu (13a) ─────────────────────────
-// Sırası gelmeyen taraf .7 opaklıkta; satır 44px, yuva etiketi mevki renginde.
-function SeatRoster({ seat, active, lineup, filled, moveSrc, canRearrange, onSlotTap }) {
-  const hex = SEAT_HEX[seat];
-  const { budgetLeft } = capFor(lineup);
-  return (
-    <aside className={`g-seat${active ? " on" : ""}`} style={{ "--c": hex }}>
-      <div className="g-seat-head">
-        <span className="dot" />
-        <span className="name">Player {seat}</span>
-        <span className="count">{filled}/9</span>
-      </div>
-      <div className="g-seat-cap">{budgetLeft}% cap left</div>
-      {ALL_SLOTS.map(pos => {
-        const p = lineup[pos];
-        const bench = pos.startsWith("B");
-        const tap = canRearrange && (p || moveSrc);
-        return (
-          <button key={pos} type="button" className={`g-seat-row${moveSrc === pos ? " sel" : ""}${p ? " filled" : ""}`}
-            onClick={() => tap && onSlotTap(pos)} style={{ cursor: tap ? "pointer" : "default" }}>
-            <span className="slot" style={{ color: bench ? "#8b857e" : POS_COLOR[pos] }}>{pos}</span>
-            <span className="nm">{p ? p.PLAYER_NAME : "Open"}</span>
-            {p && <span className="ar" style={{ color: ARCH_HEX[p.primary_arch] || "#8b857e" }}>{p.primary_arch}</span>}
-          </button>
-        );
-      })}
-    </aside>
-  );
-}
-
-// ── Draft tamamlandı: koça geçmeden önce iki takımın roster preview'ı
-// (single-player'daki "Roster Breakdown" tablosunun iki-sütunlu hâli) ───────
-function RosterReview({ lineups, simEra, moveSrc, canRearrange, onSlotTap, onContinue, onPlayerInfo }) {
-  // Takım skorları tam saha başlığında da görünsün (kartlarla aynı hesap).
-  const teamScore = (seat) => {
-    const fit = computeLineupFit(POSITIONS.map(p => lineups[seat][p]).filter(Boolean), simEra);
-    return fit ? Math.round(fit.lineupScore * 100) : 0;
-  };
-
-  return (
-    <div className="space-y-4">
-      <div className="text-center">
-        <div className="font-logo text-lg font-bold text-white">Rosters Complete</div>
-        <p className="text-xs text-[var(--text-muted)] mt-0.5">Review both teams before hiring your coaches. Tap a slot on the court to rearrange one last time.</p>
-      </div>
-
-      {/* İki kadro TEK sahada — 1v1 yapısı burada tam görünür. Yerleşim
-          değişikliği doğrudan kortun üzerinden yapılabiliyor. */}
-      <FullCourtBoard
-        lineups={lineups}
-        label="Rosters Locked"
-        status="Review"
-        scores={{ 1: teamScore(1), 2: teamScore(2) }}
-        moveSrc={moveSrc}
-        canTap={{ 1: canRearrange, 2: canRearrange }}
-        onSlotTap={onSlotTap}
-      />
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-4xl mx-auto">
-        {[1, 2].map(seat => (
-          <TeamPreviewCard key={seat} seat={seat} lineup={lineups[seat]} simEra={simEra}
-            moveSrc={moveSrc[seat]} canRearrange={canRearrange} onSlotTap={(pos) => onSlotTap(seat, pos)}
-            onPlayerInfo={onPlayerInfo} />
-        ))}
-      </div>
-      <div className="text-center">
-        <button onClick={onContinue}
-          className="px-8 py-2.5 rounded-xl font-logo font-bold text-darkBg bg-yamabuki hover:bg-white transition-colors inline-flex items-center gap-2">
-          <CoachIcon size={15} /> Continue to Coaches
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function TeamPreviewCard({ seat, lineup, simEra, moveSrc, canRearrange, onSlotTap, onPlayerInfo }) {
-  const starters = POSITIONS.map(p => lineup[p]).filter(Boolean);
-  const fit = computeLineupFit(starters, simEra);
-  const pct = fit ? Math.round(fit.lineupScore * 100) : 0;
-  const perPlayerMap = {};
-  POSITIONS.forEach((pos, i) => { if (lineup[pos] && fit?.perPlayer?.[i]) perPlayerMap[pos] = fit.perPlayer[i]; });
-
-  const Row = ({ pos, bench }) => {
-    const p = lineup[pos]; if (!p) return null;
-    const pp = perPlayerMap[pos];
-    const base = Math.round((parseFloat(p.overall_score) || 0) * 100);
-    const qPct = pp ? Math.round(pp.quality * 100) : base;
-    const isPrimary = !bench && getPrimaryPos(p) === pos;
-    return (
-      <button onClick={() => onSlotTap(pos)} disabled={!canRearrange}
-        className={`relative w-full flex items-center gap-2 py-1.5 border-b last:border-b-0 text-left transition-colors
-          ${bench ? "opacity-70" : ""} ${moveSrc === pos ? "bg-yamabuki/10" : "hover:bg-white/[0.02]"}`}
-        style={{ borderColor: "rgba(30,41,59,.5)" }}>
-        <span className={`text-[12px] font-bold px-1.5 py-1 rounded border shrink-0 w-8 text-center ${bench ? "border-white/12 text-[var(--text-faint)]" : POS_COLORS[pos] || ""}`}>
-          {bench ? "BN" : pos}
-        </span>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1">
-            <span className="text-[12px] text-white font-semibold truncate">{p.PLAYER_NAME}</span>
-            {isPrimary && <span className="text-yamabuki shrink-0"><StarIcon size={9} /></span>}
-          </div>
-          <span className="text-[12px] text-blue-400">{p.primary_arch || "—"}</span>
-        </div>
-        <span className="text-[12px] text-[var(--text-muted)] tabular-nums shrink-0 w-9 text-right">ovr {base}</span>
-        <div className="g-bar-track w-12 shrink-0" style={{height:6}}>
-          <div className="h-full rounded-full" style={{ width: `${qPct}%`, background: qPct >= 75 ? "#1D428A" : qPct >= 55 ? "#2a3d6b" : "#7f1d1d" }} />
-        </div>
-        <span className={`text-[13px] font-bold w-6 text-right shrink-0 ${qPct >= 75 ? "text-blue-300" : qPct >= 55 ? "text-gray-200" : "text-[var(--danger)]"}`}>{qPct}</span>
-        {onPlayerInfo && (
-          <span onClick={e => { e.stopPropagation(); onPlayerInfo(p); }}
-            className="text-[var(--text-faint)] hover:text-yamabuki transition-colors shrink-0" title="Player details">
-            <EyeIcon size={12} />
-          </span>
-        )}
-      </button>
+  if (gamePhase === "idle") {
+    const RULES = [
+      { key: "round", label: "Round", hint: "1 spin / round" },
+      { key: "pick", label: "Pick", hint: "1 spin / pick" },
+    ];
+    return shell(
+      <SetupHub sport="basketball" eyebrow="SPIN & BUILD · SAME SCREEN" title="Same Screen"
+        subtitle="2 players · 1 device · snake draft · best-of-7. Each player has their own 5 jokers plus one counter."
+        rules={RULES} ruleKey={wheelMode} onRule={setWheelMode}
+        startLabel={seasons.length === 0 ? "Loading…" : "Start draft"} startDisabled={seasons.length === 0}
+        onStart={() => setGamePhase("era")}
+        steps={[
+          { n: "1", t: "Pick an era", d: "Both rosters play inside one era." },
+          { n: "2", t: "Draft 9 each", d: "Shared spin, snake order, salary cap." },
+          { n: "3", t: "Hire coaches", d: "One each, in draft order." },
+          { n: "4", t: "Best-of-7", d: "Simulated game by game." },
+        ]}
+        total={9} leaderboard={null} />
     );
-  };
+  }
 
-  return (
-    <div className="g-panel p-4 space-y-2">
-      <div className="flex items-center justify-between">
-        <span className="font-logo text-sm font-bold text-white">Player {seat}</span>
-        <div className="flex items-center gap-1.5">
-          <span className="text-[12px] text-[var(--text-muted)]">Team Score</span>
-          <span className={`font-logo text-xl font-black tabular-nums ${pct >= 78 ? "text-blue-300" : pct >= 62 ? "text-sky-300" : "text-gray-300"}`}>{pct}</span>
-        </div>
-      </div>
-      {canRearrange && moveSrc && (
-        <p className="text-[12px] text-yamabuki/90">Moving {lineup[moveSrc]?.PLAYER_NAME?.split(" ").slice(-1)[0]} — tap a destination slot</p>
-      )}
-      <div>
-        {POSITIONS.map(pos => <Row key={pos} pos={pos} />)}
-        {BENCH_SLOTS.map(pos => <Row key={pos} pos={pos} bench />)}
-      </div>
-      <BenchCoverage bench={BENCH_SLOTS.map(pos => lineup[pos])} />
-    </div>
-  );
-}
+  if (gamePhase === "era") {
+    return shell(
+      <EraStep sport="basketball" className="sb-vs" eras={ERAS} blurbs={ERA_META_BLURB} eyebrow="Same Screen · STEP 1 OF 4"
+        lede="Both rosters are simulated inside this era. Every player's power scales with distance from their home decade, but an archetype the era loves travels one era closer, one it dumps travels one further."
+        onChoose={pickEra} onRandom={() => pickEra(ERAS[Math.floor(Math.random() * ERAS.length)])} />
+    );
+  }
 
-// ── Seri: best-of-7, maç maç, her maçtan sonra box score ────────────────────
-function SeriesPanel({ matchup, games, seriesW, seriesOver, onNextGame, onSeeResult, lineups, coaches, simEra }) {
-  const leaderSeat = seriesW[1] === seriesW[2] ? 0 : (seriesW[1] > seriesW[2] ? 1 : 2);
-  return (
-    <div className="space-y-4">
-      {/* Seri boyunca sabit: kim kime karşı oynuyor, tek sahada */}
-      {lineups && (
-        <FullCourtBoard
-          lineups={lineups}
-          coaches={coaches}
-          label="Series Matchup"
-          status={seriesOver ? "Final" : `Game ${games.length + 1}`}
-        />
-      )}
+  if (["spinning", "drafting", "placing"].includes(gamePhase)) {
+    return shell(
+      <BasketballVersusDraft names={names} eraLabel={simEra?.label} wheelMode={wheelMode} round={round} phase={gamePhase}
+        activeSeat={activeSeat} waitingSeat={waitingSeat} season={chosenSeason} team={chosenTeam} statusMsg={statusMsg}
+        lineups={lineups} moveSrc={moveSrc} canRearrange={canRearrange} onSlotTap={handleSlotTap}
+        jokers={jokers} onUseJoker={useJoker} players={players} posFilter={posFilter} setPosFilter={setPosFilter}
+        sortKey={sortKey} setSortKey={setSortKey} discoverActive={discoverActive} doubleActive={doubleActive}
+        bannedName={bannedName} banVoided={banVoided} banPicking={banPicking && !!waitingSeat}
+        pickedPlayer={pickedPlayer} onPick={pickPlayer} onPlace={placePos} onCancel={cancelPick} onConfirmBan={confirmBan}
+        counter={waitingSeat && gamePhase === "drafting" && !counterDismissed && !banPicking
+          ? { show: true, jokers: jokers[waitingSeat], onUse: useCounterJoker, onDismiss: () => setCounterDismissed(true) } : null} />
+    );
+  }
 
-      {/* Simülasyon ÖNCESİ karne — ilk maç oynanana kadar açık durur */}
-      {lineups && games.length === 0 && (
-        <DraftAnalysis simEra={simEra}
-          teams={[
-            { name: "Player 1", lineup: lineups[1], coach: coaches?.[1] },
-            { name: "Player 2", lineup: lineups[2], coach: coaches?.[2] },
-          ]} />
-      )}
+  if (gamePhase === "review") {
+    return shell(
+      <BasketballVersusLocked names={names} lineups={lineups} simEra={simEra} moveSrc={moveSrc} canRearrange={rearrange}
+        onSlotTap={handleSlotTap} onContinue={continueToCoaches} />
+    );
+  }
 
-      <div className="max-w-3xl mx-auto space-y-4">
-      <div className="text-center">
-        <div className="font-logo text-[13px] text-[var(--text-muted)] mb-1">Best-of-7 Series</div>
-        <div className="font-logo text-4xl font-black text-white tabular-nums">
-          {seriesW[1]}<span className="text-[var(--text-faint)] mx-2">–</span>{seriesW[2]}
-        </div>
-        <div className="text-xs text-[var(--text-muted)] mt-1">
-          {seriesOver
-            ? `Player ${leaderSeat} wins the series ${Math.max(seriesW[1], seriesW[2])}-${Math.min(seriesW[1], seriesW[2])}`
-            : leaderSeat === 0 ? "Series tied" : `Player ${leaderSeat} leads`}
-        </div>
-      </div>
+  if (gamePhase === "coach1" || gamePhase === "coach2") {
+    return shell(
+      <BasketballVersusHire key={coachSeat} names={names} active={coachSeat} hired={coaches}
+        options={{ 1: coachOptions1, 2: coachSeat === 2 ? coachOptions : [] }} onHire={pickCoach} />
+    );
+  }
 
-      {!seriesOver && (
-        <div className="text-center">
-          <button onClick={onNextGame}
-            className="px-8 py-2.5 rounded-xl font-logo font-bold text-darkBg bg-yamabuki hover:bg-white transition-colors inline-flex items-center gap-2">
-            <PlayIcon size={15} /> {games.length === 0 ? "Simulate Game 1" : `Simulate Game ${games.length + 1}`}
-          </button>
-        </div>
-      )}
-      {seriesOver && (
-        <div className="text-center">
-          <button onClick={onSeeResult}
-            className="px-8 py-2.5 rounded-xl font-logo font-bold text-darkBg bg-yamabuki hover:bg-white transition-colors inline-flex items-center gap-2">
-            <TrophyIcon size={15} /> See Result
-          </button>
-        </div>
-      )}
+  if (gamePhase === "series" && matchup) {
+    if (seriesGames.length === 0) {
+      return shell(
+        <BasketballVersusMatchup names={names} lineups={lineups} coaches={coaches} simEra={simEra} wins={seriesW} onPlay={playNextGame} />
+      );
+    }
+    return shell(
+      <BasketballVersusSeries names={names} games={seriesGames} seriesW={seriesW} seriesOver={seriesOver}
+        selected={shownGame} onSelect={setShownGame} onNext={playNextGame} onSeeResult={() => setGamePhase("complete")} />
+    );
+  }
 
-      <div className="space-y-3">
-        {games.map((g) => <GameBox key={g.gameIndex} game={g} />)}
-      </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Complete: seri sonucu + rosterlar ────────────────────────────────────────
-function SameScreenResult({ lineups, coaches, seriesW, seriesGames, onReset }) {
-  const winner = seriesW[1] === seriesW[2] ? 0 : (seriesW[1] > seriesW[2] ? 1 : 2);
-
-  return (
-    <div className="max-w-3xl mx-auto space-y-4">
-      <div className="text-center">
-        <TrophyIcon size={32} />
-        <div className="font-logo text-2xl font-bold text-white mt-1">
-          {winner === 0 ? "It's a tie!" : `Player ${winner} wins the series!`}
-        </div>
-        <div className="font-logo text-3xl font-black text-white mt-1 tabular-nums">
-          {seriesW[1]}<span className="text-[var(--text-faint)] mx-2">–</span>{seriesW[2]}
-        </div>
-        <div className="text-[13px] text-[var(--text-muted)] mt-1">{seriesGames.length} game{seriesGames.length !== 1 ? "s" : ""} played</div>
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {[1, 2].map(seat => (
-          <div key={seat} className={`rounded-2xl border p-4 space-y-3 ${winner === seat ? "border-yamabuki bg-yamabuki/[.08] shadow-[0_0_30px_-10px_rgba(255,177,27,.8)]" : "border-white/8 bg-white/[.02]"}`}>
-            <div className="flex items-center justify-between">
-              <span className="font-logo text-base font-bold text-white">Player {seat}</span>
-              <span className="text-3xl font-black tabular-nums" style={{ color: winner === seat ? "var(--accent)" : "#e5e7eb" }}>{seriesW[seat]}</span>
-            </div>
-            {coaches[seat] && (
-              <div className="text-[13px] text-[var(--text-muted)] flex items-center gap-1"><CoachIcon size={12} /> {coaches[seat].name}</div>
-            )}
-            <div className="flex flex-wrap gap-1">
-              {POSITIONS.concat(BENCH_SLOTS).map(pos => lineups[seat][pos] && (
-                <span key={pos} className={`text-[12px] px-1.5 py-0.5 rounded border ${POS_COLORS[pos] || "border-white/12 text-[var(--text-muted)]"}`}
-                  title={`${lineups[seat][pos]._cost ?? priceOf(lineups[seat][pos])}% cap`}>
-                  {lineups[seat][pos].PLAYER_NAME?.split(" ").slice(-1)[0]}
-                </span>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-      <div className="text-center">
-        <button onClick={onReset}
-          className="px-8 py-2.5 rounded-xl font-logo font-bold text-darkBg bg-yamabuki hover:bg-white transition-colors inline-flex items-center gap-2">
-          <WheelIcon size={15} /> Play Again
-        </button>
-      </div>
-    </div>
-  );
+  if (gamePhase === "complete") {
+    return shell(
+      <BasketballVersusFinal names={names} lineups={lineups} coaches={coaches} seriesW={seriesW} seriesGames={seriesGames} onAgain={resetGame} />
+    );
+  }
+  return shell(null);
 }

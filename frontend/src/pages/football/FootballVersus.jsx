@@ -6,6 +6,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { playTie, tieOdds, buildSide } from "../../game/football/headToHead";
 import { ModeInfoButton } from "../../game/football/ModeAbout";
 import SameScreenDraft from "../../game/football/SameScreenDraft";
+import { FootballVersusTie, FootballVersusFinal } from "../../game/ui/VersusFootball";
 import { PageGlow } from "../../components/states/States";
 import RoomLobby from "../../game/RoomLobby";
 import RoomDraft from "../../game/football/RoomDraft";
@@ -132,32 +133,24 @@ function TieResult({ tie, odds }) {
 function SameScreen({ coeffs }) {
   const [tie, setTie] = useState(null);
   const [odds, setOdds] = useState(null);
+  const [sq, setSq] = useState(null);
+  const [final, setFinal] = useState(false);
 
-  const play = (sq) => {
+  const play = (squads) => {
     if (!coeffs) return;
-    const a = buildSide(sq[1].name, sq[1].players, null, sq[1].positionPenalty);
-    const b = buildSide(sq[2].name, sq[2].players, null, sq[2].positionPenalty);
+    const a = buildSide(squads[1].name, squads[1].players, null, squads[1].positionPenalty);
+    const b = buildSide(squads[2].name, squads[2].players, null, squads[2].positionPenalty);
     const t = playTie(coeffs, a, b);
     t.sides = { a, b };
-    setTie(t);
+    setSq(squads); setTie(t); setFinal(false);
     setOdds(tieOdds(coeffs, a, b, 400));
   };
+  const reset = () => { setTie(null); setOdds(null); setSq(null); setFinal(false); };
+  const names = sq ? { 1: sq[1].name, 2: sq[2].name } : null;
 
   if (!tie) return <SameScreenDraft onDone={play} />;
-
-  return (
-    <div className="g-result g-tie-page" style={{ "--g": ACC }}>
-      <PageGlow tint="#60a5fa" />
-      <div className="g-sq-top">
-        <span className="g-wordmark">Head to head</span>
-        <span className="meta">Same Screen · two legs</span>
-      </div>
-      <TieResult tie={tie} odds={odds} />
-      <div className="g-tie-actions">
-        <button className="aura-rating-btn g-result-again" onClick={() => { setTie(null); setOdds(null); }}>Rematch</button>
-      </div>
-    </div>
-  );
+  if (final) return <FootballVersusFinal tie={tie} names={names} squads={sq} onAgain={reset} />;
+  return <FootballVersusTie tie={tie} odds={odds} names={names} onFinal={() => setFinal(true)} onRematch={() => play(sq)} />;
 }
 
 /* ── Oda: With a Friend / Online ───────────────────────────────────────────── */
@@ -312,6 +305,17 @@ export default function FootballVersus({ mode: fixedMode }) {
       .then((d) => setCoeffs(d.available ? d.coeffs : null))
       .catch(() => setCoeffs(null));
   }, []);
+
+  // Same Screen kendi tam ekran sahnesini çiziyor (game/ui/VersusFootball): sayfa kabuğu yok, kurallar ⓘ'si köşede.
+  if (fixedMode === "same") {
+    return (
+      <div className="h-full relative">
+        <SEO title="Head to head — Football" description="Put two elevens against each other over two legs." path="/football/versus" noindex />
+        <SameScreen coeffs={coeffs} />
+        <div className="absolute top-3 right-4 z-10"><ModeInfoButton mode="same" /></div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-full overflow-y-auto relative">

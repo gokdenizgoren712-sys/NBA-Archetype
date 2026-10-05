@@ -2,14 +2,14 @@ import GameStage from "./GameStage";
 import { ERA_UI } from "./eraUi";
 
 // Adım 1: dönem seç (mockup 3b / mobil 12b). Kart tıklanınca dönem seçilir ve draft başlar.
-export default function EraStep({ eras, blurbs, onChoose, onRandom, selectedId }) {
+export default function EraStep({ eras, blurbs, onChoose, onRandom, selectedId, sport = "basketball", eyebrow = "STEP 1 OF 4", lede, className = "" }) {
   return (
-    <GameStage sport="basketball">
+    <GameStage sport={sport} className={className}>
       <header className="sb-era-head">
         <div>
-          <p className="sb-mono sb-eyebrow">STEP 1 OF 4</p>
+          <p className="sb-mono sb-eyebrow">{eyebrow}</p>
           <h1 className="sb-h1">Pick your simulation era</h1>
-          <p className="sb-lede">Your whole run lives in this era. Player power scales with distance from their home decade. One era off is about −3%, five eras about −22%. Timeless greats ignore distance.</p>
+          <p className="sb-lede">{lede || "Your whole run lives in this era. Player power scales with distance from their home decade. One era off is about −3%, five eras about −22%. Timeless greats ignore distance."}</p>
         </div>
         <button type="button" className="sb-btn" onClick={onRandom}>⚄ Random era</button>
       </header>

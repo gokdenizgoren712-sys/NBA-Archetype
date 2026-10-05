@@ -4,14 +4,14 @@ import BoardPreview from "./BoardPreview";
 // Tek oyunculu başlangıç hub'ı (mockup 3a / mobil 12a): başlık, kural seti, START DRAFT,
 // 4 adımlı izleyici, kadro önizleme ve liderlik tablosu. Veri ve davranış sayfadan gelir.
 export default function SetupHub({
-  sport, title, subtitle, rules, ruleKey, onRule, startLabel, onStart, startDisabled,
+  sport, eyebrow = "SPIN & BUILD · SINGLE PLAYER", title, subtitle, rules, ruleKey, onRule, startLabel, onStart, startDisabled,
   steps, total, leaderboard,
 }) {
   return (
     <GameStage sport={sport}>
       <header className="sb-hub-head">
         <div className="titles">
-          <p className="sb-mono sb-eyebrow">SPIN &amp; BUILD · SINGLE PLAYER</p>
+          <p className="sb-mono sb-eyebrow">{eyebrow}</p>
           <h1 className="sb-h1 xl">{title}</h1>
           <p className="sub">{subtitle}</p>
         </div>

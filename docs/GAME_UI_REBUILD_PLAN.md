@@ -193,3 +193,20 @@ Kalan (Faz 3): menajer seçimi, sonuç, sezon; eski `FootballGame` draft JSX'ini
 **Geliştirme ortamı notu:** Yerel API bir ara 30–140 sn yanıt verdi; sebep, önceki test betiklerimden kalan ~270 başsız Edge süreciydi (temizlendi, araç artık süreç ağacını kapatıyor). API'nin kendisinde bir hata yok.
 
 **Sezon sonucu (3f) — tamamlandı (2026-10-05):** `ui/SeasonResult.jsx` + `ui/season.css`; Rewrite History için rekor kahramanı, doğrulanmış sıralama (konferans sekmeli), playoff ağacı yan yana turlar (`PlayoffBracketView.jsx`), şampiyon penceresi. Masaüstü 1440×900'de doğrulandı. Açık kalanlar: Quick Sim'de sıralama/ağaç yok (veri yok); mobil (12h) doğrulanmadı; futbol sezon sonrası görünümü yalnızca skin'li.
+
+---
+
+## 11. Faz 4 durumu — Same Screen (2026-10-05)
+
+**Yapıldı (basketbol 7a–7i ve futbol 8a–8d, 8g/8h karşılığı):** `game/ui/VersusUi.jsx` (saf sunum: başlık/sıra kartı, taraf kolonları, havuz tablosu, karşı-joker şeridi, slot seçimi, kilitli sahne, koç sırası, eşleşme, seri, final) + `versus.css` + iki bağdaştırıcı: `VersusBasketball.jsx`, `VersusFootball.jsx`. `SameScreenGame.jsx` ~1070 → ~430 satır (yalnız mantık + `shell()`), `SameScreenDraft.jsx` ve `FootballVersus.jsx` `SameScreen` yeni bileşenlere bağlandı. Oyun kuralları değişmedi (snake, karşı-joker, ban, best-of-7, çift maçlı eleme).
+
+**Mockup'tan bilinçli sapmalar (mantığa dokunmama kararı):**
+1. **Karşı-joker şeridi** 7b/8b'de "Re-spin Team / Year / Both" yazıyor; oyundaki gerçek karşı-jokerler BAN / Force Team / Force Year (Room Flows 6s ile uyumlu). Şerit gerçek jokerleri gösteriyor, mockup'taki cümle ("…before you pick.") aynen duruyor.
+2. **Futbol Same Screen'de yedek ve menajer yok** (draft.js 11 seçim, `buildSide` menajersiz). Bu yüzden 8i (menajer sırası), 8e (eşleşme/beş sütun), 8f (1. ayak istatistikleri) çizilmedi; sayaç "0/11" (mockup 0/18). Eleme tek seferde çözülüyor; 8g benzeri ekran ayakları, uzatmayı ve penaltı takipçisini gösteriyor, 8h final ekranı kadroları listeliyor. Bunları eklemek oyun mantığı işi (maç içi oyuncu istatistiği + menajer + yedek draftı); karar bekliyor.
+3. **Futbol draft joker şeridi yok** (engine'de joker yok); basketbolda 5 joker duruyor.
+4. **Basketbol sıralama:** mockup'taki PTS/REB/AST/3P%/STL/BLK çipleri var, eski "TAGGED" sıralaması ve ödül rozeti sütunu yok; G/F/C filtresi korundu.
+5. **Futbol havuz sütunları** MIN, G/90, A/90, CS, APP (veride KP/PASS%/TKL/INT alanları yok).
+6. 7d/8d mockup'ında saha boş çiziliyor; gerçek oyuncular sahada görünüyor ve dokunarak yer değiştirilebiliyor (son düzenleme).
+7. Futbolda "SHARE" ve final ekranı yeni; basketbolda da aynı SHARE düğmesi (Web Share API, yoksa panoya kopyala).
+
+**Henüz yok / sonraki fazlara kalan:** `WithAFriendGame.jsx` (aynı bileşenlere bağlanacak, Faz 5), mobil 14x/15x doğrulaması, kullanılmayan eski stiller (`g-vs-*`, `g-seat-*`, `g-fb-ss-*`, FullCourtBoard/SeatPanel/RosterReview kullanımı bitince silinecek; With a Friend hâlâ kullanıyor).
