@@ -178,3 +178,16 @@ Kalan: futbol draft (11b, Draft Flow futbol, mobil 13b/13c), Same Screen/Friend 
 **Faz 2 (futbol) — bitti (2026-10-05):** `game/ui/FootballDraft.jsx`; masaüstünde yatay saha, mobilde (≤700px) dikey saha. Havuz satırlarında per-90 / clean-sheet satırı, seçilen oyuncu kartı (11b) ve slot maliyetleri (natural / −5 / −11 / −20).
 Sapmalar: sıralama chip'lerinde **"Prog." yok** (oyun roster uç noktası ilerleme verisi döndürmüyor; yalnız Default/Minutes/Goals/Assists). Futbolda ödül rozeti ve mevki filtresi yok (veri/özellik yok). Arketip rozet rengi eski faz renginden (GK/DEF/MID/FWD) geliyor.
 Kalan (Faz 3): menajer seçimi, sonuç, sezon; eski `FootballGame` draft JSX'inin silinmesi.
+
+## 10. Faz 3 durumu (2026-10-05)
+
+**Bitti:** koç/menajer seçimi (`CoachPicker`, 3d/4d, basketbol + futbol aynı bileşen), basketbol sonuç sayfası (`ResultStage` + `PillarBars`, 3e: Lineup Fit, Five Pillars, rotasyon editörü, Quick Sim / Rewrite History sekmeleri, kaydet · paylaş · simüle et), futbol sonucu (`SquadResult` 11c + Role Coverage / Season Simulation / Leaderboard 11d), şampiyon penceresi (`ChampionModal` yeni kart dili), `SeasonSimPanel` → `SeasonSimView` + kendi motorunu kuran sarmalayıcı (eski kullanım aynı). Eski `FootballGame` render'ı ve ölü koç/sonuç CSS'i silindi. Futbolda seçilebilecek kimse kalmayınca **Spin yeniden açılıyor** (önceden joker kalmadıysa oyun kilitleniyordu).
+
+**Bilinen sapmalar / kalanlar (kullanıcı kararı bekliyor):**
+1. Sezon sonucu (3f: puan durumu + playoff ağacı yan yana, "Play the playoffs") ve futbol sezon sonucu için **düzen mockup'a çevrilmedi**; içerik `.sb-skin` kapsamıyla yeni renk/tipografiye bağlandı, yerleşim eski.
+2. Mobil kareler 12f/12g/12h ve 13e–13g **ekran görüntüsüyle doğrulanmadı** (masaüstü doğrulandı).
+3. Şampiyon penceresi mockup'taki "4–2 · You are the champions" (kendi serin) değil, Rewrite History'deki gerçek takım şampiyonluğunu gösteriyor; kullanıcının kendi şampiyonluğu için ayrı pencere yok.
+4. Menajer kartında mockup'taki "Titles: N" yerine tercih edilen diziliş ve eşleşme ✓ gösteriliyor (menajer verisinde şampiyonluk sayısı yok).
+5. Basketbol sonuç sayfasında "Draft analysis" (oyuncu başına era kaybı rozetleri) sezon başladıktan sonra altta duruyor; mockup'ta yok.
+
+**Geliştirme ortamı notu:** Yerel API bir ara 30–140 sn yanıt verdi; sebep, önceki test betiklerimden kalan ~270 başsız Edge süreciydi (temizlendi, araç artık süreç ağacını kapatıyor). API'nin kendisinde bir hata yok.
