@@ -44,23 +44,31 @@ Kurallar: Türkçe yorum, kısa ve öz. Mevcut sunucu-otoriter yaklaşımı koru
 
 ---
 
-## 3. Karşı-joker 15 sn otomatik pas (Room Flows 5t/6s) — doğrulama + eksikse ekleme
+## 3. Karşı-joker 15 sn otomatik pas (Room Flows 5t/6s)
 
-Mockup, bekleyen tarafın karşı-joker kararını 15 sn sonunda otomatik "pas"a bağlıyor. `api/game_ws.py` içinde sayaç/zaman aşımı **bulunamadı** (grep: yok); şu an karşı taraf `dismiss_counter` demeden (ya da joker kullanmadan) aktif oyuncu bekliyor olabilir.
+**Doğrulandı:** `api/game_ws.py` içinde zamanlayıcı yok; `counter_dismissed` yalnız istemci mesajıyla (`dismiss_counter`, joker kullanımı) true oluyor (satır ≈307, 369, 451, 517–554). Bekleyen oyuncu karar vermezse aktif oyuncu süresiz bekliyor.
 
-**İstenen:** Her `drafting` turu başında sunucu `counter_deadline` (UTC ms) yazsın; süre dolunca (bekleyen taraf cevap vermediyse) sunucu `counter_dismissed=true` yapıp state yayınlasın. İstemciler `counter_deadline`'dan geri sayım çizebilsin. Bağlantısı kopmuş rakip için de süre işlesin. Futbol odasında da aynısı.
+**İstenen:** Her `drafting` turu başında sunucu `counter_deadline` (UTC ms) yazsın; süre dolunca (bekleyen taraf cevap vermediyse) sunucu `counter_dismissed=true` yapıp state yayınlasın. Bağlantısı kopmuş rakip için de süre işlesin. İstemciler `counter_deadline`'dan geri sayım çizebilsin. Futbol odasında da aynısı.
 
 **Test:** sahte saatle 15 sn sonra tur kendiliğinden açılır; süre içinde joker kullanılırsa sayaç iptal.
 
+**Şimdiki davranış:** Karşı-joker şeridi sayaçsız, "No thanks" ile kapanıyor.
+
 ---
 
-## 4. Futbol Online eşleştirme (Room Flows 5k–5n, 5w–5x)
+## 4. Online eşleştirme ve The Board (Room Flows 5k–5x, 6j–6w)
 
-Sunucu hazır: `/ws/football/matchmaking`, `POST /api/football/matchmaking/join`, `DELETE /api/football/matchmaking` (`api/football_ws.py` ≈492–530). **Arayüz eksik** (Faz 6'da yapılacak), ama şunlar netleşmeli:
-- `matched` WS mesajına rakip adı + oda kodu + kabul penceresi süresi (`accept_deadline`) ekle (mockup 5m: "match found, accept window").
-- Her iki taraf `accept` demeden oda açılmasın; biri reddederse/süre dolarsa diğeri kuyruğa geri dönsün. Kabul sonrası "draft countdown" (5n) için `starts_at` zamanı.
-- Basketbol `/ws/game/matchmaking` (≈854–952) için de aynı alanlar (6k–6m).
-- "The Board" (5w/5x/6v/6w): ilk 25 liderlik satırı + skora göre arama + seçili önizleme uç noktası var mı doğrula (`/api/game/leaderboard`, futbol karşılığı); yoksa `GET .../board?query_score=` ekle.
+**Basketbol — mevcut durum (doğrulandı):** `POST /api/game/matchmaking/join`, `DELETE /api/game/matchmaking`, `/ws/game/matchmaking`. Eşleşince iki tarafa da `{type:"matched", room_code, opponent}` gidiyor; `opponent` = `_mm_opponent_info` (kullanıcı adı, oynadığı maç sayısı, en iyi skor). Oda anında açılıyor. `queue` mesajı yalnız `size` taşıyor. Board: `GET /api/game/board?limit=25` ve `GET /api/game/board/at-score?pct=`; `POST /api/game/challenge {entry_id}`.
+
+**Mockup'ın istediği ama sunucuda olmayanlar (arayüz şimdilik yok sayıyor):**
+1. **Kabul penceresi (6l/5m):** `matched` mesajına `accept_deadline` (UTC ms) ekle; iki taraf `{type:"accept"}`/`{type:"decline"}` göndermeden oda açılmasın. Biri reddederse ya da süre dolarsa diğeri otomatik kuyruğa dönsün, reddeden dönmesin. Mockup süresi: ~10 sn.
+2. **Hazır olunca geri sayım (6m/5n):** iki kabul sonrası `starts_at` (UTC ms, ≈3 sn sonrası); iki istemci aynı anda draft'a girsin.
+3. **Eşleşme kartı verileri:** rakibin rekoru (`wins`/`losses`), `ping_ms` (WS ping ölçümü), `queue` mesajında `avg_wait_s` ve `skill_band` (örn. ±150 puan). Yoksa arayüz bu kutuları göstermiyor (uydurmuyoruz).
+4. **Sıra iptali:** sayfadan çıkınca/WS kapanınca kuyruktan düşme davranışını doğrula ve belgele (arayüz "sayfadan çıkarsan arama biter" diyemiyor).
+
+**Board — karar gereken:** Mockup 6w "Their lineup is frozen. You see it after the draft locks, so you pick blind" diyor. Sunucu (`_init_challenge_state`) challenge modunda rakip kadroyu **baştan** state'e koyuyor, istemci draft boyunca görüyor; yani mockup cümlesi şu an yanlış. İki yol: (a) sunucu challenge'da rakip kadroyu `phase == 'review'`e kadar state'ten gizlesin (mockup'a uy), ya da (b) mevcut davranış kalsın, mockup metni değişsin. Arayüz şimdilik (b)'ye göre doğru sözü söylüyor.
+
+**Futbol — hiç yok:** `/ws/football/matchmaking`, `POST /api/football/matchmaking/join`, `DELETE /api/football/matchmaking` (`api/football_ws.py` ≈492–530) hazır ama arayüz bağlı değil ve yukarıdaki 1–4 yok. Futbol Board için `GET /api/football/leaderboard` var ama **roster içermiyor** ve challenge uç noktası yok. İstenen: `GET /api/football/board?limit=25` (kullanıcı, shape, lig/sezon, skor, 18'lik roster), `.../board/at-score?pct=`, `POST /api/football/challenge {entry_id}` (rakip kadro donmuş, kullanıcı draft eder, sonuç `challenge_results`'a yazılır).
 
 ---
 
@@ -82,4 +90,5 @@ Sunucu hazır: `/ws/football/matchmaking`, `POST /api/football/matchmaking/join`
 
 - Madde 1: iki hesapla futbol odası açılıp katılınca iki taraf da draft ekranına geçiyor (frontend `bothIn` koşulu `opponent_joined`'a bağlandığında).
 - Madde 2 ve 3: WS testleri geçiyor; frontend tarafında alanlar (`rematch_ready`, `counter_deadline`) okunmaya hazır, ayrı bir iş olarak bağlanacak.
-- Madde 4: eşleşme akışı için `matched` mesaj şeması belgelendi (docs/ veya docstring).
+- Madde 4: `matched`/`accept`/`decline`/`starts_at` mesaj şeması belgelendi (docs/ veya docstring); Board kararı (a/b) verildi; futbol Board + challenge uçları çalışıyor.
+- Frontend tarafında bunların hepsi ayrı bir iş olarak bağlanacak (bkz. `docs/GAME_UI_REBUILD_PLAN.md` bölüm 12–14).
