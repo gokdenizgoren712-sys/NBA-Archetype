@@ -379,3 +379,17 @@
   .sb-vs-title .sb-rules { width: 100%; }
   .sb-vs-title .sb-rule { flex: 1; }
 }
+
+/* Hareket azaltma: sonsuz animasyonlar tamamen durur (süreyi kısaltmak titreme yapardı) */
+@media (prefers-reduced-motion: reduce) {
+  .sb-vs-spinning .dots i, .sb-room-wait .dots i, .sb-on-ring i, .sb-on-skel, .sb-spin.idle { animation: none !important; opacity: 1; }
+  .sb-vs-spinning .dots i { opacity: .7; }
+}
+
+/* Dokunmatik hedefler: görünür boyut aynı kalır, tıklanabilir alan 44px'e açılır */
+@media (max-width: 700px), (pointer: coarse) {
+  .sb-vs-slot { min-height: 44px; }
+  .sb-sort button, .sb-vs-pool-head .tools button, .sb-vs-gchip { position: relative; }
+  .sb-sort button::after, .sb-vs-pool-head .tools button::after { content: ""; position: absolute; inset: -9px -4px; }
+  .sb-vs-pool-head .tools button { min-height: 32px; }
+}

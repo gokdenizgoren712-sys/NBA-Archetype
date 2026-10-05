@@ -16,16 +16,18 @@ const RUN_LABEL = { classic: "Classic", salarycap: "Salary Cap" };
 export default function LeaderboardPanel({ mode = "classic", limit = 25 }) {
   const { user } = useAuth();
   const [data, setData] = useState(null);   // null = yükleniyor
+  const [err, setErr] = useState(null);
+  const [tick, setTick] = useState(0);
 
   useEffect(() => {
     let alive = true;
-    setData(null);
+    setData(null); setErr(null);
     fetch(apiUrl(`/api/leaderboard?limit=${limit}&mode=${mode}`))
-      .then((r) => r.json())
+      .then((r) => { if (!r.ok) throw new Error("bad"); return r.json(); })
       .then((d) => { if (alive) setData({ entries: d.entries || [], total: d.total }); })
-      .catch(() => { if (alive) setData({ entries: [], total: null }); });
+      .catch(() => { if (alive) { setData({ entries: [], total: null }); setErr("Could not load the leaderboard."); } });
     return () => { alive = false; };
-  }, [mode, limit]);
+  }, [mode, limit, tick]);
 
   const entries = data?.entries;
   const top = entries?.[0];
@@ -41,6 +43,7 @@ export default function LeaderboardPanel({ mode = "classic", limit = 25 }) {
       topSub={top ? `Grade ${top.grade}${top.wins != null ? ` · ${top.wins} wins` : ""}` : null}
       reference={reference}
       loading={data === null}
+      error={err} onRetry={() => setTick((t) => t + 1)}
       empty="No runs on the board yet for this rule set. Draft nine, simulate the season, and the first score here is yours."
       rows={entries?.map((e, i) => ({
         key: `${e.username}-${i}`, rank: i + 1, name: e.username,

@@ -79,10 +79,22 @@ const MODES = {
   },
 };
 
+// Mockup 6x: her modda aynı beş adım; moda özel ayrıntılar "More about this mode" altında.
+const STEPS = [
+  { b: "Pick a mode.", t: "Single Player is solo. The other three are head to head." },
+  { b: "Spin the wheels.", t: "Season and team decide who you can draft. Five jokers bend the spin." },
+  { b: "Place nine.", t: "Five starters, four bench. Off-position costs 10–25%." },
+  { b: "Hire a coach.", t: "Grades shift your rating all season." },
+  { b: "Simulate 82.", t: "Win 50%+ for the playoffs, then defend the title. Head to head is a best-of-7." },
+];
+
+const TITLES = { single: "Spin & Build", "same-screen": "Same Screen", friend: "With a Friend", online: "Online Opponent" };
+
 export default function ModeAboutModal({ mode, onClose }) {
   const navigate = useNavigate();
   if (!mode) return null;
   const cfg = MODES[mode.key];
+  const modeTitle = mode.title || TITLES[mode.key];
   if (!cfg) return null;
 
   // Handoff 17c: anahtar/değer satırları. İçerik aynı, yalnız sunum değişti.
@@ -92,11 +104,11 @@ export default function ModeAboutModal({ mode, onClose }) {
     { title: "How your lineup is scored", rows: SCORE.map(([name, w, c, v]) => ({ k: `${name} · ${w}`, v, c })) },
   ];
   return (
-    <RulesSheet accent={mode.accent} title={mode.title} sub={cfg.tagline}
-      sections={sections}
+    <RulesSheet sport="basketball" title="Basketball rules" sub={`Nine players, one coach, one season. ${modeTitle}: ${cfg.tagline}.`}
+      steps={STEPS} sections={sections}
       footnote={<>Slotting a player at their natural position earns a chemistry bonus, and real award
         tags (MVP, rings, iconic duos) feed small boosts into the simulation.</>}
-      cta={mode.path ? { label: `Start ${mode.title}`, onClick: () => navigate(mode.path) } : null}
+      cta={mode.path ? { label: `Start ${modeTitle}`, onClick: () => navigate(mode.path) } : null}
       onClose={onClose} />
   );
 }

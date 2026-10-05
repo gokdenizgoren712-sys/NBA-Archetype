@@ -19,7 +19,7 @@
   --sb-text-2:    #b5b5be;
   --sb-text-3:    #a8a8b2;
   --sb-muted:     #8a8a94;
-  --sb-faint:     #6c6c76;
+  --sb-faint:     #80808a;   /* mockup #6c6c76 -> 4.5:1 kontrast için açıldı */
 
   /* Durum */
   --sb-good:      #4cd98c;

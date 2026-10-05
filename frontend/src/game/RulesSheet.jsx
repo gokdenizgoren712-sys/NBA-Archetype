@@ -1,60 +1,69 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import PaIcon from "../components/shell/PaIcon";
-import "./game.css";
+import { gameClass } from "./ui/sportTheme";
+import "./ui/sport-theme.css";
+import "./ui/rules.css";
 
-// ── Kural penceresi (handoff 17c) ──────────────────────────────────────────
-// İki sporun ⓘ modalları aynı kalıbı paylaşıyor: üstte "How to play" + büyük
-// başlık, ortada anahtar/değer satırları, altta sporun aksanında CTA.
-// Mobilde tam genişlikte alt sayfa. PORTAL şart: modal bazen transform/filter
+// ── Kural penceresi (mockup 5y / 6x, mobil alt sayfa) ──────────────────────
+// Masaüstünde ortada modal, ≤700px'te alt sayfa. PORTAL şart: modal bazen transform/filter
 // taşıyan bir atanın içinden açılıyor ve fixed konum ona hapsoluyordu.
-//
-// sections: [{ title?, rows: [{ k, v, c? }] }] — k: kısa anahtar (aksan renginde
-// ya da c ile), v: açıklama (metin ya da JSX).
+//   steps:    [{ b, t }]  mockup'taki numaralı akış (kalın başlık + açıklama)
+//   sections: [{ title?, rows: [{ k, v, c? }] }]  moda özel ayrıntılar, "More about this mode" altında
+// Erişilebilirlik: odak pencereye taşınır, Tab pencere içinde döner, Esc kapatır, kapanınca odak geri gider.
 export default function RulesSheet({
-  accent = "#FFB11B", eyebrow = "How to play", title, sub,
-  sections = [], cta, footnote, onClose,
+  sport = "basketball", title, sub, steps = [], sections = [], cta, footnote, onClose, dismissLabel = "Got it",
 }) {
+  const box = useRef(null);
   useEffect(() => {
-    const onKey = (e) => e.key === "Escape" && onClose?.();
+    const prev = document.activeElement;
+    const el = box.current;
+    el?.querySelector("[data-first]")?.focus();
+    const onKey = (e) => {
+      if (e.key === "Escape") { onClose?.(); return; }
+      if (e.key !== "Tab" || !el) return;
+      const f = [...el.querySelectorAll("button, a[href], summary, [tabindex]:not([tabindex='-1'])")].filter((x) => !x.disabled);
+      if (!f.length) return;
+      const first = f[0], last = f[f.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    return () => { window.removeEventListener("keydown", onKey); prev?.focus?.(); };
   }, [onClose]);
 
   return createPortal(
-    <div className="g-rules-backdrop" onClick={onClose}>
-      <div className="g-rules" role="dialog" aria-modal="true" aria-label={title}
-        onClick={(e) => e.stopPropagation()} style={{ "--accent": accent }}>
-        <span className="g-rules-glow" />
-        <div className="g-rules-head">
-          <div className="min-w-0">
-            <div className="g-rules-eyebrow">{eyebrow}</div>
-            <h2 className="g-rules-title">{title}</h2>
-            {sub && <div className="g-rules-sub">{sub}</div>}
-          </div>
-          <button className="g-rules-close" onClick={onClose} aria-label="Close">
-            <PaIcon name="close" size={18} color="#b4afa8" />
-          </button>
+    <div className={gameClass(sport, "sb-rsheet-backdrop")} onClick={onClose}>
+      <div ref={box} className="sb-rsheet" role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}>
+        <div className="head">
+          <h2>{title}</h2>
+          <button type="button" className="x" data-first onClick={onClose} aria-label="Close">×</button>
         </div>
-
-        <div className="g-rules-body">
-          {sections.map((s, si) => (
-            <section key={si} className="g-rules-section">
-              {s.title && <div className="g-rules-section-title">{s.title}</div>}
-              {s.rows.map((r, ri) => (
-                <div key={ri} className="g-rules-row">
-                  <span className="k" style={r.c ? { color: r.c } : undefined}>{r.k}</span>
-                  <span className="v">{r.v}</span>
-                </div>
+        {sub && <p className="sub">{sub}</p>}
+        <div className="body">
+          {steps.length > 0 && (
+            <ol className="steps">
+              {steps.map((s, i) => <li key={i}><span className="n">{i + 1}</span><p><b>{s.b}</b> {s.t}</p></li>)}
+            </ol>
+          )}
+          {sections.length > 0 && (
+            <details className="more">
+              <summary>More about this mode</summary>
+              {sections.map((s, si) => (
+                <section key={si}>
+                  {s.title && <h3>{s.title}</h3>}
+                  {s.rows.map((r, ri) => (
+                    <div key={ri} className="row"><span className="k" style={r.c ? { color: r.c } : undefined}>{r.k}</span><span className="v">{r.v}</span></div>
+                  ))}
+                </section>
               ))}
-            </section>
-          ))}
-          {footnote && <div className="g-rules-foot">{footnote}</div>}
+            </details>
+          )}
+          {footnote && <p className="foot">{footnote}</p>}
         </div>
-
-        {cta && (
-          <button className="aura-rating-btn g-rules-cta" onClick={cta.onClick}>{cta.label}</button>
-        )}
+        <div className="actions">
+          <button type="button" className="sb-btn solid" onClick={onClose}>{dismissLabel}</button>
+          {cta && <button type="button" className="sb-btn" onClick={cta.onClick}>{cta.label}</button>}
+        </div>
       </div>
     </div>,
     document.body

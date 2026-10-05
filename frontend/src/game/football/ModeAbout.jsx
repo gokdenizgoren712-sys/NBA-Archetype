@@ -8,7 +8,6 @@ import {
   ShieldIcon, EyeIcon, InfoIcon, BoltIcon,
 } from "../GameIcons";
 import "../game.css";
-import { ACCENT as ACC } from "./theme";
 
 // ── Moda özel "about" pop-up'ı ───────────────────────────────────────────────
 // Basketboldaki ModeAboutModal'ın futbol karşılığı: her mod kendi ⓘ düğmesini
@@ -191,6 +190,15 @@ export function ModeInfoButton({ mode, style }) {
   );
 }
 
+// Mockup 5y: her modda aynı beş adım; moda özel ayrıntılar "More about this mode" altında.
+const STEPS = [
+  { b: "Pick a shape.", t: "Formation and leagues set the wheel pool." },
+  { b: "Spin the wheels.", t: "Club and season decide who you can draft. Five jokers bend the spin." },
+  { b: "Place eighteen.", t: "Eleven on the pitch, seven on the bench. Off-position costs points." },
+  { b: "Hire a manager.", t: "A manager who likes your shape gives a bigger bonus." },
+  { b: "Simulate.", t: "Season in Single Player. Head to head is two legs, extra time and penalties." },
+];
+
 export default function ModeAbout({ mode, path, onClose }) {
   const navigate = useNavigate();
   const m = MODES[mode];
@@ -201,7 +209,8 @@ export default function ModeAbout({ mode, path, onClose }) {
     ...(m.extras?.length ? [{ title: "Worth knowing", rows: m.extras.map(([, c, k, v]) => ({ k, v, c })) }] : []),
   ];
   return (
-    <RulesSheet accent={ACC} title={m.title} sub={m.tagline} sections={sections}
+    <RulesSheet sport="football" title="Football rules" sub={`Eighteen players, one manager, one match. ${m.title}: ${m.tagline}.`}
+      steps={STEPS} sections={sections}
       footnote={<>What these numbers do <i>not</i> claim is set out in{" "}
         <Link to="/football/about" onClick={onClose}>About</Link>; every role's exact metrics are in the{" "}
         <Link to="/football/glossary" onClick={onClose}>glossary</Link>.</>}

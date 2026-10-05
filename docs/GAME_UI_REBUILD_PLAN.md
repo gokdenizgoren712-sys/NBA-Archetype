@@ -235,3 +235,11 @@ Kalan (Faz 3): menajer seçimi, sonuç, sezon; eski `FootballGame` draft JSX'ini
 3. **Futbol Online** (5k–5x): arayüz yok; Board ve eşleştirme uçları futbol tarafında hazır değil/bağlı değil. Futbol Online şimdilik With a Friend odasıyla aynı giriş ekranını gösteriyor.
 
 **Temizlik:** artık kullanılmayan `FullCourtBoard`, `RoomLobby`, `CounterJokerPrompt`, `JokerBtn`, `BenchCoverage`, `GameBox`, `LineupSlot` silindi; `game.css`'ten kullanılmayan `g-lobby*`, `g-vs*`, `g-seat*`, `g-fc-*`, `g-fb-ss*`, `g-modebtn*`, `g-idle-*`, `g-wordmark` ve taslak başlık kuralları temizlendi (85 KB → 70 KB).
+
+---
+
+## 14. Faz 7 durumu — kaplamalar, durumlar, erişilebilirlik (2026-10-05)
+
+**Yapıldı:** kural penceresi (5y/6x): `RulesSheet` yeniden yazıldı, mockup'taki beş adım iki sporda aynı, moda özel ayrıntılar "More about this mode" altında; masaüstünde modal, ≤700px'te alt sayfa; odak pencereye gider, Tab pencere içinde döner, Esc kapatır, kapanınca odak geri döner. Liderlikte hata artık boş durumla karışmıyor (kırmızı mesaj + Try again). Hareket azaltma: sonsuz animasyonlar (nokta, halka, iskelet, nabız) tamamen duruyor; Draft Flow süreleri zaten ×0.05. Kontrast: `--sb-faint` mockup'taki #6c6c76 (3.7:1) yerine #80808a (≥4.5:1); diğer metin renkleri zaten ≥5.6:1. Dokunmatik hedefler: sıralama/filtre çipleri ve slot satırları mobilde 44px etkin alana açılıyor. Ara genişlik (≤1100px, kenar çubuğu açıkken): mod seçimi, hub, dönem ızgarası sadeleşti; 1024 ve 820 genişliklerinde yatay taşma yok.
+
+**Bilinçli olarak yapılmadı:** 12i çekmecesi sitenin kendi kabuğu (oyun bileşeni değil), dokunulmadı. Mobil 12h/13e–13g karelerinin tek tek sayfa karşılaştırması ve futbol sezon sonrası ekranı hâlâ açık. `--sb-faint` değişikliği mockup'tan kasıtlı sapma (erişilebilirlik).

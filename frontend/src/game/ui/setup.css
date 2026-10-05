@@ -304,3 +304,13 @@
   .sb-shape-foot .sb-btn { width: 100%; }
   .sb-pill { min-height: 44px; }
 }
+
+/* Ara genişlik (≤1100px): kenar çubuğu açıkken içerik dar kalır, çok sütunlu ızgaralar sadeleşir */
+@media (max-width: 1100px) {
+  .sb-stage { padding: 20px; }
+  .sb-modes-grid { grid-template-columns: 1fr; grid-template-rows: none; flex: none; }
+  .sb-hub-body { grid-template-columns: 1fr; flex: none; }
+  .sb-eras { grid-template-columns: repeat(2, minmax(0, 1fr)); flex: none; }
+  .sb-hub-head { flex-wrap: wrap; align-items: flex-start; }
+  .sb-steps { grid-template-columns: repeat(2, 1fr); }
+}

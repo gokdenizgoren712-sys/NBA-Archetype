@@ -6,7 +6,7 @@ import "./setup.css";
 // kendi uç noktalarını çağırıp satırları buraya verir.
 //   rows: [{ key, rank, name, sub, score, me, top }]
 export default function LeaderboardCard({
-  sport = "basketball", bullet = false, tag, topScore, topName, topSub, reference, rows, loading, empty, foot, children, className = "",
+  sport = "basketball", bullet = false, tag, topScore, topName, topSub, reference, rows, loading, empty, error, onRetry, foot, children, className = "",
 }) {
   return (
     <aside className={gameClass(sport, `sb-panel sb-lb ${className}`.trim())}>
@@ -23,8 +23,13 @@ export default function LeaderboardCard({
       {reference && <div className="sb-lb-ref">{reference}</div>}
       {children}
       <div className="sb-lb-list">
-        {loading && <p className="sb-lb-note">Loading…</p>}
-        {!loading && rows?.length === 0 && <p className="sb-lb-note">{empty}</p>}
+        {loading && <p className="sb-lb-note" role="status">Loading…</p>}
+        {error && (
+          <p className="sb-lb-note" role="alert" style={{ color: "var(--sb-bad)" }}>
+            {error} {onRetry && <button type="button" className="sb-chip-sm" onClick={onRetry}>Try again</button>}
+          </p>
+        )}
+        {!loading && !error && rows?.length === 0 && <p className="sb-lb-note">{empty}</p>}
         {rows?.map((r) => (
           <div key={r.key} className={`sb-lb-row${r.me ? " me" : ""}${r.top ? " top" : ""}`}>
             <span className="rank">{r.rank}</span>

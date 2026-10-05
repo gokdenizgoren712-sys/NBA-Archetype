@@ -85,3 +85,22 @@ test("Online (basketbol): Board ve Live yeni bileşenlerde, ağ mantığı yerin
   assert.match(p, /board\/at-score/);
   assert.doesNotMatch(p, /FullCourtBoard|RoomLobby|QueuePanel/);
 });
+
+test("Faz 7: kural penceresi erişilebilir (odak, Tab döngüsü, Esc), iki spor aynı bileşeni kullanıyor", () => {
+  const r = src("game", "RulesSheet.jsx");
+  assert.match(r, /role="dialog" aria-modal="true"/);
+  assert.match(r, /e\.key === "Escape"/);
+  assert.match(r, /e\.key !== "Tab"/);
+  assert.match(r, /prev\?\.focus/);
+  assert.match(src("game", "ModeAboutModal.jsx"), /sport="basketball"/);
+  assert.match(src("game", "football", "ModeAbout.jsx"), /sport="football"/);
+  assert.match(src("game", "ui", "rules.css"), /max-width: 700px/);
+});
+
+test("Faz 7: hata durumu boş durumdan ayrı (liderlik), hareket azaltma sonsuz animasyonları durduruyor", () => {
+  assert.match(src("game", "ui", "LeaderboardCard.jsx"), /role="alert"/);
+  assert.match(src("game", "LeaderboardPanel.jsx"), /Could not load the leaderboard/);
+  assert.match(src("game", "football", "LeaderboardPanel.jsx"), /onRetry/);
+  assert.match(src("game", "ui", "versus.css"), /prefers-reduced-motion: reduce[\s\S]*animation: none/);
+  assert.match(src("game", "ui", "sport-theme.css"), /--sb-faint: +#80808a/);
+});
