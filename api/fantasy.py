@@ -77,15 +77,27 @@ def _load() -> dict:
         return dict(_state)
 
 
-def _valued(fmt: dict, punt: tuple[str, ...], basis: str) -> pd.DataFrame:
+def _sim_available(st: dict) -> bool:
+    """Simülasyon projeksiyonu yalnız sezon öncesi geçerli: sezon içi güncelleme model değerlerini yeniler, SIM_* eski kadroda kalır."""
+    p = st["proj"]
+    return "SIM_FP" in p.columns and "INSEASON_AS_OF" not in p.columns and bool(p["SIM_FP"].notna().any())
+
+
+def _valued(fmt: dict, punt: tuple[str, ...], basis: str, source: str = "model") -> pd.DataFrame:
     st = _load()
-    key = json.dumps([fmt, sorted(punt), basis], sort_keys=True, default=str)
+    if source == "sim" and not _sim_available(st):
+        raise HTTPException(422, "The simulation projection is not available right now.")
+    key = json.dumps([fmt, sorted(punt), basis, source], sort_keys=True, default=str)
     with _lock:
         if key in _values:
             _values.move_to_end(key)
             return _values[key]
     try:
-        df = value_players(st["proj"], fmt, st["team_weeks"], punt=punt, basis=basis)
+        proj = st["proj"]
+        if source == "sim":
+            from src.fantasy.team_sim import with_sim
+            proj = with_sim(proj)
+        df = value_players(proj, fmt, st["team_weeks"], punt=punt, basis=basis)
     except ValueError as e:
         raise HTTPException(422, str(e))
     with _lock:
@@ -257,8 +269,8 @@ def _sort_spec(fmt: dict, sort: Optional[str], direction: Optional[str], metric:
 
 
 def _rankings_response(fmt, punt, basis, position, team, search, flag, archetype, limit, offset, metric=None,
-                       sort=None, direction=None):
-    df = _valued(fmt, punt, basis)
+                       sort=None, direction=None, source="model"):
+    df = _valued(fmt, punt, basis, source)
     st = _state
     total = len(df)
     # Kategori formatında G/Z seçimi: sıra ve kademeler BÜTÜN havuzda yeniden
@@ -280,7 +292,7 @@ def _rankings_response(fmt, punt, basis, position, team, search, flag, archetype
         "metric": (f"value_{metric or default_metric}" if fmt["kind"] == "categories" else "value"),
         "built_at": str(st["proj"]["BUILT_AT"].iloc[0]) if "BUILT_AT" in st["proj"].columns else None,
         "total_players": total, "matched": len(df), "offset": offset, "limit": limit,
-        "sort": sort or "value", "direction": spec[2] if spec else "desc",
+        "sort": sort or "value", "direction": spec[2] if spec else "desc", "source": source,
         "players": [_row(r, fmt, punt, basis) for _, r in page.iterrows()],
     }
 
@@ -311,7 +323,7 @@ def fantasy_meta():
             "built_at": str(proj["BUILT_AT"].iloc[0]) if "BUILT_AT" in proj.columns else None,
             "rosters_fetched_at": fetched, "opening_night": str(st["weeks"]["START"].iloc[0]),
             "inseason_as_of": as_of, "rest_of_season_from_week": rest_from,
-            "current_week": int(cur["WEEK"].iloc[0]) if len(cur) else None,
+            "current_week": int(cur["WEEK"].iloc[0]) if len(cur) else None, "simulation": _sim_available(st),
             "weeks": int(st["weeks"]["WEEK"].max())}
 
 
@@ -331,10 +343,11 @@ def fantasy_rankings(
     offset: int = Query(0, ge=0),
     sort: Optional[str] = Query(None, max_length=20, description="Column to sort by: value, adp, adp_diff, games, … or cat:<CATEGORY>"),
     dir: Optional[str] = Query(None, pattern="^(asc|desc)$"),
+    source: str = Query("model", pattern="^(model|sim)$", description="model = our projection; sim = team-simulation averages"),
 ):
     fmt = _preset(format, teams)
     return _rankings_response(fmt, _punt(punt, fmt), basis, position, team, search, flag, archetype,
-                              limit, offset, metric, sort, dir)
+                              limit, offset, metric, sort, dir, source)
 
 
 class CustomRankingsBody(BaseModel):
@@ -350,6 +363,7 @@ class CustomRankingsBody(BaseModel):
     offset: int = Field(0, ge=0)
     sort: Optional[str] = Field(None, max_length=20)
     dir: Optional[str] = Field(None, pattern="^(asc|desc)$")
+    source: str = Field("model", pattern="^(model|sim)$")
 
 
 def _custom_format(raw: dict) -> dict:
@@ -375,7 +389,7 @@ def fantasy_rankings_custom(body: CustomRankingsBody):
     if punt and fmt["kind"] != "categories":
         raise HTTPException(422, "Punting only applies to category formats.")
     return _rankings_response(fmt, punt, body.basis, body.position, None, body.search, body.flag,
-                              body.archetype, body.limit, body.offset, body.metric, body.sort, body.dir)
+                              body.archetype, body.limit, body.offset, body.metric, body.sort, body.dir, body.source)
 
 
 @router.get("/players/{player_id}")
@@ -385,9 +399,10 @@ def fantasy_player(
     teams: Optional[int] = Query(None, ge=LIMITS["teams"][0], le=LIMITS["teams"][1]),
     punt: Optional[str] = Query(None),
     basis: str = Query("total", pattern="^(total|per_game)$"),
+    source: str = Query("model", pattern="^(model|sim)$"),
 ):
     fmt = _preset(format, teams)
-    return _player_response(player_id, fmt, _punt(punt, fmt), basis)
+    return _player_response(player_id, fmt, _punt(punt, fmt), basis, source)
 
 
 class CustomPlayerBody(BaseModel):
@@ -406,8 +421,19 @@ def fantasy_player_custom(player_id: int, body: CustomPlayerBody):
     return _player_response(player_id, fmt, punt, body.basis)
 
 
-def _player_response(player_id: int, fmt: dict, punt: tuple, basis: str) -> dict:
-    df = _valued(fmt, punt, basis)
+def _simulation_block(r) -> dict | None:
+    """Takım simülasyonunun bu oyuncu için ortalama ve P10–P90 değerleri (model değerlerinin YANINDA gösterilir)."""
+    if not isinstance(r.get("SIM_FP"), float) or math.isnan(r.get("SIM_FP")):
+        return None
+    stats = {}
+    for s, k in (("PTS", "pts"), ("REB", "reb"), ("AST", "ast"), ("STL", "stl"), ("BLK", "blk"), ("TOV", "tov"), ("FG3M", "fg3m")):
+        stats[k] = {"mean": _num(r[f"SIM_{s}"]), "p10": _num(r[f"SIM_P10_{s}"]), "p90": _num(r[f"SIM_P90_{s}"])}
+    return {"per_game": stats, "fp": {"mean": _num(r["SIM_FP"]), "p10": _num(r["SIM_FP_P10"]), "p90": _num(r["SIM_FP_P90"])},
+            "mpg": _num(r["SIM_MPG"], 1), "gp": _num(r["SIM_GP"], 1)}
+
+
+def _player_response(player_id: int, fmt: dict, punt: tuple, basis: str, source: str = "model") -> dict:
+    df = _valued(fmt, punt, basis, source)
     hit = df[df["PLAYER_ID"] == player_id]
     if hit.empty:
         raise HTTPException(404, "Player not found in the 2026-27 fantasy pool.")
@@ -444,6 +470,7 @@ def _player_response(player_id: int, fmt: dict, punt: tuple, basis: str) -> dict
     return {
         "season": SEASON, "format": fmt,
         "player": _row(r, fmt, punt, basis),
+        "simulation": _simulation_block(r) if _sim_available(st) else None, "source": source,
         "trend_series": (json.loads(r["TREND_SERIES"]) if isinstance(r.get("TREND_SERIES"), str) else None),
         "last_season_per_game": last,
         "rookie_baseline": rookie,

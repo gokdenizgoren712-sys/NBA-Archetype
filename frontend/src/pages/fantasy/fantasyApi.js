@@ -46,11 +46,11 @@ export const fz = {
   rankings: (fmt, teams, o = {}) => isPreset(fmt)
     ? req("GET", "/rankings", { params: { format: fmt, teams, punt: (o.punt || []).join(","), basis: o.basis,
         position: o.position, search: o.search, flag: o.flag, archetype: o.archetype, metric: o.metric,
-        limit: o.limit, offset: o.offset, sort: o.sort, dir: o.dir } })
+        limit: o.limit, offset: o.offset, sort: o.sort, dir: o.dir, source: o.source } })
     : req("POST", "/rankings", { body: { format: fmt, punt: o.punt || [], basis: o.basis || "total",
         position: o.position || null, search: o.search || null, flag: o.flag || null,
         archetype: o.archetype || null, metric: o.metric || null, limit: o.limit || 200, offset: o.offset || 0,
-        sort: o.sort || null, dir: o.dir || null } }),
+        sort: o.sort || null, dir: o.dir || null, source: o.source || "model" } }),
 
   player: (id, fmt, teams, punt = []) => isPreset(fmt)
     ? req("GET", `/players/${id}`, { params: { format: fmt, teams, punt: punt.join(",") } })

@@ -292,3 +292,31 @@ Değerleme sıralaması (gerçekleşen sezonla Spearman, kredi 0.75): 9-cat 3/3 
 
 **Canlıda:** `publish.build_projections` kayıtlı katsayılarla (`data/2026-27__fantasy_context_model.json`; `python -m src.fantasy.context --fit`) uygular; `CTX_MIN_RATIO` / `CTX_RATE_*` sütunları yazılır. Rotasyon (≥15 dk) medyan dakika çarpanı 0.95. Örnekler: Brown PHI'da 32.1 → 29.8 dk, 24.7 → 21.4 sayı; LeBron −8% sayı; Giannis −6%; Curry / Jokić (ince kadro) +9% / +4% dakika; Maxey ≈ değişmez (yapısal yük PHI'da eskisiyle benzer).
 **Sınırlar:** kadro değişimi bilgisi hedef sezon takımından (backtest'te sezon ortası göçler küçük sızıntı); 3 sezon = az veri; katsayılar sezon başında yeniden öğrenilmeli (`--fit`); sezon içi güncelleme bu düzeltmenin ÜSTÜNE oynanan maçları ekler.
+
+## Takım simülasyonu — ayrı istatistik projeksiyonu (2026-10-05) — `src/fantasy/team_sim.py`
+
+**Soru (kullanıcı):** bağlamı simülasyonun KENDİSİ üretsin, kendi istatistik ortalamaları ve aralıklarıyla ayrı bir projeksiyon olarak görülebilsin. (Önceki katman `context.py` build'de girdileri bir kez ayarlayan regresyondu; simülasyon içinde değildi.)
+
+**Mimari:** her takım için 100 sezon × 82 oyun. (1) sezon şoku: oyuncu yeteneği (ampirik FP oran kantili, ortalama korunur) ve sakatlık (ampirik GP oranı, iki ardışık blok + dağınık kayıp; çakışan blokların eksik bıraktığı maç tamamlanır). (2) o oyunda sahadaki oyuncular arasında dakika: oyun gürültüsü,
+takımın kendi beklenen toplamı bütçe; ilk beş bütçe değişimini yalnız kısmen taşır (λ_top = 0.15), yedekler kalanı. (3) bağlam: hız = kendi hızı × (L_eski / L_oyun)^θ; L = o oyunda sahadaki takım arkadaşlarının dakika ağırlıklı eğilimi (context.fit_propensity; θ kullanım ≈ 0.8, ribaund ≈ 0.5, asist ≈ 0.55) — bir yıldız oynamayınca diğerlerinin payı OYUN İÇİNDE yükselir.
+(4) usage–verim ödünleşimi (ε = 0.2). Girdi hızları DÜZELTİLMEMİŞ projeksiyondan, yaş ve dakikaya göre hafifçe kalibre edilmiş (LOSO ridge). Çıktı: oynanan maç başına ortalama `SIM_*`, P10/P90 (`SIM_P10_*`, `SIM_P90_*`, `SIM_FP_P10/P90`), `SIM_MPG`, `SIM_GP`.
+
+**Parametre ayarı (3 sezon, ≥15 dk oyuncular):** başta oyun içi dakika bütçesini 241'e sabitlemek MAE'yi bozdu (4.53 → 5.39: yedek dakikası aşırı kısıldı); bütçe takımın KENDİ beklenen toplamı olunca düzeldi. Blok çakışması düzeltilince bütçe çarpanı yeniden ayarlandı (1.04 → 0.94).
+Rotasyon dakikasını `context.py` regresyonuyla ön-ayarlamak çift sayım yapıp MAE'yi kötüleştirdi (4.545). Talent şoku ortalama korunmayınca yanlılık −0.9'du; kapsama %78'den %80'e talent ölçeği 1.05 ile ayarlandı.
+
+**Doğrulama (leave-one-season-out hız kalibrasyonu; baz projeksiyon → simülasyon):**
+| | 2023-24 | 2024-25 | 2025-26 |
+|---|---|---|---|
+| FP MAE | 4.516 → 4.172 | 4.332 → 4.306 | 4.730 → 4.621 |
+| FP yanlılık | +1.05 → +0.09 | +0.38 → −0.07 | +0.60 → +0.09 |
+| PTS MAE | 2.506 → 2.308 | 2.412 → 2.387 | 2.718 → 2.617 |
+| REB MAE | 0.918 → 0.852 | 0.876 → 0.876 | 0.896 → 0.882 |
+| AST MAE | 0.692 → 0.639 | 0.687 → 0.691 | 0.738 → 0.727 |
+| dakika yanlılık | +1.33 → −0.12 | +0.67 → −0.10 | +1.04 → +0.32 |
+| P10–P90 kapsaması | 0.84 | 0.83 | 0.79 |
+FP ve PTS hatası üç sezonda da düştü, FP yanlılığı üçünde de |0.1| altına indi; 2024-25'te kazanç küçük (baz zaten kalibreydi), AST orada hafif kötü (+0.004). Aynı sezonlarda `context.py` regresyonu FP MAE'yi ortalama 4.526 → 4.373, simülasyon → ~4.37: ikisi eşdeğer;
+ikisini harmanlamak (0.25 sim + 0.75 regresyon) 4.347 verdi (tek yolun en iyisinden %0.6 iyi) — birincil projeksiyon olarak uygulanmadı, simülasyon AYRI görünüm olarak sunuluyor.
+Aralıklar için ek bilgi: tek başına sakatlık gürültüsüyle kapsama %20'ydi; yetenek şoku aralığı belirliyor.
+
+**Canlıda:** `publish.build_projections` simülasyonu koşar (`python -m src.fantasy.team_sim --fit` hız kalibrasyonunu `data/2026-27__fantasy_context_model.json` içine 'sim' bölümü olarak yazar; `--backtest` raporu). API: `/rankings?source=sim`, oyuncu sayfasında `simulation` bloğu (ortalama + P10–P90 + dakika + maç); arayüzde Rankings'te "Stats: Model | Simulation" ve oyuncu sayfasında "Team simulation" kartı. Sezon içi güncelleme model değerlerini yenilediği için simülasyon görünümü sezon başlayınca kapanır (sezon öncesi kadroya aittir).
+**Sınırlar:** takım kadrosu hedef sezon takımından; hız / dakika parametreleri 3 sezonla ayarlı; senaryo sayısı 100 (örnekleme gürültüsü ±0.02 FP MAE); simülasyon iki takım arasındaki karşılaşmayı (tempo, rakip savunma) modellemez.

@@ -82,6 +82,9 @@ export default function FantasyRankings() {
   const [flag, setFlag] = useState(null);
   const [limit, setLimit] = useState(PAGE);
   const [sort, setSort] = useState(null);
+  const [source, setSource] = useState("model");           // model = bizim projeksiyon · sim = takım simülasyonunun ortalamaları
+  const simOk = !!f.meta?.simulation;
+  const src = simOk ? source : "model";
 
   useEffect(() => { const t = setTimeout(() => setQDeb(q.trim()), 250); return () => clearTimeout(t); }, [q]);
   // Format değişince kategori bağımlı seçimler sıfırlanır
@@ -93,10 +96,10 @@ export default function FantasyRankings() {
   // Yalnız bu formatta geçerli punt'lar gider: format değişince sıfırlama efekti
   // bir çizim geç kalıyor ve ilk istek eski punt'la (ör. Points'e FT%) 422 alıyordu.
   const effPunt = isCats ? punt.filter((c) => f.cats.includes(c)) : [];
-  const key = JSON.stringify([f.apiFormat, f.apiTeams, effPunt, m, pos, qDeb, arch, flag, limit, sort]);
+  const key = JSON.stringify([f.apiFormat, f.apiTeams, effPunt, m, pos, qDeb, arch, flag, limit, sort, src]);
   const { data, error, loading, reload } = useAsync(() => fz.rankings(f.apiFormat, f.apiTeams, {
     punt: effPunt, metric: m, position: pos === "All" ? null : pos, search: qDeb || null, archetype: arch, flag, limit,
-    sort: sort?.key, dir: sort?.dir,
+    sort: sort?.key, dir: sort?.dir, source: src,
   }), key);
 
   // Format değişirken eski formatın satırları yeni başlıklarla çizilmesin.
@@ -280,6 +283,20 @@ export default function FantasyRankings() {
           </select>
           {sort && <button className="fz-chipbtn" onClick={() => pickSort({ key: sort.key, dir: sort.dir === "asc" ? "desc" : "asc" })} aria-label="Reverse the sort order">{sort.dir === "asc" ? "▲" : "▼"}</button>}
         </label>
+      )}
+      {simOk && (
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span className="fz-meta">Stats</span>
+          <div className="fz-seg sm">
+            {[["model", "Model"], ["sim", "Simulation"]].map(([k, l]) => (
+              <button key={k} className={src === k ? "on" : ""} onClick={() => { setSource(k); setLimit(PAGE); }}>{l}</button>
+            ))}
+          </div>
+          <InfoTip label="Model vs simulation" title="Model or simulation?">
+            <p><b>Model</b>: our projection from each player's last three seasons, adjusted for his new team.</p>
+            <p><b>Simulation</b>: plays every team through 100 seasons of 82 games with injuries, rotation minutes and who shares the ball, and averages what each player does. The two agree closely; where they differ, the roster is doing something the history cannot see.</p>
+          </InfoTip>
+        </div>
       )}
       {isCats && f.isH2H && (
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>

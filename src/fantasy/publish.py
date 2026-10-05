@@ -26,6 +26,7 @@ if str(ROOT) not in sys.path:
 
 from src.fantasy.backtest import bucket_quantiles  # noqa: E402
 from src.fantasy.context import apply_to_projection as apply_context  # noqa: E402
+from src.fantasy.team_sim import attach_sim  # noqa: E402
 from src.fantasy.trends import add_trends  # noqa: E402
 from src.fantasy.projections import (  # noqa: E402
     SEASON_WEIGHTS, load_gamelogs, prev_season, project,
@@ -85,6 +86,9 @@ def build_projections(target: str = "2026-27", write: bool = True) -> pd.DataFra
     proj["ELIGIBLE"] = proj["PLAYER_ID"].map(elig).fillna("")
     last_stats = prev_season(target)
     proj["ARCHETYPE"] = proj["PLAYER_ID"].map(_archetypes(last_stats))
+    raw_cols = ["PLAYER_ID", "TEAM", "AGE", "PROJ_MPG", "PROJ_GP", "PTS", "REB", "OREB", "DREB", "AST", "STL", "BLK", "TOV", "FG3M", "FG3A",
+                "FGA", "FTA", "PF", "FGM", "FTM"]
+    raw = proj[raw_cols].copy()                     # takım simülasyonu bağlamı kendisi üretir: girdi DÜZELTİLMEMİŞ projeksiyon
     proj = apply_context(proj, logs, target)        # takım bağlamı: yeni kadro, dakika bütçesi, kullanım yükü (bkz. context.py)
 
     # Belirsizlik: backtest artıklarından, dakika kovasına göre çarpan.
@@ -126,6 +130,7 @@ def build_projections(target: str = "2026-27", write: bool = True) -> pd.DataFra
             f.append("unknown_position")
         flags.append(",".join(f))
     proj["FLAGS"] = flags
+    proj = attach_sim(proj, raw, logs, target)      # SIM_* : takım simülasyonunun istatistik ortalamaları ve aralıkları (bkz. team_sim.py)
     proj = add_trends(proj, logs, target)           # TREND / TREND_PCT / TREND_SERIES + FLAGS'e rising | steady | declining
 
     proj = proj.merge(last_season_per_game(logs[last_stats]), on="PLAYER_ID", how="left")

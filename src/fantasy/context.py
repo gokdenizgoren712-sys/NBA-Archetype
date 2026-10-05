@@ -297,6 +297,10 @@ def main(argv=None) -> int:
         model = fit_model(pd.concat(cases.values()))
         model["fitted_on"] = list(cases)
         p = DATA_DIR / "2026-27__fantasy_context_model.json"
+        if p.exists():                                       # takım simülasyonunun bölümü ('sim') korunur
+            old = json.loads(p.read_text(encoding="utf-8"))
+            if "sim" in old:
+                model["sim"] = old["sim"]
         p.write_text(json.dumps(model, indent=2), encoding="utf-8")
         print("[context] model yazıldı:", p.name)
     return 0

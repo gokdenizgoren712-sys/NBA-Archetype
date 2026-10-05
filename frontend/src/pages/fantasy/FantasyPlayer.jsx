@@ -63,6 +63,7 @@ export default function FantasyPlayer() {
   const navigate = useNavigate();
   const { data, error, loading, reload } = useAsync(
     () => fz.player(id, f.apiFormat, f.apiTeams), JSON.stringify([id, f.apiFormat, f.apiTeams]));
+  const sim = data?.simulation;
   const [card, setCard] = useState(null);
   const p = data?.player;
 
@@ -209,6 +210,28 @@ export default function FantasyPlayer() {
                   </div>
                 ))}
                 <span className="fz-meta">Games {Math.round(p.proj_gp)} · range {Math.round(games[0])}–{Math.round(games[1])}</span>
+                {sim && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 18 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                      <span className="fz-h2">Team simulation</span><span className="fz-meta">mean · 10th–90th pct</span>
+                    </div>
+                    {[["Points", "pts"], ["Rebounds", "reb"], ["Assists", "ast"], ["Steals", "stl"], ["Blocks", "blk"], ["3-pointers", "fg3m"], ["Turnovers", "tov"]].map(([l, k]) => {
+                      const v = sim.per_game[k];
+                      const model = p.per_game[k];
+                      return (
+                        <div key={k} style={{ display: "grid", gridTemplateColumns: "110px 54px 1fr 92px", gap: 12, alignItems: "center", minHeight: 28 }}>
+                          <span className="fz-sub" style={{ fontSize: 13 }}>{l}</span>
+                          <span className="fz-num" style={{ fontSize: 17, textAlign: "right" }}>{fmt1(v.mean)}</span>
+                          <span className="fz-meta">{model != null && Math.abs(v.mean - model) >= 0.05 ? `model ${fmt1(model)}` : "same as model"}</span>
+                          <span className="fz-meta" style={{ textAlign: "right" }}>{fmt1(v.p10)}–{fmt1(v.p90)}</span>
+                        </div>
+                      );
+                    })}
+                    <span className="fz-meta" style={{ lineHeight: 1.5 }}>
+                      Fantasy points {fmt1(sim.fp.mean)} a game ({fmt1(sim.fp.p10)}–{fmt1(sim.fp.p90)}) · {fmt1(sim.mpg)} minutes · {Math.round(sim.gp)} games. Averages over 100 simulated seasons with injuries, rotation minutes and teammates sharing the ball.
+                    </span>
+                  </div>
+                )}
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 {isCats ? (
