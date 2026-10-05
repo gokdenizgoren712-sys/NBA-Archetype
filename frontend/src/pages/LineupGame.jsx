@@ -9,6 +9,7 @@ import CourtBoard from "../game/CourtBoard";
 import { StarIcon, EyeIcon, LinkIcon, CheckIcon, DownloadIcon, XLogoIcon } from "../game/GameIcons";
 import { POSITIONS, BENCH_SLOTS, ALL_SLOTS, getPrimaryPos } from "../game/positions";
 import SetupHub from "../game/ui/SetupHub";
+import GameStage from "../game/ui/GameStage";
 import EraStep from "../game/ui/EraStep";
 import BasketballDraft from "../game/ui/BasketballDraft";
 import ModeAboutModal from "../game/ModeAboutModal";
@@ -582,38 +583,13 @@ export default function LineupGame() {
         <BasketballDraft draft={draft} onInfo={() => setRules({ key: "single", title: "Spin & Build", accent: "#FFB11B" })} />
         <ModeAboutModal mode={rules} onClose={() => setRules(null)} />
       </>
+    ) : phase==="pick_coach" ? (
+      <GameStage sport="basketball">
+        <CoachPicker sport="basketball" title="Hire your coach" options={coachOptions} onPick={pickCoach} />
+      </GameStage>
     ) : (
     <div className={phase==="complete" ? "p-4 sm:p-6 max-w-[1560px] mx-auto space-y-3 pb-6" : "g-draft"}>
       {phase!=="complete"&&<PageGlow tint={ERA_HEX[simEra?.id] || "#FFB11B"} />}
-
-      {/* Koç seçimi — Faz 3'te yeniden tasarlanacak; draft ekranı artık game/ui/BasketballDraft */}
-      {phase==="pick_coach"&&(
-        <>
-        <header className="g-draft-head">
-          <div className="g-draft-id">
-            <h1 className="g-wordmark">Lineup Builder</h1>
-            <div className="g-draft-meta">
-              {simEra&&<span className="g-era-chip" style={{"--c":ERA_HEX[simEra.id]||"#9ca3af"}}>{simEra.label}</span>}
-              <span className="g-draft-progress"><i style={{width:`${(filledSlots.length/ALL_SLOTS.length)*100}%`}} /></span>
-              <span className="g-draft-count">{filledSlots.length}/{ALL_SLOTS.length}</span>
-            </div>
-          </div>
-        </header>
-        <div className="g-divider tight" />
-        <div className="g-draft-body">
-          <div className="min-w-0 flex flex-col gap-3">
-            <CoachPicker title="Hire your coach" options={coachOptions} onPick={pickCoach} />
-          </div>
-          <div className="hidden lg:block min-w-0">
-            <div className="h-full">
-              <CourtBoard fit bench="strip" framed={false} lineup={lineup} coach={coach} moveSrc={moveSrc}
-                canRearrange={canRearrange} onSlotTap={handleSlotTap} getPrimaryPos={getPrimaryPos}
-                placing={false} placingEligible={[]} placingPenalties={{}} onPlace={handlePickPos}/>
-            </div>
-          </div>
-        </div>
-        </>
-      )}
 
       {/* === COMPLETE === */}
       {phase==="complete"&&fitResult&&(

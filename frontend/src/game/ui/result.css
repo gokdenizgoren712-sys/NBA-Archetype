@@ -1,0 +1,47 @@
+/* Spin & Build — koç/menajer, sonuç, sezon (mockup 3d/4d, 3e, 3f, 11c/11d; mobil 12f–12h, 13e–13g). */
+
+/* ── Koç / menajer seçimi ───────────────────────────────────────────── */
+.sb-coach.sb-game { background: transparent; }
+.sb-coach { display: flex; flex-direction: column; gap: 16px; min-height: 0; }
+.sb-coach-head { text-align: center; }
+.sb-coach-head .step { color: var(--sb-special); }
+.sb-coach-head h2 { margin: 2px 0 0; font: 700 44px/1.05 var(--sb-font-display); letter-spacing: .08em; text-transform: uppercase; }
+.sb-coach-head p { margin: 6px auto 0; max-width: 760px; font-size: 14px; color: var(--sb-text-2); }
+.sb-coach-wait { text-align: center; padding: 40px 0; font-size: 15px; color: var(--sb-muted); }
+.sb-coach-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.sb-ccard {
+  box-sizing: border-box; padding: 22px 20px 18px; min-height: 440px; display: flex; flex-direction: column; align-items: center; text-align: center;
+  background: var(--sb-panel); border: 1px solid var(--sb-line); border-radius: 4px; transition: border-color .15s, box-shadow .15s;
+}
+.sb-ccard.on { border-color: var(--sb-accent); box-shadow: 0 0 26px rgba(var(--sb-accent-rgb), .3); }
+.sb-ccard .ini {
+  width: 80px; height: 80px; border-radius: 80px; display: flex; align-items: center; justify-content: center; margin-bottom: 14px;
+  background: rgba(197, 139, 255, .12); border: 2px solid rgba(197, 139, 255, .45); color: var(--sb-special);
+  font: 700 26px var(--sb-font-display); letter-spacing: .04em;
+}
+.sb-ccard h3 { margin: 0; font: 700 24px/1.15 var(--sb-font-display); letter-spacing: .06em; text-transform: uppercase; }
+.sb-ccard .sub { margin: 8px 0 16px; font-size: 13px; color: var(--sb-text-2); }
+.sb-ccard .grades { display: flex; gap: 22px; justify-content: center; }
+.sb-ccard .grades span { display: flex; flex-direction: column; align-items: center; }
+.sb-ccard .grades b { font: 700 44px/1 var(--sb-font-display); }
+.sb-ccard .grades i { font: normal 11px var(--sb-font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--sb-muted); margin-top: 4px; }
+.sb-ccard .foot { flex: 1; display: flex; align-items: flex-end; justify-content: center; gap: 4px; padding-bottom: 14px; color: var(--sb-pos-pf); }
+.sb-ccard .foot em { font: 600 13px var(--sb-font-body); font-style: normal; margin-left: 4px; }
+.sb-ccard .foot em.none { color: var(--sb-faint); }
+.sb-ccard .foot em.match { color: var(--sb-accent); }
+.sb-ccard .sb-btn { width: 100%; border-color: rgba(255, 255, 255, .25); color: var(--sb-text); }
+.sb-ccard .sb-btn.solid { border-color: var(--sb-accent); color: #0b0b0d; }
+.sb-coach-actions { display: flex; justify-content: center; }
+
+@media (max-width: 700px) {
+  .sb-coach-head h2 { font-size: 28px; }
+  .sb-coach-grid { grid-template-columns: 1fr; gap: 10px; }
+  .sb-ccard { min-height: 0; flex-direction: row; flex-wrap: wrap; align-items: center; text-align: left; padding: 12px; gap: 4px 12px; border-radius: var(--sb-r-card); }
+  .sb-ccard .ini { width: 48px; height: 48px; margin: 0; font-size: 17px; }
+  .sb-ccard h3 { flex: 1; font-size: 19px; }
+  .sb-ccard .sub { flex-basis: 100%; margin: 0; }
+  .sb-ccard .grades { gap: 16px; } .sb-ccard .grades b { font-size: 28px; }
+  .sb-ccard .foot { flex: 1; justify-content: flex-start; padding: 0; }
+  .sb-ccard .sb-btn { width: auto; min-height: 44px; padding: 0 18px; }
+  .sb-coach-actions .sb-btn { width: 100%; }
+}

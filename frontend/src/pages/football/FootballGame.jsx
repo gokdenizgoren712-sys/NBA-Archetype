@@ -7,6 +7,8 @@ import Pitch from "../../game/football/Pitch";
 import ShapeStep from "../../game/ui/ShapeStep";
 import FootballDraft from "../../game/ui/FootballDraft";
 import ModeAbout from "../../game/football/ModeAbout";
+import GameStage from "../../game/ui/GameStage";
+import CoachPicker from "../../game/CoachPicker";
 import { FORMATIONS, SHAPE_KEYS, allSlots, BENCH_COUNT } from "../../game/football/formations";
 import { posPenaltyFor, isPrimarySlot, canPlace, PENALTY_LABEL } from "../../game/football/positions";
 import { drawManagers, managerBonus } from "../../game/football/managers";
@@ -280,7 +282,7 @@ export default function FootballGame() {
     setChosen(null); setRoster([]); setDiscover(false);
 
     const done = slots.every(s => next[s.id]);
-    if (done) { setMgrOptions(drawManagers(3)); setPhase("pick_manager"); }
+    if (done) { setMgrOptions(drawManagers(4)); setPhase("pick_manager"); }
     else setPhase("idle");
   };
 
@@ -419,6 +421,16 @@ export default function FootballGame() {
           onSlotClick={onSlotClick} onInfo={() => setRulesOpen(true)} />
         {rulesOpen && <ModeAbout mode="spin" onClose={() => setRulesOpen(false)} />}
       </>
+    );
+  }
+
+  // Menajer seçimi (mockup 4d): koç ekranıyla aynı bileşen, futbol teması.
+  if (phase === "pick_manager") {
+    return (
+      <GameStage sport="football">
+        <CoachPicker sport="football" shape={shape} title="Hire your manager" options={mgrOptions}
+          onPick={pickManager} cta={(last, full) => `Hire ${full}`} />
+      </GameStage>
     );
   }
 
