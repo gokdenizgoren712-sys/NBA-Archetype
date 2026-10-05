@@ -225,6 +225,24 @@ function RoomPanel({ mode }) {
       .catch((e) => setMsg(String(e.message || e)));
   }, [code]);
 
+  // Ayrılırken sunucuya da söyle. Yalnız yerel state'i sıfırlamak satırı
+  // 'building' bırakıyordu: host dolu bir oda görmeye devam ediyor, ayrılan
+  // kişi de eşleştirmeye giremiyordu. Ağ hatası çıkışı engellemesin — oda
+  // zaten bayatlayınca süpürülüyor.
+  const leave = useCallback(() => {
+    if (room?.room_code) api.footballH2HLeave(room.room_code).catch(() => {});
+    setRoom(null); setCode("");
+  }, [room?.room_code]);
+
+  // Oda biz içerideyken kapandı (host çıktı, ya da eşleşmiş rakip ayrıldı):
+  // lobiye dön ve nedenini söyle — sessizce boş bir draft ekranında bırakma.
+  useEffect(() => {
+    if (room?.status === "abandoned") {
+      setMsg("The other player left and the room was closed.");
+      setRoom(null); setCode("");
+    }
+  }, [room?.status]);
+
   /* Odaya girilmemiş: giriş yapılmadıysa kapı, yapıldıysa kur / katıl (mockup 5a, 5o) */
   if (!room) {
     if (!isLoggedIn) {
@@ -243,12 +261,15 @@ function RoomPanel({ mode }) {
   // İki kişi de geldiyse ekranı DRAFT devralıyor: kendi dock'u oda kodunu,
   // bağlantı durumunu ve çıkışı zaten taşıyor. Buranın ikinci bir dock +
   // ikinci bir oyuncu kartı çifti çizmesi aynı bilgiyi iki kez göstermekti.
-  const bothIn = Boolean(room.p2_name || room.p2_ready);
+  // opponent_joined: sunucu "iki koltuk da dolu" diyor. Önceden p2_name'e
+  // bakıyordu ve join onu yazmadığı için ne host ne misafir lobiden çıkıyordu.
+  // Eski sunucu yanıtı (deploy sırasında) için eski koşula düşüyor.
+  const bothIn = Boolean(room.opponent_joined ?? (room.p2_name || room.p2_ready));
   if (bothIn) {
     return (
       <div className="space-y-3">
         <RoomDraft roomCode={room.room_code}
-          onLeave={() => { setRoom(null); setCode(""); }}
+          onLeave={leave}
           onResult={() => api.footballH2HRoom(room.room_code).then(setRoom).catch(() => {})} />
         {msg && <div className="text-xs text-center" style={{ color: RED }}>{msg}</div>}
       </div>
@@ -262,7 +283,7 @@ function RoomPanel({ mode }) {
       host={{ name: room.p1_name || "You", tag: "host", status: "Ready" }} opponent={null}
       rulesLine="Two legs · extra time and penalties · resolved on the server · squads hidden until both send"
       inviteUrl={`${window.location.origin}/football/game/${mode}?room=${room.room_code}`}
-      onLeave={() => { setRoom(null); setCode(""); }} />
+      onLeave={leave} />
   );
 }
 

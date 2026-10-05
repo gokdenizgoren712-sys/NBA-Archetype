@@ -70,6 +70,13 @@ async def _reject(ws: WebSocket, reason: str, message: str) -> None:
     await ws.close(code=1000)
 
 
+def _name(row, slot: str, fallback: str) -> str:
+    """Oda satırındaki isim, yoksa hesabın kullanıcı adı, yoksa 'Player N'.
+    create/join isim göndermediği için satırdaki isim çoğu zaman boş."""
+    from .main import _h2h_name
+    return _h2h_name(row, slot) or fallback
+
+
 def _row(code: str):
     with get_conn() as conn:
         return conn.execute("SELECT * FROM football_h2h_rooms WHERE room_code=?",
@@ -122,7 +129,7 @@ def _init_state(row) -> dict:
     d = R.create_draft(shapes={1: "4-3-3", 2: "4-3-3"}, wheel_mode="round", first=first)
     d.update({
         "seats": {1: p1, 2: p2},
-        "names": {"1": row["p1_name"] or "Player 1", "2": row["p2_name"] or "Player 2"},
+        "names": {"1": _name(row, "p1", "Player 1"), "2": _name(row, "p2", "Player 2")},
         "season": row["season"],
         # Diziliş seçilmeden çark dönmez: draft başlayınca diziliş
         # değiştirilemiyor, o yüzden ikisi de onaylamadan başlamamalı.
@@ -356,6 +363,10 @@ async def football_room_socket(ws: WebSocket, room_code: str, token: str = Query
         await _reject(ws, "room_not_found",
                       "This room doesn't exist, or someone else already took your spot.")
         return
+    if row["status"] == "abandoned":
+        # Kapanmış odaya bağlanmak, kimsenin gelmeyeceği bir drafta girmek.
+        await _reject(ws, "room_closed", "This room was closed.")
+        return
     if not row["p2_user_id"]:
         await _reject(ws, "waiting", "Nobody has joined this room yet.")
         return
@@ -451,16 +462,18 @@ def _user_in_open_room(uid: int) -> bool:
 
 
 def _make_room(uid_a: int, uid_b: int, season: str) -> str | None:
-    from .main import _h2h_code
+    from .main import _h2h_code, _h2h_username
     for _ in range(6):
         code = _h2h_code()
         try:
             with get_conn() as conn:
                 conn.execute(
                     "INSERT INTO football_h2h_rooms "
-                    "(room_code, mode, status, season, p1_user_id, p2_user_id, flow) "
-                    "VALUES (?, 'online', 'building', ?, ?, ?, 'draft')",
-                    (code, season, uid_a, uid_b))
+                    "(room_code, mode, status, season, p1_user_id, p2_user_id, "
+                    "p1_name, p2_name, flow) "
+                    "VALUES (?, 'online', 'building', ?, ?, ?, ?, ?, 'draft')",
+                    (code, season, uid_a, uid_b,
+                     _h2h_username(uid_a), _h2h_username(uid_b)))
             return code
         except Exception as e:
             if "UNIQUE" not in str(e):
@@ -562,6 +575,60 @@ async def football_matchmaking_socket(ws: WebSocket, token: str = Query(...)):
         MM_QUEUE = [e for e in MM_QUEUE if e["user_id"] != uid]
         if len(MM_QUEUE) != before:
             await _mm_queue_size()
+
+
+# ── Odadan ayrılma ───────────────────────────────────────────────────────────
+# Arayüz "Leave"e basınca yalnız kendi state'ini sıfırlıyordu; sunucudaki satır
+# 'building' kalıyor, hem host hâlâ dolu bir oda görüyor hem de ayrılan kişi
+# _user_in_open_room yüzünden 12 saat boyunca eşleştirmeye giremiyordu.
+#
+# Ne olacağı odanın türüne bağlı:
+#   • friend + misafir ayrılıyor → koltuk BOŞALIYOR, oda 'waiting'e dönüyor.
+#     Kod hâlâ paylaşılabilir, başka biri girebilir.
+#   • online (eşleştirmeyle kurulmuş) ya da host ayrılıyor → oda 'abandoned'.
+#     Eşleştirilmiş çiftte bekleyecek kimse yok; host giderse oda sahipsiz.
+# Koltuklar değiştiği için draft durumu da (bellek + DB) siliniyor — yoksa yeni
+# gelen eski koltuk atamasıyla devam ederdi.
+
+@router.post("/api/football/h2h/room/{code}/leave")
+async def leave_h2h_room(code: str, user=Depends(get_current_user)):
+    uid = int(user["sub"])
+    row = _row(code)
+    if not row:
+        raise HTTPException(404, "Room not found")
+    if uid not in (row["p1_user_id"], row["p2_user_id"]):
+        raise HTTPException(403, "You are not in this room")
+    if row["status"] in ("resolved", "abandoned"):
+        # Bitmiş sonuca ya da kapanmış odaya dokunma.
+        return {"ok": True, "status": row["status"], "reopened": False}
+
+    is_host = uid == row["p1_user_id"]
+    reopen = (not is_host) and row["mode"] == "friend"
+    async with _lock(code):
+        with get_conn() as conn:
+            if reopen:
+                conn.execute(
+                    "UPDATE football_h2h_rooms SET p2_user_id=NULL, p2_name=NULL, "
+                    "p2_squad_json=NULL, status='waiting', draft_state_json=NULL, "
+                    "updated_at=datetime('now') WHERE room_code=?", (code,))
+            else:
+                conn.execute(
+                    "UPDATE football_h2h_rooms SET status='abandoned', "
+                    "draft_state_json=NULL, updated_at=datetime('now') "
+                    "WHERE room_code=?", (code,))
+        ROOM_STATES.pop(code, None)
+    new_status = "waiting" if reopen else "abandoned"
+
+    # Ayrılanın soketini kapat, kalana haber ver.
+    mine = CONNS.get(code, {}).pop(uid, None)
+    if mine is not None:
+        try:
+            await mine.close(code=1000)
+        except Exception:
+            pass
+    await _broadcast(code, {"type": "opponent_left", "user_id": uid,
+                            "room_status": new_status}, exclude=uid)
+    return {"ok": True, "status": new_status, "reopened": reopen}
 
 
 def sweep_stale_football_rooms() -> int:

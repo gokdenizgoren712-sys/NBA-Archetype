@@ -138,6 +138,7 @@ export const api = {
   footballH2HJoin:   (code) => authPost(`/football/h2h/room/${code}/join`, {}),
   footballH2HSquad:  (code, body) => authPost(`/football/h2h/room/${code}/squad`, body),
   footballH2HRoom:   (code) => authGet(`/football/h2h/room/${code}`),
+  footballH2HLeave:  (code) => authPost(`/football/h2h/room/${code}/leave`, {}),
   footballGameTeams:   (p) => get("/football/game/teams", p),
   footballGamePlayers: (p) => get("/football/game/players", p),
 

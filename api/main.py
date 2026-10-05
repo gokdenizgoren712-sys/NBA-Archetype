@@ -5089,18 +5089,44 @@ def _resolve_h2h(row) -> dict:
     return result
 
 
+def _h2h_username(uid) -> str | None:
+    """Hesabın kullanıcı adı. Oda satırında isim yoksa (create/join isim
+    göndermiyor) görünen ad buradan türetilir."""
+    if not uid:
+        return None
+    with get_conn() as conn:
+        r = conn.execute("SELECT username FROM users WHERE id=?", (int(uid),)).fetchone()
+    return r["username"] if r else None
+
+
+def _h2h_name(row, slot: str) -> str | None:
+    """slot: "p1" | "p2". Satırdaki isim, yoksa hesabın kullanıcı adı."""
+    return row[slot + "_name"] or _h2h_username(row[slot + "_user_id"])
+
+
 def _h2h_public(row, uid: int) -> dict:
     """Odanın dışa açık hâli. RAKİBİN KADROSU, eşleşme çözülene kadar GİZLİ —
     yoksa ikinci oyuncu birincininkine bakarak kurar."""
     resolved = row["status"] == "resolved"
     me = "p1" if uid == row["p1_user_id"] else ("p2" if uid == row["p2_user_id"] else None)
+    p1n, p2n = _h2h_name(row, "p1"), _h2h_name(row, "p2")
     out = {
         "room_code": row["room_code"], "mode": row["mode"],
         "status": row["status"], "season": row["season"],
         "you": me,
-        "p1_name": row["p1_name"], "p2_name": row["p2_name"],
+        "p1_name": p1n, "p2_name": p2n,
         "p1_ready": bool(row["p1_squad_json"]),
         "p2_ready": bool(row["p2_squad_json"]),
+        # İki koltuk da dolu mu? Karşı taraftan bağımsız, simetrik: host için
+        # "misafir geldi", misafir için hep true. Arayüz oda lobisinden draft'a
+        # geçişi buna bağlıyor — önceden p2_name'e bakıyordu ve join onu hiç
+        # yazmadığı için kimse draft'a geçemiyordu.
+        "opponent_joined": bool(row["p1_user_id"] and row["p2_user_id"]),
+        # Ortak biçim (basketbol odasının usernames haritasıyla aynı bilgi).
+        "players": [
+            {"seat": i, "user_id": row[f"p{i}_user_id"], "username": n}
+            for i, n in ((1, p1n), (2, p2n)) if row[f"p{i}_user_id"]
+        ],
     }
     if me:
         mine = row[me + "_squad_json"]
@@ -5124,7 +5150,8 @@ def create_h2h_room(body: H2HCreateBody, user=Depends(get_current_user)):
                     "(room_code, mode, status, season, p1_user_id, p1_name) "
                     "VALUES (?,?,'waiting',?,?,?)",
                     (code, body.mode, season, int(user["sub"]),
-                     (body.name or "").strip()[:40] or None))
+                     (body.name or "").strip()[:40]
+                     or _h2h_username(user["sub"])))
             return {"room_code": code, "season": season, "mode": body.mode}
         except Exception as e:
             if "UNIQUE" not in str(e):
@@ -5140,12 +5167,21 @@ def join_h2h_room(code: str, user=Depends(get_current_user)):
         raise HTTPException(404, "Room not found")
     if row["p1_user_id"] == uid or row["p2_user_id"] == uid:
         return _h2h_public(row, uid)          # zaten içeride
+    if row["status"] in ("abandoned", "resolved"):
+        # Terk edilmiş odaya girmek, kimsenin gelmeyeceği bir lobiye girmek.
+        raise HTTPException(409, "This room is closed")
     if row["p2_user_id"]:
         raise HTTPException(409, "Room is full")
     with get_conn() as conn:
-        conn.execute("UPDATE football_h2h_rooms "
-                     "SET p2_user_id=?, status='building', updated_at=datetime('now') "
-                     "WHERE room_code=? AND p2_user_id IS NULL", (uid, code))
+        # p2_name: misafirin adı da yazılıyor — önceden yalnız p2_user_id
+        # yazılıyordu, host'un yoklaması misafirin adını hep boş görüyordu.
+        cur = conn.execute(
+            "UPDATE football_h2h_rooms "
+            "SET p2_user_id=?, p2_name=?, status='building', updated_at=datetime('now') "
+            "WHERE room_code=? AND p2_user_id IS NULL", (uid, _h2h_username(uid), code))
+    if not cur.rowcount:
+        # İki kişi aynı anda katıldı, öbürü kazandı.
+        raise HTTPException(409, "Room is full")
     return _h2h_public(_h2h_row(code), uid)
 
 
