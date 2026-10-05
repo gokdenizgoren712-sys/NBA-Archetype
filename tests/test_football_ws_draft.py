@@ -317,34 +317,6 @@ def test_first_in_the_queue_waits(app_client):
     app_client.delete("/api/football/matchmaking", headers=h)
 
 
-def test_two_in_the_queue_get_a_room(app_client):
-    import api.football_ws as fws
-    fws.MM_QUEUE.clear()
-    ua, ha = _fresh_user("mm_a")
-    ub, hb = _fresh_user("mm_b")
-    app_client.post("/api/football/matchmaking/join", headers=ha)
-    r = app_client.post("/api/football/matchmaking/join", headers=hb)
-    body = r.json()
-    assert body["queue_size"] == 0
-    code = body.get("room_code")
-    assert code, "eşleşme oda açmadı"
-
-    # İki taraf da odanın içinde ve oda 'draft' akışında olmalı
-    from api.db import get_conn
-    with get_conn() as conn:
-        row = conn.execute("SELECT * FROM football_h2h_rooms WHERE room_code=?",
-                           (code,)).fetchone()
-    assert {row["p1_user_id"], row["p2_user_id"]} == {ua, ub}
-    assert row["mode"] == "online" and row["flow"] == "draft"
-    assert row["status"] == "building"
-
-    # Ve gerçekten bağlanılabiliyor
-    from api.auth import create_token
-    with app_client.websocket_connect(
-            f"/ws/football/room/{code}?token={create_token(ua, 'user')}") as ws:
-        m = _latest_state(ws)
-    assert m["type"] == "state" and m["stage"] == "setup"
-
 
 def test_joining_twice_does_not_duplicate_you(app_client):
     import api.football_ws as fws
@@ -365,21 +337,6 @@ def test_leaving_the_queue_works(app_client):
     assert not fws.MM_QUEUE
 
 
-def test_matched_message_reaches_a_waiting_socket(app_client):
-    """Kuyruğa ilk giren soketiyle beklerken eşleşme haberi ona ulaşmalı."""
-    import api.football_ws as fws
-    from api.auth import create_token
-    fws.MM_QUEUE.clear()
-    ua, ha = _fresh_user("mm_ws_a")
-    ub, hb = _fresh_user("mm_ws_b")
-
-    with app_client.websocket_connect(
-            f"/ws/football/matchmaking?token={create_token(ua, 'user')}") as ws:
-        first = ws.receive_json()
-        assert first["type"] == "queue"
-        app_client.post("/api/football/matchmaking/join", headers=ha)
-        ws.receive_json()                       # kuyruk boyu güncellemesi
-        app_client.post("/api/football/matchmaking/join", headers=hb)
-        m = ws.receive_json()
-    assert m["type"] == "matched" and m["room_code"]
-    assert m["opponent_user_id"] == ub
+# NOT: "iki kişi kuyrukta → hemen oda" ve "matched mesajı room_code taşır" testleri
+# buradan KALDIRILDI. Eşleşme artık odayı iki taraf da kabul edene kadar açmıyor
+# (docs/BACKEND_PROMPT_GAME_UI.md #4); yeni sözleşme tests/test_football_matchmaking.py.

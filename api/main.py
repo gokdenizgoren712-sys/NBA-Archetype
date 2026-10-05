@@ -5104,6 +5104,39 @@ def _h2h_name(row, slot: str) -> str | None:
     return row[slot + "_name"] or _h2h_username(row[slot + "_user_id"])
 
 
+def _record_h2h_result(row, result: dict) -> None:
+    """Biten elemeyi kalıcı tabloya yaz (rekor ve ileride sıralama için).
+
+    Hem kadro-gönder yolu hem canlı draft yolu çağırıyor — iki yol aynı
+    kaydı bırakmalı. Yazma hatası elemenin kendisini bozmasın: oyuncu sonucu
+    görmeli, istatistik satırı eksik kalmak daha az kötü."""
+    try:
+        w = result.get("winner")
+        win_uid = (row["p1_user_id"] if w == "a"
+                   else row["p2_user_id"] if w == "b" else None)
+        with get_conn() as conn:
+            conn.execute(
+                "INSERT INTO football_h2h_results "
+                "(room_code, p1_user_id, p2_user_id, winner_user_id, decided_by) "
+                "VALUES (?,?,?,?,?)",
+                (row["room_code"], row["p1_user_id"], row["p2_user_id"], win_uid,
+                 result.get("decidedBy")))
+    except Exception as e:                                     # pragma: no cover
+        print(f"[h2h] sonuç kaydedilemedi {row['room_code']}: {e}", flush=True)
+
+
+def _h2h_record(uid: int) -> dict:
+    """{wins, losses, played}. Beraberlik yok: eleme penaltıyla da olsa kazanan var."""
+    with get_conn() as conn:
+        played = conn.execute(
+            "SELECT COUNT(*) FROM football_h2h_results WHERE p1_user_id=? OR p2_user_id=?",
+            (uid, uid)).fetchone()[0]
+        wins = conn.execute(
+            "SELECT COUNT(*) FROM football_h2h_results WHERE winner_user_id=?",
+            (uid,)).fetchone()[0]
+    return {"wins": wins, "losses": played - wins, "played": played}
+
+
 def _h2h_public(row, uid: int) -> dict:
     """Odanın dışa açık hâli. RAKİBİN KADROSU, eşleşme çözülene kadar GİZLİ —
     yoksa ikinci oyuncu birincininkine bakarak kurar."""
@@ -5235,6 +5268,7 @@ def submit_h2h_squad(code: str, body: H2HSquadBody, user=Depends(get_current_use
     row = _h2h_row(code)
     if row["p1_squad_json"] and row["p2_squad_json"] and row["status"] != "resolved":
         result = _resolve_h2h(row)
+        _record_h2h_result(row, result)
         with get_conn() as conn:
             conn.execute("UPDATE football_h2h_rooms "
                          "SET result_json=?, status='resolved', "

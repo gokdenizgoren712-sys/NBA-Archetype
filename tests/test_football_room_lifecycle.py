@@ -28,6 +28,22 @@ os.environ["DB_PATH"] = str(_TMP_DB)
 SEASON = "2023-2024"
 
 
+@pytest.fixture(autouse=True)
+def _fresh_rate_window():
+    """Hız sınırı penceresini her testin önünde VE ardında boşalt.
+
+    api.main'deki limiter IP başına 60 sn'de 120 istek sayıyor ve TÜM test
+    trafiği tek sahte IP'den, tek süreçte geliyor. Bu modül birkaç düzine istek
+    atıyor; temizlemeden bıraksa, sonra çalışan ilgisiz testler (test_h2h_room)
+    kendi hatalarından değil bu pencereden 429 alıyordu. Diğer test dosyalarının
+    kullandığı kalıp: M._RL.clear().
+    """
+    import api.main as M
+    M._RL.clear()
+    yield
+    M._RL.clear()
+
+
 @pytest.fixture(scope="module")
 def client():
     from fastapi.testclient import TestClient

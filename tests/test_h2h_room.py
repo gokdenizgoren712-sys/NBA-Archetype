@@ -183,6 +183,13 @@ def test_full_tie_resolves_server_side(client, users, squads):
         assert leg["hg"] >= 0 and leg["ag"] >= 0
     assert res["decidedBy"] in ("aggregate", "extra time", "penalties")
 
+    # Kadro-gönder yolu da kalıcı kayıt bırakmalı (canlı draft yoluyla aynı iz).
+    from api.db import get_conn
+    with get_conn() as conn:
+        n = conn.execute("SELECT COUNT(*) FROM football_h2h_results WHERE room_code=?",
+                         (code,)).fetchone()[0]
+    assert n == 1, "kadro gönderme yolu elemeyi kalıcı kayda yazmadı"
+
 
 def test_result_is_stable_across_reads(client, users, squads):
     """Sonuç bir kez üretilip saklanıyor — yenilemek zar atmamalı."""

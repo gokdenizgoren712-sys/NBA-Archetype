@@ -162,6 +162,27 @@ def init_db():
             updated_at    TEXT DEFAULT (datetime('now'))
         );
 
+        -- Biten her kafa kafaya elemenin KALICI kaydı. football_h2h_rooms'taki
+        -- result_json yalnız SON elemeyi tutuyor (rövanş üzerine yazıyor), o
+        -- yüzden galibiyet/mağlubiyet oradan sayılamaz. Eşleşme kartındaki
+        -- rakip rekoru bu tablodan geliyor.
+        CREATE TABLE IF NOT EXISTS football_h2h_results (
+            id             INTEGER PRIMARY KEY AUTOINCREMENT,
+            room_code      TEXT NOT NULL,
+            -- ON DELETE SET NULL: hesap silinince bu satırlardaki kimlik boşalır
+            -- (tests/test_security_hardening.py şemadan denetliyor). Silinen
+            -- kullanıcı anonimleşir; sağ kalan oyuncunun p?_user_id'si ve
+            -- galibiyeti yerinde kaldığı için REKORU bozulmaz.
+            p1_user_id     INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            p2_user_id     INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            winner_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            decided_by     TEXT,
+            created_at     TEXT DEFAULT (datetime('now'))
+        );
+        CREATE INDEX IF NOT EXISTS idx_fb_h2h_res_p1 ON football_h2h_results(p1_user_id);
+        CREATE INDEX IF NOT EXISTS idx_fb_h2h_res_p2 ON football_h2h_results(p2_user_id);
+        CREATE INDEX IF NOT EXISTS idx_fb_h2h_res_win ON football_h2h_results(winner_user_id);
+
         CREATE TABLE IF NOT EXISTS football_photo_layout (
             player_id  INTEGER PRIMARY KEY,
             scale      REAL NOT NULL DEFAULT 1.0,   -- 0.6 .. 2.0

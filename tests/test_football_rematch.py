@@ -28,6 +28,22 @@ os.environ["DB_PATH"] = str(_TMP_DB)
 SEASON = "2023-2024"
 
 
+@pytest.fixture(autouse=True)
+def _fresh_rate_window():
+    """Hız sınırı penceresini her testin önünde VE ardında boşalt.
+
+    api.main'deki limiter IP başına 60 sn'de 120 istek sayıyor ve TÜM test
+    trafiği tek sahte IP'den, tek süreçte geliyor. Bu modül birkaç düzine istek
+    atıyor; temizlemeden bıraksa, sonra çalışan ilgisiz testler (test_h2h_room)
+    kendi hatalarından değil bu pencereden 429 alıyordu. Diğer test dosyalarının
+    kullandığı kalıp: M._RL.clear().
+    """
+    import api.main as M
+    M._RL.clear()
+    yield
+    M._RL.clear()
+
+
 @pytest.fixture(scope="module")
 def client():
     from fastapi.testclient import TestClient
@@ -272,3 +288,29 @@ def test_the_room_stops_offering_rematches_at_the_limit(finished):
     fws.ROOM_STATES[f["code"]]["rematches"] = fws.REMATCH_LIMIT
     f["w1"].send_json({"type": "rematch_ready"})
     assert "limit" in _expect_error(f["w1"]).lower()
+
+
+def test_every_finished_tie_is_written_to_the_permanent_record(finished):
+    """Eşleşme kartındaki rakip rekoru bu tablodan geliyor. Oda satırındaki
+    result_json yalnız SON elemeyi tutar (rövanş üzerine yazar), o yüzden
+    kalıcı kayıt ayrı bir tabloda: her biten eleme bir satır bırakmalı."""
+    from api.db import get_conn
+    f = finished
+
+    def rows():
+        with get_conn() as conn:
+            return conn.execute(
+                "SELECT * FROM football_h2h_results WHERE room_code=? ORDER BY id",
+                (f["code"],)).fetchall()
+
+    first = rows()
+    assert len(first) == 1, "biten eleme kalıcı kayda yazılmadı"
+    w = f["done"]["result"]["winner"]
+    expect = f["done"]["seats"]["1" if w == "a" else "2"]
+    assert first[0]["winner_user_id"] == expect, "galip yanlış kullanıcıya yazıldı"
+
+    # Rövanş ikinci bir satır bırakmalı: ilk sonuç oda satırından silinse bile
+    # rekor korunur.
+    f["w1"].send_json({"type": "rematch_ready"}); _drain(f["w1"]); _drain(f["w2"])
+    f["w2"].send_json({"type": "rematch_ready"}); _drain(f["w2"]); _drain(f["w1"])
+    assert len(rows()) == 1, "rövanş başlayınca eski kayıt silindi"

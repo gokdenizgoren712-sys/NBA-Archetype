@@ -23,8 +23,11 @@ Deploy/çökme aktif draftı silmesin diye — basketbolda bu ders zaten alınm�
 from __future__ import annotations
 
 import asyncio
+import collections
 import json
 import random
+import secrets
+import time
 from datetime import datetime, timezone
 from functools import lru_cache
 
@@ -251,7 +254,7 @@ def _finish(code: str, state: dict) -> None:
     Kadroları submit akışının beklediği biçimde yazıyoruz, sonucu da onun
     çözücüsü üretiyor — iki yol aynı sonucu vermeli, ikinci bir eleme
     uygulaması tutmak onları ayırmanın en kolay yolu olurdu."""
-    from .main import _score_squad, _resolve_h2h
+    from .main import _score_squad, _resolve_h2h, _record_h2h_result
     R = _rules()
 
     payloads = {}
@@ -277,6 +280,7 @@ def _finish(code: str, state: dict) -> None:
                      (payloads[1], payloads[2], code))
     row = _row(code)
     result = _resolve_h2h(row)
+    _record_h2h_result(row, result)
     with get_conn() as conn:
         conn.execute("UPDATE football_h2h_rooms SET result_json=?, status='resolved', "
                      "updated_at=datetime('now') WHERE room_code=?",
@@ -533,6 +537,23 @@ MM_QUEUE: list[dict] = []
 MM_WS: dict[int, WebSocket] = {}
 MM_PENDING: dict[int, dict] = {}      # WS bağlanmadan eşleşenlerin bekleyen mesajı
 
+# Kabul penceresi (docs/BACKEND_PROMPT_GAME_UI.md #4). Eşleşme artık odayı
+# HEMEN açmıyor: iki taraf da kabul edene kadar yalnız bir "bekleyen eşleşme"
+# var. Biri reddederse ya da süre dolarsa oda hiç açılmıyor — önceden oda
+# açılıp, gelmeyecek rakibi bekleyen bir lobiye girilmiş oluyordu.
+ACCEPT_SECONDS = 10       # her iki taraf bu sürede kabul etmeli
+START_DELAY_MS = 3000     # iki kabulden sonra draft'ın birlikte başlayacağı an
+QUEUE_STALE_S = 120       # WS'siz (yalnız REST) kuyruk girdisi bu kadar yaşayabilir
+WAIT_SAMPLES: collections.deque = collections.deque(maxlen=20)   # bitmiş bekleme süreleri (sn)
+PENDING_MATCHES: dict[str, dict] = {}
+USER_MATCH: dict[int, str] = {}       # user_id -> bekleyen match_id
+MM_PING: dict[int, int] = {}          # user_id -> son ölçülen gidiş-dönüş (ms)
+MM_PROBED: dict[int, float] = {}      # user_id -> son prob zamanı (time.time())
+
+
+def _now_ms() -> int:
+    return int(time.time() * 1000)
+
 
 def _user_in_open_room(uid: int) -> bool:
     with get_conn() as conn:
@@ -564,7 +585,10 @@ def _make_room(uid_a: int, uid_b: int, season: str) -> str | None:
     return None
 
 
-async def _mm_notify(uid: int, msg: dict) -> None:
+async def _mm_notify(uid: int, msg: dict, keep: bool = True) -> None:
+    """keep=True: soket henüz bağlı değilse mesajı sakla (eşleşmeyi kaybetmektense
+    bağlanınca teslim et). keep=False: geçici bilgi — kimse bağlı değilse at; saklanırsa
+    oyuncu dakikalar sonra bağlanınca bayat bir 'reddedildi' görürdü."""
     ws = MM_WS.get(uid)
     if ws:
         try:
@@ -572,55 +596,202 @@ async def _mm_notify(uid: int, msg: dict) -> None:
             return
         except Exception:
             pass
-    # Soket henüz bağlanmadıysa mesajı sakla — eşleşmeyi kaybetmektense
-    # bağlandığında teslim etmek doğru.
-    MM_PENDING[uid] = msg
+    if keep:
+        MM_PENDING[uid] = msg
+
+
+def _avg_wait_s() -> float | None:
+    """Son eşleşmelerin ortalama bekleme süresi. Veri yoksa None — uydurma
+    bir varsayılan göstermek, hiç göstermemekten kötü."""
+    return round(sum(WAIT_SAMPLES) / len(WAIT_SAMPLES), 1) if WAIT_SAMPLES else None
+
+
+def _queue_msg() -> dict:
+    # skill_band YOK: futbolda bir beceri puanı sistemi yok, uydurmuyoruz.
+    return {"type": "queue", "size": len(MM_QUEUE), "avg_wait_s": _avg_wait_s()}
 
 
 async def _mm_queue_size() -> None:
+    msg = _queue_msg()
     for uid, ws in list(MM_WS.items()):
         try:
-            await ws.send_json({"type": "queue", "size": len(MM_QUEUE)})
+            await ws.send_json(msg)
         except Exception:
             pass
 
 
+def _opponent_card(uid: int) -> dict:
+    """Eşleşme kartının rakip bilgisi: ad, rekor, ping. Ölçülemeyen alan None."""
+    from .main import _h2h_username, _h2h_record
+    return {"user_id": uid, "username": _h2h_username(uid),
+            "record": _h2h_record(uid), "ping_ms": MM_PING.get(uid)}
+
+
+def _mm_purge() -> None:
+    """Soketi OLMAYAN kuyruk girdilerini eskiyince at. REST ile kuyruğa girip
+    WS'i hiç açmayan (ya da çıkışta DELETE atamayan) istemci aksi hâlde sonsuza
+    dek kuyrukta kalır ve bir sonraki eşleşmeyi, gelmeyecek biriyle kurardı."""
+    global MM_QUEUE
+    now = datetime.now(timezone.utc)
+    MM_QUEUE = [e for e in MM_QUEUE
+                if e["user_id"] in MM_WS
+                or (now - e["joined_at"]).total_seconds() < QUEUE_STALE_S]
+
+
+async def _open_match(a: dict, b: dict) -> None:
+    mid = secrets.token_hex(6)
+    deadline = _now_ms() + int(ACCEPT_SECONDS * 1000)
+    now = datetime.now(timezone.utc)
+    m = {"id": mid, "users": [a["user_id"], b["user_id"]],
+         "entries": {a["user_id"]: a, b["user_id"]: b},
+         "accepted": set(), "deadline": deadline, "task": None}
+    PENDING_MATCHES[mid] = m
+    for e in (a, b):
+        USER_MATCH[e["user_id"]] = mid
+        WAIT_SAMPLES.append((now - e["joined_at"]).total_seconds())
+    m["task"] = asyncio.create_task(_match_timeout(mid))
+    for me, them in ((a["user_id"], b["user_id"]), (b["user_id"], a["user_id"])):
+        await _mm_notify(me, {
+            "type": "matched", "match_id": mid,
+            "accept_deadline": deadline, "accept_seconds": ACCEPT_SECONDS,
+            "opponent": _opponent_card(them),
+            "opponent_user_id": them,          # eski alan, geriye dönük
+        })
+
+
+async def _try_pair() -> None:
+    while len(MM_QUEUE) >= 2:
+        a, b = MM_QUEUE.pop(0), MM_QUEUE.pop(0)
+        await _open_match(a, b)
+
+
+async def _match_timeout(mid: str) -> None:
+    try:
+        await asyncio.sleep(ACCEPT_SECONDS)
+    except asyncio.CancelledError:
+        return
+    m = PENDING_MATCHES.get(mid)
+    if not m:
+        return
+    # Cevap vermeyen DÜŞER (AFK), kabul eden geri döner.
+    silent = {u for u in m["users"] if u not in m["accepted"]}
+    await _break_match(mid, silent, "opponent_timed_out", culprit_msg="timed_out")
+
+
+def _end_match(mid: str) -> dict | None:
+    """Bekleyen eşleşmeyi kapat: kaydı, kullanıcı eşlemesini ve zamanlayıcıyı temizle."""
+    m = PENDING_MATCHES.pop(mid, None)
+    if not m:
+        return None
+    for u in m["users"]:
+        if USER_MATCH.get(u) == mid:
+            USER_MATCH.pop(u, None)
+        MM_PENDING.pop(u, None)          # bayat "matched" mesajı kalmasın
+    t = m.get("task")
+    if t is not None and t is not asyncio.current_task():
+        t.cancel()
+    return m
+
+
+async def _break_match(mid: str, culprits: set, reason: str,
+                       culprit_msg: str = "declined") -> None:
+    """Eşleşme bozuldu. culprits kuyruğa DÖNMEZ; diğerleri kuyruğun BAŞINA döner
+    (özgün bekleme süreleriyle) — kusuru olmayan oyuncu yeniden sıranın sonuna
+    gitmesin."""
+    m = _end_match(mid)
+    if not m:
+        return
+    keepers = [u for u in m["users"] if u not in culprits]
+    for u in reversed(keepers):
+        MM_QUEUE.insert(0, m["entries"][u])
+    for u in culprits:
+        await _mm_notify(u, {"type": culprit_msg, "match_id": mid}, keep=False)
+    for u in keepers:
+        await _mm_notify(u, {"type": "requeued", "reason": reason, "match_id": mid,
+                             "size": len(MM_QUEUE)}, keep=False)
+    await _mm_queue_size()
+    await _try_pair()
+
+
+async def _accept_match(uid: int) -> str | None:
+    mid = USER_MATCH.get(uid)
+    m = PENDING_MATCHES.get(mid) if mid else None
+    if not m:
+        return "You have no match to accept"
+    m["accepted"].add(uid)
+    other = next(u for u in m["users"] if u != uid)
+    await _mm_notify(other, {"type": "opponent_accepted", "match_id": mid}, keep=False)
+    if len(m["accepted"]) < 2:
+        return None
+
+    # İKİ KABUL: şimdi oda açılıyor.
+    from .main import _football_default_season
+    _end_match(mid)
+    a, b = m["users"]
+    code = _make_room(a, b, _football_default_season())
+    if code is None:
+        # Oda açılamadı: kimse sessizce düşmesin, ikisi de sıranın başına dönsün.
+        for u in reversed(m["users"]):
+            MM_QUEUE.insert(0, m["entries"][u])
+        for u in m["users"]:
+            await _mm_notify(u, {"type": "requeued", "reason": "room_error",
+                                 "size": len(MM_QUEUE)}, keep=False)
+        await _try_pair()
+        return None
+    starts_at = _now_ms() + START_DELAY_MS
+    for u in m["users"]:
+        await _mm_notify(u, {"type": "starting", "room_code": code,
+                             "starts_at": starts_at,
+                             "opponent_user_id": next(x for x in m["users"] if x != u)})
+    return None
+
+
 @router.post("/api/football/matchmaking/join")
 async def football_matchmaking_join(user=Depends(get_current_user)):
-    from .main import _football_default_season
     uid = int(user["sub"])
+    _mm_purge()
+    if uid in USER_MATCH:
+        raise HTTPException(409, "You already have a match waiting for you")
     if _user_in_open_room(uid):
         raise HTTPException(409, "You are already in a room")
     if any(e["user_id"] == uid for e in MM_QUEUE):
-        return {"queued": True, "queue_size": len(MM_QUEUE)}
+        return {"queued": True, "queue_size": len(MM_QUEUE), "avg_wait_s": _avg_wait_s()}
 
     MM_QUEUE.append({"user_id": uid, "joined_at": datetime.now(timezone.utc)})
-    if len(MM_QUEUE) >= 2:
-        a, b = MM_QUEUE.pop(0), MM_QUEUE.pop(0)
-        code = _make_room(a["user_id"], b["user_id"], _football_default_season())
-        if code is None:
-            # Oda açılamadı: ikisini de kuyruğun başına geri koy, kimse
-            # sessizce düşmesin.
-            MM_QUEUE.insert(0, b)
-            MM_QUEUE.insert(0, a)
-            raise HTTPException(500, "Could not open a room")
-        for me, them in ((a, b), (b, a)):
-            await _mm_notify(me["user_id"], {"type": "matched", "room_code": code,
-                                             "opponent_user_id": them["user_id"]})
-        return {"queued": True, "queue_size": 0, "room_code": code}
-
+    await _try_pair()
+    mid = USER_MATCH.get(uid)
+    if mid:
+        return {"queued": False, "matched": True, "match_id": mid,
+                "accept_deadline": PENDING_MATCHES[mid]["deadline"]}
     await _mm_queue_size()
-    return {"queued": True, "queue_size": len(MM_QUEUE)}
+    return {"queued": True, "queue_size": len(MM_QUEUE), "avg_wait_s": _avg_wait_s()}
 
 
 @router.delete("/api/football/matchmaking")
 async def football_matchmaking_leave(user=Depends(get_current_user)):
     global MM_QUEUE
     uid = int(user["sub"])
+    mid = USER_MATCH.get(uid)
+    if mid:
+        # Eşleşme beklerken kuyruktan çıkmak = reddetmek.
+        await _break_match(mid, {uid}, "opponent_declined")
     MM_QUEUE = [e for e in MM_QUEUE if e["user_id"] != uid]
     MM_PENDING.pop(uid, None)
     await _mm_queue_size()
     return {"left": True}
+
+
+async def _probe(ws: WebSocket, uid: int) -> None:
+    """Ping ölçümü: sunucu zaman damgalı bir prob yollar, istemci aynısını geri
+    yollar, gidiş-dönüş süresi eşleşme kartındaki ping_ms olur. 5 sn'de bir
+    prob yeter — her mesajda ölçmek ölçümü değil trafiği artırırdı."""
+    if time.time() - MM_PROBED.get(uid, 0) < 5:
+        return
+    MM_PROBED[uid] = time.time()
+    try:
+        await ws.send_json({"type": "probe", "t": _now_ms()})
+    except Exception:
+        pass
 
 
 @router.websocket("/ws/football/matchmaking")
@@ -640,20 +811,45 @@ async def football_matchmaking_socket(ws: WebSocket, token: str = Query(...)):
     MM_WS[uid] = ws
     try:
         pending = MM_PENDING.pop(uid, None)
-        await ws.send_json(pending or {"type": "queue", "size": len(MM_QUEUE)})
+        await ws.send_json(pending or _queue_msg())
+        await _probe(ws, uid)
         while True:
             raw = await ws.receive_text()
             try:
                 msg = json.loads(raw)
             except ValueError:
                 continue
-            if msg.get("type") == "ping":
+            t = msg.get("type")
+            if t == "ping":
                 await ws.send_json({"type": "pong"})
+                await _probe(ws, uid)
+            elif t == "probe_ack":
+                try:
+                    rtt = _now_ms() - int(msg.get("t"))
+                except (TypeError, ValueError):
+                    continue
+                if 0 <= rtt < 60_000:               # saçma değerleri alma
+                    MM_PING[uid] = rtt
+            elif t == "accept":
+                err = await _accept_match(uid)
+                if err:
+                    await ws.send_json({"type": "error", "message": err})
+            elif t == "decline":
+                mid = USER_MATCH.get(uid)
+                if mid:
+                    await _break_match(mid, {uid}, "opponent_declined")
+                else:
+                    await ws.send_json({"type": "error",
+                                        "message": "You have no match to decline"})
     except WebSocketDisconnect:
         pass
     finally:
         if MM_WS.get(uid) is ws:
             del MM_WS[uid]
+        # Eşleşme beklerken bağlantı koptu: kabul etmemiş sayılır, rakip kuyruğa döner.
+        mid = USER_MATCH.get(uid)
+        if mid:
+            await _break_match(mid, {uid}, "opponent_disconnected")
         before = len(MM_QUEUE)
         MM_QUEUE = [e for e in MM_QUEUE if e["user_id"] != uid]
         if len(MM_QUEUE) != before:
