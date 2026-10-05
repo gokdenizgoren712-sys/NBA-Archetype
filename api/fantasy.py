@@ -187,6 +187,7 @@ def _row(r, fmt: dict, punt: tuple = (), basis: str = "total") -> dict:
         "value": _num(r["VALUE"], 3),
         "adp": _num(r["ADP"], 1), "adp_sd": _num(r["ADP_SD"], 1), "adp_diff": _num(r["ADP_DIFF"], 1),
         "flags": _flags(r["FLAGS"]), "source": r["SOURCE"],
+        "trend": r["TREND"] if isinstance(r.get("TREND"), str) else None, "trend_pct": _num(r.get("TREND_PCT"), 1),
     }
     if fmt["kind"] == "categories":
         out["value_z"] = _num(r["VALUE_Z"], 3)
@@ -442,6 +443,7 @@ def _player_response(player_id: int, fmt: dict, punt: tuple, basis: str) -> dict
     return {
         "season": SEASON, "format": fmt,
         "player": _row(r, fmt, punt, basis),
+        "trend_series": (json.loads(r["TREND_SERIES"]) if isinstance(r.get("TREND_SERIES"), str) else None),
         "last_season_per_game": last,
         "rookie_baseline": rookie,
         # Maç puanı dağılımı (41 quantile, 0..1): Yahoo Points ve High Score

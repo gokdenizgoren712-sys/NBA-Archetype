@@ -25,6 +25,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from src.fantasy.backtest import bucket_quantiles  # noqa: E402
+from src.fantasy.trends import add_trends  # noqa: E402
 from src.fantasy.projections import (  # noqa: E402
     SEASON_WEIGHTS, load_gamelogs, prev_season, project,
 )
@@ -123,6 +124,7 @@ def build_projections(target: str = "2026-27", write: bool = True) -> pd.DataFra
             f.append("unknown_position")
         flags.append(",".join(f))
     proj["FLAGS"] = flags
+    proj = add_trends(proj, logs, target)           # TREND / TREND_PCT / TREND_SERIES + FLAGS'e rising | steady | declining
 
     proj = proj.merge(last_season_per_game(logs[last_stats]), on="PLAYER_ID", how="left")
     proj["SEASON"] = target

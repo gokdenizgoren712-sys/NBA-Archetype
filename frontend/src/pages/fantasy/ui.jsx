@@ -32,11 +32,15 @@ export const FLAGS = {
   limited_history:  { l: "Limited history", d: "Only one NBA season in the projection window." },
   age_decline:      { l: "Age 33+",         d: "Our age curve expects some decline from here." },
   unknown_position: { l: "Util only",       d: "No position listed yet. Can only fill Util slots." },
+  rising:           { l: "Rising",          d: "Production per 36 minutes has been climbing over the last seasons.", good: true },
+  steady:           { l: "Steady",          d: "Production per 36 minutes has been flat over the last seasons.", quiet: true },
+  declining:        { l: "Declining",       d: "Production per 36 minutes has been falling over the last seasons.", bad: true },
 };
+export const TREND_NOTE = "Direction over the last 2-4 seasons, already built into our projection. It describes the path, it is not a separate forecast.";
 
 export function FlagChips({ flags = [] }) {
-  return flags.filter((f) => FLAGS[f]).map((f) => (
-    <span key={f} className={`fz-flag${FLAGS[f].bad ? " bad" : ""}`} title={FLAGS[f].d}>{FLAGS[f].l}</span>
+  return flags.filter((f) => FLAGS[f] && !FLAGS[f].quiet).map((f) => (
+    <span key={f} className={`fz-flag${FLAGS[f].bad ? " bad" : FLAGS[f].good ? " good" : ""}`} title={FLAGS[f].d}>{FLAGS[f].l}</span>
   ));
 }
 

@@ -257,3 +257,15 @@ Etki: Trae Young 184 → 99, Embiid 111 → 61, Walker Kessler 222 → 108, Zach
 - Maç ağırlıklarını/çekmeyi yeniden ayarlamak: 573 oyuncu-sezonluk grid'de MAE 15.0 civarında düz; slope 0.81 (kalibre), ortalama yanlılık +5 maç (iyimser) — ayar yok.
 
 **Açık:** sophomore'larda piyasadan çok yukarıdayız (Knueppel 15 vs Yahoo 62, Edgecombe 27 vs 75, Jabari Smith 47 vs 100) — ölçülmedi.
+
+## Trend etiketleri + sophomore incelemesi (2026-10-05)
+
+**Trend etiketi** (`src/fantasy/trends.py`, projeksiyon tablosuna `TREND / TREND_PCT / TREND_SERIES`, `FLAGS`'e rising|steady|declining): son 4 sezonun 36 dakikadaki Yahoo puanı, ≥400 dk sezonlar, ≥2 sezon;
+dakika ağırlıklı doğrusal eğim / ortalama, ±%4 / sezon. Havuzda 130 yükselişte, 158 sabit, 58 düşüşte, 279 etiketsiz (çaylak / tek sezon).
+**Etiket tahmin değiştirmez:** 715 oyuncu-sezonda (2023-26) etiket ile (gerçek − tahmin) artığı arasındaki korelasyon +0.07 (yükselişte +%0.6, sabitte −%2.0, düşüşte −%1.8; se ≈ %1.5). Projeksiyon zaten 7:2:1 + yaş eğrisi.
+Etiket açıklayıcı bağlam olarak gösterilir (Rankings'te Rising / Declining çipi, Flags filtresi, oyuncu sayfasında sezon serisi); arayüz bunu açıkça söyler.
+
+**Sophomore / tek sezonluk projeksiyonlar şişiyor mu?** (3 hedef sezon, geçen sezon ≥800 dk, n=77 tek sezonlu): tahmin − gerçek FP/maç +0.87 (%4), dakika +1.3; üç sezonda da aynı yönde ama küçük (≈1.3 se).
+Kalibrasyon sağlam: eğim 1.06, korelasyon 0.82 (3 sezonlularda 1.05 / 0.88); projeksiyonu yüksek olanlarda (FP ≥ 26, n=26) yanlılık −0.17 — yani üst düzey sophomore'lar şişmiyor.
+Şişme orta grupta: projeksiyonu 18–22 FP olanlarda +3.5 FP / +3.8 dk (n=17) — rol / dakika tahmini (yeni takım bağlamı yok, bkz. "takım bağlamı yok" zayıflığı). Bu yüzden Yahoo'yla farkın büyük kısmı model hatası değil: Yahoo çaylak sezonu iskonto ediyor
+ve takım bağlamını (ör. Edgecombe: PHI'ye Brown, LeBron gelmiş) biliyor. Sophomore'larda tek yönlü fark da yok: Knueppel / Edgecombe / Queen / Bailey / Fears'ı yukarı, Coward / Harper / Flagg / Murray-Boyles'ı aşağı koyuyoruz. Kalibrasyon değişikliği yapılmadı.

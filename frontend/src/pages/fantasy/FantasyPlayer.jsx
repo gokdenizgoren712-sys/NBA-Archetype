@@ -8,7 +8,7 @@ import { ARCHETYPE_COLOR } from "../../constants/archetypeColors";
 import { SEO } from "../../hooks/useSEO";
 import { fz } from "./fantasyApi";
 import {
-  ArchChip, CatBar, ErrorNote, FLAGS, HeatCell, RangeBar, SkeletonList, fmt1,
+  ArchChip, CatBar, ErrorNote, FLAGS, HeatCell, RangeBar, SkeletonList, TREND_NOTE, fmt1,
 } from "./ui";
 import { useAsync, useFantasy } from "./useFantasy";
 
@@ -104,7 +104,10 @@ export default function FantasyPlayer() {
   ];
 
   const flags = (p.flags || []).filter((k) => FLAGS[k]);
-  const flagText = (k) => (k === "injury_risk" ? `${FLAGS[k].d} We project ${Math.round(p.proj_gp)} games; range ${Math.round(games[0])}–${Math.round(games[1])}.` : FLAGS[k].d);
+  const trendKeys = ["rising", "steady", "declining"];
+  const flagText = (k) => (k === "injury_risk" ? `${FLAGS[k].d} We project ${Math.round(p.proj_gp)} games; range ${Math.round(games[0])}–${Math.round(games[1])}.`
+    : trendKeys.includes(k) && p.trend_pct != null ? `${FLAGS[k].d} ${p.trend_pct > 0 ? "+" : p.trend_pct < 0 ? "−" : ""}${Math.abs(p.trend_pct)}% a season. ${TREND_NOTE}` : FLAGS[k].d);
+  const series = data.trend_series ? Object.entries(data.trend_series) : [];
 
   return (
     <>
@@ -130,11 +133,23 @@ export default function FantasyPlayer() {
               <span className="fz-h3">Flags</span>
               {flags.map((k) => (
                 <div key={k} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                  <span className={`fz-flag${FLAGS[k].bad ? " bad" : ""}`} style={{ height: 22, flexShrink: 0 }}>{FLAGS[k].l}</span>
+                  <span className={`fz-flag${FLAGS[k].bad ? " bad" : FLAGS[k].good ? " good" : ""}`} style={{ height: 22, flexShrink: 0 }}>{FLAGS[k].l}</span>
                   <span className="fz-sub" style={{ fontSize: 13, lineHeight: 1.45 }}>{flagText(k)}</span>
                 </div>
               ))}
               {!flags.length && <span className="fz-sub" style={{ fontSize: 13 }}>No team, role or availability flags.</span>}
+              {series.length > 1 && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 4 }}>
+                  <span className="fz-meta">Fantasy points per 36 minutes</span>
+                  <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
+                    {series.map(([s, v]) => (
+                      <span key={s} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                        <span className="fz-num" style={{ fontSize: 16 }}>{fmt1(v)}</span><span className="fz-meta">{s}</span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

@@ -12,6 +12,10 @@ const SECTIONS = [
     "Players with little court time are pulled toward the average for their position group (guards, forwards, centers), harder for noisy stats like steals and blocks. Rates then move along an age curve fit to every player since 2013-14, so a 21-year-old gains and a 33-year-old gives some back.",
     "Minutes and games played come from each player's own history pulled toward the league average. Young players' minutes growth is capped by how far they are from a starter's load. Rookies are projected from the first seasons of earlier rookies drafted in the same range of picks.",
   ] },
+  { id: "trend", h: "Rising, steady, declining", p: [
+    "Each veteran with at least two seasons of 400+ minutes gets a direction label. We take fantasy points per 36 minutes in each of the last four seasons, fit a line weighted by minutes played, and call a player Rising or Declining when it moves more than 4% a season. Rookies and one-season players get no label.",
+    "The label describes the path, it does not change the projection. We checked it on 2023-26: it explains almost none of the gap between projection and what happened (correlation 0.07), because the projection already leans on the last three seasons and an age curve.",
+  ] },
   { id: "gscore", h: "G-score vs z-score", p: [
     "Z-score measures how far a player is above average in each category, in standard deviations. It is the right tool for Roto, where totals accumulate over a season.",
     "G-score also accounts for how much a category swings week to week. Steals and blocks are noisy in any single week, so an edge there wins fewer head-to-head matchups than the same edge in points. We follow Rosenof's definition; for H2H we default to G-score and you can switch.",
