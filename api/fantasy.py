@@ -227,7 +227,35 @@ def _filter(df: pd.DataFrame, position, team, search, flag, archetype) -> pd.Dat
     return df
 
 
-def _rankings_response(fmt, punt, basis, position, team, search, flag, archetype, limit, offset, metric=None):
+# Sütuna göre sıralama (tüm havuzda, sayfalamadan önce). Anahtar → (sütun, varsayılan yön: büyükten küçüğe mi).
+SORT_KEYS = {"value": ("RANK", True), "adp": ("ADP", False), "adp_diff": ("ADP_DIFF", True), "games": ("PROJ_GP", True),
+             "fp_game": ("FP_GAME", True), "fp_total": ("FP_TOTAL", True), "over_repl": ("VALUE", True),
+             "hs_week": ("HS_WEEK_AVG", True), "ceiling": ("CEILING_INDEX", True), "four": ("FOUR_GAME_WEEKS", True)}
+
+
+def _sort_spec(fmt: dict, sort: Optional[str], direction: Optional[str], metric: Optional[str]):
+    """(df sütunu, artan mı, yön) — doğrulanmış sıralama isteği; sort yoksa None (varsayılan değer sırası).
+    Yön, ekranda görünen SAYIYA göredir: "value" büyükten küçüğe = RANK artan (en iyi önce)."""
+    if not sort:
+        return None
+    if sort.startswith("cat:"):
+        cat = sort[4:]
+        if fmt["kind"] != "categories" or cat not in fmt["categories"]:
+            raise HTTPException(422, f"Unknown category '{cat}' for this format.")
+        default_metric = "g" if fmt["matchup"] == "h2h" else "z"
+        col, desc = f"{(metric or default_metric).upper()}_{cat}", True
+    elif sort in SORT_KEYS:
+        col, desc = SORT_KEYS[sort]
+    else:
+        raise HTTPException(422, f"Unknown sort '{sort}'. Options: {', '.join(SORT_KEYS)}, cat:<CATEGORY>")
+    if direction:
+        desc = direction == "desc"
+    asc = desc if col == "RANK" else not desc
+    return col, asc, "desc" if desc else "asc"
+
+
+def _rankings_response(fmt, punt, basis, position, team, search, flag, archetype, limit, offset, metric=None,
+                       sort=None, direction=None):
     df = _valued(fmt, punt, basis)
     st = _state
     total = len(df)
@@ -241,12 +269,16 @@ def _rankings_response(fmt, punt, basis, position, team, search, flag, archetype
         df["TIER"] = _tiers(df[col], pool_size(fmt)).to_numpy()
         df["ADP_DIFF"] = df["ADP"] - df["RANK"]
     df = _filter(df, position, team, search, flag, archetype)
+    spec = _sort_spec(fmt, sort, direction, metric)
+    if spec and spec[0] in df.columns:
+        df = df.sort_values(spec[0], ascending=spec[1], kind="mergesort", na_position="last")
     page = df.iloc[offset: offset + limit]
     return {
         "season": SEASON, "format": fmt, "punt": list(punt), "basis": basis,
         "metric": (f"value_{metric or default_metric}" if fmt["kind"] == "categories" else "value"),
         "built_at": str(st["proj"]["BUILT_AT"].iloc[0]) if "BUILT_AT" in st["proj"].columns else None,
         "total_players": total, "matched": len(df), "offset": offset, "limit": limit,
+        "sort": sort or "value", "direction": spec[2] if spec else "desc",
         "players": [_row(r, fmt, punt, basis) for _, r in page.iterrows()],
     }
 
@@ -295,10 +327,12 @@ def fantasy_rankings(
     metric: Optional[str] = Query(None, pattern="^(g|z)$", description="Category formats: sort by G- or Z-score"),
     limit: int = Query(200, ge=1, le=MAX_LIMIT),
     offset: int = Query(0, ge=0),
+    sort: Optional[str] = Query(None, max_length=20, description="Column to sort by: value, adp, adp_diff, games, … or cat:<CATEGORY>"),
+    dir: Optional[str] = Query(None, pattern="^(asc|desc)$"),
 ):
     fmt = _preset(format, teams)
     return _rankings_response(fmt, _punt(punt, fmt), basis, position, team, search, flag, archetype,
-                              limit, offset, metric)
+                              limit, offset, metric, sort, dir)
 
 
 class CustomRankingsBody(BaseModel):
@@ -312,6 +346,8 @@ class CustomRankingsBody(BaseModel):
     metric: Optional[str] = Field(None, pattern="^(g|z)$")
     limit: int = Field(200, ge=1, le=MAX_LIMIT)
     offset: int = Field(0, ge=0)
+    sort: Optional[str] = Field(None, max_length=20)
+    dir: Optional[str] = Field(None, pattern="^(asc|desc)$")
 
 
 def _custom_format(raw: dict) -> dict:
@@ -337,7 +373,7 @@ def fantasy_rankings_custom(body: CustomRankingsBody):
     if punt and fmt["kind"] != "categories":
         raise HTTPException(422, "Punting only applies to category formats.")
     return _rankings_response(fmt, punt, body.basis, body.position, None, body.search, body.flag,
-                              body.archetype, body.limit, body.offset, body.metric)
+                              body.archetype, body.limit, body.offset, body.metric, body.sort, body.dir)
 
 
 @router.get("/players/{player_id}")

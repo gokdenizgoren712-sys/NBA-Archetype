@@ -109,6 +109,36 @@ export function Meter({ p, width = 52 }) {
   );
 }
 
+/** Küçük (i) düğmesi: üzerine gelince / odaklanınca / tıklayınca kısa açıklama. Terimleri bilmeyen kullanıcı için. */
+// Ipucu ekran dışına taşarsa karşı yana çevirir (DOM'u doğrudan ayarlar: ek çizim gerektirmez).
+const placeTip = (pref) => (el) => {
+  if (!el) return;
+  const side = (x) => { el.style.left = x === "left" ? "0" : "auto"; el.style.right = x === "left" ? "auto" : "0"; };
+  side(pref);
+  const r = el.getBoundingClientRect();
+  const box = el.closest(".fz-page")?.getBoundingClientRect();           // yan menü / kaydırma alanı içinde kal
+  const lo = Math.max(box ? box.left : 0, 0) + 8, hi = Math.min(box ? box.right : window.innerWidth, window.innerWidth) - 8;
+  if (r.left < lo) side("left"); else if (r.right > hi) side("right");
+};
+
+export function InfoTip({ title, children, label = "What is this?", align = "right" }) {
+  const [open, setOpen] = useState(false);
+  const close = () => setOpen(false);
+  const ref = useOutside(open, close);
+  return (
+    <span ref={ref} className="fz-infowrap" onMouseEnter={() => setOpen(true)} onMouseLeave={close}>
+      <button type="button" className="fz-info" aria-label={label} aria-expanded={open} onFocus={() => setOpen(true)}
+        onClick={(e) => { e.stopPropagation(); setOpen(true); }}>i</button>
+      {open && (
+        <span className="fz-tip" role="tooltip" ref={placeTip(align)}>
+          {title && <span className="fz-tip-t">{title}</span>}
+          {children}
+        </span>
+      )}
+    </span>
+  );
+}
+
 export function TierHeader({ label, drop }) {
   return (
     <div className="fz-tier"><span className="l">{label}</span><span className="rule" />{drop && <span className="fz-meta">{drop}</span>}</div>
