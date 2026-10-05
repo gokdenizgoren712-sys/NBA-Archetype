@@ -2,29 +2,19 @@ import { useState, useEffect, useRef } from "react";
 import { useLang } from "../contexts/LanguageContext";
 import { useAuth } from "../contexts/AuthContext";
 import { SEO } from "../hooks/useSEO";
-import { ERAS, ERA_META_BLURB, ERA_PILLAR_WEIGHTS, ERA_HEX, getEra } from "../game/eras";
+import { ERAS, ERA_META_BLURB, ERA_HEX } from "../game/eras";
 import { computePlayerFit, computeAffinity } from "../game/lineupScore";
-import SeasonSimPanel from "../game/SeasonSimPanel";
-import { ERA_GUIDE } from "../data/glossary";
-import { getPlayerTags, TAG_INFO } from "../game/awards";
+import { useSeasonSim } from "../game/useSeasonSim";
+import ResultStage from "../game/ui/ResultStage";
+import SeasonResult from "../game/ui/SeasonResult";
 import CourtBoard from "../game/CourtBoard";
-import { START_BUDGET, MIN_COST, costColor, totalSpent, maxSpendNow, priceOf } from "../game/salary";
-import {
-  StarIcon, CoachIcon, TrophyIcon, CapIcon, TargetIcon, WheelIcon,
-  TagIcon, RefreshIcon, CalendarIcon, BoltIcon, UsersIcon,
-  SearchIcon, EyeIcon, LinkIcon, CheckIcon,
-  DownloadIcon, XLogoIcon, DiceIcon, InfoIcon,
-} from "../game/GameIcons";
-import {
-  POSITIONS, BENCH_SLOTS, ALL_SLOTS, ARCH_POSITIONS, POS_STRING_MAP,
-  POS_COLORS, getPrimaryPos, getSecondaryPos, getEligiblePos, isFlex, posPenaltyFor,
-} from "../game/positions";
-import InlineSpin from "../game/InlineSpin";
-import LineupSlot from "../game/LineupSlot";
-import PlayerRow, { posGroupOf } from "../game/PlayerRow";
-import InfoModal from "../game/InfoModal";
-import JokerBtn from "../game/JokerBtn";
-import ProcessSteps from "../game/ProcessSteps";
+import { StarIcon, EyeIcon, LinkIcon, CheckIcon, DownloadIcon, XLogoIcon } from "../game/GameIcons";
+import { POSITIONS, BENCH_SLOTS, ALL_SLOTS, getPrimaryPos } from "../game/positions";
+import SetupHub from "../game/ui/SetupHub";
+import GameStage from "../game/ui/GameStage";
+import EraStep from "../game/ui/EraStep";
+import BasketballDraft from "../game/ui/BasketballDraft";
+import ModeAboutModal from "../game/ModeAboutModal";
 import { PageGlow } from "../components/states/States";
 import CoachPicker from "../game/CoachPicker";
 import DraftAnalysis from "../game/DraftAnalysis";
@@ -154,80 +144,47 @@ function ScoreReveal({ fit, lineup, primaryCount, onReset, lang, affinityMatrix,
   ];
   const [shareOpen, setShareOpen] = useState(false);
 
+  // Sezon motoru burada kurulur: rotasyon sonuç sayfasında düzenleniyor, sezon aynı motorla oynanıyor.
+  const starters = POSITIONS.map(p => lineup[p]).filter(Boolean);
+  const benchPlayers = BENCH_SLOTS.map(p => lineup[p]).filter(Boolean);
+  const sim = useSeasonSim({
+    players: starters, bench: benchPlayers, simEra: simEra || ERAS[5], fit, coach,
+    affinity01: affinityScore != null ? affinityScore / 100 : null, gameScoreId, isLoggedIn, token,
+  });
+
+  const saveUI = saveStatus === "saved" ? (
+    <span className="sb-fres-note">Roster saved — find it on your Profile page.</span>
+  ) : (
+    <div className="sb-fres-save">
+      <label htmlFor="save-roster">Save this roster</label>
+      <input id="save-roster" type="text" value={saveName} maxLength={60}
+        onChange={e => setSaveName(e.target.value)} placeholder="e.g. Fear the Deer 2011"
+        className="aura-ghost-input" />
+      <button type="button" onClick={saveRoster} disabled={saveStatus === "saving" || !saveName.trim()}
+        className="pa-btn-secondary">{saveStatus === "saving" ? "Saving…" : "Save"}</button>
+      {saveErr && <p className="sb-fres-note">{saveErr}</p>}
+    </div>
+  );
+
   return (
-    <div className="g-result" style={{ "--g": gHex }}>
-      <PageGlow tint={gHex} />
-
-      {/* Ödül anı (12b): tek büyük an — 96px not, kendi renginde parlıyor */}
-      <section className="g-result-hero">
-        <span className="g-result-eyebrow">Lineup Fit{simEra ? ` · built for the ${simEra.label}` : ""}</span>
-        <span className="g-result-grade">{grade}</span>
-        <div className="g-result-score"><b>{pct}</b><i>/ 100</i></div>
-        {refLine && <span className="g-result-ref">{refLine}</span>}
-        {chemBonus > 0 && (
-          <span className="g-result-chem">
-            <StarIcon size={12} /> Chemistry bonus · {primaryCount} primary slot{primaryCount === 1 ? "" : "s"} (+{Math.round(chemBonus * 100)})
-          </span>
-        )}
-        <div className="g-result-parts">
-          {parts.map(([label, val, w]) => (
-            <div key={label}>
-              <b style={{ "--c": VAL_HEX(val / 100) }}>{val}</b>
-              <span>{label}</span>
-              <i>weight {w}</i>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <div className="g-divider" />
-
-      {/* Sezon simülasyonu (v3.5) */}
-      <SeasonSimPanel
-        players={POSITIONS.map(p => lineup[p]).filter(Boolean)}
-        bench={BENCH_SLOTS.map(p => lineup[p]).filter(Boolean)}
-        coach={coach}
-        simEra={simEra || ERAS[5]}
-        fit={fit}
-        affinity01={affinityScore != null ? affinityScore / 100 : null}
-        gameScoreId={gameScoreId}
-        enableRealHistory
-      />
-
-      {/* Draft Analysis — kadro ve era raporu. "Şunu almalıydın" önerisi
-          bilinçli olarak yok (oyun bittikten sonra suçlayıcı duruyordu). */}
-      <DraftAnalysis
-        simEra={simEra}
-        affinity={affinityScore}
-        showHero={false}
-        showParts={false}
-        label="Draft analysis"
-        teams={[{ name: "Your Roster", lineup, coach }]}
-      />
-
-      {/* Aksiyon satırı (12b): kaydet · paylaş · tekrar oyna */}
-      <div className="g-result-actions">
-        {isLoggedIn ? (
-          saveStatus === "saved" ? (
-            <span className="g-result-saved">Roster saved — find it on your Profile page.</span>
-          ) : (
-            <div className="g-result-save">
-              <label htmlFor="save-roster">Save this roster</label>
-              <div>
-                <input id="save-roster" type="text" value={saveName} maxLength={60}
-                  onChange={e => setSaveName(e.target.value)} placeholder="e.g. Fear the Deer 2011"
-                  className="aura-ghost-input" />
-                <button onClick={saveRoster} disabled={saveStatus === "saving" || !saveName.trim()}
-                  className="pa-btn-secondary">{saveStatus === "saving" ? "Saving…" : "Save"}</button>
+    <>
+      {sim.stage === "idle" ? (
+        <ResultStage fit={fit} simEra={simEra || ERAS[5]} grade={grade} pct={pct} refLine={refLine}
+          chemBonus={chemBonus} primaryCount={primaryCount} lineup={lineup} sim={sim} enableRealHistory
+          saveUI={saveUI} loggedIn={isLoggedIn} onShare={() => setShareOpen(true)} onReset={onReset} />
+      ) : (
+        <SeasonResult sim={sim} players={starters} bench={benchPlayers} onReset={onReset}
+          extra={
+            <>
+              <DraftAnalysis simEra={simEra} affinity={affinityScore} showHero={false} showParts={false}
+                label="Draft analysis" teams={[{ name: "Your Roster", lineup, coach }]} />
+              <div className="sb-res-actions">
+                <div className="save">{isLoggedIn ? saveUI : <span className="note">Sign in to save rosters and land on the board.</span>}</div>
+                <button type="button" className="sb-btn" onClick={() => setShareOpen(true)}>Share card</button>
               </div>
-              {saveErr && <p className="g-result-err">{saveErr}</p>}
-            </div>
-          )
-        ) : <span className="g-result-saved muted">Sign in to save rosters and land on the board.</span>}
-        <span className="flex-1" />
-        <button className="pa-btn-secondary" onClick={() => setShareOpen(true)}>Share card</button>
-        <button onClick={onReset} className="aura-rating-btn g-result-again">Play again</button>
-      </div>
+            </>
+          } />
+      )}
 
       {shareOpen && (
         <div className="g-rules-backdrop" onClick={() => setShareOpen(false)}>
@@ -243,7 +200,7 @@ function ScoreReveal({ fit, lineup, primaryCount, onReset, lang, affinityMatrix,
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
 
@@ -541,26 +498,20 @@ function ShareCard({ pct, grade, fit, lineup, simEra, coach }) {
 }
 
 // ── Ana bileşen ───────────────────────────────────────────────────────────────
-// Draft süreci (handoff 3a: kutusuz satır). Uzun açıklama + örnek adıma
-// tıklayınca kural penceresinde açılıyor.
+// Hub adımları ve kural setleri (mockup 3a). Metin final; açıklamaların tamamı
+// mod kartındaki Rules pop-up'ında (ModeAboutModal) tek kaynaktan anlatılıyor.
 const DRAFT_STEPS = [
-              ["1",TargetIcon,"","Pick Era","Distance & style fit",
-                "Your whole run is simulated inside one era. Every player's power scales with how far their real prime sits from it — one era off costs about 3%, five eras about 22%. But an archetype the era loves travels one era closer, and one it has no use for travels one further. A season's top-2 players are TIMELESS and ignore distance entirely.",
-                <>Pick <b>Small Ball</b> and a 1995 Spacer plays nearly at full strength, because that era pays for shooting. The same era guts a back-to-the-basket Force.</>],
-              ["2",WheelIcon,"","Spin & Draft 9","5 starters + 4 bench",
-                "Each round two wheels land on a random season and a random team, and you draft one player off that exact roster. Overall ratings stay hidden — you see the archetype, the box score and the tags, and you judge from those. Five jokers let you bend the wheel when it betrays you.",
-                <>Wheel lands on <b>2015-16 GSW</b>. You can take Curry as your Spacer, or grab Draymond because your lineup has no Anchor yet.</>],
-              ["3",CoachIcon,"","Hire Coach","Offense & Defense grades",
-                "After the roster is full you choose from four coaches. Their Offense and Defense grades shift your team rating all season long, and championship rings add playoff DNA — the more rings, the bigger the boost once the postseason lights come on.",
-                <>An <b>A-grade defensive coach with 3 rings</b> lifts a mediocre defense into contention and adds a real edge in a Game 7.</>],
-              ["4",TrophyIcon,"","Simulate 82","Playoffs & awards glory",
-                "Your nine players and coach run a full 82-game regular season, then the playoffs. The sim produces standings, awards, All-Star nods, a champion — and your final Lineup Fit grade, which is what lands on the leaderboard.",
-                <>A balanced roster can win 58 games; stacking three ball-dominant Engines wins fewer despite better raw talent — <b>role redundancy</b> is a real penalty.</>],
-            ];
+  { n: "1", t: "Pick era",       d: "Distance & style fit" },
+  { n: "2", t: "Spin & draft 9", d: "5 starters + 4 bench" },
+  { n: "3", t: "Hire coach",     d: "Offense & defense grades" },
+  { n: "4", t: "Simulate 82",    d: "Playoffs & awards glory" },
+];
+
+const DRAFT_PHASES = ["await_spin", "spin_season", "spin_team", "fetching", "pick_player", "pick_pos"];
 
 const RULESETS = [
-  { key: "classic",   hex: "#60a5fa", label: "Classic",    hint: "Pure luck" },
-  { key: "salarycap", hex: "#FFB11B", label: "Salary Cap", hint: "100% cap" },
+  { key: "classic",   label: "Classic",    hint: "Pure luck" },
+  { key: "salarycap", label: "Salary Cap", hint: "100% cap" },
 ];
 
 export default function LineupGame() {
@@ -568,21 +519,16 @@ export default function LineupGame() {
 
   // Oyunun kuralları ortak motorda (game/lineupDraft.js): RankIt uygulamasının
   // mobil arayüzü de aynısını kullanıyor, ikisi aynı skor tablosuna yazıyor.
+  const draft = useLineupDraft({ autoSpin: false, spinMs: 1100, jokerSpinMs: 1500 });
   const {
-    phase, simEra, mode, coach, coachOptions, seasons, teamPool, players, lineup,
-    pickedPlayer, fitResult, statusMsg, moveSrc, posFilter, spinSeasons, spinTeams,
-    targetSIdx, targetTIdx, chosenSeason, chosenTeam, jokers, doubleActive, discoverActive,
-    affinityMatrix, filledSlots, emptySlots, primaryCount, canRearrange, isSpinPhase,
-    spendCap,
-    setMode, setPosFilter, beginEraPick, chooseEra, randomEra,
-    jokerReTeam, jokerReYear, jokerReBoth, jokerDouble, jokerDiscover,
-    pickPlayer: handlePickPlayer, cancelPick, pickPos: handlePickPos, slotTap: handleSlotTap,
-    pickCoach, reset: resetGame,
-  } = useLineupDraft();
-  const [sortKey, setSortKey] = useState("PTS"); // pick listesi sıralaması
+    phase, simEra, mode, coach, coachOptions, seasons,
+    players, lineup, fitResult, moveSrc, jokers, affinityMatrix,
+    filledSlots, primaryCount, canRearrange, setMode, beginEraPick, chooseEra,
+    randomEra, pickCoach,
+    pickPos: handlePickPos, slotTap: handleSlotTap, reset: resetGame,
+  } = draft;
+  const [rules, setRules] = useState(null); // (i) kural penceresi
   // Info modals
-  const [modal, setModal] = useState(null); // "chemistry" | "jokers" | "archetype" | "tags"
-  const [eraInfo, setEraInfo] = useState(null); // era bilgi pop-up'ı (ⓘ düğmesi)
 
   return (
     <div className="h-full overflow-y-auto">
@@ -592,517 +538,27 @@ export default function LineupGame() {
       path="/basketball/game/single"
     />
     {phase==="idle" ? (
-      <div className="g-idle">
-        <PageGlow tint="#FFB11B" />
-        <header className="g-idle-hero">
-          <div>
-            <h1 className="g-wordmark lg">Lineup Builder</h1>
-            <p>Draft 9 players · 5 starters, 4 bench · 1 coach</p>
-          </div>
-          <div className="g-idle-actions">
-            <div className="g-modebtn-row" role="radiogroup" aria-label="Rule set">
-              {RULESETS.map(r=>(
-                <button key={r.key} role="radio" aria-checked={mode===r.key}
-                  className={`g-modebtn${mode===r.key?" on":""}`} style={{"--c":r.hex}}
-                  onClick={()=>setMode(r.key)}>
-                  <span className="dot" />
-                  <span className="lbl"><b>{r.label}</b><i>{r.hint}</i></span>
-                </button>
-              ))}
-            </div>
-            <button onClick={beginEraPick} disabled={seasons.length===0}
-              className="aura-rating-btn g-idle-cta" style={{opacity:seasons.length===0?0.5:1}}>
-              {seasons.length===0?"Loading…":mode==="salarycap"?"Start cap draft":"Start draft"}
-            </button>
-          </div>
-        </header>
-
-        <ProcessSteps steps={DRAFT_STEPS} />
-        <div className="g-divider" />
-
-        <div className="g-idle-body">
-          <section className="g-idle-roster">
-            <div className="g-idle-roster-head">
-              <span className="t">Your roster</span>
-              <span className="s">0 of 9 drafted</span>
-            </div>
-            <div className="g-idle-court pointer-events-none">
-              <CourtBoard lineup={lineup} coach={null} moveSrc={null} canRearrange={false}
-                onSlotTap={()=>{}} getPrimaryPos={getPrimaryPos} placing={false}
-                placingEligible={[]} placingPenalties={{}} onPlace={()=>{}} bare fit/>
-            </div>
-          </section>
-          <LeaderboardPanel mode={mode} limit={25} fill />
-        </div>
-      </div>
-    ) : (
-    <div className={phase==="complete" ? "p-4 sm:p-6 max-w-[1560px] mx-auto space-y-3 pb-6" : "g-draft"}>
-      {phase!=="complete"&&<PageGlow tint={isSpinPhase ? "#FFB11B" : (ERA_HEX[simEra?.id] || "#FFB11B")} />}
-
-      {/* ── Tag lejantı ────────────────────────────────────────────────
-          Kurallar (kimya / jokerler / arketipler) artık giriş ekranındaki
-          mod kartının ⓘ pop-up'ında tek kaynaktan anlatılıyor; burada
-          sadece rozetlerin okunması kalıyor, o da rozetlerin göründüğü
-          yerden — havuz başlığındaki ⓘ'den — açılıyor. */}
-      <InfoModal open={modal==="tags"} onClose={()=>setModal(null)}
-        title={<span className="inline-flex items-center gap-2"><span className="text-[var(--text-primary)]"><TagIcon size={16} /></span> Player Tag Effects</span>}>
-        <div className="space-y-2 max-h-[62vh] overflow-y-auto pr-1">
-          <p className="text-[13px] text-[var(--text-muted)] leading-relaxed pb-1">
-            On player rows tags show as small colored initials. Here's what each means:
-          </p>
-          {TAG_INFO.map(t=>(
-            <div key={t.key} className="rounded-lg p-2.5 flex items-start gap-2.5"
-              style={{background:t.color+"0d"}}>
-              {/* baş harf rozeti = satırlarda göründüğü hâli */}
-              <span className="shrink-0 mt-0.5 inline-flex items-center justify-center text-[12px] font-bold rounded px-1.5 h-[18px] min-w-[18px]"
-                style={{color:t.color,background:t.color+"22",border:`1px solid ${t.color}66`}}>{t.abbr}</span>
-              <div className="min-w-0">
-                <div className="text-[13px] font-bold" style={{color:t.color}}>{t.label}</div>
-                <div className="text-xs text-[var(--text-primary)] leading-relaxed mt-0.5">{t.desc}</div>
-              </div>
-            </div>
-          ))}
-          <p className="text-[13px] text-[var(--text-muted)] italic pt-1">
-            Tags come from real award history (1983+) and live archetype data.
-            Click a player to see their tags full-size with effects.
-          </p>
-        </div>
-      </InfoModal>
-
-      {/* ── HEADER DOCK: başlık + mod anahtarı TEK barda ────────────────
-          Eskiden başlık ayrı, iki büyük mod kartı ayrıydı; artık ikisi tek
-          kontrol yüzeyi. Mod seçimi bir "segmented switcher" — iki kart
-          birbiriyle yarışmıyor, biri açıkça aktif. */}
-      {/* ── İNCE DOCK: oyun boyunca üstte kalır ─────────────────────────
-          Sol: koşu durumu (era + ilerleme). Orta: spin dönerken çark,
-          durduğunda jokerler. Sağ: düşen takım/yıl — kutusuz, düz yazı.
-          Böylece spin/joker/takım hepsi dock'ta halloluyor ve alttaki iki
-          panel tüm genişliği oyuncu havuzuna + korta bırakıyor. */}
-      {phase!=="idle"&&phase!=="complete"&&(()=>{
-        const eraHex = ERA_HEX[simEra?.id] || "#9ca3af";
-        const showWheels = phase!=="pick_era" && phase!=="pick_coach";
-        const capLeft = START_BUDGET-totalSpent(Object.values(lineup));
-        return (
-        <>
-        <header className="g-draft-head">
-          {/* SOL — wordmark + koşu durumu */}
-          <div className="g-draft-id">
-            <h1 className="g-wordmark">Lineup Builder</h1>
-            <div className="g-draft-meta">
-              {simEra&&(
-                <span className="g-era-chip" style={{"--c":eraHex}} title={`Season simulates in the ${simEra.label}`}>
-                  {simEra.label}
-                </span>
-              )}
-              {phase!=="pick_era"&&(
-                <>
-                  <span className="g-draft-progress"><i style={{width:`${(filledSlots.length/ALL_SLOTS.length)*100}%`}} /></span>
-                  <span className="g-draft-count">{filledSlots.length}/{ALL_SLOTS.length}</span>
-                  {primaryCount>0&&<span className="g-draft-star" title="Players at their natural position"><StarIcon size={12} />×{primaryCount}</span>}
-                  {mode==="salarycap"&&<span className="g-draft-cap" title="Salary cap left">{capLeft}% cap</span>}
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* ORTA — sezon ve takım: dönerken çark, inince 44px parlayan değer */}
-          <div className="g-draft-wheels">
-            {showWheels&&(
-              <>
-                <InlineSpin size="lg" items={seasons} spinning={spinSeasons} targetIdx={targetSIdx}
-                  label={lang==="tr"?"Sezon":"Season"} />
-                <InlineSpin size="lg" items={teamPool.length>0?teamPool:["…"]} spinning={spinTeams} targetIdx={targetTIdx}
-                  label={lang==="tr"?"Takım":"Team"} accent="#60a5fa" />
-              </>
-            )}
-          </div>
-
-          {/* SAĞ — jokerler (58px kutular) */}
-          <div className="g-draft-jokers">
-            {phase==="pick_player"&&(
-              <>
-                <JokerBtn Icon={RefreshIcon}  label="Team"     available={jokers.reTeam}   onClick={jokerReTeam}/>
-                <JokerBtn Icon={CalendarIcon} label="Year"     available={jokers.reYear}   onClick={jokerReYear}/>
-                <JokerBtn Icon={BoltIcon}     label="Both"     available={jokers.reBoth}   onClick={jokerReBoth}/>
-                <JokerBtn Icon={UsersIcon}    label="Pick 2"   available={jokers.double&&!doubleActive&&emptySlots.length>=2} onClick={jokerDouble}/>
-                <JokerBtn Icon={SearchIcon}   label="Discover" available={jokers.discover&&!discoverActive} onClick={jokerDiscover}/>
-              </>
-            )}
-          </div>
-        </header>
-        <div className="g-divider tight" />
-        </>
-        );
-      })()}
-
-      {/* Joker durum satırı — dock'un altında ince bir bilgi şeridi */}
-      {phase==="pick_player"&&(doubleActive||discoverActive)&&(
-        <div className="flex justify-center gap-4 text-xs">
-          {doubleActive&&(
-            <span className="inline-flex items-center gap-1.5 animate-pulse" style={{color:"var(--yamabuki)"}}>
-              <UsersIcon size={13} /> Double pick active — choose 2 players
-            </span>
-          )}
-          {discoverActive&&(
-            <span className="inline-flex items-center gap-1.5 animate-pulse" style={{color:"#4ade80"}}>
-              <SearchIcon size={13} /> Discover active — hidden overalls revealed
-            </span>
-          )}
-        </div>
-      )}
-
-      {phase!=="idle"&&phase!=="complete"&&(
-      // Havuz sabit-ish genişlikte (satır içeriği ~600px'te bitiyor, fazlası
-      // ölü alan olurdu); kalan tüm genişlik korta gider — kort dar kalınca
-      // saha çizimi sıkışıyordu.
-      // items-stretch: iki sütun aynı satır yüksekliğini paylaşır, böylece
-      // havuz kutusunun ALT hattı her modda kortunkiyle hizalı kalır.
-      <div className={`g-draft-body${phase==="pick_coach"?" solo":""}`}>
-
-      {/* ── SOL PANEL: oyuncu havuzu ── */}
-      <div className="min-w-0 flex flex-col gap-3">
-
-      {/* Lineup bar (mobil) — desktop'ta sağdaki saha görünümü kullanılır */}
-      <div className="flex gap-1 lg:hidden">
-        {POSITIONS.map(pos=><LineupSlot key={pos} pos={pos} player={lineup[pos]}
-          selected={moveSrc===pos} canTap={canRearrange} onTap={handleSlotTap}/>)}
-      </div>
-      <div className="flex gap-1 opacity-80 lg:hidden">
-        {BENCH_SLOTS.map(pos=><LineupSlot key={pos} pos={pos} player={lineup[pos]} bench
-          selected={moveSrc===pos} canTap={canRearrange} onTap={handleSlotTap}/>)}
-      </div>
-      {canRearrange&&moveSrc&&(
-        <p className="text-[12px] text-yamabuki/90 lg:hidden">Moving {lineup[moveSrc]?.PLAYER_NAME?.split(" ").slice(-1)[0]} — tap a destination slot</p>
-      )}
-
-      {/* Salary Cap: dock'ta kalan yüzde var; burada sadece bu el için tavan */}
-      {mode==="salarycap"&&phase==="pick_player"&&(()=>{
-        const budgetLeft=START_BUDGET-totalSpent(Object.values(lineup));
-        const slotsLeft=emptySlots.length;
-        const cap=Math.max(0, maxSpendNow(budgetLeft, slotsLeft));
-        const hex=budgetLeft<=15?"#f87171":budgetLeft<=35?"#FFB11B":"#4ade80";
-        return (
-          <div className="flex items-center gap-3">
-            <span className="g-label shrink-0"><CapIcon size={12} /> Cap</span>
-            <div className="g-bar-track flex-1" style={{height:8}}>
-              <div className="g-bar-fill" style={{width:`${budgetLeft}%`,"--fill":hex,"--fill-a":hex+"66"}}/>
-            </div>
-            {slotsLeft>0&&(
-              <span className="text-[12px] shrink-0" style={{color:"var(--text-muted)"}}>
-                max <b style={{color:hex}}>{cap}%</b> this pick · {slotsLeft} left
-              </span>
-            )}
-          </div>
-        );
-      })()}
-
-      {/* === IDLE === */}
-      {/* === PICK SIM ERA === */}
-      {phase==="pick_era"&&(
-        // flex-1: panel sol sütunun kalanını doldurur → alt hattı kortla
-        // hizalanır ve kort iki fazda da aynı boyutta kalır.
-        <div className="g-panel p-5 flex flex-col gap-3 flex-1 min-h-0">
-          <span className="aura-blob" style={{ "--slot-color": "var(--accent)", left: "20%", top: -50, width: 260, height: 140, opacity: 0.16 }} />
-          <div className="shrink-0">
-            <div className="g-section-title mb-2">Step 1 — Pick Your Simulation Era</div>
-            <p className="text-xs leading-relaxed" style={{ color: "var(--text-muted)" }}>
-              Your whole run lives in this era. Every player's power scales with distance from
-              their home decade (one era off ≈ −3%, five eras ≈ −22%) — but an archetype the era
-              loves travels one era closer, one it dumps travels one further. TIMELESS greats
-              (a season's top 2) ignore distance entirely.
-            </p>
-          </div>
-          <div className="grid grid-cols-2 gap-2 flex-1 min-h-0" style={{gridAutoRows:"1fr"}}>
-            {ERAS.map(era=>{
-              const eHex = ERA_HEX[era.id] || "#9ca3af";
-              return (
-                <div key={era.id} className="g-tile"
-                  onClick={()=>chooseEra(era)}
-                  style={{"--accent":eHex,"--accent-a":eHex+"1a","--accent-line":eHex+"55"}}>
-                  <span className="aura-blob" style={{"--slot-color":eHex,right:-24,top:-24,width:120,height:88,opacity:0.26}} />
-                  {/* Bilgi düğmesi — seçim tıklamasını tetiklemez */}
-                  <button className="g-tile-info" title={`About the ${era.label}`}
-                    onClick={(e)=>{e.stopPropagation();setEraInfo(era);}}>
-                    <InfoIcon size={12} />
-                  </button>
-                  <div className="g-tile-title" style={{color:eHex,paddingRight:30}}>{era.label}</div>
-                  <div className="g-tile-sub">{era.years[0]}–{Math.min(era.years[1],2026)}</div>
-                  <div className="g-tile-desc" style={{fontSize:12,marginTop:6}}>{ERA_META_BLURB[era.id]}</div>
-                </div>
-              );
-            })}
-          </div>
-          <button
-            onClick={randomEra}
-            className="aura-pill-btn w-full justify-center shrink-0" style={{padding:"10px"}}>
-            <DiceIcon size={15} /> Random Era
-          </button>
-        </div>
-      )}
-
-      {/* Era bilgi pop-up'ı — Glossary'nin ERA_GUIDE'ından beslenir (tek kaynak) */}
-      {eraInfo&&(()=>{
-        const g = ERA_GUIDE.find(x=>x.short===eraInfo.short);
-        const eHex = ERA_HEX[eraInfo.id] || "#9ca3af";
-        return (
-          <InfoModal open onClose={()=>setEraInfo(null)} accent={eHex}
-            title={<span style={{color:eHex}}>{eraInfo.label}</span>}>
-            <div className="space-y-3">
-              <div className="g-mono" style={{color:"var(--text-faint)"}}>
-                {eraInfo.years[0]}–{Math.min(eraInfo.years[1],2026)}
-              </div>
-              {g?.meta&&<p className="text-[13px] italic" style={{color:eHex}}>{g.meta}</p>}
-              <p className="text-[13px] leading-relaxed" style={{color:"var(--text-muted)"}}>
-                {g?.desc||ERA_META_BLURB[eraInfo.id]}
-              </p>
-              {g&&(
-                <div className="pt-3" style={{borderTop:"1px solid rgba(255,255,255,.08)"}}>
-                  <div className="g-section-title mb-2">Archetype Weights</div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {g.top.map(t=>(
-                      <span key={t} className="text-[12px] px-2 py-0.5 rounded-full font-medium"
-                        style={{color:"#4ade80",border:"1px solid #4ade8040",background:"#4ade8015"}}>{t}</span>
-                    ))}
-                    {g.low?.map(t=>(
-                      <span key={t} className="text-[12px] px-2 py-0.5 rounded-full font-medium"
-                        style={{color:"#f87171",border:"1px solid #f8717140",background:"#f8717115"}}>{t}</span>
-                    ))}
-                  </div>
-                </div>
-              )}
-              <button onClick={()=>{setEraInfo(null);chooseEra(eraInfo);}}
-                className="aura-rating-btn w-full" style={{padding:"11px",fontSize:12.5,}}>
-                Play this era
-              </button>
-            </div>
-          </InfoModal>
-        );
-      })()}
-
-      {/* === SPIN / FETCHING === Çark artık dock'ta; burada sadece durum satırı */}
-      {isSpinPhase&&(
-        <p className="text-center text-xs animate-pulse py-10" style={{color:"var(--text-muted)"}}>
-          {statusMsg||(phase==="spin_season"?"Picking season…":phase==="spin_team"?"Picking team…":"Loading…")}
-        </p>
-      )}
-
-      {/* === PICK PLAYER === */}
-      {phase==="pick_player"&&(()=>{
-        const salary = mode==="salarycap";
-        // spendCap motordan (wildcard dahil): mobil arayüz de aynı sınırı görür.
-        let list = posFilter ? players.filter(p=>posGroupOf(p)===posFilter) : players;
-        const sorted = [...list].sort((a,b)=>{
-          if(sortKey==="TAGGED"){
-            const ta=getPlayerTags(a).length, tb=getPlayerTags(b).length;
-            if(tb!==ta) return tb-ta;
-            return (parseFloat(b.PTS||0)||0)-(parseFloat(a.PTS||0)||0);
-          }
-          return (parseFloat(b[sortKey]||0)||0)-(parseFloat(a[sortKey]||0)||0);
-        });
-        return (
-          // Desktop'ta panel akıştan çıkarılıyor (lg:absolute inset-0): böylece
-          // uzun oyuncu listesi satır yüksekliğini BELİRLEMİYOR — yüksekliği
-          // kort veriyor ve havuzun alt hattı her modda kortla hizalı kalıyor.
-          // Liste içeride kayıyor. Mobilde normal akışta.
-          <div className="flex-1 min-h-0 lg:relative">
-          <div className="g-panel g-pool-fill overflow-hidden flex flex-col h-full">
-            {/* Üst bar: G/F/C filtre + sayı.
-                Takım/sezon artık dock'ta gösteriliyor — burada tekrar etme. */}
-            <div className="g-pool-head">
-              <span className="g-pool-title">{chosenTeam ? `${chosenTeam} roster` : "Roster"}</span>
-              <span className="g-pool-note">Ratings hidden</span>
-              <span className="ml-auto flex items-center gap-1">
-                {["G","F","C"].map(g=>(
-                  <button key={g} onClick={()=>setPosFilter(f=>f===g?"":g)}
-                    className={`aura-pill-btn${posFilter===g?" active":""}`}
-                    style={{padding:"5px 12px",fontSize:13,fontWeight:600}}>
-                    {g}
-                  </button>
-                ))}
-              </span>
-              <span className="text-[13px] tabular-nums" style={{color:"var(--text-muted)"}}>{sorted.length}</span>
-              {/* Rozet lejantı — TAG sütunundaki baş harflerin okunacağı yer */}
-              <button onClick={()=>setModal("tags")} title="What the tag badges mean"
-                aria-label="What the tag badges mean" className="g-info-btn">
-                <InfoIcon size={14} />
-              </button>
-            </div>
-            {/* Satır listesi — yatay kaydırmalı (mobil/dar panelde stat'lar kayar,
-                isim+arketip+tag'ler solda pinli kalır). Yükseklik artık sabit
-                değil: flex-1 ile panelin kalanını doldurur. */}
-            <div className="flex-1 min-h-0 overflow-auto">
-              {/* Kolon başlıkları */}
-              {sorted.length>0&&(
-                <div className="g-row-head">
-                  <span className="lbl c-pin sticky left-0"
-                    style={{background:"linear-gradient(90deg,#0e0c10 82%,transparent)"}}>Player</span>
-                  <button onClick={()=>setSortKey("TAGGED")} title="Sort by tag count"
-                    className={`lbl c-tag${sortKey==="TAGGED"?" active":""}`}>TAG</button>
-                  {salary&&<span className="lbl c-cost">$</span>}
-                  {discoverActive&&<span className="lbl c-cost">OVR</span>}
-                  {[["PTS","PTS"],["REB","REB"],["AST","AST"],["3P%","FG3_PCT"],["STL","STL"],["BLK","BLK"]].map(([h,f])=>(
-                    <button key={h} onClick={()=>setSortKey(f)}
-                      className={`lbl c-stat${sortKey===f?" active":""}`}>{h}</button>
-                  ))}
-                </div>
-              )}
-              {sorted.map((p,i)=>{
-                const c = salary ? priceOf(p) : null;
-                const over = salary && c>spendCap;
-                return <PlayerRow key={i} player={p} discover={discoverActive}
-                  onClick={()=>handlePickPlayer(p)} cost={c} unaffordable={over}
-                  highlightStat={sortKey==="TAGGED"?"PTS":sortKey}/>;
-              })}
-              {sorted.length===0&&(
-                <div className="py-8 text-center text-xs" style={{color:"var(--text-faint)"}}>No players in this group — clear the filter.</div>
-              )}
-            </div>
-            {/* Sıralama kolon başlıklarında (handoff 5a); ayrı alt çubuk kaldırıldı. */}
-          </div>
-          </div>
-        );
-      })()}
-
-      {/* === PICK POSITION === */}
-      {phase==="pick_pos"&&pickedPlayer&&(()=>{
-        const eligible=getEligiblePos(pickedPlayer);
-        const primary=eligible[0];
-        return (
-          <div className="g-panel p-4" style={{"--accent":"var(--accent)","--accent-line":"rgba(255,177,27,.5)"}}>
-            <span className="aura-blob" style={{"--slot-color":"var(--accent)",left:"10%",top:-40,width:220,height:120,opacity:0.2}} />
-            <div className="flex items-start justify-between mb-3">
-              <div className="min-w-0">
-                <div className="font-logo text-[17px] font-bold flex items-center gap-2 flex-wrap" style={{color:"var(--text-primary)"}}>
-                  {pickedPlayer.PLAYER_NAME}
-                  <span className="text-[13px] font-semibold" style={{color:"#60a5fa"}}>{pickedPlayer.primary_arch||"—"}</span>
-                </div>
-                <div className="text-xs mt-0.5" style={{color:"var(--text-faint)"}}>{chosenSeason} · {chosenTeam}</div>
-                {/* İstatistikler (arketip her zaman açık, overall gizli) */}
-                <div className="flex gap-3 mt-1.5">
-                  {[["PTS","PTS"],["REB","REB"],["AST","AST"],["FG3_PCT","3P%"]].map(([k,l])=>{
-                    const v=pickedPlayer[k];
-                    const disp=v==null||isNaN(+v)?"—":k==="FG3_PCT"?`${Math.round(+v*100)}%`:(+v).toFixed(1);
-                    return (
-                      <div key={k} className="text-center">
-                        <div className="text-[13px] font-bold text-white tabular-nums">{disp}</div>
-                        <div className="text-[12px] text-[var(--text-faint)]">{l}</div>
-                      </div>
-                    );
-                  })}
-                </div>
-                <div className="flex gap-1 mt-2 flex-wrap items-center">
-                  {eligible.map(p=>(
-                    <span key={p} className={`text-[12px] px-1.5 py-0.5 rounded border font-bold inline-flex items-center gap-0.5 ${POS_COLORS[p]||""}`}>
-                      {p}{p===primary&&<StarIcon size={9} />}
-                    </span>
-                  ))}
-                </div>
-              </div>
-              <button onClick={cancelPick}
-                className="text-[var(--text-faint)] hover:text-[var(--text-primary)] text-xs shrink-0">← Back</button>
-            </div>
-            {/* Tag'ler büyütülmüş — tam ad + etkisi (oyuncuya tıklayınca ne olduğu net) */}
-            {(()=>{ const tg=getPlayerTags(pickedPlayer); return tg.length>0&&(
-              <div className="mb-3 grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                {tg.map(t=>(
-                  <div key={t.key} className="rounded-lg px-2 py-1.5 flex items-start gap-2"
-                    style={{background:t.color+"14",border:`1px solid ${t.color}44`}}>
-                    <span className="shrink-0 mt-0.5 inline-flex items-center justify-center text-[12px] font-bold rounded px-1 h-[16px] min-w-[16px]"
-                      style={{color:t.color,background:t.color+"22",border:`1px solid ${t.color}66`}}>{t.abbr}</span>
-                    <div className="min-w-0">
-                      <div className="text-[13px] font-bold leading-tight" style={{color:t.color}}>{t.label}</div>
-                      <div className="text-[12px] text-[var(--text-muted)] leading-snug">{t.detail}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ); })()}
-            {/* Desktop: court spot'una tıkla; Mobil: butonlar (court yok) */}
-            <div className="hidden lg:flex items-center gap-1.5 text-[13px] text-yamabuki mt-1 mb-1">
-              <span className="text-base leading-none">↘</span>
-              <span>Pick a spot on the court or bench to place <span className="font-semibold">{pickedPlayer.PLAYER_NAME?.split(" ").slice(-1)[0]}</span></span>
-            </div>
-            <div className="lg:hidden">
-            <div className="text-xs text-[var(--text-muted)] mb-2 inline-flex items-center gap-1 flex-wrap">
-              <span>Which position? (</span><StarIcon size={10} /><span>= primary → chemistry bonus · secondary −10%{isFlex(pickedPlayer)?", next-nearest −10% (VERSATILE), rest −25%":", elsewhere −25%"})</span>
-            </div>
-            <div className="flex gap-2 flex-wrap">
-              {POSITIONS.filter(p=>!lineup[p]).map(pos=>{
-                const isElig=eligible.includes(pos);
-                const isPrim=pos===primary;
-                const pen=posPenaltyFor(pickedPlayer,pos);
-                const penLabel=pen>=1?null:pen>=0.90?"−10%":"−25%";
-                const pHex = POS_HEX[pos] || "#9ca3af";
-                return (
-                  <button key={pos} onClick={()=>handlePickPos(pos)}
-                    className="flex-1 min-w-[3rem] py-2.5 rounded-xl font-logo font-bold text-sm transition-all hover:-translate-y-0.5"
-                    style={isPrim
-                      ? {color:pHex,background:pHex+"1f",border:`1px solid ${pHex}`,boxShadow:`0 0 18px -5px ${pHex}`}
-                      : isElig
-                        ? {color:"var(--text-primary)",background:"rgba(255,255,255,.04)",border:`1px solid ${pHex}44`}
-                        : {color:"var(--text-faint)",background:"transparent",border:"1px dashed rgba(255,255,255,.12)"}}>
-                    <div className="inline-flex items-center gap-1 justify-center">{pos}{isPrim&&<StarIcon size={11} />}</div>
-                    {penLabel&&<div className="text-[12px] font-medium" style={{color:"var(--danger)"}}>{penLabel}</div>}
-                    {!penLabel&&!isPrim&&isFlex(pickedPlayer)&&<div className="text-[12px] font-medium" style={{color:"#c084fc"}}>vers.</div>}
-                  </button>
-                );
-              })}
-            </div>
-            {BENCH_SLOTS.some(b=>!lineup[b])&&(
-              <>
-                <div className="text-xs text-[var(--text-muted)] mt-3 mb-2">
-                  Or send to the bench — no position penalty, but reduced minutes (~22% of the load)
-                </div>
-                <div className="flex gap-2">
-                  {BENCH_SLOTS.filter(b=>!lineup[b]).map(b=>(
-                    <button key={b} onClick={()=>handlePickPos(b)}
-                      className="flex-1 py-2.5 rounded-xl font-logo font-bold text-sm transition-all hover:-translate-y-0.5"
-                      style={{color:"var(--text-muted)",background:"rgba(255,255,255,.03)",border:"1px solid rgba(255,255,255,.1)"}}>
-                      {b}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* === PICK COACH === (vs modlarıyla aynı bileşen — tek kaynak) */}
-      {phase==="pick_coach"&&(
-        <CoachPicker
-          title="Hire your coach"
-          options={coachOptions}
-          onPick={pickCoach}
-        />
-      )}
-
-      </div>{/* sol panel sonu */}
-
-      {/* ── SAĞ PANEL: yarım saha (desktop) — setup pane ile hizalı, sabit genişlik ── */}
-      <div className="hidden lg:block min-w-0">
-        <div className="h-full">
-          <CourtBoard fit bench="strip" framed={false} lineup={lineup} coach={coach} moveSrc={moveSrc}
-            canRearrange={canRearrange} onSlotTap={handleSlotTap} getPrimaryPos={getPrimaryPos}
-            placing={phase==="pick_pos"&&!!pickedPlayer}
-            placingEligible={pickedPlayer?getEligiblePos(pickedPlayer):[]}
-            placingPenalties={pickedPlayer?Object.fromEntries(POSITIONS.map(p=>[p,posPenaltyFor(pickedPlayer,p)])):{}}
-            onPlace={handlePickPos}/>
-        </div>
-      </div>
-
-      </div>
-      )}
-
-      {/* === COMPLETE === */}
-      {phase==="complete"&&fitResult&&(
-        <div className="max-w-[1180px] mx-auto">
-          <ScoreReveal fit={fitResult} lineup={lineup} primaryCount={primaryCount} onReset={resetGame} lang={lang} affinityMatrix={affinityMatrix} simEra={simEra} coach={coach} mode={mode}/>
-        </div>
-      )}
-    </div>
-    )}
+      <SetupHub sport="basketball" title="Lineup builder"
+        subtitle="Draft 9 players: 5 starters, 4 bench. Then hire a coach."
+        rules={RULESETS} ruleKey={mode} onRule={setMode}
+        startLabel={seasons.length===0?"Loading…":mode==="salarycap"?"Start cap draft":"Start draft"}
+        onStart={beginEraPick} startDisabled={seasons.length===0}
+        steps={DRAFT_STEPS} total={ALL_SLOTS.length}
+        leaderboard={<LeaderboardPanel mode={mode} limit={25} />} />
+    ) : phase==="pick_era" ? (
+      <EraStep eras={ERAS} blurbs={ERA_META_BLURB} onChoose={chooseEra} onRandom={randomEra} />
+    ) : DRAFT_PHASES.includes(phase) ? (
+      <>
+        <BasketballDraft draft={draft} onInfo={() => setRules({ key: "single", title: "Spin & Build", accent: "#FFB11B" })} />
+        <ModeAboutModal mode={rules} onClose={() => setRules(null)} />
+      </>
+    ) : phase==="pick_coach" ? (
+      <GameStage sport="basketball">
+        <CoachPicker sport="basketball" title="Hire your coach" options={coachOptions} onPick={pickCoach} />
+      </GameStage>
+    ) : phase==="complete"&&fitResult ? (
+      <ScoreReveal fit={fitResult} lineup={lineup} primaryCount={primaryCount} onReset={resetGame} lang={lang} affinityMatrix={affinityMatrix} simEra={simEra} coach={coach} mode={mode}/>
+    ) : null}
     </div>
   );
 }

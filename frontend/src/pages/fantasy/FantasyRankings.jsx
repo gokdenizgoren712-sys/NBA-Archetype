@@ -6,7 +6,7 @@ import { ARCHETYPE_COLOR } from "../../constants/archetypeColors";
 import { SEO } from "../../hooks/useSEO";
 import { fz } from "./fantasyApi";
 import {
-  BAD, ErrorNote, FLAGS, GOOD, MiniCat, PlayerMeta, RangeBar, SkeletonList, TierHeader, fmt1, sgn,
+  BAD, ErrorNote, FLAGS, GOOD, InfoTip, MiniCat, PlayerMeta, RangeBar, SkeletonList, TierHeader, fmt1, sgn,
 } from "./ui";
 import { FORMATS, useAsync, useFantasy, useIsPhone } from "./useFantasy";
 
@@ -25,6 +25,15 @@ function volatility(ci) {
   if (ci == null) return { t: "–", c: "#e5e5e5" };
   const l = ci < 1.3 ? "Low" : ci < 1.385 ? "Mid" : "High";
   return { t: `${l} ${ci.toFixed(2)}×`, c: l === "High" ? GOOD : "#e5e5e5" };
+}
+
+// Sıralama durumu: null = varsayılan (değere göre, en iyi önce). Sütun tıklaması: varsayılan yön → ters yön → sıfırla.
+const DEFAULT_DIR = (key) => (key === "adp" ? "asc" : "desc");
+function nextSort(cur, key) {
+  if (key === "value") return cur ? (cur.key === "value" && cur.dir === "desc" ? { key, dir: "asc" } : null) : { key, dir: "asc" };
+  const def = DEFAULT_DIR(key);
+  if (!cur || cur.key !== key) return { key, dir: def };
+  return cur.dir === def ? { key, dir: def === "asc" ? "desc" : "asc" } : null;
 }
 
 function Dropdown({ label, value, options, onPick }) {
@@ -72,19 +81,25 @@ export default function FantasyRankings() {
   const [arch, setArch] = useState(null);
   const [flag, setFlag] = useState(null);
   const [limit, setLimit] = useState(PAGE);
+  const [sort, setSort] = useState(null);
+  const [source, setSource] = useState("model");           // model = bizim projeksiyon · sim = takım simülasyonunun ortalamaları
+  const simOk = !!f.meta?.simulation;
+  const src = simOk ? source : "model";
 
   useEffect(() => { const t = setTimeout(() => setQDeb(q.trim()), 250); return () => clearTimeout(t); }, [q]);
   // Format değişince kategori bağımlı seçimler sıfırlanır
-  useEffect(() => { setPunt([]); setMetric(f.isH2H ? "g" : "z"); setLimit(PAGE); }, [f.f, f.custom, f.isH2H]);
+  useEffect(() => { setPunt([]); setMetric(f.isH2H ? "g" : "z"); setLimit(PAGE); setSort(null); }, [f.f, f.custom, f.isH2H]);
+  const pickSort = (next) => { setSort(next); setLimit(PAGE); };
 
   const isCats = f.kind === "categories";
   const m = isCats ? metric : undefined;
   // Yalnız bu formatta geçerli punt'lar gider: format değişince sıfırlama efekti
   // bir çizim geç kalıyor ve ilk istek eski punt'la (ör. Points'e FT%) 422 alıyordu.
   const effPunt = isCats ? punt.filter((c) => f.cats.includes(c)) : [];
-  const key = JSON.stringify([f.apiFormat, f.apiTeams, effPunt, m, pos, qDeb, arch, flag, limit]);
+  const key = JSON.stringify([f.apiFormat, f.apiTeams, effPunt, m, pos, qDeb, arch, flag, limit, sort, src]);
   const { data, error, loading, reload } = useAsync(() => fz.rankings(f.apiFormat, f.apiTeams, {
     punt: effPunt, metric: m, position: pos === "All" ? null : pos, search: qDeb || null, archetype: arch, flag, limit,
+    sort: sort?.key, dir: sort?.dir, source: src,
   }), key);
 
   // Format değişirken eski formatın satırları yeni başlıklarla çizilmesin.
@@ -120,16 +135,28 @@ export default function FantasyRankings() {
 
   const cats = f.cats;
   const cols = isCats
-    ? `36px minmax(0,1fr) 56px repeat(${cats.length},46px) 44px 96px 36px 48px`
-    : "36px minmax(0,1fr) 90px 70px 80px 90px 140px 50px 60px";
+    ? `36px minmax(0,1fr) 78px repeat(${cats.length},46px) 52px 88px 58px 74px`
+    : "36px minmax(0,1fr) 90px 70px 80px 90px 140px 58px 74px";
+  // [etiket, hizalama, soluk mu, sıralama anahtarı]. Oyuncu ve değer aralığı sıralanmaz.
+  const valueHead = metric === "g" ? "G-score" : "Z-score";
   const heads = isCats
-    ? [["#", "center"], ["Player", "left"], [metric === "g" ? "G-score" : "Z-score", "right"],
-       ...cats.map((c) => [c, "center", punt.includes(c)]), ["Games", "center"], ["Value range", "left"], ["ADP", "right"], ["vs ADP", "right"]]
+    ? [["#", "center", false, "value"], ["Player", "left"], [valueHead, "right", false, "value"],
+       ...cats.map((c) => [c, "center", punt.includes(c), `cat:${c}`]), ["Games", "center", false, "games"], ["Value range", "left"],
+       ["ADP", "right", false, "adp"], ["vs ADP", "right", false, "adp_diff"]]
     : f.kind === "points"
-      ? [["#", "center"], ["Player", "left"], ["FP / game", "right"], ["Games", "right"], ["Season", "right"], ["Over repl.", "right"],
-         ["Season range", "left"], ["ADP", "right"], ["vs ADP", "right"]]
-      : [["#", "center"], ["Player", "left"], ["Weekly best", "right"], ["Per game", "right"], ["Volatility", "right"],
-         ["4-game wks", "right"], ["Games", "right"], ["ADP", "right"], ["vs ADP", "right"]];
+      ? [["#", "center", false, "value"], ["Player", "left"], ["FP / game", "right", false, "fp_game"], ["Games", "right", false, "games"],
+         ["Season", "right", false, "fp_total"], ["Over repl.", "right", false, "over_repl"],
+         ["Season range", "left"], ["ADP", "right", false, "adp"], ["vs ADP", "right", false, "adp_diff"]]
+      : [["#", "center", false, "value"], ["Player", "left"], ["Weekly best", "right", false, "value"], ["Per game", "right", false, "fp_game"],
+         ["Volatility", "right", false, "ceiling"], ["4-game wks", "right", false, "four"], ["Games", "right", false, "games"],
+         ["ADP", "right", false, "adp"], ["vs ADP", "right", false, "adp_diff"]];
+  const sortLabel = (k) => (heads.find((h) => h[3] === k && h[0] !== "#") || heads.find((h) => h[3] === k) || [k])[0];
+  const flat = !!sort;                                   // sıralı görünümde kademeler anlamsız
+  const HEAD_TIPS = {
+    "vs ADP": "Where we rank the player minus where Yahoo drafters actually take them. Green: we like him more than the market does.",
+    ADP: "Average draft position: the pick number drafters take this player at, from Yahoo preseason drafts when we have them.",
+    Games: "Games we expect the player to play this season, after injuries and rest. Missed games are not counted as zero: a replacement from the waiver wire fills most of them.",
+  };
 
   const archOpts = Object.keys(ARCHETYPE_COLOR).map((k) => ({ k, l: k, dot: ARCHETYPE_COLOR[k] }));
   const flagOpts = Object.entries(FLAGS).map(([k, v]) => ({ k, l: v.l }));
@@ -227,6 +254,79 @@ export default function FantasyRankings() {
     );
   };
 
+  const valueTip = (
+    <>
+      <p><b>Z-score</b>: how far above or below the average player each stat is, in standard deviations, added up across the categories. It fits season-long and roto leagues.</p>
+      <p><b>G-score</b>: the same idea tuned for weekly head-to-head. It discounts stats that swing a lot from week to week, so steady categories count a bit more. This is our default for H2H.</p>
+    </>
+  );
+  const sortable = heads.filter((h) => h[3] && h[3] !== "value" || h[0] === valueHead || h[0] === "Weekly best" || h[0] === "Over repl.");
+  const filterRow = (
+    <>
+      <span className="fz-desk-only" style={{ width: 1, height: 22, background: "#262626" }} />
+      <Dropdown label="Archetype" value={arch} options={archOpts} onPick={setArch} />
+      <button className={`fz-chipbtn${flag === "rookie" ? " on" : ""}`} onClick={() => setFlag(flag === "rookie" ? null : "rookie")}>Rookies</button>
+      <Dropdown label="Flags" value={flag === "rookie" ? null : flag} options={flagOpts.filter((o) => o.k !== "rookie")} onPick={setFlag} />
+      <div style={{ flex: 1 }} />
+      {sort && (
+        <button className="fz-chipbtn on" onClick={() => pickSort(null)} title="Back to our default order">
+          Sorted by {sortLabel(sort.key)} {sort.dir === "asc" ? "▲" : "▼"} · Reset
+        </button>
+      )}
+      {phone && (
+        <label className="fz-meta" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          Sort
+          <select className="fz-btn sm" value={sort?.key || ""} aria-label="Sort players by"
+            onChange={(e) => pickSort(e.target.value ? { key: e.target.value, dir: DEFAULT_DIR(e.target.value) } : null)}>
+            <option value="">Default</option>
+            {[...new Map(sortable.filter((h) => h[3] !== "value").map((h) => [h[3], h])).values()].map((h) => <option key={h[3]} value={h[3]}>{h[0]}</option>)}
+          </select>
+          {sort && <button className="fz-chipbtn" onClick={() => pickSort({ key: sort.key, dir: sort.dir === "asc" ? "desc" : "asc" })} aria-label="Reverse the sort order">{sort.dir === "asc" ? "▲" : "▼"}</button>}
+        </label>
+      )}
+      {simOk && (
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span className="fz-meta">Stats</span>
+          <div className="fz-seg sm">
+            {[["model", "Model"], ["sim", "Simulation"]].map(([k, l]) => (
+              <button key={k} className={src === k ? "on" : ""} onClick={() => { setSource(k); setLimit(PAGE); }}>{l}</button>
+            ))}
+          </div>
+          <InfoTip label="Model vs simulation" title="Model or simulation?">
+            <p><b>Model</b>: our projection from each player's last three seasons, adjusted for his new team.</p>
+            <p><b>Simulation</b>: plays every team through 100 seasons of 82 games with injuries, rotation minutes and who shares the ball, and averages what each player does. The two agree closely; where they differ, the roster is doing something the history cannot see.</p>
+          </InfoTip>
+        </div>
+      )}
+      {isCats && f.isH2H && (
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span className="fz-meta">Value</span>
+          <div className="fz-seg sm">
+            {[["g", "G-score"], ["z", "Z-score"]].map(([k, l]) => (
+              <button key={k} className={metric === k ? "on" : ""} onClick={() => setMetric(k)}>{l}</button>
+            ))}
+          </div>
+          <InfoTip label="G-score vs Z-score" title="G-score or Z-score?">{valueTip}</InfoTip>
+        </div>
+      )}
+    </>
+  );
+  const puntRow = isCats && (
+    <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+      <span className="fz-sub" style={{ fontSize: 13, width: 40 }}>Punt</span>
+      {cats.map((c) => {
+        const off = punt.includes(c);
+        return (
+          <button key={c} className={`fz-punt${off ? " off" : ""}`} aria-pressed={off}
+            disabled={!off && np >= 3} onClick={() => togglePunt(c)}>{c}</button>
+        );
+      })}
+      <span className="fz-meta" style={{ marginLeft: 8 }}>
+        {np >= 3 ? "Punting more than 3 rarely wins a week." : np ? `${np} punted · ranks recomputed` : "Tap a category to punt it"}
+      </span>
+    </div>
+  );
+
   return (
     <>
       <SEO title="Fantasy rankings" description="Format-correct basketball fantasy rankings with tiers, punt builds and ADP value." path="/basketball/fantasy/rankings" />
@@ -241,62 +341,63 @@ export default function FantasyRankings() {
           </div>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-          <label className={`fz-search${q ? " filled" : ""}`}>
-            <PaIcon name="search" size={16} color="#8a8a8a" />
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search players" aria-label="Search players" />
-          </label>
-          <div style={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
-            {POS.map((k) => <button key={k} className={`fz-chipbtn${pos === k ? " on" : ""}`} onClick={() => setPos(k)}>{k}</button>)}
+        <div className="fz-sticky">
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: phone ? "nowrap" : "wrap", overflowX: phone ? "auto" : "visible" }}>
+            <label className={`fz-search${q ? " filled" : ""}`} style={phone ? { minWidth: 150 } : undefined}>
+              <PaIcon name="search" size={16} color="#8a8a8a" />
+              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search players" aria-label="Search players" />
+            </label>
+            <div style={{ display: "flex", gap: 2, flexWrap: phone ? "nowrap" : "wrap" }}>
+              {POS.map((k) => <button key={k} className={`fz-chipbtn${pos === k ? " on" : ""}`} onClick={() => setPos(k)}>{k}</button>)}
+            </div>
+            {!phone && filterRow}
           </div>
-          <span className="fz-desk-only" style={{ width: 1, height: 22, background: "#262626" }} />
-          <Dropdown label="Archetype" value={arch} options={archOpts} onPick={setArch} />
-          <button className={`fz-chipbtn${flag === "rookie" ? " on" : ""}`} onClick={() => setFlag(flag === "rookie" ? null : "rookie")}>Rookies</button>
-          <Dropdown label="Flags" value={flag === "rookie" ? null : flag} options={flagOpts.filter((o) => o.k !== "rookie")} onPick={setFlag} />
-          <div style={{ flex: 1 }} />
-          {isCats && f.isH2H && (
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span className="fz-meta">Value</span>
-              <div className="fz-seg sm">
-                {[["g", "G-score"], ["z", "Z-score"]].map(([k, l]) => (
-                  <button key={k} className={metric === k ? "on" : ""} onClick={() => setMetric(k)}>{l}</button>
-                ))}
-              </div>
+          {!phone && puntRow}
+          {!phone && (
+            <div className="fz-thead" style={{ gridTemplateColumns: cols }}>
+              {heads.map(([l, a, dim, k]) => {
+                const active = k && (k === "value" ? !sort || sort.key === "value" : sort?.key === k);
+                const dir = k === "value" ? (sort?.key === "value" ? sort.dir : "desc") : sort?.dir;
+                const tip = HEAD_TIPS[l];
+                return (
+                  <span key={l} style={{ textAlign: a, opacity: dim ? 0.35 : 1, display: "flex", alignItems: "center", gap: 4,
+                    justifyContent: a === "right" ? "flex-end" : a === "center" ? "center" : "flex-start" }}>
+                    {k ? (
+                      <button className={`fz-sort ${a[0]}${active && (sort || k !== "value" || l !== "#") ? " on" : ""}`} onClick={() => pickSort(nextSort(sort, k))}
+                        aria-label={`Sort by ${l}`} style={{ width: "auto" }}
+                        title={l === valueHead || l === "Weekly best" || l === "Over repl." ? "Sort by value" : `Sort by ${l}`}>
+                        {l}<span className="ar" aria-hidden="true">{active ? (dir === "asc" ? "▲" : "▼") : "▼"}</span>
+                      </button>
+                    ) : l}
+                    {tip && <InfoTip label={`What is ${l}?`} align={a === "right" ? "right" : "left"}><p>{tip}</p></InfoTip>}
+                    {isCats && f.isH2H && l === valueHead && (
+                      <InfoTip label="G-score vs Z-score" title={`${valueHead} explained`}>{valueTip}</InfoTip>
+                    )}
+                  </span>
+                );
+              })}
             </div>
           )}
         </div>
-
-        {isCats && (
-          <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-            <span className="fz-sub" style={{ fontSize: 13, width: 40 }}>Punt</span>
-            {cats.map((c) => {
-              const off = punt.includes(c);
-              return (
-                <button key={c} className={`fz-punt${off ? " off" : ""}`} aria-pressed={off}
-                  disabled={!off && np >= 3} onClick={() => togglePunt(c)}>{c}</button>
-              );
-            })}
-            <span className="fz-meta" style={{ marginLeft: 8 }}>
-              {np >= 3 ? "Punting more than 3 rarely wins a week." : np ? `${np} punted · ranks recomputed` : "Tap a category to punt it"}
-            </span>
+        {phone && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>{filterRow}</div>
+            {puntRow}
           </div>
         )}
 
         <div style={{ display: "flex", flexDirection: "column" }}>
-          {!phone && (
-            <div className="fz-thead" style={{ gridTemplateColumns: cols }}>
-              {heads.map(([l, a, dim]) => <span key={l} style={{ textAlign: a, opacity: dim ? 0.35 : 1 }}>{l}</span>)}
-            </div>
-          )}
           {error && !data && <ErrorNote error={error} onRetry={reload} />}
           {loading && !fresh && <SkeletonList rows={10} />}
           <div style={{ opacity: loading && data ? 0.55 : 1, transition: "opacity .15s" }}>
-            {tiers.map((t) => (
-              <div key={`${t.n}-${t.rows[0].player_id}`}>
-                <TierHeader label={`Tier ${t.n}`} drop={phone ? "" : t.drop} />
-                {t.rows.map((p) => (phone ? phoneRow(p) : deskRow(p)))}
-              </div>
-            ))}
+            {flat
+              ? players.map((p) => (phone ? phoneRow(p) : deskRow(p)))
+              : tiers.map((t) => (
+                <div key={`${t.n}-${t.rows[0].player_id}`}>
+                  <TierHeader label={`Tier ${t.n}`} drop={phone ? "" : t.drop} />
+                  {t.rows.map((p) => (phone ? phoneRow(p) : deskRow(p)))}
+                </div>
+              ))}
           </div>
           {fresh && !loading && players.length === 0 && (
             <div className="fz-state">
@@ -308,7 +409,7 @@ export default function FantasyRankings() {
           {fresh && (
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 18, gap: 12, flexWrap: "wrap" }}>
               <span className="fz-meta">
-                Showing {players.length} of {data.matched} · ADP from our model, not from any provider
+                Showing {players.length} of {data.matched} · ADP from Yahoo preseason drafts where we have them, modelled for the rest
                 {isCats || f.kind === "points" ? " · value range = 10th–90th pct" : ""}
               </span>
               {players.length < data.matched && (

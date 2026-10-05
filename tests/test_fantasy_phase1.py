@@ -104,7 +104,8 @@ def test_expected_max_matches_uniform_closed_form():
     assert table[0] == 0
 
 
-def test_points_replacement_level_and_value():
+def test_points_replacement_level_and_value(monkeypatch):
+    monkeypatch.setattr(val, "REPL_CREDIT", 0.0)        # saf toplam semantiği; kredi ayrı test edilir (test_fantasy_valuation_credit)
     df = _pool(n=100)
     df["PROJ_GP"] = 70.0
     fmt = get_format("yahoo_h2h_points", teams=6)   # havuz 6 × 13 = 78

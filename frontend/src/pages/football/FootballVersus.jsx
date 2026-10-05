@@ -6,8 +6,11 @@ import { useAuth } from "../../contexts/AuthContext";
 import { playTie, tieOdds, buildSide } from "../../game/football/headToHead";
 import { ModeInfoButton } from "../../game/football/ModeAbout";
 import SameScreenDraft from "../../game/football/SameScreenDraft";
+import { FootballVersusHire, FootballVersusMatchup, FootballVersusLegs, FootballVersusFinal } from "../../game/ui/VersusFootball";
+import { drawManagers } from "../../game/football/managers";
+import { sideNumbers, roleCoverage, pillarsOf, legStats } from "../../game/football/versusFit";
 import { PageGlow } from "../../components/states/States";
-import RoomLobby from "../../game/RoomLobby";
+import { RoomEntry, RoomGate, RoomShare } from "../../game/ui/RoomUi";
 import RoomDraft from "../../game/football/RoomDraft";
 import { UsersIcon, GlobeIcon } from "../../game/GameIcons";
 import "../../game/game.css";
@@ -130,34 +133,60 @@ function TieResult({ tie, odds }) {
 // yoktu. Artık basketboldaki gibi gerçek draft: yılan sırası, çark, slot
 // yerleşimi (draft.js + SameScreenDraft.jsx), sonunda aynı eleme motoru.
 function SameScreen({ coeffs }) {
+  const [sq, setSq] = useState(null);                 // iki taraf: oyuncular, yedekler, dizilişler
+  const [mgrs, setMgrs] = useState({ 1: null, 2: null });
+  const [mgrOpts, setMgrOpts] = useState({ 1: [], 2: [] });
+  const [stage, setStage] = useState("draft");        // draft | hire | matchup | legs | final
+  const [cover, setCover] = useState({ 1: null, 2: null });
+  const [covLoading, setCovLoading] = useState(false);
   const [tie, setTie] = useState(null);
   const [odds, setOdds] = useState(null);
+  const [stats, setStats] = useState(null);
+  const [shown, setShown] = useState(0);              // kaç ayak açıldı
+  const [selLeg, setSelLeg] = useState(1);
 
-  const play = (sq) => {
+  const names = sq ? { 1: sq[1].name, 2: sq[2].name } : null;
+  const reset = () => { setSq(null); setMgrs({ 1: null, 2: null }); setMgrOpts({ 1: [], 2: [] }); setStage("draft"); setCover({ 1: null, 2: null }); setTie(null); setOdds(null); setStats(null); setShown(0); setSelLeg(1); };
+
+  const onDraftDone = (squads) => { setSq(squads); setMgrOpts({ 1: drawManagers(4), 2: [] }); setStage("hire"); };
+  const hire = (seat, m) => {
+    const next = { ...mgrs, [seat]: m };
+    setMgrs(next);
+    if (seat === 1) { setMgrOpts((o) => ({ ...o, 2: drawManagers(4) })); return; }
+    setStage("matchup"); setCovLoading(true);
+    Promise.all([roleCoverage(sq[1]), roleCoverage(sq[2])]).then(([a, b]) => { setCover({ 1: a, 2: b }); setCovLoading(false); });
+  };
+  const numbers = sq ? { 1: sideNumbers(sq[1], mgrs[1]), 2: sideNumbers(sq[2], mgrs[2]) } : null;
+
+  const playLeg1 = () => {
     if (!coeffs) return;
-    const a = buildSide(sq[1].name, sq[1].players, null, sq[1].positionPenalty);
-    const b = buildSide(sq[2].name, sq[2].players, null, sq[2].positionPenalty);
+    const a = numbers[1].side, b = numbers[2].side;
     const t = playTie(coeffs, a, b);
     t.sides = { a, b };
-    setTie(t);
-    setOdds(tieOdds(coeffs, a, b, 400));
+    // Maç istatistiği: skor motordan, kimin attığı sezon verisinden. Ayak 1'de 1 ev sahibi, ayak 2'de 2.
+    setStats({
+      1: { 1: legStats(sq[1].players, t.legs[0].hg), 2: legStats(sq[2].players, t.legs[0].ag) },
+      2: { 1: legStats(sq[1].players, t.legs[1].ag), 2: legStats(sq[2].players, t.legs[1].hg) },
+    });
+    setTie(t); setOdds(tieOdds(coeffs, a, b, 400)); setShown(1); setSelLeg(1); setStage("legs");
   };
+  const playLeg2 = () => { setShown(2); setSelLeg(2); };
 
-  if (!tie) return <SameScreenDraft onDone={play} />;
-
-  return (
-    <div className="g-result g-tie-page" style={{ "--g": ACC }}>
-      <PageGlow tint="#60a5fa" />
-      <div className="g-sq-top">
-        <span className="g-wordmark">Head to head</span>
-        <span className="meta">Same Screen · two legs</span>
-      </div>
-      <TieResult tie={tie} odds={odds} />
-      <div className="g-tie-actions">
-        <button className="aura-rating-btn g-result-again" onClick={() => { setTie(null); setOdds(null); }}>Rematch</button>
-      </div>
-    </div>
-  );
+  if (stage === "draft") return <SameScreenDraft onDone={onDraftDone} />;
+  if (stage === "hire") {
+    const active = mgrs[1] ? 2 : 1;
+    return <FootballVersusHire names={names} shapes={{ 1: sq[1].shape, 2: sq[2].shape }} active={active} options={mgrOpts} hired={mgrs} onHire={hire} />;
+  }
+  if (stage === "matchup") {
+    return <FootballVersusMatchup names={names} squads={sq} managers={mgrs} numbers={numbers} coverage={cover}
+      pillars={pillarsOf(cover[1], cover[2])} loading={covLoading || !coeffs} onPlay={playLeg1} />;
+  }
+  if (stage === "legs" && tie) {
+    return <FootballVersusLegs tie={tie} odds={odds} names={names} shown={shown} stats={stats} selected={selLeg} onSelect={setSelLeg}
+      onNext={playLeg2} onSeeResult={() => setStage("final")} />;
+  }
+  if (stage === "final" && tie) return <FootballVersusFinal tie={tie} names={names} squads={sq} managers={mgrs} onAgain={reset} />;
+  return null;
 }
 
 /* ── Oda: With a Friend / Online ───────────────────────────────────────────── */
@@ -196,61 +225,17 @@ function RoomPanel({ mode }) {
       .catch((e) => setMsg(String(e.message || e)));
   }, [code]);
 
-  /* Odaya girilmemiş: kompakt başlık (handoff 3a/14a kalıbı) + açıklama */
+  /* Odaya girilmemiş: giriş yapılmadıysa kapı, yapıldıysa kur / katıl (mockup 5a, 5o) */
   if (!room) {
+    if (!isLoggedIn) {
+      return <RoomGate sport="football" title={M.title} onSignIn={() => navigate("/login")}
+        onAlt={() => navigate("/football/game/same-screen")} altLabel="Play Same Screen instead" />;
+    }
     return (
-      <div className="relative">
-        <PageGlow tint={ACC} />
-        <header className="g-idle-hero compact">
-          <div>
-            <h1 className="g-wordmark lg">{M.title}</h1>
-            <p>{M.sub}</p>
-          </div>
-          <div className="g-idle-actions">
-            <div className="g-seg" role="tablist">
-              {[["friend", "With a Friend"], ["online", "Online"]].map(([k, l]) => (
-                <button key={k} role="tab" aria-selected={mode === k}
-                  className={`g-seg-btn${mode === k ? " on" : ""}`}
-                  onClick={() => mode !== k && navigate(`/football/game/${k}`)}>{l}</button>
-              ))}
-            </div>
-            {isLoggedIn && (
-              <div className="g-join">
-                <input className="aura-ghost-input" placeholder="Room code" aria-label="Room code"
-                  value={code} onChange={(e) => setCode(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && code.trim().length >= 4 && join()} />
-                <button onClick={join} disabled={code.trim().length < 4} className="pa-btn-secondary">Join</button>
-              </div>
-            )}
-            {isLoggedIn ? (
-              <button onClick={create} className="aura-rating-btn g-idle-cta">Open a room</button>
-            ) : (
-              <button onClick={() => navigate("/login")} className="aura-rating-btn g-idle-cta">Sign in to play</button>
-            )}
-          </div>
-        </header>
-
-        <div className="g-room-note">
-          <p>
-            {mode === "friend"
-              ? "Open a room and send the six-character code to whoever you want to play. "
-              : "Open a room and wait, or paste a code you were given. "}
-            Each of you builds an eleven and neither sees the other's until both have
-            sent. The tie is played on the server, from player ids — quality and
-            chemistry are computed there, with the same definitions the season panel
-            uses. Working it out in the browser would amount to letting a player report
-            their own score.
-          </p>
-          {!isLoggedIn && (
-            <p>
-              A room needs an account so the two devices can find each other.{" "}
-              <Link to="/football/game/same-screen" style={{ color: ACC }}>Same Screen</Link>{" "}
-              works without one.
-            </p>
-          )}
-          {msg && <p style={{ color: RED }}>{msg}</p>}
-        </div>
-      </div>
+      <RoomEntry sport="football" modeLabel={`Football · ${M.title.toUpperCase()}`} onCreate={create} creating={false}
+        code={code} onCode={setCode} onJoin={join} joining={false} error={msg}
+        hostText={mode === "friend" ? "Get a 6-character code and send it to whoever you want to play." : "Open a room and wait for an opponent, or paste a code you were given."}
+        rulesLine="Two legs · extra time and penalties · resolved on the server · squads hidden until both send" />
     );
   }
 
@@ -270,27 +255,14 @@ function RoomPanel({ mode }) {
     );
   }
 
-  // Tek başına bekliyor: handoff 14a lobisi — kod tek büyük an.
+  // Tek başına bekliyor: kodu paylaş (mockup 5p)
   return (
-    <RoomLobby
-      wordmark={M.title} accent={ACC}
-      modes={[{ key: "friend", label: "With a Friend", to: "/football/game/friend" },
-              { key: "online", label: "Online", to: "/football/game/online" }]}
-      activeMode={mode}
-      kicker={mode === "friend" ? "Room code — send it to whoever you want to play" : "Room open — waiting for an opponent"}
-      code={room.room_code}
+    <RoomShare sport="football" modeLabel="Football" code={room.room_code}
       sub={mode === "friend" ? "The draft starts when they join." : "The draft starts when someone joins."}
-      host={{ name: room.p1_name || "You", status: "Host · ready" }}
-      opponent={null}
-      waitingLabel="Waiting to join"
-      rules={[
-        { k: "Format", v: "Two legs" }, { k: "Ties", v: "Extra time, penalties" },
-        { k: "Resolved", v: "On the server" }, { k: "Squads", v: "Hidden until both send" },
-      ]}
-      cta={{ label: "Leave room", secondary: true, onClick: () => { setRoom(null); setCode(""); } }}
-    >
-      {msg && <p style={{ color: RED, fontSize: 13, marginTop: 12 }}>{msg}</p>}
-    </RoomLobby>
+      host={{ name: room.p1_name || "You", tag: "host", status: "Ready" }} opponent={null}
+      rulesLine="Two legs · extra time and penalties · resolved on the server · squads hidden until both send"
+      inviteUrl={`${window.location.origin}/football/game/${mode}?room=${room.room_code}`}
+      onLeave={() => { setRoom(null); setCode(""); }} />
   );
 }
 
@@ -312,6 +284,17 @@ export default function FootballVersus({ mode: fixedMode }) {
       .then((d) => setCoeffs(d.available ? d.coeffs : null))
       .catch(() => setCoeffs(null));
   }, []);
+
+  // Same Screen kendi tam ekran sahnesini çiziyor (game/ui/VersusFootball): sayfa kabuğu yok, kurallar ⓘ'si köşede.
+  if (fixedMode === "same") {
+    return (
+      <div className="h-full relative">
+        <SEO title="Head to head — Football" description="Put two elevens against each other over two legs." path="/football/versus" noindex />
+        <SameScreen coeffs={coeffs} />
+        <div className="absolute top-3 right-4 z-10"><ModeInfoButton mode="same" /></div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-full overflow-y-auto relative">

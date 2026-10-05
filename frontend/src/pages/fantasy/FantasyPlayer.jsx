@@ -8,7 +8,7 @@ import { ARCHETYPE_COLOR } from "../../constants/archetypeColors";
 import { SEO } from "../../hooks/useSEO";
 import { fz } from "./fantasyApi";
 import {
-  ArchChip, CatBar, ErrorNote, FLAGS, HeatCell, RangeBar, SkeletonList, fmt1,
+  ArchChip, CatBar, ErrorNote, FLAGS, HeatCell, RangeBar, SkeletonList, TREND_NOTE, fmt1,
 } from "./ui";
 import { useAsync, useFantasy } from "./useFantasy";
 
@@ -63,6 +63,7 @@ export default function FantasyPlayer() {
   const navigate = useNavigate();
   const { data, error, loading, reload } = useAsync(
     () => fz.player(id, f.apiFormat, f.apiTeams), JSON.stringify([id, f.apiFormat, f.apiTeams]));
+  const sim = data?.simulation;
   const [card, setCard] = useState(null);
   const p = data?.player;
 
@@ -104,7 +105,10 @@ export default function FantasyPlayer() {
   ];
 
   const flags = (p.flags || []).filter((k) => FLAGS[k]);
-  const flagText = (k) => (k === "injury_risk" ? `${FLAGS[k].d} We project ${Math.round(p.proj_gp)} games; range ${Math.round(games[0])}–${Math.round(games[1])}.` : FLAGS[k].d);
+  const trendKeys = ["rising", "steady", "declining"];
+  const flagText = (k) => (k === "injury_risk" ? `${FLAGS[k].d} We project ${Math.round(p.proj_gp)} games; range ${Math.round(games[0])}–${Math.round(games[1])}.`
+    : trendKeys.includes(k) && p.trend_pct != null ? `${FLAGS[k].d} ${p.trend_pct > 0 ? "+" : p.trend_pct < 0 ? "−" : ""}${Math.abs(p.trend_pct)}% a season. ${TREND_NOTE}` : FLAGS[k].d);
+  const series = data.trend_series ? Object.entries(data.trend_series) : [];
 
   return (
     <>
@@ -130,11 +134,31 @@ export default function FantasyPlayer() {
               <span className="fz-h3">Flags</span>
               {flags.map((k) => (
                 <div key={k} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                  <span className={`fz-flag${FLAGS[k].bad ? " bad" : ""}`} style={{ height: 22, flexShrink: 0 }}>{FLAGS[k].l}</span>
+                  <span className={`fz-flag${FLAGS[k].bad ? " bad" : FLAGS[k].good ? " good" : ""}`} style={{ height: 22, flexShrink: 0 }}>{FLAGS[k].l}</span>
                   <span className="fz-sub" style={{ fontSize: 13, lineHeight: 1.45 }}>{flagText(k)}</span>
                 </div>
               ))}
               {!flags.length && <span className="fz-sub" style={{ fontSize: 13 }}>No team, role or availability flags.</span>}
+              {p.ctx_min_ratio != null && Math.abs(p.ctx_min_ratio - 1) >= 0.03 && (
+                <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                  <span className="fz-flag" style={{ height: 22, flexShrink: 0 }}>Team context</span>
+                  <span className="fz-sub" style={{ fontSize: 13, lineHeight: 1.45 }}>
+                    Minutes are adjusted ×{p.ctx_min_ratio.toFixed(2)} for this roster: new teams and deep rotations have been over-projected in past seasons, and teammates who share the ball cost usage.
+                  </span>
+                </div>
+              )}
+              {series.length > 1 && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 4 }}>
+                  <span className="fz-meta">Fantasy points per 36 minutes</span>
+                  <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
+                    {series.map(([s, v]) => (
+                      <span key={s} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                        <span className="fz-num" style={{ fontSize: 16 }}>{fmt1(v)}</span><span className="fz-meta">{s}</span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -186,6 +210,28 @@ export default function FantasyPlayer() {
                   </div>
                 ))}
                 <span className="fz-meta">Games {Math.round(p.proj_gp)} · range {Math.round(games[0])}–{Math.round(games[1])}</span>
+                {sim && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 18 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                      <span className="fz-h2">Team simulation</span><span className="fz-meta">mean · 10th–90th pct</span>
+                    </div>
+                    {[["Points", "pts"], ["Rebounds", "reb"], ["Assists", "ast"], ["Steals", "stl"], ["Blocks", "blk"], ["3-pointers", "fg3m"], ["Turnovers", "tov"]].map(([l, k]) => {
+                      const v = sim.per_game[k];
+                      const model = p.per_game[k];
+                      return (
+                        <div key={k} style={{ display: "grid", gridTemplateColumns: "110px 54px 1fr 92px", gap: 12, alignItems: "center", minHeight: 28 }}>
+                          <span className="fz-sub" style={{ fontSize: 13 }}>{l}</span>
+                          <span className="fz-num" style={{ fontSize: 17, textAlign: "right" }}>{fmt1(v.mean)}</span>
+                          <span className="fz-meta">{model != null && Math.abs(v.mean - model) >= 0.05 ? `model ${fmt1(model)}` : "same as model"}</span>
+                          <span className="fz-meta" style={{ textAlign: "right" }}>{fmt1(v.p10)}–{fmt1(v.p90)}</span>
+                        </div>
+                      );
+                    })}
+                    <span className="fz-meta" style={{ lineHeight: 1.5 }}>
+                      Fantasy points {fmt1(sim.fp.mean)} a game ({fmt1(sim.fp.p10)}–{fmt1(sim.fp.p90)}) · {fmt1(sim.mpg)} minutes · {Math.round(sim.gp)} games. Averages over 100 simulated seasons with injuries, rotation minutes and teammates sharing the ball.
+                    </span>
+                  </div>
+                )}
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 {isCats ? (

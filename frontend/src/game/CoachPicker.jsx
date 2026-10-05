@@ -1,70 +1,85 @@
 import { useState } from "react";
+import { gameClass } from "./ui/sportTheme";
 import { TrophyIcon } from "./GameIcons";
-import "./game.css";
+import "./ui/sport-theme.css";
+import "./ui/setup.css";
+import "./ui/result.css";
 
-// ── Koç seçimi (handoff 12a) ───────────────────────────────────────────────
-// Tek oyunculu, Same Screen ve With a Friend paylaşıyor. İki adım: önce kart
-// seçilir (mor halka + ışık), sonra CTA "SIMULATE 82 WITH <NAME>" onaylar —
-// yanlış tıklama artık sezonu başlatmıyor.
+// ── Koç / menajer seçimi (mockup 3d / 4d, mobil 12f / 13e) ──────────────────
+// Tek oyunculu, Same Screen ve With a Friend paylaşıyor. İki adım: önce kart seçilir,
+// sonra CTA ("HIRE STEVE KERR") onaylar — yanlış tıklama sezonu başlatmıyor.
+// sport="football" → menajer: ATTACK/DEFENCE notları, tercih edilen diziliş, eşleşme göstergesi.
 
-// A+..F → 0-1. Renk buradan türüyor, elle hex yazılmıyor.
-const GRADE_VAL = {
-  "A+": 1.00, A: 0.92, "A-": 0.85, "B+": 0.78, B: 0.70, "B-": 0.63,
-  "C+": 0.56, C: 0.48, "C-": 0.41, "D+": 0.34, D: 0.27, "D-": 0.20, F: 0.10,
-};
-const gv = (g) => GRADE_VAL[g] ?? 0.5;
-const VAL_HEX = (v) => v >= 0.85 ? "#4ade80" : v >= 0.70 ? "#facc15" : v >= 0.50 ? "#fb923c" : "#f87171";
-const initials = (n) => (n || "").split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
+const gradeColor = (g) => (g?.[0] === "A" ? "var(--sb-good)" : g?.[0] === "B" ? "var(--sb-warn)" : g?.[0] === "C" ? "var(--sb-warn-2)" : "var(--sb-bad)");
+const initials = (n) => (n || "").split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase();
+const titleCase = (s) => (s || "").toLowerCase().replace(/(^|[\s-])\w/g, (c) => c.toUpperCase());
 
-function CoachCard({ coach, selected, onSelect }) {
-  const oHex = VAL_HEX(gv(coach.off)), dHex = VAL_HEX(gv(coach.def));
-  const rings = Math.min(coach.champs || 0, 6);
-  return (
-    <button type="button" onClick={() => onSelect(coach)} aria-pressed={selected}
-      className={`g-coach-card${selected ? " on" : ""}`}>
-      <span className="g-coach-glow" />
-      <span className="g-coach-ini">{initials(coach.name)}</span>
-      <span className="g-coach-name">{coach.name}</span>
-      <span className="g-coach-era">{coach.years}{coach.tag ? ` · ${coach.tag.toLowerCase().replace(/^\w/, c => c.toUpperCase())}` : ""}</span>
-      <span className="g-coach-grades">
-        <span><b style={{ "--c": oHex }}>{coach.off}</b><i>Offense</i></span>
-        <span><b style={{ "--c": dHex }}>{coach.def}</b><i>Defense</i></span>
-      </span>
-      <span className="g-coach-rings">
-        {rings > 0
-          ? <>{Array.from({ length: rings }, (_, i) => <TrophyIcon key={i} size={15} />)}
-              <em>{coach.champs} ring{coach.champs === 1 ? "" : "s"}</em></>
-          : <em className="none">No rings</em>}
-      </span>
-    </button>
-  );
+function normalize(o, sport, shape) {
+  if (sport === "football") {
+    const match = shape && o.shape === shape;
+    return {
+      name: o.name, sub: `${titleCase(o.tag || "Balanced")} · ${o.shape}`,
+      grades: [["Attack", o.att], ["Defence", o.def]],
+      foot: <em className={match ? "match" : "none"}>{match ? `Prefers ${o.shape} ✓` : `Prefers ${o.shape}`}</em>,
+    };
+  }
+  const rings = Math.min(o.champs || 0, 6);
+  return {
+    name: o.name, sub: `${o.years}${o.tag ? ` · ${titleCase(o.tag)}` : ""}`,
+    grades: [["Offense", o.off], ["Defense", o.def]],
+    foot: rings > 0
+      ? <>{Array.from({ length: rings }, (_, i) => <TrophyIcon key={i} size={15} />)}<em>{o.champs} ring{o.champs === 1 ? "" : "s"}</em></>
+      : <em className="none">No rings</em>,
+  };
 }
 
-export default function CoachPicker({ title, subtitle, options, onPick, waitingFor = null,
-                                      step = "Step 3 of 4", cta = (n) => `Simulate 82 with ${n}` }) {
+export default function CoachPicker({
+  sport = "basketball", shape, title, subtitle, options, onPick, waitingFor = null,
+  step = "Step 3 of 4", cta = (last, full) => `Hire ${full}`,
+}) {
   const [sel, setSel] = useState(null);
-  const lastName = sel?.name?.split(" ").slice(-1)[0];
+  const football = sport === "football";
+  const role = football ? "manager" : "coach";
+  const last = sel?.name?.split(" ").slice(-1)[0];
   return (
-    <section className="g-coach">
-      <header className="g-coach-hero">
-        <span className="g-coach-step">{step}</span>
-        <h2>{title || "Hire your coach"}</h2>
-        <p>{subtitle || "Offense and defense grades shift your rating all season. Rings add a boost once the playoffs start."}</p>
+    <section className={gameClass(sport, "sb-coach")}>
+      <header className="sb-coach-head">
+        <span className="sb-mono step">{step}</span>
+        <h2>{title || `Hire your ${role}`}</h2>
+        <p>{subtitle || (football
+          ? "Each manager has a preferred shape. A match with yours gives a bigger bonus; their attack and defence grades shift your rating."
+          : "Offense and defense grades shift your rating all season. Rings add a boost once the playoffs start.")}</p>
       </header>
 
       {waitingFor ? (
-        <p className="g-coach-wait">Waiting for {waitingFor} to hire a coach…</p>
+        <p className="sb-coach-wait">Waiting for {waitingFor} to hire a {role}…</p>
       ) : (
         <>
-          <div className="g-coach-grid">
-            {options.map(c => (
-              <CoachCard key={c.name} coach={c} selected={sel?.name === c.name} onSelect={setSel} />
-            ))}
+          <div className="sb-coach-grid">
+            {options.map((o) => {
+              const v = normalize(o, sport, shape);
+              const on = sel?.name === o.name;
+              return (
+                <article key={o.name} className={`sb-ccard${on ? " on" : ""}`}>
+                  <span className="ini">{initials(o.name)}</span>
+                  <h3>{o.name}</h3>
+                  <span className="sub">{v.sub}</span>
+                  <span className="grades">
+                    {v.grades.map(([label, g]) => (
+                      <span key={label}><b style={{ color: gradeColor(g) }}>{g}</b><i>{label}</i></span>
+                    ))}
+                  </span>
+                  <span className="foot">{v.foot}</span>
+                  <button type="button" className={`sb-btn${on ? " solid" : ""}`} aria-pressed={on} onClick={() => setSel(o)}>
+                    {on ? "Selected" : "Choose"}
+                  </button>
+                </article>
+              );
+            })}
           </div>
-          <div className="g-coach-actions">
-            <button className={`aura-rating-btn g-coach-cta${sel ? "" : " idle"}`} disabled={!sel}
-              onClick={() => sel && onPick(sel)}>
-              {sel ? cta(lastName) : "Pick a coach"}
+          <div className="sb-coach-actions">
+            <button type="button" className="sb-btn solid cta md" disabled={!sel} onClick={() => sel && onPick(sel)}>
+              {sel ? cta(last, sel.name) : `Pick a ${role}`}
             </button>
           </div>
         </>

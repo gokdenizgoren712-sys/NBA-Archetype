@@ -16,26 +16,29 @@ import "./game.css";
 // pre-sim banner'da değil (bkz. plan: docs/plans/fancy-cooking-gizmo.md).
 const RH_ACCENT_STYLE = { "--accent": "#FFB11B", "--accent-a": "rgba(255,177,27,.10)", "--accent-line": "rgba(255,177,27,.35)" };
 
-export default function SeasonSimPanel({
+// Kendi sezon motorunu kuran eski kullanım (Same Screen / With a Friend bonus koşusu).
+export default function SeasonSimPanel(props) {
+  const { isLoggedIn, token } = useAuth();
+  const { players, bench = [], simEra, fit, affinity01, coach = null, gameScoreId = null, fixedSeason = null, excludeTeam = null, noSave = false } = props;
+  const sim = useSeasonSim({ players, bench, simEra, fit, affinity01, coach, gameScoreId, fixedSeason, excludeTeam, noSave, isLoggedIn, token });
+  return <SeasonSimView sim={sim} {...props} />;
+}
+
+export function SeasonSimView({
+  sim, hideIdle = false,
   players, simEra, fit, affinity01, bench = [], coach = null, gameScoreId = null, enableRealHistory = false,
-  // Board Challenge bonus koşusu (bkz. WithAFriendGame.jsx BonusHistoryPanel):
-  // fixedSeason doluysa sezon adımı hiç gösterilmez, mod her zaman "history"
-  // kilitlenir, excludeTeam takım listesinden çıkarılır (aynı sezonda iki
-  // kadro aynı gerçek takımın yerine geçemez), noSave true'ysa hiçbir sonuç
-  // leaderboard'a yazılmaz (bu koşu 7 maçlık seriden tamamen ayrı bir ekstra).
   fixedSeason = null, excludeTeam = null, noSave = false,
 }) {
-  const { isLoggedIn, token } = useAuth();
-  // Mantık ortak motorda (game/seasonRun.js): RankIt uygulamasının mobil sezon
-  // ekranları da aynı sezonu oynuyor, ikisi aynı skor tablosuna yazıyor.
+  const { isLoggedIn } = useAuth();
   const {
     result, revealGames, revealRounds, stage, minutes, dynasty, leagueLoading, league, leagueWarning,
     bracket, rhTitleWon, simMode, rhStep, rhSeasons, rhSchedule, rhLoading, rhError,
     minuteBank, rhActive, visibleRhTeams, shownWins, shownLosses, shownRealWins, shownRealLosses, month,
     run, defend, startBracket, updateBracket, pickRhSeason, pickRhTeam, setSimMode, backToSeasons, changeTeam, bumpMinute,
-  } = useSeasonSim({ players, bench, simEra, fit, affinity01, coach, gameScoreId, fixedSeason, excludeTeam, noSave, isLoggedIn, token });
+  } = sim;
   // Faz D: "Season Awards" tablosunda Regular Season/Playoffs toggle.
   const [statView, setStatView] = useState("regular");   // "regular" | "playoffs"
+  if (hideIdle && stage === "idle") return null;       // idle ekranını sonuç sayfası çiziyor
 
   return (
     <div className="g-panel p-4 space-y-3" style={rhActive ? RH_ACCENT_STYLE : undefined}>

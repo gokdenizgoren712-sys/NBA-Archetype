@@ -9,18 +9,19 @@
 // için de başsız test edilebiliyor (sıra doğru mu, havuz tükendiğinde ne olur).
 //
 // BASKETBOLDAN FARKLAR
-//   • 11 seçim (ilk 11), 9 değil. Yedek kulübesi drafta girmiyor: eleme skoru
-//     yalnızca ilk 11'den hesaplanıyor, yedek seçtirmek 14 tur daha uzatıp
-//     sonuca hiç dokunmazdı.
+//   • 18 seçim (11 ilk + 7 yedek), 9 değil. Yedekler eleme skoruna girmiyor
+//     (skor yalnız ilk 11'den) ama kadronun parçası: tek oyunculu modla aynı
+//     18'lik kadro, kırılgan bir kadroyu yedekler dengeliyor.
 //   • Seçilen oyuncu bir SLOT'a yerleşiyor. Futbolda "kaleci aldım ama kalede
 //     kimse yok" mümkün, o yüzden yerleşim seçimin parçası.
 //   • Kaleci slotu sert kural: yalnız kaleci girer, kaleci de başka yere giremez
 //     (positions.canPlace). Diğer her yer cezalı ama serbest.
 
-import { FORMATIONS } from "./formations.js";
+import { FORMATIONS, benchSlots } from "./formations.js";
 import { canPlace, posPenaltyFor } from "./positions.js";
 
 export const XI_PICKS = 11;
+export const SQUAD_PICKS = 18;   // 11 ilk + 7 yedek
 
 /** Karşı koltuk. İki kişilik oyun — üçüncü bir oyuncu yok. */
 export const other = (seat) => (seat === 1 ? 2 : 1);
@@ -52,10 +53,12 @@ export function createDraft({ shapes, wheelMode = "round", first = 1 } = {}) {
 export const activeSeat = (d) => d.queue[d.turnPos] ?? d.queue[0];
 export const waitingSeat = (d) => other(activeSeat(d));
 
-/** Bir tarafın slot listesi — yalnız saha, yedek yok. */
+/** Bir tarafın slot listesi: 11 saha + 7 yedek (tek oyunculu moddaki 18'lik kadro). */
 export function slotsOf(d, seat) {
-  return FORMATIONS[d.shapes[seat]]?.slots || [];
+  const f = FORMATIONS[d.shapes[seat]];
+  return f ? [...f.slots, ...benchSlots()] : [];
 }
+export const pitchOf = (d, seat) => FORMATIONS[d.shapes[seat]]?.slots || [];
 
 export const filled = (d, seat) => Object.keys(d.squads[seat]).length;
 export const isComplete = (d, seat) => filled(d, seat) >= slotsOf(d, seat).length;
@@ -87,7 +90,7 @@ export function setPool(d, pool) {
  * Durumu MUTASYONA UĞRATMADAN yeni bir durum döndürür — React state'i ve
  * sunucu durumu aynı fonksiyonu paylaşabilsin diye.
  */
-export function pick(d, seat, player, slotId) {
+export function pick(d, seat, player, slotId, opts = {}) {
   if (seat !== activeSeat(d)) return { ok: false, reason: "not your turn" };
   if (d.takenIds.has(player.PLAYER_ID)) return { ok: false, reason: "already taken" };
   const slot = slotsOf(d, seat).find((s) => s.id === slotId);
@@ -101,7 +104,25 @@ export function pick(d, seat, player, slotId) {
     ...d.squads,
     [seat]: { ...d.squads[seat], [slotId]: { ...player, _slot: slotId } },
   };
-  return { ok: true, state: advance({ ...d, squads, takenIds: taken }) };
+  const next = { ...d, squads, takenIds: taken };
+  // Pick 2 jokeri: aynı havuzdan bir seçim daha, sıra değişmez (taraf dolduysa normal ilerle)
+  if (opts.again && !isComplete(next, seat)) return { ok: true, state: { ...next, phase: "drafting" } };
+  return { ok: true, state: advance(next) };
+}
+
+/** Aynı taraf içinde iki slotu takas et (kilitli kadro ekranındaki son düzenleme). */
+export function swap(d, seat, a, b) {
+  const slots = slotsOf(d, seat);
+  const sa = slots.find((s) => s.id === a), sb = slots.find((s) => s.id === b);
+  if (!sa || !sb || a === b) return { ok: false, reason: "bad slots" };
+  const pa = d.squads[seat][a], pb = d.squads[seat][b];
+  if (pa && !canPlace(pa, sb)) return { ok: false, reason: "A goalkeeper can only stand in goal." };
+  if (pb && !canPlace(pb, sa)) return { ok: false, reason: "A goalkeeper can only stand in goal." };
+  const sq = { ...d.squads[seat] };
+  delete sq[a]; delete sq[b];
+  if (pa) sq[b] = { ...pa, _slot: b };
+  if (pb) sq[a] = { ...pb, _slot: a };
+  return { ok: true, state: { ...d, squads: { ...d.squads, [seat]: sq } } };
 }
 
 /**
@@ -144,12 +165,13 @@ export function poolIsDead(d) {
   return !d.pool.players.some((p) => canPick(d, seat, p));
 }
 
-/** Bir tarafın kadro özeti — eleme motoruna verilecek hâli. */
+/** Bir tarafın kadro özeti — eleme motoruna verilecek hâli. Ceza ve skor yalnız ilk 11'den. */
 export function squadOf(d, seat) {
-  const slots = slotsOf(d, seat);
-  const players = slots.map((s) => d.squads[seat][s.id]).filter(Boolean);
-  const penalty = slots.reduce(
+  const pitch = pitchOf(d, seat);
+  const players = pitch.map((s) => d.squads[seat][s.id]).filter(Boolean);
+  const bench = benchSlots().map((s) => d.squads[seat][s.id]).filter(Boolean);
+  const penalty = pitch.reduce(
     (a, s) => a + (d.squads[seat][s.id] ? posPenaltyFor(d.squads[seat][s.id], s) : 0),
-    0) / Math.max(1, slots.length);
-  return { players, positionPenalty: penalty, shape: d.shapes[seat] };
+    0) / Math.max(1, pitch.length);
+  return { players, bench, positionPenalty: penalty, shape: d.shapes[seat] };
 }

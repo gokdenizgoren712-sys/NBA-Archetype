@@ -227,3 +227,96 @@ Puan formatında ikisi de ayırt gücü göstermiyor (eğim 0.23 / −0.01) — 
 Dış kadrolar: mock'tan tam draft ya da yalnız kullanıcı kadrosu verilirse diğer 11 kadro botlarla tamamlanır (her `seed` farklı rakip seti).
 
 **#5 (maç sayısı modeli) durumu:** kısmen — `K_GP` ve tek seferlik sakatlık kuralı ile projeksiyon düzeldi (bu belgenin önceki bölümleri). Yapılmayan: elle girilebilen sezon öncesi sakatlık tablosu, yaş/dakika yükü etkileri.
+
+## Değerleme: kaçırılan maçın yerine yedek (2026-10-05)
+
+**Sorun (kullanıcı geri bildirimi — Trae Young 184.):** değerleme kaçırılan her maçı SIFIR üretim sayıyordu (`mu = maç başı × oynanacak maç`). Gerçek ligde yerine
+yedek / waiver oyuncusu girer. Trae Young: 38.8 maçta 184., 50 maçta 98., 70 maçta 21. — değer maça aşırı duyarlıydı.
+Maç tahminimizin kendisi hatalı değil: geçen sezon <45, öncesinde ≥62 maç oynayanlar (n=55, 2023-26) ertesi sezon ortalama 45 maç oynadı; modelimiz 50 diyordu.
+Piyasa (Yahoo) onları sağlıklı gibi fiyatlıyor; farkın bir kısmı gerçek (haber bilgisi yok), bir kısmı bizim cezanın fazla sert olması.
+
+**Değişiklik:** `valuation.REPL_CREDIT = 0.75` — üretim = oyuncu·oynanan + 0.75·yedek·(takım maçı − oynanan); yedek = havuz dışı ilk `takım × 3` oyuncunun ortalaması
+(kategoride kategori başına, puanda maç başı puan). Puanda toplam − yedek seviyesi yine aynı kredili toplamdan. `basis="per_game"` etkilenmez.
+
+**Doğrulama:** `python -m src.fantasy.valuation_backtest` (sıralamanın gerçekleşen sezon değeriyle uyumu, büzme kapalı, ilk 200) — kredi 0 → 1.0:
+| sezon / format | Spearman |
+|---|---|
+| 2023-24 9-cat | 0.611 → 0.643 |
+| 2024-25 9-cat | 0.539 → 0.600 |
+| 2025-26 9-cat | 0.392 → 0.435 |
+| 2023-24 puan | 0.620 → 0.679 |
+| 2024-25 puan | 0.587 → 0.678 |
+| 2025-26 puan | 0.436 → 0.524 |
+6/6 sezon-format tutarlı artış (eğri 1.0'a kadar monoton). Sakatlıktan dönenlerde (n=12–16/sezon) tahtanın "olduğundan yukarı" koyma hatası: kredi 0'da +17…+100 sıra, 0.75'te sezonlar arası ortalama ≈ 0. 0.75 seçildi: Spearman 1.0'da biraz daha yüksek ama tam kredi (yedek her zaman hazır) iyimser.
+Strateji backtest (2 sezon, 4 tohum/slot — gürültülü, se ≈ 0.02): piyasaya karşı eşleşme kazanma oranı 9-cat karışık botlarda 0.100 → 0.154 (statik 0.088 → 0.156), ADP botlarında 0.044 → 0.115; puanda 0.026 → −0.012 (karışık) ve −0.043 → +0.035 (ADP) — ayırt edilemez.
+Yahoo'nun 9-CAT sırasıyla uyum: Spearman 0.748 → 0.841; Yahoo ADP ile 0.652 → 0.741 (bağımsız doğrulama: piyasanın bilgisi bizim verimizde yok).
+Etki: Trae Young 184 → 99, Embiid 111 → 61, Walker Kessler 222 → 108, Zach Edey 263 → 164, Anthony Davis 123 → 64. Hâlâ Yahoo'nun gerisinde: maç sayıları gerçekten düşük, sakatlık haberi yok.
+
+**Ayrıca ölçüldü ve YAPILMADI:**
+- Saf "track record" sıralaması (son 3 sezonun gerçek ortalaması, projeksiyon yok, çaylak yok): gerçekleşen sezonu projeksiyondan biraz kötü öngördü (Spearman ortalaması 0.48–0.50 vs 0.52; sezondan sezona değişken: 2025-26'da 0.25 vs 0.38). Ayrı sıralama olarak değer katmıyor; trend etiketi daha anlamlı.
+- Maç ağırlıklarını/çekmeyi yeniden ayarlamak: 573 oyuncu-sezonluk grid'de MAE 15.0 civarında düz; slope 0.81 (kalibre), ortalama yanlılık +5 maç (iyimser) — ayar yok.
+
+**Açık:** sophomore'larda piyasadan çok yukarıdayız (Knueppel 15 vs Yahoo 62, Edgecombe 27 vs 75, Jabari Smith 47 vs 100) — ölçülmedi.
+
+## Trend etiketleri + sophomore incelemesi (2026-10-05)
+
+**Trend etiketi** (`src/fantasy/trends.py`, projeksiyon tablosuna `TREND / TREND_PCT / TREND_SERIES`, `FLAGS`'e rising|steady|declining): son 4 sezonun 36 dakikadaki Yahoo puanı, ≥400 dk sezonlar, ≥2 sezon;
+dakika ağırlıklı doğrusal eğim / ortalama, ±%4 / sezon. Havuzda 130 yükselişte, 158 sabit, 58 düşüşte, 279 etiketsiz (çaylak / tek sezon).
+**Etiket tahmin değiştirmez:** 715 oyuncu-sezonda (2023-26) etiket ile (gerçek − tahmin) artığı arasındaki korelasyon +0.07 (yükselişte +%0.6, sabitte −%2.0, düşüşte −%1.8; se ≈ %1.5). Projeksiyon zaten 7:2:1 + yaş eğrisi.
+Etiket açıklayıcı bağlam olarak gösterilir (Rankings'te Rising / Declining çipi, Flags filtresi, oyuncu sayfasında sezon serisi); arayüz bunu açıkça söyler.
+
+**Sophomore / tek sezonluk projeksiyonlar şişiyor mu?** (3 hedef sezon, geçen sezon ≥800 dk, n=77 tek sezonlu): tahmin − gerçek FP/maç +0.87 (%4), dakika +1.3; üç sezonda da aynı yönde ama küçük (≈1.3 se).
+Kalibrasyon sağlam: eğim 1.06, korelasyon 0.82 (3 sezonlularda 1.05 / 0.88); projeksiyonu yüksek olanlarda (FP ≥ 26, n=26) yanlılık −0.17 — yani üst düzey sophomore'lar şişmiyor.
+Şişme orta grupta: projeksiyonu 18–22 FP olanlarda +3.5 FP / +3.8 dk (n=17) — rol / dakika tahmini (yeni takım bağlamı yok, bkz. "takım bağlamı yok" zayıflığı). Bu yüzden Yahoo'yla farkın büyük kısmı model hatası değil: Yahoo çaylak sezonu iskonto ediyor
+ve takım bağlamını (ör. Edgecombe: PHI'ye Brown, LeBron gelmiş) biliyor. Sophomore'larda tek yönlü fark da yok: Knueppel / Edgecombe / Queen / Bailey / Fears'ı yukarı, Coward / Harper / Flagg / Murray-Boyles'ı aşağı koyuyoruz. Kalibrasyon değişikliği yapılmadı.
+
+## Takım bağlamı katmanı (2026-10-05) — `src/fantasy/context.py`
+
+**Soru (kullanıcı):** simülasyon oyuncuları yeni takımlarında değerlendiriyor mu, Maxey LeBron / Brown'lı PHI'da gerçekten bu kadar üretir mi? **Tespit:** hayır — projeksiyon oyuncunun KENDİ geçmişinden, takım bağlamı yoktu; simülatör yalnız fikstürü yeni takımdan alıyordu.
+
+**Teşhis (2023-26, 1128 oyuncu-sezon, tahmini ≥15 dk):** yeni takıma geçenler (n=420) fantezi puanında +%10, dakikada +%9 fazla tahmin ediliyor (+1.8 FP, +2.0 dk; 3 sezonda da aynı yön); kalanlar kalibre (+0.03).
+Takım projeksiyon dakika toplamı ortalama 274 (bütçe ≈ 241); fazla tahmin rotasyonun 5.–10. sırasında (+1 … +3 dk), ilk üçte yok. Kaba "takım bütçesine normalleştirme" ve rotasyon simülasyonu (sakatlık senaryoları + öncelik-doldurma) yanlılığı sıfırlıyor ama MAE'yi KÖTÜLEŞTİRİYOR (4.53 → 4.56+): gürültü ekliyor.
+
+**İşe yarayan:** (1) yapısal kullanım yükü: hız = a_p · L_{−p}^(−θ), θ göç eden oyuncuların doğal deneyinden (kullanım ≈ 0.77–0.85, ribaund ≈ 0.41–0.56, asist ≈ 0.55–0.58; hedef sezondan bağımsız tahminlerde kararlı), (2) dakika ve (3) hız için ridge regresyonlar: yeni takım, takım dakika fazlası, öncelik-doldurma payı, rotasyon sırası, yaş, yapısal μ.
+**Doğrulama (leave-one-season-out: iki sezonda öğren, üçüncüde uygula):**
+| | 2023-24 | 2024-25 | 2025-26 |
+|---|---|---|---|
+| FP MAE | 4.516 → 4.279 | 4.332 → 4.226 | 4.730 → 4.613 |
+| FP yanlılık | +1.05 → +0.30 | +0.38 → −0.48 | +0.60 → −0.27 |
+| PTS MAE | 2.506 → 2.302 | 2.412 → 2.326 | 2.718 → 2.591 |
+| REB MAE | 0.918 → 0.888 | 0.876 → 0.864 | 0.896 → 0.890 |
+| AST MAE | 0.692 → 0.659 | 0.687 → 0.676 | 0.738 → 0.728 |
+| dakika MAE / yanlılık | 4.04 → 3.90 / +1.33 → +0.35 | 3.96 → 3.92 / +0.67 → −0.37 | 4.22 → 4.20 / +1.04 → +0.09 |
+Dört istatistikte ve üç sezonun hepsinde MAE düştü; ortalama |yanlılık| 0.68 → 0.35 (2024-25'te hafif aşırı düzeltme: 0.38 → 0.48). Ridge 1–30 arası duyarsız (3 seçildi).
+Değerleme sıralaması (gerçekleşen sezonla Spearman, kredi 0.75): 9-cat 3/3 sezonda arttı (+0.003, +0.019, +0.010); puan formatında karışık (+0.001, −0.012, −0.029) — oyuncu düzeyinde doğruluk net iyileşti, puan sıralaması gürültü içinde. Strateji backtest'i bağlamsız tahtalarla koşuyor (`historical_projections` düzeltmeyi uygulamaz).
+
+**Canlıda:** `publish.build_projections` kayıtlı katsayılarla (`data/2026-27__fantasy_context_model.json`; `python -m src.fantasy.context --fit`) uygular; `CTX_MIN_RATIO` / `CTX_RATE_*` sütunları yazılır. Rotasyon (≥15 dk) medyan dakika çarpanı 0.95. Örnekler: Brown PHI'da 32.1 → 29.8 dk, 24.7 → 21.4 sayı; LeBron −8% sayı; Giannis −6%; Curry / Jokić (ince kadro) +9% / +4% dakika; Maxey ≈ değişmez (yapısal yük PHI'da eskisiyle benzer).
+**Sınırlar:** kadro değişimi bilgisi hedef sezon takımından (backtest'te sezon ortası göçler küçük sızıntı); 3 sezon = az veri; katsayılar sezon başında yeniden öğrenilmeli (`--fit`); sezon içi güncelleme bu düzeltmenin ÜSTÜNE oynanan maçları ekler.
+
+## Takım simülasyonu — ayrı istatistik projeksiyonu (2026-10-05) — `src/fantasy/team_sim.py`
+
+**Soru (kullanıcı):** bağlamı simülasyonun KENDİSİ üretsin, kendi istatistik ortalamaları ve aralıklarıyla ayrı bir projeksiyon olarak görülebilsin. (Önceki katman `context.py` build'de girdileri bir kez ayarlayan regresyondu; simülasyon içinde değildi.)
+
+**Mimari:** her takım için 100 sezon × 82 oyun. (1) sezon şoku: oyuncu yeteneği (ampirik FP oran kantili, ortalama korunur) ve sakatlık (ampirik GP oranı, iki ardışık blok + dağınık kayıp; çakışan blokların eksik bıraktığı maç tamamlanır). (2) o oyunda sahadaki oyuncular arasında dakika: oyun gürültüsü,
+takımın kendi beklenen toplamı bütçe; ilk beş bütçe değişimini yalnız kısmen taşır (λ_top = 0.15), yedekler kalanı. (3) bağlam: hız = kendi hızı × (L_eski / L_oyun)^θ; L = o oyunda sahadaki takım arkadaşlarının dakika ağırlıklı eğilimi (context.fit_propensity; θ kullanım ≈ 0.8, ribaund ≈ 0.5, asist ≈ 0.55) — bir yıldız oynamayınca diğerlerinin payı OYUN İÇİNDE yükselir.
+(4) usage–verim ödünleşimi (ε = 0.2). Girdi hızları DÜZELTİLMEMİŞ projeksiyondan, yaş ve dakikaya göre hafifçe kalibre edilmiş (LOSO ridge). Çıktı: oynanan maç başına ortalama `SIM_*`, P10/P90 (`SIM_P10_*`, `SIM_P90_*`, `SIM_FP_P10/P90`), `SIM_MPG`, `SIM_GP`.
+
+**Parametre ayarı (3 sezon, ≥15 dk oyuncular):** başta oyun içi dakika bütçesini 241'e sabitlemek MAE'yi bozdu (4.53 → 5.39: yedek dakikası aşırı kısıldı); bütçe takımın KENDİ beklenen toplamı olunca düzeldi. Blok çakışması düzeltilince bütçe çarpanı yeniden ayarlandı (1.04 → 0.94).
+Rotasyon dakikasını `context.py` regresyonuyla ön-ayarlamak çift sayım yapıp MAE'yi kötüleştirdi (4.545). Talent şoku ortalama korunmayınca yanlılık −0.9'du; kapsama %78'den %80'e talent ölçeği 1.05 ile ayarlandı.
+
+**Doğrulama (leave-one-season-out hız kalibrasyonu; baz projeksiyon → simülasyon):**
+| | 2023-24 | 2024-25 | 2025-26 |
+|---|---|---|---|
+| FP MAE | 4.516 → 4.172 | 4.332 → 4.306 | 4.730 → 4.621 |
+| FP yanlılık | +1.05 → +0.09 | +0.38 → −0.07 | +0.60 → +0.09 |
+| PTS MAE | 2.506 → 2.308 | 2.412 → 2.387 | 2.718 → 2.617 |
+| REB MAE | 0.918 → 0.852 | 0.876 → 0.876 | 0.896 → 0.882 |
+| AST MAE | 0.692 → 0.639 | 0.687 → 0.691 | 0.738 → 0.727 |
+| dakika yanlılık | +1.33 → −0.12 | +0.67 → −0.10 | +1.04 → +0.32 |
+| P10–P90 kapsaması | 0.84 | 0.83 | 0.79 |
+FP ve PTS hatası üç sezonda da düştü, FP yanlılığı üçünde de |0.1| altına indi; 2024-25'te kazanç küçük (baz zaten kalibreydi), AST orada hafif kötü (+0.004). Aynı sezonlarda `context.py` regresyonu FP MAE'yi ortalama 4.526 → 4.373, simülasyon → ~4.37: ikisi eşdeğer;
+ikisini harmanlamak (0.25 sim + 0.75 regresyon) 4.347 verdi (tek yolun en iyisinden %0.6 iyi) — birincil projeksiyon olarak uygulanmadı, simülasyon AYRI görünüm olarak sunuluyor.
+Aralıklar için ek bilgi: tek başına sakatlık gürültüsüyle kapsama %20'ydi; yetenek şoku aralığı belirliyor.
+
+**Canlıda:** `publish.build_projections` simülasyonu koşar (`python -m src.fantasy.team_sim --fit` hız kalibrasyonunu `data/2026-27__fantasy_context_model.json` içine 'sim' bölümü olarak yazar; `--backtest` raporu). API: `/rankings?source=sim`, oyuncu sayfasında `simulation` bloğu (ortalama + P10–P90 + dakika + maç); arayüzde Rankings'te "Stats: Model | Simulation" ve oyuncu sayfasında "Team simulation" kartı. Sezon içi güncelleme model değerlerini yenilediği için simülasyon görünümü sezon başlayınca kapanır (sezon öncesi kadroya aittir).
+**Sınırlar:** takım kadrosu hedef sezon takımından; hız / dakika parametreleri 3 sezonla ayarlı; senaryo sayısı 100 (örnekleme gürültüsü ±0.02 FP MAE); simülasyon iki takım arasındaki karşılaşmayı (tempo, rakip savunma) modellemez.

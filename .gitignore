@@ -56,6 +56,7 @@ data/*
 !data/2026-27__fantasy_weeks.parquet
 !data/fantasy_backtest.json
 !data/2026-27__fantasy_plans.json
+!data/2026-27__fantasy_context_model.json
 
 # Tracking-era tarihsel sezonlar (2013-14+) — zengin percentile skorlama ile
 # geri-doldurulmuş sezonlar, get_historical() bunları öncelikli okur (bkz.

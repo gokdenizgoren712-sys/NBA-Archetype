@@ -8,7 +8,9 @@
 // React tarafı useLineupDraft.js (useSyncExternalStore ile ince sarmalayıcı).
 //
 // Fazlar: idle | pick_era | spin_season | spin_team | fetching | pick_player
-//         | pick_pos | pick_coach | complete
+//         | pick_pos | await_spin | pick_coach | complete
+// await_spin yalnız autoSpin:false iken: yerleştirmeden sonra oyuncu Spin'e basana kadar bekler
+// (web arayüzü, mockup 3c). RankIt mobil yüzeyi varsayılan autoSpin:true ile eskisi gibi sürer.
 import { ERAS } from "./eras";
 import { COACHES } from "./coaches";
 import { computeLineupFit } from "./lineupScore";
@@ -56,6 +58,8 @@ function initialState() {
     doubleActive: false,
     discoverActive: false,
     wildcard: false,          // Salary Cap: 15 denemede tier bulunamadı
+    spinSeq: 0,               // her çark başlangıcında artar: arayüz animasyonu buna bağlanır
+    spinKind: "",             // "both" | "season" | "team": hangi çark(lar) döndü
   };
 }
 
@@ -66,6 +70,9 @@ export function createLineupDraft({
   setTimer = (fn, ms) => globalThis.setTimeout(fn, ms),
   clearTimer = (id) => globalThis.clearTimeout(id),
   random = Math.random,
+  autoSpin = true,            // false: yerleştirmeden sonra otomatik çevirme, await_spin'de bekle
+  spinMs = SPIN_MS,           // çark süresi; web arayüzü daha hızlı bir değer geçer, RankIt varsayılanda kalır
+  jokerSpinMs = JOKER_SPIN_MS,
 } = {}) {
   let state = initialState();
   let guarantee = 0;          // Salary Cap: art arda kaç turda alınabilir tier çıkmadı
@@ -96,10 +103,18 @@ export function createLineupDraft({
   };
   const pick = (arr) => arr[Math.floor(random() * arr.length)];
 
+  // Önden yükleme: sezon ve takım çark başlamadan belli, o yüzden istekleri çarkın animasyonuyla
+  // paralel başlatıyoruz. Çark aynı anda durur ama oyuncular çoğu zaman o anda hazırdır (LOCKED gecikmez).
+  const warm = new Map();
+  const prefetch = (url) => { if (!warm.has(url)) { const p = fetchJson(url); p.catch(() => {}); warm.set(url, p); } };
+  const getJson = (url) => { const w = warm.get(url); if (w) { warm.delete(url); return w; } return fetchJson(url); };
+  const teamsUrl = (season) => apiUrl(`/api/game/teams?season=${encodeURIComponent(season)}`);
+  const playersUrl = (season, team) => apiUrl(`/api/game/players?season=${encodeURIComponent(season)}&team=${encodeURIComponent(team)}`);
+
   // ── Oyuncu çek (ortak) ─────────────────────────────────────────────────
   function fetchPlayers(season, team, onEmpty) {
     set({ phase: "fetching", statusMsg: "Loading players..." });
-    guarded(fetchJson(apiUrl(`/api/game/players?season=${encodeURIComponent(season)}&team=${encodeURIComponent(team)}`)))
+    guarded(getJson(playersUrl(season, team)))
       .then((d) => {
         const taken = Object.values(state.lineup).filter(Boolean).map((x) => x.PLAYER_NAME);
         let list = (d.players || []).filter((p) => !taken.includes(p.PLAYER_NAME));
@@ -150,11 +165,12 @@ export function createLineupDraft({
     set({
       targetSIdx: Math.max(0, sIdx), spinSeasons: spinSeason, spinTeams: false,
       players: [], phase: spinSeason ? "spin_season" : "spin_team", statusMsg: "",
+      spinSeq: state.spinSeq + 1, spinKind: spinSeason && spinTeam ? "both" : spinSeason ? "season" : "team",
     });
 
     const afterSeasonStop = (season) => {
       set({ chosenSeason: season, statusMsg: "Loading teams..." });
-      guarded(fetchJson(apiUrl(`/api/game/teams?season=${encodeURIComponent(season)}`)))
+      guarded(getJson(teamsUrl(season)))
         .then((d) => {
           const teams = d.teams || [];
           if (teams.length === 0) { startFullSpin(); return; }
@@ -167,6 +183,7 @@ export function createLineupDraft({
             tIdx = Math.floor(random() * teams.length);
           }
           set({ teamPool: teams, targetTIdx: tIdx, spinTeams: spinTeam, phase: "spin_team", statusMsg: "" });
+          prefetch(playersUrl(season, teams[tIdx]));
           // Takım korunuyorsa çarkı döndürmenin anlamı yok — kısa bir
           // yerleşme payı bırakıp doğrudan rostere geç.
           laterMain(() => {
@@ -176,14 +193,15 @@ export function createLineupDraft({
               set({ statusMsg: "No data, re-spinning..." });
               later(() => startFullSpin(), EMPTY_RESPIN_MS);
             });
-          }, spinTeam ? SPIN_MS : TEAM_SETTLE_MS);
+          }, spinTeam ? spinMs : TEAM_SETTLE_MS);
         })
         .catch(() => startFullSpin());
     };
 
     const landedSeason = fixedSeason || seasons[Math.max(0, sIdx)];
+    prefetch(teamsUrl(landedSeason));
     if (spinSeason) {
-      laterMain(() => { set({ spinSeasons: false }); afterSeasonStop(landedSeason); }, SPIN_MS);
+      laterMain(() => { set({ spinSeasons: false }); afterSeasonStop(landedSeason); }, spinMs);
     } else {
       afterSeasonStop(landedSeason);
     }
@@ -201,6 +219,7 @@ export function createLineupDraft({
     set({
       jokers: { ...jokers, reTeam: false }, targetTIdx: Math.max(0, tIdx),
       spinTeams: true, spinSeasons: false, players: [], phase: "spin_team",
+      spinSeq: state.spinSeq + 1, spinKind: "team",
     });
     laterMain(() => {
       const team = teamPool[Math.max(0, tIdx)];
@@ -215,9 +234,9 @@ export function createLineupDraft({
           const t2 = teamPool[Math.max(0, ai)];
           set({ spinTeams: false, chosenTeam: t2 });
           fetchPlayers(chosenSeason, t2, () => {});
-        }, JOKER_SPIN_MS);
+        }, jokerSpinMs);
       });
-    }, JOKER_SPIN_MS);
+    }, jokerSpinMs);
   }
 
   // Sadece yılı çevir (mevcut sezon hariç): sezon çarkı döner, takım korunur.
@@ -300,8 +319,12 @@ export function createLineupDraft({
         players: state.players.filter((p) => p.PLAYER_NAME !== picked.PLAYER_NAME),
       });
     } else {
-      set({ lineup: newLineup, pickedPlayer: null });
-      later(() => startFullSpin(), NEXT_SPIN_MS);
+      if (autoSpin) {
+        set({ lineup: newLineup, pickedPlayer: null });
+        later(() => startFullSpin(), NEXT_SPIN_MS);
+      } else {
+        set({ lineup: newLineup, pickedPlayer: null, players: [], posFilter: "", phase: "await_spin" });
+      }
     }
   }
 
@@ -340,7 +363,11 @@ export function createLineupDraft({
   function setMode(mode) { set({ mode }); }
   function setPosFilter(posFilter) { set({ posFilter }); }
   function beginEraPick() { set({ phase: "pick_era" }); }
-  function chooseEra(era) { set({ simEra: era }); startFullSpin(); }
+  function chooseEra(era) {
+    set({ simEra: era });
+    if (autoSpin) startFullSpin();
+    else set({ phase: "await_spin" });     // oyuncu Spin'e basana kadar bekler (mockup: Idle, Spin düğmesi nabız atar)
+  }
   function randomEra() { chooseEra(pick(ERAS)); }
 
   function reset() {
@@ -384,7 +411,7 @@ export function deriveDraft(s) {
   return {
     filledSlots, emptySlots, primaryCount,
     isSpinPhase: s.phase === "spin_season" || s.phase === "spin_team" || s.phase === "fetching",
-    canRearrange: ["spin_season", "spin_team", "fetching", "pick_player", "pick_coach"].includes(s.phase),
+    canRearrange: ["spin_season", "spin_team", "fetching", "pick_player", "await_spin", "pick_coach"].includes(s.phase),
     budgetLeft,
     spendCap: s.mode === "salarycap" ? (s.wildcard ? budgetLeft : maxSpendNow(budgetLeft, emptySlots.length)) : null,
     jokerAvailable: {

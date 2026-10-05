@@ -1,21 +1,23 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { api } from "../../api";
 import { SEO } from "../../hooks/useSEO";
-import useMediaQuery from "../../hooks/useMediaQuery";
 import { useAuth } from "../../contexts/AuthContext";
 import Pitch from "../../game/football/Pitch";
-import { FORMATIONS, SHAPE_KEYS, allSlots, BENCH_COUNT } from "../../game/football/formations";
-import { posPenaltyFor, isPrimarySlot, canPlace, PENALTY_LABEL } from "../../game/football/positions";
+import ShapeStep from "../../game/ui/ShapeStep";
+import FootballDraft from "../../game/ui/FootballDraft";
+import ModeAbout from "../../game/football/ModeAbout";
+import GameStage from "../../game/ui/GameStage";
+import CoachPicker from "../../game/CoachPicker";
+import { FORMATIONS, allSlots } from "../../game/football/formations";
+import { posPenaltyFor, isPrimarySlot, canPlace } from "../../game/football/positions";
 import { drawManagers, managerBonus } from "../../game/football/managers";
 import SeasonPanel from "../../game/football/SeasonPanel";
 import SquadAnalysis from "../../game/football/SquadAnalysis";
 import FootballLeaderboard from "../../game/football/LeaderboardPanel";
 import SquadResult from "../../game/football/SquadResult";
-import { RefreshIcon, CalendarIcon, BoltIcon, UsersIcon, SearchIcon } from "../../game/GameIcons";
 import "../../game/game.css";
 import { LEAGUE_LABEL } from "../../game/football/leagues";
-import { ModeInfoButton } from "../../game/football/ModeAbout";
-import { ACCENT, PHASE_COLOR } from "../../game/football/theme";
+import { ACCENT } from "../../game/football/theme";
 
 // ── Futbol çark oyunu ────────────────────────────────────────────────────────
 // Basketbol LineupGame'in futbol karşılığı. Ortak mekanikler: iki çark (yıl +
@@ -31,37 +33,6 @@ import { ACCENT, PHASE_COLOR } from "../../game/football/theme";
 // (Barcelona 2023/24 ile Barcelona 2025/26 farklı kadrolar). Bu yüzden
 // "kullanılmış" kaydı takım adı değil takım+sezon çifti.
 
-// Draft satırında gösterilecek per-90 statlar — faz başına farklı, çünkü
-// bir stoperi gol/asistle, bir forveti müdahaleyle ölçmek anlamsız.
-// Basketbol tarafında tek bir kolon seti yeterliydi (herkes aynı oyunu
-// oynuyor); futbolda değil.
-// ÖNEMLİ: oyunun roster endpoint'i (/api/football/game/players) kart
-// sayfasındakinden çok daha dar bir alan seti döndürüyor (17 alan).
-// Burada YALNIZCA o sette gerçekten bulunanlar kullanılabilir — aksi hâlde
-// hücreler "—" basıyor. Mevcutlar: goals_90, assists_90, CLEAN_SHEETS,
-// MINUTES_TOTAL, APPS, primary_score.
-const ROW_STATS = {
-  gk:  [["CLEAN_SHEETS", "CS"], ["APPS", "APP"], ["MINUTES_TOTAL", "MIN"]],
-  def: [["CLEAN_SHEETS", "CS"], ["assists_90", "A"], ["MINUTES_TOTAL", "MIN"]],
-  mid: [["goals_90", "G"], ["assists_90", "A"], ["MINUTES_TOTAL", "MIN"]],
-  fwd: [["goals_90", "G"], ["assists_90", "A"], ["MINUTES_TOTAL", "MIN"]],
-};
-const COUNT_STAT = new Set(["CLEAN_SHEETS", "APPS"]);   // sezon toplamı, ondalık yok
-const statVal = (p, key) => {
-  const v = parseFloat(p?.[key]);
-  if (isNaN(v)) return "—";
-  if (key === "MINUTES_TOTAL") return v >= 1000 ? `${(v / 1000).toFixed(1)}k` : Math.round(v);
-  if (COUNT_STAT.has(key)) return Math.round(v);
-  return v.toFixed(v >= 10 ? 0 : 1);        // per-90
-};
-// Menajer notları harf; bar genişliği için 0-1'e çevir (basketbol
-// CoachPicker'ındaki GRADE_VAL ile aynı cetvel).
-const GRADE_VAL = {
-  "A+": 1.00, A: 0.92, "A-": 0.85, "B+": 0.78, B: 0.70, "B-": 0.63,
-  "C+": 0.56, C: 0.48, "C-": 0.41, "D+": 0.34, D: 0.27, "D-": 0.20, F: 0.10,
-};
-const gradeVal = (g) => GRADE_VAL[g] ?? 0.5;
-const PHASE_LABEL = { gk: "Goalkeeper", def: "Defence", mid: "Midfield", fwd: "Attack" };
 
 export default function FootballGame() {
   const { isLoggedIn } = useAuth();
@@ -90,6 +61,10 @@ export default function FootballGame() {
   const [mgrOptions, setMgrOptions] = useState([]);
   const [saveName, setSaveName] = useState("");
   const [saveMsg, setSaveMsg]   = useState("");
+  const [spinSeq, setSpinSeq]   = useState(0);          // çark başlangıç sayacı: arayüz animasyonu buna bağlı
+  const [spinKind, setSpinKind] = useState("both");
+  const [rosterReady, setRosterReady] = useState(false);
+  const [rulesOpen, setRulesOpen] = useState(false);
 
   // Jokerler — basketbolla aynı set
   const [jokers, setJokers] = useState({
@@ -153,10 +128,10 @@ export default function FootballGame() {
         const avail = (r.players || []).filter(p =>
           !inSquad.has(p.PLAYER_ID) &&
           openSlots.some(s => canPlace(p, s)));
-        setRoster(avail);
+        setRoster(avail); setRosterReady(true);
         if (!avail.length) setMsg(`${team} ${season} has nobody you can still use — spin again.`);
       })
-      .catch(() => setMsg("Could not load that squad."));
+      .catch(() => { setRosterReady(true); setMsg("Could not load that squad."); });
   }, [squad, openSlots]);
 
   const doSpin = useCallback((lockSeason = null, lockTeam = null) => {
@@ -180,6 +155,8 @@ export default function FootballGame() {
     }
 
     spinningRef.current = true;
+    setSpinSeq((q) => q + 1); setRosterReady(false);
+    setSpinKind(lockSeason && !lockTeam ? "team" : lockTeam && !lockSeason ? "season" : "both");
     setSpinning(true); setMsg(""); setRoster([]); setChosen(null);
     setPhase("spin");
     const target = pool[Math.floor(Math.random() * pool.length)];
@@ -271,7 +248,7 @@ export default function FootballGame() {
     setChosen(null); setRoster([]); setDiscover(false);
 
     const done = slots.every(s => next[s.id]);
-    if (done) { setMgrOptions(drawManagers(3)); setPhase("pick_manager"); }
+    if (done) { setMgrOptions(drawManagers(4)); setPhase("pick_manager"); }
     else setPhase("idle");
   };
 
@@ -348,459 +325,98 @@ export default function FootballGame() {
     }).catch(() => setSaveMsg("Could not save."));
   };
 
-  // Draft sürüyor mu? (kurulum + çark + seçim). complete/pick_manager rapor.
-  const playing = phase !== "complete";
-  // Sabit yükseklikli "kokpit" düzeni yalnızca geniş ekranda. Telefonda saha,
-  // kalan YÜKSEKLİĞE göre ölçeklenemez (kapsayıcının kesin yüksekliği yok,
-  // height:100% sıfıra çöker) — orada genişliğe göre ölçekleniyor ve sayfa
-  // normal şekilde kayıyor.
-  const wide = useMediaQuery("(min-width: 900px)");
-  const cockpit = playing && wide;
   // Giriş blokları (anlatım, kalibrasyon uyarısı, çark havuzu) yalnızca
   // kurulum ekranına ait: çark ilk kez döndüğü an oyun başlamış demektir.
-  const setupScreen = !chosen && filledCount === 0;
+  const setupScreen = phase === "idle" && !chosen && filledCount === 0;
 
-  const avgOverall = filledCount
-    ? Math.round(slots.reduce((a, s) => a + (squad[s.id]?.overall_score || 0), 0)
-                 / filledCount * 100) : 0;
+  // Kurulum ekranı (mockup 11a): diziliş + lig + liderlik; kendi sahnesini çizer.
+  if (setupScreen) {
+    return (
+      <>
+        <SEO title="Football — Spin & Build"
+          description="Spin for a club and a season, draft eighteen, and see whether the XI fits."
+          path="/football/game" noindex />
+        <ShapeStep shape={shape} onShape={(k) => { setShape(k); reset(); }}
+          leagues={[{ key: "", label: "All leagues" }, ...(meta?.leagues || []).map((l) => ({ key: l, label: LEAGUE_LABEL[l] || l }))]}
+          league={mode === "open" ? "" : league}
+          onLeague={(k) => { setMode(k ? "league" : "open"); setLeague(k); reset(); }}
+          poolCount={pairs.length}
+          onStart={() => doSpin()} startDisabled={spinning || !pairs.length} spinning={spinning}
+          leaderboard={<FootballLeaderboard />} />
+      </>
+    );
+  }
 
-  // Basketbol dock'undaki JokerBtn ile aynı görsel dil: kutusuz, hover'da
-  // (dokunmatikte kalıcı) yuvarlak çerçeve, harcanınca hayalet.
-  const jokerBtn = (key, Icon, label, onClick, enabled) => (
-    <button key={key} onClick={onClick} disabled={!enabled}
-      className={`g-joker${enabled ? " on" : ""}`}
-      style={{ "--accent": ACCENT, "--accent-line": ACCENT + "80" }}>
-      <Icon size={17} />
-      <span className="lbl">{label}</span>
-    </button>
-  );
+  // Draft ekranı (mockup 11b / Draft Flow): çark → havuz → slot. Menajer ve sonuç eski düzende (Faz 3).
+  if (["idle", "spin", "picking"].includes(phase)) {
+    return (
+      <>
+        <SEO title="Football — Spin & Build"
+          description="Spin for a club and a season, draft eighteen, and see whether the XI fits."
+          path="/football/game" noindex />
+        <FootballDraft shape={shape} squad={squad} phase={phase} spinning={spinning} chosen={chosen}
+          roster={roster} rosterReady={rosterReady} pickingFor={pickingFor} jokers={jokers}
+          doubleLeft={doubleLeft} discover={discover} seasons={seasons} teams={teams}
+          spinSeq={spinSeq} spinKind={spinKind} msg={msg} moveSrc={moveSrc}
+          onSpin={() => doSpin()} jokerReTeam={jokerReTeam} jokerReYear={jokerReYear} jokerReBoth={jokerReBoth}
+          jokerDouble={jokerDouble} jokerDiscover={jokerDiscover}
+          choosePlayer={choosePlayer} cancelPick={() => { setPickingFor(null); setMsg(""); }}
+          onSlotClick={onSlotClick} onInfo={() => setRulesOpen(true)} />
+        {rulesOpen && <ModeAbout mode="spin" onClose={() => setRulesOpen(false)} />}
+      </>
+    );
+  }
 
-  return (
-    <div className={`fb-play${cockpit ? " cockpit" : ""}`}>
-      <SEO title="Football — Spin & Build"
-        description="Spin for a club and a season, draft eighteen, and see whether the XI fits."
-        path="/football/game" noindex />
-      <div className="g-smoke" />
+  // Menajer seçimi (mockup 4d): koç ekranıyla aynı bileşen, futbol teması.
+  if (phase === "pick_manager") {
+    return (
+      <GameStage sport="football">
+        <CoachPicker sport="football" shape={shape} title="Hire your manager" options={mgrOptions}
+          onPick={pickManager} cta={(last, full) => `Hire ${full}`} />
+      </GameStage>
+    );
+  }
 
-      {/* Oyun oynanırken sayfa DİKEY KAYMAZ — sitenin ana kuralı. Dock ve
-          kurulum sabit yükseklikte, iki sütun kalan alanı doldurur, uzun
-          listeler kendi panellerinin içinde kayar. Kadro bitince (complete)
-          ekran bir rapora dönüşüyor, orada kaydırma serbest. */}
-      <div className={`relative max-w-[1500px] w-full mx-auto p-4 ${cockpit ? "flex-1 min-h-0 flex flex-col gap-3" : "space-y-4"}`}>
-        {setupScreen ? (
-          // ── Handoff 18b: diziliş seçici + saha önizlemesi + çark havuzu | bu hafta
-          <div className="g-fb-idle">
-            <div className="g-fb-idle-main">
-              <div className="flex items-center gap-2">
-                <span className="g-wordmark">Spin &amp; Build</span>
-                <ModeInfoButton mode="spin" />
-              </div>
-              <h1 className="g-fb-idle-h1">Choose your shape</h1>
-              <p className="g-fb-idle-sub">Spin the wheels for a club and a season, pick one player, repeat until all eighteen are in.</p>
-              <div className="g-fb-shapes" role="radiogroup" aria-label="Formation">
-                {SHAPE_KEYS.map(k => (
-                  <button key={k} role="radio" aria-checked={shape === k}
-                    className={`g-fb-shape${shape === k ? " on" : ""}`}
-                    onClick={() => { setShape(k); reset(); }}>{k}</button>
-                ))}
-              </div>
-              <div className="g-fb-preview">
-                <Pitch shape={shape} squad={{}} onSlotClick={() => {}} fill />
-              </div>
-              <div className="g-fb-pool">
-                <span className="lbl">Wheel pool · {pairs.length} club-seasons</span>
-                <div className="chips">
-                  <button onClick={() => { setMode("open"); setLeague(""); reset(); }}
-                    className={`g-fb-chip${mode === "open" ? " on" : ""}`}><i />All leagues</button>
-                  {(meta?.leagues || []).map(l => (
-                    <button key={l} onClick={() => { setMode("league"); setLeague(l); reset(); }}
-                      className={`g-fb-chip${mode === "league" && league === l ? " on" : ""}`}><i />{LEAGUE_LABEL[l] || l}</button>
-                  ))}
-                </div>
-              </div>
-              <div className="g-fb-go">
-                <button className="aura-rating-btn g-idle-cta" onClick={() => doSpin()} disabled={spinning || !pairs.length}>
-                  Start draft · {shape}
-                </button>
-                <span>{slots.length} players · 5 jokers · ratings hidden while you draft</span>
-              </div>
+  // Sonuç (mockup 11c / 11d): kadro raporu, rol kapsaması, sezon simülasyonu, liderlik.
+  if (phase === "complete" && fit) {
+    const starters = pitchSlots.map((s) => squad[s.id]).filter(Boolean);
+    const slotOf = (p) => {
+      const sl = pitchSlots.find((x) => squad[x.id]?.PLAYER_ID === p.PLAYER_ID);
+      return sl ? posPenaltyFor(p, sl) : 0;
+    };
+    return (
+      <GameStage sport="football" className="sb-skin">
+        <SEO title="Football — Spin & Build" description="Your XI against the real starting elevens." path="/football/game" noindex />
+        <SquadResult fit={fit} shape={shape} manager={manager} starters={starters} slotOf={slotOf}
+          slotPosOf={(p) => pitchSlots.find((x) => squad[x.id]?.PLAYER_ID === p.PLAYER_ID)?.pos}
+          saveUI={isLoggedIn ? (
+            <div className="sb-fres-save">
+              <label htmlFor="fb-save">Save this squad</label>
+              <input id="fb-save" value={saveName} onChange={(e) => setSaveName(e.target.value)}
+                placeholder="e.g. Invincibles remix" className="aura-ghost-input" />
+              <button type="button" onClick={saveRoster} className="pa-btn-secondary">Save</button>
+              {saveMsg && <p className="sb-fres-note">{saveMsg}</p>}
             </div>
-            <aside className="g-fb-idle-side">
-              <FootballLeaderboard />
-            </aside>
-          </div>
-        ) : phase === "complete" && fit ? (
-          <SquadResult fit={fit} shape={shape} manager={manager}
-            starters={pitchSlots.map(s => squad[s.id]).filter(Boolean)}
-            slotOf={(p) => {
-              const s = pitchSlots.find(x => squad[x.id]?.PLAYER_ID === p.PLAYER_ID);
-              return s ? posPenaltyFor(p, s) : 0;
-            }}
-            saveUI={isLoggedIn ? (
-              <div className="g-result-save">
-                <label htmlFor="fb-save">Save this squad</label>
-                <div>
-                  <input id="fb-save" value={saveName} onChange={e => setSaveName(e.target.value)}
-                    placeholder="e.g. Invincibles remix" className="aura-ghost-input" />
-                  <button onClick={saveRoster} className="pa-btn-secondary">Save</button>
-                </div>
-                {saveMsg && <p className="g-result-err" style={{ color: "var(--text-muted)" }}>{saveMsg}</p>}
-              </div>
-            ) : <span className="g-result-saved muted">Sign in to save squads and land on the board.</span>}
-            slotPosOf={(p) => pitchSlots.find(x => squad[x.id]?.PLAYER_ID === p.PLAYER_ID)?.pos}
-            onPlaySeason={() => document.getElementById("fb-season")?.scrollIntoView({ behavior: "smooth", block: "start" })}
-            onReset={reset} />
-        ) : (
-        <>
-        {/* ── Handoff 7a başlığı: wordmark + diziliş + ilerleme | sezon · kulüp | jokerler */}
-        <header className="g-draft-head">
-          <div className="g-draft-id">
-            <div className="flex items-center gap-2">
-              <span className="g-wordmark">Spin &amp; Build</span>
-              <ModeInfoButton mode="spin" />
-            </div>
-            <div className="g-draft-meta">
-              <span className="g-era-chip" style={{ "--c": ACCENT }}>{shape}</span>
-              <span className="g-draft-progress fb"><i style={{ width: `${(filledCount / slots.length) * 100}%` }} /></span>
-              <span className="g-draft-count">{filledCount}/{slots.length}</span>
-            </div>
-          </div>
-          <div className="g-fb-wheels">
-            <div className="v">
-              <b style={{ color: ACCENT, textShadow: `0 0 26px ${ACCENT}8c` }}>{chosen?.season || seasons[spinS] || "—"}</b>
-              <span>Season</span>
-            </div>
-            <div className="v">
-              <b style={{ color: "var(--text-primary)", textShadow: "0 0 26px rgba(255,255,255,.25)" }}>{chosen?.team || teams[spinT] || "—"}</b>
-              <span>{chosen ? `Club · ${LEAGUE_LABEL[chosen.league] || chosen.league}` : "Club"}</span>
-            </div>
-            {!chosen && phase !== "pick_manager" && phase !== "complete" && (
-              <button onClick={() => doSpin()} className="aura-rating-btn g-fb-spin"
-                disabled={spinning || !pairs.length}>{spinning ? "Spinning…" : "Spin"}</button>
-            )}
-          </div>
-          <div className="g-draft-jokers">
-            {jokerBtn("rt", RefreshIcon,  "Club",     jokerReTeam,  jokers.reTeam && !!chosen)}
-            {jokerBtn("ry", CalendarIcon, "Year",     jokerReYear,  jokers.reYear && !!chosen)}
-            {jokerBtn("rb", BoltIcon,     "Both",     jokerReBoth,  jokers.reBoth && !!chosen)}
-            {jokerBtn("d2", UsersIcon,    "Pick 2",   jokerDouble,
-              jokers.double && phase === "picking" && openSlots.length >= 2)}
-            {jokerBtn("dc", SearchIcon,   "Discover", jokerDiscover, jokers.discover && !!chosen)}
-          </div>
-        </header>
-        <div className="g-divider tight" style={{ marginBottom: 16 }} />
-
-        <div className={`fb-hud ${cockpit ? "flex-1 min-h-0" : ""}`}>
-
-          {/* SAHA */}
-          {/* Saha — basketbol tarafındaki kort paneliyle aynı kabuk:
-              nokta matrisi zemin + mono teknik başlık. */}
-          <div className={`g-court-panel ${cockpit ? "flex flex-col min-h-0" : ""}`}>
-            <div className="g-dotgrid" />
-            <div className="flex items-center justify-between gap-2 mb-3">
-              <span className="g-section-title">{shape}</span>
-              <span className="g-status"
-                style={{ "--accent": "#9ca3af", "--accent-a": "rgba(156,163,175,.12)", "--accent-line": "rgba(156,163,175,.35)" }}>
-                {filledCount}/{slots.length} filled
-              </span>
-            </div>
-            <div className={cockpit ? "flex-1 min-h-0 flex items-center justify-center" : ""}>
-              <Pitch shape={shape} squad={squad} onSlotClick={onSlotClick}
-                moveSrc={moveSrc} pickingFor={pickingFor} fill={cockpit} />
-            </div>
-
-            {/* Yedek kulübesi */}
-            <div className="g-bench-strip" style={{ display: "block" }}>
-              <div className="g-label mb-2">Bench · {BENCH_COUNT}</div>
-              <div className="fb-bench">
-                {slots.filter(s => s.bench).map(s => {
-                  const p = squad[s.id];
-                  return (
-                    <button key={s.id} onClick={() => onSlotClick(s)}
-                      className="g-slot"
-                      style={{ "--accent": p ? PHASE_COLOR[p.PHASE] : "#8b857e",
-                               "--accent-line": moveSrc === s.id ? "var(--text-primary)"
-                                 : p ? PHASE_COLOR[p.PHASE] + "55" : "rgba(255,255,255,.12)",
-                               padding: "5px 7px", textAlign: "left" }}>
-                      <div className="text-[12px] truncate"
-                        style={{ color: p ? "var(--text-primary)" : "var(--text-faint)" }}>
-                        {p ? p.PLAYER_NAME.split(" ").slice(-1)[0] : s.id}
-                      </div>
-                      {p && (
-                        <div className="text-[12px]" style={{ color: PHASE_COLOR[p.PHASE] }}>
-                          {p.POSITION} · {Math.round((p.overall_score || 0) * 100)}
-                        </div>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {moveSrc && (
-              <div className="text-[13px] mt-2 text-center" style={{ color: "#F2C14E" }}>
-                Moving — tap another slot to swap, or tap again to cancel.
-              </div>
-            )}
-          </div>
-
-          {/* ÇARK / SEÇİM */}
-          <div className={`fb-pool ${cockpit ? "flex flex-col min-h-0 overflow-y-auto" : ""}`}>
-            {phase === "pick_manager" ? (
-              <>
-                <div className="g-label mb-2">
-                  <span className="inline-block w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: ACCENT }} />
-                  Squad complete — pick a manager
-                </div>
-                <p className="text-[13px] leading-relaxed mb-3" style={{ color: "var(--text-muted)" }}>
-                  A manager who prefers your shape ({shape}) gives a bigger bonus.
-                </p>
-                {/* Basketbol tarafındaki CoachPicker ile aynı dil: her kart
-                    kendi rengini kimliğinden alıyor (şekil uyumu = accent),
-                    notlar bar olarak, aura yoğunluğu uyuma göre. */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {mgrOptions.map(m => {
-                    const match = m.shape === shape;
-                    const hex = match ? ACCENT : "#8b857e";
-                    return (
-                      <button key={m.name} onClick={() => pickManager(m)} className="g-tile text-left"
-                        style={{ "--accent": hex, "--accent-a": hex + "1a", "--accent-line": hex + "4d", padding: "12px 13px" }}>
-                        <span className="aura-blob" style={{ "--slot-color": hex, right: -22, top: -24, width: 120, height: 80, opacity: match ? 0.26 : 0.12 }} />
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="g-tile-title" style={{ fontSize: 13 }}>{m.name}</span>
-                          <span className="g-status shrink-0"
-                            style={{ "--accent": hex, "--accent-a": hex + "1a", "--accent-line": hex + "4d" }}>
-                            {m.shape}{match ? " ✓" : ""}
-                          </span>
-                        </div>
-                        <div className="mt-2.5 space-y-1.5">
-                          {[["ATT", m.att], ["DEF", m.def]].map(([k, g]) => (
-                            <div key={k} className="flex items-center gap-2">
-                              <span className="g-mono w-6 shrink-0" style={{ color: "var(--text-faint)" }}>{k}</span>
-                              <div className="g-bar-track flex-1" style={{ height: 6 }}>
-                                <div className="g-bar-fill" style={{ width: `${gradeVal(g) * 100}%`,
-                                  "--fill": hex, "--fill-a": hex + "66" }} />
-                              </div>
-                              <span className="font-logo text-[13px] font-bold w-6 text-right shrink-0"
-                                style={{ color: hex }}>{g}</span>
-                            </div>
-                          ))}
-                        </div>
-                        {m.tag && (
-                          <div className="mt-2.5 pt-2" style={{ borderTop: "1px solid rgba(255,255,255,.07)" }}>
-                            <span className="g-status" style={{ "--accent": hex, "--accent-a": hex + "1a", "--accent-line": hex + "55" }}>
-                              {m.tag}
-                            </span>
-                          </div>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </>
-            ) : phase === "complete" ? (
-              <div>
-                {/* Ödül anı — basketboldaki g-score-hero'nun futbol karşılığı:
-                    holo doku + not renginde aura + dev sayı. */}
-                <div className="g-score-hero"
-                  style={{ "--accent": ACCENT, "--accent-a": ACCENT + "40", "--accent-line": ACCENT + "55" }}>
-                  <div className="g-holo" />
-                  <span className="aura-blob" style={{ "--slot-color": ACCENT, left: "50%", top: -40, width: 300, height: 180, transform: "translateX(-50%)", opacity: 0.3 }} />
-                  <div className="g-label center mb-3">Squad Fit</div>
-                  <div className="g-score-pct" style={{ color: ACCENT }}>
-                    {fit ? Math.round(fit.final * 100) : "…"}
-                    <span style={{ fontSize: 15, color: "var(--text-faint)" }}> / 100</span>
-                  </div>
-                  {manager && (
-                    <div className="text-[13px] mt-3 inline-flex items-center gap-1.5"
-                      style={{ color: fit?.manager_matched ? ACCENT : "var(--text-muted)" }}>
-                      {manager.name}{fit?.manager_matched ? " · shape match" : ""}
-                    </div>
-                  )}
-                  {fit && (
-                    <div className="g-score-parts max-w-sm mx-auto">
-                      {[
-                        ["Chemistry", Math.round(fit.score * 100), ACCENT],
-                        ["Natural", `+${Math.round(fit.chemistry_bonus * 100)}`, ACCENT],
-                        ["Out of pos", `−${Math.round(fit.position_penalty * 100)}`, "#E8654C"],
-                      ].map(([label, val, hex]) => (
-                        <div key={label} className="g-score-part">
-                          <div className="v" style={{ color: hex }}>{val}</div>
-                          <div className="l">{label}</div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {fit && (
-                  <div className="mt-3 space-y-2">
-                    <div className="g-section-title">What moved the number</div>
-                    {[
-                      ["Chemistry", fit.score, ACCENT],
-                      ["Natural slots", fit.chemistry_bonus / 0.165, ACCENT],
-                      ["Manager", fit.manager_bonus / 0.05, fit.manager_matched ? ACCENT : "#8b857e"],
-                      ["Average quality", avgOverall / 100, "#4C9BE8"],
-                    ].map(([label, v, hex]) => (
-                      <div key={label} className="flex items-center gap-2.5">
-                        <span className="text-[13px] shrink-0 text-right" style={{ width: 104, color: "var(--text-muted)" }}>{label}</span>
-                        <div className="g-bar-track flex-1" style={{ height: 8 }}>
-                          <div className="g-bar-fill" style={{ width: `${Math.max(0, Math.min(100, Math.round((v ?? 0) * 100)))}%`,
-                            "--fill": hex, "--fill-a": hex + "66" }} />
-                        </div>
-                      </div>
-                    ))}
-                    <div className="flex gap-2 items-start pt-1">
-                      <span className="g-rr-chip" style={{ "--c": ACCENT, "--c-a": ACCENT + "14", "--c-line": ACCENT + "3d" }}>
-                        {fit.strongest}
-                      </span>
-                      <span className="g-rr-chip" style={{ "--c": "#E8654C", "--c-a": "#E8654C14", "--c-line": "#E8654C3d" }}>
-                        {fit.weakest}
-                      </span>
-                      <span className="g-rr-chip" style={{ "--c": "#8b857e", "--c-a": "rgba(255,255,255,.04)", "--c-line": "rgba(255,255,255,.12)" }}>
-                        {fit.natural_slots}/11 natural
-                      </span>
-                    </div>
-                  </div>
-                )}
-                {isLoggedIn ? (
-                  <div className="mt-4 flex gap-1.5">
-                    <input value={saveName} onChange={e => setSaveName(e.target.value)}
-                      placeholder="Name this squad" className="aura-ghost-input"
-                      style={{ flex: 1 }} />
-                    <button onClick={saveRoster} className="aura-pill-btn active">Save</button>
-                  </div>
-                ) : (
-                  <div className="text-[13px] mt-4" style={{ color: "var(--text-faint)" }}>
-                    Log in to save this squad.
-                  </div>
-                )}
-                {saveMsg && <div className="text-[13px] mt-1" style={{ color: "var(--text-muted)" }}>{saveMsg}</div>}
-                <button onClick={reset} className="aura-rating-btn mt-3" style={{ padding: "9px 22px" }}>
-                  Play again
-                </button>
-              </div>
-            ) : (
-              <>
-                {msg && <div className="text-[13px] text-center mt-3"
-                  style={{ color: pickingFor ? "#F2C14E" : "#E8654C" }}>{msg}</div>}
-
-                {roster.length > 0 && !pickingFor && (
-                  <div className="mt-3">
-                    <div className="g-label mb-2">
-                      {doubleLeft > 1 ? "Pick 2 — first player" : "Pick a player"}
-                    </div>
-                    {/* Basketbol draft havuzuyla aynı satır dili: mevki rozeti,
-                        isim + arketip, sağda (Discover açıksa) kalite. */}
-                    <div className="space-y-0.5" style={{ maxHeight: 330, overflowY: "auto" }}>
-                      {roster.map(p => {
-                        const hex = PHASE_COLOR[p.PHASE];
-                        const q = Math.round((p.overall_score || 0) * 100);
-                        return (
-                          <button key={`${p.PLAYER_ID}-${p.PHASE}-${p.LEAGUE}`} onClick={() => choosePlayer(p)}
-                            className="g-rr w-full"
-                            style={{ "--accent": hex, "--accent-a": hex + "1f", "--accent-line": hex + "4d" }}>
-                            <span className="g-rr-pos">{p.POSITION}</span>
-                            <div className="flex-1 min-w-0">
-                              <div className="g-rr-name truncate">{p.PLAYER_NAME}</div>
-                              <div className="g-rr-meta">
-                                <span className="g-rr-arch" style={{ color: hex }}>{p.primary_arch}</span>
-                              </div>
-                            </div>
-                            {/* Per-90 statlar — Discover'dan bağımsız görünür.
-                                Gizlenen şey oyuncunun NOTU; ham sayılarla
-                                kendin karar veresin diye statlar açık
-                                (basketboldaki draft havuzuyla aynı kural). */}
-                            {(ROW_STATS[p.PHASE] || []).map(([key, label]) => (
-                              <span key={key} className="g-rr-stat">
-                                <span className="v">{statVal(p, key)}</span>
-                                <span className="k">{label}</span>
-                              </span>
-                            ))}
-                            {discover ? (
-                              <>
-                                <div className="g-bar-track shrink-0" style={{ height: 7, width: 40 }}>
-                                  <div className="g-bar-fill" style={{ width: `${q}%`, "--fill": hex, "--fill-a": hex + "66" }} />
-                                </div>
-                                <span className="g-rr-val" style={{ color: hex }}>{q}</span>
-                              </>
-                            ) : (
-                              <span className="g-rr-val" style={{ color: "var(--text-faint)", fontSize: 13 }}>?</span>
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                    {!discover && (
-                      <div className="text-[12px] mt-1" style={{ color: "var(--text-faint)" }}>
-                        Ratings are hidden — spend Discover to see them.
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {pickingFor && (
-                  <div className="g-panel subtle mt-3 px-3 py-2.5"
-                    style={{ "--accent": "#F2C14E", "--accent-line": "#F2C14E80" }}>
-                    <span className="aura-blob" style={{ "--slot-color": "#F2C14E", right: -18, top: -20, width: 110, height: 66, opacity: 0.2 }} />
-                    <div className="g-rr-name">{pickingFor.PLAYER_NAME}</div>
-                    <div className="text-[13px]" style={{ color: "var(--text-muted)" }}>
-                      {pickingFor.primary_arch} · natural {pickingFor.POSITION}
-                    </div>
-                    <div className="text-[12px] mt-1" style={{ color: "var(--text-faint)" }}>
-                      Tap a slot on the pitch. Off-position slots cost you points.
-                    </div>
-                    <button onClick={() => { setPickingFor(null); setMsg(""); }}
-                      className="aura-pill-btn mt-2" style={{ fontSize: 13 }}>Cancel</button>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-
-          {/* ÜÇÜNCÜ SÜTUN — draft sürerken de kovalanan sayı görünsün.
-              Yalnızca 1460px üstünde açılıyor (bkz. .fb-hud): daha dar bir
-              ekranda sahayı ve havuzu daraltarak yer açmak, oynanan şeyi
-              tabelaya feda etmek olurdu. */}
-          <div className="fb-board">
-            <FootballLeaderboard limit={15} fill />
+          ) : <span className="sb-fres-note">Sign in to save squads and land on the board.</span>}
+          onPlaySeason={() => document.getElementById("fb-season")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+          onReset={reset} />
+        <div id="fb-season" />
+        <div className="sb-fgrid">
+          <SquadAnalysis detailOnly fit={fit} starters={starters} slotOf={slotOf} />
+          <div className="sb-fcol">
+            <SeasonPanel starters={starters} chemistry={fit.score} positionPenalty={fit.position_penalty}
+              managerBonus={fit.manager_bonus} season={starters[0]?.SEASON} squadName={saveName.trim() || "Your XI"} />
+            <FootballLeaderboard />
           </div>
         </div>
+      </GameStage>
+    );
+  }
 
-        {/* Kadro tamamlandığında: önce karne, sonra simülasyon.
-            Karne "bu XI ne yapabiliyor", simülasyon "peki ne kazanır". */}
-        </>
-        )}
-
-        {phase === "complete" && fit && (
-          <SquadAnalysis detailOnly
-            fit={fit}
-            starters={pitchSlots.map(s => squad[s.id]).filter(Boolean)}
-            slotOf={(p) => {
-              const s = pitchSlots.find(x => squad[x.id]?.PLAYER_ID === p.PLAYER_ID);
-              return s ? posPenaltyFor(p, s) : 0;
-            }}
-          />
-        )}
-
-        {phase === "complete" && fit && (
-          <div id="fb-season" />
-        )}
-        {phase === "complete" && fit && (
-          <SeasonPanel
-            starters={pitchSlots.map(s => squad[s.id]).filter(Boolean)}
-            chemistry={fit.score}
-            positionPenalty={fit.position_penalty}
-            managerBonus={fit.manager_bonus}
-            season={pitchSlots.map(s => squad[s.id]).find(Boolean)?.SEASON}
-            squadName={saveName.trim() || "Your XI"}
-          />
-        )}
-
-        {/* Kaydedilmiş kadroların sıralaması — kendi skorunu başkalarınınkiyle
-            karşılaştırmak, tek başına bir sayıya bakmaktan anlamlı. */}
-        {phase === "complete" && <FootballLeaderboard />}
-      </div>
-    </div>
+  // Kadro puanlanırken (complete, fit henüz yok).
+  return (
+    <GameStage sport="football">
+      <p className="sb-fres-note">Scoring your XI…</p>
+    </GameStage>
   );
 }

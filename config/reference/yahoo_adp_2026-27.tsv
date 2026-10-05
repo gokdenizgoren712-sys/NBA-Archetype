@@ -1,214 +1,274 @@
-# Yahoo GERCEK ADP (Basic ADP: Preseason / All Drafts) — kullanici ekran goruntusunden aktarildi, 2026-09-29.
+# Yahoo GERCEK ADP (Basic ADP: Preseason / All Drafts) — kullanici ekran goruntusunden aktarildi, 2026-10-05 (onceki: 2026-09-29).
 # adp_sirasi	oyuncu	pozisyonlar	takim	yahoo_rank	pct_drafted	adp_preseason	adp_all	etiket
 # pct_drafted < 50: ADP az sayida draftin ortalamasi, GUVENILMEZ (yalniz drafta girdigi yerleri gosterir).
-# adp bos ("-") : Yahoo henuz ADP vermemis (yeterli draft yok). etiket: Q=questionable P=probable O=out
-1	Victor Wembanyama	C	SAS	1	100	1.6	1.6
-2	Nikola Jokić	C	DEN	2	100	1.9	1.9
-3	Luka Dončić	PG,SG	LAL	3	100	3.5	3.5
+# adp bos ("-") : Yahoo henuz ADP vermemis (yeterli draft yok); bu satirlar yalniz Yahoo siralamasi / pozisyon / takim icin. etiket: Q=questionable P=probable O=out NA=not active
+1	Nikola Jokić	C	DEN	1	100	1.7	1.7
+2	Victor Wembanyama	C	SAS	2	100	1.7	1.7
+3	Luka Dončić	PG,SG	LAL	3	100	3.4	3.4
 4	Shai Gilgeous-Alexander	PG	OKC	4	100	4.0	4.0
 5	Cade Cunningham	PG,SG	DET	5	100	6.0	6.0
-6	Giannis Antetokounmpo	PF,C	MIA	9	100	7.7	7.7
-7	Anthony Edwards	PG,SG	MIN	7	100	7.9	7.9
-8	Tyrese Maxey	PG	PHI	6	100	8.7	8.7
-9	Jayson Tatum	SF,PF	BOS	8	100	9.4	9.4
-10	Cooper Flagg	SG,SF,PF	DAL	13	99	10.3	10.2
-11	Jalen Johnson	SF,PF	ATL	10	100	11.7	11.7
-12	Donovan Mitchell	PG,SG	CLE	11	100	13.5	13.5
-13	Scottie Barnes	SF,PF,C	TOR	14	100	14.3	14.3
-14	Karl-Anthony Towns	PF,C	NYK	16	100	15.2	15.2
-15	Tyrese Haliburton	PG,SG	IND	12	100	15.8	15.9
-16	Kevin Durant	SG,PF	HOU	15	100	16.7	16.7
-17	Alperen Şengün	PF,C	HOU	25	100	18.7	18.7
-18	Jamal Murray	PG	DEN	17	100	20.6	20.6
-19	Jalen Brunson	PG	NYK	29	100	21.5	21.5
-20	Austin Reaves	PG,SG,SF	LAL	20	100	22.6	22.6
-21	Josh Giddey	PG,SG	CHI	18	100	23.4	23.4
-22	Amen Thompson	PG,SG	HOU	21	100	23.6	23.6
-23	Stephen Curry	PG	GSW	26	100	23.7	23.6
-24	Domantas Sabonis	PF,C	SAC	22	100	26.0	25.9
-25	LaMelo Ball	PG	MIN	23	100	26.1	26.2
-26	Devin Booker	PG,SG	PHX	24	100	26.4	26.4
-27	Trae Young	PG	WAS	19	100	26.6	26.6	P
-28	Jaylen Brown	SG,SF,PF	PHI	31	100	27.1	27.1
-29	Chet Holmgren	PF,C	OKC	27	100	28.2	28.2
-30	Kawhi Leonard	SG,SF,PF	TOR	33	100	29.9	30.0
-31	Evan Mobley	PF,C	CLE	28	100	30.1	30.1
-32	Bam Adebayo	PF,C	MIA	32	100	30.3	30.3	P
-33	Paolo Banchero	PF	ORL	52	100	34.4	34.4
-34	James Harden	PG,SG	CLE	30	100	34.6	34.6
-35	Jalen Duren	C	DET	36	100	36.2	36.2	Q
-36	LeBron James	SF,PF	PHI	42	100	37.6	37.6
-37	Lauri Markkanen	SF,PF	UTA	34	100	38.1	38.1
-38	Walker Kessler	C	LAL	37	100	38.6	38.6
-39	Deni Avdija	SG,SF,PF	POR	47	100	40.0	40.0
-40	Trey Murphy III	SG,SF	NOP	35	100	40.3	40.3
-41	Anthony Davis	PF,C	WAS	44	100	41.7	41.7	P
-42	Kon Knueppel	SG,SF	CHA	45	100	41.7	41.7	Q
-43	Jalen Williams	SF,PF	OKC	38	100	42.0	42.0
-44	Donovan Clingan	C	POR	39	100	42.1	42.0
-45	Brandon Miller	SF,PF	CHA	40	100	46.5	46.5
-46	Derrick White	PG,SG	BOS	41	100	47.1	47.1
-47	Pascal Siakam	PF,C	IND	62	100	49.5	49.5
-48	Jaren Jackson Jr.	PF,C	UTA	43	100	50.1	50.1	Q
-49	Joel Embiid	C	PHI	59	100	50.9	50.9
-50	Kyrie Irving	PG	DAL	48	100	52.1	52.1	Q
-51	Desmond Bane	SG,SF	ORL	46	100	52.7	52.7
-52	Franz Wagner	SF,PF	ORL	49	100	52.9	52.8
-53	Stephon Castle	PG,SG	SAS	77	100	54.0	54.0
-54	Onyeka Okongwu	C	ATL	50	100	54.9	54.9
-55	Keyonte George	PG,SG	UTA	51	100	56.6	56.6
-56	Cameron Boozer	PF	MEM	57	100	57.2	57.2
-57	Michael Porter Jr.	SF,PF	BKN	53	100	59.0	59.0
-58	Nickeil Alexander-Walker	PG,SG	ATL	54	100	59.8	59.8
-59	Naz Reid	PF,C	CHA	56	100	62.2	62.2
-60	Brandon Ingram	SG,SF,PF	LAC	55	100	62.6	62.5	Q
-61	Dyson Daniels	SG,SF	ATL	60	100	63.4	63.4
-62	Matas Buzelis	SF,PF	CHI	80	100	64.5	64.4
-63	Ivica Zubac	C	IND	63	100	64.7	64.7
-64	Darius Garland	PG	LAC	61	100	66.1	66.1
-65	Damian Lillard	PG	POR	58	100	66.4	66.4
-66	OG Anunoby	SF,PF	NYK	71	100	66.7	66.8
-67	Julius Randle	PF	BKN	75	100	68.8	68.7
-68	Zion Williamson	PF,C	NOP	84	100	69.3	69.2
-69	Tyler Herro	PG,SG	MIL	67	100	69.3	69.3	Q
-70	Jarrett Allen	C	CLE	65	100	69.6	69.6
-71	Dejounte Murray	PG	NOP	64	100	72.3	72.3
-72	Alex Sarr	C	WAS	68	100	72.2	72.3	Q
-73	Rudy Gobert	C	MIN	72	100	72.4	72.4
-74	VJ Edgecombe	PG,SG	PHI	79	100	73.7	73.7
-75	Kel'el Ware	C	MIL	69	100	74.0	74.0
-76	Zach Edey	C	MEM	66	100	74.8	74.8	Q
-77	Ryan Rollins	PG,SG	MIL	70	100	78.5	78.5
-78	AJ Dybantsa	SF	WAS	95	100	78.7	78.8
-79	Caleb Wilson	PF	CHI	82	100	79.4	79.4
-80	Mikal Bridges	SF,PF	NYK	78	100	79.6	79.6
-81	Payton Pritchard	PG	BOS	74	100	80.0	79.9
-82	De'Aaron Fox	PG	SAS	73	100	80.0	80.0
-83	Paul George	SF,PF	BOS	76	100	80.1	80.1
-84	Derik Queen	PF,C	NOP	92	100	81.5	81.4
-85	Dylan Harper	PG,SG	SAS	91	100	84.4	84.4
-86	Cedric Coward	SG,SF	MEM	81	100	87.7	87.6
-87	Ausar Thompson	SG,SF,PF	DET	90	100	88.4	88.4
-88	Coby White	PG,SG	CHA	83	100	88.8	88.8
-89	Nic Claxton	C	CHI	86	100	89.7	89.6
-90	Jaden McDaniels	SF	MIN	89	100	90.0	90.1
-91	Norman Powell	SG,SF	CHI	85	100	92.1	92.1
-92	Ja Morant	PG	POR	103	100	92.5	92.6
-93	Jabari Smith Jr.	PF,C	HOU	94	100	93.6	93.6
-94	Day'Ron Sharpe	C	BKN	87	100	94.5	94.5
-95	Josh Hart	SG,SF	NYK	100	100	95.9	95.9
-96	Immanuel Quickley	PG,SG	TOR	88	100	96.8	96.8
-97	Miles Bridges	PF	PHX	98	100	98.1	98.1
-98	Kristaps Porziņģis	C	GSW	97	100	98.4	98.3	Q
-99	Bronny James	PG,SG	LAL	464	3	98.4	99.1
-100	Andrew Wiggins	SG,SF,PF	MIA	93	100	99.9	99.9
-101	Myles Turner	C	MIL	99	100	100.4	100.4
-102	Darryn Peterson	SG	UTA	113	99	101.4	101.4
-103	Jalen Green	SG,SF	PHX	125	98	102.4	102.4
-104	Zach LaVine	PG,SG,SF	SAC	96	97	102.8	102.8
-105	Luke Kennard	SG,SF	PHX	238	2	104.1	104.1
-106	Al Horford	PF,C	GSW	200	3	104.2	104.2
-107	AJ Green	PG,SG,SF	MIL	258	2	104.6	104.2
-108	Adem Bona	C	PHI	243	2	-	104.6	Q
-109	Isaiah Hartenstein	C	OKC	102	99	105.6	105.7	P
-110	Alex Caruso	SG,SF	OKC	218	5	105.7	105.7
-111	Andre Drummond	C	NYK	182	3	105.7	105.9
-112	Klay Thompson	SG,SF	MIA	192	7	106.7	106.6
-113	Draymond Green	PF,C	GSW	142	15	106.8	106.7
-114	Brook Lopez	C	LAC	165	3	106.7	106.7
-115	Mitchell Robinson	C	BOS	178	9	107.1	107.3
-116	Aday Mara	C	OKC	632	3	107.3	107.5
-117	Rui Hachimura	SF,PF	LAC	186	5	107.7	107.7
-118	Daniel Gafford	C	DAL	170	2	107.9	107.9
-119	CJ McCollum	PG,SG	ATL	107	100	108.2	108.2
-120	Jaime Jaquez Jr.	SG,SF,PF	MIL	127	93	108.6	108.6
-121	Mark Williams	C	PHX	252	14	108.5	108.6	O
-122	Duncan Robinson	SG,SF	DET	205	2	108.8	108.8
-123	Toumani Camara	SF,PF	POR	101	98	109.3	109.3
-124	Aaron Wiggins	SG,SF	ATL	187	2	109.5	109.5
-125	Anfernee Simons	PG,SG	PHI	181	2	109.6	109.6
-126	Darius Acuff Jr.	PG	SAC	156	81	109.9	109.9
-127	Aaron Nesmith	SG,SF	IND	147	4	110.3	110.1
-128	Julian Champagnie	SF,PF	SAS	179	5	110.3	110.3
-129	Jalen Suggs	PG,SG	ORL	104	99	110.9	110.9
-130	RJ Barrett	SG,SF,PF	TOR	131	85	112.0	112.0
-131	Bobby Portis	PF,C	MIA	140	9	112.1	112.0
-132	Isaiah Stewart	PF,C	MEM	168	3	112.1	112.1
-133	Jordan Poole	PG,SG	NOP	174	2	112.1	112.1
-134	Aaron Gordon	PF,C	DEN	119	80	112.3	112.3
-135	Jusuf Nurkić	C	UTA	106	96	112.4	112.4
-136	Ty Jerome	PG,SG	MEM	133	60	112.7	112.8
-137	Jared McCain	PG,SG	OKC	248	3	113.3	113.3
-138	Andrew Nembhard	PG,SG	IND	105	92	113.6	113.6
-139	Moussa Diabaté	C	CHA	145	5	113.6	113.7
-140	Deandre Ayton	C	WAS	183	3	113.7	113.7
-141	Paul Reed	PF,C	DET	138	3	113.9	113.9
-142	Tobias Harris	PF	SAS	148	4	113.9	113.9
-143	Kyle Filipowski	PF,C	UTA	176	5	113.9	113.9
-144	Jonathan Kuminga	SF,PF	MIN	363	3	114.0	113.9
-145	Nikola Vučević	C	ORL	144	17	114.0	114.0
-146	Wendell Carter Jr.	C	ORL	141	16	114.1	114.1
-147	Dillon Brooks	SF,PF	PHX	150	23	114.5	114.5
-148	Grayson Allen	SG,SF	CHA	160	2	115.1	115.1
-149	Kelly Oubre Jr.	SF,PF	IND	157	3	115.0	115.2
-150	Peyton Watson	SF,PF	CLE	108	95	115.3	115.3	P
-151	Ayo Dosunmu	PG,SG	MIN	110	91	115.4	115.4
-152	DeMar DeRozan	SF,PF	DEN	251	31	115.4	115.4
-153	Collin Murray-Boyles	PF,C	TOR	111	86	115.7	115.8
-154	Devin Vassell	SG,SF	SAS	122	44	115.9	115.9
-155	John Collins	PF,C	DET	112	90	116.2	116.2
-156	Yaxel Lendeborg	PF	GSW	124	49	116.2	116.2
-157	Morez Johnson Jr.	PF	DAL	159	2	116.2	116.2	Q
-158	P.J. Washington	PF,C	DAL	151	9	116.3	116.3
-159	Jimmy Butler III	SF,PF	GSW	134	53	116.4	116.4	O
-160	Neemias Queta	C	BOS	118	71	116.6	116.7
-161	Jrue Holiday	PG,SG	POR	132	12	116.6	116.7
-162	Bennedict Mathurin	SG,SF	NOP	162	3	116.8	117.1
-163	Ajay Mitchell	PG,SG	OKC	130	10	117.2	117.2	P
-164	Brandin Podziemski	PG,SG	GSW	116	85	117.3	117.3
-165	Kyle Kuzma	SF,PF	MIL	180	5	117.5	117.5
-166	Mikel Brown Jr.	PG	BKN	201	3	117.7	117.7	Q
-167	Ace Bailey	SF,PF	UTA	152	19	117.9	117.8
-168	Tari Eason	SG,SF,PF	HOU	139	4	117.9	117.9
-169	Davion Mitchell	PG	MIA	109	81	118.0	118.0
-170	Maxime Raynaud	C	SAC	135	20	118.0	118.0
-171	Tre Jones	PG,SG	CHI	129	2	118.3	118.1
-172	Cason Wallace	PG,SG,SF	OKC	126	32	118.2	118.2
-173	Jeremiah Fears	PG,SG	NOP	155	38	118.2	118.2
-174	Collin Sexton	PG,SG	LAL	161	6	118.4	118.4
-175	Jerami Grant	SF,PF	MEM	163	3	118.3	118.4
-176	Keaton Wagler	SG	LAC	206	6	118.4	118.4
-177	Kyshawn George	SG,SF,PF	WAS	120	68	118.5	118.5
-178	Anthony Black	PG,SG,SF	ORL	153	37	118.5	118.6
-179	Fred VanVleet	PG	HOU	136	37	118.7	118.7
-180	Khaman Maluach	C	PHX	115	66	119.2	119.2
-181	Collin Gillespie	PG,SG	PHX	137	6	119.2	119.2
-182	Christian Braun	SG,SF,PF	DEN	143	18	119.5	119.5
-183	Egor Dëmin	PG,SG	BKN	164	6	119.5	119.5
-184	Kevin Porter Jr.	PG,SG	MIL	121	46	119.8	119.8	Q
-185	Saddiq Bey	SF,PF	NOP	146	26	119.8	119.8
-186	Quentin Grimes	SG,SF	LAL	158	8	120.0	120.2
-187	Sandro Mamukelashvili	PF,C	LAL	123	40	120.5	120.5
-188	Keegan Murray	SF,PF	SAC	128	39	120.5	120.5
-189	Jakob Poeltl	C	TOR	114	65	121.3	121.3
-190	Reed Sheppard	PG,SG	HOU	117	57	121.4	121.4
--	Herbert Jones	SG,SF	NOP	149	-	-	-
--	Daniss Jenkins	PG,SG	DET	154	-	-	-
--	Yves Missi	C	NOP	166	-	-	-
--	Sam Hauser	SF,PF	BOS	167	-	-	-
--	Scoot Henderson	PG	POR	169	-	-	-
--	Oso Ighodaro	C	PHX	171	-	-	-
--	Cameron Johnson	SF,PF	DEN	172	-	-	-
--	Santi Aldama	PF	DAL	173	-	-	-	Q
--	Dereck Lively II	C	DAL	175	-	-	-	Q
--	De'Andre Hunter	SF,PF	SAC	177	-	-	-
--	Max Strus	SF,PF	LAC	184	-	-	-
--	Jaylen Wells	SG,SF	MEM	185	-	-	-	Q
--	Brayden Burries	SG	MIL	188	-	-	-
--	De'Anthony Melton	PG,SG	GSW	189	-	-	-
--	Bilal Coulibaly	SG,SF	WAS	190	-	-	-
--	Scotty Pippen Jr.	PG	MEM	191	-	-	-	Q
--	Cam Whitmore	SF,PF	DEN	193	-	-	-
--	Obi Toppin	SF,PF	IND	194	-	-	-
--	Miles McBride	PG,SG	NYK	195	-	-	-
--	Luguentz Dort	SG,SF	ATL	196	-	-	-
+6	Giannis Antetokounmpo	PF,C	MIA	6	100	7.0	7.0
+7	Anthony Edwards	PG,SG	MIN	8	100	7.7	7.7
+8	Jayson Tatum	SF,PF	BOS	7	100	8.9	8.9
+9	Tyrese Maxey	PG	PHI	9	100	9.1	9.1
+10	Cooper Flagg	SG,SF,PF	DAL	13	100	10.4	10.4
+11	Jalen Johnson	SF,PF	ATL	11	100	11.8	11.8
+12	Donovan Mitchell	PG,SG	CLE	12	100	13.5	13.5
+13	Scottie Barnes	SF,PF,C	TOR	15	100	14.6	14.6
+14	Tyrese Haliburton	PG,SG	IND	10	100	14.7	14.7
+15	Karl-Anthony Towns	PF,C	NYK	16	100	15.4	15.4
+16	Kevin Durant	SG,SF,PF	HOU	14	100	16.3	16.3
+17	Alperen Şengün	PF,C	HOU	22	100	18.7	18.6
+18	Jamal Murray	PG	DEN	17	100	20.7	20.7	Q
+19	Jalen Brunson	PG	NYK	29	100	21.4	21.4
+20	Austin Reaves	PG,SG,SF	LAL	21	100	22.9	22.9
+21	Josh Giddey	PG,SG	CHI	19	100	23.1	23.1
+22	Stephen Curry	PG	GSW	25	100	23.3	23.3
+23	Amen Thompson	PG,SG	HOU	20	100	23.4	23.4
+24	Trae Young	PG	WAS	18	100	25.6	25.6
+25	Devin Booker	PG,SG	PHX	23	100	25.7	25.7
+26	LaMelo Ball	PG	MIN	24	100	26.4	26.5
+27	Domantas Sabonis	PF,C	SAC	35	100	26.7	26.6
+28	Jaylen Brown	SG,SF,PF	PHI	44	100	28.7	28.6
+29	Bam Adebayo	PF,C	MIA	26	100	28.7	28.7
+30	Chet Holmgren	PF,C	OKC	28	100	28.8	28.8
+31	Evan Mobley	PF,C	CLE	27	100	29.9	29.9
+32	Kawhi Leonard	SG,SF,PF	TOR	37	100	31.8	31.8	Q
+33	James Harden	PG,SG	CLE	31	100	34.5	34.5
+34	Paolo Banchero	PF	ORL	52	100	34.9	34.9
+35	Jalen Duren	C	DET	33	100	36.3	36.3	Q
+36	LeBron James	SF,PF	PHI	40	100	36.9	36.9
+37	Lauri Markkanen	SF,PF	UTA	32	100	37.5	37.5
+38	Trey Murphy III	SG,SF	NOP	30	100	38.9	38.9
+39	Walker Kessler	C	LAL	41	100	40.0	40.1
+40	Deni Avdija	SG,SF,PF	POR	48	100	40.5	40.5
+41	Jalen Williams	SF,PF	OKC	34	100	40.8	40.8
+42	Donovan Clingan	C	POR	38	100	42.3	42.3
+43	Anthony Davis	PF,C	WAS	45	100	42.7	42.7
+44	Brandon Miller	SF,PF	CHA	39	100	45.6	45.6
+45	Kon Knueppel	SG,SF	CHA	64	100	45.9	45.8	Q
+46	Derrick White	PG,SG	BOS	36	100	45.9	45.9
+47	Jaren Jackson Jr.	PF,C	UTA	42	100	49.3	49.3
+48	Pascal Siakam	PF,C	IND	58	100	49.9	49.9
+49	Joel Embiid	C	PHI	53	100	50.3	50.3
+50	Kyrie Irving	PG	DAL	46	100	52.0	52.0	Q
+51	Franz Wagner	SF,PF	ORL	50	100	52.2	52.1
+52	Desmond Bane	SG,SF	ORL	47	100	52.8	52.8
+53	Stephon Castle	PG,SG	SAS	76	100	53.9	53.8
+54	Onyeka Okongwu	C	ATL	49	100	54.9	54.9
+55	Keyonte George	PG,SG	UTA	43	100	55.0	55.0
+56	Cameron Boozer	PF	MEM	51	100	56.2	56.2
+57	Michael Porter Jr.	SF,PF	BKN	60	100	59.9	59.9
+58	Nickeil Alexander-Walker	PG,SG	ATL	56	100	60.3	60.3
+59	Naz Reid	PF,C	CHA	59	100	62.5	62.5
+60	Ivica Zubac	C	IND	57	100	63.8	63.8
+61	Darius Garland	PG	LAC	54	100	64.2	64.2
+62	Dyson Daniels	SG,SF	ATL	61	100	64.3	64.3
+63	Matas Buzelis	SF,PF	CHI	69	100	65.6	65.5
+64	Brandon Ingram	SG,SF,PF	LAC	66	100	65.8	65.8	O
+65	OG Anunoby	SF,PF	NYK	72	100	67.5	67.5
+66	Damian Lillard	PG	POR	67	100	67.6	67.6
+67	Zion Williamson	PF,C	NOP	78	100	68.1	68.1
+68	Julius Randle	PF	BKN	73	100	68.7	68.7
+69	Jarrett Allen	C	CLE	65	100	69.1	69.1
+70	Tyler Herro	PG,SG	MIL	68	100	69.2	69.2
+71	Dejounte Murray	PG	NOP	55	100	69.9	69.9
+72	Alex Sarr	C	WAS	63	100	71.6	71.6	Q
+73	Rudy Gobert	C	MIN	82	100	73.3	73.3
+74	VJ Edgecombe	PG,SG	PHI	88	100	74.2	74.2
+75	Kel'el Ware	C	MIL	71	100	75.3	75.3
+76	Zach Edey	C	MEM	70	100	75.8	75.8	Q
+77	Ryan Rollins	PG,SG	MIL	62	100	77.2	77.2
+78	AJ Dybantsa	SF	WAS	92	100	79.0	79.1
+79	Caleb Wilson	PF	CHI	85	100	79.3	79.3
+80	De'Aaron Fox	PG	SAS	74	100	80.1	80.1
+81	Paul George	SF,PF	BOS	79	100	80.3	80.3
+82	Mikal Bridges	SF,PF	NYK	81	100	80.5	80.5
+83	Payton Pritchard	PG	BOS	75	100	80.7	80.7
+84	Dylan Harper	PG,SG	SAS	83	100	83.1	83.0
+85	Derik Queen	PF,C	NOP	96	100	83.5	83.4
+86	Ausar Thompson	SG,SF,PF	DET	77	100	85.1	85.2
+87	Cedric Coward	SG,SF	MEM	84	100	87.3	87.2
+88	Coby White	PG,SG	CHA	80	100	88.6	88.6
+89	Nic Claxton	C	CHI	89	100	89.6	89.6
+90	Ja Morant	PG	POR	93	100	90.6	90.6
+91	Jaden McDaniels	SF	MIN	90	100	91.0	91.1
+92	Norman Powell	SG,SF	CHI	87	100	92.5	92.5
+93	Jabari Smith Jr.	PF,C	HOU	98	100	93.6	93.6
+94	Day'Ron Sharpe	C	BKN	91	100	94.6	94.6
+95	Josh Hart	SG,SF	NYK	97	100	96.0	96.0
+96	Immanuel Quickley	PG,SG	TOR	86	100	96.4	96.5
+97	Miles Bridges	PF	PHX	100	100	98.6	98.6
+98	Andrew Wiggins	SG,SF,PF	MIA	95	100	99.1	99.1
+99	Kristaps Porziņģis	C	GSW	152	80	100.3	100.2	Q
+100	Myles Turner	C	MIL	101	100	100.5	100.5
+101	Zach LaVine	PG,SG,SF	SAC	99	98	101.7	101.7
+102	Jalen Green	SG,SF	PHX	130	97	102.2	102.1
+103	Darryn Peterson	SG	UTA	115	99	102.7	102.7
+104	Isaiah Hartenstein	C	OKC	103	100	104.6	104.7
+105	Bronny James	PG,SG	LAL	467	4	104.8	105.1
+106	Alex Caruso	SG,SF	OKC	196	5	107.0	107.0
+107	Andre Drummond	C	NYK	211	3	107.2	107.3
+108	Al Horford	PF,C	GSW	205	3	107.5	107.5
+109	Draymond Green	PF,C	GSW	137	18	107.6	107.6
+110	Mitchell Robinson	C	BOS	178	9	107.6	107.6
+111	Aday Mara	C	OKC	250	3	107.5	107.6
+112	Klay Thompson	SG,SF	MIA	207	8	108.1	108.0
+113	CJ McCollum	PG,SG	ATL	109	100	108.3	108.3
+114	Jalen Suggs	PG,SG	ORL	94	99	108.5	108.5
+115	AJ Green	PG,SG,SF	MIL	262	2	108.8	108.6
+116	Mark Williams	C	PHX	201	8	108.6	108.7	O
+117	DeMar DeRozan	SF,PF	DEN	102	50	108.9	108.9
+118	Brook Lopez	C	LAC	160	3	108.9	109.0
+119	Aaron Wiggins	SG,SF	ATL	272	2	-	109.0
+120	Darius Acuff Jr.	PG	SAC	155	80	109.6	109.6
+121	Luke Kennard	SG,SF	PHX	259	2	109.7	109.6
+122	Toumani Camara	SF,PF	POR	106	99	110.3	110.3
+123	Julian Champagnie	SF,PF	SAS	179	5	110.4	110.4
+124	Anfernee Simons	PG,SG	PHI	199	2	110.7	110.6
+125	Jaime Jaquez Jr.	SG,SF,PF	MIL	140	86	110.7	110.8
+126	Bobby Portis Jr.	PF,C	MIA	161	8	110.8	110.8
+127	Aaron Nesmith	SG,SF	IND	150	3	111.2	111.0
+128	Jusuf Nurkić	C	UTA	105	97	111.5	111.5
+129	Aaron Gordon	PF,C	DEN	127	76	111.8	111.8
+130	RJ Barrett	SG,SF,PF	TOR	124	84	112.3	112.3
+131	Deandre Ayton	C	WAS	169	3	112.4	112.4
+132	Jordan Poole	PG,SG	NOP	186	2	112.8	112.7
+133	Tobias Harris	PF	SAS	151	4	113.0	113.0	Q
+134	Kelly Oubre Jr.	SF,PF	IND	164	3	112.9	113.0
+135	Paul Reed	PF,C	DET	165	3	113.1	113.1
+136	Isaiah Stewart	PF,C	MEM	174	3	113.3	113.3
+137	Jared McCain	PG,SG	OKC	192	3	113.4	113.4
+138	Dillon Brooks	SF,PF	PHX	142	23	113.6	113.7
+139	Ayo Dosunmu	PG,SG	MIN	104	94	113.8	113.9
+140	Andrew Nembhard	PG,SG	IND	108	94	114.0	114.1
+141	Nikola Vučević	C	ORL	177	14	114.4	114.4
+142	Kyle Filipowski	PF,C	UTA	198	5	114.6	114.6	Q
+143	Ty Jerome	PG,SG	MEM	114	69	114.6	114.7
+144	Peyton Watson	SF,PF	CLE	107	96	115.0	115.0	P
+145	Collin Murray-Boyles	PF,C	TOR	111	90	114.9	115.0
+146	Moussa Diabaté	C	CHA	138	5	115.3	115.4
+147	Jrue Holiday	PG,SG	POR	136	12	115.5	115.5
+148	Grayson Allen	SG,SF	PHX	187	2	115.7	115.7
+149	Yaxel Lendeborg	PF	GSW	144	46	115.8	115.8
+150	Jimmy Butler III	SF,PF	GSW	154	47	115.9	115.8	O
+151	Devin Vassell	SG,SF	SAS	157	35	116.0	115.9
+152	P.J. Washington	PF,C	DAL	133	10	116.1	116.0
+153	John Collins	PF,C	DET	112	92	116.1	116.1
+154	Jonathan Kuminga	SF,PF	MIN	129	10	116.4	116.3
+155	Bennedict Mathurin	SG,SF	NOP	156	3	116.4	116.5
+156	Jerami Grant	SF,PF	MEM	193	3	116.6	116.6
+157	Collin Sexton	PG,SG	LAL	200	6	117.0	117.0
+158	Neemias Queta	C	BOS	113	75	117.3	117.3
+159	Tari Eason	SG,SF,PF	HOU	163	4	117.4	117.3
+160	Kyle Kuzma	SF,PF	MIL	194	4	117.3	117.3
+161	Keaton Wagler	SG	LAC	210	6	117.4	117.3
+162	Tre Jones	PG,SG	CHI	148	2	117.7	117.4
+163	Ace Bailey	SF,PF	UTA	159	18	117.6	117.5
+164	Brandin Podziemski	PG,SG	GSW	117	87	117.6	117.6
+165	Ajay Mitchell	PG,SG	OKC	145	10	117.6	117.6
+166	Davion Mitchell	PG	MIA	110	85	117.7	117.7
+167	Cason Wallace	PG,SG,SF	OKC	128	31	118.1	118.0
+168	Fred VanVleet	PG	HOU	153	32	118.0	118.0
+169	Mikel Brown Jr.	PG	BKN	180	3	118.0	118.0	Q
+170	Wendell Carter Jr.	C	ORL	123	18	118.2	118.2
+171	Maxime Raynaud	C	SAC	162	16	118.2	118.2
+172	Khaman Maluach	C	PHX	118	74	118.7	118.7
+173	Rui Hachimura	SF,PF	LAC	121	19	118.7	118.7
+174	Egor Dëmin	PG,SG	BKN	131	7	119.0	119.0
+175	Jeremiah Fears	PG,SG	NOP	168	34	119.0	119.0
+176	Anthony Black	PG,SG,SF	ORL	146	31	119.1	119.1	Q
+177	Sandro Mamukelashvili	PF,C	LAL	139	31	119.5	119.4
+178	Kyshawn George	SG,SF,PF	WAS	119	71	119.5	119.5
+179	Kevin Porter Jr.	PG,SG	MIL	158	35	119.8	119.7
+180	Christian Braun	SG,SF,PF	DEN	173	16	119.7	119.8
+181	Saddiq Bey	SF,PF	NOP	132	24	119.8	119.9
+182	Keegan Murray	SF,PF	SAC	116	54	120.0	120.0
+183	Quentin Grimes	SG,SF	LAL	126	14	120.1	120.2
+184	Reed Sheppard	PG,SG	HOU	149	46	121.5	121.5
+185	Jakob Poeltl	C	TOR	122	57	121.6	121.6
+186	Collin Gillespie	PG,SG	PHX	125	9	122.0	121.9
+187	Daniel Gafford	C	DAL	120	16	123.0	123.0
+-	Herbert Jones	SG,SF	NOP	134	-	-	-
+-	Cameron Johnson	SF,PF	DEN	135	-	-	-
+-	Gui Santos	SF,PF	GSW	141	-	-	-
+-	Yves Missi	C	NOP	143	-	-	-
+-	Pelle Larsson	SG,SF	MIA	147	-	-	-
+-	Dereck Lively II	C	DAL	166	-	-	-	Q
+-	Daniss Jenkins	PG,SG	DET	167	-	-	-
+-	Oso Ighodaro	C	PHX	170	-	-	-
+-	Dennis Schröder	PG,SG	CHA	171	-	-	-
+-	De'Andre Hunter	SF,PF	SAC	172	-	-	-
+-	Jake LaRavia	SF,PF	LAL	175	-	-	-
+-	Santi Aldama	PF	DAL	176	-	-	-	Q
+-	Sam Hauser	SF,PF	BOS	181	-	-	-
+-	Joan Beringer	PF,C	MIN	182	-	-	-
+-	Scotty Pippen Jr.	PG	MEM	183	-	-	-
+-	Isaiah Collier	PG,SG	UTA	184	-	-	-
+-	Scoot Henderson	PG	POR	185	-	-	-
+-	Miles McBride	PG,SG	NYK	188	-	-	-
+-	Jay Huff	C	IND	189	-	-	-
+-	Naji Marshall	SG,SF,PF	DAL	190	-	-	-
+-	Kris Dunn	PG,SG	LAC	191	-	-	-
+-	Kevin Huerter	SG,SF	DET	195	-	-	-
+-	Dylan Cardwell	PF,C	SAC	197	-	-	-
+-	Robert Williams III	C	POR	202	-	-	-
+-	Bilal Coulibaly	SG,SF	WAS	203	-	-	-
+-	Precious Achiuwa	PF,C	SAC	204	-	-	-
+-	Keldon Johnson	SF,PF	SAS	206	-	-	-
+-	Morez Johnson Jr.	PF	DAL	208	-	-	-	Q
+-	Max Strus	SF,PF	LAC	209	-	-	-	Q
+-	Bradley Beal	SG,SF	LAC	212	-	-	-	Q
+-	Malik Monk	PG,SG	SAC	213	-	-	-
+-	Shaedon Sharpe	PG,SG	POR	214	-	-	-	O
+-	Duncan Robinson	SG,SF	DET	215	-	-	-
+-	Royce O'Neale	SF,PF	CHA	216	-	-	-
+-	Jaylen Wells	SG,SF	MEM	217	-	-	-
+-	Marcus Smart	PG,SG	HOU	218	-	-	-
+-	GG Jackson	SF,PF,C	MEM	219	-	-	-
+-	Tre Johnson	PG,SG,SF	WAS	220	-	-	-
+-	Will Riley	SF,PF	WAS	221	-	-	-
+-	Terrence Shannon Jr.	SG,SF	MIN	222	-	-	-
+-	Jaylin Williams	PF,C	OKC	223	-	-	-
+-	Luguentz Dort	SG,SF	ATL	224	-	-	-
+-	Derrick Jones Jr.	SF,PF	LAC	225	-	-	-
+-	Jaylon Tyson	SG,SF,PF	CLE	226	-	-	-
+-	Nique Clifford	SG,SF	SAC	227	-	-	-
+-	Jalen Smith	PF,C	CHI	228	-	-	-
+-	Ryan Kalkbrenner	C	CHA	229	-	-	-
+-	Noah Clowney	PF,C	BKN	230	-	-	-
+-	T.J. McConnell	PG	IND	231	-	-	-	Q
+-	Ben Simmons	PG	SAC	232	-	-	-
+-	Cam Spencer	PG,SG	MEM	233	-	-	-
+-	Nikola Jović	PF,C	MIA	234	-	-	-
+-	Bones Hyland	PG,SG	MIN	235	-	-	-
+-	Brice Sensabaugh	SG,SF,PF	UTA	236	-	-	-	Q
+-	Tristan da Silva	SF,PF	ORL	237	-	-	-
+-	Jamal Shead	PG	TOR	238	-	-	-
+-	Gradey Dick	SG,SF	LAC	239	-	-	-
+-	Zach Collins	C	CHI	240	-	-	-	Q
+-	Bub Carrington	PG,SG	WAS	241	-	-	-
+-	Brayden Burries	SG	MIL	242	-	-	-
+-	Kingston Flemings	PG	ATL	243	-	-	-
+-	Marvin Bagley III	PF,C	DEN	244	-	-	-
+-	De'Anthony Melton	PG,SG	GSW	245	-	-	-
+-	Jordan Clarkson	SG,SF	NYK	246	-	-	-
+-	Khris Middleton	SF,PF	WAS	247	-	-	-
+-	Kentavious Caldwell-Pope	SG,SF	PHI	248	-	-	-
+-	Allen Graves	PF	TOR	249	-	-	-	Q
+-	Donte DiVincenzo	SG,SF	MIN	251	-	-	-	O
+-	Max Christie	SG,SF	DAL	252	-	-	-
+-	Luke Kornet	C	SAS	253	-	-	-
+-	Tim Hardaway Jr.	SG,SF	MIA	254	-	-	-
+-	Isaiah Joe	SG,SF	DET	255	-	-	-
+-	Justin Champagnie	SF,PF	WAS	256	-	-	-
+-	Keon Ellis	SG,SF	BKN	257	-	-	-
+-	Javonte Green	SG,SF	DET	258	-	-	-
+-	Harrison Barnes	PF	SAS	260	-	-	-
+-	Moses Moody	SG,SF,PF	GSW	261	-	-	-	O
+-	Jordan Goodwin	PG,SG	PHX	263	-	-	-
+-	Russell Westbrook	PG,SG	SAC	264	-	-	-	NA
+-	Goga Bitadze	C	ORL	265	-	-	-
+-	Gary Payton II	SG,SF	GSW	266	-	-	-
+-	Bruce Brown	PG,SG	NYK	267	-	-	-
+-	Jarace Walker	SF,PF	IND	268	-	-	-

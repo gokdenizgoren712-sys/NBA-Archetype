@@ -34,6 +34,14 @@ import pandas as pd
 from config.fantasy_formats import CATEGORIES
 
 POOL_ROUNDS = 3
+# Kaçırılan maçın yerine gelen yedek (waiver) oyuncunun üretimi: 0 = kaçırılan maç sıfır üretim sayılır (eski davranış),
+# 1 = yedek, havuz dışı ilk `teams × REPL_DEPTH` oyuncunun ortalaması kadar üretir.
+# 0.75 (2026-10-05): src/fantasy/valuation_backtest.py — 2023-24…2025-26 × 9-cat/puan, sıralamamızın gerçekleşen sezon değeriyle
+# uyumu (Spearman) 6/6'da arttı, sakatlıktan dönenlerdeki sistematik hata ~0'a indi; strateji backtest'inde (4 tohum) 9-cat'te
+# piyasaya karşı kazanma oranı +0.10 → +0.15, puanda gürültü içinde karışık (+0.03/−0.04 → −0.01/+0.04). Spearman 1.0'a kadar
+# artıyor ama tam kredi (yedek her zaman hazır) iyimser; 0.75 ara değer.
+REPL_CREDIT = 0.75
+REPL_DEPTH = 3
 _U = np.linspace(0, 1, 401)
 # requirements numpy>=1.24 diyor; trapezoid 2.0'da geldi, trapz 2.x'te kaldırılıyor.
 _trapz = getattr(np, "trapezoid", None) or np.trapz
@@ -67,6 +75,13 @@ def games_per_week(proj: pd.DataFrame, team_weeks: pd.DataFrame, fmt: dict, basi
     return team_g * (proj["PROJ_GP"] / 82.0)
 
 
+def _team_games(proj: pd.DataFrame, team_weeks: pd.DataFrame, fmt: dict) -> pd.Series:
+    """Oyuncunun takımının normal sezonda haftalık maçı (sakatlık / dinlenme düşülmeden)."""
+    reg = team_weeks[team_weeks["WEEK"] < min(fmt["playoff_weeks"])]
+    team_avg = reg.groupby("TEAM")["GAMES_EXPECTED"].mean()
+    return proj["TEAM"].map(team_avg).fillna(float(team_avg.mean()))
+
+
 def _tiers(values: pd.Series, n_pool: int, window: int = 12) -> pd.Series:
     """Sıralı değerlerde, YEREL tipik adımın 2 katından büyük boşlukta yeni kademe.
 
@@ -88,7 +103,11 @@ def _tiers(values: pd.Series, n_pool: int, window: int = 12) -> pd.Series:
 # ── Kategori formatları ─────────────────────────────────────────────────────
 
 def category_values(proj: pd.DataFrame, fmt: dict, g_week: pd.Series,
-                    punt: tuple[str, ...] = ()) -> pd.DataFrame:
+                    punt: tuple[str, ...] = (), g_full: pd.Series | None = None,
+                    repl_credit: float | None = None) -> pd.DataFrame:
+    """`g_full`: oyuncunun takımının haftalık maçı (sakatlıksız); g_week ≤ g_full oynayacağı maç. İkisi arasındaki fark
+    yedekle dolar: üretim = oyuncu·g_week + kredi·yedek·(g_full − g_week)."""
+    credit = REPL_CREDIT if repl_credit is None else repl_credit
     cats = [c for c in fmt["categories"]]
     n = roster_size(fmt)
     kappa = 2 * n / (2 * n - 1)
@@ -99,6 +118,7 @@ def category_values(proj: pd.DataFrame, fmt: dict, g_week: pd.Series,
     rough = (proj["PTS"] + 1.2 * proj["REB"] + 1.5 * proj["AST"] + 3 * proj["STL"]
              + 3 * proj["BLK"] - proj["TOV"]) * proj["PROJ_GP"]
     pool = rough.nlargest(size).index
+    waiver = rough.nlargest(size + fmt["teams"] * REPL_DEPTH).index.difference(pool) if credit > 0 and g_full is not None else None
 
     out = pd.DataFrame(index=proj.index)
     for _ in range(POOL_ROUNDS):
@@ -113,6 +133,8 @@ def category_values(proj: pd.DataFrame, fmt: dict, g_week: pd.Series,
             else:
                 per_game = proj[mean_col]
             mu = per_game * g_week
+            if waiver is not None:
+                mu = mu + credit * float(per_game.loc[waiver].mean()) * (g_full - g_week)
             tau = proj[sd_col] * sqrt_g
             mu_bar = mu.loc[pool].mean()
             sigma = mu.loc[pool].std(ddof=0)
@@ -146,8 +168,14 @@ def points_values(proj: pd.DataFrame, fmt: dict, basis: str) -> pd.DataFrame:
     out["FP_TOTAL"] = fp * (proj["PROJ_GP"] if basis == "total" else 82 * 0.85)
     size = min(pool_size(fmt), len(proj))
     ranked = out["FP_TOTAL"].sort_values(ascending=False)
+    # Kaçırılan maçın yerine yedek gelir (REPL_CREDIT): değer hesabında toplam = oyuncu·maç + kredi·yedek·(82 − maç).
+    eff = out["FP_TOTAL"]
+    if REPL_CREDIT > 0 and basis == "total" and len(ranked) > size:
+        waiver = ranked.iloc[size:size + fmt["teams"] * REPL_DEPTH].index
+        eff = out["FP_TOTAL"] + REPL_CREDIT * float(fp.loc[waiver].mean()) * (82.0 - proj["PROJ_GP"]).clip(lower=0)
+        ranked = eff.sort_values(ascending=False)
     repl = float(ranked.iloc[size:size + fmt["teams"]].mean()) if len(ranked) > size else float(ranked.iloc[-1])
-    out["VALUE"] = out["FP_TOTAL"] - repl
+    out["VALUE"] = eff - repl
     out["REPLACEMENT"] = repl
     return out
 
@@ -211,7 +239,8 @@ def value_players(proj: pd.DataFrame, fmt: dict, team_weeks: pd.DataFrame,
             raise ValueError(f"cannot punt categories outside the format: {bad}")
         if len(punt) >= len(fmt["categories"]):
             raise ValueError("cannot punt every category")
-        vals = category_values(proj, fmt, games_per_week(proj, team_weeks, fmt, basis), punt)
+        g_week = games_per_week(proj, team_weeks, fmt, basis)
+        vals = category_values(proj, fmt, g_week, punt, g_full=_team_games(proj, team_weeks, fmt) if basis == "total" else None)
     elif fmt["kind"] == "points":
         vals = points_values(proj, fmt, basis)
     else:

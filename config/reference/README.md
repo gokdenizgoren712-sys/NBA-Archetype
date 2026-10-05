@@ -1,7 +1,7 @@
 # Yahoo referans verisi (2026-27, sezon öncesi)
 
 Yahoo API onayı gelene kadar (docs/FANTASY_PLAN.md Faz 5) elimizdeki en iyi gerçek-dünya verisi.
-Kullanıcı tarafından Yahoo'nun sitesinden elle aktarıldı, 2026-09-29. Yahoo API gelince bu dosyalar
+Kullanıcı tarafından Yahoo'nun sitesinden elle aktarıldı: sıralama dosyaları 2026-09-29, **ADP 2026-10-05'te yenilendi** (eski anlık görüntü `yahoo_adp_2026-09-29.tsv`). Yahoo API gelince bu dosyalar
 API çıktısıyla değiştirilir; **iki tür veriyi karıştırma:**
 
 | Dosya | Ne | Neye yarar |
@@ -16,6 +16,6 @@ API çıktısıyla değiştirilir; **iki tür veriyi karıştırma:**
 - **ADP ≠ sıralama.** ADP insanların gerçekte kaçıncı sırada seçtiği; sıralama Yahoo'nun kendi projeksiyon/değer hesabı.
 - **`pct_drafted < 50` olan ADP satırları güvenilmez:** o oyuncu az sayıda draftta seçilmiş, ortalama yalnız seçildiği yerleri gösteriyor (ör. Bronny James %3, ADP 98).
   `src/fantasy/reference.py` bunları ADP olarak kullanmaz.
-- Ekran görüntüsü ~190 satır ADP içeriyor; sonrası Yahoo'da da boş ("-").
+- ADP dosyası 270 satır: ilk 187'sinde ADP var, sonrası Yahoo'da da boş ("-"); bu satırlar yalnız Yahoo sırası / pozisyon / takım için. `yahoo_rank` sütunu Yahoo'nun o günkü genel sırası.
 - Yahoo, sakatlıktan dönen yıldızları iskonto etmiyor (Tatum ADP 9.4, Haliburton 15.8, Trae Young 26.6, Embiid 50.9); bizim maç-sayısı modelimiz ediyor. Kullanıcı Yahoo'nun görüşüne daha yakın.
 - Yahoo takım kısaltmaları: NOR→NOP, PHO→PHX, UTH→UTA (loader düzeltir).

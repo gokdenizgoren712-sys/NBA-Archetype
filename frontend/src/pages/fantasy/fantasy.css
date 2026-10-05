@@ -189,6 +189,7 @@
   background: var(--fz-raised); font-size: 12px; color: var(--fz-ink); white-space: nowrap;
 }
 .fz-flag.bad { color: var(--fz-bad); }
+.fz-flag.good { color: var(--fz-good); }
 .fz-status-chip { height: 26px; padding: 0 10px; border-radius: 13px; background: var(--fz-raised); font-size: 12px; display: inline-flex; align-items: center; }
 .fz-clock { height: 28px; padding: 0 10px; border-radius: 14px; background: rgba(255, 177, 27, .12); color: var(--fz-gold); font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; }
 
@@ -377,3 +378,38 @@
   100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 177, 27, 0); }
 }
 @media (prefers-reduced-motion: reduce) { .fz-cell.new { animation: none; } }
+
+
+/* ── Bilgi ipucu (i) + sıralanabilir başlıklar + yapışkan araç çubuğu ─────────────────────────── */
+.fz-infowrap { position: relative; display: inline-flex; align-items: center; }
+.fz-info {
+  width: 16px; height: 16px; padding: 0; border-radius: 50%; border: 1px solid var(--fz-faint); background: transparent;
+  color: var(--fz-muted); font: 700 10px/1 var(--fz-display); display: inline-flex; align-items: center; justify-content: center; cursor: help;
+}
+.fz-info:hover, .fz-info:focus-visible, .fz-info[aria-expanded="true"] { color: var(--fz-ink); border-color: var(--fz-muted); }
+.fz-tip {
+  position: absolute; top: calc(100% + 8px); z-index: 30; width: 280px; padding: 12px 14px; border-radius: 10px;
+  background: var(--fz-raised); box-shadow: 0 0 0 1px var(--fz-line); color: var(--fz-read);
+  font-size: 13px; font-weight: 400; line-height: 1.5; text-align: left; white-space: normal; letter-spacing: 0; text-transform: none;
+}
+.fz-tip-t { display: block; margin-bottom: 4px; color: var(--fz-ink); font-family: var(--fz-display); font-size: 15px; font-weight: 700; }
+.fz-tip p { margin: 0 0 6px; }
+.fz-tip p:last-child { margin-bottom: 0; }
+
+.fz-sort {
+  display: inline-flex; align-items: center; gap: 4px; padding: 0; border: 0; background: none; cursor: pointer;
+  color: inherit; font: inherit; width: 100%; white-space: nowrap;
+}
+.fz-sort.r { justify-content: flex-end; } .fz-sort.c { justify-content: center; } .fz-sort.l { justify-content: flex-start; }
+.fz-sort:hover, .fz-sort.on { color: var(--fz-ink); }
+.fz-sort .ar { font-size: 9px; line-height: 1; opacity: 0; }
+.fz-sort:hover .ar { opacity: .45; }
+.fz-sort.on .ar { opacity: 1; }
+
+.fz-sticky {
+  position: sticky; top: 64px; z-index: 4; display: flex; flex-direction: column; gap: 12px;
+  padding: 12px 0 0; margin-top: -6px; background: var(--fz-bg);
+}
+@media (max-width: 767px) {
+  .fz-sticky { top: 52px; padding-top: 8px; gap: 8px; padding-bottom: 8px; box-shadow: inset 0 -1px 0 var(--fz-raised); }
+}
