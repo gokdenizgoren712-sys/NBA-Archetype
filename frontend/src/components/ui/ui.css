@@ -93,3 +93,19 @@ button.pa-chip { cursor: pointer; }
   .pa-overlay.sheet { align-items: flex-end; padding: 0; }
   .pa-overlay.sheet .pa-dialog { width: 100%; max-height: 88vh; border-radius: var(--radius-phone) var(--radius-phone) 0 0; border-bottom: 0; padding-bottom: env(safe-area-inset-bottom); }
 }
+
+/* Sistem durumu paneli (v3 L7): 404, boş, hata, 500 */
+.pa-sys { box-sizing: border-box; display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding: 28px 30px; background: var(--panel); border: 1px solid var(--panel-border); border-radius: var(--radius); max-width: 640px; }
+.pa-sys-title { margin: 0; font: 700 clamp(28px, 4vw, 36px)/1.05 var(--font-logo); letter-spacing: .06em; text-transform: uppercase; color: var(--text-primary); }
+.pa-sys-body { margin: 0; max-width: 520px; font-size: 14px; line-height: 1.55; color: var(--text-secondary); }
+.pa-sys-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 6px; }
+.pa-sys-center { min-height: 100%; display: flex; align-items: center; justify-content: center; padding: 24px 16px; box-sizing: border-box; }
+.pa-error-code { margin: 0; font: 700 clamp(72px, 12vw, 120px)/1 var(--font-logo); letter-spacing: .04em; color: var(--danger); }
+.pa-maint { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px 16px; box-sizing: border-box; background-color: var(--bg-base); }
+.pa-maint-in { width: min(560px, 100%); display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center; }
+.pa-maint-brand { margin: 0 0 12px; font: 700 18px var(--font-logo); letter-spacing: .3em; color: var(--text-primary); }
+.pa-maint-times { width: 100%; margin: 6px 0; padding: 18px 20px; display: flex; flex-direction: column; gap: 14px; text-align: left; box-sizing: border-box; }
+.pa-maint-times dd { margin: 4px 0 0; font-size: 15px; color: var(--text-primary); }
+.pa-maint-times > div + div { padding-top: 14px; border-top: 1px solid var(--hairline); }
+.pa-sys.bare { background: none; border: 0; padding: 0; max-width: 760px; }
+.pa-sys-center.left { justify-content: flex-start; padding-left: clamp(24px, 6vw, 72px); }

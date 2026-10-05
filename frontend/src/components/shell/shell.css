@@ -202,78 +202,43 @@
 .pa-footer a:hover { color: var(--text-primary); }
 @media (max-width: 767px) { .pa-footer { padding: 10px 16px; justify-content: center; } }
 
-/* ═══ Sistem durumu (18d) — 404 ══════════════════════════════════════════ */
-.pa-state {
-  position: relative; height: 100%; min-height: 360px; overflow: hidden;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 12px; padding: 24px 16px; text-align: center;
-}
-.pa-state-glow {
-  position: absolute; left: 50%; top: 40%; width: 420px; height: 280px; transform: translate(-50%, -50%);
-  background: #FFB11B; opacity: .10; border-radius: 50%; filter: blur(70px); pointer-events: none;
-}
-.pa-state-code {
-  position: relative; font-family: var(--font-logo); font-size: 112px; font-weight: 700; line-height: 1;
-  color: #FFB11B; text-shadow: 0 0 50px rgba(255, 177, 27, .45);
-}
-.pa-state-title { position: relative; font-family: var(--font-logo); font-size: 26px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-primary); }
-.pa-state-body { position: relative; font-size: 14px; line-height: 1.5; color: var(--text-secondary); max-width: 320px; }
-.pa-state-actions { position: relative; display: flex; gap: 10px; margin-top: 8px; flex-wrap: wrap; justify-content: center; }
-
-/* Ortak düğmeler: v3 Button primitive'inin (components/ui) ince sarmalayıcıları — mevcut JSX değişmeden v3 görünümü alır. */
-.pa-btn-primary, .pa-btn-secondary {
-  display: inline-flex; align-items: center; justify-content: center; gap: 8px; box-sizing: border-box;
-  min-height: var(--touch); padding: 0 22px; border-radius: var(--radius); cursor: pointer; text-decoration: none;
-  font: 700 16px var(--font-logo); letter-spacing: .1em; text-transform: uppercase;
-}
-.pa-btn-primary { border: 0; background: var(--accent); color: #14110a; }
-.pa-btn-primary:hover { background: #ffc24d; }
-.pa-btn-secondary { border: 1.5px solid rgba(255, 255, 255, .3); background: transparent; color: var(--text-primary); }
-.pa-btn-secondary:hover { border-color: rgba(255, 255, 255, .55); background: rgba(255, 255, 255, .04); }
-.pa-btn-primary:focus-visible, .pa-btn-secondary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-
-/* ═══ Spor aksanı ════════════════════════════════════════════════════════
-   Handoff kural 6: birincil aksan bulunduğun sporu izler. Futbol sayfalarında
-   --accent teal olur; altın yalnız kupa/şampiyon anlamında (--yamabuki) kalır. */
-main[data-sport="football"] {
-  --accent: #3FB08C;
-  --accent-dim: rgba(63, 176, 140, 0.12);
-  --accent-border: rgba(63, 176, 140, 0.32);
-}
-
-/* ═══ Durumlar (18d): iskelet, boş, hata; mobil sabit aksiyon ════════════ */
-@keyframes paSkel { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
-.pa-skel {
-  border-radius: 14px;
-  background: linear-gradient(100deg, #141414 30%, #1c1c1c 50%, #141414 70%);
-  background-size: 300% 100%;
-  animation: paSkel 1.6s ease-in-out infinite;
-}
-.pa-skel.line { height: 14px; border-radius: 7px; }
-.pa-skel.line.sm { height: 12px; border-radius: 6px; }
-.pa-skel-grid { display: grid; gap: 28px 24px; }
-.pa-skel-item { display: flex; flex-direction: column; gap: 10px; }
-.pa-skel-rows { display: flex; flex-direction: column; gap: 6px; }
-@media (prefers-reduced-motion: reduce) { .pa-skel { animation: none; } }
-
-.pa-empty {
-  position: relative; display: flex; flex-direction: column; align-items: center;
-  gap: 12px; padding: 48px 16px 64px; text-align: center;
-}
-.pa-empty-ic { display: inline-flex; }
-.pa-empty .pa-state-body { max-width: 360px; }
-
-.pa-pinned {
-  position: sticky; bottom: 0; z-index: 20;
-  padding: 14px 16px calc(26px + env(safe-area-inset-bottom));
-  background: linear-gradient(to top, #0b0b0b 70%, transparent);
-}
-.pa-pinned > button, .pa-pinned > a { width: 100%; min-height: 54px; }
-@media (min-width: 768px) { .pa-pinned { position: static; padding: 0; background: none; } .pa-pinned > button, .pa-pinned > a { width: auto; } }
-
+/* Sistem durumları artık components/ui/ui.css içindeki .pa-sys ailesinde (v3 L7). */
 /* 18d hata durumu + iskelet etiketi */
 .pa-error-ic { position: relative; width: 56px; height: 56px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: var(--font-logo); font-size: 30px; font-weight: 700; color: #f87171; background: rgba(248, 113, 113, 0.12); }
 .pa-error-meta { position: relative; font-size: 12px; color: var(--text-faint); }
 .pa-btn-light { min-height: var(--touch); padding: 0 20px; border: 0; border-radius: var(--radius); background: var(--text-primary); color: #0b0b0b; font-size: 14px; font-weight: 600; cursor: pointer; }
 .pa-btn-light:hover { background: #fff; }
 .pa-skel-label { grid-column: 1 / -1; font-size: 13px; color: var(--text-muted); text-align: center; margin-top: 10px; }
+
+
+/* ═══ v3 kabuk (Phase 1): 4px köşe, düz hairline, ışıma ve dinlenme gölgesi yok ═══ */
+.pa-sport { border-radius: var(--radius); background: var(--field); }
+.pa-sport-btn { border-radius: 3px; }
+.pa-sport-btn.on { background: var(--raised); }
+.pa-sport.compact { border-radius: var(--radius); }
+.pa-sport.compact .pa-sport-btn { border-radius: 3px; }
+.pa-nav-title { font-size: 12px; color: var(--text-muted); }
+.pa-nav-item { height: 40px; border-radius: var(--radius); font-weight: 600; }
+.pa-nav-item:hover { background: rgba(255, 255, 255, .04); }
+.pa-nav-item.on { background: color-mix(in srgb, var(--acc) 12%, transparent); }
+.pa-nav-kid { border-radius: var(--radius); }
+.pa-nav-kid.on { background: var(--raised); }
+.pa-side.collapsed .pa-nav-item { border-radius: var(--radius); }
+.pa-nav-rule { background: var(--hairline); }
+.pa-side-foot { box-shadow: inset 0 1px 0 var(--hairline); }
+.pa-bar { height: 56px; padding: 0 12px 0 4px; box-shadow: inset 0 -1px 0 var(--hairline); }
+@media (min-width: 768px) { .pa-bar { height: 56px; padding: 0 24px; } .pa-bar.home { height: 64px; } }
+.pa-crumbs { font: 13px var(--font-sans); }
+.pa-crumb .cur { color: var(--text-primary); font-weight: 600; }
+.pa-avatar { width: 32px; height: 32px; border-radius: 50%; box-shadow: none; }
+.pa-signin { min-height: 32px; border-radius: var(--radius); background: transparent; border: 1px solid var(--panel-border); color: var(--text-primary); }
+.pa-signin:hover { background: rgba(255, 255, 255, .05); }
+.pa-drawer { background: var(--bg-base); box-shadow: none; border-right: 1px solid var(--hairline); border-radius: 0 var(--radius-phone) var(--radius-phone) 0; }
+.pa-drawer .pa-sport { border-radius: var(--radius); }
+.pa-drawer .pa-sport-btn { border-radius: 3px; }
+.pa-drawer-item { border-radius: var(--radius); }
+.pa-drawer .pa-nav-kid { border-radius: var(--radius); }
+.pa-drawer-user { border: 1px solid var(--panel-border); border-radius: var(--radius); background: var(--panel); }
+.pa-drawer-user .pa-avatar { width: 40px; height: 40px; }
+.pa-pinned { background: var(--bg-base); box-shadow: inset 0 1px 0 var(--hairline); }
+.pa-footer { box-shadow: inset 0 1px 0 var(--hairline); }

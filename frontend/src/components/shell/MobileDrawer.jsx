@@ -69,7 +69,6 @@ export default function MobileDrawer({ open, onClose }) {
       style={{ "--acc": accent }}>
       <div className="pa-drawer-backdrop" onClick={onClose} />
       <nav className="pa-drawer" aria-label="Main">
-        <span className="pa-drawer-glow" />
         <div className="pa-drawer-head">
           <span className="pa-side-logo">
             <Logo size={26} />

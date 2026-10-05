@@ -1,7 +1,7 @@
 // Handoff v2 sistem durumları (18d) — tüm sayfaların
 // paylaştığı parçalar. Önceden yükleniyor/boş/hata çoğu yerde tek satır soluk
 // metindi; burada her biri ne olduğunu ve ne yapılacağını söylüyor.
-import PaIcon from "../shell/PaIcon";
+import { Button } from "../ui";
 
 /** Kart ızgarası için yükleniyor iskeleti — kademeli gecikmeli shimmer. */
 export function SkeletonGrid({ count = 6, height = 250, min = 280, label }) {
@@ -31,19 +31,17 @@ export function SkeletonRows({ count = 6, height = 44 }) {
   );
 }
 
-/** Boş sonuç. `body` işe yarar olmalı: neden boş, en yakın ne var. */
-export function EmptyState({ title = "Nothing here", body, tint = "#22d3ee", actions = [] }) {
+/** Boş sonuç (v3 L7): mono etiket, büyük başlık, işe yarar açıklama. Eski `tint` artık yok sayılır. */
+export function EmptyState({ title = "Nothing here", body, eyebrow = "Empty · No results", actions = [] }) {
   return (
-    <div className="pa-empty" style={{ "--tint": tint }}>
-      <span className="pa-empty-ic"><PaIcon name="search" size={40} color={tint} /></span>
-      <span className="pa-state-title">{title}</span>
-      {body && <span className="pa-state-body">{body}</span>}
+    <div className="pa-sys">
+      <p className="pa-eyebrow">{eyebrow}</p>
+      <h2 className="pa-sys-title">{title}</h2>
+      {body && <p className="pa-sys-body">{body}</p>}
       {actions.length > 0 && (
-        <div className="pa-state-actions">
+        <div className="pa-sys-actions">
           {actions.map(a => (
-            <button key={a.label} className={a.primary ? "pa-btn-primary" : "pa-btn-secondary"} onClick={a.onClick}>
-              {a.label}
-            </button>
+            <Button key={a.label} variant={a.primary ? "primary" : "outline"} onClick={a.onClick}>{a.label}</Button>
           ))}
         </div>
       )}
@@ -51,20 +49,16 @@ export function EmptyState({ title = "Nothing here", body, tint = "#22d3ee", act
   );
 }
 
-/** Hata + yeniden dene (18d): kırmızı "!" rozeti, açık düğme, isteğe bağlı kod ve saat. */
-export function ErrorState({ title = "That didn't load", body = "The server didn't answer. Your filters are kept.", onRetry, code }) {
+/** Hata + yeniden dene (v3 L7): kırmızı değil, düz panel dili; kod ve saat mono satırda. */
+export function ErrorState({ title = "Couldn't load this page", body = "The server didn't answer. Your filters are kept.", onRetry, code }) {
   const at = new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
   return (
-    <div className="pa-empty pa-error" style={{ "--tint": "#f87171" }} role="alert">
-      <span className="pa-error-ic" aria-hidden="true">!</span>
-      <span className="pa-state-title">{title}</span>
-      <span className="pa-state-body">{body}</span>
-      {onRetry && (
-        <div className="pa-state-actions">
-          <button className="pa-btn-light" onClick={onRetry}>Try again</button>
-        </div>
-      )}
-      <span className="pa-error-meta">{code ? `Error ${code} · ` : ""}{at}</span>
+    <div className="pa-sys" role="alert">
+      <p className="pa-eyebrow">Error · Something broke</p>
+      <h2 className="pa-sys-title">{title}</h2>
+      <p className="pa-sys-body">{body}</p>
+      {onRetry && <div className="pa-sys-actions"><Button variant="outline" onClick={onRetry}>Try again</Button></div>}
+      <p className="pa-eyebrow">{code ? `Error ${code} · ` : ""}{at}</p>
     </div>
   );
 }

@@ -1,90 +1,54 @@
-/* ── Kök spor seçimi — handoff 4a (web) / 4c (telefon) ──────────────────────
-   İki spor kartı önde, RankIt altında ince bir şerit. Kutu çerçevesi yok;
-   kart sporun renginde yukarıdan solan tek yüzey + üstte bir ışık bulutu. */
+/* Kök spor seçimi (v3 Home 4a / 4c): iki taktik tahta + RankIt şeridi. Kart rengi --m (spor aksanı). */
+.ss-page { height: 100%; overflow-y: auto; box-sizing: border-box; padding: 40px clamp(20px, 5vw, 72px) 56px; display: flex; flex-direction: column; gap: 22px; }
+.ss-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 32px; flex-wrap: wrap; }
+.ss-head .pa-eyebrow { margin-bottom: 10px; }
+.ss-head .pa-h1 .sl, .ss-head .pa-h1 .gd { color: var(--accent); }
+.ss-intro { margin: 0; max-width: 340px; font-size: 14px; line-height: 1.55; color: var(--text-secondary); }
 
-.ss-page {
-  position: relative; height: 100%; overflow-y: auto; overflow-x: hidden;
-  display: flex; flex-direction: column; align-items: center;
-  padding: 24px 32px 32px;
-}
-.ss-glow {
-  position: absolute; top: 30%; width: 560px; height: 420px; opacity: .10; pointer-events: none;
-  filter: blur(80px);
-}
-.ss-glow.gold { left: 14%; background: #FFB11B; border-radius: 72% 28% 55% 45% / 35% 65% 40% 60%; }
-.ss-glow.teal { right: 14%; background: #3FB08C; border-radius: 41% 59% 68% 32% / 52% 38% 62% 48%; }
+.ss-sports { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.ss-card { --accent: var(--m); display: flex; flex-direction: column; gap: 18px; padding: 22px 24px 24px; }
+.ss-card:hover { border-color: var(--m); }
+.ss-card-top { display: flex; justify-content: space-between; gap: 12px; }
+.ss-card-body { display: grid; grid-template-columns: minmax(150px, 38%) 1fr; gap: 26px; align-items: start; }
+.ss-art-wrap { border: 1px solid var(--panel-border); border-radius: var(--radius); background: var(--field); aspect-ratio: 0.9 / 1; display: flex; }
+.ss-art { width: 100%; height: 100%; fill: none; stroke: rgba(255, 255, 255, .32); stroke-width: 1.5; }
+.ss-art .ball { stroke: var(--m); stroke-width: 2; }
+.ss-copy { min-width: 0; }
+.ss-title { margin: 0 0 10px; font: 700 clamp(40px, 5vw, 58px)/1 var(--font-logo); letter-spacing: .04em; text-transform: uppercase; color: var(--text-primary); }
+.ss-title b { color: var(--m); }
+.ss-blurb { margin: 0 0 14px; font-size: 14px; line-height: 1.5; color: var(--text-secondary); }
+.ss-feats { list-style: none; margin: 0; padding: 0; }
+.ss-feats li { display: grid; grid-template-columns: 26px 1fr; gap: 10px; padding: 12px 0; border-top: 1px solid var(--hairline); }
+.ss-feats .n { font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--m); padding-top: 3px; }
+.ss-feats b { display: block; font: 700 17px var(--font-logo); letter-spacing: .08em; text-transform: uppercase; color: var(--text-primary); }
+.ss-feats span:not(.n) { display: block; margin-top: 2px; font-size: 13px; line-height: 1.4; color: var(--text-secondary); }
+.ss-card-foot { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+.ss-leagues { list-style: none; margin: 0; padding: 0; display: flex; gap: 8px; flex-wrap: wrap; }
+.ss-leagues .pa-chip { font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .08em; text-transform: uppercase; min-height: 30px; }
+.ss-card .ss-enter.pa-btn { border-color: var(--m); color: var(--m); }
+.ss-card .ss-enter.pa-btn:hover:not(:disabled) { border-color: var(--m); background: color-mix(in srgb, var(--m) 10%, transparent); }
+.ss-card .ss-enter.pa-btn:focus-visible { outline-color: var(--m); }
 
-.ss-hero { position: relative; display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; }
-.ss-hero h1 { margin: 0; font-family: var(--font-logo); font-size: clamp(40px, 5vw, 60px); font-weight: 700; line-height: 1; color: var(--text-primary); }
-.ss-hero p { margin: 0; font-size: 17px; color: var(--text-secondary); }
+.ss-rankit { display: flex; align-items: center; gap: 18px; padding: 18px 24px; }
+.ss-rankit-text { flex: 1; min-width: 0; }
+.ss-rankit-text p { margin: 4px 0 0; font-size: 14px; color: var(--text-secondary); }
+.ss-rankit-text b { margin-right: 8px; font: 700 20px var(--font-logo); letter-spacing: .08em; text-transform: uppercase; color: var(--text-primary); }
 
-.ss-sports {
-  position: relative; width: 100%; max-width: 1120px; margin-top: 36px;
-  /* Kartlar kalan yüksekliği alır (en fazla 430px) — 720px ekranda da sayfa kaymaz */
-  flex: 1 1 auto; min-height: 300px; max-height: 430px;
-  display: grid; grid-template-columns: 1fr 1fr; gap: 28px;
+@media (max-width: 1100px) {
+  .ss-sports { grid-template-columns: 1fr; }
 }
-.ss-card {
-  position: relative; overflow: hidden; min-height: 0; border-radius: 24px; cursor: pointer;
-  display: flex; flex-direction: column; align-items: center; padding: 28px 44px;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--m) 14%, transparent) 0%, rgba(255, 255, 255, 0.015) 55%, rgba(255, 255, 255, 0.01) 100%);
-  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--m) 30%, transparent);
-  transition: transform .25s ease, box-shadow .25s ease;
-}
-.ss-card:hover { transform: translateY(-4px); box-shadow: inset 0 1px 0 color-mix(in srgb, var(--m) 45%, transparent), 0 24px 50px -30px color-mix(in srgb, var(--m) 60%, transparent); }
-.ss-card:focus-visible, .ss-rankit:focus-visible { outline: 2px solid var(--m, #FFB11B); outline-offset: 3px; }
-.ss-card > * { position: relative; }
-.ss-card > .ss-card-glow {
-  position: absolute; left: 50%; top: -60px; width: 380px; height: 260px; transform: translateX(-50%);
-  background: var(--m); opacity: .24; pointer-events: none;
-  border-radius: 72% 28% 55% 45% / 35% 65% 40% 60%; filter: blur(50px);
-}
-.ss-live { align-self: stretch; display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--m); }
-.ss-live i { width: 6px; height: 6px; border-radius: 3px; background: var(--m); box-shadow: 0 0 8px var(--m); animation: ssPulse 2s ease-in-out infinite; }
-@keyframes ssPulse { 0%, 100% { opacity: .45; } 50% { opacity: 1; } }
-.ss-icon { margin: auto 0; padding: 18px 0; filter: drop-shadow(0 0 22px var(--m)); }
-.ss-title { font-family: var(--font-logo); font-size: 40px; font-weight: 700; line-height: 1; color: var(--text-primary); }
-.ss-leagues { font-size: 15px; font-weight: 500; color: var(--m); margin-top: 10px; text-align: center; }
-.ss-desc { font-size: 15px; line-height: 1.55; color: var(--text-secondary); text-align: center; margin-top: 14px; max-width: 400px; text-wrap: pretty; }
-.ss-enter {
-  margin-top: auto; padding-top: 20px; font-family: var(--font-logo); font-size: 19px; font-weight: 700; letter-spacing: .04em;
-  color: var(--m); text-shadow: 0 0 16px color-mix(in srgb, var(--m) 40%, transparent);
-}
-
-.ss-rankit {
-  --m: #FFB11B;
-  position: relative; width: 100%; max-width: 1120px; margin-top: 22px; cursor: pointer;
-  display: flex; align-items: center; gap: 18px; padding: 16px 22px; border-radius: 18px;
-  background: linear-gradient(100deg, rgba(255, 177, 27, .08), rgba(255, 255, 255, .01) 60%);
-  transition: background .2s ease;
-}
-.ss-rankit:hover { background: linear-gradient(100deg, rgba(255, 177, 27, .13), rgba(255, 255, 255, .02) 60%); }
-.ss-rankit-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.ss-rankit-text .name { font-size: 16px; font-weight: 600; color: var(--text-primary); }
-.ss-rankit-text .name b { font-size: 12px; font-weight: 600; color: #FFB11B; margin-left: 6px; }
-.ss-rankit-text .desc { font-size: 14px; color: var(--text-secondary); }
-.ss-rankit-go { font-family: var(--font-logo); font-size: 17px; font-weight: 700; color: #FFB11B; flex-shrink: 0; }
-
-@media (prefers-reduced-motion: reduce) { .ss-live i { animation: none; } .ss-card { transition: none; } }
-
-/* Telefon (4c) */
-@media (max-width: 767px) {
-  .ss-page { align-items: stretch; padding: 4px 16px 24px; }
-  .ss-hero { align-items: flex-start; text-align: left; }
-  .ss-hero h1 { display: none; }            /* üst bar zaten markayı taşıyor */
-  .ss-hero p { font-size: 15px; margin: 10px 2px 4px; }
-  .ss-sports { grid-template-columns: 1fr; gap: 14px; margin-top: 14px; flex: none; min-height: 0; max-height: none; }
-  .ss-card { min-height: 0; max-height: none; align-items: flex-start; padding: 20px; border-radius: 20px; }
-  .ss-card > .ss-card-glow { left: auto; right: -40px; top: -60px; transform: none; width: 220px; height: 180px; }
-  .ss-live { display: none; }
-  .ss-icon { margin: 0 0 8px; padding: 0; }
-  .ss-icon svg { width: 34px; height: 34px; }
-  .ss-enter { position: absolute; right: 20px; top: 24px; margin: 0; padding: 0; font-size: 17px; }
-  .ss-title { font-size: 30px; margin-top: 6px; }
-  .ss-leagues, .ss-desc { text-align: left; font-size: 14px; }
-  .ss-leagues { margin-top: 8px; }
-  .ss-desc { margin-top: 8px; max-width: none; }
-  .ss-rankit { margin-top: 14px; padding: 16px 18px; gap: 14px; }
-  .ss-rankit-text .desc { display: none; }
-  .ss-rankit-text .name::after { content: "Ratings · Reviews · Diary"; display: block; font-size: 13px; font-weight: 400; color: var(--text-secondary); }
+@media (max-width: 700px) {
+  .ss-page { padding: 20px 16px 40px; gap: 16px; }
+  .ss-card { padding: 16px; gap: 14px; }
+  .ss-card-body { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; }
+  .ss-art-wrap { width: 112px; flex: none; }
+  .ss-copy { display: contents; }
+  .ss-title { flex: 1; min-width: 0; margin: 0; font-size: 30px; }
+  .ss-blurb, .ss-feats span:not(.n) { display: none; }
+  .ss-feats { flex-basis: 100%; }
+  .ss-feats li { align-items: center; }
+  .ss-leagues { display: none; }
+  .ss-enter { width: 100%; }
+  .ss-rankit { flex-wrap: wrap; padding: 16px; }
+  .ss-rankit > .pa-btn { width: 100%; }
 }

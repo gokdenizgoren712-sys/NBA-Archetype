@@ -9,6 +9,11 @@ import NotFound from "./components/shell/NotFound";
 import { shellHidden, sportOf, isAuthRoute } from "./components/shell/nav";
 import "./components/shell/shell.css";
 import TermsBanner from "./components/TermsBanner";
+import ErrorBoundary from "./components/shell/ErrorBoundary";
+import { MaintenanceGate, MaintenancePage, installMaintenanceWatch } from "./components/shell/Maintenance";
+import { ServerErrorPage } from "./components/shell/ErrorBoundary";
+
+installMaintenanceWatch();   // VITE_MAINTENANCE_GATE=1 değilse hiçbir şey yapmaz
 
 // Route sayfaları LAZY — her biri kendi chunk'ına bölünür. Ağır lib'ler böylece
 // initial bundle'dan çıkar: tiptap→ArticleEditor chunk'ı, recharts→paylaşılan radar
@@ -124,7 +129,7 @@ function Shell({ children }) {
       <div className="flex-1 min-w-0 flex flex-col">
         {!hidden && !auth && <PageBar onMenu={() => setMenuOpen(true)} />}
         {/* data-sport: sayfanın aksanı sporu izler (handoff kural 6) — bkz. shell.css */}
-        <main className="flex-1 min-h-0 overflow-hidden pa-grid" data-sport={sportOf(pathname) || undefined}>{children}</main>
+        <main className="flex-1 min-h-0 overflow-hidden pa-grid" data-sport={sportOf(pathname) || undefined}><ErrorBoundary resetKey={pathname}>{children}</ErrorBoundary></main>
         <TermsBanner />
         <Footer />
       </div>
@@ -135,6 +140,7 @@ function Shell({ children }) {
 
 function AppInner() {
   return (
+    <MaintenanceGate>
     <BrowserRouter>
       <Shell>
             <Suspense fallback={<PageLoading />}>
@@ -162,6 +168,9 @@ function AppInner() {
               {/* Telefon arayüzü: APK bunu paketliyor, web'de de açılabilir kalsın. */}
               <Route path="/rankit/app"               element={<RankItPrototype />} />
               <Route path="/rankit/_preview/match-card" element={<MatchCardPreview />} />
+              {/* Yalnız geliştirmede: 500 ve bakım sayfalarını gerçek hata beklemeden görmek için. */}
+              {import.meta.env.DEV && <Route path="/_preview/500" element={<ServerErrorPage error={{ requestId: "a91f3c" }} onRetry={() => {}} onHome={() => {}} />} />}
+              {import.meta.env.DEV && <Route path="/_preview/maintenance" element={<MaintenancePage info={{ started: new Date(Date.now() - 5400e3), back: new Date(Date.now() + 5400e3) }} onCheck={() => {}} />} />}
 
               {/* ── Basketbol (mevcut ürünün tamamı) ── */}
               <Route path="/basketball"                     element={<Navigate to="/basketball/game" replace />} />
@@ -270,6 +279,7 @@ function AppInner() {
             </Suspense>
       </Shell>
     </BrowserRouter>
+    </MaintenanceGate>
   );
 }
 
