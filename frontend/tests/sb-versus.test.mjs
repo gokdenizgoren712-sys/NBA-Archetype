@@ -57,3 +57,21 @@ test("iki taraf rengi tek yerde (versus.css), kapsam sport-theme sarmalayıcıs�
   assert.match(css, /--seat-2: #ff8a96/);
   assert.match(src("game", "ui", "VersusUi.jsx"), /<GameStage sport=\{sport\} className=\{`sb-vs/);
 });
+
+test("With a Friend (basketbol): oda ekranları RoomUi'den, oyun ekranları Versus bileşenlerinden; sunucu mesajları aynı", () => {
+  const p = src("pages", "WithAFriendGame.jsx");
+  for (const c of ["RoomEntry", "RoomGate", "RoomShare", "RoomSetup", "RoomNotice", "BasketballVersusDraft", "BasketballVersusLocked", "BasketballVersusHire", "BasketballVersusMatchup", "BasketballVersusSeries", "BasketballVersusFinal"]) {
+    assert.match(p, new RegExp(`<${c}`), c);
+  }
+  for (const m of ["pick_era", "pick_player", "place_pos", "use_joker", "use_counter_joker", "confirm_ban", "dismiss_counter", "rearrange_slot", "ready_for_coaches", "pick_coach", "advance_series"]) {
+    assert.match(p, new RegExp(`type: "${m}"`), m);
+  }
+  assert.doesNotMatch(p, /SeatPanel|FullCourtBoard|RoomLobby/);
+});
+
+test("futbol odası: giriş ve kod paylaşımı RoomUi'de", () => {
+  const v = src("pages", "football", "FootballVersus.jsx");
+  assert.match(v, /<RoomEntry sport="football"/);
+  assert.match(v, /<RoomShare sport="football"/);
+  assert.match(v, /<RoomGate sport="football"/);
+});

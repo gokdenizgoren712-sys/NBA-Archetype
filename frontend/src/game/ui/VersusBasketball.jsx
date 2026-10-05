@@ -57,6 +57,7 @@ export function BasketballVersusDraft({
   season, team, statusMsg, lineups, moveSrc, canRearrange, onSlotTap, jokers, canAct = true, onUseJoker,
   players, posFilter, setPosFilter, sortKey, setSortKey, discoverActive, doubleActive, bannedName, banVoided, banPicking,
   pickedPlayer, onPick, onPlace, onCancel, counter, onConfirmBan, sport = "basketball",
+  poolVisible = true, waitText, children,
 }) {
   const spinning = phase === "spinning";
   const drafting = phase === "drafting";
@@ -64,7 +65,7 @@ export function BasketballVersusDraft({
   const seatProps = (seat) => ({
     seat, name: names[seat], total: 9, active: activeSeat === seat,
     count: ALL_SLOTS.filter((p) => lineups[seat][p]).length, sub: `${capFor(lineups[seat]).budgetLeft}% cap left`,
-    rows: seatRows(lineups[seat], { canRearrange, moveSrc: moveSrc[seat], onSlotTap: (pos) => onSlotTap(seat, pos) }),
+    rows: seatRows(lineups[seat], { canRearrange: typeof canRearrange === "object" ? !!canRearrange[seat] : canRearrange, moveSrc: moveSrc[seat], onSlotTap: (pos) => onSlotTap(seat, pos) }),
   });
   const jokerViews = Object.keys(JOKER_LABEL).map((k) => {
     const active = (k === "double" && doubleActive) || (k === "discover" && discoverActive);
@@ -95,6 +96,18 @@ export function BasketballVersusDraft({
   let mid;
   if (spinning) {
     mid = <SpinningCenter text="Spinning" sub={statusMsg || (wheelMode === "pick" ? `Fresh spin for ${names[activeSeat]}'s pick. Jokers lock until it lands.` : `Shared spin for round ${round}. Jokers lock until it lands.`)} />;
+  } else if (!poolVisible) {
+    mid = (
+      <>
+        <SpinningCenter text="Waiting" sub={waitText || `${names[activeSeat]} is picking…`} />
+        {counter?.show && <CounterStrip who={names[activeSeat]} onSkip={counter.onDismiss}
+          items={[
+            { key: "ban", label: "BAN a player", enabled: counter.jokers.ban, onClick: () => counter.onUse("ban") },
+            { key: "team", label: "Force Team", enabled: counter.jokers.forceTeam, onClick: () => counter.onUse("forceTeam") },
+            { key: "year", label: "Force Year", enabled: counter.jokers.forceYear, onClick: () => counter.onUse("forceYear") },
+          ]} />}
+      </>
+    );
   } else if (phase === "placing" && pickedPlayer) {
     const eligible = getEligiblePos(pickedPlayer);
     mid = (
@@ -132,6 +145,7 @@ export function BasketballVersusDraft({
         chip={eraLabel}
         turn={{ seat: activeSeat, who: `${names[activeSeat]}'s pick`, season: season, team, seasonLabel: "SEASON", teamLabel: "TEAM", spinning }}
         jokers={jokerViews} />
+      {children}
       <VersusBody left={<SeatColumn {...seatProps(1)} />} right={<SeatColumn {...seatProps(2)} />}>{mid}</VersusBody>
     </VersusFrame>
   );
@@ -199,17 +213,20 @@ const gradeColor = (g) => (g?.[0] === "A" ? "var(--sb-good)" : g?.[0] === "B" ? 
 const titleCase = (s) => (s || "").toLowerCase().replace(/(^|[\s-])\w/g, (c) => c.toUpperCase());
 const coachCard = (o) => ({ key: o.name, name: o.name, sub: `${titleCase(o.tag || "Balanced")} · ${o.years}`, grades: [["Attack", o.off, gradeColor(o.off)], ["Defence", o.def, gradeColor(o.def)]], raw: o });
 
-export function BasketballVersusHire({ title = "Same Screen", names, active, options, hired, statuses, onHire, sport = "basketball", note }) {
-  const seats = [1, 2].map((seat) => ({
-    seat, name: names[seat], status: statuses?.[seat] || (hired[seat] ? "HIRED" : active === seat ? "PICKING…" : ""),
-    waiting: !hired[seat] && active !== seat && !options[seat]?.length,
-    options: (options[seat] || []).map(coachCard), hired: hired[seat]?.name,
-  }));
+export function BasketballVersusHire({ title = "Same Screen", names, active, options, hired, statuses, onHire, sport = "basketball", note, canAct = true, waitTexts }) {
+  const seats = [1, 2].map((seat) => {
+    const opts = options[seat]?.length ? options[seat].map(coachCard) : hired[seat] ? [coachCard(hired[seat])] : [];
+    return {
+      seat, name: names[seat], status: statuses?.[seat] || (hired[seat] ? "HIRED" : active === seat ? "PICKING…" : ""),
+      waiting: !hired[seat] && active !== seat && !opts.length, waitText: waitTexts?.[seat],
+      options: opts, hired: hired[seat]?.name,
+    };
+  });
   return (
     <VersusFrame sport={sport}>
       <TitleBlock eyebrow={`${title} · COACH HIRING`} title="Hire your" accent="coach"
         lede={note || "Attack and defence grades shift the team score all game. Player 1 hires first, then Player 2. A hire cannot be taken back."} />
-      <VersusHire seats={seats} active={active} onHire={onHire} ctaLabel="Hire & see matchup" />
+      <VersusHire seats={seats} active={active} onHire={onHire} ctaLabel="Hire & see matchup" canAct={canAct} />
     </VersusFrame>
   );
 }
@@ -278,7 +295,7 @@ export function BasketballVersusSeries({ names, games, seriesW, seriesOver, sele
 }
 
 // ── Sonuç (7h) ─────────────────────────────────────────────────────────────
-export function BasketballVersusFinal({ title = "Same Screen", names, lineups, coaches, seriesW, seriesGames, onAgain, sport = "basketball", extra }) {
+export function BasketballVersusFinal({ title = "Same Screen", names, lineups, coaches, seriesW, seriesGames, onAgain, againLabel, sport = "basketball", extra }) {
   const winner = seriesW[1] === seriesW[2] ? 0 : seriesW[1] > seriesW[2] ? 1 : 2;
   const hi = Math.max(seriesW[1], seriesW[2]); const lo = Math.min(seriesW[1], seriesW[2]);
   const cards = [1, 2].map((seat) => ({
@@ -293,8 +310,7 @@ export function BasketballVersusFinal({ title = "Same Screen", names, lineups, c
     <VersusFrame sport={sport}>
       <VersusFinal eyebrow={`${title} · FINAL`} big={winner ? "Champions" : "Tie"} winner={winner ? names[winner] : "Series level"} winnerSeat={winner}
         summary={<><b>{winner ? `wins the series ${hi}–${lo}` : `${hi}–${lo}`}</b> · {seriesGames.length} game{seriesGames.length === 1 ? "" : "s"} played</>}
-        cards={cards} onAgain={onAgain} onShare={share} />
-      {extra}
+        cards={cards} onAgain={onAgain} againLabel={againLabel} onShare={share} extra={extra} />
     </VersusFrame>
   );
 }

@@ -10,7 +10,7 @@ import { FootballVersusHire, FootballVersusMatchup, FootballVersusLegs, Football
 import { drawManagers } from "../../game/football/managers";
 import { sideNumbers, roleCoverage, pillarsOf, legStats } from "../../game/football/versusFit";
 import { PageGlow } from "../../components/states/States";
-import RoomLobby from "../../game/RoomLobby";
+import { RoomEntry, RoomGate, RoomShare } from "../../game/ui/RoomUi";
 import RoomDraft from "../../game/football/RoomDraft";
 import { UsersIcon, GlobeIcon } from "../../game/GameIcons";
 import "../../game/game.css";
@@ -225,61 +225,17 @@ function RoomPanel({ mode }) {
       .catch((e) => setMsg(String(e.message || e)));
   }, [code]);
 
-  /* Odaya girilmemiş: kompakt başlık (handoff 3a/14a kalıbı) + açıklama */
+  /* Odaya girilmemiş: giriş yapılmadıysa kapı, yapıldıysa kur / katıl (mockup 5a, 5o) */
   if (!room) {
+    if (!isLoggedIn) {
+      return <RoomGate sport="football" title={M.title} onSignIn={() => navigate("/login")}
+        onAlt={() => navigate("/football/game/same-screen")} altLabel="Play Same Screen instead" />;
+    }
     return (
-      <div className="relative">
-        <PageGlow tint={ACC} />
-        <header className="g-idle-hero compact">
-          <div>
-            <h1 className="g-wordmark lg">{M.title}</h1>
-            <p>{M.sub}</p>
-          </div>
-          <div className="g-idle-actions">
-            <div className="g-seg" role="tablist">
-              {[["friend", "With a Friend"], ["online", "Online"]].map(([k, l]) => (
-                <button key={k} role="tab" aria-selected={mode === k}
-                  className={`g-seg-btn${mode === k ? " on" : ""}`}
-                  onClick={() => mode !== k && navigate(`/football/game/${k}`)}>{l}</button>
-              ))}
-            </div>
-            {isLoggedIn && (
-              <div className="g-join">
-                <input className="aura-ghost-input" placeholder="Room code" aria-label="Room code"
-                  value={code} onChange={(e) => setCode(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && code.trim().length >= 4 && join()} />
-                <button onClick={join} disabled={code.trim().length < 4} className="pa-btn-secondary">Join</button>
-              </div>
-            )}
-            {isLoggedIn ? (
-              <button onClick={create} className="aura-rating-btn g-idle-cta">Open a room</button>
-            ) : (
-              <button onClick={() => navigate("/login")} className="aura-rating-btn g-idle-cta">Sign in to play</button>
-            )}
-          </div>
-        </header>
-
-        <div className="g-room-note">
-          <p>
-            {mode === "friend"
-              ? "Open a room and send the six-character code to whoever you want to play. "
-              : "Open a room and wait, or paste a code you were given. "}
-            Each of you builds an eleven and neither sees the other's until both have
-            sent. The tie is played on the server, from player ids — quality and
-            chemistry are computed there, with the same definitions the season panel
-            uses. Working it out in the browser would amount to letting a player report
-            their own score.
-          </p>
-          {!isLoggedIn && (
-            <p>
-              A room needs an account so the two devices can find each other.{" "}
-              <Link to="/football/game/same-screen" style={{ color: ACC }}>Same Screen</Link>{" "}
-              works without one.
-            </p>
-          )}
-          {msg && <p style={{ color: RED }}>{msg}</p>}
-        </div>
-      </div>
+      <RoomEntry sport="football" modeLabel={`Football · ${M.title.toUpperCase()}`} onCreate={create} creating={false}
+        code={code} onCode={setCode} onJoin={join} joining={false} error={msg}
+        hostText={mode === "friend" ? "Get a 6-character code and send it to whoever you want to play." : "Open a room and wait for an opponent, or paste a code you were given."}
+        rulesLine="Two legs · extra time and penalties · resolved on the server · squads hidden until both send" />
     );
   }
 
@@ -299,27 +255,14 @@ function RoomPanel({ mode }) {
     );
   }
 
-  // Tek başına bekliyor: handoff 14a lobisi — kod tek büyük an.
+  // Tek başına bekliyor: kodu paylaş (mockup 5p)
   return (
-    <RoomLobby
-      wordmark={M.title} accent={ACC}
-      modes={[{ key: "friend", label: "With a Friend", to: "/football/game/friend" },
-              { key: "online", label: "Online", to: "/football/game/online" }]}
-      activeMode={mode}
-      kicker={mode === "friend" ? "Room code — send it to whoever you want to play" : "Room open — waiting for an opponent"}
-      code={room.room_code}
+    <RoomShare sport="football" modeLabel="Football" code={room.room_code}
       sub={mode === "friend" ? "The draft starts when they join." : "The draft starts when someone joins."}
-      host={{ name: room.p1_name || "You", status: "Host · ready" }}
-      opponent={null}
-      waitingLabel="Waiting to join"
-      rules={[
-        { k: "Format", v: "Two legs" }, { k: "Ties", v: "Extra time, penalties" },
-        { k: "Resolved", v: "On the server" }, { k: "Squads", v: "Hidden until both send" },
-      ]}
-      cta={{ label: "Leave room", secondary: true, onClick: () => { setRoom(null); setCode(""); } }}
-    >
-      {msg && <p style={{ color: RED, fontSize: 13, marginTop: 12 }}>{msg}</p>}
-    </RoomLobby>
+      host={{ name: room.p1_name || "You", tag: "host", status: "Ready" }} opponent={null}
+      rulesLine="Two legs · extra time and penalties · resolved on the server · squads hidden until both send"
+      inviteUrl={`${window.location.origin}/football/game/${mode}?room=${room.room_code}`}
+      onLeave={() => { setRoom(null); setCode(""); }} />
   );
 }
 

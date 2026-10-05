@@ -241,7 +241,7 @@ export function LockedLayout({ court, teams, children }) {
 
 // ── Koç / menajer sırası ──────────────────────────────────────────────────
 //   seats: [{ seat, name, status, waiting, options: [{ key, name, sub, grades: [[label, grade, color]], raw }], hired }]
-export function VersusHire({ seats, active, onHire, ctaLabel }) {
+export function VersusHire({ seats, active, onHire, ctaLabel, canAct = true }) {
   const [sel, setSel] = useState(null);
   const cur = seats.find((s) => s.seat === active);
   const pick = sel && cur?.options.find((o) => o.key === sel);
@@ -252,8 +252,8 @@ export function VersusHire({ seats, active, onHire, ctaLabel }) {
         {seats.map((s) => (
           <section key={s.seat} className={`sb-vs-hirecol ${seatClass(s.seat)}`}>
             <div className="h"><span className="dot" /><b>{s.name}</b><span>{s.status}</span></div>
-            {s.waiting ? <div className="wait">Waiting for {seats[0].name} to hire first.</div> : s.options.map((o) => {
-              const mine = s.seat === active;
+            {s.waiting ? <div className="wait">{s.waitText || `Waiting for ${seats[0].name} to hire first.`}</div> : s.options.map((o) => {
+              const mine = s.seat === active && canAct;
               const on = mine ? sel === o.key : s.hired === o.key;
               const dim = !on && (mine ? !!sel : !mine && !!s.hired);
               return (
@@ -267,12 +267,12 @@ export function VersusHire({ seats, active, onHire, ctaLabel }) {
           </section>
         ))}
       </div>
-      <div className="sb-vs-cta">
+      {canAct ? <div className="sb-vs-cta">
         <button type="button" className="sb-btn solid cta md" disabled={!pick}
           onClick={() => { if (pick) { setSel(null); onHire(active, pick.raw); } }}>
           {pick ? (finalSeat ? ctaLabel : `Hire ${pick.name.split(" ").slice(-1)[0]}`) : "Pick one"} →
         </button>
-      </div>
+      </div> : null}
     </>
   );
 }
@@ -372,7 +372,7 @@ export function VersusSeries({ eyebrow, scoreA, scoreB, lead, leadSeat, chips, s
 
 // ── Final ──────────────────────────────────────────────────────────────────
 //   cards: [{ seat, name, score, win, coach, names: [{ n, st }] }]
-export function VersusFinal({ eyebrow, big = "Champions", winner, winnerSeat, summary, cards, onAgain, onShare, shareLabel = "Share" }) {
+export function VersusFinal({ eyebrow, big = "Champions", winner, winnerSeat, summary, cards, onAgain, againLabel = "Play again", onShare, shareLabel = "Share", extra }) {
   return (
     <div className="sb-vs-final">
       <p className="eye" style={{ color: winnerSeat === 1 ? "var(--seat-1)" : "var(--seat-2)" }}>{eyebrow}</p>
@@ -389,9 +389,10 @@ export function VersusFinal({ eyebrow, big = "Champions", winner, winnerSeat, su
         ))}
       </div>
       <div className="cta">
-        <button type="button" className="sb-btn solid cta md" onClick={onAgain}>Play again</button>
+        <button type="button" className="sb-btn solid cta md" onClick={onAgain}>{againLabel}</button>
         <button type="button" className="sb-btn ghost cta md" onClick={onShare}>{shareLabel}</button>
       </div>
+      {extra}
     </div>
   );
 }

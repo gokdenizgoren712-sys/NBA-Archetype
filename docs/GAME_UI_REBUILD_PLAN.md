@@ -210,3 +210,15 @@ Kalan (Faz 3): menajer seçimi, sonuç, sezon; eski `FootballGame` draft JSX'ini
 7. Futbolda "SHARE" ve final ekranı yeni; basketbolda da aynı SHARE düğmesi (Web Share API, yoksa panoya kopyala).
 
 **Henüz yok / sonraki fazlara kalan:** `WithAFriendGame.jsx` (aynı bileşenlere bağlanacak, Faz 5), mobil 14x/15x doğrulaması, kullanılmayan eski stiller (`g-vs-*`, `g-seat-*`, `g-fb-ss-*`, FullCourtBoard/SeatPanel/RosterReview kullanımı bitince silinecek; With a Friend hâlâ kullanıyor).
+
+---
+
+## 12. Faz 5 durumu — odalar (2026-10-05)
+
+**Yapıldı:** `game/ui/RoomUi.jsx` + `room.css` (giriş kapısı 6a/5a, kur/katıl 6n/5o, kodu paylaş 6o/5p, kurulum 6q/6r, durum kartları 6i/5j, bağlantı bannerları). `WithAFriendGame.jsx` ~1075 → ~500 satır: oda akışı RoomUi'den, oyun ekranları Same Screen ile paylaşılan `Basketball Versus*` bileşenlerinden; sunucu mesajları (`pick_era`, `use_counter_joker`, `advance_series`, …) aynen duruyor. İki gerçek hesapla baştan sona oynandı (oda → dönem → draft → kilitli kadro → koç → eşleşme → seri → final). Futbol odasında giriş + kod paylaşımı RoomUi'ye taşındı.
+
+**Yapılmadı / karar bekleyen:**
+1. **Rövanş (6e/5f, 5i/6h)** "ikisi de dokunmalı": sunucuda rövanş mesajı yok (`api/game_ws.py`); final ekranı "Back to modes" veriyor. Eklemek backend işi.
+2. **Futbol oda draftı (`RoomDraft`, 5b–5d, 5t, 5u)** ve oda eşleşmesi: bölüm 4.1'deki hata yüzünden (`p2_name` yazılmıyor) arayüzden hiç ulaşılamıyor; doğrulayamayacağım bir ekranı kör restyle etmedim. Hata düzeltilirse yapılır.
+3. Odada kullanıcı adları büyük harfle çıkıyor (taraf başlığı stili); adın kendisi değişmiyor.
+4. `RoomLobby.jsx` hâlâ `OnlineGame` tarafından kullanılıyor (Faz 6'da kalkacak); eski `g-lobby-*` stilleri o zamana kadar duruyor.
