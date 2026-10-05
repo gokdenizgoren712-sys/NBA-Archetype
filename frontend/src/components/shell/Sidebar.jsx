@@ -79,6 +79,7 @@ export default function Sidebar() {
   };
 
   return (
+    <div className={`pa-side-slot${collapsed ? " collapsed" : ""}`}>
     <aside className={`pa-side${collapsed ? " collapsed" : ""}`} style={{ "--acc": accent }}>
       <button className="pa-side-logo" onClick={() => navigate("/")} aria-label="Primary Arch — home">
         <Logo size={collapsed ? 30 : 28} />
@@ -108,5 +109,6 @@ export default function Sidebar() {
         {item({ icon: collapsed ? "expand" : "collapse", label: collapsed ? "Expand" : "Collapse", onClick: toggle })}
       </div>
     </aside>
+    </div>
   );
 }

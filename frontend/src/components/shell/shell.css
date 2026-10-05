@@ -12,17 +12,21 @@
 }
 
 /* ═══ Kenar çubuğu ═══════════════════════════════════════════════════════ */
+/* Aç/kapa animasyonu yerleşimi bozmadan: dış kutu (slot) grid-template-columns ile 220 ↔ 72px kayar,
+   kenar çubuğu hücreyi doldurur (width/padding geçişi yok). */
+.pa-side-slot { display: none; flex-shrink: 0; height: 100%; grid-template-columns: 220px; transition: grid-template-columns .2s ease; }
+@media (min-width: 768px) { .pa-side-slot { display: grid; } }
+.pa-side-slot.collapsed { grid-template-columns: 72px; }
+@media (prefers-reduced-motion: reduce) { .pa-side-slot { transition: none; } }
 .pa-side {
-  width: 220px; flex-shrink: 0; height: 100%;
-  display: none; flex-direction: column;
+  min-width: 0; height: 100%;
+  display: flex; flex-direction: column;
   padding: 18px 14px 16px;
   box-shadow: inset -1px 0 0 var(--frame);
   overflow-y: auto; overflow-x: hidden;
-  transition: width .2s ease, padding .2s ease;
 }
-@media (min-width: 768px) { .pa-side { display: flex; } }
 .pa-side > .pa-side-logo { padding: 2px 6px 20px; }
-.pa-side.collapsed { width: 72px; padding: 18px 0 16px; align-items: center; }
+.pa-side.collapsed { align-items: center; }
 .pa-side.collapsed > .pa-side-logo { padding: 0 0 18px; }
 
 /* Spor anahtarı — iki kolon segment */
