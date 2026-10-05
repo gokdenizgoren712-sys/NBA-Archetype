@@ -1,0 +1,95 @@
+/* Primary Arch v3 — ortak primitive'ler (handoff/tokens.css + 00-README kural 3–5).
+   Taktik tahta dili: 4px köşe, düz hairline paneller, 24px ızgara, gölge/ışıma yok (yalnız modal). */
+
+.pa-grid {
+  background-image: linear-gradient(var(--grid-line) 1px, transparent 1px), linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+.pa-eyebrow { margin: 0; font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .1em; text-transform: uppercase; color: var(--text-muted); }
+.pa-h1 { margin: 0; font: 700 54px/1 var(--font-logo); letter-spacing: .06em; text-transform: uppercase; color: var(--text-primary); }
+@media (max-width: 700px) { .pa-h1 { font-size: 34px; } }
+
+/* Panel */
+.pa-panel { background: var(--panel); border: 1px solid var(--panel-border); border-radius: var(--radius); }
+.pa-panel.pad { padding: 20px; }
+.pa-panel-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--panel-border); }
+.pa-panel-head h2, .pa-panel-head h3 { margin: 0; font: 700 18px var(--font-logo); letter-spacing: .08em; text-transform: uppercase; color: var(--text-primary); }
+.pa-panel-head .count { font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .08em; color: var(--text-muted); white-space: nowrap; }
+
+/* Düğme: primary (altın, görünüm başına tek), outline, quiet; yükseklik 34/44/48/54 */
+.pa-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; box-sizing: border-box;
+  min-height: var(--touch); padding: 0 20px; border-radius: var(--radius); cursor: pointer; white-space: nowrap; text-decoration: none;
+  font: 700 16px var(--font-logo); letter-spacing: .1em; text-transform: uppercase; transition: background .15s ease, border-color .15s ease, color .15s ease;
+}
+.pa-btn.primary { border: 0; background: var(--accent); color: #14110a; letter-spacing: .12em; font-size: 18px; padding: 0 26px; }
+.pa-btn.primary:hover:not(:disabled) { background: #ffc24d; }
+.pa-btn.outline { border: 1.5px solid rgba(255, 255, 255, .3); background: transparent; color: var(--text-primary); }
+.pa-btn.outline:hover:not(:disabled) { border-color: rgba(255, 255, 255, .55); background: rgba(255, 255, 255, .04); }
+.pa-btn.quiet { border: 0; background: transparent; color: var(--text-secondary); padding: 0 12px; }
+.pa-btn.quiet:hover:not(:disabled) { color: var(--text-primary); background: rgba(255, 255, 255, .05); }
+.pa-btn.s34 { min-height: 34px; font-size: 14px; padding: 0 14px; }
+.pa-btn.s44 { min-height: 44px; }
+.pa-btn.s48 { min-height: 48px; }
+.pa-btn.s54 { min-height: 54px; font-size: 20px; }
+.pa-btn.block { width: 100%; }
+.pa-btn:disabled { opacity: .45; cursor: not-allowed; }
+.pa-btn:focus-visible, .pa-field input:focus-visible, .pa-field select:focus-visible, .pa-field textarea:focus-visible,
+.pa-tab:focus-visible, .pa-chip:focus-visible, .pa-dialog-x:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Alan: mono etiket + dolu girdi */
+.pa-field { display: flex; flex-direction: column; gap: 6px; }
+.pa-field > label, .pa-field > .lb { font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .1em; text-transform: uppercase; color: var(--text-muted); }
+.pa-field input, .pa-field select, .pa-field textarea {
+  box-sizing: border-box; width: 100%; min-height: var(--touch); padding: 0 14px; border: 1px solid var(--panel-border); border-radius: var(--radius);
+  background: var(--field); color: var(--text-primary); font: 15px var(--font-sans);
+}
+.pa-field textarea { padding: 12px 14px; min-height: 96px; resize: vertical; }
+.pa-field input::placeholder, .pa-field textarea::placeholder { color: var(--text-muted); }
+.pa-field.err input, .pa-field.err select, .pa-field.err textarea { border-color: var(--danger); }
+.pa-field .hint { font-size: 13px; color: var(--text-muted); }
+.pa-field.err .hint { color: var(--danger); }
+
+/* Sekmeler / segment: seçili = altın ton + altın metin + hairline */
+.pa-tabs { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+.pa-tabs::-webkit-scrollbar { display: none; }
+.pa-tabs.seg { display: inline-flex; padding: 3px; border: 1px solid var(--panel-border); border-radius: var(--radius); gap: 2px; overflow: visible; }
+.pa-tab {
+  flex: none; min-height: var(--touch); padding: 0 16px; border: 1px solid transparent; border-radius: var(--radius); background: transparent; cursor: pointer;
+  color: var(--text-secondary); font: 700 15px var(--font-logo); letter-spacing: .08em; text-transform: uppercase; white-space: nowrap;
+}
+.pa-tab:hover { color: var(--text-primary); }
+.pa-tab[aria-selected="true"], .pa-tab[aria-pressed="true"] { background: var(--accent-dim); border-color: var(--accent-border); color: var(--accent); }
+
+/* Chip / durum etiketi */
+.pa-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 0 10px; border: 1px solid var(--panel-border); border-radius: var(--radius); background: var(--raised); color: var(--text-secondary); font: 600 13px var(--font-sans); white-space: nowrap; }
+button.pa-chip { cursor: pointer; }
+.pa-chip .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dot, var(--text-muted)); flex: none; }
+.pa-chip[aria-pressed="true"] { border-color: var(--accent-border); background: var(--accent-dim); color: var(--accent); }
+.pa-status { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border-radius: var(--radius); font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .08em; text-transform: uppercase; border: 1px solid var(--tone, var(--panel-border)); color: var(--tone, var(--text-secondary)); }
+.pa-status.published, .pa-status.good { --tone: var(--good); }
+.pa-status.draft { --tone: var(--text-muted); }
+.pa-status.running { --tone: var(--accent); }
+.pa-status.failed { --tone: var(--danger); }
+
+/* Tablo: mono başlık, 52px satır, yalnız alt hairline */
+.pa-table { width: 100%; border-collapse: collapse; }
+.pa-table th { height: 36px; padding: 0 14px; text-align: left; font: 400 12px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); border-bottom: 1px solid var(--panel-border); }
+.pa-table td { height: 52px; padding: 0 14px; border-bottom: 1px solid var(--hairline); color: var(--text-primary); font-size: 14px; }
+.pa-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.pa-table tr.tier td { height: 32px; background: rgba(255, 255, 255, .02); font: 12px ui-monospace, monospace; letter-spacing: .1em; text-transform: uppercase; color: var(--text-muted); }
+.pa-table tbody tr:hover td { background: rgba(255, 255, 255, .025); }
+.pa-table-wrap { overflow-x: auto; }
+
+/* Sheet (mobilde alt sayfa) ve Modal (gölgeli tek öğe) */
+.pa-overlay { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(0, 0, 0, .66); }
+.pa-dialog { box-sizing: border-box; width: min(560px, 100%); max-height: calc(100vh - 32px); display: flex; flex-direction: column; background: var(--modal); border: 1px solid var(--panel-border); border-radius: var(--radius); box-shadow: 0 24px 64px rgba(0, 0, 0, .6); color: var(--text-primary); }
+.pa-dialog-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 20px 8px; }
+.pa-dialog-head h2 { margin: 0; font: 700 24px var(--font-logo); letter-spacing: .08em; text-transform: uppercase; }
+.pa-dialog-x { width: var(--touch); height: var(--touch); flex: none; border: 0; border-radius: 50%; background: var(--raised); color: var(--text-primary); font-size: 24px; line-height: 1; cursor: pointer; }
+.pa-dialog-body { padding: 8px 20px 20px; overflow-y: auto; font-size: 15px; line-height: 1.5; color: var(--text-secondary); }
+.pa-dialog-foot { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; padding: 0 20px 20px; }
+@media (max-width: 700px) {
+  .pa-overlay.sheet { align-items: flex-end; padding: 0; }
+  .pa-overlay.sheet .pa-dialog { width: 100%; max-height: 88vh; border-radius: var(--radius-phone) var(--radius-phone) 0 0; border-bottom: 0; padding-bottom: env(safe-area-inset-bottom); }
+}

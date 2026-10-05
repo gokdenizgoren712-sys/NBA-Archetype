@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { SEO } from "../../hooks/useSEO";
-import { PageGlow } from "../../components/states/States";
 import { LEGAL_NAV } from "./LegalPageLayout";
 import "./legal.css";
 
@@ -24,7 +23,6 @@ export default function ContactDisclaimer() {
   return (
     <div className="ct-page">
       <SEO title="Contact & Disclaimer" description="How to reach Primary Arch, and a general disclaimer about the site's content." path="/contact" noindex />
-      <PageGlow tint="#FFB11B" />
       <div className="ct-grid">
         <div className="ct-left">
           <h1>Get in touch</h1>

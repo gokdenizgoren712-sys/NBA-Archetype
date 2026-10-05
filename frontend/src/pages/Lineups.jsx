@@ -3,7 +3,6 @@ import { api } from "../api";
 import RoleImpactChart from "../components/RoleImpactChart";
 import PlayerCard from "../components/PlayerCard";
 import PaIcon from "../components/shell/PaIcon";
-import { PageGlow } from "../components/states/States";
 import { useLang } from "../contexts/LanguageContext";
 import { useAuth } from "../contexts/AuthContext";
 import { SEO } from "../hooks/useSEO";
@@ -333,7 +332,6 @@ export default function Lineups() {
         description="Build and analyze 5-man NBA lineups from any era. Evaluate real historical lineups by role coverage, archetype balance, and net rating across 40+ seasons."
         path="/basketball/lineups" />
       <div className="lu-page">
-        <PageGlow tint={tint} />
         <div className="lu-inner">
           <header className="lu-head">
             <div>

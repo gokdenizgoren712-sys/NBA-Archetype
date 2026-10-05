@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { SEO } from "../hooks/useSEO";
-import { PageGlow, EmptyState, ErrorState, SkeletonGrid } from "../components/states/States";
+import { EmptyState, ErrorState, SkeletonGrid } from "../components/states/States";
 import { ARCHETYPE_COLOR, archetypeArt } from "../constants/archetypeColors";
 import "./blog.css";
 
@@ -47,7 +47,6 @@ export default function Blog() {
     <>
       <SEO title="Blog — NBA Analysis & Articles" description="Articles on NBA archetypes, player analysis, and basketball tactics." path="/blog" />
       <div className="bl-page">
-        <PageGlow tint={fth?.c || "#FFB11B"} />
         <div className="bl-inner">
           <h1 className="bl-h1">Blog</h1>
           {error ? <ErrorState onRetry={load} /> : loading ? <SkeletonGrid count={3} height={180} /> : !first ? (

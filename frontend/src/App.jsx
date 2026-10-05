@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from "react-router-dom";
+import "./components/ui/ui.css";
 import { useState, useCallback, lazy, Suspense } from "react";
 import Footer from "./components/Footer";
 import Sidebar from "./components/shell/Sidebar";
@@ -123,7 +124,7 @@ function Shell({ children }) {
       <div className="flex-1 min-w-0 flex flex-col">
         {!hidden && !auth && <PageBar onMenu={() => setMenuOpen(true)} />}
         {/* data-sport: sayfanın aksanı sporu izler (handoff kural 6) — bkz. shell.css */}
-        <main className="flex-1 min-h-0 overflow-hidden" data-sport={sportOf(pathname) || undefined}>{children}</main>
+        <main className="flex-1 min-h-0 overflow-hidden pa-grid" data-sport={sportOf(pathname) || undefined}>{children}</main>
         <TermsBanner />
         <Footer />
       </div>

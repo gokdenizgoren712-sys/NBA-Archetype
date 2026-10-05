@@ -3,7 +3,6 @@ import { api } from "../../api";
 import { SEO } from "../../hooks/useSEO";
 import FootballPlayerCard from "../../components/FootballPlayerCard";
 import PaIcon from "../../components/shell/PaIcon";
-import { PageGlow } from "../../components/states/States";
 import ExploreHeader from "../../components/explore/ExploreHeader";
 import { MAP_ANCHORS, placeOnMap } from "../../game/football/mapAnchors";
 import { LEAGUE_LABEL } from "../../game/football/leagues";
@@ -122,7 +121,6 @@ export default function FootballMap() {
       <SEO title="Football — Archetype Map"
         description="Every player placed by role. Nearby players play the same way."
         path="/football/map" noindex />
-      <PageGlow tint={accent} />
       <div className="ex-inner">
         <ExploreHeader active="map" tabs={FOOTBALL_EXPLORE_TABS} aside={
           <>

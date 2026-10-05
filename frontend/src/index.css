@@ -62,10 +62,10 @@
   --accent-football: #3FB08C;
   /* Metin: 5 seviyeli sıcak skala. --text-faint artık okunur (#3a3a3a
      metinde görünmüyordu); #3a3a3a yalnız ayırıcıya kaldı (--ink-divider). */
-  --text-primary:   #f2efea;
-  --text-secondary: #b4afa8;
-  --text-muted:     #8b857e;
-  --text-faint:     #5a5650;
+  --text-primary:   #f2f2f4;   /* v3 (#f2efea idi) */
+  --text-secondary: #a8a8b2;   /* v3 (#b4afa8 idi) */
+  --text-muted:     #8a8a94;   /* v3 (#8b857e idi); mono etiketler */
+  --text-faint:     #8a8a94;   /* v3'te yok: #5a5650 4.5:1'i geçmiyordu, muted'a eşlendi; sayfalar kendi fazında muted'a geçecek */
   --ink-divider:    #3a3a3a;
   --divider-fade: linear-gradient(90deg, transparent, rgba(255,255,255,.08) 20%, rgba(255,255,255,.08) 80%, transparent);
   --row-line:     inset 0 -1px 0 rgba(255,255,255,.05);
@@ -74,6 +74,19 @@
   --nba-red:      #c8102e;
   --nba-blue:     #1d428a;
   --danger:       #f87171;
+
+  /* ── Primary Arch v3 (handoff/tokens.css) ── */
+  --field:          #0a0a0c;                    /* input dolgusu */
+  --panel:          rgba(12,14,16,.92);         /* panel: yarı saydam + hairline */
+  --panel-border:   rgba(255,255,255,.14);
+  --raised:         #1a1a1a;                    /* chip, etiket (eski --bg-elevated) */
+  --hairline:       #262626;
+  --modal:          #131313;                    /* yalnız modallar düz dolgu */
+  --grid-line:      rgba(255,255,255,.03);      /* 24px sayfa ızgarası */
+  --good:           #4ade80;
+  --phase-gk: #F2C14E; --phase-def: #4C9BE8; --phase-mid: #3FB08C; --phase-fwd: #E8654C;
+  --radius: 4px; --radius-frame: 6px; --radius-phone: 28px;
+  --touch: 44px;
 }
 
 /* ── Modal animasyon ─────────────────────────────────────────────── */

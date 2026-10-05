@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { SEO } from "../hooks/useSEO";
-import { PageGlow, EmptyState, ErrorState } from "../components/states/States";
+import { EmptyState, ErrorState } from "../components/states/States";
 import { ARCHETYPE_COLOR } from "../constants/archetypeColors";
 import { PHASE_COLOR } from "../game/football/theme";
 import "./profile.css";
@@ -95,7 +95,6 @@ export default function Profile() {
     <>
       <SEO title="Profile" path="/profile" noindex />
       <div className="pf-page">
-        <PageGlow tint="#FFB11B" />
         <div className="pf-inner">
           <header className="pf-head">
             <span className="av" aria-hidden="true">{(u.username || "?")[0].toUpperCase()}</span>

@@ -1,12 +1,7 @@
-// Handoff v2 sistem durumları (18d) ve sayfa ortam ışığı — tüm sayfaların
+// Handoff v2 sistem durumları (18d) — tüm sayfaların
 // paylaştığı parçalar. Önceden yükleniyor/boş/hata çoğu yerde tek satır soluk
 // metindi; burada her biri ne olduğunu ve ne yapılacağını söylüyor.
 import PaIcon from "../shell/PaIcon";
-
-/** Sayfa başına ortam ışığı (1–2 organik blob). `tint` değişince .5s'de geçer. */
-export function PageGlow({ tint }) {
-  return <div className="g-smoke" aria-hidden="true" style={tint ? { "--page-tint": tint } : undefined} />;
-}
 
 /** Kart ızgarası için yükleniyor iskeleti — kademeli gecikmeli shimmer. */
 export function SkeletonGrid({ count = 6, height = 250, min = 280, label }) {

@@ -3,7 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import DOMPurify from "dompurify";
 import { SEO } from "../hooks/useSEO";
-import { PageGlow, EmptyState } from "../components/states/States";
+import { EmptyState } from "../components/states/States";
 import { articleTheme, fmtDate } from "./Blog";
 import "./blog.css";
 
@@ -79,7 +79,6 @@ export default function BlogPost() {
     <>
       <SEO title={article.title} description={article.title} path={`/blog/${slug}`} />
       <div className="bl-page" style={{ "--c": th.c }}>
-        <PageGlow tint={th.c} />
         <article className="bp-article">
           <div className="bp-crumb">
             <span><Link to="/blog">Blog</Link>{th.tag && <> <i>/</i> <em>{th.tag}</em></>}</span>

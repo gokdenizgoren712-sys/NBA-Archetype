@@ -78,7 +78,6 @@
 
 /* ── İçerik ────────────────────────────────────────────────────────────── */
 .pa-list-main { position: relative; flex: 1; min-width: 0; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; }
-.pa-list-main > .g-smoke { position: absolute; inset: 0 0 auto 0; height: 1100px; }
 .pa-list-body { position: relative; padding: 4px 28px 0; flex: 1; }
 
 .pa-list-hero { display: flex; align-items: flex-end; gap: 24px; margin: 24px 0 26px; }

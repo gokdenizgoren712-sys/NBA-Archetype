@@ -4,7 +4,6 @@
 // "Filters" düğmesi (sayı rozeti) + aktif filtre çipleri, filtreler alt sayfada.
 // Sayfa rengi `tint` ile değişir (arketip/faz seçimi) — .g-smoke .5s geçişli.
 import { useEffect, useState } from "react";
-import { PageGlow } from "../states/States";
 import PaIcon from "../shell/PaIcon";
 import "./listing.css";
 
@@ -29,7 +28,6 @@ export function ListingPage({ tint, glow, filters, sheetFilters, search, filterC
 
       <section className="pa-list-main">
         {/* glow: koyu lig renkleri (G League #A8263F) ışıkta taban, arayüzde açık tonu */}
-        <PageGlow tint={glow || tint} />
         {/* Mobil üst şerit: arama + filtre düğmesi, altında aktif çipler */}
         <div className="pa-list-mbar">
           <div className="pa-list-mrow">

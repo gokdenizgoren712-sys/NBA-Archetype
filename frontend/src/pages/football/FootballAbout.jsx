@@ -1,7 +1,6 @@
 import { Link } from "react-router-dom";
 import { SEO } from "../../hooks/useSEO";
 import { ACCENT as ACC, PHASE_COLOR } from "../../game/football/theme";
-import { PageGlow } from "../../components/states/States";
 import ExploreHeader from "../../components/explore/ExploreHeader";
 import { FOOTBALL_FUNDAMENTALS_TABS } from "./FootballGlossary";
 import "../fundamentals.css";
@@ -31,7 +30,6 @@ export default function FootballAbout() {
       <SEO title="About — Football"
         description="How Primary Arch labels footballers: four phases, 24 roles, and what the numbers can and cannot tell you."
         path="/football/about" />
-      <PageGlow tint={ACC} />
       <div className="fg-inner">
         <ExploreHeader title="Fundamentals" active="about" tabs={FOOTBALL_FUNDAMENTALS_TABS} />
 

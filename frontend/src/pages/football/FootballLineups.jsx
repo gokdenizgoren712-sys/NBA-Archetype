@@ -4,7 +4,7 @@ import { api } from "../../api";
 import { SEO } from "../../hooks/useSEO";
 import FootballCustomXI from "./FootballCustomXI";
 import FootballRealXI from "./FootballRealXI";
-import { PageGlow, ErrorState } from "../../components/states/States";
+import { ErrorState } from "../../components/states/States";
 import PaIcon from "../../components/shell/PaIcon";
 import { FORMATIONS } from "../../game/football/formations";
 import { LEAGUE_LABEL } from "../../game/football/leagues";
@@ -121,7 +121,6 @@ export default function FootballLineups() {
       <SEO title="Football — Squad Chemistry"
         description="Which ten outfield players fit together best, by archetype."
         path="/football/lineups" noindex />
-      <PageGlow tint={ACCENT} />
       <div className="ch-inner">
         <header className="ch-head">
           <div>

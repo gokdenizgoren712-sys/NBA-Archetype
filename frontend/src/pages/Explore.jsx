@@ -4,7 +4,6 @@ import { api } from "../api";
 import { useLang } from "../contexts/LanguageContext";
 import PlayerCard from "../components/PlayerCard";
 import PaIcon from "../components/shell/PaIcon";
-import { PageGlow } from "../components/states/States";
 import ExploreHeader from "../components/explore/ExploreHeader";
 import { ARCHETYPE_COLOR as ARCH_COLORS } from "../constants/archetypeColors";
 
@@ -238,7 +237,6 @@ export default function ExploreContent() {
 
   return (
     <div className="ex-page fill">
-      <PageGlow tint={tint} />
       <div className="ex-inner">
         <ExploreHeader active="map" aside={
           <>

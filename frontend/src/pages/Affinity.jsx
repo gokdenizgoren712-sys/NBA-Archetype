@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { api } from "../api";
 import { useLang } from "../contexts/LanguageContext";
 import ExploreHeader from "../components/explore/ExploreHeader";
-import { PageGlow, ErrorState } from "../components/states/States";
+import { ErrorState } from "../components/states/States";
 import { ARCHETYPE_COLOR as ARCH_COLOR } from "../constants/archetypeColors";
 
 // ── Explore · Affinity (handoff 11a) ────────────────────────────────────────
@@ -238,7 +238,6 @@ export default function AffinityContent() {
 
   return (
     <div className="ex-page">
-      <PageGlow tint={tint} />
       <div className="ex-inner">
         <ExploreHeader active="affinity" aside={
           <div className="ex-seg" role="tablist">

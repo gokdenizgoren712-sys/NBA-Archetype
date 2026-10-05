@@ -1,7 +1,6 @@
 /* ═══ Auth (handoff 10c · 17d · mobil 20g) ══════════════════════════════ */
 /* margin:auto ile ortalama — justify-content:center taşmada formun tepesini kırpıyordu */
 .au-page { position: relative; height: 100%; overflow-y: auto; display: flex; flex-direction: column; align-items: center; padding: 72px 20px 40px; }
-.au-page > .g-smoke::before { left: 50%; top: 18%; transform: translateX(-50%); width: min(720px, 90%); height: 460px; opacity: .10; }
 .au-logo { position: absolute; left: 28px; top: 20px; z-index: 2; display: flex; align-items: center; gap: 10px; text-decoration: none; }
 .au-logo span { font-family: var(--font-logo); font-size: 17px; letter-spacing: .1em; padding-top: 2px; }
 .au-logo b { font-weight: 600; color: #fff; }

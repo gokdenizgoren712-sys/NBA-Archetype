@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { PageGlow } from "../components/states/States";
 import ExploreHeader from "../components/explore/ExploreHeader";
 import { FUNDAMENTALS_TABS } from "./Glossary";
 import { CORE_COMPONENTS, MODIFIER_COMPONENTS } from "../data/glossary";
@@ -133,7 +132,6 @@ function Release({ entry, first }) {
 export default function AboutContent() {
   return (
     <div className="fg-page">
-      <PageGlow tint="#FFB11B" />
       <div className="fg-inner">
         <ExploreHeader title="Fundamentals" active="about" tabs={FUNDAMENTALS_TABS} />
 

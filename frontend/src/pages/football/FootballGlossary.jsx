@@ -4,7 +4,6 @@ import { SEO } from "../../hooks/useSEO";
 import { FOOTBALL_ARCHETYPES } from "../../data/footballGlossary";
 import { PHASE_COLOR } from "../../game/football/theme";
 import PaIcon from "../../components/shell/PaIcon";
-import { PageGlow } from "../../components/states/States";
 import ExploreHeader from "../../components/explore/ExploreHeader";
 import "../fundamentals.css";
 
@@ -65,7 +64,6 @@ export default function FootballGlossary() {
   return (
     <div className="fg-page">
       <SEO title="Glossary — Football" description="Every football archetype, what it means, and the exact metrics behind it." path="/football/glossary" />
-      <PageGlow tint="#3FB08C" />
       <div className="fg-inner">
         <ExploreHeader title="Fundamentals" active="glossary" tabs={FOOTBALL_FUNDAMENTALS_TABS} aside={
           <label className="ex-search" style={{ "--tint": "#3FB08C" }}>

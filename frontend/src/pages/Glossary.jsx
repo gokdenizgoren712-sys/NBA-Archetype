@@ -5,7 +5,6 @@ import { ERAS as GAME_ERAS } from "../game/eras";
 import { useLang } from "../contexts/LanguageContext";
 import { api } from "../api";
 import PaIcon from "../components/shell/PaIcon";
-import { PageGlow } from "../components/states/States";
 import ExploreHeader from "../components/explore/ExploreHeader";
 import { ARCHETYPE_COLOR as CORE_HEX, ARCHETYPE_BLURB, archetypeArt } from "../constants/archetypeColors";
 import "./fundamentals.css";
@@ -195,7 +194,6 @@ export default function GlossaryContent() {
 
   return (
     <div className="fg-page">
-      <PageGlow tint={tint} />
       <div className="fg-inner">
         <ExploreHeader title="Fundamentals" active="glossary" tabs={FUNDAMENTALS_TABS} aside={
           <div className="fg-kinds" role="radiogroup" aria-label="Show">

@@ -4,7 +4,7 @@ import { api } from "../api";
 import { SEO } from "../hooks/useSEO";
 import PlayerCard from "../components/PlayerCard";
 import { useAuth } from "../contexts/AuthContext";
-import { PageGlow, EmptyState } from "../components/states/States";
+import { EmptyState } from "../components/states/States";
 import { ARCHETYPE_COLOR } from "../constants/archetypeColors";
 import { getAwardBadges } from "../game/awards";
 import "./player-profile.css";
@@ -183,7 +183,6 @@ export default function PlayerProfile() {
     <>
       <SEO title={name} description={seoDesc} path={`/basketball/players/${encodeURIComponent(name)}`} />
       <div className="pp-page" style={{ "--tint": tint }}>
-        <PageGlow tint={tint} />
         <div className="pp-inner">
           <div className="pp-top">
             <div className="pp-card"><PlayerCard player={cardPlayer} expandable /></div>

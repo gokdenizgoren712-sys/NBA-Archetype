@@ -15,7 +15,6 @@ import GameStage from "../game/ui/GameStage";
 import EraStep from "../game/ui/EraStep";
 import BasketballDraft from "../game/ui/BasketballDraft";
 import ModeAboutModal from "../game/ModeAboutModal";
-import { PageGlow } from "../components/states/States";
 import CoachPicker from "../game/CoachPicker";
 import DraftAnalysis from "../game/DraftAnalysis";
 import LeaderboardPanel from "../game/LeaderboardPanel";

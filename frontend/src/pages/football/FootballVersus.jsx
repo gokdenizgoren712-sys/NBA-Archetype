@@ -9,7 +9,6 @@ import SameScreenDraft from "../../game/football/SameScreenDraft";
 import { FootballVersusHire, FootballVersusMatchup, FootballVersusLegs, FootballVersusFinal } from "../../game/ui/VersusFootball";
 import { drawManagers } from "../../game/football/managers";
 import { sideNumbers, roleCoverage, pillarsOf, legStats } from "../../game/football/versusFit";
-import { PageGlow } from "../../components/states/States";
 import { RoomEntry, RoomGate, RoomShare } from "../../game/ui/RoomUi";
 import RoomDraft from "../../game/football/RoomDraft";
 import { UsersIcon, GlobeIcon } from "../../game/GameIcons";
@@ -322,8 +321,6 @@ export default function FootballVersus({ mode: fixedMode }) {
       <SEO title="Head to head — Football"
         description="Put two elevens against each other over two legs."
         path="/football/versus" noindex />
-      <div className="g-smoke" />
-
       <div className="relative p-4 sm:p-6 max-w-[1400px] mx-auto space-y-3 pb-8">
         {/* Sabit moda gelindiyse mod seçtirme satırı YOK — kullanıcı modunu
             zaten mod seçim ekranında seçti. Yalnız kuralların ⓘ'si duruyor. */}
