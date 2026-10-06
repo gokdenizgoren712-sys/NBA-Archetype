@@ -92,6 +92,20 @@ def test_with_sim_swaps_stats_and_keeps_model_rows_without_simulation():
     assert out.loc[0, "FP_RATIO_P10"] == pytest.approx(0.8) and out.loc[1, "FP_RATIO_P10"] == 0.8
 
 
+def test_with_sim_blend_is_the_weighted_mix_of_model_and_simulation():
+    p = pd.DataFrame({"PLAYER_ID": [1], "PROJ_MPG": [30.0], "PROJ_GP": [70.0], "FG%": [0.5], "FT%": [0.8],
+                      "FP_RATIO_P10": [0.8], "FP_RATIO_P90": [1.2], "SIM_FP": [40.0], "SIM_FP_P10": [20.0], "SIM_FP_P90": [60.0],
+                      "SIM_MPG": [20.0], "SIM_GP": [50.0]})
+    for s in ts.STATS:
+        p[s] = 10.0
+        p[f"SIM_{s}"] = 20.0
+    out = ts.with_sim(p, 0.25)
+    assert out.loc[0, "PTS"] == pytest.approx(0.75 * 10 + 0.25 * 20)
+    assert out.loc[0, "PROJ_MPG"] == pytest.approx(27.5) and out.loc[0, "PROJ_GP"] == pytest.approx(65.0)
+    assert out.loc[0, "FP_RATIO_P10"] == pytest.approx(0.75 * 0.8 + 0.25 * 0.5)          # iki oranın harmanı
+    assert ts.with_sim(p, 0.0).loc[0, "PTS"] == 10.0 and ts.with_sim(p, 1.0).loc[0, "PTS"] == 20.0
+
+
 LIVE = ROOT / "data" / "2026-27__fantasy_projections.parquet"
 needs_sim = pytest.mark.skipif(not LIVE.exists() or "SIM_FP" not in pd.read_parquet(LIVE).columns, reason="simülasyon sütunları yok")
 
@@ -122,3 +136,35 @@ def test_api_serves_both_projection_sources():
     sim = prof["simulation"]
     assert sim and sim["per_game"]["pts"]["p10"] < sim["per_game"]["pts"]["mean"] < sim["per_game"]["pts"]["p90"]
     assert client.get("/api/fantasy/rankings", params={"format": "yahoo_h2h_9cat", "source": "nope"}).status_code == 422
+
+
+@needs_sim
+def test_api_blend_sits_between_model_and_simulation_and_lists_disagreements():
+    from api import main as api_main
+    api_main._RL.clear()
+    q = {"format": "yahoo_h2h_points", "limit": 300}
+    get = lambda **kw: client.get("/api/fantasy/rankings", params={**q, **kw}).json()
+    m, s, b = get(), get(source="sim"), get(source="blend")
+    assert b["source"] == "blend"
+    pm = {p["player_id"]: p["fp_game"] for p in m["players"]}
+    ps = {p["player_id"]: p["fp_game"] for p in s["players"]}
+    inside = [min(pm[i], ps[i]) - 0.01 <= p["fp_game"] <= max(pm[i], ps[i]) + 0.01
+              for p in b["players"] for i in [p["player_id"]] if i in pm and i in ps]
+    assert inside and all(inside)                                                          # harman iki ucun arasında
+    d = get(disagree=True)
+    assert d["matched"] < m["matched"] and all(abs(p["sim_delta"]) >= 2.0 for p in d["players"])
+    top = get(sort="sim_delta", limit=5)["players"]
+    assert [p["sim_delta"] for p in top] == sorted((p["sim_delta"] for p in top), reverse=True)
+    meta = client.get("/api/fantasy/meta").json()
+    assert meta["blend_weight"] == 0.25
+
+
+@needs_sim
+def test_draft_board_follows_the_projection_and_flags_it_unvalidated():
+    from api import main as api_main
+    api_main._RL.clear()
+    body = {"format": "yahoo_h2h_9cat", "slot": 3, "taken": [], "mine": [], "n": 5}
+    base = client.post("/api/fantasy/draft/recommend", json=body).json()
+    sim = client.post("/api/fantasy/draft/recommend", json={**body, "projection": "sim"}).json()
+    assert base["validation"]["status"] == "validated" and sim["validation"]["status"] == "unvalidated"
+    assert client.post("/api/fantasy/draft/recommend", json={**body, "projection": "x"}).status_code == 422

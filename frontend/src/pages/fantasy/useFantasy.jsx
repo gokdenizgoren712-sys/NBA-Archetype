@@ -20,7 +20,8 @@ export const FORMATS = [
 export const FMT_BY_K = Object.fromEntries(FORMATS.map((f) => [f.k, f]));
 export const CATS = ["FG%", "FT%", "3PM", "PTS", "REB", "AST", "STL", "BLK", "TO"];
 const STORE = "fz_prefs_v1";
-const DEFAULTS = { f: "9cat", t: 12, s: 7, custom: null, league: null };
+const DEFAULTS = { f: "9cat", t: 12, s: 7, custom: null, league: null, pr: null };   // pr: Projeksiyon bakışı; null = sitenin varsayılanı (Simülasyon varsa)
+export const PROJECTIONS = ["model", "sim", "blend"];
 
 function readStore() {
   try { return JSON.parse(localStorage.getItem(STORE) || "null") || {}; } catch { return {}; }
@@ -89,9 +90,11 @@ export function FantasyProvider({ children }) {
       ? state.custom.roster.starters.length + (state.custom.roster.bench || 0)
       : state.f === "hs" ? 10 : 13;
     /** API'ye giden format: hazır anahtar ya da takım sayısı işlenmiş özel format. */
+    const simOk = !!meta?.simulation;
+    const projection = simOk ? (PROJECTIONS.includes(state.pr) ? state.pr : "sim") : "model";
     const apiFormat = isCustom ? { ...state.custom, teams: state.t } : fmtInfo.key;
     return {
-      ...state, set, meta, fmtInfo, kind, cats, rosterSize, apiFormat, isCustom: !!isCustom,
+      ...state, set, meta, fmtInfo, projection, simAvailable: simOk, setProjection: (k) => set({ pr: k }), kind, cats, rosterSize, apiFormat, isCustom: !!isCustom,
       apiTeams: isCustom ? undefined : state.t,
       isH2H: isCustom ? state.custom.matchup !== "roto" : state.f !== "roto",
       picks: snakePicks(state.t, rosterSize, state.s),

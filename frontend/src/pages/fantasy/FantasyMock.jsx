@@ -316,7 +316,7 @@ export default function FantasyMock() {
     const plan = "plan" in cfg ? cfg.plan : base.plan;
     setBusy(true); setError(null);
     try {
-      const body = { format: f.apiFormat, teams: f.apiTeams, slot: humans ? humans[0].slot : f.s, picks, seed, n: 20 };
+      const body = { format: f.apiFormat, teams: f.apiTeams, slot: humans ? humans[0].slot : f.s, picks, seed, n: 20, projection: f.projection };
       if (humans) {
         body.humans = humans.map((h) => h.slot);
         body.plans = Object.fromEntries(humans.filter((h) => h.plan).map((h) => [String(h.slot), h.plan]));
@@ -333,7 +333,7 @@ export default function FantasyMock() {
       setLeft(PICK_SECONDS);
       if (d.done) {
         if (!humans) writeLastMock(f, ids);       // simülatör son solo mock'u kaynak olarak kullanır
-        const g = await fz.grade({ format: f.apiFormat, teams: f.apiTeams, slot: humans ? humans[0].slot : f.s, picks: ids });
+        const g = await fz.grade({ format: f.apiFormat, teams: f.apiTeams, slot: humans ? humans[0].slot : f.s, picks: ids, projection: f.projection });
         if (my === seq.current) setGrade(g);
       }
     } catch (e) {
@@ -350,7 +350,7 @@ export default function FantasyMock() {
     runRef.current = fresh;
     setRun(fresh); setGrade(null); setState(null); setSetup(false); setRosterView(null);
     advance(fresh.picks, fresh.seed, { animate: !saved || saved.picks.length === 0 });
-  }, [f.apiFormat, f.t, f.s]);   // eslint-disable-line react-hooks/exhaustive-deps
+  }, [f.apiFormat, f.t, f.s, f.projection]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   const draft = (pid) => {
     const r = runRef.current;

@@ -82,9 +82,9 @@ export default function FantasyRankings() {
   const [flag, setFlag] = useState(null);
   const [limit, setLimit] = useState(PAGE);
   const [sort, setSort] = useState(null);
-  const [source, setSource] = useState(null);             // null = sitenin varsayılanı: Simülasyon (varsa) · model = bizim projeksiyon · sim = takım simülasyonu
-  const simOk = !!f.meta?.simulation;
-  const src = simOk ? (source ?? "sim") : "model";
+  const [disagree, setDisagree] = useState(false);        // yalnız model ile simülasyonun ayrıştığı oyuncular (|ΔFP| ≥ 2)
+  const simOk = f.simAvailable;
+  const src = f.projection;                               // genel Projeksiyon seçicisi (FantasyBar)
 
   useEffect(() => { const t = setTimeout(() => setQDeb(q.trim()), 250); return () => clearTimeout(t); }, [q]);
   // Format değişince kategori bağımlı seçimler sıfırlanır
@@ -96,10 +96,10 @@ export default function FantasyRankings() {
   // Yalnız bu formatta geçerli punt'lar gider: format değişince sıfırlama efekti
   // bir çizim geç kalıyor ve ilk istek eski punt'la (ör. Points'e FT%) 422 alıyordu.
   const effPunt = isCats ? punt.filter((c) => f.cats.includes(c)) : [];
-  const key = JSON.stringify([f.apiFormat, f.apiTeams, effPunt, m, pos, qDeb, arch, flag, limit, sort, src]);
+  const key = JSON.stringify([f.apiFormat, f.apiTeams, effPunt, m, pos, qDeb, arch, flag, limit, sort, src, disagree]);
   const { data, error, loading, reload } = useAsync(() => fz.rankings(f.apiFormat, f.apiTeams, {
     punt: effPunt, metric: m, position: pos === "All" ? null : pos, search: qDeb || null, archetype: arch, flag, limit,
-    sort: sort?.key, dir: sort?.dir, source: src,
+    sort: sort?.key ?? (disagree ? "sim_gap" : undefined), dir: sort?.dir, source: src, disagree,
   }), key);
 
   // Format değişirken eski formatın satırları yeni başlıklarla çizilmesin.
@@ -126,7 +126,7 @@ export default function FantasyRankings() {
 
   const np = punt.length;
   const togglePunt = (c) => setPunt((cur) => (cur.includes(c) ? cur.filter((x) => x !== c) : cur.length >= 3 ? cur : [...cur, c]));
-  const clear = () => { setPos("All"); setQ(""); setArch(null); setFlag(null); };
+  const clear = () => { setPos("All"); setQ(""); setArch(null); setFlag(null); setDisagree(false); };
 
   const sub = isCats
     ? `${f.t} teams · ${f.fmtInfo.label} · ${metric === "g" ? "value = sum of G-scores (weekly swings priced in)" : f.isH2H ? "value = sum of z-scores" : "z-score (G-score is for weekly formats)"}`
@@ -171,7 +171,7 @@ export default function FantasyRankings() {
         onKeyDown={(e) => e.key === "Enter" && openPlayer(p)}>
         <span className="fz-num fz-muted" style={{ fontSize: 16, textAlign: "center" }}>{p.rank}</span>
         <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
-          <span className="fz-pname">{p.name}</span><PlayerMeta p={p} />
+          <span className="fz-pname">{p.name}</span><PlayerMeta p={p} gap={disagree} />
         </div>
         {isCats ? (
           <>
@@ -213,7 +213,7 @@ export default function FantasyRankings() {
         <div style={{ display: "grid", gridTemplateColumns: "28px minmax(0,1fr) auto", gap: 10, alignItems: "center" }}>
           <span className="fz-num fz-muted" style={{ fontSize: 16 }}>{p.rank}</span>
           <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
-            <span className="fz-pname" style={{ fontSize: 15 }}>{p.name}</span><PlayerMeta p={p} />
+            <span className="fz-pname" style={{ fontSize: 15 }}>{p.name}</span><PlayerMeta p={p} gap={disagree} />
           </div>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
             <span className="fz-num" style={{ fontSize: 20, lineHeight: 1 }}>{fmt1(valOf(p))}</span>
@@ -285,17 +285,14 @@ export default function FantasyRankings() {
         </label>
       )}
       {simOk && (
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span className="fz-meta">Stats</span>
-          <div className="fz-seg sm">
-            {[["model", "Model"], ["sim", "Simulation"]].map(([k, l]) => (
-              <button key={k} className={src === k ? "on" : ""} onClick={() => { setSource(k); setLimit(PAGE); }}>{l}</button>
-            ))}
-          </div>
-          <InfoTip label="Model vs simulation" title="Model or simulation?">
-            <p><b>Model</b>: our projection from each player's last three seasons, adjusted for his new team.</p>
-            <p><b>Simulation</b> (the default): plays every team through 100 seasons of 82 games with injuries, rotation minutes and who shares the ball, and averages what each player does. The two agree closely; where they differ, the roster is doing something the history cannot see.</p>
-            <p>Draft planning and the mock draft still use the model, the version we tested against past drafts.</p>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <button className={`fz-chipbtn${disagree ? " on" : ""}`} aria-pressed={disagree} onClick={() => { setDisagree((d) => !d); setLimit(PAGE); }}>
+            Model ≠ simulation
+          </button>
+          <InfoTip label="Where the model and the simulation disagree" title="Where they disagree">
+            <p>Players whose simulated fantasy points per game differ from the model's by <b>2 or more</b>, biggest gap first.</p>
+            <p>Usually a roster effect the three-season history cannot see: a new star taking shots, a vacated role, an injury-thinned rotation. Worth a closer look before you trust either number.</p>
+            <p>Change the projection from the Projection menu at the top.</p>
           </InfoTip>
         </div>
       )}

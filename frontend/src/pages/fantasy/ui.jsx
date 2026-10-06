@@ -1,6 +1,6 @@
 // Fantezi ortak bileşenleri — tasarımın C1 "Shared components" sayfası.
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import PaIcon from "../../components/shell/PaIcon";
 import { ARCHETYPE_COLOR } from "../../constants/archetypeColors";
 import { useAuth } from "../../contexts/AuthContext";
@@ -40,6 +40,14 @@ export const ENGINE_NOTE = {
   world: "Played on the team simulation: for every NBA team, injuries, rotation minutes and who shares the ball are drawn game by game.",
   legacy: "Using the simpler engine for now: the team simulation is not available right now, so teammates are treated as independent.",
 };
+/** Genel "Projeksiyon" seçici: üç bakış. Harman = %25 simülasyon + %75 model. */
+export const PROJECTION_INFO = {
+  model: { l: "Model", d: "Our projection from each player's last three seasons, adjusted for his new team. The version tested against past drafts." },
+  sim: { l: "Simulation", d: "Plays every team through 100 seasons of 82 games (injuries, rotation minutes, shared usage) and averages each player." },
+  blend: { l: "Blend", d: "25% simulation, 75% model. In our test the mix beat either one alone on stat error." },
+};
+// Seçicinin işe yaradığı sayfalar: sezon simülatörü, takas ve Bu hafta zaten her zaman takım simülasyonunda çalışır.
+const PROJECTION_PAGES = /\/fantasy\/(rankings|player\/|draft-plan|mock|assistant)/;
 export const TREND_NOTE = "Direction over the last 2-4 seasons, already built into our projection. It describes the path, it is not a separate forecast.";
 
 export function FlagChips({ flags = [] }) {
@@ -48,13 +56,19 @@ export function FlagChips({ flags = [] }) {
   ));
 }
 
-export function PlayerMeta({ p }) {
+export function PlayerMeta({ p, gap = false }) {
   const pos = p.eligible?.length ? p.eligible.join(",") : "Util";
   return (
     <div className="fz-pmeta">
       <span className="tp">{p.team} · {pos}</span>
       <ArchChip arch={p.archetype} />
       <FlagChips flags={p.flags} />
+      {gap && p.sim_delta != null && (
+        <span className={`fz-flag ${p.sim_delta > 0 ? "good" : "bad"}`}
+          title={`Simulation ${fmt1(p.fp_sim)} vs model ${fmt1(p.fp_model)} fantasy points per game`}>
+          Sim {sgn(p.sim_delta)} FP
+        </span>
+      )}
     </div>
   );
 }
@@ -278,6 +292,20 @@ function FormatMenu({ onPick, onCustom }) {
   );
 }
 
+function ProjectionMenu({ onPick }) {
+  const f = useFantasy();
+  return (
+    <div className="fz-pop" role="menu">
+      {Object.entries(PROJECTION_INFO).map(([k, o]) => (
+        <button key={k} role="menuitemradio" aria-checked={f.projection === k} className={`fz-pop-item${f.projection === k ? " on" : ""}`} onClick={() => onPick(k)}>
+          <span className="t">{o.l}{f.projection === k && <span className="cur">Current</span>}</span>
+          <span className="d">{o.d}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function Pop({ label, value, txt, chevron = true, children, name }) {
   const [open, setOpen] = useState(false);
   const ref = useOutside(open, () => setOpen(false));
@@ -350,6 +378,8 @@ export function FantasyBar() {
   const { leagues, isLoggedIn } = useSavedLeagues();
   const status = seasonStatus(f.meta);
   const pickFormat = (k) => f.set({ f: k });
+  const { pathname } = useLocation();
+  const showProj = f.simAvailable && PROJECTION_PAGES.test(pathname);
 
   return (
     <>
@@ -358,6 +388,11 @@ export function FantasyBar() {
         <Pop label="Format" value={f.fmtInfo.label} name="Change format">
           {(close) => <FormatMenu onPick={(k) => { pickFormat(k); close(); }} onCustom={() => { close(); f.openSettings(); }} />}
         </Pop>
+        {showProj && (
+          <Pop label="Projection" value={PROJECTION_INFO[f.projection].l} txt name="Change projection">
+            {(close) => <ProjectionMenu onPick={(k) => { f.setProjection(k); close(); }} />}
+          </Pop>
+        )}
         <Pop label="Teams" value={f.t} chevron={false} name="Change league size">
           {() => <div className="fz-pop" style={{ minWidth: 340 }}><TeamsSlotControls /></div>}
         </Pop>
@@ -409,6 +444,17 @@ export function FantasyBar() {
               ))}
             </div>
             <span className="fz-sub" style={{ fontSize: 13, lineHeight: 1.45 }}>{f.fmtInfo.d}</span>
+            {showProj && (
+              <>
+                <span className="fz-h3">Projection</span>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {Object.entries(PROJECTION_INFO).map(([k, o]) => (
+                    <button key={k} className={`fz-btn${f.projection === k ? " light" : ""}`} onClick={() => f.setProjection(k)}>{o.l}</button>
+                  ))}
+                </div>
+                <span className="fz-sub" style={{ fontSize: 13, lineHeight: 1.45 }}>{PROJECTION_INFO[f.projection].d}</span>
+              </>
+            )}
             <TeamsSlotControls compact />
             <button className="fz-btn" onClick={() => { setSheet(false); f.openSettings(); }}>League settings…</button>
             <button className="fz-btn light" onClick={() => setSheet(false)}>Done</button>

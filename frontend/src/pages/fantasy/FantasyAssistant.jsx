@@ -34,7 +34,7 @@ export default function FantasyAssistant() {
   useEffect(() => { setOrder(load(f)); setPunt([]); setDismissed([]); }, [f.apiFormat, f.t, f.s]);   // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { save(f, order); }, [order]);   // eslint-disable-line react-hooks/exhaustive-deps
 
-  const pool = useAsync(() => fz.rankings(f.apiFormat, f.apiTeams, { limit: 300 }), JSON.stringify([f.apiFormat, f.apiTeams]));
+  const pool = useAsync(() => fz.rankings(f.apiFormat, f.apiTeams, { limit: 300, source: f.projection }), JSON.stringify([f.apiFormat, f.apiTeams, f.projection]));
   const byId = useMemo(() => Object.fromEntries((pool.data?.players || []).map((p) => [p.player_id, p])), [pool.data]);
 
   const taken = order.filter((o) => !o.mine).map((o) => o.id);
@@ -46,10 +46,10 @@ export default function FantasyAssistant() {
     if (done) { setRec(null); return; }
     const my = ++seq.current;
     setRecErr(null);
-    fz.recommend({ format: f.apiFormat, teams: f.apiTeams, slot: f.s, taken, mine, punt, current_pick: current, n: 15 })
+    fz.recommend({ format: f.apiFormat, teams: f.apiTeams, slot: f.s, taken, mine, punt, current_pick: current, n: 15, projection: f.projection })
       .then((d) => my === seq.current && setRec(d))
       .catch((e) => my === seq.current && setRecErr(e));
-  }, [order, punt, f.apiFormat, f.apiTeams, f.s]);   // eslint-disable-line react-hooks/exhaustive-deps
+  }, [order, punt, f.apiFormat, f.apiTeams, f.s, f.projection]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   const mark = useCallback((p, isMine) => {
     setOrder((o) => (o.some((x) => x.id === p.player_id) ? o : [...o, { id: p.player_id, mine: isMine }]));

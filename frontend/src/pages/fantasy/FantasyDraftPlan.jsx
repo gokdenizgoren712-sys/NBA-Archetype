@@ -133,7 +133,7 @@ export default function FantasyDraftPlan() {
   const phone = useIsPhone();
   const [selKey, setSelKey] = useState(null);
   const { data, error, loading, reload } = useAsync(
-    () => fz.plans(f.apiFormat, f.apiTeams, f.s), JSON.stringify([f.apiFormat, f.apiTeams, f.s]));
+    () => fz.plans(f.apiFormat, f.apiTeams, f.s, f.projection), JSON.stringify([f.apiFormat, f.apiTeams, f.s, f.projection]));
   const plans = data?.plans || [];
   const sel = plans.find((p) => p.key === selKey) || plans[0];
 

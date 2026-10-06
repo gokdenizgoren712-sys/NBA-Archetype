@@ -82,16 +82,20 @@ def _resolve(fmt_in: FormatIn, teams: Optional[int]) -> dict:
         raise HTTPException(422, str(e))
 
 
-def _board(fmt: dict, basis: str) -> dr.Board:
-    df = _valued(fmt, (), basis)
+PROJECTION = "^(model|sim|blend)$"
+
+
+def _board(fmt: dict, basis: str, projection: str = "model") -> dr.Board:
+    df = _valued(fmt, (), basis, projection)
     # Anahtar projeksiyon dosyasının mtime'ı ile: id(df) Python'un yeniden
     # kullandığı bir kimlik, yenilenen veride eski tahtayı döndürebilirdi.
-    key = json.dumps([fmt, basis, _load()["mtime"]], sort_keys=True, default=str)
+    key = json.dumps([fmt, basis, projection, _load()["mtime"]], sort_keys=True, default=str)
     with _lock:
         if key in _boards:
             _boards.move_to_end(key)
             return _boards[key]
     b = dr.make_board(df, fmt)
+    b.projection = projection
     with _lock:
         _boards[key] = b
         while len(_boards) > 16:
@@ -145,13 +149,18 @@ def _enrich_plans(b: dr.Board, plans: dict) -> dict:
     return {**plans, "players": {str(i): _player(b, i) for i in ids if i in b.row}}
 
 
-def strategy_validation(fmt: dict) -> dict:
+def strategy_validation(fmt: dict, projection: str = "model") -> dict:
     """Bu formatta draft ÖNERİLERİMİZİN gerçek sezonlarda doğrulanıp doğrulanmadığı.
     Kaynak: src/fantasy/strategy_backtest.py (2024-25 ve 2025-26, gerçekçi piyasa varsayımı) —
     kategori/H2H: piyasadan +0.098 haftalık eşleşme oranı (karışık botlara karşı; tüm piyasa varsayımlarında pozitif);
     puan: karışık botlara karşı +0.04, hepsi-ADP botlarına karşı −0.04 (kanıtlanmadı); High Score ve roto hiç test edilmedi. Öneri her durumda verilir, yalnızca
     güven düzeyi söylenir. Sonuçlar değişirse burası ve docs/FANTASY_MODEL_IMPROVEMENTS.md birlikte güncellenir."""
     kind, matchup = fmt.get("kind"), fmt.get("matchup")
+    if projection != "model":
+        name = "simulation" if projection == "sim" else "blended (25% simulation, 75% model)"
+        return {"status": "unvalidated", "title": "Picks use the " + name + " projection",
+                "body": "Our real-season draft test was run on the model projection only. This view ranks players by the team-simulation "
+                        "numbers, which tie the model in season-long testing but have not been tested for drafting. Switch to Model for the tested picks."}
     if kind == "categories" and matchup == "h2h":
         return {"status": "validated"}
     if kind == "points":
@@ -167,18 +176,18 @@ def strategy_validation(fmt: dict) -> dict:
             "body": "Our real-season test covers head-to-head leagues only. Treat these picks as a starting point."}
 
 
-def _plans(fmt: dict, slot: int, basis: str) -> dict:
-    b = _board(fmt, basis)
+def _plans(fmt: dict, slot: int, basis: str, projection: str = "model") -> dict:
+    b = _board(fmt, basis, projection)
     _check_slot(b, slot)
     pre = _precomputed_plans()
     key = fmt.get("key")
-    if (pre and basis == "total" and key in pre["formats"]
+    if (pre and basis == "total" and projection == "model" and key in pre["formats"]
             and str(b.teams) in pre["formats"][key]
             and FORMATS.get(key, {}).get("roster") == fmt["roster"]):
         plans = pre["formats"][key][str(b.teams)][str(slot)]
-        return {**_enrich_plans(b, plans), "source": "precomputed", "built_at": pre["built_at"],
-                "validation": strategy_validation(fmt)}
-    ck = json.dumps([fmt, slot, basis], sort_keys=True, default=str)
+        return {**_enrich_plans(b, plans), "source": "precomputed", "projection": projection, "built_at": pre["built_at"],
+                "validation": strategy_validation(fmt, projection)}
+    ck = json.dumps([fmt, slot, basis, projection], sort_keys=True, default=str)
     with _lock:
         hit = _plans_cache.get(ck)
     if hit is None:
@@ -187,7 +196,7 @@ def _plans(fmt: dict, slot: int, basis: str) -> dict:
             _plans_cache[ck] = hit
             while len(_plans_cache) > 64:
                 _plans_cache.popitem(last=False)
-    return {**_enrich_plans(b, hit), "source": "on_demand", "validation": strategy_validation(fmt)}
+    return {**_enrich_plans(b, hit), "source": "on_demand", "projection": projection, "validation": strategy_validation(fmt, projection)}
 
 
 @router.get("/draft/plans")
@@ -196,8 +205,9 @@ def draft_plans_preset(
     teams: Optional[int] = Query(None, ge=LIMITS["teams"][0], le=LIMITS["teams"][1]),
     slot: int = Query(..., ge=1, le=LIMITS["teams"][1]),
     basis: str = Query("total", pattern="^(total|per_game)$"),
+    projection: str = Query("model", pattern=PROJECTION),
 ):
-    return {"season": SEASON, **_plans(_resolve(format, teams), slot, basis)}
+    return {"season": SEASON, **_plans(_resolve(format, teams), slot, basis, projection)}
 
 
 class PlansBody(BaseModel):
@@ -205,11 +215,12 @@ class PlansBody(BaseModel):
     teams: Optional[int] = Field(None, ge=LIMITS["teams"][0], le=LIMITS["teams"][1])
     slot: int = Field(..., ge=1, le=LIMITS["teams"][1])
     basis: str = Field("total", pattern="^(total|per_game)$")
+    projection: str = Field("model", pattern=PROJECTION)
 
 
 @router.post("/draft/plans")
 def draft_plans_custom(body: PlansBody):
-    return {"season": SEASON, **_plans(_resolve(body.format, body.teams), body.slot, body.basis)}
+    return {"season": SEASON, **_plans(_resolve(body.format, body.teams), body.slot, body.basis, body.projection)}
 
 
 # ── Canlı draft asistanı ────────────────────────────────────────────────────
@@ -223,6 +234,7 @@ class RecommendBody(BaseModel):
     current_pick: Optional[int] = Field(None, ge=1, le=400)
     punt: list[str] = Field(default_factory=list, max_length=8)
     basis: str = Field("total", pattern="^(total|per_game)$")
+    projection: str = Field("model", pattern=PROJECTION, description="model | sim | blend — which projection values the board")
     n: int = Field(10, ge=1, le=MAX_REC)
     plan: Optional[str] = Field(None, max_length=30, description="Draft plan key (see /draft/plans); overrides punt")
 
@@ -244,14 +256,14 @@ def _recommend_response(b: dr.Board, taken: list[int], mine: list[int], current_
         r["player"] = _player(b, r["player_id"])
     rec["my_roster"] = [_player(b, p) for p in mine]
     rec["lineup"] = _lineup(b, list(mine))
-    rec["validation"] = strategy_validation(b.fmt)
+    rec["validation"] = strategy_validation(b.fmt, getattr(b, "projection", "model"))
     return rec
 
 
 @router.post("/draft/recommend")
 def draft_recommend(body: RecommendBody):
     fmt = _resolve(body.format, body.teams)
-    b = _board(fmt, body.basis)
+    b = _board(fmt, body.basis, body.projection)
     _check_slot(b, body.slot)
     _check_ids(b, body.taken + body.mine, "players")
     if len(body.mine) > b.rounds:
@@ -280,6 +292,7 @@ class MockBody(BaseModel):
     seed: int = Field(..., ge=0, le=2**31 - 1)
     bot_style: str = Field("mixed", pattern="^(mixed|adp|value)$")
     basis: str = Field("total", pattern="^(total|per_game)$")
+    projection: str = Field("model", pattern=PROJECTION, description="model | sim | blend — which projection values the board")
     n: int = Field(10, ge=1, le=MAX_REC)
     plan: Optional[str] = Field(None, max_length=30, description="Draft plan key the recommendations follow")
     humans: Optional[list[int]] = Field(None, max_length=4, description="Human slots for a same-screen mock (must include `slot`)")
@@ -301,7 +314,7 @@ def _picks_view(b: dr.Board, picks: list[int]) -> list[dict]:
 def mock_advance(body: MockBody):
     """Botlar sıra kullanıcıya gelene (ya da draft bitene) kadar seçer."""
     fmt = _resolve(body.format, body.teams)
-    b = _board(fmt, body.basis)
+    b = _board(fmt, body.basis, body.projection)
     _check_slot(b, body.slot)
     _check_ids(b, body.picks, "picks")
     if len(body.picks) > b.total_picks:
@@ -343,7 +356,7 @@ def mock_advance(body: MockBody):
            "human_rosters": {str(h): {"roster": [_player(b, p) for p in rosters[h]], "lineup": _lineup(b, rosters[h])}
                              for h in humans},
            "my_roster": [_player(b, p) for p in mine], "lineup": _lineup(b, mine),
-           "validation": strategy_validation(fmt)}
+           "validation": strategy_validation(fmt, body.projection)}
     if not done:
         others = [p for p in picks if p not in set(mine)]
         punt, score, plan = _plan_args(b, plans_by_slot.get(who), ())
@@ -365,12 +378,13 @@ class GradeBody(BaseModel):
     slot: int = Field(..., ge=1, le=LIMITS["teams"][1])
     picks: list[int] = Field(..., max_length=400)
     basis: str = Field("total", pattern="^(total|per_game)$")
+    projection: str = Field("model", pattern=PROJECTION, description="model | sim | blend — which projection values the board")
 
 
 @router.post("/draft/grade")
 def draft_grade(body: GradeBody):
     fmt = _resolve(body.format, body.teams)
-    b = _board(fmt, body.basis)
+    b = _board(fmt, body.basis, body.projection)
     _check_slot(b, body.slot)
     _check_ids(b, body.picks, "picks")
     if len(body.picks) != b.total_picks:
@@ -399,7 +413,7 @@ def draft_grade(body: GradeBody):
                       "value_vs_adp": round(overall - adp, 1)})   # + → ADP'sinden geç aldın (çalıntı)
     moves.sort(key=lambda m: -m["value_vs_adp"])
     return {
-        "season": SEASON, "format": fmt, "slot": body.slot, "validation": strategy_validation(fmt),
+        "season": SEASON, "format": fmt, "slot": body.slot, "validation": strategy_validation(fmt, body.projection),
         "grade": dr.letter_grade(me["projected_rank"], b.teams),
         "me": me,
         "league": [{"slot": s, **league[s], "letter": dr.letter_grade(league[s]["projected_rank"], b.teams)}

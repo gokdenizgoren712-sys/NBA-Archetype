@@ -46,19 +46,20 @@ export const fz = {
   rankings: (fmt, teams, o = {}) => isPreset(fmt)
     ? req("GET", "/rankings", { params: { format: fmt, teams, punt: (o.punt || []).join(","), basis: o.basis,
         position: o.position, search: o.search, flag: o.flag, archetype: o.archetype, metric: o.metric,
-        limit: o.limit, offset: o.offset, sort: o.sort, dir: o.dir, source: o.source } })
+        limit: o.limit, offset: o.offset, sort: o.sort, dir: o.dir, source: o.source, disagree: o.disagree ? "true" : undefined } })
     : req("POST", "/rankings", { body: { format: fmt, punt: o.punt || [], basis: o.basis || "total",
         position: o.position || null, search: o.search || null, flag: o.flag || null,
         archetype: o.archetype || null, metric: o.metric || null, limit: o.limit || 200, offset: o.offset || 0,
-        sort: o.sort || null, dir: o.dir || null, source: o.source || "model" } }),
+        sort: o.sort || null, dir: o.dir || null, source: o.source || "model", disagree: !!o.disagree } }),
 
-  player: (id, fmt, teams, punt = []) => isPreset(fmt)
-    ? req("GET", `/players/${id}`, { params: { format: fmt, teams, punt: punt.join(",") } })
-    : req("POST", `/players/${id}`, { body: { format: fmt, punt } }),
+  /** source / projection: "model" | "sim" | "blend" (genel Projeksiyon seçicisi). */
+  player: (id, fmt, teams, punt = [], source = "model") => isPreset(fmt)
+    ? req("GET", `/players/${id}`, { params: { format: fmt, teams, punt: punt.join(","), source } })
+    : req("POST", `/players/${id}`, { body: { format: fmt, punt, source } }),
 
-  plans: (fmt, teams, slot) => isPreset(fmt)
-    ? req("GET", "/draft/plans", { params: { format: fmt, teams, slot } })
-    : req("POST", "/draft/plans", { body: { format: fmt, slot } }),
+  plans: (fmt, teams, slot, projection = "model") => isPreset(fmt)
+    ? req("GET", "/draft/plans", { params: { format: fmt, teams, slot, projection } })
+    : req("POST", "/draft/plans", { body: { format: fmt, slot, projection } }),
 
   recommend: (body) => req("POST", "/draft/recommend", { body }),
   mock: (body) => req("POST", "/mock/advance", { body }),

@@ -314,26 +314,38 @@ def attach_sim(final: pd.DataFrame, raw: pd.DataFrame, logs: dict, target: str) 
     return final.drop(columns=drop).merge(sim.reset_index(), on="PLAYER_ID", how="left")
 
 
-def with_sim(proj: pd.DataFrame) -> pd.DataFrame:
+BLEND_W = 0.25   # Harman: 0.25 simülasyon + 0.75 model (önceki testte tek yolun en iyisinden daha düşük hata)
+
+
+def with_sim(proj: pd.DataFrame, weight: float = 1.0) -> pd.DataFrame:
     """Projeksiyon tablosunu SİMÜLASYON ortalamalarıyla değiştirir (aynı değerleme motoru 'simülasyon projeksiyonu'ndan çalışsın).
-    SIM_* olmayan / NaN satırlar model değerinde kalır. Aralık çarpanları (FP_RATIO_P10/P90) simülasyonun FP yüzdeliklerinden gelir."""
+    weight < 1: Harman — her istatistik (1−w)·model + w·simülasyon; FG%/FT% harmanlanmış isabet/denemeden yeniden çıkar.
+    SIM_* olmayan / NaN satırlar model değerinde kalır. Aralık çarpanları (FP_RATIO_P10/P90) simülasyonun FP yüzdeliklerinden gelir
+    (harmanda iki oranın harmanı)."""
     if "SIM_FP" not in proj.columns:
         return proj
+    w = float(np.clip(weight, 0.0, 1.0))
     out = proj.copy()
     has = out["SIM_FP"].notna()
+
+    def mix(col: str, sim: pd.Series) -> None:
+        out.loc[has, col] = (1.0 - w) * out.loc[has, col] + w * sim[has]
+
     for s_ in STATS:
         col = f"SIM_{s_}"
         if col in out.columns:
-            out.loc[has, s_] = out.loc[has, col]
-    out.loc[has, "PROJ_MPG"] = out.loc[has, "SIM_MPG"]
+            mix(s_, out[col])
+    mix("PROJ_MPG", out["SIM_MPG"])
     gp = out["SIM_GP"].clip(upper=82.0)
-    out.loc[has & (gp > 0), "PROJ_GP"] = gp[has & (gp > 0)]
+    okg = has & (gp > 0)
+    out.loc[okg, "PROJ_GP"] = (1.0 - w) * out.loc[okg, "PROJ_GP"] + w * gp[okg]
     fga, fta = out["FGA"].clip(lower=1e-6), out["FTA"].clip(lower=1e-6)
     out.loc[has, "FG%"] = (out.loc[has, "FGM"] / fga[has]).clip(0, 1)
     out.loc[has, "FT%"] = (out.loc[has, "FTM"] / fta[has]).clip(0, 1)
     ok = has & (out["SIM_FP"] > 0)
-    out.loc[ok, "FP_RATIO_P10"] = out.loc[ok, "SIM_FP_P10"] / out.loc[ok, "SIM_FP"]
-    out.loc[ok, "FP_RATIO_P90"] = out.loc[ok, "SIM_FP_P90"] / out.loc[ok, "SIM_FP"]
+    for q in ("P10", "P90"):
+        sim_ratio = out["SIM_FP_" + q] / out["SIM_FP"].where(out["SIM_FP"] > 0)
+        out.loc[ok, "FP_RATIO_" + q] = (1.0 - w) * out.loc[ok, "FP_RATIO_" + q] + w * sim_ratio[ok]
     return out
 
 

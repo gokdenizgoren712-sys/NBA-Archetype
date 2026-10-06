@@ -8,8 +8,9 @@ import { ARCHETYPE_COLOR } from "../../constants/archetypeColors";
 import { SEO } from "../../hooks/useSEO";
 import { fz } from "./fantasyApi";
 import {
-  ArchChip, CatBar, ErrorNote, FLAGS, HeatCell, RangeBar, SkeletonList, TREND_NOTE, fmt1,
+  ArchChip, BAD, CatBar, ErrorNote, FLAGS, GOOD, HeatCell, PROJECTION_INFO, RangeBar, SkeletonList, TREND_NOTE, fmt1, sgn,
 } from "./ui";
+const MUTED_C = "#8a8a8a";
 import { useAsync, useFantasy } from "./useFantasy";
 
 const STATS = [
@@ -62,8 +63,9 @@ export default function FantasyPlayer() {
   const f = useFantasy();
   const navigate = useNavigate();
   const { data, error, loading, reload } = useAsync(
-    () => fz.player(id, f.apiFormat, f.apiTeams), JSON.stringify([id, f.apiFormat, f.apiTeams]));
+    () => fz.player(id, f.apiFormat, f.apiTeams, [], f.projection), JSON.stringify([id, f.apiFormat, f.apiTeams, f.projection]));
   const sim = data?.simulation;
+  const mdl = data?.model;
   const [card, setCard] = useState(null);
   const p = data?.player;
 
@@ -199,7 +201,7 @@ export default function FantasyPlayer() {
             <div className="fz-grid2" style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 40 }}>
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                  <span className="fz-h2">Projection per game</span><span className="fz-meta">10th–90th pct</span>
+                  <span className="fz-h2">Projection per game{f.simAvailable && <span className="fz-meta" style={{ marginLeft: 8 }}>{PROJECTION_INFO[f.projection].l}</span>}</span><span className="fz-meta">10th–90th pct</span>
                 </div>
                 {statRows.map((s) => (
                   <div key={s.l} style={{ display: "grid", gridTemplateColumns: "110px 54px minmax(0,1fr) 92px", gap: 12, alignItems: "center", minHeight: 32 }}>
@@ -210,25 +212,37 @@ export default function FantasyPlayer() {
                   </div>
                 ))}
                 <span className="fz-meta">Games {Math.round(p.proj_gp)} · range {Math.round(games[0])}–{Math.round(games[1])}</span>
-                {sim && (
+                {sim && mdl && (
                   <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 18 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                      <span className="fz-h2">Team simulation</span><span className="fz-meta">mean · 10th–90th pct</span>
+                      <span className="fz-h2">Model vs simulation</span><span className="fz-meta">simulation 10th–90th pct</span>
                     </div>
-                    {[["Points", "pts"], ["Rebounds", "reb"], ["Assists", "ast"], ["Steals", "stl"], ["Blocks", "blk"], ["3-pointers", "fg3m"], ["Turnovers", "tov"]].map(([l, k]) => {
-                      const v = sim.per_game[k];
-                      const model = p.per_game[k];
-                      return (
-                        <div key={k} style={{ display: "grid", gridTemplateColumns: "110px 54px 1fr 92px", gap: 12, alignItems: "center", minHeight: 28 }}>
-                          <span className="fz-sub" style={{ fontSize: 13 }}>{l}</span>
-                          <span className="fz-num" style={{ fontSize: 17, textAlign: "right" }}>{fmt1(v.mean)}</span>
-                          <span className="fz-meta">{model != null && Math.abs(v.mean - model) >= 0.05 ? `model ${fmt1(model)}` : "same as model"}</span>
-                          <span className="fz-meta" style={{ textAlign: "right" }}>{fmt1(v.p10)}–{fmt1(v.p90)}</span>
-                        </div>
-                      );
-                    })}
+                    <div style={{ display: "grid", gridTemplateColumns: "96px 52px 52px 52px minmax(0,1fr)", gap: 10, alignItems: "center" }}>
+                      <span /><span className="fz-meta" style={{ textAlign: "right" }}>Model</span><span className="fz-meta" style={{ textAlign: "right" }}>Sim</span>
+                      <span className="fz-meta" style={{ textAlign: "right" }}>Diff</span><span className="fz-meta" style={{ textAlign: "right" }}>Sim range</span>
+                      {[["Points", "pts"], ["Rebounds", "reb"], ["Assists", "ast"], ["Steals", "stl"], ["Blocks", "blk"], ["3-pointers", "fg3m"], ["Turnovers", "tov"]].map(([l, k]) => {
+                        const v = sim.per_game[k], m = mdl.per_game[k], d = v.mean - m;
+                        const good = k === "tov" ? d < 0 : d > 0;
+                        return [
+                          <span key={`${k}l`} className="fz-sub" style={{ fontSize: 13 }}>{l}</span>,
+                          <span key={`${k}m`} className="fz-num" style={{ fontSize: 15, textAlign: "right" }}>{fmt1(m)}</span>,
+                          <span key={`${k}s`} className="fz-num" style={{ fontSize: 15, textAlign: "right" }}>{fmt1(v.mean)}</span>,
+                          <span key={`${k}d`} className="fz-num" style={{ fontSize: 13, textAlign: "right", color: Math.abs(d) < 0.05 ? MUTED_C : good ? GOOD : BAD }}>{Math.abs(d) < 0.05 ? "–" : sgn(d)}</span>,
+                          <span key={`${k}r`} className="fz-meta" style={{ textAlign: "right" }}>{fmt1(v.p10)}–{fmt1(v.p90)}</span>,
+                        ];
+                      })}
+                      {[["Fantasy pts", mdl.fp, sim.fp.mean, `${fmt1(sim.fp.p10)}–${fmt1(sim.fp.p90)}`, 1], ["Minutes", mdl.mpg, sim.mpg, "", 1], ["Games", mdl.gp, sim.gp, "", 0]].map(([l, m, v, r, nd]) => [
+                        <span key={`${l}l`} className="fz-sub" style={{ fontSize: 13 }}>{l}</span>,
+                        <span key={`${l}m`} className="fz-num" style={{ fontSize: 15, textAlign: "right" }}>{fmt1(m, nd)}</span>,
+                        <span key={`${l}s`} className="fz-num" style={{ fontSize: 15, textAlign: "right" }}>{fmt1(v, nd)}</span>,
+                        <span key={`${l}d`} className="fz-num" style={{ fontSize: 13, textAlign: "right", color: Math.abs(v - m) < 0.05 ? MUTED_C : v > m ? GOOD : BAD }}>{Math.abs(v - m) < 0.05 ? "–" : sgn(v - m, nd)}</span>,
+                        <span key={`${l}r`} className="fz-meta" style={{ textAlign: "right" }}>{r}</span>,
+                      ])}
+                    </div>
                     <span className="fz-meta" style={{ lineHeight: 1.5 }}>
-                      Fantasy points {fmt1(sim.fp.mean)} a game ({fmt1(sim.fp.p10)}–{fmt1(sim.fp.p90)}) · {fmt1(sim.mpg)} minutes · {Math.round(sim.gp)} games. Averages over 100 simulated seasons with injuries, rotation minutes and teammates sharing the ball.
+                      The simulation averages 100 seasons of this player's team with injuries, rotation minutes and teammates sharing the ball. {Math.abs(sim.fp.mean - mdl.fp) >= 2
+                        ? `It sees ${sim.fp.mean > mdl.fp ? "more" : "less"} production than the model here, usually a roster effect the player's history cannot show.`
+                        : "Here the two agree closely."}
                     </span>
                   </div>
                 )}
