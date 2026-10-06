@@ -570,3 +570,7 @@
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .pcard-season-row .yr { white-space: nowrap; }
+
+/* Katkı: kart detayından tam profil sayfasına bağlantı (profileHref verilirse) */
+.pcard-profile-link { display: flex; align-items: center; justify-content: center; min-height: 44px; font: 700 12px var(--font-logo, inherit); letter-spacing: .1em; text-transform: uppercase; color: var(--accent, #FFB11B); text-decoration: none; }
+.pcard-profile-link:hover { text-decoration: underline; }

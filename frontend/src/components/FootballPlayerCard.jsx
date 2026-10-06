@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { api } from "../api";
 import { MiniCareerChart } from "./PlayerCard";
 import "./PlayerCard.css";
@@ -144,7 +145,7 @@ function photoSrc(playerId, hasCut) {
     : `/football-photos/${playerId}.jpg`;
 }
 
-export default function FootballPlayerCard({ player, rank, season }) {
+export default function FootballPlayerCard({ player, rank, season, profileHref }) {
   const [expanded, setExpanded] = useState(false);
   const [tab, setTab] = useState(player.qualified === false ? "stats" : "fit");
   const [career, setCareer] = useState(null);
@@ -317,6 +318,7 @@ export default function FootballPlayerCard({ player, rank, season }) {
         <div className="pcard-expand-wrap">
           <div className="pcard-expand-inner">
             <div className="pcard-detail">
+              {profileHref && <Link to={profileHref} className="pcard-profile-link" onClick={e => e.stopPropagation()}>Open profile page →</Link>}
               <div className="pcard-tabbar" onClick={e => e.stopPropagation()}>
                 {(qualified
                   ? [["fit", "Fit"], ["stats", "Stats"], ["radar", "Radar"], ["career", "Career"]]

@@ -12,6 +12,8 @@ Open items the new UI depends on. The UI is built behind a feature flag or hides
 | B3 | Google unlink (blocked when it is the only sign-in method) | Settings › Connections | Disconnect disabled; no endpoint path assumed |
 | B4 | Data export request (emails a copy) | Settings › Data & privacy | Request export disabled; no endpoint path assumed |
 | B9 | Signed-in user's leaderboard rank and run count | Profile tiles ("Rank on the board", "Runs") | Tiles omitted; Best rating is the max saved roster Lineup Fit |
+| B7 | Basketball player description inputs (role text, strengths) and "Last three seasons" per-game table (PTS/REB/AST/STL/BLK/3PM per season) | NBA profile (S2) | Description is one sentence built from rating/rank only; Career trajectory chart shown instead of the table |
+| B8 | Single-player endpoint for football (`/api/football/players/{id}`) incl. name, plus description inputs | Football profile (S5) | Page finds the row via `?name=` search + `PLAYER_ID` match; description is one generated sentence |
 | B12 | Terms accepted date (only `terms_version` is stored today) | Settings › Data & privacy | Shows "Current version accepted" instead of a date |
 
 Later phases will append B1-B4, B7-B9 from the handoff when their screens are built.

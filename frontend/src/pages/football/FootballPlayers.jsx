@@ -251,6 +251,7 @@ export default function FootballPlayers() {
                   player={p}
                   rank={(sortBy === "overall_score" || sortBy === "primary_score") ? i + 1 : null}
                   season={season}
+                  profileHref={`/football/players/${p.PLAYER_ID}?name=${encodeURIComponent(p.PLAYER_NAME)}${season ? `&season=${encodeURIComponent(season)}` : ""}`}
                 />
               ))}
             </CardGrid>

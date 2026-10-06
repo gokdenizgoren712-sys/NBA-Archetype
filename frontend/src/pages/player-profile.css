@@ -124,3 +124,10 @@
   .pp-skel { margin: 16px; }
 }
 @media (prefers-reduced-motion: reduce) { .pp-skel { animation: none; } }
+
+/* Futbol profili: sezon tablosu */
+.pp-scroll { overflow-x: auto; }
+.pp-table { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+.pp-table th { text-align: left; padding: 8px 12px; font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .1em; text-transform: uppercase; color: var(--text-muted); font-weight: 400; border-bottom: 1px solid var(--hairline); }
+.pp-table td { padding: 12px; border-bottom: 1px solid var(--hairline); color: var(--text-primary); white-space: nowrap; }
+.pp-table tr:last-child td { border-bottom: 0; }

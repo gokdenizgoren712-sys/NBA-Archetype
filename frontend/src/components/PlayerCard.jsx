@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { TIER_COLOR } from "../constants/prospectTiers";
 import { api } from "../api";
 import { getAwardBadges } from "../game/awards";
@@ -202,7 +203,7 @@ function ProspectPanel({ prospect, ceilingNote }) {
   );
 }
 
-export default function PlayerCard({ player, rank, onClick, discover, season, expandable = false, league = "nba", defaultExpanded = false, compact = false }) {
+export default function PlayerCard({ player, rank, onClick, discover, season, expandable = false, league = "nba", defaultExpanded = false, compact = false, profileHref }) {
   const isNBA = !league || league === "nba";
   const leagueCfg = LEAGUE_CONFIG[league];
   const smallSampleThreshold = leagueCfg?.smallSample ?? 20;
@@ -375,6 +376,7 @@ export default function PlayerCard({ player, rank, onClick, discover, season, ex
             <div className="pcard-expand-wrap">
               <div className="pcard-expand-inner">
                 <div className="pcard-detail">
+              {profileHref && <Link to={profileHref} className="pcard-profile-link" onClick={e => e.stopPropagation()}>Open profile page →</Link>}
                   {awards.length > 0 && (
                     <div className="pcard-award-row" onClick={(e) => e.stopPropagation()}>
                       {awards.map(a => (

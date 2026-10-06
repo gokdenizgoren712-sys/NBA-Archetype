@@ -247,6 +247,7 @@ export default function Players() {
                   rank={p.overall_score != null && sortBy === "overall_score" ? i + 1 : null}
                   season={!isCurrent ? season : undefined}
                   expandable
+                  profileHref={`/basketball/players/${encodeURIComponent(p.PLAYER_NAME)}`}
                 />
               ))}
             </CardGrid>
