@@ -86,9 +86,11 @@ export default function Profile() {
     ["lineups", "Lineups", data.saved_lineups.length], ["players", "Players", data.saved_players.length],
     ["comments", "Comments", data.comments.length],
   ];
+  // "Rank on the board" ve "Runs" mockup'ta var ama API'de karşılığı yok (ticket B9); uydurulmadı.
+  const best = bb.reduce((m, r) => (r.overall_pct != null ? Math.max(m, Math.round(r.overall_pct)) : m), 0);
   const STATS = [
-    { v: bb.length, l: "Rosters", c: "#FFB11B" }, { v: fb.length, l: "Squads", c: "#3FB08C" },
-    { v: data.saved_lineups.length, l: "Lineups", c: "#60a5fa" },
+    { v: bb.length + fb.length, l: "Saved rosters" }, { v: best || "—", l: "Best rating" },
+    { v: data.saved_lineups.length, l: "Saved lineups" },
   ];
 
   return (
@@ -99,23 +101,21 @@ export default function Profile() {
           <header className="pf-head">
             <span className="av" aria-hidden="true">{(u.username || "?")[0].toUpperCase()}</span>
             <div className="who">
+              <p className="pa-eyebrow">Profile · Member since {fmtDate(u.created_at, false)}{u.role === "admin" ? " · Admin" : ""}</p>
               <h1>{u.username}</h1>
-              <span>{u.role === "admin" ? "Admin · " : ""}Member since {fmtDate(u.created_at, false)}</span>
             </div>
-            <div className="stats">
-              {STATS.map(s => <div key={s.l}><b style={{ color: s.c }}>{s.v}</b><span>{s.l}</span></div>)}
+            <div className="pf-actions">
+              <Link to="/settings" className="pa-btn outline s44">Edit profile</Link>
+              {u.role === "admin" && <Link to="/admin/articles" className="pa-btn quiet s44">Admin panel</Link>}
             </div>
           </header>
-          <div className="pf-actions">
-            {u.role === "admin" && <Link to="/admin/articles" className="pa-btn-secondary">Admin panel</Link>}
-            <button className="pa-btn-secondary" onClick={logout}>Sign out</button>
-            {/* Hesap silme ayrı sayfada (Play Console bağlantısı da o) */}
-            <Link to="/account/delete" className="pf-del">Delete account</Link>
+          <div className="pf-tiles">
+            {STATS.map(s => <div key={s.l} className="pa-panel"><span className="pa-eyebrow">{s.l}</span><b>{s.v}</b></div>)}
           </div>
 
-          <nav className="pf-tabs" role="tablist">
+          <nav className="pa-tabs pf-tabs" role="tablist">
             {TABS.map(([k, l, n]) => (
-              <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? "on" : ""} onClick={() => setTab(k)}>
+              <button key={k} role="tab" aria-selected={tab === k} className="pa-tab" onClick={() => setTab(k)}>
                 {l}{n > 0 && <em>{n}</em>}
               </button>
             ))}

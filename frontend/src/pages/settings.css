@@ -1,0 +1,49 @@
+/* /settings (v3 Account Y1–Y4): dikey sekme listesi + paneller; mobilde yatay kaydırmalı sekmeler. */
+.st-page { height: 100%; overflow-y: auto; box-sizing: border-box; padding: 32px clamp(20px, 4vw, 40px) 56px; display: flex; flex-direction: column; gap: 22px; }
+.st-page header .pa-eyebrow { margin-bottom: 8px; }
+.st-grid { display: grid; grid-template-columns: 200px minmax(0, 760px); gap: 32px; align-items: start; }
+.st-nav { display: flex; flex-direction: column; gap: 4px; }
+.st-nav button { min-height: var(--touch); padding: 0 14px; text-align: left; border: 1px solid transparent; border-radius: var(--radius); background: transparent; color: var(--text-secondary); cursor: pointer; font: 700 15px var(--font-logo); letter-spacing: .1em; text-transform: uppercase; }
+.st-nav button:hover { color: var(--text-primary); }
+.st-nav button[aria-current="page"] { background: var(--accent-dim); border-color: var(--accent-border); color: var(--accent); }
+.st-nav button:focus-visible, .st-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.st-body { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.st-body .pa-panel { display: flex; flex-direction: column; gap: 14px; }
+.st-id { display: flex; align-items: center; gap: 16px; padding-bottom: 14px; border-bottom: 1px solid var(--hairline); }
+.st-av { width: 84px; height: 84px; flex: none; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--accent); color: #14110a; font: 700 40px var(--font-logo); }
+.st-id h2 { margin: 0; font: 700 28px var(--font-logo); letter-spacing: .04em; }
+.st-id p { margin: 2px 0 0; font-size: 14px; color: var(--text-secondary); }
+.st-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 0 4px; border-top: 1px solid var(--hairline); }
+.st-row > div:first-child { min-width: 0; }
+.st-val { margin-top: 4px; font-size: 15px; color: var(--text-primary); line-height: 1.45; }
+.st-val small { display: block; margin-top: 2px; font-size: 13px; color: var(--text-muted); }
+.st-actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.st-link { min-height: var(--touch); padding: 0; border: 0; background: none; color: var(--text-secondary); text-decoration: underline; font: 14px var(--font-sans); cursor: pointer; }
+.st-link:hover { color: var(--text-primary); }
+.st-note { margin: 0; font-size: 13px; line-height: 1.5; color: var(--text-muted); }
+.st-note.ok { color: var(--good); } .st-note.err { color: var(--danger); }
+.st-danger { border-color: rgba(248, 113, 113, .45); }
+.pa-btn.st-del { border-color: var(--danger); color: var(--danger); }
+.pa-btn.st-del:hover:not(:disabled) { background: rgba(248, 113, 113, .08); border-color: var(--danger); }
+
+@media (max-width: 900px) {
+  .st-grid { grid-template-columns: 1fr; gap: 16px; }
+  .st-nav { flex-direction: row; overflow-x: auto; scrollbar-width: none; box-shadow: inset 0 -1px 0 var(--hairline); }
+  .st-nav button { flex: none; border-radius: 0; border-width: 0 0 2px; }
+  .st-nav button[aria-current="page"] { background: transparent; border-color: var(--accent); }
+  .st-page { padding: 20px 16px 40px; }
+  .st-row { flex-wrap: wrap; }
+}
+
+/* /account/delete (v3 Y5, Y6) */
+.ad-page { height: 100%; overflow-y: auto; display: flex; justify-content: center; padding: 28px 20px 48px; box-sizing: border-box; }
+.ad-card { width: min(510px, 100%); height: fit-content; display: flex; flex-direction: column; gap: 12px; }
+.ad-h1 { margin: 0; font: 700 34px var(--font-logo); letter-spacing: .08em; text-transform: uppercase; }
+.ad-card p, .ad-card li { margin: 0; font-size: 14px; line-height: 1.55; color: var(--text-secondary); }
+.ad-card ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+.ad-card form { display: flex; flex-direction: column; gap: 16px; margin-top: 4px; }
+.pa-btn.ad-del { border-color: var(--danger); color: var(--danger); }
+.pa-btn.ad-del:hover:not(:disabled) { background: rgba(248, 113, 113, .08); border-color: var(--danger); }
+.ad-keep { align-self: center; min-height: var(--touch); display: inline-flex; align-items: center; color: var(--text-secondary); text-decoration: underline; font-size: 14px; }
+.ad-gone { position: fixed; inset: 0; z-index: 80; background-color: var(--bg-base); display: flex; align-items: center; justify-content: center; padding: 24px; }
+.ad-gone section { max-width: 480px; display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center; }

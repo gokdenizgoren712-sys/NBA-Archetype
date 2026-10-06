@@ -58,7 +58,7 @@ test("uygulama akışı özeti gönderiyor, takasta doğrulayıcıyı veriyor; s
 
 test("hesap silme: web sayfası, profil bağlantısı ve uygulama içi yol var", () => {
   assert.match(src("App.jsx"), /path="\/account\/delete"\s+element=\{<AccountDelete \/>\}/);
-  assert.match(src("pages", "Profile.jsx"), /to="\/account\/delete"/);
+  assert.match(src("pages", "Settings.jsx"), /navigate\("\/account\/delete"\)/);   // v3: silme girişi Settings › Data & privacy
   assert.match(src("rankit", "web", "SettingsPanel.jsx"), /to="\/account\/delete"/);
   const settings = src("rankit", "redesign", "Settings.jsx");
   assert.match(settings, /\{onAccountDeleted && <DeleteAccount onDeleted=\{onAccountDeleted\}\/>\}/);

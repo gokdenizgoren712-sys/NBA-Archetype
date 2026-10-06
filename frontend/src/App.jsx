@@ -18,6 +18,7 @@ installMaintenanceWatch();   // VITE_MAINTENANCE_GATE=1 değilse hiçbir şey ya
 // Route sayfaları LAZY — her biri kendi chunk'ına bölünür. Ağır lib'ler böylece
 // initial bundle'dan çıkar: tiptap→ArticleEditor chunk'ı, recharts→paylaşılan radar
 // chunk'ı, oyun sim→LineupGame chunk'ı. İlk yükte sadece kabuk + router iner.
+const Settings       = lazy(() => import("./pages/Settings"));
 const Players        = lazy(() => import("./pages/Players"));
 const Lineups        = lazy(() => import("./pages/Lineups"));
 const ExploreHub      = lazy(() => import("./pages/ExploreHub"));
@@ -254,6 +255,7 @@ function AppInner() {
               {/* Auth extras */}
               <Route path="/forgot-password"          element={<ForgotPassword />} />
               <Route path="/reset-password"           element={<ResetPassword />} />
+              <Route path="/settings"                 element={<Settings />} />
               <Route path="/account/delete"           element={<AccountDelete />} />
               {/* Admin */}
               <Route path="/admin"                    element={<Navigate to="/admin/data" replace />} />
