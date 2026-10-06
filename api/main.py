@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 import httpx
 import pandas as pd
 import numpy as np
-from fastapi import FastAPI, Query, HTTPException, Request, Depends
+from fastapi import FastAPI, Query, HTTPException, Request, Depends, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -76,7 +76,9 @@ async def _json_500(request: Request, exc: Exception):
     # Mesaj istemcide AYNEN gosteriliyor (rankitApi: errorBody.detail) ve
     # kullaniciya gorunen metin Ingilizce (CLAUDE.md).
     detail = f"{type(exc).__name__}: {exc}" if not IS_PROD else "Something went wrong on our side. Try again in a moment."
-    return JSONResponse(status_code=500, content={"detail": detail})
+    rid = getattr(request.state, "request_id", None)
+    return JSONResponse(status_code=500, content={"detail": detail, **({"request_id": rid} if rid else {})},
+                        headers={"X-Request-Id": rid} if rid else None)
 
 # ─── Middleware ────────────────────────────────────────────────────────────────
 
@@ -99,22 +101,26 @@ if IS_PROD:
 # (bağlantı timeout ile ölüyordu) — bu yüzden SMTP yerine Brevo'nun HTTPS
 # transactional email API'si kullanılıyor; normal bir HTTPS isteği olduğu için
 # port engeline takılmıyor (Google tokeninfo çağrısı da aynı şekilde çalışıyor).
-def _send_email(to: str, subject: str, html: str):
+def _send_email(to: str, subject: str, html: str, attachments: Optional[list] = None):
+    """attachments: [{"name": "x.json", "content": "<base64>"}] (Brevo biçimi) — veri dışa aktarma e-postası kullanır."""
     if not BREVO_API_KEY:
         logging.warning("BREVO_API_KEY not configured — skipping email to %s", to)
         return
     from_name, from_email = parseaddr(SMTP_FROM)
+    payload = {
+        "sender": {"name": from_name or "Primary Arch", "email": from_email or SMTP_FROM},
+        "to": [{"email": to}],
+        "subject": subject,
+        "htmlContent": html,
+    }
+    if attachments:
+        payload["attachment"] = attachments
     try:
         resp = httpx.post(
             "https://api.brevo.com/v3/smtp/email",
             headers={"api-key": BREVO_API_KEY, "Content-Type": "application/json"},
-            json={
-                "sender": {"name": from_name or "Primary Arch", "email": from_email or SMTP_FROM},
-                "to": [{"email": to}],
-                "subject": subject,
-                "htmlContent": html,
-            },
-            timeout=10,
+            json=payload,
+            timeout=30 if attachments else 10,
         )
         resp.raise_for_status()
     except Exception as e:
@@ -189,9 +195,9 @@ async def log_requests(request: Request, call_next):
     response = await call_next(request)
     ms = int((time.perf_counter() - t0) * 1000)
     if ms > 500:
-        logging.warning(f"SLOW {request.method} {request.url.path} {ms}ms")
+        logging.warning(f"[{getattr(request.state, 'request_id', '-')}] SLOW {request.method} {request.url.path} {ms}ms")
     elif request.url.path.startswith("/api"):
-        logging.info(f"{request.method} {request.url.path} {response.status_code} {ms}ms")
+        logging.info(f"[{getattr(request.state, 'request_id', '-')}] {request.method} {request.url.path} {response.status_code} {ms}ms")
     return response
 
 # ─── In-process response cache ────────────────────────────────────────────────
@@ -289,6 +295,53 @@ async def rate_limit(request: Request, call_next):
     return await call_next(request)
 
 
+# ── Bakım sinyali (UI v3 B5) ─────────────────────────────────────────────────
+# MAINTENANCE_MODE=1 iken /api/* 503 + Retry-After + Date döner (health, meta ve CSP raporu hariç: meta bayrağı da taşır).
+# Süre MAINTENANCE_RETRY_AFTER (sn, varsayılan 600). Ortam değişkeni her istekte okunur: yeniden başlatma gerekmez.
+_MAINT_EXEMPT = ("/api/health", "/api/meta", "/api/csp-report")
+
+
+def _maintenance() -> tuple[bool, int]:
+    if os.environ.get("MAINTENANCE_MODE", "").strip().lower() not in ("1", "true", "yes", "on"):
+        return False, 0
+    try:
+        return True, max(int(os.environ.get("MAINTENANCE_RETRY_AFTER", "600")), 1)
+    except ValueError:
+        return True, 600
+
+
+@app.middleware("http")
+async def maintenance_gate(request: Request, call_next):
+    path = request.url.path
+    if path.startswith("/api") and path not in _MAINT_EXEMPT and request.method != "OPTIONS":
+        on, retry = _maintenance()
+        if on:
+            from email.utils import formatdate
+            return JSONResponse({"detail": "Primary Arch is down for maintenance. We will be back shortly."}, status_code=503,
+                                headers={"Retry-After": str(retry), "Date": formatdate(usegmt=True)})
+    return await call_next(request)
+
+
+# ── İstek kimliği (UI v3 B6) ─────────────────────────────────────────────────
+# Her yanıta X-Request-Id; istemcinin geçerli bir kimliği varsa o korunur. Yakalanmamış hata da kimliği taşır
+# (500 sayfası "Ref ..." satırı) ve loga aynı kimlikle düşer. Diğer http middleware'lerin DIŞINDA: 429 / 503 de kimlik alır.
+_RID_RX = re.compile(r"^[A-Za-z0-9._-]{8,64}$")
+
+
+@app.middleware("http")
+async def request_id(request: Request, call_next):
+    rid = request.headers.get("x-request-id", "")
+    if not _RID_RX.match(rid):
+        rid = secrets.token_hex(8)
+    request.state.request_id = rid
+    try:
+        response = await call_next(request)
+    except Exception as exc:    # noqa: BLE001 — Starlette'in en dış 500 işleyicisi middleware'lerden sonra çalışır, kimliği kaybederdi
+        response = await _json_500(request, exc)
+    response.headers["X-Request-Id"] = rid
+    return response
+
+
 # CORS en dışta olmalı: Starlette'te en SON eklenen middleware en dıştakidir.
 # Önceden CORS bu http middleware'lerinden önce ekleniyordu, yani rate
 # limiter'ın 429'u CORS'tan geçmeden dönüyordu — başlıksız. Site API'ye aynı
@@ -301,8 +354,10 @@ async def rate_limit(request: Request, call_next):
 app.add_middleware(
     CORSMiddleware,
     allow_origins=list(dict.fromkeys([SITE_URL, *MOBILE_ORIGINS])) if IS_PROD else ["*"],
-    allow_methods=["GET", "POST", "DELETE", "PUT"],
-    allow_headers=["Authorization", "Content-Type"],
+    allow_methods=["GET", "POST", "DELETE", "PUT", "PATCH"],
+    allow_headers=["Authorization", "Content-Type", "X-Request-Id"],
+    # Çapraz köken istemci (RankIt uygulaması) bakım süresini ve hata kimliğini okuyabilsin
+    expose_headers=["X-Request-Id", "Retry-After", "Date"],
 )
 
 
@@ -1068,10 +1123,13 @@ def get_meta():
         mtime = scores_path.stat().st_mtime
         last_updated = datetime.datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M")
     ranked = df[df["overall_score"].notna()] if "overall_score" in df.columns else df
+    on, retry = _maintenance()
     return {
         "season":       "2025-26",
         "player_count": int(len(ranked)),
         "last_updated": last_updated,
+        "maintenance":  on,
+        "retry_after":  retry if on else None,
     }
 
 
@@ -1340,7 +1398,32 @@ def get_player_scores(player_name: str):
         "active_modifiers": active_modifiers,
         "role_scores":   role_scores,
         "confidence_margin": _confidence_margin(int(row.get("GP", 70)) if pd.notna(row.get("GP")) else 70),
+        # UI v3 (B7/B13/B14): sıra, yaş, beşli sayısı, açıklama girdileri, son üç sezon — hepsi eklemeli alanlar
+        **_player_profile_extras(df, row),
     }
+
+
+@lru_cache(maxsize=1)
+def _lineups_raw() -> pd.DataFrame:
+    p = DATA / "2025-26__lineups_5man.parquet"
+    return pd.read_parquet(p, columns=["GROUP_ID", "MIN"]) if p.exists() else pd.DataFrame(columns=["GROUP_ID", "MIN"])
+
+
+def _player_history(pid, name: str) -> pd.DataFrame:
+    """Tarihsel tabloda oyuncunun satırları: önce PLAYER_ID, yoksa isim."""
+    hist = _load_historical()
+    if hist.empty:
+        return hist
+    if pid is not None and pd.notna(pid) and "PLAYER_ID" in hist.columns:
+        hit = hist[hist["PLAYER_ID"] == pid]
+        if not hit.empty:
+            return hit
+    return _match_player(hist, name)
+
+
+def _player_profile_extras(df: pd.DataFrame, row: pd.Series) -> dict:
+    from . import player_profile as pp
+    return pp.profile_extras(df, row, _lineups_raw(), _load_historical(), _player_history(row.get("PLAYER_ID"), str(row["PLAYER_NAME"])))
 
 
 @app.get("/api/players/{player_name}/duo-partners")
@@ -2932,11 +3015,16 @@ def get_player_career(name: str = Query(..., description="Oyuncu adı")):
         }
         timeline.append(entry)
 
+    # Son üç sezon maç başı (UI v3 B7): canlı sezon tarihsel tabloda yok, skor tablosundan eklenir
+    from . import player_profile as pp
+    cur = _match_player(_load_scores(), player_name_canonical)
+    recent = pp.recent_seasons(hist, match, cur.iloc[0] if not cur.empty else None)
     return {
         "name":          player_name_canonical,
         "slug":          slug,
         "slug_conflict": slug_conflict,
         "seasons":       timeline,
+        "recent_seasons": recent,
     }
 
 
@@ -3314,9 +3402,10 @@ def register(body: RegisterBody):
     try:
         with get_conn() as conn:
             cur = conn.execute(
-                "INSERT INTO users (email, username, hashed_password, role, terms_version) VALUES (?,?,?,?,?)",
+                "INSERT INTO users (email, username, hashed_password, role, terms_version, terms_accepted_at)"
+                " VALUES (?,?,?,?,?, CASE WHEN ? THEN datetime('now') END)",
                 (body.email.lower(), body.username, hashed, role,
-                 TERMS_VERSION if body.accept_terms else None)
+                 TERMS_VERSION if body.accept_terms else None, 1 if body.accept_terms else 0)
             )
             user_id = cur.lastrowid
     except Exception as e:
@@ -3351,17 +3440,17 @@ def login(body: LoginBody):
     return {"token": token, "user": {"id": row["id"], "email": row["email"],
                                       "username": row["username"], "role": row["role"]}}
 
-@app.post("/api/auth/google")
-def google_auth(body: GoogleAuthBody):
+def _google_identity(credential: str) -> dict:
+    """Google kimlik belgesini doğrular (hedef kitle, issuer, doğrulanmış e-posta) ve tokeninfo'yu döner. Giriş ve bağlama aynı kapıdan geçer."""
     # Hedef kitle kontrolü ZORUNLU: GOOGLE_CLIENT_ID yokken başka herhangi bir
     # uygulama için üretilmiş bir Google token'ı da kabul ediliyordu.
     if not GOOGLE_CLIENT_ID:
         raise HTTPException(503, "Google sign-in is not available right now")
-    if not body.credential or len(body.credential) > 4096:
+    if not credential or len(credential) > 4096:
         raise HTTPException(400, "Invalid Google token")
     try:
         resp = httpx.get("https://oauth2.googleapis.com/tokeninfo",
-                         params={"id_token": body.credential}, timeout=10)
+                         params={"id_token": credential}, timeout=10)
     except httpx.HTTPError:
         raise HTTPException(502, "Could not reach Google — try again")
     if resp.status_code != 200:
@@ -3373,9 +3462,15 @@ def google_auth(body: GoogleAuthBody):
         raise HTTPException(400, "Invalid Google token")
     if str(info.get("email_verified", "")).lower() != "true":
         raise HTTPException(400, "Your Google email address is not verified")
-    email = info.get("email", "")
-    if not email:
+    if not info.get("email", ""):
         raise HTTPException(400, "No email in Google token")
+    return info
+
+
+@app.post("/api/auth/google")
+def google_auth(body: GoogleAuthBody):
+    info = _google_identity(body.credential)
+    email = info.get("email", "")
     base = _re.sub(r"[^A-Za-z0-9_]", "", info.get("given_name", email.split("@")[0]))[:20] or "user"
     if moderation_words.blocked_word(base):
         base = "member"
@@ -3384,6 +3479,9 @@ def google_auth(body: GoogleAuthBody):
         if row:
             if row["is_banned"]:
                 raise HTTPException(403, "Account suspended")
+            if row["google_blocked"]:
+                # Kullanıcı Ayarlar'dan Google bağlantısını kendisi kesti: e-posta eşleşse bile Google ile girilmez.
+                raise HTTPException(403, "Google sign-in is turned off for this account. Sign in with your password.")
             user_id, role = row["id"], row["role"]
             if row["hashed_password"] and not row["email_verified"]:
                 # Önden ele geçirme: biri bu e-postayla şifreli bir hesap açmış
@@ -3394,6 +3492,7 @@ def google_auth(body: GoogleAuthBody):
                                 token_version=token_version+1 WHERE id=?""", (user_id,))
             elif not row["email_verified"]:
                 conn.execute("UPDATE users SET email_verified=1 WHERE id=?", (user_id,))
+            conn.execute("UPDATE users SET google_linked=1 WHERE id=?", (user_id,))
         else:
             username = base
             for i in range(1, 100):
@@ -3403,8 +3502,8 @@ def google_auth(body: GoogleAuthBody):
                 username = f"{base}{i}"
             # Google düğmesinin altındaki "By continuing you agree…" satırı kabul sayılır.
             cur = conn.execute(
-                "INSERT INTO users (email, username, hashed_password, role, email_verified, terms_version)"
-                " VALUES (?,?,?,?,1,?)",
+                "INSERT INTO users (email, username, hashed_password, role, email_verified, terms_version, terms_accepted_at, google_linked)"
+                " VALUES (?,?,?,?,1,?,datetime('now'),1)",
                 (email.lower(), username, "", "user", TERMS_VERSION),
             )
             user_id, role = cur.lastrowid, "user"
@@ -3516,27 +3615,263 @@ def admin_request_ip(request: Request, _user=Depends(require_admin)):
             "cf_connecting_ip": h.get("cf-connecting-ip"),
             "client_host": request.client.host if request.client else None}
 
-@app.get("/api/auth/me")
-def me(user=Depends(get_current_user)):
-    with get_conn() as conn:
-        row = conn.execute("""SELECT id,email,username,role,created_at,hashed_password,terms_version
-                              FROM users WHERE id=?""", (int(user["sub"]),)).fetchone()
+def _has_password(hashed) -> bool:
+    return hashed not in ("", "!", None)
+
+
+def _account_payload(conn, uid: int) -> dict:
+    """/api/auth/me ve hesap uçlarının ortak yanıtı (eklemeli: eski alanlar aynen duruyor)."""
+    row = conn.execute("""SELECT id,email,username,role,created_at,hashed_password,terms_version,terms_accepted_at,
+                                 pending_email,google_linked
+                          FROM users WHERE id=?""", (uid,)).fetchone()
     if not row:
         raise HTTPException(404, "User not found")
     out = _row(row)
     # Hesap silme formu neyi soracağını bilsin: şifre mi, kullanıcı adı mı.
-    out["has_password"] = bool(out.pop("hashed_password", "") not in ("", "!", None))
+    out["has_password"] = _has_password(out.pop("hashed_password", ""))
     # Güncel şartlar kabul edilmediyse site engellemeyen bir bant gösterir.
     out["terms_current"] = out.pop("terms_version", None) == TERMS_VERSION
+    out["google_linked"] = bool(out["google_linked"])
+    # Basketbol + futbol kayıtlı kadroları birlikte (mobil çekmece profil kartı)
+    out["saved_roster_count"] = conn.execute("SELECT COUNT(*) FROM saved_rosters WHERE user_id=?", (uid,)).fetchone()[0]
     return out
+
+
+@app.get("/api/auth/me")
+def me(user=Depends(get_current_user)):
+    with get_conn() as conn:
+        return _account_payload(conn, int(user["sub"]))
 
 
 @app.post("/api/account/accept-terms")
 def accept_terms(user=Depends(get_current_user)):
-    """"Updated terms" bandındaki onay: güncel sürüm hesaba yazılır."""
+    """"Updated terms" bandındaki onay: güncel sürüm ve kabul zamanı hesaba yazılır."""
     with get_conn() as conn:
-        conn.execute("UPDATE users SET terms_version=? WHERE id=?", (TERMS_VERSION, int(user["sub"])))
+        conn.execute("UPDATE users SET terms_version=?, terms_accepted_at=datetime('now') WHERE id=?",
+                     (TERMS_VERSION, int(user["sub"])))
     return {"ok": True, "terms_current": True}
+
+
+# ── Hesap ayarları (UI v3: Settings sayfası) ─────────────────────────────────
+USERNAME_RX = _re.compile(r"^[A-Za-z0-9_]{3,24}$")
+EMAIL_RX = _re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+EMAIL_CHANGE_TTL_H = 24
+EXPORT_COOLDOWN_H = 24
+ACCOUNT_EDIT_LIMIT, ACCOUNT_EDIT_WINDOW = 20, 60 * 60        # saatte en çok 20 profil düzenlemesi
+EMAIL_CHANGE_LIMIT = 5                                       # saatte en çok 5 e-posta değişikliği isteği
+
+
+class PatchAccountBody(BaseModel):
+    username: Optional[str] = None
+    email: Optional[str] = None
+
+
+class ChangePasswordBody(BaseModel):
+    current_password: str
+    new_password: str
+
+
+class ConfirmEmailBody(BaseModel):
+    token: str
+
+
+class LinkGoogleBody(BaseModel):
+    credential: str
+
+
+@app.patch("/api/account")
+def patch_account(body: PatchAccountBody, user=Depends(get_current_user)):
+    """Kullanıcı adı hemen değişir; e-posta YENİ adrese gönderilen onay bağlantısıyla (POST /api/account/confirm-email) geçer —
+    o zamana kadar `pending_email` döner ve eski e-posta geçerli kalır."""
+    uid = int(user["sub"])
+    if body.username is None and body.email is None:
+        raise HTTPException(400, "Nothing to update")
+    if _auth_hits(f"acct:{uid}", ACCOUNT_EDIT_WINDOW, add=True) > ACCOUNT_EDIT_LIMIT:
+        raise HTTPException(429, "Too many changes. Try again later.", headers={"Retry-After": str(ACCOUNT_EDIT_WINDOW)})
+    mail_to_send = None
+    with get_conn() as conn:
+        row = conn.execute("SELECT id,email,username FROM users WHERE id=?", (uid,)).fetchone()
+        if not row:
+            raise HTTPException(404, "User not found")
+        if body.username is not None:
+            name = body.username.strip()
+            if not USERNAME_RX.match(name):
+                raise HTTPException(400, "Username must be 3–24 characters: letters, numbers and underscores")
+            if moderation_words.blocked_word(name):
+                raise HTTPException(400, "Choose a different username")
+            taken = conn.execute("SELECT id FROM users WHERE lower(username)=lower(?) AND id!=?", (name, uid)).fetchone()
+            if taken:
+                raise HTTPException(409, "That username is taken")
+            if name != row["username"]:
+                try:
+                    conn.execute("UPDATE users SET username=? WHERE id=?", (name, uid))
+                except Exception as e:                       # UNIQUE (büyük/küçük harf duyarlı kısıt) yarışı
+                    if "UNIQUE" in str(e):
+                        raise HTTPException(409, "That username is taken")
+                    raise
+        if body.email is not None:
+            new = body.email.strip().lower()
+            if len(new) > 254 or not EMAIL_RX.match(new):
+                raise HTTPException(400, "Invalid email address")
+            if new == row["email"].lower():
+                raise HTTPException(400, "That is already your email address")
+            if conn.execute("SELECT id FROM users WHERE lower(email)=? AND id!=?", (new, uid)).fetchone():
+                raise HTTPException(409, "That email address is already in use")
+            if _auth_hits(f"email-change:{uid}", 3600, add=True) > EMAIL_CHANGE_LIMIT:
+                raise HTTPException(429, "Too many email change requests. Try again later.", headers={"Retry-After": "3600"})
+            token = secrets.token_urlsafe(32)
+            expires = (datetime.utcnow() + timedelta(hours=EMAIL_CHANGE_TTL_H)).strftime("%Y-%m-%d %H:%M:%S")
+            conn.execute("UPDATE users SET pending_email=?, email_change_token=?, email_change_expires=? WHERE id=?",
+                         (new, _reset_hash(token), expires, uid))
+            mail_to_send = (new, row["email"], token)
+        payload = _account_payload(conn, uid)
+    if mail_to_send:
+        new, old, token = mail_to_send
+        url = f"{SITE_URL}/confirm-email?token={token}"
+        _send_email(new, "Primary Arch — Confirm your new email",
+                    f"""<p>Confirm this address to use it for your Primary Arch account. The link expires in {EMAIL_CHANGE_TTL_H} hours.</p>
+                    <p><a href="{url}">{url}</a></p><p>If you did not ask for this, ignore this email.</p>""")
+        _send_email(old, "Primary Arch — Email change requested",
+                    f"""<p>Someone asked to change the email on your Primary Arch account to {new}.
+                    Nothing changes until that address is confirmed. If this was not you, change your password.</p>""")
+    return payload
+
+
+@app.post("/api/account/confirm-email")
+def confirm_email_change(body: ConfirmEmailBody):
+    """Onay bağlantısındaki token (giriş gerekmez: bağlantıyı açan yeni posta kutusunun sahibidir)."""
+    if not body.token or len(body.token) > 200:
+        raise HTTPException(400, "Invalid or expired confirmation link")
+    with get_conn() as conn:
+        row = conn.execute("""SELECT id,pending_email FROM users WHERE email_change_token=? AND email_change_expires > datetime('now')
+                              AND pending_email IS NOT NULL""", (_reset_hash(body.token),)).fetchone()
+        if not row:
+            raise HTTPException(400, "Invalid or expired confirmation link")
+        if conn.execute("SELECT id FROM users WHERE lower(email)=? AND id!=?", (row["pending_email"], row["id"])).fetchone():
+            raise HTTPException(409, "That email address is already in use")
+        conn.execute("""UPDATE users SET email=?, email_verified=1, pending_email=NULL, email_change_token=NULL,
+                        email_change_expires=NULL WHERE id=?""", (row["pending_email"], row["id"]))
+    return {"ok": True, "email": row["pending_email"]}
+
+
+@app.post("/api/account/change-password")
+def change_password(body: ChangePasswordBody, user=Depends(get_current_user)):
+    """Şifre değiştirir ve diğer tüm oturumları düşürür; yanıttaki yeni token bu oturumu sürdürür. Google'la açılmış (şifresiz)
+    hesap 400 alır: şifreyi "Forgot password" bağlantısıyla belirler."""
+    uid = int(user["sub"])
+    with get_conn() as conn:
+        row = conn.execute("SELECT id,email,role,hashed_password FROM users WHERE id=?", (uid,)).fetchone()
+    if not row:
+        raise HTTPException(404, "User not found")
+    if not _has_password(row["hashed_password"]):
+        raise HTTPException(400, "No password set — use the reset link to create one")
+    fail_key = f"login:{row['email'].lower()}"                     # giriş sayacıyla ortak: ikinci bir kaba kuvvet kapısı olmasın
+    if _auth_hits(fail_key, LOGIN_FAIL_WINDOW, add=False) >= LOGIN_FAIL_LIMIT:
+        raise HTTPException(429, "Too many attempts. Try again in 15 minutes.", headers={"Retry-After": str(LOGIN_FAIL_WINDOW)})
+    if not verify_password(body.current_password, row["hashed_password"]):
+        _auth_hits(fail_key, LOGIN_FAIL_WINDOW, add=True)
+        raise HTTPException(400, "Your current password is incorrect")
+    _check_new_password(body.new_password)
+    if body.new_password == body.current_password:
+        raise HTTPException(400, "Choose a password you are not using now")
+    with get_conn() as conn:
+        conn.execute("UPDATE users SET hashed_password=?, token_version=token_version+1 WHERE id=?",
+                     (hash_password(body.new_password), uid))
+    _auth_reset(fail_key)
+    return {"ok": True, "token": create_token(uid, row["role"])}
+
+
+@app.post("/api/account/google/unlink")
+def unlink_google(user=Depends(get_current_user)):
+    """Google ile girişi kapatır. Tek giriş yöntemi Google ise (şifre yok) 400; kullanıcı önce şifre belirlemeli."""
+    uid = int(user["sub"])
+    with get_conn() as conn:
+        row = conn.execute("SELECT hashed_password, google_linked FROM users WHERE id=?", (uid,)).fetchone()
+        if not row:
+            raise HTTPException(404, "User not found")
+        if not row["google_linked"]:
+            raise HTTPException(400, "Google is not connected to this account")
+        if not _has_password(row["hashed_password"]):
+            raise HTTPException(400, "Google is your only sign-in method. Set a password first (use the reset link).")
+        conn.execute("UPDATE users SET google_linked=0, google_blocked=1 WHERE id=?", (uid,))
+        return _account_payload(conn, uid)
+
+
+@app.post("/api/account/google/link")
+def link_google(body: LinkGoogleBody, user=Depends(get_current_user)):
+    """Google ile girişi yeniden açar: Google hesabının e-postası bu hesabınkiyle aynı olmalı."""
+    uid = int(user["sub"])
+    info = _google_identity(body.credential)
+    with get_conn() as conn:
+        row = conn.execute("SELECT email FROM users WHERE id=?", (uid,)).fetchone()
+        if not row:
+            raise HTTPException(404, "User not found")
+        if info["email"].lower() != row["email"].lower():
+            raise HTTPException(400, "That Google account uses a different email address")
+        conn.execute("UPDATE users SET google_linked=1, google_blocked=0, email_verified=1 WHERE id=?", (uid,))
+        return _account_payload(conn, uid)
+
+
+def _parse_json(v):
+    try:
+        return json.loads(v) if isinstance(v, str) else v
+    except Exception:
+        return v
+
+
+def _build_export(uid: int) -> dict:
+    """Kullanıcının kendi verisi: profil, kayıtlı oyuncu / beşli / kadro, oyun sonuçları, RankIt günlüğü."""
+    with get_conn() as conn:
+        prof = conn.execute("SELECT id,email,username,role,created_at,terms_version,terms_accepted_at FROM users WHERE id=?", (uid,)).fetchone()
+        q = lambda sql, lim: [dict(r) for r in conn.execute(sql + f" LIMIT {lim}", (uid,)).fetchall()]   # noqa: E731
+        players = q("SELECT player_name, season, created_at FROM saved_players WHERE user_id=? ORDER BY id", 2000)
+        lineups = q("SELECT players, score, grade, pct, label, created_at FROM saved_lineups WHERE user_id=? ORDER BY id", 1000)
+        rosters = q("SELECT name, sport, mode, source_mode, sim_era, overall_pct, grade, roster_json, created_at FROM saved_rosters WHERE user_id=? ORDER BY id", 1000)
+        games = q("SELECT mode, pct, grade, wins, season_result, sim_era, created_at FROM lineup_games WHERE user_id=? ORDER BY id", 5000)
+        diary = q("""SELECT e.id, e.match_id, e.watched_date, e.rating, e.review, e.is_rewatch, e.visibility, e.classic, e.spoiler, e.created_at,
+                            (SELECT group_concat(tag, ',') FROM rankit_entry_tags t WHERE t.entry_id=e.id) AS tags
+                     FROM rankit_diary_entries e WHERE e.user_id=? ORDER BY e.id""", 20000)
+    for r in lineups:
+        r["players"] = _parse_json(r["players"])
+    for r in rosters:
+        r["roster_json"] = _parse_json(r["roster_json"])
+    for r in diary:
+        r["tags"] = [t for t in (r.pop("tags") or "").split(",") if t]
+    return {"exported_at": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"), "profile": dict(prof) if prof else None,
+            "saved_players": players, "saved_lineups": lineups, "saved_rosters": rosters, "game_results": games, "rankit_diary": diary}
+
+
+def _email_export(uid: int, to: str) -> None:
+    import base64
+    data = _build_export(uid)
+    raw = json.dumps(data, ensure_ascii=False, indent=1, default=str).encode("utf-8")
+    counts = {k: len(v) for k, v in data.items() if isinstance(v, list)}
+    summary = "".join(f"<li>{k.replace('_', ' ')}: {n}</li>" for k, n in counts.items())
+    _send_email(to, "Primary Arch — Your data export",
+                f"<p>Your data is attached as a JSON file.</p><ul>{summary}</ul><p>If you did not ask for this, change your password.</p>",
+                attachments=[{"name": "primary-arch-export.json", "content": base64.b64encode(raw).decode("ascii")}])
+
+
+@app.post("/api/account/export", status_code=202)
+def request_data_export(background: BackgroundTasks, user=Depends(get_current_user)):
+    """Verinin kopyasını hesabın e-postasına gönderir. 24 saatte bir (sayaç DB'de: yeniden başlatmada sıfırlanmaz)."""
+    uid = int(user["sub"])
+    with get_conn() as conn:
+        row = conn.execute("SELECT email, last_export_at FROM users WHERE id=?", (uid,)).fetchone()
+        if not row:
+            raise HTTPException(404, "User not found")
+        claimed = conn.execute(
+            f"UPDATE users SET last_export_at=datetime('now') WHERE id=? AND (last_export_at IS NULL OR last_export_at <= datetime('now','-{EXPORT_COOLDOWN_H} hours'))",
+            (uid,)).rowcount
+        if not claimed:
+            wait = conn.execute(
+                "SELECT CAST((julianday(last_export_at, ?) - julianday('now')) * 86400 AS INTEGER) FROM users WHERE id=?",
+                (f"+{EXPORT_COOLDOWN_H} hours", uid)).fetchone()[0]
+            raise HTTPException(429, "You can request one export every 24 hours.",
+                                headers={"Retry-After": str(max(int(wait or 0), 60))})
+    background.add_task(_email_export, uid, row["email"])
+    return {"ok": True, "email": row["email"]}
+
 
 _PKCE_RX = _re.compile(r"^[A-Za-z0-9_-]{43}$")
 
@@ -4103,6 +4438,37 @@ def get_leaderboard(limit: int = Query(50, le=100), mode: str = Query("classic")
             "SELECT COUNT(*) FROM lineup_games WHERE COALESCE(mode, 'classic') = ?", (mode,)
         ).fetchone()[0]
     return {"entries": [dict(r) for r in rows], "total": total}
+
+
+@app.get("/api/leaderboard/me")
+def get_my_leaderboard_standing(sport: str = Query("basketball", pattern="^(basketball|football)$"),
+                                mode: str = Query("classic"), shape: Optional[str] = Query(None),
+                                user=Depends(get_current_user)):
+    """Giriş yapmış kullanıcının tablodaki yeri (UI v3 B9: "Rank on the board", "Runs"). Tablolar KOŞULARI listeler (bir kullanıcı birden çok
+    satır olabilir); sıra, kullanıcının EN İYİ koşusunun o tablodaki yeri: kendisinden kesin daha iyi koşu sayısı + 1. `total`, tablonun
+    `/api/leaderboard` ve `/api/football/leaderboard` ile aynı referansıdır ("N koşudan"). Koşusu yoksa rank / best_pct null.
+    Basketbol: mode = classic | salarycap (lineup_games.pct). Futbol: isteğe bağlı shape (saved_rosters.overall_pct) + percentile."""
+    uid = int(user["sub"])
+    with get_conn() as conn:
+        if sport == "basketball":
+            if mode not in ("classic", "salarycap"):
+                mode = "classic"
+            where, args, col = "COALESCE(mode, 'classic') = ?", [mode], "pct"
+            table = "lineup_games"
+        else:
+            where, args, col = "sport = 'football'" + (" AND mode = ?" if shape else ""), ([shape] if shape else []), "overall_pct"
+            table = "saved_rosters"
+        mine = conn.execute(f"SELECT COUNT(*), MAX({col}) FROM {table} WHERE user_id=? AND {where}", [uid, *args]).fetchone()
+        total = conn.execute(f"SELECT COUNT(*) FROM {table} WHERE {where}", args).fetchone()[0]
+        runs, best = int(mine[0] or 0), mine[1]
+        rank = None
+        if runs and best is not None:
+            rank = conn.execute(f"SELECT COUNT(*) FROM {table} WHERE {where} AND {col} > ?", [*args, best]).fetchone()[0] + 1
+    out = {"sport": sport, "mode": mode if sport == "basketball" else (shape or None), "rank": rank, "total": total,
+           "runs": runs, "best_pct": best}
+    if sport == "football":
+        out["percentile"] = _pct_of(_chem_reference(), "score", best) if best is not None else None
+    return out
 
 
 # ── Fotoğraf atfı ────────────────────────────────────────────────────────────

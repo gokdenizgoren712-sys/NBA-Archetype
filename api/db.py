@@ -925,11 +925,22 @@ def init_db():
             ("email_verified", "INTEGER NOT NULL DEFAULT 0"),
             # Kabul edilen kullanım şartları sürümü (main.TERMS_VERSION); NULL = eski hesap
             ("terms_version", "TEXT"),
+            # UI v3 hesap ayarları (docs/BACKEND_PROMPT_UI_V3_BASKETBALL.md): şartların kabul zamanı,
+            # onay bekleyen e-posta değişikliği (token yalnız SHA-256 özetiyle), Google bağlantı durumu, son veri dışa aktarma isteği.
+            ("terms_accepted_at", "TEXT"),
+            ("pending_email", "TEXT"),
+            ("email_change_token", "TEXT"),
+            ("email_change_expires", "TEXT"),
+            ("google_linked", "INTEGER NOT NULL DEFAULT 0"),
+            ("google_blocked", "INTEGER NOT NULL DEFAULT 0"),
+            ("last_export_at", "TEXT"),
         ]:
             try:
                 conn.execute(f"ALTER TABLE users ADD COLUMN {col} {dfn}")
             except Exception:
                 pass
+        # Google'la açılan hesaplar (şifresiz) zaten Google'a bağlı.
+        conn.execute("UPDATE users SET google_linked=1 WHERE hashed_password='' AND google_linked=0")
         # PKCE (2026-09): uygulamanın gönderdiği doğrulayıcı özeti. Doluysa kod
         # yalnız o doğrulayıcıyla takas edilir (rankit:// bağlantısını yakalayan
         # başka bir uygulama kodu kullanamaz).
