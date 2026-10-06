@@ -38,7 +38,7 @@ export default function AdminLayout({ title, aside, children, wide = false }) {
       <div className={`ad-inner${wide ? " wide" : ""}`}>
         <header className="ad-head">
           <div className="l">
-            <h1>Admin</h1>
+            <div><p className="pa-eyebrow">{`Admin · ${title}`}</p><h1>Admin</h1></div>
             <nav className="ad-tabs" aria-label="Admin sections">
               {ADMIN_TABS.map(t => {
                 const on = t.also ? t.also.test(path) : path === t.to;

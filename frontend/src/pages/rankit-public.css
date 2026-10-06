@@ -1,0 +1,13 @@
+/* RankIt herkese açık sayfalar (v3 R1, R1b, R2): kabuksuz, tek düz kart. */
+.rp-page { height: 100%; overflow-y: auto; background: var(--bg-base); }
+.rp-wrap { min-height: 100%; display: flex; align-items: center; justify-content: center; padding: 24px; box-sizing: border-box; }
+.rp-card { width: min(440px, 100%); display: flex; flex-direction: column; gap: 14px; padding: 28px; border: 1px solid var(--panel-border); border-radius: var(--radius); background: var(--panel); }
+.rp-icon { width: 56px; height: 56px; display: grid; place-items: center; border: 1px solid var(--accent-border); border-radius: var(--radius); background: var(--accent-dim); color: var(--accent); }
+.rp-h1 { margin: 0; font: 700 clamp(30px, 6vw, 40px)/1.05 var(--font-logo); letter-spacing: .04em; text-transform: uppercase; color: var(--text-primary); text-wrap: balance; }
+.rp-copy { margin: 0; font-size: 14px; line-height: 1.55; color: var(--text-secondary); }
+.rp-err { margin: 0; font-size: 14px; color: var(--danger); }
+.rp-fine { margin: 0; font-size: 12px; line-height: 1.5; color: var(--text-muted); }
+.rp-cta { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; width: 100%; text-decoration: none; }
+.rp-card code { font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--text-muted); word-break: break-all; }
+.rp-hash { display: flex; flex-direction: column; gap: 8px; padding-top: 14px; border-top: 1px solid var(--hairline); }
+.rp-hash-l { display: flex; align-items: center; gap: 6px; font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .1em; color: var(--text-muted); }
