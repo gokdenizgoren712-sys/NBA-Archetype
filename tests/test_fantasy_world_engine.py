@@ -130,3 +130,60 @@ def test_a_format_with_other_high_score_weights_keeps_the_legacy_engine(world):
     sim = ss.SeasonSim(b, tw, playoff_weeks=list(fmt["playoff_weeks"]), weeks=wk, world=world)
     sim.simulate(ros, sims=60, seed=1)
     assert sim.last_engine == "legacy"
+
+
+@needs
+@pytest.mark.parametrize("key", ["yahoo_h2h_9cat", "yahoo_h2h_points", "yahoo_high_score"])
+def test_this_week_reads_the_world_and_matches_the_season_engine(world, key):
+    body = {**_roster_body(key), "week": 5, "sims": 200}
+    league = client.post("/api/fantasy/league/rosters", json=body).json()
+    opp = 6
+    r = client.post("/api/fantasy/week/analyze", json={**body, "opponent": opp})
+    assert r.status_code == 200, r.text
+    js = r.json()
+    assert js["engine"] == "world"
+    assert 0.0 <= js["matchup"]["win_prob"] <= 1.0
+    mine = {p["player_id"]: p for p in js["players"]}
+    assert set(mine) == {p["player_id"] for p in league["rosters"]["5"]}
+    assert all(0 <= p["exp_games"] <= 5.5 for p in mine.values())          # bir haftada en çok 5 maç civarı
+    again = client.post("/api/fantasy/week/analyze", json={**body, "opponent": opp}).json()
+    assert again["matchup"] == js["matchup"]                                 # aynı tohum → aynı sonuç
+    assert len(js["free_agents"]) > 5
+    if key == "yahoo_high_score":
+        assert js["lineup"]["best_total"] > 100 and all(p["ceiling"] > 0 for p in mine.values() if p["exp_games"] > 0.5)
+    if key == "yahoo_h2h_points":
+        assert js["matchup"]["exp_points"][0] > 100
+
+
+@needs
+def test_the_player_week_stats_come_from_the_world_expectations(world):
+    proj, tw, wk = pd.read_parquet(LIVE), pd.read_parquet(TW), pd.read_parquet(WK)
+    fmt = get_format("yahoo_high_score")
+    b = dr.make_board(vl.value_players(proj, fmt, tw), fmt)
+    sim = ss.SeasonSim(b, tw, playoff_weeks=list(fmt["playoff_weeks"]), weeks=wk, world=world)
+    pids = [int(x) for x in b.ids[:20]]
+    st = sim.world_player_week(pids, 5)
+    wi = sim.weeks.index(5)
+    ix = world.index()
+    assert np.allclose(st["games"], [world.games[:, wi, ix[p]].mean() for p in pids])
+    assert (st["best"] >= 0).all() and st["best"].max() > 40               # en iyi oyuncuların haftalık tavanı yüksek
+
+
+@needs
+def test_requests_wait_for_a_world_that_is_still_building_instead_of_flipping_engines(monkeypatch):
+    import time as _t
+    from api import fantasy_draft as m
+    sentinel = object()
+    monkeypatch.setattr(m, "background_jobs_enabled", lambda: True)
+    monkeypatch.setattr(m, "_build_world_now", lambda st: (_t.sleep(0.6), sentinel)[1])
+    with m._world_lock:
+        m._world_state.update(mtime=None, world=None, building=False)
+    try:
+        assert m.get_world(wait=0.0) is None                                  # kurulumu başlatır, beklemez
+        t0 = _t.time()
+        got = m.get_world(wait=5.0)                                           # kurulum sürerken gelen ikinci istek bekler
+        assert got is sentinel and _t.time() - t0 >= 0.2
+        assert m.get_world(wait=0.0) is sentinel                              # sonra anında hazır
+    finally:
+        with m._world_lock:
+            m._world_state.update(mtime=None, world=None, building=False)

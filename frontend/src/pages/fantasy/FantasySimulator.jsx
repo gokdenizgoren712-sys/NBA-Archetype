@@ -7,7 +7,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { SEO } from "../../hooks/useSEO";
 import { fz } from "./fantasyApi";
-import { BAD, ErrorNote, SkeletonList, ValidationNotice, ordinal } from "./ui";
+import { BAD, ENGINE_NOTE, ErrorNote, SkeletonList, ValidationNotice, ordinal } from "./ui";
 import RosterSourceBar from "./RosterSourceBar";
 import { useFantasy, useIsPhone } from "./useFantasy";
 import { useRosterSource } from "./useRosterSource";
@@ -305,7 +305,7 @@ export default function FantasySimulator() {
             <WeekGrid agg={agg} phone={phone} />
             <GamesChart weekly={me.weekly} />
             <span className="fz-meta" style={{ lineHeight: 1.6, maxWidth: 760 }}>
-              Injuries are simulated as one or two multi-game absences plus scattered rest days, sized from real 2023-26 seasons. No waiver or trade moves are made in-season.
+              {ENGINE_NOTE[agg.engine] || ""} Injuries are one or two multi-game absences plus scattered rest days, sized from real 2023-26 seasons. No waiver or trade moves are made in-season.
               {f.kind === "high_score" ? " High Score: each starter counts only their best game of the week, and the lineup is set every week for the games played." : ""}
               {agg.mode === "simulated_rivals" ? " Rival rosters are drafted by simulated bots, so each batch faces a different league." : ""}
             </span>

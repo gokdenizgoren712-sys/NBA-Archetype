@@ -478,7 +478,8 @@ def _league_rosters(b: dr.Board, body) -> tuple[dict[int, list[int]], str]:
 
 # ── Dünya (Faz 6): NBA'nin oyun düzeyindeki simülasyonu — sezon simülatörünün oyuncu üretim kaynağı ──────────
 # Projeksiyon dosyası değişince bellekte yeniden kurulur (K=128 ≈ 12 sn, ≈ 100 MB). Hazır olana ya da kapalıyken eski motor çalışır.
-_world_state: dict = {"mtime": None, "world": None, "building": False}
+_world_state: dict = {"mtime": None, "world": None, "building": False, "event": threading.Event()}
+WORLD_WAIT = float(os.environ.get("FANTASY_WORLD_WAIT", "25"))      # dünya kurulurken ilk istekler en çok bu kadar bekler, sonra eski motor
 _world_lock = threading.Lock()
 WORLD_K = int(os.environ.get("FANTASY_WORLD_K", "128"))
 
@@ -495,9 +496,10 @@ def _build_world_now(st: dict):
     return build_world(st["proj"], st["team_weeks"], json.loads(model_path.read_text(encoding="utf-8")), scenarios=WORLD_K)
 
 
-def get_world(block: bool = False):
+def get_world(block: bool = False, wait: float = 0.0):
     """Hazır dünya ya da None (eski motor). Sezon içinde (INSEASON_AS_OF) ve SI_* girdisi yoksa her zaman None.
-    block=False: kurulmamışsa arka planda başlatır, şimdilik None döner."""
+    block=False: kurulmamışsa arka planda başlatır, şimdilik None döner. wait>0: kurulum sürüyorsa en çok o kadar saniye bekler
+    (açılıştan hemen sonraki ilk isteklerin eski / yeni motor arasında gidip gelmemesi için)."""
     if not _world_enabled():
         return None
     st = _load()
@@ -509,10 +511,23 @@ def get_world(block: bool = False):
         if _world_state["mtime"] == mt and _world_state["world"] is not None:
             return _world_state["world"]
         if _world_state["building"] and not block:
-            return None
-        if not block and not background_jobs_enabled():       # testler (RANKIT_BACKGROUND_JOBS=0) kendiliğinden arka plan iş parçacığı başlatmaz
-            return None
-        _world_state["building"] = True
+            ev = _world_state["event"]
+            if wait > 0:
+                pass
+            else:
+                return None
+            ev_wait = ev
+        else:
+            ev_wait = None
+        if ev_wait is None:
+            if not block and not background_jobs_enabled():       # testler (RANKIT_BACKGROUND_JOBS=0) kendiliğinden arka plan iş parçacığı başlatmaz
+                return None
+            _world_state["building"] = True
+            _world_state["event"].clear()
+    if ev_wait is not None:                                       # kurulum sürüyor: bekle
+        ev_wait.wait(wait)
+        with _world_lock:
+            return _world_state["world"] if _world_state["mtime"] == mt else None
 
     def work():
         try:
@@ -524,11 +539,16 @@ def get_world(block: bool = False):
         finally:
             with _world_lock:
                 _world_state["building"] = False
+            _world_state["event"].set()
 
     if block:
         work()
         return _world_state["world"]
     threading.Thread(target=work, name="fantasy-world", daemon=True).start()
+    if wait > 0:                                                  # bu çağrı kurulumu başlattıysa onu da bekle
+        _world_state["event"].wait(wait)
+        with _world_lock:
+            return _world_state["world"] if _world_state["mtime"] == mt else None
     return None
 
 
@@ -542,7 +562,7 @@ def start_fantasy_world() -> None:
 
 
 def _season_sim(b: dr.Board, fmt: dict) -> SeasonSim:
-    world = get_world()
+    world = get_world(wait=WORLD_WAIT)
     key = json.dumps([fmt, _load()["mtime"], world is not None], sort_keys=True, default=str)
     with _lock:
         if key in _sims:

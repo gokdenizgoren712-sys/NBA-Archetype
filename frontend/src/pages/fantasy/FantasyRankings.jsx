@@ -82,9 +82,9 @@ export default function FantasyRankings() {
   const [flag, setFlag] = useState(null);
   const [limit, setLimit] = useState(PAGE);
   const [sort, setSort] = useState(null);
-  const [source, setSource] = useState("model");           // model = bizim projeksiyon · sim = takım simülasyonunun ortalamaları
+  const [source, setSource] = useState(null);             // null = sitenin varsayılanı: Simülasyon (varsa) · model = bizim projeksiyon · sim = takım simülasyonu
   const simOk = !!f.meta?.simulation;
-  const src = simOk ? source : "model";
+  const src = simOk ? (source ?? "sim") : "model";
 
   useEffect(() => { const t = setTimeout(() => setQDeb(q.trim()), 250); return () => clearTimeout(t); }, [q]);
   // Format değişince kategori bağımlı seçimler sıfırlanır
@@ -294,7 +294,8 @@ export default function FantasyRankings() {
           </div>
           <InfoTip label="Model vs simulation" title="Model or simulation?">
             <p><b>Model</b>: our projection from each player's last three seasons, adjusted for his new team.</p>
-            <p><b>Simulation</b>: plays every team through 100 seasons of 82 games with injuries, rotation minutes and who shares the ball, and averages what each player does. The two agree closely; where they differ, the roster is doing something the history cannot see.</p>
+            <p><b>Simulation</b> (the default): plays every team through 100 seasons of 82 games with injuries, rotation minutes and who shares the ball, and averages what each player does. The two agree closely; where they differ, the roster is doing something the history cannot see.</p>
+            <p>Draft planning and the mock draft still use the model, the version we tested against past drafts.</p>
           </InfoTip>
         </div>
       )}

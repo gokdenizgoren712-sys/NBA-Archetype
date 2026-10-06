@@ -392,6 +392,41 @@ class SeasonSim:
 
     # ── Dünya (Faz 6): oyuncu üretimi NBA simülasyonundan okunur ────────────────────────
 
+    def _use_world(self, rows: np.ndarray, v: "_View") -> bool:
+        """Bu istek dünyadan mı okunur? Dünya hazır, tam sezon görünümü (sezon içi kalan-sezon eski motorda), bütün oyuncular dünyada ve
+        High Score ağırlıkları dünyanın 'en iyi maç' ağırlıklarıyla aynı."""
+        fmt = self.fmt
+        return (self.world is not None and v.from_week is None and all(int(self.b.ids[r]) in self._widx for r in rows)
+                and (fmt["kind"] != "high_score" or all(abs(fmt["weights"].get(k, 0.0) - w_) < 1e-9 for k, w_ in _HS_W.items())))
+
+    def world_week_values(self, rosters_list: list[list[int]], week: int, sims: int, seed: int, from_week: int | None = None):
+        """Bu hafta analizi için: seçili haftanın takım değerleri (S × T × C) ve beklenen takım oyuncu-maçı (T,) — dünyadan.
+        Dünya kullanılamıyorsa None (çağıran eski motora düşer)."""
+        rows = np.array([self.b.row[p] for r in rosters_list for p in r], dtype=int)
+        if not self._use_world(rows, self.view(from_week)):
+            return None
+        sizes = [len(r) for r in rosters_list]
+        V, games_tw = self._world_values(rows, sizes, sims, seed)
+        wi = self.weeks.index(week)
+        return V[:, :, wi, :], games_tw[:, :, wi].mean(axis=0)
+
+    def world_player_week(self, pids: list[int], week: int) -> dict[str, np.ndarray] | None:
+        """Oyuncu başına bu haftaki beklenen oyun sayısı, beklenen en iyi tek maç (High Score, piyasa çekmeli) ve beklenen Yahoo puanı — dünyadan."""
+        if self.world is None or not all(int(p) in self._widx for p in pids):
+            return None
+        w = self.world
+        widx = np.array([self._widx[int(p)] for p in pids])
+        wi = self.weeks.index(week)
+        rows = np.array([self.b.row[p] for p in pids], dtype=int)
+        f = self._world_factor()[rows] if self.world_shrink else np.ones((len(pids), len(STATS)))
+        ms = w.mean_sums()[wi][widx]                                               # (P × C) senaryo ortalaması
+        sh = np.maximum(ms * f, 0.0)
+        wt = np.array([self.fmt.get("weights", {}).get(s_, 0.0) for s_ in STATS])
+        tot_r = self._tot[rows]
+        f_fp = (tot_r * f * np.array([_HS_W.get(s_, 0.0) for s_ in STATS])).sum(axis=1) / np.maximum((tot_r * np.array([_HS_W.get(s_, 0.0) for s_ in STATS])).sum(axis=1), 1e-9)
+        return {"games": w.games[:, wi, widx].mean(axis=0).astype(float), "best": np.maximum(w.mean_best()[wi][widx] * f_fp, 0.0),
+                "points": (sh * wt).sum(axis=1), "mean_sums": sh}
+
     def _world_factor(self) -> np.ndarray:
         """(n_oyuncu × 11) piyasaya çekme çarpanı: (yerel piyasa ortalaması + κ·(toplam − ortalama)) / toplam — eski motorun `_shrunk`'ı ile aynı."""
         if self._wfac is None:
@@ -488,7 +523,7 @@ class SeasonSim:
                 return np.matmul(n.reshape(sims, T, R, -1).transpose(0, 1, 3, 2), x.reshape(sims, T, R, -1))
             return np.einsum("tp,spw,spc->stwc", onehot, n, x, optimize=True)
 
-        use_world = self.world is not None and v.from_week is None and all(int(b.ids[r]) in self._widx for r in rows)             and (fmt["kind"] != "high_score" or all(abs(fmt["weights"].get(k, 0.0) - w_) < 1e-9 for k, w_ in _HS_W.items()))
+        use_world = self._use_world(rows, v)
         if use_world:
             V, games_tw = self._world_values(rows, sizes, sims, seed)           # (S × T × W × C), (S × T × W)
             n_spw = None

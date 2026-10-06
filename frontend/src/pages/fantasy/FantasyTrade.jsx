@@ -6,7 +6,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { SEO } from "../../hooks/useSEO";
 import { fz } from "./fantasyApi";
 import RosterSourceBar from "./RosterSourceBar";
-import { BAD, ErrorNote, GOOD, SkeletonList, ValidationNotice, fmt1, ordinal, pct } from "./ui";
+import { BAD, ENGINE_NOTE, ErrorNote, GOOD, SkeletonList, ValidationNotice, fmt1, ordinal, pct } from "./ui";
 import { useFantasy, useIsPhone } from "./useFantasy";
 import { useRosterSource } from "./useRosterSource";
 
@@ -68,7 +68,7 @@ function Result({ r, f }) {
         <Delta label="Playoff odds" now={r.before.playoff_prob} after={r.after.playoff_prob} fmt={(v) => pct(v)} dfmt={(d) => `${Math.round(d * 100)}`} eps={0.01} />
         <span className="fz-meta">
           {r.scope?.mode === "rest" ? `Rest of season, from week ${r.scope.from_week}: only games still to play count. ` : ""}
-          Average finish is over {r.sims} simulated seasons; the verdict rests on weekly matchup win rate, the steadiest of these.
+          Average finish is over {r.sims} simulated seasons; the verdict rests on weekly matchup win rate, the steadiest of these. {ENGINE_NOTE[r.engine] || ""}
         </span>
       </div>
       {cats.length > 0 && (

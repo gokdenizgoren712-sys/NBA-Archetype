@@ -36,6 +36,10 @@ export const FLAGS = {
   steady:           { l: "Steady",          d: "Production per 36 minutes has been flat over the last seasons.", quiet: true },
   declining:        { l: "Declining",       d: "Production per 36 minutes has been falling over the last seasons.", bad: true },
 };
+export const ENGINE_NOTE = {
+  world: "Played on the team simulation: for every NBA team, injuries, rotation minutes and who shares the ball are drawn game by game.",
+  legacy: "Using the simpler engine for now: the team simulation is not available right now, so teammates are treated as independent.",
+};
 export const TREND_NOTE = "Direction over the last 2-4 seasons, already built into our projection. It describes the path, it is not a separate forecast.";
 
 export function FlagChips({ flags = [] }) {

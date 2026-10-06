@@ -87,9 +87,13 @@ def analyze_week(sim: SeasonSim, rosters: dict[int, list[int]], slot: int, opp: 
     b, fmt = sim.b, sim.fmt
     kind = fmt["kind"]
     mine, theirs = rosters[slot], rosters[opp]
-    V, games = sim.week_values([mine, theirs], week, sims=sims, seed=seed, from_week=from_week)
+    wv = sim.world_week_values([mine, theirs], week, sims, seed, from_week)         # Faz 6: NBA dünyasından (hazırsa); yoksa eski motor
+    V, games = wv if wv is not None else sim.week_values([mine, theirs], week, sims=sims, seed=seed, from_week=from_week)
+    pw = sim.world_player_week(mine, week) if wv is not None else None
+    pw_all = sim.world_player_week([int(x) for x in b.ids], week) if wv is not None else None
     rostered = {p for r in rosters.values() for p in r}
-    out: dict = {"kind": kind, "week": week, "opponent": opp, "games": [round(float(games[0]), 1), round(float(games[1]), 1)]}
+    out: dict = {"kind": kind, "week": week, "opponent": opp, "games": [round(float(games[0]), 1), round(float(games[1]), 1)],
+                 "engine": "world" if wv is not None else "legacy"}
 
     swing: list[str] = []
     cat_gain: dict[str, float] = {}
@@ -108,7 +112,12 @@ def analyze_week(sim: SeasonSim, rosters: dict[int, list[int]], slot: int, opp: 
                           "win_prob": round(float((won_a > len(b.cats) / 2).mean() + 0.5 * (won_a == len(b.cats) / 2).mean()), 3),
                           "swing": swing}
     elif kind == "high_score":
-        out["matchup"] = hs_matchup(sim, mine, theirs, week, sims, seed, from_week)
+        if wv is not None:
+            a, o = V[:, 0, 0], V[:, 1, 0]
+            out["matchup"] = {"exp_points": [round(float(a.mean()), 1), round(float(o.mean()), 1)],
+                              "win_prob": round(float((a > o).mean() + 0.5 * (a == o).mean()), 3)}
+        else:
+            out["matchup"] = hs_matchup(sim, mine, theirs, week, sims, seed, from_week)
     else:
         a, o = V[:, 0, 0], V[:, 1, 0]
         out["matchup"] = {"exp_points": [round(float(a.mean()), 1), round(float(o.mean()), 1)],
@@ -118,17 +127,17 @@ def analyze_week(sim: SeasonSim, rosters: dict[int, list[int]], slot: int, opp: 
     fp_w = lambda row: float(sum(b.df[k].iloc[row] * v for k, v in (fmt.get("weights") or {}).items() if k in b.df.columns))   # noqa: E731
     players = []
     ceil: dict[int, float] = {}
-    for pid in mine:
+    for j, pid in enumerate(mine):
         r = b.row[pid]
         g = team_games_in_week(sim, r, week)
         p = _availability(sim, r, from_week)
-        row = {"player_id": pid, "games": int(round(g)), "exp_games": round(g * p, 2)}
+        row = {"player_id": pid, "games": int(round(g)), "exp_games": round(float(pw["games"][j]) if pw else g * p, 2)}
         if kind == "high_score":
-            c, _ = hs_ceiling(b, sim, r, week, from_week)
+            c = float(pw["best"][j]) if pw else hs_ceiling(b, sim, r, week, from_week)[0]
             row["ceiling"] = round(c, 1)
             ceil[pid] = c
         elif kind == "points":
-            row["exp_points"] = round(fp_w(r) * g * p, 1)
+            row["exp_points"] = round(float(pw["points"][j]) if pw else fp_w(r) * g * p, 1)
         players.append(row)
     out["players"] = players
     if kind == "high_score":
@@ -147,7 +156,7 @@ def analyze_week(sim: SeasonSim, rosters: dict[int, list[int]], slot: int, opp: 
         if g < 1:
             continue
         p = _availability(sim, int(i), from_week)
-        item = {"player_id": pid, "games": int(round(g)), "exp_games": round(g * p, 2)}
+        item = {"player_id": pid, "games": int(round(g)), "exp_games": round(float(pw_all["games"][int(i)]) if pw_all else g * p, 2)}
         if kind == "categories":
             # G-skoru sezon toplamı bazlı; o haftanın maç sayısı ligin ortalamasına oranlanır. Sallantıdaki
             # kategoriler varsa yalnız onlar sayılır (streamer o kategorileri kazandırsın).
@@ -155,10 +164,10 @@ def analyze_week(sim: SeasonSim, rosters: dict[int, list[int]], slot: int, opp: 
             item["helps"] = [c for c, v in sorted(score_cats, key=lambda kv: -kv[1])[:2] if v > 0]
             item["week_value"] = round(sum(v for c, v in score_cats), 2)
         elif kind == "high_score":
-            c, _ = hs_ceiling(b, sim, int(i), week, from_week)
+            c = float(pw_all["best"][int(i)]) if pw_all else hs_ceiling(b, sim, int(i), week, from_week)[0]
             item["week_value"] = round(c, 1)
         else:
-            item["week_value"] = round(fp_w(int(i)) * g * p, 1)
+            item["week_value"] = round(float(pw_all["points"][int(i)]) if pw_all else fp_w(int(i)) * g * p, 1)
         fa.append(item)
         if len(fa) >= 80:
             break

@@ -111,7 +111,7 @@ function Lineup({ a, start, setStart }) {
           </div>
         );
       })}
-      <span className="fz-meta" style={{ lineHeight: 1.5 }}>Ceiling = expected single best game this week. More games = more chances at a big one.</span>
+      <span className="fz-meta" style={{ lineHeight: 1.5 }}>Ceiling = expected single best game this week. More games = more chances at a big one.{a?.engine === "world" ? " Taken from the team simulation, so it already counts injuries and how many shots teammates take." : ""}</span>
     </div>
   );
 }
