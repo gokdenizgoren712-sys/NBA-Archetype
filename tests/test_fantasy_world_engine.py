@@ -90,16 +90,22 @@ def test_world_and_legacy_agree_on_team_strength_when_the_market_shrink_is_off(w
     b = dr.make_board(vl.value_players(proj, fmt, tw), fmt)
     body = _roster_body(key)
     ros = ss.complete_league(b, body["roster"], body["slot"], seed=1)
-    legacy = ss.SeasonSim(b, tw, shrink=1.0, playoff_weeks=list(fmt["playoff_weeks"]), weeks=wk)
-    new = ss.SeasonSim(b, tw, playoff_weeks=list(fmt["playoff_weeks"]), weeks=wk, world=world)
-    a, c = legacy.simulate(ros, sims=300, seed=3), new.simulate(ros, sims=300, seed=3)
-    assert legacy.last_engine == "legacy" and new.last_engine == "world"
     teams = sorted(ros)
     ap = lambda r: np.array([r[t]["all_play_rate"] for t in teams])      # noqa: E731
     pp = lambda r: np.array([r[t]["playoff_prob"] for t in teams])       # noqa: E731
-    assert np.corrcoef(ap(a), ap(c))[0, 1] > 0.85
-    assert np.abs(pp(a) - pp(c)).mean() < 0.12
-    assert abs(ap(c).mean() - 0.5) < 0.01                                  # herkes herkesle: ortalama 0.5
+    for shrink, wshrink in ((1.0, False), (None, True)):                 # çekme kapalı / her iki motorda varsayılan çekme açık
+        legacy = ss.SeasonSim(b, tw, shrink=shrink, playoff_weeks=list(fmt["playoff_weeks"]), weeks=wk)
+        new = ss.SeasonSim(b, tw, playoff_weeks=list(fmt["playoff_weeks"]), weeks=wk, world=world, world_shrink=wshrink)
+        a, c = legacy.simulate(ros, sims=300, seed=3), new.simulate(ros, sims=300, seed=3)
+        assert legacy.last_engine == "legacy" and new.last_engine == "world"
+        floor = 0.85 if shrink == 1.0 else 0.5                         # ağır çekmede (puan / High Score κ = 0.25) fark küçülür, gürültü baskın
+        assert np.corrcoef(ap(a), ap(c))[0, 1] > floor
+        assert np.abs(pp(a) - pp(c)).mean() < 0.12
+        assert 0.5 < ap(c).std() / ap(a).std() < 2.0                   # yayılım aynı büyüklük sınıfında
+        assert abs(ap(c).mean() - 0.5) < 0.01                              # herkes herkesle: ortalama 0.5
+    # çekme dünyanın takım farklarını daraltır (eski motorun kalibre ettiği davranış)
+    spread = lambda w_shrink: ap(ss.SeasonSim(b, tw, playoff_weeks=list(fmt["playoff_weeks"]), weeks=wk, world=world, world_shrink=w_shrink).simulate(ros, sims=300, seed=3)).std()   # noqa: E731
+    assert spread(True) < spread(False)
 
 
 @needs

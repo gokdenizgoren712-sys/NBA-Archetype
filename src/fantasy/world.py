@@ -85,6 +85,8 @@ class World:
     best_hs: np.ndarray         # (K × W × P) float32 — haftanın en iyi tek maçı (High Score ağırlıkları)
     scenarios: int
     seconds: float = 0.0
+    _mean_sums: np.ndarray | None = None
+    _mean_best: np.ndarray | None = None
 
     @property
     def nbytes(self) -> int:
@@ -92,6 +94,17 @@ class World:
 
     def index(self) -> dict[int, int]:
         return {int(p): i for i, p in enumerate(self.player_ids)}
+
+    def mean_sums(self) -> np.ndarray:
+        """(W × P × S) senaryo ortalaması — piyasa çekmesi ortalamayı kaydırırken gürültüyü korusun diye."""
+        if getattr(self, "_mean_sums", None) is None:
+            self._mean_sums = self.sums.mean(axis=0)
+            self._mean_best = self.best_hs.mean(axis=0)
+        return self._mean_sums
+
+    def mean_best(self) -> np.ndarray:
+        self.mean_sums()
+        return self._mean_best
 
     def season_per_game(self) -> pd.DataFrame:
         """Oyuncu başına oynanan maç başına ortalama (senaryo ortalaması) — SIM_* ile karşılaştırma ve test için."""

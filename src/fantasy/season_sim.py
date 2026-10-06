@@ -108,7 +108,7 @@ class _View:
 class SeasonSim:
     def __init__(self, b: dr.Board, team_weeks: pd.DataFrame, shrink: float | None = None,
                  playoff_weeks: list[int] | None = None, weeks: pd.DataFrame | None = None, as_of: str | None = None,
-                 world=None):
+                 world=None, world_shrink: bool = True):
         self.b = b
         fmt = b.fmt
         self.fmt = fmt
@@ -157,6 +157,8 @@ class SeasonSim:
         self._views: dict = {}
         self.world = world if (world is not None and list(world.weeks) == list(self.weeks)) else None   # Faz 6: NBA dünyası (None → eski motor)
         self._widx = self.world.index() if self.world is not None else None
+        self.world_shrink = world_shrink       # dünyaya da piyasaya çekme (draft.SHRINK): eski motorun kalibre ettiği takım yayılımı
+        self._wfac: np.ndarray | None = None
         self._full = _View(G=self.G, T=self.total_games, gp=self.gp, denom=np.full(n, TEAM_GAMES), spread=1.0,
                            mean=self.mean, fp_mean=getattr(self, "fp_mean", None), from_week=None)
 
@@ -390,6 +392,15 @@ class SeasonSim:
 
     # ── Dünya (Faz 6): oyuncu üretimi NBA simülasyonundan okunur ────────────────────────
 
+    def _world_factor(self) -> np.ndarray:
+        """(n_oyuncu × 11) piyasaya çekme çarpanı: (yerel piyasa ortalaması + κ·(toplam − ortalama)) / toplam — eski motorun `_shrunk`'ı ile aynı."""
+        if self._wfac is None:
+            if self._loc is None or self._k >= 1.0:
+                self._wfac = np.ones_like(self._tot)
+            else:
+                self._wfac = np.clip((self._loc + self._k * (self._tot - self._loc)) / np.where(np.abs(self._tot) < 1e-9, 1e-9, self._tot), 0.2, 3.0)
+        return self._wfac
+
     def _world_values(self, rows: np.ndarray, sizes: list[int], sims: int, seed: int) -> tuple[np.ndarray, np.ndarray]:
         """Haftalık takım değerleri V (S × T × W × C) ve haftalık takım oyuncu-maç sayısı (S × T × W) — dünyadan.
         Her fantezi simülasyonu bir NBA senaryosuna bağlanır (`seed`'den, takımlardan bağımsız): aynı tohumla aynı NBA sezonu → takas gibi
@@ -401,6 +412,10 @@ class SeasonSim:
         sel = lambda arr: arr[ks[:, None], :, widx[None, :]]                         # (S × P × W [× C]) — ileri indeksleme, kopya küçük
         counts = sel(w.sums)                                                         # (S × P × W × C)
         games = sel(w.games).astype(np.float32)                                      # (S × P × W)
+        f = self._world_factor()[rows] if self.world_shrink else None                # (P × C) piyasaya çekme çarpanı
+        if f is not None:
+            ms = w.mean_sums()[:, widx, :].transpose(1, 0, 2)[None]                  # (1 × P × W × C)
+            counts = np.maximum(counts + (f[None, :, None, :] - 1.0) * ms, 0.0)      # ortalamayı kaydır, gürültüyü koru
         owner = np.repeat(np.arange(T), sizes)
 
         def team_sum(x: np.ndarray) -> np.ndarray:                                   # (S × P × ...) → (S × T × ...)
@@ -428,6 +443,12 @@ class SeasonSim:
             return pts[..., None].astype(np.float64), games_tw
         # High Score: her starter haftanın EN İYİ tek maçını getirir; kadro beklenen tavana göre kurulur, oynamayanın yerine sıradaki yedek girer
         best = sel(w.best_hs)                                                        # (S × P × W)
+        if f is not None:
+            tot_r = self._tot[rows]                                                  # (P × C) model sezon toplamları
+            wt = np.array([fmt["weights"].get(s_, 0.0) for s_ in STATS])
+            f_fp = (tot_r * f * wt).sum(axis=1) / np.maximum((tot_r * wt).sum(axis=1), 1e-9)
+            mb = w.mean_best()[:, widx].T[None]                                       # (1 × P × W)
+            best = np.maximum(best + (f_fp[None, :, None] - 1.0) * mb, 0.0)
         prio = self._hs_priority(self._full, rows, sizes)                            # (T × W × R)
         n_slots = len(b.slots)
         P, W = best.shape[1], best.shape[2]

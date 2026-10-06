@@ -222,7 +222,7 @@ Bitenler (ikisi de sezondan önce de kullanılabilir; kadro kaynağı mock / asi
   kendisi hâlâ gerçek sezonlarda test edilmedi (uyarı sürüyor).
 - Kısıt: sakatlık haberi yok.
 
-### Faz 6 — Takım simülasyonu: sezon simülatörünün motoru + "Simülasyon" projeksiyonu (plan, 2026-10-05; aşama 0 ✅, aşama 1 ✅)
+### Faz 6 — Takım simülasyonu: sezon simülatörünün motoru + "Simülasyon" projeksiyonu (plan, 2026-10-05; aşama 0 ✅, 1 ✅, 2 ✅ — istatistiksel eşitlik)
 
 **Amaç.** (1) Sezon simülatörünün oyuncu üretim motorunu `team_sim.py`'deki oyun düzeyindeki NBA takım simülasyonuyla değiştirmek; (2) istatistik projeksiyonunda eski model ağırlığının YANINDA simülasyon projeksiyonunu (ve harmanı) göstermek.
 **Neden.** Şu anki `SeasonSim` her oyuncuya "maç başı ortalama × oynadığı maç + haftalık gürültü" verir ve aynı NBA takımındaki oyuncuları birbirinden bağımsız sayar. Yeni motor önce NBA'yi oynatır (sakatlık, oyun içi dakika dağıtımı, sahadaki takım arkadaşlarına göre kullanım): bir yıldız oynamayınca yedeğin payı yükselir; aynı takımdan iki oyuncusu olan fantezi takımı birlikte inip çıkar.
@@ -241,7 +241,7 @@ Bitenler (ikisi de sezondan önce de kullanılabilir; kadro kaynağı mock / asi
 |---|---|---|
 | 0 | Kendi kendine yeten girdi (`SI_*`), oyun düzeyi gürültü, haftalık toplamlar + en iyi maç, bellek / süre testi | `World` kurulur; tutarlılık testleri (haftalık toplamların mevcut `SIM_*` ortalamasıyla uyumu, takım arkadaşı korelasyonu), süre ve bellek bütçesi |
 | 1 | Dünya ↔ `SeasonSim` adaptörü; bağlam kapalıyken (θ = 0, yeniden dağıtım yok) eski motorla aynı dağılım | sıra / playoff dağılımı eski motorla gürültü içinde aynı |
-| 2 | **Karar kapısı:** geçmiş sezon backtest'i, eski motorla yan yana (`strategy_backtest --sim-calibration`): playoff Brier (eski 0.2125), sıra korelasyonu, kalibrasyon eğimi (eski 1.15), High Score haftalık dağılımı | eşit ya da daha iyi; değilse yeni motor varsayılan OLMAZ |
+| 2 ✅ | **Karar kapısı:** geçmiş sezon backtest'i, eski motorla yan yana (`strategy_backtest --sim-calibration`): playoff Brier (eski 0.2125), sıra korelasyonu, kalibrasyon eğimi (eski 1.15), High Score haftalık dağılımı | eşit ya da daha iyi; değilse yeni motor varsayılan OLMAZ |
 | 3 | Takas, Bu hafta, High Score yeni motora | ortak rastgele sayılarla öncesi/sonrası farkı kararlı (mevcut testler) |
 | 4 | Genel projeksiyon seçici + yan yana görünüm + ayrışanlar listesi + Harman | tarayıcıda uçtan uca |
 | 5 | Sezon içi: güncelleme sonrası kalan haftalar için dünyayı yeniden koş; Yahoo sakatlık verisi girdi olunca onu da | Yahoo API onayına bağlı |
@@ -252,6 +252,21 @@ Açık (aşama 2'de kalibre edilecek): oyun gürültüsünün aşırı yayılım
 High Score: starter'ın haftanın en iyi tek maçı (dünyadan), kadro tavana göre kurulur, oynamayanın yerine yedek. API: `get_world()` arka planda (sunucu açılışında) K=128 kurar, hazır olana kadar / `FANTASY_WORLD=0` / sezon içinde / SI_* yoksa / özel High Score ağırlığında eski motor; yanıtta `engine: world|legacy`. Hafta analizi (`week_values`) ve sezon içi "kalan sezon" görünümü hâlâ eski motor (aşama 3 ve 5).
 **Parite (aynı kadro, aynı girdi; eski motorda piyasa çekmesi KAPALI — world'de çekme yok):** takım gücü (all-play) korelasyonu 9-cat 0.956, puan 0.951, High Score 0.920; ortalama |Δ all-play| 0.033–0.043; ortalama |Δ playoff olasılığı| 0.077–0.083. Hız aynı (400 sezon < 1 sn).
 **Aşama 2 için bulgu:** eski motor piyasaya çekmeyle (`draft.SHRINK`: 9-cat 0.5, puan / High Score 0.25) çalışıyor; çekme AÇIKKEN takım güçlerinin yayılımı dünyanın yarısı kadar (all-play sd 0.060 vs 0.106; puan 0.046 vs 0.104) ve yüksek skor formatında korelasyon 0.28'e düşüyor. Hangi yayılımın doğru olduğunu strateji backtest'inin kalibrasyonu (aşama 2) söyleyecek; dünyaya da aynı çekme eklemek gerekebilir.
+**Aşama 2 sonucu — karar kapısı (2026-10-06, `python -m src.fantasy.world_backtest`, `tests/test_fantasy_world_backtest.py`):** aynı draftlar (12 slot × 4 tohum × 2 sezon: 2024-25, 2025-26; ours / static / market stratejileri dönüşümlü), aynı gerçek puanlama; her ligdeki 12 takım için n = 1152 / format. Hız kalibrasyonu leave-one-season-out; dünya hedef sezonun gerçek kadrosuyla.
+| 9-cat (pooled) | Brier | playoff eğimi | yayılım eğimi | sıra korelasyonu | haftalık MSE |
+|---|---|---|---|---|---|
+| eski motor (çekme açık) | 0.2240 | 1.06 | 1.00 | 0.357 | 0.0820 |
+| eski, çekme kapalı | 0.2288 | 0.66 | 0.71 | 0.356 | 0.0823 |
+| dünya, çekme kapalı | 0.2293 | 0.72 | 0.74 | 0.344 | 0.0824 |
+| **dünya + çekme (varsayılan)** | 0.2291 | 1.00 | 1.00 | 0.341 | 0.0823 |
+| puan (pooled) | Brier | playoff eğimi | yayılım eğimi | sıra korelasyonu | haftalık MSE |
+| eski motor | 0.2471 | 0.60 | 0.71 | 0.166 | 0.0917 |
+| dünya, çekme kapalı | 0.2424 | 0.64 | 0.52 | 0.182 | 0.0925 |
+| **dünya + çekme (varsayılan)** | 0.2421 | 0.77 | 0.61 | 0.160 | 0.0921 |
+*Yayılım eğimi* = gerçek all-play kazanma oranının tahmine regresyonu (1 = takımlar arası fark doğru, < 1 = motor takımları olduğundan farklı gösteriyor). Bulgu: dünya, piyasaya çekme OLMADAN takım farklarını ~%35 fazla gösteriyor (9-cat eğimi 0.74); eski motorun κ'sını (9-cat 0.5, puan / High Score 0.25) dünyaya da uygulayınca 9-cat eğimi tam 1.00. Dünyada çekme artık varsayılan (`SeasonSim(world_shrink=True)`, ortalamayı kaydırır, gürültüyü korur).
+**Karar: istatistiksel eşitlik.** Lig-kümeli bootstrap (2000 örnek) %95 aralıkları: 9-cat Brier dünya+çekme − eski = +0.0051 [−0.0005, +0.0107]; puan −0.0050 [−0.0122, +0.0018]; çekmesiz karşılaştırmada 9-cat +0.0006 [−0.0050, +0.0058]. Haftalık MSE farkları +0.0002 / +0.0004 (ölçeğin %0.3–0.4'ü; sezonlar ters yönde). Hiçbir fark sıfırdan ayırt edilemiyor; nokta tahminleri 9-cat'te hafif eski motordan yana, puanda dünyadan yana.
+Dünyanın yapısal kazanımı (kalibrasyon kazancı değil): takım arkadaşı yeniden dağılımı ve ortak sakatlıklar, oyun düzeyinde dağılım (High Score), simülasyon projeksiyonuyla tutarlılık. **High Score haftanın en iyi tek maçı** (≥22 dk oyuncular, ~4000 oyuncu-hafta / sezon): ortalama sapma −0.6 puan (%1.5), MAE ≈ 9.5, P10–P90 kapsaması 0.79 / 0.77; beklenen oyun sayısı 2.85 (gerçek 2.96, ≈ %4 az).
+**Varsayılan bırakıldı** (dünya açık; `FANTASY_WORLD=0` ile tek komutta eski motor). Puan formatında yayılım eğimi 0.61 (< 1): κ'yı 0.25'ten düşürmek (≈ 0.15) kalibrasyonu iyileştirebilir — ölçülmedi.
 **Kararlar (kullanıcı, 2026-10-05):** varsayılan bakış = aşama 2'yi geçerse Simülasyon, geçmezse Model; K = 128; Harman bakışı gösterilir; sunucu belleği yeterli.
 **Riskler.** Model ↔ simülasyon farkı küçük olduğundan faydayı abartmamak; oyun düzeyi gürültü dağılımı (FGA/FTA için sabit varyasyon katsayıları) logdan ölçülmeli; haftalık takım maç sayısı kesirli (NBA Cup) → tam sayıya rastgele yuvarlanır; simülasyon girdileri sezon öncesi kadroya ait → sezon içinde aşama 5 olmadan eskir.
 
