@@ -216,6 +216,7 @@ export default function Players() {
         filterCount={filterCount}
         onReset={clearFilters}
         chips={chips}
+        summary={loading ? null : `Showing ${players.length.toLocaleString("en-US")} of ${meta.total.toLocaleString("en-US")}`}
         resultLabel={loading ? "Show players" : `Show ${meta.total.toLocaleString("en-US")} players`}
         search={<UnderSearch filled value={searchInput} onChange={onSearch}
           placeholder={meta.pool ? `Search ${meta.pool} players` : "Search players"} />}

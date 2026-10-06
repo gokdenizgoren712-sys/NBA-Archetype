@@ -3,67 +3,96 @@
 // ışığı + hero + ızgara + "Load more"). Mobil (<768): kolon gizlenir; arama +
 // "Filters" düğmesi (sayı rozeti) + aktif filtre çipleri, filtreler alt sayfada.
 // Sayfa rengi `tint` ile değişir (arketip/faz seçimi) — .g-smoke .5s geçişli.
-import { useEffect, useState } from "react";
+import { Children, useState } from "react";
+import { Button, Sheet } from "../ui";
 import PaIcon from "../shell/PaIcon";
 import "./listing.css";
 
-export function ListingPage({ tint, glow, filters, sheetFilters, search, filterCount = 0, chips = [], onReset, resultLabel, children }) {
+const KEY = "pa_filters_open";
+const readOpen = () => {
+  try { const v = window.localStorage.getItem(KEY); if (v != null) return v === "1"; } catch { /* depolama yok */ }
+  return typeof window === "undefined" || window.innerWidth >= 1280;   // varsayılan: ≥1280 açık
+};
+
+/** Sayfa iskeleti (v3 Scout C1/C1b): üstte başlık, altında katlanır filtre paneli + sonuçlar.
+    Açık: 264px çerçeveli panel. Kapalı: "Filters · N" düğmesi + kaldırılabilir çipler. <768: arama + alt sayfa. */
+export function ListingPage({ tint, filters, sheetFilters, search, filterCount = 0, chips = [], onReset, resultLabel, summary, children }) {
   const [sheet, setSheet] = useState(false);
-  useEffect(() => {
-    if (!sheet) return;
-    const esc = (e) => e.key === "Escape" && setSheet(false);
-    window.addEventListener("keydown", esc);
-    return () => window.removeEventListener("keydown", esc);
-  }, [sheet]);
+  const [open, setOpen] = useState(readOpen);
+  const toggle = () => setOpen((o) => { const n = !o; try { window.localStorage.setItem(KEY, n ? "1" : "0"); } catch { /* yok say */ } return n; });
+  const kids = Children.toArray(children);
+  const hi = kids.findIndex((k) => k?.type === ListingHero);
+  const head = hi >= 0 ? kids.slice(0, hi + 1) : [];
+  const rest = hi >= 0 ? kids.slice(hi + 1) : kids;
 
   return (
-    <div className="pa-list" style={{ "--tint": tint }}>
-      <aside className="pa-list-filters" aria-label="Filters">
-        <div className="pa-list-fhead">
-          <span>Filters</span>
-          {filterCount > 0 && onReset && <button onClick={onReset}>Clear all</button>}
-        </div>
-        {filters}
-      </aside>
-
+    <div className={`pa-list${open ? " fopen" : ""}`} style={{ "--tint": tint }}>
       <section className="pa-list-main">
-        {/* glow: koyu lig renkleri (G League #A8263F) ışıkta taban, arayüzde açık tonu */}
-        {/* Mobil üst şerit: arama + filtre düğmesi, altında aktif çipler */}
-        <div className="pa-list-mbar">
-          <div className="pa-list-mrow">
-            {search}
-            <button className="pa-list-fbtn" onClick={() => setSheet(true)} aria-haspopup="dialog">
-              Filters {filterCount > 0 && <b>{filterCount}</b>}
-            </button>
-          </div>
-          {chips.length > 0 && (
-            <div className="pa-list-chips">
-              {chips.map(c => (
-                <button key={c.key} className="pa-chip" onClick={c.onClear}
-                  style={c.color ? { "--c": c.color } : undefined} aria-label={`Remove ${c.label}`}>
-                  {c.color && <i />}{c.label} <span aria-hidden="true">×</span>
-                </button>
-              ))}
+        <div className="pa-list-body">
+          {head}
+
+          {/* Mobil üst şerit: arama + filtre düğmesi, altında aktif çipler */}
+          <div className="pa-list-mbar">
+            <div className="pa-list-mrow">
+              {search}
+              <button className="pa-list-fbtn" onClick={() => setSheet(true)} aria-haspopup="dialog">
+                Filters {filterCount > 0 && <b>{filterCount}</b>}
+              </button>
             </div>
-          )}
+            {chips.length > 0 && <ChipRow chips={chips} />}
+          </div>
+
+          <div className="pa-list-split">
+            {open && (
+              <aside className="pa-list-filters" aria-label="Filters">
+                <div className="pa-list-fhead">
+                  <span>Filters{filterCount > 0 && <b className="pa-fcount">{filterCount}</b>}</span>
+                  <button type="button" className="pa-fcollapse" onClick={toggle} aria-label="Collapse filters" aria-expanded="true">
+                    <PaIcon name="chevron" size={16} color="currentColor" />
+                  </button>
+                </div>
+                <div className="pa-list-fbody">{filters}</div>
+                {onReset && <button type="button" className="pa-fclear" onClick={onReset} disabled={filterCount === 0}>Clear all</button>}
+              </aside>
+            )}
+            <div className="pa-list-results">
+              <div className="pa-list-rbar">
+                {!open && (
+                  <button type="button" className={`pa-ftoggle${filterCount > 0 ? " on" : ""}`} onClick={toggle} aria-expanded="false">
+                    <PaIcon name="menu" size={16} color="currentColor" />Filters{filterCount > 0 ? ` · ${filterCount}` : ""}
+                  </button>
+                )}
+                {!open && chips.length > 0 && <ChipRow chips={chips} />}
+                {summary && <span className="pa-rsum">{summary}</span>}
+              </div>
+              {rest}
+            </div>
+          </div>
         </div>
-        <div className="pa-list-body">{children}</div>
       </section>
 
       {sheet && (
-        <div className="pa-sheet-wrap" role="dialog" aria-modal="true" aria-label="Filters">
-          <div className="pa-sheet-scrim" onClick={() => setSheet(false)} />
-          <div className="pa-sheet">
-            <span className="pa-sheet-grip" />
-            <div className="pa-sheet-head">
-              <span>Filters</span>
-              {onReset && <button onClick={onReset}>Reset</button>}
-            </div>
-            <div className="pa-sheet-body">{sheetFilters || filters}</div>
-            <button className="pa-sheet-cta" onClick={() => setSheet(false)}>{resultLabel || "Show players"}</button>
-          </div>
-        </div>
+        <Sheet title="Filters" onClose={() => setSheet(false)}
+          footer={<>
+            {onReset && <Button variant="outline" onClick={onReset}>Clear</Button>}
+            <Button variant="primary" onClick={() => setSheet(false)}>{resultLabel || "Show players"}</Button>
+          </>}>
+          <div className="pa-sheet-body">{sheetFilters || filters}</div>
+        </Sheet>
       )}
+    </div>
+  );
+}
+
+function ChipRow({ chips }) {
+  return (
+    <div className="pa-list-chips">
+      {chips.map((c) => (
+        <button key={c.key} type="button" className="pa-chip" onClick={c.onClear}
+          style={c.color ? { "--c": c.color } : undefined} aria-label={`Remove ${c.label}`}>
+          {c.color && <i />}{c.label} <span aria-hidden="true">×</span>
+        </button>
+      ))}
     </div>
   );
 }

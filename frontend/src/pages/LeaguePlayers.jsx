@@ -240,12 +240,12 @@ export default function LeaguePlayers({ league }) {
       <SEO title={L.name} description={L.seo} path={L.path} />
       <ListingPage
         tint={tint}
-        glow={arch ? tint : (L.glow || L.accent)}
         filters={filters}
         sheetFilters={sheetFilters}
         filterCount={filterCount}
         onReset={clearFilters}
         chips={chips}
+        summary={loading ? null : `Showing ${players.length.toLocaleString("en-US")} of ${meta.total.toLocaleString("en-US")}`}
         resultLabel={loading ? "Show players" : `Show ${meta.total.toLocaleString("en-US")} players`}
         search={<UnderSearch filled value={searchInput} onChange={onSearch}
           placeholder={meta.pool ? `Search ${meta.pool.toLocaleString("en-US")} players` : "Search players"} />}

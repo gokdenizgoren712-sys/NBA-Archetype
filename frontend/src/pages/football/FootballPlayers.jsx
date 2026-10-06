@@ -222,6 +222,7 @@ export default function FootballPlayers() {
         filterCount={filterCount}
         onReset={clearAll}
         chips={chips}
+        summary={loading ? null : `Showing ${rows.length.toLocaleString("en-US")} of ${info.total.toLocaleString("en-US")}`}
         resultLabel={loading ? "Show players" : `Show ${info.total.toLocaleString("en-US")} players`}
         search={<UnderSearch filled value={searchInput} onChange={onSearch} placeholder="Search players" />}
       >
