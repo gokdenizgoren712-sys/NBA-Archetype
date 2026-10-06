@@ -4,8 +4,10 @@ import { useAuth } from "../contexts/AuthContext";
 
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
 
-export default function GoogleSignIn({ successPath = null }) {
-  const { login } = useAuth();
+// mode="link": girişli kullanıcı Google'ı hesabına yeniden bağlar (POST /api/account/google/link), oturum/yönlendirme değişmez.
+export const GOOGLE_CONFIGURED = !!CLIENT_ID;
+export default function GoogleSignIn({ successPath = null, mode = "signin", onLinked }) {
+  const { login, token } = useAuth();
   const navigate  = useNavigate();
   const btnRef    = useRef(null);
   const [error, setError] = useState("");
@@ -20,6 +22,17 @@ export default function GoogleSignIn({ successPath = null }) {
         callback: async ({ credential }) => {
           setError("");
           try {
+            if (mode === "link") {
+              const lr = await fetch("/api/account/google/link", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ credential }),
+              });
+              const ld = await lr.json().catch(() => ({}));
+              if (!lr.ok) throw new Error(ld.detail || "Could not turn Google sign-in back on");
+              onLinked?.();
+              return;
+            }
             const res = await fetch("/api/auth/google", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -49,10 +62,18 @@ export default function GoogleSignIn({ successPath = null }) {
       const script = document.querySelector('script[src*="gsi/client"]');
       if (script) script.addEventListener("load", initButton, { once: true });
     }
-  }, [login, navigate, successPath]);
+  }, [login, navigate, successPath, mode, token, onLinked]);
 
   if (!CLIENT_ID) return null;
 
+  if (mode === "link") {
+    return (
+      <div className="au-google">
+        <div ref={btnRef} className="btn" />
+        {error && <p className="au-error" role="alert">{error}</p>}
+      </div>
+    );
+  }
   return (
     <div className="au-google">
       <div className="au-or">or</div>

@@ -4,6 +4,8 @@ import { useAuth } from "../contexts/AuthContext";
 import { useLang } from "../contexts/LanguageContext";
 import { SEO } from "../hooks/useSEO";
 import { Button, Field, Panel } from "../components/ui";
+import GoogleSignIn, { GOOGLE_CONFIGURED } from "../components/GoogleSignIn";
+import "../components/auth/auth.css";
 import "./settings.css";
 
 // /settings (v3 Account Y1–Y4): Account · Security · Connections · Data & privacy.
@@ -192,6 +194,8 @@ function ConnectionsTab({ me, token, onSaved }) {
           {me.google_linked ? "Google sign-in is on" : "Google sign-in is off"}
           <small>{me.has_password ? (me.google_linked ? "You can still sign in with your email and password." : "Sign in with email and password.") : "Google is your only sign-in method, so it can't be turned off."}</small>
         </Row>
+        {!me.google_linked && GOOGLE_CONFIGURED && <GoogleSignIn mode="link" onLinked={() => onSaved({ google_linked: true })} />}
+        {!me.google_linked && !GOOGLE_CONFIGURED && <p className="st-note">Google sign-in isn't set up on this server (VITE_GOOGLE_CLIENT_ID), so it can't be turned back on here.</p>}
         {err && <p className="st-note err" role="alert">{err}</p>}
       </Panel>
       <Panel pad>
