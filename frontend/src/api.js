@@ -120,6 +120,8 @@ export const api = {
   footballMeta:    (season) => get("/football/meta", season ? { season } : {}),
   footballPlayers: (p) => get("/football/players", p),
   footballCareer:  (id) => get(`/football/players/${id}/career`),
+  footballPlayer:  (id, season) => get(`/football/players/${id}`, season ? { season } : undefined),
+  footballSimilar: (id, season, limit = 3) => get(`/football/players/${id}/similar`, { ...(season ? { season } : {}), limit }),
   footballAffinity: (season) => get("/football/affinity", season ? { season } : {}),
   footballBestXI:   (p) => get("/football/best-xi", p),
   // entries: [{player_id, season}] — çark oyunu karışık sezonlu XI kuruyor,

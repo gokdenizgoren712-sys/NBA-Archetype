@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { Logo } from "../BrandIcons";
 import { RankItMark } from "../../rankit/redesign/BrandMark";
@@ -13,8 +13,13 @@ import { useNavSport } from "./useShell";
 // (46px satırlar), altta hesap kartı.
 export default function MobileDrawer({ open, onClose }) {
   const { pathname } = useLocation();
-  const navigate = useNavigate();
-  const { user, isLoggedIn, isAdmin } = useAuth();
+  const { user, isLoggedIn, isAdmin, token: authToken } = useAuth();
+  const [savedCount, setSavedCount] = useState(null);
+  useEffect(() => {
+    if (!isLoggedIn || !open) return;
+    fetch("/api/auth/me", { headers: { Authorization: `Bearer ${authToken}` } })
+      .then((r) => (r.ok ? r.json() : null)).then((d) => setSavedCount(d?.saved_roster_count ?? null)).catch(() => {});
+  }, [isLoggedIn, open, authToken]);
   const sport = useNavSport();
   const accent = SPORT_ACCENT[sport];
 
@@ -99,7 +104,7 @@ export default function MobileDrawer({ open, onClose }) {
           <button className="pa-drawer-user" onClick={() => navigate("/profile")}>
             <span className="pa-avatar" style={{ "--acc": accent }}>{user.username?.[0]?.toUpperCase()}</span>
             <span className="who">{user.username}</span>
-            <span className="go">Profile</span>
+            <span className="go">{savedCount != null ? `${savedCount} saved roster${savedCount === 1 ? "" : "s"}` : "Profile"}</span>
           </button>
         ) : (
           <button className="pa-drawer-user" onClick={() => navigate("/login")}>

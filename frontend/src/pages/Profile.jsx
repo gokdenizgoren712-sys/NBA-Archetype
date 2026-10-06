@@ -53,6 +53,7 @@ export default function Profile() {
   const { token, isLoggedIn, logout } = useAuth();
   const navigate = useNavigate();
   const [data, setData]   = useState(null);
+  const [board, setBoard] = useState(null);   // /api/leaderboard/me (B9)
   const [tab, setTab]     = useState("bb");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -65,6 +66,7 @@ export default function Profile() {
   useEffect(() => {
     if (!isLoggedIn) { navigate("/login?next=/profile"); return; }
     load();
+    authFetch("/leaderboard/me?sport=basketball&mode=classic", token).then(r => (r.ok ? r.json() : null)).then(setBoard).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoggedIn]);
 
@@ -86,11 +88,15 @@ export default function Profile() {
     ["lineups", "Lineups", data.saved_lineups.length], ["players", "Players", data.saved_players.length],
     ["comments", "Comments", data.comments.length],
   ];
-  // "Rank on the board" ve "Runs" mockup'ta var ama API'de karşılığı yok (ticket B9); uydurulmadı.
+  // "Runs" ve "Rank on the board": /api/leaderboard/me (B9).
   const best = bb.reduce((m, r) => (r.overall_pct != null ? Math.max(m, Math.round(r.overall_pct)) : m), 0);
   const STATS = [
     { v: bb.length + fb.length, l: "Saved rosters" }, { v: best || "—", l: "Best rating" },
     { v: data.saved_lineups.length, l: "Saved lineups" },
+    ...(board ? [
+      { v: board.runs ?? 0, l: "Runs" },
+      { v: board.rank != null ? `#${board.rank}${board.total ? ` of ${board.total}` : ""}` : "—", l: "Rank on the board" },
+    ] : []),
   ];
 
   return (

@@ -131,3 +131,16 @@
 .pp-table th { text-align: left; padding: 8px 12px; font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .1em; text-transform: uppercase; color: var(--text-muted); font-weight: 400; border-bottom: 1px solid var(--hairline); }
 .pp-table td { padding: 12px; border-bottom: 1px solid var(--hairline); color: var(--text-primary); white-space: nowrap; }
 .pp-table tr:last-child td { border-bottom: 0; }
+
+/* Backend bağlandı: kanıt çipleri, kart altı yazı */
+.pp-about-copy { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.pp-evidence { display: flex; flex-wrap: wrap; gap: 8px; }
+.pp-ev { display: inline-flex; align-items: baseline; gap: 8px; min-height: 34px; padding: 0 12px; align-items: center; border: 1px solid var(--panel-border); border-radius: var(--radius); background: var(--field); font-size: 13px; }
+.pp-ev i { font: normal 11px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); }
+.pp-ev b { font: 700 16px var(--font-logo); color: var(--text-primary); }
+.pp-ev em { font-style: normal; font-size: 12px; }
+.pp-ev.good em { color: var(--good); }
+.pp-ev.bad em { color: var(--danger); }
+.pp-fine { margin: 0; font-size: 12px; color: var(--text-muted); }
+.pp-cap { margin: 10px 0 0; font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .1em; text-transform: uppercase; color: var(--text-muted); }
+.pp-desc-h { margin: 0; font: 700 22px var(--font-logo); letter-spacing: .06em; text-transform: uppercase; color: var(--text-primary); }

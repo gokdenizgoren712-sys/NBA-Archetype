@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "../ui";
 
-// Bakım sayfası (v3 Account Y8), kabuksuz. Tetikleyici backend'e bağlı (ticket B5, henüz yok):
-// /api mimarisi `503 + Retry-After` döndürdüğünde açılır. Bu yüzden bayrak arkasında:
-// VITE_MAINTENANCE_GATE=1 olmadıkça hiçbir şey kurulmaz ve uygulama davranışı değişmez.
+// Bakım sayfası (v3 Account Y8), kabuksuz. Tetikleyici (B5, hazır): /api `503 + Retry-After` döndürünce açılır
+// (sunucuda MAINTENANCE_MODE=1). Varsayılan açık; VITE_MAINTENANCE_GATE=0 ile kapatılır.
 // Gösterilen saatler yalnız yanıt başlıklarından (Retry-After, Date) türetilir; yoksa o satır gizlenir.
 
-export const MAINTENANCE_ENABLED = import.meta.env?.VITE_MAINTENANCE_GATE === "1";
+export const MAINTENANCE_ENABLED = import.meta.env?.VITE_MAINTENANCE_GATE !== "0";   // B5 hazır: varsayılan açık, "0" kapatır
 const EVENT = "pa:maintenance";
 
 const utc = (d) => `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")} UTC`;

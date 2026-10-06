@@ -8,7 +8,7 @@ import "./leaderboard.css";
 
 // /leaderboard (v3 B1, B1b): Basketball / Football, Classic / Salary Cap, en iyi skor kartı, ilk 25 tablo.
 // Skor 100 üzerinden Lineup Fit (persantil DEĞİL). "Rank of N" için uç nokta alanı yok (ticket B9):
-// "Your best" yalnızca kullanıcı ilk 25'te ise gösterilir.
+// "Your best": /api/leaderboard/me (B9); uç nokta yanıt vermezse ilk 25'teki satıra düşer.
 const SPORTS = [["basketball", "Basketball"], ["football", "Football"]];
 const MODES = [["classic", "Classic"], ["salarycap", "Salary cap"]];
 const bandOf = (v) => (v >= 80 ? "var(--good)" : v >= 65 ? "#facc15" : v >= 50 ? "#fb923c" : "var(--danger)");
@@ -20,7 +20,8 @@ const normalize = (sport, d) =>
     : { key: `${e.username}-${e.name}-${i}`, user: e.username, title: e.name, wins: null, shape: e.shape, score: e.percentile, grade: null });
 
 export default function Leaderboard() {
-  const { user, isLoggedIn } = useAuth();
+  const { user, isLoggedIn, token } = useAuth();
+  const [me, setMe] = useState(null);
   const [sport, setSport] = useState("basketball");
   const [mode, setMode] = useState("classic");
   const [data, setData] = useState(null);
@@ -36,6 +37,15 @@ export default function Leaderboard() {
       .catch(() => { if (alive) setErr(true); });
     return () => { alive = false; };
   }, [sport, mode, tick]);
+
+  useEffect(() => {
+    if (!isLoggedIn) { setMe(null); return undefined; }
+    let alive = true;
+    const q = sport === "basketball" ? `sport=basketball&mode=${mode}` : "sport=football";
+    fetch(apiUrl(`/api/leaderboard/me?${q}`), { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => (r.ok ? r.json() : null)).then((d) => { if (alive) setMe(d); }).catch(() => {});
+    return () => { alive = false; };
+  }, [sport, mode, isLoggedIn, token]);
 
   const rows = data?.rows;
   const top = rows?.[0];
@@ -95,8 +105,11 @@ export default function Leaderboard() {
         <aside className="lb-side">
           <div className="pa-panel lb-mine">
             <span className="pa-eyebrow">Your best</span>
-            {mine ? <div className="lb-best-row"><b style={{ color: bandOf(mine.score) }}>{mine.score}</b><div><strong>{mine.user}</strong><span>{mine.grade ? `Grade ${mine.grade}` : mine.title}</span></div></div>
-              : <p className="lb-note">{isLoggedIn ? "You're not in the top 25 yet." : "Sign in to land on the board."}</p>}
+            {me && me.rank != null ? (
+              <div className="lb-best-row"><b style={{ color: bandOf(me.best_pct ?? me.percentile ?? 0) }}>{me.best_pct ?? me.percentile ?? "—"}</b>
+                <div><strong>Rank {me.rank}{me.total ? ` of ${me.total.toLocaleString("en-US")}` : ""}</strong><span>{me.runs} run{me.runs === 1 ? "" : "s"} saved</span></div></div>
+            ) : mine ? <div className="lb-best-row"><b style={{ color: bandOf(mine.score) }}>{mine.score}</b><div><strong>{mine.user}</strong><span>{mine.grade ? `Grade ${mine.grade}` : mine.title}</span></div></div>
+              : <p className="lb-note">{isLoggedIn ? "No saved runs yet. Play one to land on the board." : "Sign in to land on the board."}</p>}
             <Button as={Link} to={playTo} variant="primary" size={48}>Play</Button>
           </div>
         </aside>

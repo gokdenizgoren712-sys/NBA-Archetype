@@ -195,6 +195,14 @@ export default function FootballLineups() {
                       <span>/ 100 chemistry</span>
                     </div>
                   )}
+                  {fit?.units && (
+                    <div className="ch-bars ch-units">
+                      <Bar label="Goalkeeper" value={fit.units.goalkeeper} />
+                      <Bar label="Defence" value={fit.units.defence} />
+                      <Bar label="Midfield" value={fit.units.midfield} />
+                      <Bar label="Attack" value={fit.units.attack} />
+                    </div>
+                  )}
                   <div className="ch-bars">
                     <Bar label="Role slots" value={fit?.slots} />
                     {/* API pairs_in_score=false: gösteriliyor ama skora girmiyor (bkz. About) */}
@@ -203,6 +211,13 @@ export default function FootballLineups() {
                     <Bar label="Shape" value={fit?.shape} />
                     <Bar label="Role diversity" value={fit?.diversity} />
                   </div>
+                  {xi?.closest_real && (
+                    <div className="ch-closest">
+                      <span className="lbl">Closest real eleven</span>
+                      <div className="row"><b>{xi.closest_real.team} {xi.closest_real.season}</b><strong>{xi.closest_real.match_pct}%</strong></div>
+                      <p>{xi.closest_real.reason}</p>
+                    </div>
+                  )}
                   <div className="ch-div" />
                   {fit?.strongest && (
                     <p className="ch-sw">

@@ -83,7 +83,7 @@ export function isRankItApp(pathname) {
 /** Kabuğun hiç görünmediği rotalar: RankIt'in kendi uygulaması. */
 /** Giriş/kayıt/şifre ekranları — ortalı form, kenar çubuğu ve üst bar yok (10c/17d). */
 export function isAuthRoute(pathname) {
-  return /^\/(login|register|forgot-password|reset-password|rankit\/download|rankit\/mobile-auth)$/.test(cleanPath(pathname));
+  return /^\/(login|register|forgot-password|reset-password|rankit\/download|rankit\/mobile-auth|confirm-email)$/.test(cleanPath(pathname));
 }
 
 export function shellHidden(pathname) {

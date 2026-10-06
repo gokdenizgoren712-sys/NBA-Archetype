@@ -20,7 +20,7 @@ test("route çıktısı hata sınırıyla sarılı, sayfa değişince sıfırlan
 
 test("bakım kapısı bayrak arkasında; saatler yalnız yanıt başlıklarından", () => {
   const m = src("components", "shell", "Maintenance.jsx");
-  assert.match(m, /VITE_MAINTENANCE_GATE === "1"/);
+  assert.match(m, /VITE_MAINTENANCE_GATE !== "0"/);
   assert.match(m, /Retry-After/);
   assert.match(m, /res\.status === 503/);
   assert.match(src("App.jsx"), /<MaintenanceGate>/);

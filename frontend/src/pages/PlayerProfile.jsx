@@ -186,14 +186,17 @@ export default function PlayerProfile() {
       <div className="pp-page" style={{ "--tint": tint }}>
         <div className="pp-inner">
           <div className="pp-top">
-            <div className="pp-card"><PlayerCard player={cardPlayer} expandable /></div>
+            <div className="pp-card">
+              <PlayerCard player={cardPlayer} expandable />
+              {detail.lineup_count != null && <p className="pp-cap">Found in {detail.lineup_count} lineups · {CURRENT}</p>}
+            </div>
 
             <header className="pp-head">
-              <span className="eyebrow">{["NBA", detail.team, detail.pos5, CURRENT].filter(Boolean).join(" · ")}</span>
+              <span className="eyebrow">{["NBA", detail.team, detail.pos5, detail.age != null ? `Age ${detail.age}` : CURRENT].filter(Boolean).join(" · ")}</span>
               <h1>{detail.name || name}</h1>
               <div className="pp-stats">
                 <div className="hot"><span>Rating</span><b>{overall ?? "—"}</b></div>
-                <div><span>Top</span><b>{topPct == null ? "—" : `${Math.max(1, topPct)}%`}</b></div>
+                <div><span>{detail.rank != null ? "Rank" : "Top"}</span><b>{detail.rank != null ? detail.rank : topPct == null ? "—" : `${Math.max(1, topPct)}%`}</b></div>
                 <div><span>Games</span><b>{gp ?? "—"}</b></div>
               </div>
               <div className="pp-actions">
@@ -218,7 +221,18 @@ export default function PlayerProfile() {
                 {arch && (
                   <div className="pp-panel pp-about">
                     <span className="pp-chip" style={{ "--c": tint }}><i />{arch}</span>
-                    <p><b>{detail.name || name}</b> reads as a{/^[AEIOU]/i.test(arch) ? "n" : ""} {arch}{overall != null && <> with an overall rating of {overall}{topLabel && <>, {topLabel}{pool ? ` of ${pool} qualified players` : ""}</>} this season</>}.</p>
+                    <div className="pp-about-copy">
+                      {detail.role_text
+                        ? <p>{detail.role_text}</p>
+                        : <p><b>{detail.name || name}</b> reads as a{/^[AEIOU]/i.test(arch) ? "n" : ""} {arch}{overall != null && <> with an overall rating of {overall}{topLabel && <>, {topLabel}{pool ? ` of ${pool} qualified players` : ""}</>} this season</>}.</p>}
+                      {(detail.strengths?.length > 0 || detail.weaknesses?.length > 0) && (
+                        <div className="pp-evidence">
+                          {(detail.strengths || []).map(m => <span key={m.key} className="pp-ev good"><i>{m.label}</i><b>{m.value}</b><em>{m.percentile}th</em></span>)}
+                          {(detail.weaknesses || []).map(m => <span key={m.key} className="pp-ev bad"><i>{m.label}</i><b>{m.value}</b><em>{m.percentile}th</em></span>)}
+                        </div>
+                      )}
+                      {detail.confidence && <p className="pp-fine">{detail.confidence === "solid" ? "Played enough games, so the read is solid." : "Early read: few games played so far."}</p>}
+                    </div>
                   </div>
                 )}
                 {awards.length > 0 && (
@@ -232,6 +246,22 @@ export default function PlayerProfile() {
                   ))}
                 </div>
               </section>
+
+              {detail.recent_seasons?.length > 0 && (
+                <section className={`${sec("seasons")} pp-panel`}>
+                  <div className="pp-h"><span>Last three seasons</span><em>Per game</em></div>
+                  <div className="pp-scroll">
+                    <table className="pp-table">
+                      <thead><tr><th>Season</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>3PM</th></tr></thead>
+                      <tbody>
+                        {detail.recent_seasons.map(r => (
+                          <tr key={r.season}><td>{r.season}</td><td>{fmt1(r.pts)}</td><td>{fmt1(r.reb)}</td><td>{fmt1(r.ast)}</td><td>{fmt1(r.stl)}</td><td>{fmt1(r.blk)}</td><td>{fmt1(r.fg3m)}</td></tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
+              )}
 
               <section className={`${sec("archetype")} pp-panel`}>
                 <div className="pp-h"><span>Archetype profile</span><em>Percentile within the season</em></div>
