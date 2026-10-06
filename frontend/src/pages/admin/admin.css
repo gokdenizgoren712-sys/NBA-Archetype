@@ -174,3 +174,4 @@
 .ad-page .aura-rating-btn { clip-path: none; transform: none; }
 .ad-page .aura-rating-btn::before, .ad-page .aura-rating-btn::after { display: none; }
 .ad-page .aura-rating-btn:disabled { border: 1px solid var(--panel-border); }
+@media (max-width: 767px) { .ad-table.scroll .ad-th, .ad-table.scroll .ad-tr { min-width: 920px; } }

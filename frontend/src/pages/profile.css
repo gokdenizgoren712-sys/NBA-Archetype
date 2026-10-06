@@ -42,3 +42,8 @@
   .pf-row .dots, .pf-row .mode { display: none; }
   .pf-head .av { width: 56px; height: 56px; font-size: 26px; }
 }
+@media (max-width: 767px) {
+  .pf-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .pf-tiles .pa-panel { padding: 12px 14px; }
+  .pf-tiles b { font-size: 28px; }
+}
