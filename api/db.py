@@ -1021,6 +1021,13 @@ def init_db():
                          "length TEXT NOT NULL DEFAULT 'xi'")
         except Exception:
             pass
+        # Karşı-jokerler + 15 sn pencere. Varsayılan KAPALI: pencereyi bilmeyen
+        # istemci her seçimde 15 sn takılırdı.
+        try:
+            conn.execute("ALTER TABLE football_h2h_rooms ADD COLUMN "
+                         "counters INTEGER NOT NULL DEFAULT 0")
+        except Exception:
+            pass
         # Board meydan okuması: hangi kayıtlı kadroya karşı oynanıyor.
         try:
             conn.execute("ALTER TABLE football_h2h_rooms ADD COLUMN challenge_entry_id INTEGER")

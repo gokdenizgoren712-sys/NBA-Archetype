@@ -246,5 +246,29 @@ havuz inmişken (`phase:"drafting"`); aksi `error`. Her taraf her jokeri **bir k
 | `discover` | `state.discover:true` — bu turda OVR gösterilir. Tur/havuz değişince (seçim ya da yeniden çevirme) kapanır; Pick 2'nin ikinci seçiminde açık kalır. |
 
 `discover` yalnız bir sunum bayrağıdır: puanlar `pool.players`'ta zaten herkese açık (bkz. `_public`),
-"??" gizlemesini istemci yapar. Karşı-jokerler (`ban`, `forceTeam`, `forceYear`) `jokers`'ta durur ama
-henüz mesajı yok. Rövanş ve yeni oda tüm hakları geri verir.
+"??" gizlemesini istemci yapar. Karşı-jokerler için bkz. §7. Rövanş ve yeni oda tüm hakları geri verir.
+
+## 7. Karşı-jokerler ve 15 sn pencere
+
+**Açma:** varsayılan **kapalı** (pencereyi bilmeyen istemci her seçimde 15 sn takılırdı).
+`POST /api/football/h2h/room {counters:true}` ya da kurulumda host `{"type":"counters","on":true}`
+(yalnız host, yalnız `setup`). Oda nesnesi ve `state` `counters` taşır; rövanş korur.
+Online eşleştirme ve Board meydan okuması şimdilik **kapalı** odalar açar.
+
+**Pencere:** her seçim turu başında (çark indiğinde) bekleyen tarafın elinde karşı-joker varsa
+`counter_deadline` (UTC ms, `now + COUNTER_SECONDS=15 sn`) yazılır, `counter_pending:true`.
+Pencere açıkken aktif taraf **seçemez ve joker kullanamaz** (`error "…deciding on a counter-joker"`).
+Pencere kapanır: bekleyen karar verince, ya da süre dolunca (sunucu `counter_dismissed:true` yayınlar —
+rakip bağlantısı kopuk olsa da işler; süre geçmişse sunucu yeniden başlasa bile tur kilitli kalmaz).
+Pick 2'nin ikinci seçimi yeni pencere açmaz. Bekleyenin karşı-jokeri kalmadıysa pencere hiç açılmaz.
+
+**Mesaj** (yalnız bekleyen taraf, yalnız pencere açıkken): `{"type":"counter","counter":…}`
+
+| `counter` | Etki |
+|---|---|
+| `pass` | "No thanks" — pencere kapanır. |
+| `ban` + `player_id` | O oyuncu bu turda seçilemez (`state.banned`; pick → `error "…banned…"`). Aktif tarafın **herhangi bir kendi jokeri banı kaldırır**. Sonraki tura taşmaz. |
+| `forceTeam` | Aktif tarafın havuzunu aynı sezonda başka kulübe çevirir. |
+| `forceYear` | Aynı kulüpte başka sezona çevirir. |
+
+Hak, karşı-hamle gerçekten işlediyse harcanır (kilide uyan taze çift yoksa `error`, hak yanmaz).

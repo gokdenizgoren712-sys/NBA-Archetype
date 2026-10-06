@@ -133,6 +133,10 @@ JOKERS = ("reTeam", "reYear", "reBoth", "double", "discover")
 COUNTER_JOKERS = ("ban", "forceTeam", "forceYear")
 
 
+COUNTER_SECONDS = 15        # her seçim turu başında bekleyen tarafın karar süresi
+_TASKS: set = set()         # zamanlayıcı görevleri (GC edilmesin)
+
+
 def _fresh_jokers() -> dict:
     return {str(s): {k: True for k in JOKERS + COUNTER_JOKERS} for s in (1, 2)}
 
@@ -170,6 +174,10 @@ def _init_state(row, first: int | None = None, length: str | None = None) -> dic
         "manager_options": {},      # {"1": [4 menajer], "2": [4 menajer]} — SUNUCU çeker
         "managers": {},             # {"1": {...}, "2": {...}} işe alınanlar
         "numbers": {},              # eleme motorunun gördüğü rakamlar, iki ekran aynısını göstersin
+        "counters": bool(row["counters"]) if "counters" in row.keys() else False,
+        "counter_deadline": None,   # UTC ms; pencere açıkken bekleyen taraf karar verir
+        "counter_dismissed": False,
+        "banned": None,             # Ban: bu turda seçilemeyen PLAYER_ID
         "jokers": _fresh_jokers(),  # {"1": {reTeam: bool, ...}, "2": {...}} — True = kullanılabilir
         "double": False,            # Pick 2 açık: sıradaki seçim sırayı bırakmaz
         "discover": False,          # Discover açık: bu turda OVR gösterilir
@@ -224,6 +232,11 @@ def _public(code: str, state: dict) -> dict:
         "managers": state.get("managers") or {},
         "numbers": state.get("numbers") or {},
         "jokers": state.get("jokers") or _fresh_jokers(),
+        "counters": bool(state.get("counters")),
+        "counter_deadline": state.get("counter_deadline"),
+        "counter_dismissed": bool(state.get("counter_dismissed")),
+        "counter_pending": _counter_pending(state),
+        "banned": state.get("banned"),
         "double": bool(state.get("double")),
         "discover": bool(state.get("discover")),
         "rematch_ready": state.get("rematch_ready") or {},
@@ -253,6 +266,49 @@ def _pairs_cached() -> tuple:
 
 def _pairs() -> list[dict]:
     return list(_pairs_cached())
+
+
+def _counter_pending(state: dict) -> bool:
+    """Bekleyen taraf karar verirken aktif taraf seçemez / joker kullanamaz.
+    Süre dolmuşsa bekleme biter (zamanlayıcı bayrağı geç koysa ya da sunucu yeniden
+    başlayıp görevi kaybetse bile tur kilitli kalmasın)."""
+    dl = state.get("counter_deadline")
+    return (bool(state.get("counters")) and bool(dl) and not state.get("counter_dismissed")
+            and _now_ms() < dl)
+
+
+def _open_counter(state: dict) -> None:
+    """Yeni bir seçim turu başladı: ban/pencere sıfırlanır; bekleyen tarafın elinde
+    karşı-joker varsa 15 sn'lik pencere açılır."""
+    R = _rules()
+    state["banned"] = None
+    state["counter_dismissed"] = False
+    state["counter_deadline"] = None
+    if not state.get("counters") or state["stage"] != "drafting":
+        return
+    other = 3 - R.active_seat(state)
+    if R.is_complete(state, other):
+        return
+    mine = (state.get("jokers") or {}).get(str(other)) or {}
+    if not any(mine.get(k) for k in COUNTER_JOKERS):
+        return
+    dl = _now_ms() + int(COUNTER_SECONDS * 1000)
+    state["counter_deadline"] = dl
+    state["_counter_arm"] = dl
+
+
+async def _counter_timeout(code: str, deadline: int) -> None:
+    """Süre dolunca (bekleyen taraf cevap vermediyse) pencereyi kapat ve yayınla.
+    Bağlantısı kopmuş rakip için de işler: görev odaya değil süreye bağlı."""
+    await asyncio.sleep(max(0.0, (deadline - _now_ms()) / 1000) + 0.05)
+    async with _lock(code):
+        state = ROOM_STATES.get(code)
+        if (not state or state.get("counter_deadline") != deadline
+                or state.get("counter_dismissed") or state["stage"] != "drafting"):
+            return
+        state["counter_dismissed"] = True
+        _save(code, state)
+    await _broadcast(code, _public(code, ROOM_STATES[code]))
 
 
 def _spin(state: dict, lock_season: str | None = None,
@@ -378,6 +434,7 @@ def _h_ready(state: dict, seat: int, msg: dict) -> str | None:
             state["stage"] = "setup"
             state["ready"] = {"1": False, "2": False}
             return "No club-season left to spin"
+        _open_counter(state)
     return None
 
 
@@ -387,8 +444,12 @@ def _h_pick(state: dict, seat: int, msg: dict) -> str | None:
         return "Not drafting right now"
     if seat != R.active_seat(state):
         return "It is not your turn"
+    if _counter_pending(state):
+        return "Your opponent is deciding on a counter-joker"
     pool = state.get("pool") or {}
     pid = msg.get("player_id")
+    if state.get("banned") is not None and int(pid or -1) == int(state["banned"]):
+        return "That player is banned this pick"
     player = next((p for p in (pool.get("players") or [])
                    if int(p.get("PLAYER_ID", -1)) == int(pid or -1)), None)
     if player is None:
@@ -403,7 +464,8 @@ def _h_pick(state: dict, seat: int, msg: dict) -> str | None:
     state["double"] = False                       # Pick 2 ilk seçimde harcanır
     # Discover yalnız aynı oyuncunun aynı havuzdaki turu için: sıra ya da havuz
     # değiştiyse kapanır (Pick 2'nin ikinci seçiminde açık kalır).
-    if not (again and state["phase"] == "drafting" and R.active_seat(state) == seat):
+    kept = again and state["phase"] == "drafting" and R.active_seat(state) == seat
+    if not kept:
         state["discover"] = False
 
     # Faz "spinning"e düştüyse yeni kulüp gerekiyor (round modunda tur sonu,
@@ -413,6 +475,8 @@ def _h_pick(state: dict, seat: int, msg: dict) -> str | None:
     # Havuz aktif taraf için ölüyse yeniden çevir
     if state["phase"] == "drafting" and R.pool_is_dead(state):
         _spin(state)
+    if not kept and state["phase"] == "drafting" and state.get("pool"):
+        _open_counter(state)
     return None
 
 
@@ -426,6 +490,8 @@ def _h_joker(state: dict, seat: int, msg: dict) -> str | None:
         return "It is not your turn"
     if state["phase"] != "drafting" or not state.get("pool"):
         return "Jokers lock until the wheel lands"
+    if _counter_pending(state):
+        return "Your opponent is deciding on a counter-joker"
     kind = str(msg.get("joker") or "")
     if kind not in JOKERS:
         return f"Unknown joker: {kind}"
@@ -453,7 +519,50 @@ def _h_joker(state: dict, seat: int, msg: dict) -> str | None:
         if state.get("discover"):
             return "Discover is already active"
         state["discover"] = True
+    state["banned"] = None            # herhangi bir joker banı kaldırır
     jokers[str(seat)][kind] = False
+    return None
+
+
+def _h_counter(state: dict, seat: int, msg: dict) -> str | None:
+    """Bekleyen tarafın karşı-hamlesi: ban (oyuncu yasakla) | forceTeam | forceYear | pass.
+    Yalnız pencere açıkken ve yalnız BEKLEYEN taraf. Her biri tek mesaj: ban oyuncuyu
+    da taşır (iki adımlı arayüz seçimi istemcide yapıp tek mesaj yollar)."""
+    R = _rules()
+    if not state.get("counters"):
+        return "Counter-jokers are off in this room"
+    if state["stage"] != "drafting" or not _counter_pending(state):
+        return "There is no counter-joker window open"
+    if seat == R.active_seat(state):
+        return "Only the waiting player can counter"
+    kind = str(msg.get("counter") or "")
+    if kind == "pass":
+        state["counter_dismissed"] = True
+        return None
+    if kind not in COUNTER_JOKERS:
+        return f"Unknown counter-joker: {kind}"
+    jokers = state.setdefault("jokers", _fresh_jokers())
+    if not jokers[str(seat)].get(kind):
+        return "You have already used that counter-joker"
+    pool = state["pool"]
+    if kind == "ban":
+        pid = msg.get("player_id")
+        target = next((p for p in (pool.get("players") or [])
+                       if int(p.get("PLAYER_ID", -1)) == int(pid or -1)), None)
+        if target is None:
+            return "That player is not in the squad on the wheel"
+        if int(target["PLAYER_ID"]) in {int(x) for x in state["takenIds"]}:
+            return "That player is already taken"
+        state["banned"] = int(target["PLAYER_ID"])
+    else:
+        lock = ({"lock_season": pool.get("season")} if kind == "forceTeam"
+                else {"lock_team": pool.get("team")})
+        if not _spin(state, **lock):
+            return "No fresh option left for that lock"
+        state["banned"] = None           # yeni havuzda eski ban anlamsız
+        state["discover"] = False
+    jokers[str(seat)][kind] = False
+    state["counter_dismissed"] = True
     return None
 
 
@@ -505,7 +614,8 @@ def _start_rematch(code: str, state: dict) -> None:
     want_uid = a if prev_first_uid == b else b
     first_seat = 1 if want_uid == row["p1_user_id"] else 2
     fresh = _init_state(row, first=first_seat, length=state.get("length", "xi"))
-    fresh.update({"history": history, "rematches": rematches, "wheelMode": wheel})
+    fresh.update({"history": history, "rematches": rematches, "wheelMode": wheel,
+                  "counters": state.get("counters", False)})
     state.clear()
     state.update(fresh)
 
@@ -535,6 +645,18 @@ def _h_length(state: dict, seat: int, msg: dict) -> str | None:
     if length not in R.LENGTHS:
         return f"Unknown draft length: {length}"
     state["length"] = length
+    return None
+
+
+def _h_counters(state: dict, seat: int, msg: dict) -> str | None:
+    """Karşı-jokerler + 15 sn pencere: odayı açan kurulumda açıp kapatır."""
+    if state["stage"] != "setup":
+        return "The draft has already started"
+    if state.get("challenge"):
+        return "Counter-jokers are not available in a challenge"
+    if seat != 1:
+        return "Only the player who opened the room sets counter-jokers"
+    state["counters"] = bool(msg.get("on", True))
     return None
 
 
@@ -589,7 +711,7 @@ def _h_hire(state: dict, seat: int, msg: dict) -> str | None:
 
 HANDLERS = {"shape": _h_shape, "wheel": _h_wheel, "ready": _h_ready, "pick": _h_pick,
             "rematch_ready": _h_rematch_ready, "length": _h_length, "swap": _h_swap,
-            "lock": _h_lock, "hire": _h_hire, "joker": _h_joker}
+            "lock": _h_lock, "hire": _h_hire, "joker": _h_joker, "counter": _h_counter, "counters": _h_counters}
 
 
 # ── Soket ────────────────────────────────────────────────────────────────────
@@ -682,11 +804,16 @@ async def football_room_socket(ws: WebSocket, room_code: str, token: str = Query
                 if (state["stage"] == "drafting" and state["phase"] == "done"
                         and not state.get("result")):
                     _after_draft(room_code, state)
+                arm = state.pop("_counter_arm", None)
                 if state.pop("_finish_go", False):
                     _finish(room_code, state)
                 if state.pop("_rematch_go", False):
                     _start_rematch(room_code, state)
                 _save(room_code, state)
+                if arm:
+                    t = asyncio.create_task(_counter_timeout(room_code, arm))
+                    _TASKS.add(t)
+                    t.add_done_callback(_TASKS.discard)
             await _broadcast(room_code, _public(room_code, ROOM_STATES[room_code]))
 
     except WebSocketDisconnect:

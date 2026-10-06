@@ -4973,6 +4973,7 @@ _XI_SIZE = 11
 class H2HCreateBody(BaseModel):
     # Draft uzunluğu: "xi" (yalnız ilk 11) | "squad" (11 + 7 yedek, menajer dahil).
     length: str = "xi"
+    counters: bool = False      # karşı-jokerler + 15 sn pencere
     mode: str = "friend"
     season: str | None = None
     name: str | None = None
@@ -5164,6 +5165,7 @@ def _h2h_public(row, uid: int) -> dict:
         # yazmadığı için kimse draft'a geçemiyordu.
         "opponent_joined": bool(row["p1_user_id"] and row["p2_user_id"]),
         "length": row["length"] if "length" in row.keys() else "xi",
+        "counters": bool(row["counters"]) if "counters" in row.keys() else False,
         # Ortak biçim (basketbol odasının usernames haritasıyla aynı bilgi).
         "players": [
             {"seat": i, "user_id": row[f"p{i}_user_id"], "username": n}
@@ -5191,11 +5193,11 @@ def create_h2h_room(body: H2HCreateBody, user=Depends(get_current_user)):
             with get_conn() as conn:
                 conn.execute(
                     "INSERT INTO football_h2h_rooms "
-                    "(room_code, mode, status, season, p1_user_id, p1_name, length) "
-                    "VALUES (?,?,'waiting',?,?,?,?)",
+                    "(room_code, mode, status, season, p1_user_id, p1_name, length, counters) "
+                    "VALUES (?,?,'waiting',?,?,?,?,?)",
                     (code, body.mode, season, int(user["sub"]),
                      (body.name or "").strip()[:40]
-                     or _h2h_username(user["sub"]), body.length))
+                     or _h2h_username(user["sub"]), body.length, int(bool(body.counters))))
             return {"room_code": code, "season": season, "mode": body.mode}
         except Exception as e:
             if "UNIQUE" not in str(e):
