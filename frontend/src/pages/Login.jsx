@@ -44,7 +44,7 @@ export default function Login() {
   return (
     <>
       <SEO title="Sign in" description="Sign in to your Primary Arch account." path="/login" noindex />
-      <AuthLayout title="Sign in" sub="Save squads, land on the leaderboard, keep your rosters."
+      <AuthLayout eyebrow="Welcome back" title="Sign in" sub="Save squads, land on the leaderboard, keep your rosters."
         foot={<>New here? <Link to={reg}>Create an account</Link></>}>
         {expired && <p className="au-note">Your session expired — sign back in to keep going.</p>}
         <form onSubmit={submit} className="au-form" noValidate={false}>
@@ -54,7 +54,7 @@ export default function Login() {
             aside={<Link to="/forgot-password">Forgot?</Link>}
             value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} />
           {error && <p className="au-error" role="alert">{error}</p>}
-          <button type="submit" disabled={loading} className="aura-rating-btn au-cta">
+          <button type="submit" disabled={loading} className="pa-btn primary s54 block au-cta">
             {loading ? "Signing in…" : "Sign in"}
           </button>
         </form>

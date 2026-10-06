@@ -30,7 +30,7 @@ export default function ForgotPassword() {
   return (
     <>
       <SEO title="Forgot password" path="/forgot-password" noindex />
-      <AuthLayout title={sent ? "Check your inbox" : "Forgot your password?"}
+      <AuthLayout eyebrow="Account recovery" title={sent ? "Check your inbox" : "Forgot your password?"}
         sub={sent ? null : "Enter your email and we'll send you a reset link."}
         foot={<>Remembered it? <Link to="/login">Back to sign in</Link></>}>
         {sent ? (
@@ -42,7 +42,7 @@ export default function ForgotPassword() {
           <form onSubmit={submit} className="au-form">
             <AuthField label="Email" type="email" required autoFocus autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} />
             {error && <p className="au-error" role="alert">{error}</p>}
-            <button type="submit" disabled={loading} className="aura-rating-btn au-cta">{loading ? "Sending…" : "Send reset link"}</button>
+            <button type="submit" disabled={loading} className="pa-btn primary s54 block au-cta">{loading ? "Sending…" : "Send reset link"}</button>
           </form>
         )}
       </AuthLayout>

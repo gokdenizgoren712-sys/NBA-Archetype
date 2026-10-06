@@ -56,7 +56,7 @@ export default function Register() {
   return (
     <>
       <SEO title="Create account" description="Create your Primary Arch account." path="/register" noindex />
-      <AuthLayout title="Create your account" sub="Save rosters and squads, and climb the leaderboards."
+      <AuthLayout eyebrow="Join Primary Arch" title="Create your account" sub="Save rosters and squads, and climb the leaderboards."
         foot={<>Already have one? <Link to={signin}>Sign in</Link></>}>
         <form onSubmit={submit} className="au-form">
           <AuthField label="Email" type="email" required autoComplete="email" value={form.email} onChange={set("email")} />
@@ -75,7 +75,7 @@ export default function Register() {
           </label>
 
           {error && <p className="au-error" role="alert">{error}</p>}
-          <button type="submit" disabled={loading} className="aura-rating-btn au-cta">
+          <button type="submit" disabled={loading} className="pa-btn primary s54 block au-cta">
             {loading ? "Creating account…" : "Create account"}
           </button>
         </form>
