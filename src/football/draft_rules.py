@@ -306,8 +306,12 @@ def set_pool(d: dict, pool: dict | None) -> dict:
     return nxt
 
 
-def pick(d: dict, seat: int, player: dict, slot_id: str) -> tuple[bool, Any]:
-    """(ok, yeni_durum) ya da (False, sebep)."""
+def pick(d: dict, seat: int, player: dict, slot_id: str,
+         again: bool = False) -> tuple[bool, Any]:
+    """(ok, yeni_durum) ya da (False, sebep).
+
+    again=True (Pick 2 jokeri): aynı havuzdan bir seçim daha, sıra DEĞİŞMEZ —
+    taraf dolduysa normal ilerler (client draft.js pick opts.again ile aynı)."""
     if seat != active_seat(d):
         return False, "not your turn"
     pid = int(player.get("PLAYER_ID"))
@@ -322,7 +326,10 @@ def pick(d: dict, seat: int, player: dict, slot_id: str) -> tuple[bool, Any]:
         return False, "cannot play there"
 
     squads = {**d["squads"], seat: {**d["squads"][seat], slot_id: {**player, "_slot": slot_id}}}
-    return True, _advance({**d, "squads": squads, "takenIds": [*d["takenIds"], pid]})
+    nxt = {**d, "squads": squads, "takenIds": [*d["takenIds"], pid]}
+    if again and not is_complete(nxt, seat):
+        return True, {**nxt, "phase": "drafting"}
+    return True, _advance(nxt)
 
 
 def _advance(d: dict) -> dict:

@@ -127,6 +127,16 @@ def _restore(row) -> dict | None:
 
 # ── Durum ────────────────────────────────────────────────────────────────────
 
+# Kendi jokerleri (Club/Year/Both/Pick 2/Discover) + karşı-jokerler (Ban/Force Club/
+# Force Year — karşı-joker mesajları ayrı adım). Her taraf her birini bir kez kullanır.
+JOKERS = ("reTeam", "reYear", "reBoth", "double", "discover")
+COUNTER_JOKERS = ("ban", "forceTeam", "forceYear")
+
+
+def _fresh_jokers() -> dict:
+    return {str(s): {k: True for k in JOKERS + COUNTER_JOKERS} for s in (1, 2)}
+
+
 def _init_state(row, first: int | None = None, length: str | None = None) -> dict:
     R = _rules()
     if length is None:
@@ -160,6 +170,9 @@ def _init_state(row, first: int | None = None, length: str | None = None) -> dic
         "manager_options": {},      # {"1": [4 menajer], "2": [4 menajer]} — SUNUCU çeker
         "managers": {},             # {"1": {...}, "2": {...}} işe alınanlar
         "numbers": {},              # eleme motorunun gördüğü rakamlar, iki ekran aynısını göstersin
+        "jokers": _fresh_jokers(),  # {"1": {reTeam: bool, ...}, "2": {...}} — True = kullanılabilir
+        "double": False,            # Pick 2 açık: sıradaki seçim sırayı bırakmaz
+        "discover": False,          # Discover açık: bu turda OVR gösterilir
     })
     return d
 
@@ -210,6 +223,9 @@ def _public(code: str, state: dict) -> dict:
         "manager_options": state.get("manager_options") or {},
         "managers": state.get("managers") or {},
         "numbers": state.get("numbers") or {},
+        "jokers": state.get("jokers") or _fresh_jokers(),
+        "double": bool(state.get("double")),
+        "discover": bool(state.get("discover")),
         "rematch_ready": state.get("rematch_ready") or {},
         "rematches": state.get("rematches", 0),
         "rematch_limit": REMATCH_LIMIT,
@@ -239,13 +255,16 @@ def _pairs() -> list[dict]:
     return list(_pairs_cached())
 
 
-def _spin(state: dict) -> bool:
+def _spin(state: dict, lock_season: str | None = None,
+          lock_team: str | None = None) -> bool:
     """Kullanılmamış bir kulüp-sezon seç ve kadrosunu yükle. SUNUCU seçiyor —
     çarkı istemciye bıraksak, istemci beğenmediği kulübü atabilirdi."""
     from .main import football_game_players
     R = _rules()
     used = set(state["usedPairs"])
-    pool = [p for p in _pairs() if f"{p['team']}|{p['season']}" not in used]
+    pool = [p for p in _pairs() if f"{p['team']}|{p['season']}" not in used
+            and (not lock_season or p["season"] == lock_season)
+            and (not lock_team or p["team"] == lock_team)]
     random.shuffle(pool)
 
     # Havuz aktif taraf için ölü çıkabilir (kaleci slotu dolu + elde yalnız
@@ -375,11 +394,17 @@ def _h_pick(state: dict, seat: int, msg: dict) -> str | None:
     if player is None:
         return "That player is not in the squad on the wheel"
 
-    ok, res = R.pick(state, seat, player, str(msg.get("slot") or ""))
+    again = bool(state.get("double"))
+    ok, res = R.pick(state, seat, player, str(msg.get("slot") or ""), again=again)
     if not ok:
         return str(res)
     state.clear()
     state.update(res)
+    state["double"] = False                       # Pick 2 ilk seçimde harcanır
+    # Discover yalnız aynı oyuncunun aynı havuzdaki turu için: sıra ya da havuz
+    # değiştiyse kapanır (Pick 2'nin ikinci seçiminde açık kalır).
+    if not (again and state["phase"] == "drafting" and R.active_seat(state) == seat):
+        state["discover"] = False
 
     # Faz "spinning"e düştüyse yeni kulüp gerekiyor (round modunda tur sonu,
     # pick modunda her seçimden sonra).
@@ -388,6 +413,47 @@ def _h_pick(state: dict, seat: int, msg: dict) -> str | None:
     # Havuz aktif taraf için ölüyse yeniden çevir
     if state["phase"] == "drafting" and R.pool_is_dead(state):
         _spin(state)
+    return None
+
+
+def _h_joker(state: dict, seat: int, msg: dict) -> str | None:
+    """Kendi jokerin: yalnız SIRA sende, havuz inmişken. Hak ancak joker gerçekten
+    işlediyse harcanır — kilide uyan taze kulüp kalmadıysa hak yanmaz."""
+    R = _rules()
+    if state["stage"] != "drafting":
+        return "Not drafting right now"
+    if seat != R.active_seat(state):
+        return "It is not your turn"
+    if state["phase"] != "drafting" or not state.get("pool"):
+        return "Jokers lock until the wheel lands"
+    kind = str(msg.get("joker") or "")
+    if kind not in JOKERS:
+        return f"Unknown joker: {kind}"
+    jokers = state.setdefault("jokers", _fresh_jokers())
+    if not jokers[str(seat)].get(kind):
+        return "You have already used that joker"
+    pool = state["pool"]
+
+    if kind in ("reTeam", "reYear", "reBoth"):
+        before = dict(state)
+        lock = {"reTeam": {"lock_season": pool.get("season")},
+                "reYear": {"lock_team": pool.get("team")}, "reBoth": {}}[kind]
+        if not _spin(state, **lock):
+            state.clear(); state.update(before)
+            return "No fresh option left for that lock" if lock else "No fresh club-season left"
+        state["discover"] = False                  # yeni havuz, eski Discover boşa gitti
+    elif kind == "double":
+        if state.get("double"):
+            return "Pick 2 is already active"
+        open_slots = [s for s in R.slots_of(state, seat) if s["id"] not in state["squads"][seat]]
+        if len(open_slots) < 2:
+            return "Pick 2 needs at least two open slots"
+        state["double"] = True
+    else:                                          # discover
+        if state.get("discover"):
+            return "Discover is already active"
+        state["discover"] = True
+    jokers[str(seat)][kind] = False
     return None
 
 
@@ -523,7 +589,7 @@ def _h_hire(state: dict, seat: int, msg: dict) -> str | None:
 
 HANDLERS = {"shape": _h_shape, "wheel": _h_wheel, "ready": _h_ready, "pick": _h_pick,
             "rematch_ready": _h_rematch_ready, "length": _h_length, "swap": _h_swap,
-            "lock": _h_lock, "hire": _h_hire}
+            "lock": _h_lock, "hire": _h_hire, "joker": _h_joker}
 
 
 # ── Soket ────────────────────────────────────────────────────────────────────

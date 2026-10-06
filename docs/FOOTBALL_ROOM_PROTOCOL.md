@@ -230,3 +230,21 @@ Oda nesnesi ve `state` mesajı `length` taşır.
 - `state.numbers[seat] = {quality, mean, positionFit, bonus, matched}` — eleme motorunun gördüğü rakamlar;
   iki ekran aynısını göstersin diye sunucudan gelir.
 - `state` yeni alanlar: `length`, `locked`, `manager_options`, `managers`, `numbers`.
+
+## 6. Kendi jokerleri
+
+`{"type":"joker","joker":"reTeam"|"reYear"|"reBoth"|"double"|"discover"}` — yalnız **sıra sendeyken** ve
+havuz inmişken (`phase:"drafting"`); aksi `error`. Her taraf her jokeri **bir kez** kullanır
+(`state.jokers[seat][joker]`: `true` = kullanılabilir). Hak, joker gerçekten işlediyse harcanır.
+
+| Joker | Etki |
+|---|---|
+| `reTeam` (Club) | Aynı sezon, yeni kulüp. Kilide uyan taze çift yoksa `error`, hak yanmaz. |
+| `reYear` (Year) | Aynı kulüp, yeni sezon. Aynı şekilde. |
+| `reBoth` | Tamamen yeni kulüp-sezon. |
+| `double` (Pick 2) | `state.double:true`; sıradaki seçim sırayı **bırakmaz**, ikincisi normal ilerler. En az 2 boş slot şart. İlk seçimde harcanır. |
+| `discover` | `state.discover:true` — bu turda OVR gösterilir. Tur/havuz değişince (seçim ya da yeniden çevirme) kapanır; Pick 2'nin ikinci seçiminde açık kalır. |
+
+`discover` yalnız bir sunum bayrağıdır: puanlar `pool.players`'ta zaten herkese açık (bkz. `_public`),
+"??" gizlemesini istemci yapar. Karşı-jokerler (`ban`, `forceTeam`, `forceYear`) `jokers`'ta durur ama
+henüz mesajı yok. Rövanş ve yeni oda tüm hakları geri verir.
