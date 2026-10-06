@@ -3,12 +3,12 @@ import { api } from "../api";
 import RoleImpactChart from "../components/RoleImpactChart";
 import PlayerCard from "../components/PlayerCard";
 import PaIcon from "../components/shell/PaIcon";
+import { Button } from "../components/ui";
 import { useLang } from "../contexts/LanguageContext";
 import { useAuth } from "../contexts/AuthContext";
 import { SEO } from "../hooks/useSEO";
 import { computeLineupFit, GRADE_COLOR, PILLAR_LABELS } from "../utils/lineupScoring";
 import { ARCHETYPE_COLOR as ARCH_HEX } from "../constants/archetypeColors";
-import { POS_COLOR } from "../constants/positionColors";
 import "./lineups.css";
 
 // ── Lineups (handoff 10a / mobil 21a) ───────────────────────────────────────
@@ -20,21 +20,8 @@ import "./lineups.css";
 
 const POSITIONS = ["PG", "SG", "SF", "PF", "C"];
 const POS_NAME = { PG: "Point guard", SG: "Shooting guard", SF: "Small forward", PF: "Power forward", C: "Center" };
-const FIT_HEX = (v) => (v >= 0.80 ? "#4ade80" : v >= 0.65 ? "#facc15" : v >= 0.50 ? "#fb923c" : "#f87171");
+const FIT_HEX = (v) => (v >= 0.80 ? "var(--accent)" : v >= 0.65 ? "#facc15" : v >= 0.50 ? "#fb923c" : "#f87171");
 const GRADE_WORD = { S: "elite fit", A: "strong fit", B: "good fit", C: "uneven fit", D: "poor fit" };
-
-/* 12 kenarlı pozisyon rozeti (10a) */
-function PosBadge({ pos, color }) {
-  return (
-    <span className="lu-pos" style={{ "--c": color }}>
-      <svg width="34" height="34" viewBox="0 0 48 48" aria-hidden="true">
-        <polygon points="24,4 34,6.7 41.3,14 44,24 41.3,34 34,41.3 24,44 14,41.3 6.7,34 4,24 6.7,14 14,6.7"
-          fill="none" stroke={color} strokeWidth="2.5" strokeLinejoin="round" />
-      </svg>
-      <b>{pos}</b>
-    </span>
-  );
-}
 
 /* Sezona duyarlı oyuncu arama satırı */
 function SlotSearch({ pos, value, arch, onChange, season, placeholder }) {
@@ -67,10 +54,13 @@ function SlotSearch({ pos, value, arch, onChange, season, placeholder }) {
 
   return (
     <div ref={ref} className="lu-slot">
-      <PosBadge pos={pos} color={POS_COLOR[pos]} />
-      <input value={query} onChange={e => change(e.target.value)} onFocus={() => results.length && setOpen(true)}
-        placeholder={placeholder} aria-label={placeholder} />
-      {arch && <span className="arch" style={{ color: ARCH_HEX[arch] }}>{arch}</span>}
+      <span className="lu-slot-lbl">{pos}</span>
+      <div className="lu-slot-field">
+        <PaIcon name="search" size={16} color="var(--text-muted)" />
+        <input value={query} onChange={e => change(e.target.value)} onFocus={() => results.length && setOpen(true)}
+          placeholder={placeholder} aria-label={`${POS_NAME[pos]}`} />
+        {arch && <span className="arch" style={{ color: ARCH_HEX[arch] }}>{arch}</span>}
+      </div>
       {open && results.length > 0 && (
         <div className="lu-results" role="listbox">
           {results.map(p => (
@@ -151,7 +141,7 @@ function ResultPanel({ result, isCurrent, saved, onSave }) {
           <p>Era factor: how much each archetype is in demand in today's game.</p>
         </div>
       )}
-      <button className="pa-btn-secondary" onClick={onSave} disabled={saved}>{saved ? "Saved to your profile" : "Save lineup"}</button>
+      <Button variant="outline" onClick={onSave} disabled={saved}>{saved ? "Saved to your profile" : "Save lineup"}</Button>
     </section>
   );
 }
@@ -167,16 +157,15 @@ function LineupRow({ rank, slots, fit, meta, expandBody }) {
         <div className="slots">
           {slots.map((s, i) => (
             <div key={i} className="sl" style={{ "--c": s.color || "#8b857e" }}>
-              <i className="glow" />
               {s.pos && <span className="p">{s.pos}</span>}
               {/* dar sütunda tam ad kesiliyordu — soyad, tam ad title'da */}
-              <span className="n" title={s.name}>{s.name.split(" ").slice(1).join(" ") || s.name}</span>
+              <span className="n" title={s.name}>{s.name}</span>
               {s.arch && <span className="a">{s.arch}</span>}
             </div>
           ))}
         </div>
         <span className="fit">
-          {fit != null && <b style={{ color: c, textShadow: `0 0 18px ${c}88` }}>{Math.round(fit * 100)}</b>}
+          {fit != null && <><b style={{ color: c }}>{Math.round(fit * 100)}</b><i>FIT</i></>}
           {meta && <em>{meta}</em>}
         </span>
       </button>
@@ -324,7 +313,7 @@ export default function Lineups() {
   };
 
   const resultGrade = customResult?.players_data && isCurrent ? computeLineupFit(customResult.players_data)?.grade : null;
-  const tint = resultGrade ? GRADE_COLOR[resultGrade] : "#FFB11B";
+  const tint = resultGrade ? GRADE_COLOR[resultGrade] : "var(--accent)";
 
   return (
     <>
@@ -335,8 +324,8 @@ export default function Lineups() {
         <div className="lu-inner">
           <header className="lu-head">
             <div>
+              <p className="pa-eyebrow">{`Basketball · Lineup fit · ${season}`}</p>
               <h1>Lineups</h1>
-              <p>How well five players fit, scored on five pillars</p>
             </div>
             <label className="lu-season">
               <span>Season</span>
@@ -350,15 +339,15 @@ export default function Lineups() {
           <div className="lu-grid">
             <div className="lu-left">
               <section className="lu-panel">
-                <span className="lu-h"><i />{t("custom_lineup_title")}{!isCurrent && <em>{season}</em>}</span>
+                <span className="lu-h">{t("custom_lineup_title")}{!isCurrent && <em>{season}</em>}</span>
                 <div className="lu-slots">
                   {POSITIONS.map((pos, i) => (
                     <SlotSearch key={`${season}-${i}`} pos={pos} value={slots[i]} arch={slotArch[i]}
-                      season={season} placeholder={POS_NAME[pos]}
+                      season={season} placeholder={`Pick a ${pos}`}
                       onChange={(v, a) => setSlot(i, v, a)} />
                   ))}
                 </div>
-                <button onClick={evalCustom} className="aura-rating-btn lu-cta">{t("calculate_fit")}</button>
+                <Button variant="primary" size={48} onClick={evalCustom} className="lu-cta">{t("calculate_fit")}</Button>
                 {customError && <p className="lu-err">{customError}</p>}
               </section>
 
@@ -405,11 +394,11 @@ export default function Lineups() {
 
               <div className="lu-list">
                 {tab === "theoretical" && (loading
-                  ? <div className="pa-skel-rows" aria-busy="true">{[0, 1, 2, 3].map(i => <div key={i} className="pa-skel" style={{ height: 96, borderRadius: 18 }} />)}</div>
+                  ? <div className="pa-skel-rows" aria-busy="true">{[0, 1, 2, 3].map(i => <div key={i} className="pa-skel" style={{ height: 96, borderRadius: 4 }} />)}</div>
                   : topLineups.length ? topLineups.map(theoreticalRow)
                   : <p className="lu-note">No lineup data for {season}.</p>)}
                 {tab === "real" && isCurrent && (realLoading
-                  ? <div className="pa-skel-rows" aria-busy="true">{[0, 1, 2, 3].map(i => <div key={i} className="pa-skel" style={{ height: 96, borderRadius: 18 }} />)}</div>
+                  ? <div className="pa-skel-rows" aria-busy="true">{[0, 1, 2, 3].map(i => <div key={i} className="pa-skel" style={{ height: 96, borderRadius: 4 }} />)}</div>
                   : realLineups.length ? realLineups.map(realRow)
                   : <p className="lu-note">No real lineup data loaded.</p>)}
               </div>
