@@ -4806,10 +4806,95 @@ def get_football_career(player_id: int):
                 "overall_score": _f(r.get("overall_score")),
                 "goals_90": _f(r.get("goals_90")),
                 "assists_90": _f(r.get("assists_90")),
+                # UI v3 tablosu (B15): kolon adları ham parquet kolonlarından
+                # kısaltıldı; hepsi 90 dakika başına, per_90 listesi bunu söylüyor.
+                "xg_xa_90": _f(r.get("xg_and_xa_90")),
+                "dribbles_90": _f(r.get("dribbles_succeeded_90")),
+                "crosses_90": _f(r.get("accurate_crosses_90")),
                 "CLEAN_SHEETS": _f(r.get("CLEAN_SHEETS")),
             })
     out.sort(key=lambda x: str(x["SEASON"]), reverse=True)
-    return {"player_id": player_id, "seasons": out}
+    return {"player_id": player_id, "seasons": out,
+            "per_90": ["goals_90", "assists_90", "xg_xa_90", "dribbles_90", "crosses_90"]}
+
+
+# ── Futbol oyuncu profili (UI v3: B8, B13, B16, B17, B18) ───────────────────
+@lru_cache(maxsize=1)
+def _fb_profile():
+    """src/football/profile.py — rol profili, açıklama, benzerler (saf fonksiyonlar)."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "fb_profile", ROOT / "src" / "football" / "profile.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+@lru_cache(maxsize=1)
+def _fb_affinity_mod():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "fb_affinity", ROOT / "src" / "football" / "affinity.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def _football_player_row(player_id: int, season: Optional[str]):
+    """(season, df, row). Sezon verilmediyse oyuncunun BULUNDUĞU en yeni sezon
+    (emekli/ayrılmış oyuncu en yeni sezonda yoksa 404 yerine son sezonu gelir).
+    Bir sezonda birden çok satır varsa (ara transfer, iki faz) en çok dakikalı."""
+    cands = [_fb_season(season)] if season else _football_seasons()
+    for s_ in cands:
+        try:
+            df = _load_football_scores(s_)
+        except FileNotFoundError:
+            continue
+        hit = df[df["PLAYER_ID"] == player_id]
+        if not hit.empty:
+            row = hit.sort_values("MINUTES_TOTAL", ascending=False,
+                                  na_position="last").iloc[0]
+            return s_, df, row
+    raise HTTPException(status_code=404, detail="player not found")
+
+
+@app.get("/api/football/players/{player_id}")
+def get_football_player(player_id: int, season: Optional[str] = Query(None)):
+    """Tek oyuncu: /players listesindeki satırla AYNI biçim + sıra, rol profili,
+    açıklama. Eskiden istemci ?name= ile arayıp PLAYER_ID eşliyordu."""
+    P = _fb_profile()
+    s_, df, row = _football_player_row(player_id, season)
+    drop = [c for c in df.columns if c.startswith("cover_")]
+    out = json.loads(row.drop(labels=drop).to_json())
+    rank, pool = P.rank_in_phase(df, row)
+    prof = P.role_profile(df, row)
+    p = _load_path_mtime(DATA / f"football__{s_}__scores.parquet")
+    out.update({
+        "season": s_, "rank": rank, "pool": pool,
+        "role_profile": prof["role_profile"], "peer_group": prof["peer_group"],
+        "description": P.description(row, prof, p),
+    })
+    return _json_safe(out)
+
+
+def _load_path_mtime(path) -> Optional[str]:
+    """Dosyanın son güncelleme günü (YYYY-MM-DD) — açıklamadaki 'Updated' tarihi."""
+    try:
+        from datetime import timezone as _tz
+        return datetime.fromtimestamp(path.stat().st_mtime, tz=_tz.utc).date().isoformat()
+    except OSError:
+        return None
+
+
+@app.get("/api/football/players/{player_id}/similar")
+def get_football_similar(player_id: int, season: Optional[str] = Query(None),
+                         limit: int = Query(3, ge=1, le=20)):
+    """'Plays like': aynı faz + aynı sezon, merkezlenmiş kosinüs (src/football/profile.py).
+    Yanıt düz liste: [{player_id, name, primary_arch, match_pct}]."""
+    _s, df, row = _football_player_row(player_id, season)
+    if not isinstance(row.get("primary_arch"), str):
+        return []
+    return _fb_profile().similar_players(df, row, limit)
 
 
 # ── Futbol çark oyunu ─────────────────────────────────────────────────────────
@@ -5024,6 +5109,26 @@ def get_football_best_xi(
     # Aynı gerçek ilk-11 dağılımına karşı persantil (lineup-fit ile aynı referans)
     if isinstance(res.get("fit"), dict):
         res["fit"]["reference"] = _chem_percentiles(res["fit"])
+        # B20: birim çubukları. Best-XI yalnız 10 saha oyuncusu seçiyor; kaleci
+        # slot sisteminde yok, o yüzden havuzun en yüksek puanlı kalecisi.
+        outfield = [p for p in df.to_dict("records")
+                    if p["PLAYER_ID"] in {x["PLAYER_ID"] for x in res.get("players", [])}]
+        gks = df[df["PHASE"] == "gk"].sort_values("overall_score", ascending=False)
+        gk = gks.iloc[0].to_dict() if not gks.empty else None
+        res["goalkeeper"] = (None if gk is None else {
+            "PLAYER_ID": int(gk["PLAYER_ID"]), "PLAYER_NAME": gk["PLAYER_NAME"],
+            "TEAM": gk.get("TEAM"), "primary_arch": gk.get("primary_arch"),
+            "overall_score": gk.get("overall_score")})
+        res["fit"]["units"] = aff.unit_bars(outfield, gk)
+        # B19: en yakın gerçek ilk 11 (aynı sezon, gerçek maç dizilişleri).
+        try:
+            real = _load_football_real_xi(season)
+        except FileNotFoundError:
+            real = None
+        archs = [p["primary_arch"] for p in res.get("players", [])]
+        if gk is not None and isinstance(gk.get("primary_arch"), str):
+            archs = [gk["primary_arch"]] + archs
+        res["closest_real"] = aff.closest_real(archs, real, res.get("shape"))
     return _json_safe(res)
 
 
@@ -5278,6 +5383,10 @@ def post_football_lineup_fit(body: FootballLineupBody):
     fit["season"] = season
     fit["missing"] = missing
     fit["reference"] = _chem_percentiles(fit)
+    if "error" not in fit:
+        rows_ = sel.to_dict("records")
+        gk_ = next((r for r in rows_ if r.get("PHASE") == "gk"), None)
+        fit["units"] = aff.unit_bars(rows_, gk_)
     fit["players"] = json.loads(
         sel[["PLAYER_ID", "PLAYER_NAME", "TEAM", "PHASE", "POSITION",
              "primary_arch", "overall_score"]].to_json(orient="records"))

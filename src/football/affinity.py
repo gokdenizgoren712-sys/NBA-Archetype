@@ -457,6 +457,96 @@ def best_xi(players: list, shape: str = "4-3-3", emp=None,
     }
 
 
+# ── 4. Birim çubukları ve en yakın gerçek 11 (UI v3: B20, B19) ───────────────
+# Sekiz fonksiyonel iş (ROLE_SLOTS) dört birime bölünür. Bir birim, KENDİ
+# oyuncularının (faz) ilgili işleri doldurma gücüdür — lineup_fit'teki slot
+# formülüyle aynı: 0.70·en iyi + 0.30·derinlik, oyuncunun rol netliğiyle çarpılmış.
+UNIT_JOBS = {
+    "defence":  ("def", ("Defensive solidity", "Build-up", "Aerial presence")),
+    "midfield": ("mid", ("Build-up", "Progression", "Pressing")),
+    "attack":   ("fwd", ("Chance creation", "Finishing", "Width")),
+}
+
+
+def _job_value(rows: list, job: str) -> float:
+    """lineup_fit'teki slot formülü, verilen oyuncu alt kümesi için."""
+    vals = []
+    for r in rows:
+        a = r.get("primary_arch")
+        if not isinstance(a, str) or not a:
+            continue
+        try:
+            s = float(r.get("primary_score") or 0.5)
+        except (TypeError, ValueError):
+            s = 0.5
+        conf = max(0.35, 0.5 if s != s else s)
+        vals.append(slot_strength(a, job) * conf)
+    vals.sort(reverse=True)
+    if not vals:
+        return 0.0
+    depth = min(1.0, sum(1 for v in vals if v >= 0.55) / 2.0)
+    return min(1.0, 0.70 * vals[0] + 0.30 * depth)
+
+
+def unit_bars(rows: list, goalkeeper: dict | None = None) -> dict:
+    """{goalkeeper, defence, midfield, attack}, her biri [0,1].
+
+    defence/midfield/attack: ilgili fazın oyuncularıyla, birimin işleri üzerinden
+    (UNIT_JOBS). goalkeeper: slot sistemi kaleciyi içermediği için ONUN kalite
+    skoru (overall_score); kaleci verilmediyse None — uydurma değer yok."""
+    out = {"goalkeeper": None}
+    if goalkeeper is not None:
+        try:
+            g = float(goalkeeper.get("overall_score"))
+            out["goalkeeper"] = None if g != g else round(min(1.0, max(0.0, g)), 3)
+        except (TypeError, ValueError):
+            pass
+    for unit, (phase, jobs) in UNIT_JOBS.items():
+        mine = [r for r in rows if r.get("PHASE") == phase]
+        out[unit] = round(float(np.mean([_job_value(mine, j) for j in jobs])), 3)
+    return out
+
+
+def closest_real(archetypes: list, real_df: "pd.DataFrame", formation: str | None = None):
+    """Üretilen XI'in arketip listesine en çok örtüşen gerçek maç ilk 11'i.
+
+    archetypes: kaleci DAHİL ya da hariç arketip adları (kaleci ilk sırada ve
+    uzunluk 11 ise kaleci dahil sayılır). Örtüşme çoklu küme kesişimi: iki XI'de
+    ortak arketip sayısı. Eşitlikte aynı diziliş, sonra yüksek kimya, sonra
+    küçük match_id — deterministik."""
+    import json as _json
+    gen = [a for a in archetypes if isinstance(a, str) and a]
+    if not gen or real_df is None or len(real_df) == 0:
+        return None
+    with_gk = len(gen) >= 11
+    total = len(gen)
+    from collections import Counter
+    gc = Counter(gen)
+    best, best_key = None, None
+    for r in real_df.itertuples():
+        if int(getattr(r, "known_players", 0)) < 11:
+            continue
+        try:
+            arch = [a for a in _json.loads(r.archetypes) if isinstance(a, str) and a]
+        except (TypeError, ValueError):
+            continue
+        if len(arch) < 11:
+            continue
+        cand = arch if with_gk else arch[1:]      # real_xi: ilk eleman kaleci
+        n = sum((gc & Counter(cand)).values())
+        key = (n, 1 if (formation and r.formation == formation) else 0,
+               float(r.chemistry), -int(r.match_id) if str(r.match_id).isdigit() else 0)
+        if best_key is None or key > best_key:
+            best, best_key = (r, n), key
+    if best is None:
+        return None
+    r, n = best
+    return {"team": str(r.team), "season": str(r.season),
+            "match_pct": int(round(100 * n / total)),
+            "reason": f"Same shape of roles in {n} of {total} slots.",
+            "formation": str(r.formation), "match_id": str(r.match_id)}
+
+
 if __name__ == "__main__":
     import argparse
     ap = argparse.ArgumentParser()
