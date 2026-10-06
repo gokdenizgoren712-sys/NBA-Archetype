@@ -48,7 +48,13 @@ CAT_OF = {"FG%": ("FGM", "FGA"), "FT%": ("FTM", "FTA"), "3PM": "FG3M", "PTS": "P
 # Gürültü kaynağı: sayma istatistiklerinde kendi SD'si; FGM/FTM'de vuruş "etkisi" SD'si (FGA/FTA sabit)
 SD_COL = {"FGM": "SD_FG_IMP", "FTM": "SD_FT_IMP", "FG3M": "SD_FG3M", "PTS": "SD_PTS", "REB": "SD_REB",
           "AST": "SD_AST", "STL": "SD_STL", "BLK": "SD_BLK", "TOV": "SD_TOV"}
-BLOCK_SHARES = (0.42, 0.25)      # kaçırılan maçların ardışık iki bloktaki payı; kalanı dağınık
+BLOCK_SHARES = (0.42, 0.25)
+_HS_W = {"PTS": 1.0, "REB": 1.0, "AST": 2.0, "STL": 3.0, "BLK": 3.0}          # dünyanın "en iyi maç" ağırlıkları (High Score)
+
+
+def w_stats() -> list[str]:
+    from src.fantasy.world import WSTATS
+    return WSTATS      # kaçırılan maçların ardışık iki bloktaki payı; kalanı dağınık
 MIN_GP_FOR_SHRINK = 20.0
 TEAM_GAMES = 82.0
 
@@ -101,7 +107,8 @@ class _View:
 
 class SeasonSim:
     def __init__(self, b: dr.Board, team_weeks: pd.DataFrame, shrink: float | None = None,
-                 playoff_weeks: list[int] | None = None, weeks: pd.DataFrame | None = None, as_of: str | None = None):
+                 playoff_weeks: list[int] | None = None, weeks: pd.DataFrame | None = None, as_of: str | None = None,
+                 world=None):
         self.b = b
         fmt = b.fmt
         self.fmt = fmt
@@ -148,6 +155,8 @@ class SeasonSim:
         self._week_span = ({int(r.WEEK): (pd.Timestamp(r.START), pd.Timestamp(r.END)) for r in weeks.itertuples()}
                            if weeks is not None else {})
         self._views: dict = {}
+        self.world = world if (world is not None and list(world.weeks) == list(self.weeks)) else None   # Faz 6: NBA dünyası (None → eski motor)
+        self._widx = self.world.index() if self.world is not None else None
         self._full = _View(G=self.G, T=self.total_games, gp=self.gp, denom=np.full(n, TEAM_GAMES), spread=1.0,
                            mean=self.mean, fp_mean=getattr(self, "fp_mean", None), from_week=None)
 
@@ -379,6 +388,59 @@ class SeasonSim:
         take = av & (np.cumsum(av, axis=-1) <= n_slots)
         return (sc * take).sum(axis=-1)
 
+    # ── Dünya (Faz 6): oyuncu üretimi NBA simülasyonundan okunur ────────────────────────
+
+    def _world_values(self, rows: np.ndarray, sizes: list[int], sims: int, seed: int) -> tuple[np.ndarray, np.ndarray]:
+        """Haftalık takım değerleri V (S × T × W × C) ve haftalık takım oyuncu-maç sayısı (S × T × W) — dünyadan.
+        Her fantezi simülasyonu bir NBA senaryosuna bağlanır (`seed`'den, takımlardan bağımsız): aynı tohumla aynı NBA sezonu → takas gibi
+        öncesi / sonrası karşılaştırmalarında ortak rastgele sayılar kendiliğinden korunur; aynı NBA takımından oyuncular birlikte hareket eder."""
+        w, b, fmt = self.world, self.b, self.fmt
+        T = len(sizes)
+        widx = np.array([self._widx[int(b.ids[r])] for r in rows])
+        ks = np.random.default_rng([seed, 23]).integers(0, w.scenarios, size=sims)
+        sel = lambda arr: arr[ks[:, None], :, widx[None, :]]                         # (S × P × W [× C]) — ileri indeksleme, kopya küçük
+        counts = sel(w.sums)                                                         # (S × P × W × C)
+        games = sel(w.games).astype(np.float32)                                      # (S × P × W)
+        owner = np.repeat(np.arange(T), sizes)
+
+        def team_sum(x: np.ndarray) -> np.ndarray:                                   # (S × P × ...) → (S × T × ...)
+            if len(set(sizes)) == 1:
+                return x.reshape(sims, T, sizes[0], *x.shape[2:]).sum(axis=2)
+            out = np.zeros((sims, T) + x.shape[2:], dtype=x.dtype)
+            for t in range(T):
+                out[:, t] = x[:, owner == t].sum(axis=1)
+            return out
+
+        tot = team_sum(counts)                                                       # (S × T × W × C)
+        games_tw = team_sum(games)                                                   # (S × T × W)
+        ix = {s_: j for j, s_ in enumerate(w_stats())}
+        if fmt["kind"] == "categories":
+            cols = []
+            for c in fmt["categories"]:
+                spec = CAT_OF[c]
+                if isinstance(spec, tuple):
+                    cols.append(tot[..., ix[spec[0]]] / np.maximum(tot[..., ix[spec[1]]], 1e-9))
+                else:
+                    cols.append(-tot[..., ix[spec]] if c == "TO" else tot[..., ix[spec]])
+            return np.stack(cols, axis=-1).astype(np.float64), games_tw
+        if fmt["kind"] == "points":
+            pts = sum(tot[..., ix[k]] * wt for k, wt in fmt["weights"].items() if k in ix)
+            return pts[..., None].astype(np.float64), games_tw
+        # High Score: her starter haftanın EN İYİ tek maçını getirir; kadro beklenen tavana göre kurulur, oynamayanın yerine sıradaki yedek girer
+        best = sel(w.best_hs)                                                        # (S × P × W)
+        prio = self._hs_priority(self._full, rows, sizes)                            # (T × W × R)
+        n_slots = len(b.slots)
+        P, W = best.shape[1], best.shape[2]
+        offs = np.concatenate([[0], np.cumsum(sizes)[:-1]])
+        pad = prio < 0
+        g = np.where(pad, P, prio + offs[:, None, None])
+        wi = np.broadcast_to(np.arange(W)[None, :, None], g.shape)
+        best_x = np.concatenate([best, np.zeros((sims, 1, W), dtype=best.dtype)], axis=1)
+        av_x = np.concatenate([games > 0, np.zeros((sims, 1, W), dtype=bool)], axis=1)
+        sc, av = best_x[:, g, wi], av_x[:, g, wi]                                    # (S × T × W × R)
+        take = av & (np.cumsum(av, axis=-1) <= n_slots)
+        return (sc * take).sum(axis=-1)[..., None].astype(np.float64), games_tw
+
     # ── Simülasyon ──────────────────────────────────────────────────────────
 
     def simulate(self, rosters: dict[int, list[int]], sims: int = 100, seed: int = 0, from_week: int | None = None,
@@ -405,12 +467,19 @@ class SeasonSim:
                 return np.matmul(n.reshape(sims, T, R, -1).transpose(0, 1, 3, 2), x.reshape(sims, T, R, -1))
             return np.einsum("tp,spw,spc->stwc", onehot, n, x, optimize=True)
 
-        U = self._uniforms(sims, seed)
-        mult, frac = self._season_draws(rows, U, v)
-        n_spw = self._weekly_games(rows, frac, U, v)                # (S × P × W)
-        W = n_spw.shape[2]
+        use_world = self.world is not None and v.from_week is None and all(int(b.ids[r]) in self._widx for r in rows)             and (fmt["kind"] != "high_score" or all(abs(fmt["weights"].get(k, 0.0) - w_) < 1e-9 for k, w_ in _HS_W.items()))
+        if use_world:
+            V, games_tw = self._world_values(rows, sizes, sims, seed)           # (S × T × W × C), (S × T × W)
+            n_spw = None
+        else:
+            U = self._uniforms(sims, seed)
+            mult, frac = self._season_draws(rows, U, v)
+            n_spw = self._weekly_games(rows, frac, U, v)            # (S × P × W)
+            games_tw = None
 
-        if fmt["kind"] == "categories":
+        if use_world:
+            pass
+        elif fmt["kind"] == "categories":
             mu = v.mean[rows][None] * mult[:, :, None]              # (S × P × C)
             sd = self.sd[rows][None] * mult[:, :, None]
             tot = tsum(n_spw, mu)
@@ -477,8 +546,9 @@ class SeasonSim:
         if is_cat:
             cw = (Au > Bu).astype(float) + 0.5 * (Au == Bu)                                       # (S,T,T,Wu,cats)
             cw = np.where(eye_u[..., None], 0.0, cw).sum(axis=2).mean(axis=0) / opp_n            # (T × Wu × cats)
-        games_pw = (n_spw.reshape(sims, T, R, -1).sum(axis=2) if blocks
-                    else np.einsum("tp,spw->stw", onehot, n_spw, optimize=True)).mean(axis=0)[:, used]                  # (T × Wu)
+        if games_tw is None:
+            games_tw = n_spw.reshape(sims, T, R, -1).sum(axis=2) if blocks else np.einsum("tp,spw->stw", onehot, n_spw, optimize=True)
+        games_pw = games_tw.mean(axis=0)[:, used]                                                                     # (T × Wu)
 
         # H2H: rastgele round-robin programı
         rr = _round_robin(T if T % 2 == 0 else T + 1)
@@ -531,6 +601,7 @@ class SeasonSim:
                     rnd += 1
 
         out = {}
+        self.last_engine = "world" if use_world else "legacy"
         for i, t in enumerate(teams):
             r, a = rank[:, i], ap_rank[:, i]
             out[t] = {

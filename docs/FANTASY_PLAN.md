@@ -222,7 +222,7 @@ Bitenler (ikisi de sezondan önce de kullanılabilir; kadro kaynağı mock / asi
   kendisi hâlâ gerçek sezonlarda test edilmedi (uyarı sürüyor).
 - Kısıt: sakatlık haberi yok.
 
-### Faz 6 — Takım simülasyonu: sezon simülatörünün motoru + "Simülasyon" projeksiyonu (plan, 2026-10-05; 0. aşama ✅)
+### Faz 6 — Takım simülasyonu: sezon simülatörünün motoru + "Simülasyon" projeksiyonu (plan, 2026-10-05; aşama 0 ✅, aşama 1 ✅)
 
 **Amaç.** (1) Sezon simülatörünün oyuncu üretim motorunu `team_sim.py`'deki oyun düzeyindeki NBA takım simülasyonuyla değiştirmek; (2) istatistik projeksiyonunda eski model ağırlığının YANINDA simülasyon projeksiyonunu (ve harmanı) göstermek.
 **Neden.** Şu anki `SeasonSim` her oyuncuya "maç başı ortalama × oynadığı maç + haftalık gürültü" verir ve aynı NBA takımındaki oyuncuları birbirinden bağımsız sayar. Yeni motor önce NBA'yi oynatır (sakatlık, oyun içi dakika dağıtımı, sahadaki takım arkadaşlarına göre kullanım): bir yıldız oynamayınca yedeğin payı yükselir; aynı takımdan iki oyuncusu olan fantezi takımı birlikte inip çıkar.
@@ -248,12 +248,21 @@ Bitenler (ikisi de sezondan önce de kullanılabilir; kadro kaynağı mock / asi
 **Aşama 0 sonucu (2026-10-05):** `team_sim.team_game_lambdas` (simülasyonun çekirdeği, sonuçları değiştirmeden ayrıldı: tüm eski `SIM_*` sayıları birebir aynı), `team_sim.sim_inputs` / `run_from_inputs` (girdiler projeksiyon dosyasına 27 adet `SI_*` sütunu olarak yazılır; maç logu olmadan aynı `SIM_FP` çıkar — test), `src/fantasy/world.py`.
 Oyun gürültüsü: negatif binom + binom isabetler, PTS = 2FGM + 3PM + FTM kimliği (projeksiyonda da birebir). Ölçümler (K=128, tüm NBA): **12 sn, 94 MB** (dosyaya yazılmaz, sunucu açılışında bellekte); sezon ortalamaları `SIM_*` ile oran 1.000 ± 0.002, korelasyon 0.999; aynı takımdaki oyuncular haftalık sayıda hafif NEGATİF ilişkili (Maxey–Brown −0.13: dakika ve şut payı paylaşılıyor), farklı takımlar ≈ 0 — eski motorun bağımsızlık varsayımının yapamadığı. Testler: `tests/test_fantasy_world.py`.
 Açık (aşama 2'de kalibre edilecek): oyun gürültüsünün aşırı yayılım katsayıları maç loglarından; oyun içi dakika dağılımı gürültüsü ile çift sayım olasılığı; haftalık varyansın gerçek sezonlarla karşılaştırılması.
+**Aşama 1 sonucu (2026-10-06):** `SeasonSim(world=...)`: oyuncu üretimi dünyadan okunur (`_world_values`); hafta / playoff / H2H kuyruğu aynı kod. Her fantezi simülasyonu `seed`'den bir NBA senaryosuna bağlanır (takımlardan bağımsız) → takas öncesi/sonrası ortak rastgele sayılar, aynı NBA takımındaki oyuncular birlikte hareket eder.
+High Score: starter'ın haftanın en iyi tek maçı (dünyadan), kadro tavana göre kurulur, oynamayanın yerine yedek. API: `get_world()` arka planda (sunucu açılışında) K=128 kurar, hazır olana kadar / `FANTASY_WORLD=0` / sezon içinde / SI_* yoksa / özel High Score ağırlığında eski motor; yanıtta `engine: world|legacy`. Hafta analizi (`week_values`) ve sezon içi "kalan sezon" görünümü hâlâ eski motor (aşama 3 ve 5).
+**Parite (aynı kadro, aynı girdi; eski motorda piyasa çekmesi KAPALI — world'de çekme yok):** takım gücü (all-play) korelasyonu 9-cat 0.956, puan 0.951, High Score 0.920; ortalama |Δ all-play| 0.033–0.043; ortalama |Δ playoff olasılığı| 0.077–0.083. Hız aynı (400 sezon < 1 sn).
+**Aşama 2 için bulgu:** eski motor piyasaya çekmeyle (`draft.SHRINK`: 9-cat 0.5, puan / High Score 0.25) çalışıyor; çekme AÇIKKEN takım güçlerinin yayılımı dünyanın yarısı kadar (all-play sd 0.060 vs 0.106; puan 0.046 vs 0.104) ve yüksek skor formatında korelasyon 0.28'e düşüyor. Hangi yayılımın doğru olduğunu strateji backtest'inin kalibrasyonu (aşama 2) söyleyecek; dünyaya da aynı çekme eklemek gerekebilir.
 **Kararlar (kullanıcı, 2026-10-05):** varsayılan bakış = aşama 2'yi geçerse Simülasyon, geçmezse Model; K = 128; Harman bakışı gösterilir; sunucu belleği yeterli.
 **Riskler.** Model ↔ simülasyon farkı küçük olduğundan faydayı abartmamak; oyun düzeyi gürültü dağılımı (FGA/FTA için sabit varyasyon katsayıları) logdan ölçülmeli; haftalık takım maç sayısı kesirli (NBA Cup) → tam sayıya rastgele yuvarlanır; simülasyon girdileri sezon öncesi kadroya ait → sezon içinde aşama 5 olmadan eskir.
 
 ### Faz 5 — Yahoo lig bağlantısı (Yahoo onayına bağlı)
 OAuth ile lig içe aktarma: ayarlar, kadrolar, draft sonuçları, gerçek ADP (`draft_analysis`),
 gerçek pozisyon uygunluğu. Yahoo API yalnızca **okuma** izni veriyor.
+
+### Notlar — ileride (henüz yapılmayacak)
+- **Yahoo mock draft kadrosunu içeri aktarma (2026-10-06, kullanıcı fikri):** Yahoo'da mock draft bitince oluşan kadro ("YOUR TEAM 13/13": PG, SG, G, SF, PF, F, C, C, UTIL, UTIL, BN×3; her satırda oyuncu, pozisyon uygunluğu, takım ve sakatlık etiketi Q/O/P)
+  Simülatör / Takas / Bu hafta için bir kadro kaynağı olarak girilebilmeli. `useRosterSource` zaten "Latest mock / Assistant / Saved draft" kaynaklarını biliyor; dördüncü kaynak "Yahoo roster": oyuncuları isimle ara-ekle (Assistant'taki arama), ya da Yahoo ekranından metin yapıştır (isim eşleştirme `reference.norm_name`); ekran görüntüsünden OCR sonra düşünülür.
+  Yahoo API (Faz 5) gelince bu elle giriş gerçek kadro okumasıyla değişir. Not: kadro slotları Yahoo'nun lig ayarına (Util sayısı, yedek) göre değişir; 13 oyunculu format zaten `_YAHOO_ROSTER`.
 
 ## Yahoo API — senin yapman gerekenler
 

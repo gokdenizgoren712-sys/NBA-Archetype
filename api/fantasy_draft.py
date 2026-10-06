@@ -18,6 +18,7 @@ alır. Aynı tohum aynı bot tahtalarını verir; sunucu oturum tutmaz, ölçekl
 from __future__ import annotations
 
 import json
+import os
 import threading
 from collections import OrderedDict
 from typing import Optional, Union
@@ -34,6 +35,7 @@ from src.fantasy.week import analyze_week
 
 from .auth import get_current_user
 from .db import get_conn
+from .rankit_live_sync import background_jobs_enabled
 from .fantasy import DATA_DIR, SEASON, _load, _num, _valued
 
 router = APIRouter()
@@ -474,15 +476,81 @@ def _league_rosters(b: dr.Board, body) -> tuple[dict[int, list[int]], str]:
     raise HTTPException(422, "Send either the finished draft's picks or your roster")
 
 
+# ── Dünya (Faz 6): NBA'nin oyun düzeyindeki simülasyonu — sezon simülatörünün oyuncu üretim kaynağı ──────────
+# Projeksiyon dosyası değişince bellekte yeniden kurulur (K=128 ≈ 12 sn, ≈ 100 MB). Hazır olana ya da kapalıyken eski motor çalışır.
+_world_state: dict = {"mtime": None, "world": None, "building": False}
+_world_lock = threading.Lock()
+WORLD_K = int(os.environ.get("FANTASY_WORLD_K", "128"))
+
+
+def _world_enabled() -> bool:
+    return os.environ.get("FANTASY_WORLD", "1") != "0"
+
+
+def _build_world_now(st: dict):
+    from src.fantasy.world import build_world
+    model_path = DATA_DIR / f"{SEASON}__fantasy_context_model.json"
+    if not model_path.exists():
+        return None
+    return build_world(st["proj"], st["team_weeks"], json.loads(model_path.read_text(encoding="utf-8")), scenarios=WORLD_K)
+
+
+def get_world(block: bool = False):
+    """Hazır dünya ya da None (eski motor). Sezon içinde (INSEASON_AS_OF) ve SI_* girdisi yoksa her zaman None.
+    block=False: kurulmamışsa arka planda başlatır, şimdilik None döner."""
+    if not _world_enabled():
+        return None
+    st = _load()
+    proj = st["proj"]
+    if "SI_PTS" not in proj.columns or "INSEASON_AS_OF" in proj.columns:
+        return None
+    mt = st["mtime"]
+    with _world_lock:
+        if _world_state["mtime"] == mt and _world_state["world"] is not None:
+            return _world_state["world"]
+        if _world_state["building"] and not block:
+            return None
+        if not block and not background_jobs_enabled():       # testler (RANKIT_BACKGROUND_JOBS=0) kendiliğinden arka plan iş parçacığı başlatmaz
+            return None
+        _world_state["building"] = True
+
+    def work():
+        try:
+            w = _build_world_now(st)
+            with _world_lock:
+                _world_state.update(mtime=mt, world=w)
+        except Exception as e:      # noqa: BLE001 — dünya kurulamazsa eski motor devam eder
+            print(f"[fantasy-world] build failed: {e}", flush=True)
+        finally:
+            with _world_lock:
+                _world_state["building"] = False
+
+    if block:
+        work()
+        return _world_state["world"]
+    threading.Thread(target=work, name="fantasy-world", daemon=True).start()
+    return None
+
+
+def start_fantasy_world() -> None:
+    """Açılışta dünyayı arka planda kur (ilk istek beklemesin)."""
+    if _world_enabled():
+        try:
+            get_world(block=False)
+        except Exception as e:      # noqa: BLE001
+            print(f"[fantasy-world] start failed: {e}", flush=True)
+
+
 def _season_sim(b: dr.Board, fmt: dict) -> SeasonSim:
-    key = json.dumps([fmt, _load()["mtime"]], sort_keys=True, default=str)
+    world = get_world()
+    key = json.dumps([fmt, _load()["mtime"], world is not None], sort_keys=True, default=str)
     with _lock:
         if key in _sims:
             _sims.move_to_end(key)
             return _sims[key]
     st = _load()
     as_of = str(st["proj"]["INSEASON_AS_OF"].iloc[0]) if "INSEASON_AS_OF" in st["proj"].columns else None
-    sim = SeasonSim(b, st["team_weeks"], playoff_weeks=list(fmt.get("playoff_weeks") or ()), weeks=st["weeks"], as_of=as_of)
+    sim = SeasonSim(b, st["team_weeks"], playoff_weeks=list(fmt.get("playoff_weeks") or ()), weeks=st["weeks"], as_of=as_of, world=world)
     with _lock:
         _sims[key] = sim
         while len(_sims) > 8:
@@ -515,7 +583,7 @@ def season_simulate(body: SimBody):
             "teams": b.teams, "playoff_teams": min(int(fmt.get("playoff_teams", 6)), b.teams),
             "categories": list(b.cats) if b.is_categories else [],
             "validation": strategy_validation(fmt), "scope": _scope_info(sim, fw), "records_used": bool(base),
-            "me": me,
+            "engine": getattr(sim, "last_engine", "legacy"), "me": me,
             "league": [{"slot": t, **{k: v for k, v in res[t].items() if k != "weekly"}}
                        for t in sorted(res, key=lambda t: res[t]["projected_rank"])],
             "my_roster": [_player(b, p) for p in rosters[body.slot]]}
@@ -566,7 +634,8 @@ def trade_analyze(body: TradeBody):
     return {"season": SEASON, "format": fmt, "slot": body.slot, "sims": body.sims, "mode": mode,
             "categories_in_format": list(b.cats) if b.is_categories else [],
             "give": [_player(b, p) for p in body.give], "get": [_player(b, p) for p in body.get],
-            "validation": strategy_validation(fmt), "scope": _scope_info(sim, fw), "records_used": bool(base), **out}
+            "validation": strategy_validation(fmt), "scope": _scope_info(sim, fw), "records_used": bool(base),
+            "engine": getattr(sim, "last_engine", "legacy"), **out}
 
 
 class WeekBody(SimBody):
