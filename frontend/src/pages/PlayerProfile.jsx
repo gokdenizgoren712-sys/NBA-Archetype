@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { api } from "../api";
 import { SEO } from "../hooks/useSEO";
 import PlayerCard from "../components/PlayerCard";
 import { useAuth } from "../contexts/AuthContext";
 import { EmptyState } from "../components/states/States";
+import { Button } from "../components/ui";
 import { ARCHETYPE_COLOR } from "../constants/archetypeColors";
 import { getAwardBadges } from "../game/awards";
 import "./player-profile.css";
@@ -188,20 +189,20 @@ export default function PlayerProfile() {
             <div className="pp-card"><PlayerCard player={cardPlayer} expandable /></div>
 
             <header className="pp-head">
-              <span className="eyebrow">{[arch, detail.team, detail.pos5, CURRENT].filter(Boolean).join(" · ")}</span>
+              <span className="eyebrow">{["NBA", detail.team, detail.pos5, CURRENT].filter(Boolean).join(" · ")}</span>
               <h1>{detail.name || name}</h1>
-              {overall != null && (
-                <span className="sub">
-                  Overall <b>{overall}</b>{topLabel && <> · {topLabel}{pool ? ` of ${pool} qualified players` : ""} this season</>}
-                </span>
-              )}
+              <div className="pp-stats">
+                <div className="hot"><span>Rating</span><b>{overall ?? "—"}</b></div>
+                <div><span>Top</span><b>{topPct == null ? "—" : `${Math.max(1, topPct)}%`}</b></div>
+                <div><span>Games</span><b>{gp ?? "—"}</b></div>
+              </div>
               <div className="pp-actions">
-                <button className="pa-btn-secondary" onClick={share}>{copied ? "Link copied" : "Share"}</button>
+                <Button variant="outline" size={34} onClick={share}>{copied ? "Link copied" : "Share"}</Button>
                 {isLoggedIn && arch && (
-                  <button className="pa-btn-secondary"
+                  <Button variant="outline" size={34}
                     onClick={() => { setFlagOpen(true); setFlagArch(""); setFlagNote(""); setFlagStatus(null); }}>
                     Suggest a different archetype
-                  </button>
+                  </Button>
                 )}
               </div>
             </header>
@@ -214,6 +215,12 @@ export default function PlayerProfile() {
 
             <div className="pp-body">
               <section className={sec("overview")}>
+                {arch && (
+                  <div className="pp-panel pp-about">
+                    <span className="pp-chip" style={{ "--c": tint }}><i />{arch}</span>
+                    <p><b>{detail.name || name}</b> reads as a{/^[AEIOU]/i.test(arch) ? "n" : ""} {arch}{overall != null && <> with an overall rating of {overall}{topLabel && <>, {topLabel}{pool ? ` of ${pool} qualified players` : ""}</>} this season</>}.</p>
+                  </div>
+                )}
                 {awards.length > 0 && (
                   <div className="pp-awards">
                     {awards.map(a => <span key={a.key} style={{ "--c": a.c }}>{a.l}</span>)}
@@ -227,7 +234,7 @@ export default function PlayerProfile() {
               </section>
 
               <section className={`${sec("archetype")} pp-panel`}>
-                <div className="pp-h"><span><i />Archetype scores</span><em>Percentile within the season</em></div>
+                <div className="pp-h"><span>Archetype profile</span><em>Percentile within the season</em></div>
                 <div className="pp-bars">
                   {archRows.map(r => {
                     const on = r.a === arch;
@@ -245,22 +252,22 @@ export default function PlayerProfile() {
           </div>
 
           <section className={`${sec("seasons")} pp-panel pp-career`}>
-            <div className="pp-h"><span><i />Career trajectory</span><em>Overall by season · primary archetype under each point</em></div>
+            <div className="pp-h"><span>Career trajectory</span><em>Overall by season · primary archetype under each point</em></div>
             {career == null ? <div className="pp-skel sm" /> : <CareerChart seasons={seasons} tint={tint} />}
           </section>
 
-          <section className={`${sec("similar")} pp-similar`}>
-            <div className="pp-h"><span><i style={{ background: "#FFB11B", boxShadow: "0 0 10px #FFB11B" }} />Plays most like</span><em>Similarity across all 12 archetype scores</em></div>
+          <section className={`${sec("similar")} pp-panel pp-similar`}>
+            <div className="pp-h"><span>Plays like</span><em>Closest by archetype and production</em></div>
             {similar == null ? <div className="pp-skel sm" /> : similar.length === 0 ? (
               <p className="pp-muted">No close match this season.</p>
             ) : (
               <div className="pp-sim-row">
                 {similar.map(s => (
-                  <div key={s.name} className="pp-sim">
-                    <PlayerCard player={{ ...s.row, overall_tier: s.row.overall_tier || "" }} expandable />
-                    {/* Kosinüs benzerliği üst sıralarda hep ~0.99 — yuvarlayınca "100%" yanıltıyor */}
-                    <span>{(s.similarity * 100).toFixed(1)}% similar</span>
-                  </div>
+                  <Link key={s.name} to={`/basketball/players/${encodeURIComponent(s.name)}`} className="pp-sim">
+                    <b>{s.name}</b>
+                    {s.row.primary_arch && <span className="pp-chip" style={{ "--c": ARCHETYPE_COLOR[s.row.primary_arch] }}><i />{s.row.primary_arch}</span>}
+                    <strong>{(s.similarity * 100).toFixed(0)}%<small>MATCH</small></strong>
+                  </Link>
                 ))}
               </div>
             )}
@@ -293,8 +300,8 @@ export default function PlayerProfile() {
             {flagStatus === "ok" && <p className="pp-msg ok">Sent. Thanks — an admin will review it.</p>}
             {flagStatus === "err" && <p className="pp-msg err">That didn't send. Check your connection and try again.</p>}
             <div className="pp-modal-actions">
-              <button className="pa-btn-secondary" onClick={() => setFlagOpen(false)}>Cancel</button>
-              <button className="pa-btn-primary"
+              <Button variant="outline" onClick={() => setFlagOpen(false)}>Cancel</Button>
+              <Button variant="primary"
                 disabled={!flagArch || flagStatus === "sending" || flagStatus === "ok"}
                 onClick={async () => {
                   if (!flagArch) return;
@@ -315,7 +322,7 @@ export default function PlayerProfile() {
                   }
                 }}>
                 {flagStatus === "sending" ? "Sending…" : "Send suggestion"}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
