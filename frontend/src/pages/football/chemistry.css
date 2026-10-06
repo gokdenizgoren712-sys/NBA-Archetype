@@ -130,3 +130,4 @@
 .ch-bar .tr i { box-shadow: none; }
 .ch-foot a { color: var(--accent); }
 .ch-shapes button:focus-visible, .ch-leagues button:focus-visible, .ch-tabs button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (max-width: 767px) { .ch-shapes button, .ch-leagues button, .ch-tabs button { min-height: var(--touch); } }

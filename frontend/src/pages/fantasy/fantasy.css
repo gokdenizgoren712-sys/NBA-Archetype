@@ -477,3 +477,8 @@
   .fz-sticky { top: 52px; }
   .fz-pinned .fz-gold { border-radius: var(--radius); }
 }
+
+/* Phase 8 QA: dar ekranda çip ve punt düğmeleri ≥44px */
+@media (max-width: 767px) {
+  .fz-chipbtn, .fz-punt { min-height: var(--touch); }
+}

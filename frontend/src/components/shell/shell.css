@@ -246,3 +246,17 @@
 .pa-drawer-user .pa-avatar { width: 40px; height: 40px; }
 .pa-pinned { background: var(--bg-base); box-shadow: inset 0 1px 0 var(--hairline); }
 .pa-footer { box-shadow: inset 0 1px 0 var(--hairline); }
+
+/* Hesap menüsü (Phase 8: Settings / Leaderboard / Sign out geri geldi) */
+.pa-avatar-wrap { position: relative; }
+.pa-avatar-menu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 60; min-width: 200px; display: flex; flex-direction: column; padding: 6px; border: 1px solid var(--panel-border); border-radius: var(--radius); background: var(--modal); }
+.pa-avatar-menu .who { padding: 8px 12px; font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .1em; text-transform: uppercase; color: var(--text-muted); border-bottom: 1px solid var(--hairline); margin-bottom: 4px; }
+.pa-avatar-menu a, .pa-avatar-menu button { min-height: var(--touch); display: flex; align-items: center; padding: 0 12px; border: 0; border-radius: 3px; background: none; color: var(--text-secondary); font: 500 14px var(--font-sans, inherit); text-align: left; text-decoration: none; cursor: pointer; }
+.pa-avatar-menu a:hover, .pa-avatar-menu button:hover, .pa-avatar-menu a:focus-visible, .pa-avatar-menu button:focus-visible { background: var(--raised); color: var(--text-primary); outline: none; }
+
+/* Phase 8 QA: dar ekranda dokunma hedefleri ≥44px (footer bağlantıları, Sign in) */
+@media (max-width: 767px) {
+  .pa-footer a { min-height: var(--touch); display: inline-flex; align-items: center; }
+  .pa-signin { min-height: var(--touch); border-radius: var(--radius); }
+}
+.pa-signin { border: 1px solid var(--panel-border); border-radius: var(--radius); }

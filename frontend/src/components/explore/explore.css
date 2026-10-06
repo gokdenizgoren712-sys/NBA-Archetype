@@ -349,3 +349,6 @@
 .ex-msel .ov { text-shadow: none; }
 .ex-msel .av, .cmp-av .av { box-shadow: none; }
 @media (max-width: 767px) { .ex-head-l { flex-direction: column; align-items: flex-start; } .ex-head h1 { display: block; font-size: 40px; } }
+
+/* Phase 8 QA */
+@media (max-width: 767px) { .ex-chip { min-height: var(--touch); } }
