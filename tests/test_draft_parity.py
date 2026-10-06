@@ -40,6 +40,7 @@ JS_PROBE = r"""
 import { FORMATIONS, SHAPE_KEYS } from "%(dir)s/formations.js";
 import { canPlace, posPenaltyFor, isPrimarySlot } from "%(dir)s/positions.js";
 import * as D from "%(dir)s/draft.js";
+import { MANAGERS, managerBonus } from "%(dir)s/managers.js";
 
 const ALL_POS = %(pos)s;
 const ALL_SLOT_POS = %(slotpos)s;
@@ -67,7 +68,7 @@ for (const p of ALL_POS) {
 // 3) Senaryolu draft — sıra, yılan davranışı, bitiş
 // Havuz: her turda aynı 22 kişilik yapay kadro; ilk uygun slota yerleştir.
 const pool = [];
-for (let i = 0; i < 40; i++) {
+for (let i = 0; i < 70; i++) {
   pool.push({ PLAYER_ID: 1000 + i, POSITION: ALL_POS[i %% ALL_POS.length] });
 }
 let d = D.createDraft({ shapes: { 1: "4-3-3", 2: "4-2-3-1" }, wheelMode: "round", first: 1 });
@@ -89,10 +90,26 @@ for (const s of [1, 2]) {
   const sq = D.squadOf(d, s);
   squads[s] = { shape: sq.shape, n: sq.players.length,
                 penalty: Math.round(sq.positionPenalty * 1e6) / 1e6,
-                slots: sq.players.map(p => p._slot) };
+                slots: sq.players.map(p => p._slot),
+                bench: sq.bench.map(p => p._slot) };
 }
 
-console.log(JSON.stringify({ shapes, table, order, phase: d.phase, squads }));
+// Son düzenleme: iyi bir takas ve kaleci kuralını bozan bir takas
+const sGood = D.swap(d, 1, "LCB", "RCB");
+const sBad = D.swap(d, 1, "GK", "LB");
+const swap = {
+  good: sGood.ok,
+  goodSlots: sGood.ok ? Object.fromEntries(Object.entries(sGood.state.squads[1])
+      .map(([k, v]) => [k, v.PLAYER_ID])) : null,
+  goodPenalty: sGood.ok ? Math.round(D.squadOf(sGood.state, 1).positionPenalty * 1e6) / 1e6 : null,
+  bad: sBad.ok, badReason: sBad.reason || null,
+};
+
+// Menajer bonusu: her menajer x her diziliş
+const mtable = {};
+for (const m of MANAGERS) for (const sh of SHAPE_KEYS) mtable[m.name + ">" + sh] = managerBonus(m, sh);
+
+console.log(JSON.stringify({ shapes, table, order, phase: d.phase, squads, swap, managers: MANAGERS, mtable }));
 """
 
 
@@ -110,7 +127,10 @@ def _js() -> dict:
     probe = ROOT / "_parity_probe.mjs"
     probe.write_text(src, encoding="utf-8")
     try:
-        out = subprocess.run([NODE, str(probe)], capture_output=True, text=True, timeout=90)
+        # encoding AÇIKÇA utf-8: Windows'ta varsayılan cp1252, "Jürgen"/"José"/"Benítez"
+        # gibi aksanlı isimleri bozup listeleri farklıymış gibi gösteriyordu.
+        out = subprocess.run([NODE, str(probe)], capture_output=True, text=True,
+                             encoding="utf-8", timeout=90)
         if out.returncode != 0:
             pytest.fail("node hatası:\n" + out.stderr[-2000:])
         return json.loads(out.stdout.strip().splitlines()[-1])
@@ -146,15 +166,13 @@ def test_penalty_and_placement_match(js):
             assert R.is_primary_slot(player, slot) is js_prim, f"asıl mevki {key}"
 
 
-def test_draft_sequence_matches(js):
-    """Aynı senaryo iki tarafta da aynı seçim sırasını üretmeli — yılan sırası,
-    havuz tükenmesi, tamamlanan tarafın sıradan düşmesi dahil."""
-    pool = [{"PLAYER_ID": 1000 + i, "POSITION": ALL_POS[i % len(ALL_POS)]}
-            for i in range(40)]
-    d = R.create_draft(shapes={1: "4-3-3", 2: "4-2-3-1"}, wheel_mode="round", first=1)
-    order = []
-    guard = 0
-    while d["phase"] != "done" and guard < 200:
+def _python_draft(length="squad"):
+    """Aynı senaryo: 70 oyunculu yapay havuz, ilk uygun slota yerleştir."""
+    pool = [{"PLAYER_ID": 1000 + i, "POSITION": ALL_POS[i % len(ALL_POS)]} for i in range(70)]
+    d = R.create_draft(shapes={1: "4-3-3", 2: "4-2-3-1"}, wheel_mode="round", first=1,
+                       length=length)
+    order, guard = [], 0
+    while d["phase"] != "done" and guard < 300:
         guard += 1
         if d["phase"] == "spinning":
             d = R.set_pool(d, {"team": f"T{guard}", "season": "S", "players": pool})
@@ -169,8 +187,15 @@ def test_draft_sequence_matches(js):
         ok, res = R.pick(d, seat, p, slot["id"])
         assert ok, f"seçim reddedildi: {res}"
         d = res
+    return d, order
 
+
+def test_draft_sequence_matches(js):
+    """JS draft'ı her zaman 18'lik (11+7). Python'un length="squad" kuralı onunla
+    seçim seçim aynı olmalı: sıra, yılan, yedek slotlar, ceza."""
+    d, order = _python_draft("squad")
     assert d["phase"] == "done" == js["phase"]
+    assert len(order) == 36 == len(js["order"]), "18 × 2 seçim bekleniyordu"
     assert order == [list(x) for x in js["order"]], "seçim sırası farklı"
 
     for seat in (1, 2):
@@ -178,8 +203,46 @@ def test_draft_sequence_matches(js):
         j = js["squads"][str(seat)]
         assert sq["shape"] == j["shape"]
         assert len(sq["players"]) == j["n"] == R.XI_PICKS
-        assert sq["positionPenalty"] == pytest.approx(j["penalty"], abs=1e-6)
         assert [p["_slot"] for p in sq["players"]] == j["slots"]
+        assert [p["_slot"] for p in sq["bench"]] == j["bench"] and len(j["bench"]) == 7
+        assert sq["positionPenalty"] == pytest.approx(j["penalty"], abs=1e-6)
+
+
+def test_xi_length_stops_at_eleven_and_has_no_bench():
+    """Kısa draft: yalnız ilk 11, yedek slotu yok (JS'te karşılığı yok; Python'a özgü seçenek)."""
+    d, order = _python_draft("xi")
+    assert len(order) == 22
+    assert all(not s["id"].startswith("SUB") for s in R.slots_of(d, 1))
+    assert R.squad_of(d, 1)["bench"] == []
+
+
+def test_swap_matches(js):
+    """Slot takası: sonuç dizilişi, ceza ve kaleci kuralı aynı olmalı."""
+    d, _ = _python_draft("squad")
+    ok, st = R.swap(d, 1, "LCB", "RCB")
+    assert ok is js["swap"]["good"] is True
+    assert {k: v["PLAYER_ID"] for k, v in st["squads"][1].items()} == \
+        {k: v for k, v in js["swap"]["goodSlots"].items()}
+    assert R.squad_of(st, 1)["positionPenalty"] == pytest.approx(js["swap"]["goodPenalty"], abs=1e-6)
+
+    bad, reason = R.swap(d, 1, "GK", "LB")
+    assert bad is js["swap"]["bad"] is False
+    assert reason == js["swap"]["badReason"]
+    # Takas, kimseyi kaybetmemeli
+    assert sorted(v["PLAYER_ID"] for v in d["squads"][1].values()) == \
+        sorted(v["PLAYER_ID"] for v in st["squads"][1].values())
+
+
+def test_managers_match(js):
+    """Menajer listesi ve bonus tablosu — 24 menajer × 7 diziliş."""
+    assert [(m["name"], m["shape"], m["att"], m["def"], m["tag"]) for m in R.MANAGERS] == \
+        [(m["name"], m["shape"], m["att"], m["def"], m["tag"]) for m in js["managers"]]
+    for m in R.MANAGERS:
+        for shape in R.SHAPE_KEYS:
+            got = R.manager_bonus(m, shape)
+            want = js["mtable"][f"{m['name']}>{shape}"]
+            assert got["matched"] is want["matched"], f"{m['name']} {shape}"
+            assert got["bonus"] == pytest.approx(want["bonus"], abs=1e-9), f"{m['name']} {shape}"
 
 
 def test_snake_order():
@@ -299,3 +362,28 @@ def test_validate_rejects_wrong_shape_slots():
     xi, players = _valid_xi("4-3-3")
     with pytest.raises(R.InvalidXI):
         R.validate_xi(xi, "3-5-2", players)
+
+
+def test_swap_keeper_rule_holds_in_each_direction():
+    """Kaleci kuralının İKİ yönü ayrı ayrı sınanıyor. Dolu iki slot arasındaki bir
+    takasta iki kontrol da aynı hatayı veriyor: biri silinse diğeri gizliyor. Bir
+    slotu BOŞALTINCA yalnız tek taraf kalıyor ve her kontrol kendi başına görünür."""
+    d, _ = _python_draft("squad")
+
+    # LB'yi boşalt. Kaleciyi boş LB'ye taşımak: yalnız "a'daki oyuncu b'ye girebilir mi?" kontrolü var.
+    sq = {k: v for k, v in d["squads"][1].items() if k != "LB"}
+    d1 = {**d, "squads": {**d["squads"], 1: sq}}
+    ok, reason = R.swap(d1, 1, "GK", "LB")
+    assert not ok and "goalkeeper" in reason.lower(), "kaleci boş saha slotuna taşındı"
+
+    # Aynı çift, ters sırada: şimdi yalnız "b'deki oyuncu a'ya girebilir mi?" kontrolü var.
+    ok, reason = R.swap(d1, 1, "LB", "GK")
+    assert not ok and "goalkeeper" in reason.lower(), "kaleci slotu boş saha slotuna verildi"
+
+    # Yedekte kural yok ama kaleye giren HÂLÂ kaleci olmalı: yedekteki bir SAHA
+    # oyuncusu ile kaleci takas edilirse, saha oyuncusu kaleye girmiş olurdu.
+    # (Hangi yedeğin saha oyuncusu olduğu havuz sırasına bağlı: veriden bul.)
+    outfield_bench = next(b for b in R.BENCH
+                          if d["squads"][1][b["id"]]["POSITION"] != "GK")["id"]
+    ok, reason = R.swap(d, 1, "GK", outfield_bench)
+    assert not ok and "goalkeeper" in reason.lower(), "yedekteki saha oyuncusu kaleye girdi"

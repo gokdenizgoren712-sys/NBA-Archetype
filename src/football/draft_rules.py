@@ -88,7 +88,18 @@ FORMATIONS: dict[str, list[tuple[str, str, str]]] = {
 }
 
 SHAPE_KEYS = list(FORMATIONS)
-XI_PICKS = 11          # yedek drafta girmiyor: eleme skoru yalnız ilk 11'den
+XI_PICKS = 11          # eleme skoru yalnız ilk 11'den
+SQUAD_PICKS = 18       # 11 ilk + 7 yedek
+
+# DRAFT UZUNLUĞU — iki seçenek, futboldaki her modda geçerli:
+#   "xi"    yalnız ilk 11 (kısa draft)
+#   "squad" 11 + 7 yedek (tam kadro; slot takası ve menajer aşaması da var)
+# Leaderboard yalnız 18'lik kadrolardan hesaplanıyor: /api/rosters futbolda tam
+# 18 kişi istiyor, yani "xi" ile oynanan oyun leaderboard'a hiç giremez.
+LENGTHS = ("xi", "squad")
+BENCH_COUNT = 7
+BENCH = [{"id": f"SUB{i + 1}", "pos": None, "phase": None, "bench": True}
+         for i in range(BENCH_COUNT)]
 
 
 def slots_for(shape: str) -> list[dict]:
@@ -223,14 +234,18 @@ def other(seat: int) -> int:
 
 
 def create_draft(shapes: dict[int, str] | None = None,
-                 wheel_mode: str = "round", first: int = 1) -> dict:
+                 wheel_mode: str = "round", first: int = 1,
+                 length: str = "xi") -> dict:
     sh = {1: (shapes or {}).get(1) or "4-3-3", 2: (shapes or {}).get(2) or "4-3-3"}
     for s in sh.values():
         if s not in FORMATIONS:
             raise InvalidXI(f"Unknown formation: {s}")
     if wheel_mode not in ("round", "pick"):
         raise InvalidXI(f"Unknown wheel mode: {wheel_mode}")
+    if length not in LENGTHS:
+        raise InvalidXI(f"Unknown draft length: {length}")
     return {
+        "length": length,
         "wheelMode": wheel_mode,
         "shapes": sh,
         "round": 1,
@@ -253,8 +268,15 @@ def waiting_seat(d: dict) -> int:
     return other(active_seat(d))
 
 
-def slots_of(d: dict, seat: int) -> list[dict]:
+def pitch_of(d: dict, seat: int) -> list[dict]:
+    """Yalnız saha slotları (ceza ve skor yalnız bunlardan)."""
     return slots_for(d["shapes"][seat])
+
+
+def slots_of(d: dict, seat: int) -> list[dict]:
+    """Draft'ın doldurduğu slotlar: "xi"de saha, "squad"da saha + 7 yedek."""
+    pitch = pitch_of(d, seat)
+    return pitch + [dict(b) for b in BENCH] if d.get("length") == "squad" else pitch
 
 
 def filled(d: dict, seat: int) -> int:
@@ -338,10 +360,89 @@ def pool_is_dead(d: dict) -> bool:
 
 
 def squad_of(d: dict, seat: int) -> dict:
-    slots = slots_of(d, seat)
+    """Eleme motoruna verilecek hâli. Ceza ve skor YALNIZ ilk 11'den; yedekler
+    kadronun parçası ama sayıya girmiyor (client draft.js squadOf ile aynı)."""
+    pitch = pitch_of(d, seat)
     squad = d["squads"][seat]
-    players = [squad[s["id"]] for s in slots if s["id"] in squad]
-    pen = sum(pos_penalty_for(squad[s["id"]], s) for s in slots if s["id"] in squad)
-    return {"players": players,
-            "positionPenalty": pen / max(1, len(slots)),
+    players = [squad[x["id"]] for x in pitch if x["id"] in squad]
+    bench = [squad[b["id"]] for b in BENCH if b["id"] in squad]
+    pen = sum(pos_penalty_for(squad[x["id"]], x) for x in pitch if x["id"] in squad)
+    return {"players": players, "bench": bench,
+            "positionPenalty": pen / max(1, len(pitch)),
             "shape": d["shapes"][seat]}
+
+
+def swap(d: dict, seat: int, a: str, b: str) -> tuple[bool, Any]:
+    """Aynı taraf içinde iki slotu takas et (kilitli kadro ekranındaki son
+    düzenleme). Kaleci kuralı burada da sert: kaleci yalnız kaleye girer."""
+    slots = {x["id"]: x for x in slots_of(d, seat)}
+    if a == b or a not in slots or b not in slots:
+        return False, "bad slots"
+    sq = dict(d["squads"][seat])
+    pa, pb = sq.pop(a, None), sq.pop(b, None)
+    if pa and not can_place(pa, slots[b]):
+        return False, "A goalkeeper can only stand in goal."
+    if pb and not can_place(pb, slots[a]):
+        return False, "A goalkeeper can only stand in goal."
+    if pa:
+        sq[b] = {**pa, "_slot": b}
+    if pb:
+        sq[a] = {**pb, "_slot": a}
+    return True, {**d, "squads": {**d["squads"], seat: sq}}
+
+
+# ── Menajerler ───────────────────────────────────────────────────────────────
+# frontend/src/game/football/managers.js'in birebir karşılığı (parite testi
+# ikisini yan yana koşturuyor). Notlar sübjektif ve dönem itibarına dayalı;
+# ölçülmüş bir şey değil. Menajer bir DİZİLİŞLE özdeşleşir: tercih ettiği şekil
+# seninkiyle eşleşirse tam bonus, eşleşmezse küçük bir pay.
+MANAGERS = [
+    {"name": "Pep Guardiola", "shape": "4-3-3", "att": "A+", "def": "A-", "tag": "POSSESSION"},
+    {"name": "Jürgen Klopp", "shape": "4-3-3", "att": "A", "def": "A-", "tag": "PRESSING"},
+    {"name": "Carlo Ancelotti", "shape": "4-3-3", "att": "A", "def": "B+", "tag": "MAN-MANAGER"},
+    {"name": "Diego Simeone", "shape": "4-4-2", "att": "B-", "def": "A+", "tag": "LOW BLOCK"},
+    {"name": "Antonio Conte", "shape": "3-5-2", "att": "A-", "def": "A", "tag": "BACK THREE"},
+    {"name": "José Mourinho", "shape": "4-2-3-1", "att": "B+", "def": "A", "tag": "COUNTER"},
+    {"name": "Mikel Arteta", "shape": "4-3-3", "att": "A-", "def": "A-", "tag": "POSSESSION"},
+    {"name": "Simone Inzaghi", "shape": "3-5-2", "att": "A", "def": "A-", "tag": "BACK THREE"},
+    {"name": "Xabi Alonso", "shape": "3-4-2-1", "att": "A", "def": "A-", "tag": "BACK THREE"},
+    {"name": "Luis Enrique", "shape": "4-3-3", "att": "A", "def": "B+", "tag": "POSSESSION"},
+    {"name": "Hansi Flick", "shape": "4-2-3-1", "att": "A+", "def": "B", "tag": "HIGH LINE"},
+    {"name": "Roberto De Zerbi", "shape": "4-2-3-1", "att": "A-", "def": "B", "tag": "BUILD-UP"},
+    {"name": "Unai Emery", "shape": "4-4-2", "att": "B+", "def": "A-", "tag": None},
+    {"name": "Marcelo Bielsa", "shape": "3-4-2-1", "att": "A", "def": "C+", "tag": "PRESSING"},
+    {"name": "Massimiliano Allegri", "shape": "3-5-2", "att": "B", "def": "A", "tag": "PRAGMATIST"},
+    {"name": "Gian Piero Gasperini", "shape": "3-4-2-1", "att": "A", "def": "B+", "tag": "MAN-MARKING"},
+    {"name": "Arne Slot", "shape": "4-2-3-1", "att": "A-", "def": "A-", "tag": None},
+    {"name": "Enzo Maresca", "shape": "4-2-3-1", "att": "B+", "def": "B+", "tag": "BUILD-UP"},
+    {"name": "Thomas Frank", "shape": "4-3-3", "att": "B", "def": "B+", "tag": "SET PIECES"},
+    {"name": "Oliver Glasner", "shape": "3-4-2-1", "att": "B+", "def": "B+", "tag": "BACK THREE"},
+    {"name": "Diego Pablo Cholo", "shape": "5-3-2", "att": "C+", "def": "A+", "tag": "LOW BLOCK"},
+    {"name": "Rafa Benítez", "shape": "4-2-3-1", "att": "B", "def": "A-", "tag": None},
+    {"name": "Ange Postecoglou", "shape": "4-3-3", "att": "A-", "def": "C+", "tag": "HIGH LINE"},
+    {"name": "Vincent Kompany", "shape": "4-2-3-1", "att": "A-", "def": "B", "tag": None},
+]
+MANAGER_BY_NAME = {m["name"]: m for m in MANAGERS}
+
+_GRADE = {"A+": 1.00, "A": 0.92, "A-": 0.85, "B+": 0.78, "B": 0.70,
+          "B-": 0.63, "C+": 0.55, "C": 0.48, "C-": 0.40, "D": 0.30, "F": 0.15}
+
+
+def grade_value(g: str) -> float:
+    return _GRADE.get(g, 0.5)
+
+
+def manager_bonus(manager: dict | None, shape: str) -> dict:
+    """{bonus, matched}. Eşleşmede en fazla +0.05, eşleşmezse en fazla +0.01."""
+    if not manager:
+        return {"bonus": 0.0, "matched": False}
+    matched = manager["shape"] == shape
+    quality = (grade_value(manager["att"]) + grade_value(manager["def"])) / 2
+    return {"bonus": (0.05 if matched else 0.01) * quality, "matched": matched}
+
+
+def draw_managers(n: int = 4, rng=None) -> list[dict]:
+    """n farklı rastgele menajer. Seçenekleri SUNUCU çekiyor: istemci kendi
+    havuzunu seçseydi en iyi menajeri hep önüne koyardı."""
+    import random as _random
+    return [dict(m) for m in (rng or _random).sample(MANAGERS, min(n, len(MANAGERS)))]
