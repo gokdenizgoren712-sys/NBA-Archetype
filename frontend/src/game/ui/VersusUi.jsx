@@ -62,8 +62,8 @@ export function SeatColumn({ seat, name, count, total, sub, rows, active }) {
   );
 }
 
-export function VersusBody({ left, right, children }) {
-  return <div className="sb-vs-body">{left}<section className="sb-vs-mid">{children}</section>{right}</div>;
+export function VersusBody({ left, right, children, overlay = null }) {
+  return <div className="sb-vs-body">{left}<section className="sb-vs-mid">{children}{overlay}</section>{right}</div>;
 }
 
 export function SpinningCenter({ text, sub }) {

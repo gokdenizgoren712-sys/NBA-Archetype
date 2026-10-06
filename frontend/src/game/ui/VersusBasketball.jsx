@@ -1,4 +1,7 @@
+import { useEffect, useState } from "react";
 import { ERAS, ERA_PILLAR_WEIGHTS } from "../eras";
+import { useDrawFlow } from "./useDrawFlow";
+import { ReelOverlay } from "./DraftScreen";
 import {
   POSITIONS, BENCH_SLOTS, ALL_SLOTS, getPrimaryPos, getEligiblePos, posPenaltyFor, posGroupOf,
 } from "../positions";
@@ -58,8 +61,17 @@ export function BasketballVersusDraft({
   players, posFilter, setPosFilter, sortKey, setSortKey, discoverActive, doubleActive, bannedName, banVoided, banPicking,
   pickedPlayer, onPick, onPlace, onCancel, counter, onConfirmBan, sport = "basketball",
   poolVisible = true, waitText, children,
+  seasons = [], teamPool = [], targetSIdx = 0, targetTIdx = 0,
 }) {
   const spinning = phase === "spinning";
+  // Single player ile aynı çark: iki şerit kayar, sonuç gelince LOCKED damgası, sonra örtü kapanır.
+  const [spinSeq, setSpinSeq] = useState(0);
+  useEffect(() => { if (spinning) setSpinSeq((n) => n + 1); }, [spinning]);
+  const flow = useDrawFlow({
+    spinSeq, spinKind: "both", seasons, teamPool, targetSIdx, targetTIdx,
+    chosenSeason: season, chosenTeam: team, ready: !spinning && !!team && players.length > 0,
+  });
+  const reels = seasons.length > 0;
   const drafting = phase === "drafting";
   const j = jokers[activeSeat] || {};
   const seatProps = (seat) => ({
@@ -95,7 +107,7 @@ export function BasketballVersusDraft({
 
   let mid;
   if (spinning) {
-    mid = <SpinningCenter text="Spinning" sub={statusMsg || (wheelMode === "pick" ? `Fresh spin for ${names[activeSeat]}'s pick. Jokers lock until it lands.` : `Shared spin for round ${round}. Jokers lock until it lands.`)} />;
+    mid = reels ? <div className="sb-vs-spinwait" role="status" aria-label="Spinning"><span>{statusMsg || "Spinning…"}</span></div> : <SpinningCenter text="Spinning" sub={statusMsg || (wheelMode === "pick" ? `Fresh spin for ${names[activeSeat]}'s pick. Jokers lock until it lands.` : `Shared spin for round ${round}. Jokers lock until it lands.`)} />;
   } else if (!poolVisible) {
     mid = (
       <>
@@ -146,7 +158,8 @@ export function BasketballVersusDraft({
         turn={{ seat: activeSeat, who: `${names[activeSeat]}'s pick`, season: season, team, seasonLabel: "SEASON", teamLabel: "TEAM", spinning }}
         jokers={jokerViews} />
       {children}
-      <VersusBody left={<SeatColumn {...seatProps(1)} />} right={<SeatColumn {...seatProps(2)} />}>{mid}</VersusBody>
+      <VersusBody left={<SeatColumn {...seatProps(1)} />} right={<SeatColumn {...seatProps(2)} />}
+        overlay={reels ? <ReelOverlay flow={flow} entity="TEAM" /> : null}>{mid}</VersusBody>
     </VersusFrame>
   );
 }

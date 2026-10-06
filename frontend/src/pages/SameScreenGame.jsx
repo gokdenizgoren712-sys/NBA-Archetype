@@ -433,6 +433,7 @@ export default function SameScreenGame() {
     return shell(
       <BasketballVersusDraft names={names} eraLabel={simEra?.label} wheelMode={wheelMode} round={round} phase={gamePhase}
         activeSeat={activeSeat} waitingSeat={waitingSeat} season={chosenSeason} team={chosenTeam} statusMsg={statusMsg}
+        seasons={seasons} teamPool={teamPool} targetSIdx={targetSIdx} targetTIdx={targetTIdx}
         lineups={lineups} moveSrc={moveSrc} canRearrange={canRearrange} onSlotTap={handleSlotTap}
         jokers={jokers} onUseJoker={useJoker} players={players} posFilter={posFilter} setPosFilter={setPosFilter}
         sortKey={sortKey} setSortKey={setSortKey} discoverActive={discoverActive} doubleActive={doubleActive}

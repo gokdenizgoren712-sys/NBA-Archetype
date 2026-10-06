@@ -42,8 +42,6 @@ function Court() {
       <path d="M44 14v62a86 86 0 0 0 172 0V14" />
       <path d="M118 14h24M117 30a13 13 0 0 0 26 0" />
       <path d="M104 236a26 26 0 0 1 52 0" />
-      <circle cx="130" cy="146" r="13" className="ball" />
-      <path d="M117 146h26M130 133v26" className="ball" />
     </svg>
   );
 }
@@ -56,8 +54,6 @@ function Pitch() {
       <circle cx="130" cy="80" r="1.5" />
       <path d="M110 98a20 20 0 0 0 40 0" />
       <path d="M96 230a34 34 0 0 1 68 0" />
-      <circle cx="130" cy="156" r="14" className="ball" />
-      <path d="M130 144l9 7-3 11h-12l-3-11z" className="ball" />
     </svg>
   );
 }

@@ -8,6 +8,7 @@ export default function BoardPanel({ title, filled, total, lines, slots, bench, 
         <span className="sb-card-title">{title}</span>
         <span className="filled">{filled}/{total} filled</span>
       </div>
+      <div className="sb-bwrap">
       <div className="sb-bboard">
         <svg viewBox="0 0 100 70" preserveAspectRatio="none" aria-hidden="true">
           {lines.map((d) => <path key={d} d={d} />)}
@@ -21,6 +22,7 @@ export default function BoardPanel({ title, filled, total, lines, slots, bench, 
             {k.cost && <span className={`cost ${k.costTone || ""}`}>{k.cost}</span>}
           </div>
         ))}
+      </div>
       </div>
       <div className="sb-bench-row">
         {bench.map((b) => (

@@ -279,3 +279,9 @@
   min-height: 44px; border: 1.5px solid rgba(255, 255, 255, .3); border-radius: 4px; background: transparent; color: var(--sb-text);
   font: 700 17px var(--sb-font-display); letter-spacing: .1em; text-transform: uppercase; cursor: pointer;
 }
+
+/* Kort sabit oranlı (100:70) kalır, alana sığacak kadar ölçeklenir, kenarlarda boşluk kalabilir.
+   Eskiden tahta alanı doldurmak için gerilip çizgileri bozuyordu. */
+.sb-bwrap { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; container-type: size; }
+.sb-bpanel.court .sb-bboard { flex: none; width: min(100cqw, calc(100cqh * 100 / 70)); aspect-ratio: 100 / 70; height: auto; }
+.sb-bpanel.pitch .sb-bwrap { display: contents; }

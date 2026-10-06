@@ -393,3 +393,16 @@
   .sb-sort button::after, .sb-vs-pool-head .tools button::after { content: ""; position: absolute; inset: -9px -4px; }
   .sb-vs-pool-head .tools button { min-height: 32px; }
 }
+
+/* Çark örtüsü orta panelde (single player ile aynı); örtü yokken boş bekleme satırı */
+.sb-vs-mid { position: relative; }
+.sb-vs-mid .sb-overlay { border-radius: 0; border: 0; background: rgba(11, 11, 13, .94); }
+.sb-vs-mid .sb-reels { gap: 18px; }
+.sb-vs-mid .sb-reel.a { width: clamp(150px, 16vw, 220px); }
+.sb-vs-mid .sb-reel.b { width: clamp(220px, 28vw, 440px); }
+.sb-vs-spinwait { flex: 1; display: flex; align-items: flex-end; justify-content: center; padding: 18px; font: 13px var(--sb-font-mono); color: var(--sb-muted); }
+/* Üst şerit: tek sıra, geniş sıra/çekiliş kartı (single player'daki çekiliş şeridi gibi) */
+.sb-vs-head { gap: 20px; }
+.sb-vs-head > .sb-vs-turn { flex: 1 1 520px; min-width: 0; max-width: none; justify-content: center; gap: 28px; }
+.sb-vs-head > .sb-vs-turn .col.grow { flex: 0 1 auto; }
+.sb-vs-head .sb-vs-jokers { margin-left: 0; }
