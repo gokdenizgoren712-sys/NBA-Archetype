@@ -20,6 +20,7 @@ Tasarım:
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import shutil
 import subprocess
@@ -42,11 +43,24 @@ PUBLISHED = DATA_DIR / f"{SEASON}__fantasy_projections.parquet"
 PRE = DATA_DIR / f"{SEASON}__fantasy_projections_pre.parquet"
 
 
-def refresh_projections(cur: pd.DataFrame, base: pd.DataFrame, params: dict | None = None) -> pd.DataFrame:
-    """Saf fonksiyon: sezon öncesi taban + sezon içi loglar → yayınlanacak tablo (as-of ve zaman damgasıyla)."""
+def refresh_projections(cur: pd.DataFrame, base: pd.DataFrame, params: dict | None = None, model: dict | None = None,
+                        log: Callable[[str], None] = print) -> pd.DataFrame:
+    """Saf fonksiyon: sezon öncesi taban + sezon içi loglar → yayınlanacak tablo (as-of ve zaman damgasıyla).
+    Simülasyon modeli varsa kalan sezon için SI_* / SIM_* da yenilenir (`inseason_sim`); kurulamazsa tablo modelle yayınlanır, SIM_* kapalı kalır
+    (API eski tarihli SIM_*'ı kullanmaz)."""
     new = update_projections(base, cur, params or PARAMS)
-    new["INSEASON_AS_OF"] = str(cur["GAME_DATE"].max())
+    as_of = str(cur["GAME_DATE"].max())
+    new["INSEASON_AS_OF"] = as_of
     new["BUILT_AT"] = pd.Timestamp.now(tz="UTC").isoformat(timespec="seconds")
+    if model is None:
+        path = DATA_DIR / f"{SEASON}__fantasy_context_model.json"
+        model = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+    try:
+        from src.fantasy.inseason_sim import attach_inseason_sim
+        new = attach_inseason_sim(new, cur, model, as_of)
+    except Exception as e:      # noqa: BLE001 — simülasyon hatası güncellemeyi durdurmasın
+        log(f"[update] kalan sezon simülasyonu kurulamadı: {type(e).__name__}: {e}")
+        new = new.drop(columns=[c for c in new.columns if c.startswith(("SIM_", "SI_"))])
     return new
 
 

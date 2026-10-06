@@ -16,7 +16,7 @@ Girdi hızları DÜZELTİLMEMİŞ projeksiyondandır (bağlamı simülasyon kend
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 import numpy as np
 import pandas as pd
@@ -183,8 +183,9 @@ def simulate_team(df: pd.DataFrame, fits: dict, Lold: dict[str, np.ndarray], gp_
 
 
 def simulate_league(proj: pd.DataFrame, team_new: pd.Series, fits: dict, Lold: dict, gp_q_by_player: np.ndarray,
-                    fp_q_by_player: np.ndarray, P: SimParams) -> pd.DataFrame:
-    """proj: PLAYER_ID indeksli. Dönüş: oyuncu başına SIM_<stat> (ortalama), SIM_P10_/SIM_P90_ (FP için), SIM_MPG, SIM_GP."""
+                    fp_q_by_player: np.ndarray, P: SimParams, games_by_team: dict[str, int] | None = None) -> pd.DataFrame:
+    """proj: PLAYER_ID indeksli. Dönüş: oyuncu başına SIM_<stat> (ortalama), SIM_P10_/SIM_P90_ (FP için), SIM_MPG, SIM_GP.
+    games_by_team: sezon içi — takım başına KALAN maç (PROJ_GP de kalan maçtır); yoksa her takım P.games oynar."""
     from src.fantasy.projections import PTS_WEIGHTS
     rows = []
     pos_of = {pid: i for i, pid in enumerate(proj.index)}
@@ -193,7 +194,8 @@ def simulate_league(proj: pd.DataFrame, team_new: pd.Series, fits: dict, Lold: d
         if not isinstance(team, str):
             continue
         ix = [pos_of[p] for p in g.index]
-        res = simulate_team(g, fits, {k: v[ix] for k, v in Lold.items()}, gp_q_by_player[ix], fp_q_by_player[ix], P, seed_offset=ti)
+        Pt = replace(P, games=max(int(games_by_team[team]), 1)) if games_by_team and team in games_by_team else P
+        res = simulate_team(g, fits, {k: v[ix] for k, v in Lold.items()}, gp_q_by_player[ix], fp_q_by_player[ix], Pt, seed_offset=ti)
         fp = sum(res[s] * w for s, w in PTS_WEIGHTS.items())
         for j, pid in enumerate(g.index):
             r = {"PLAYER_ID": pid}

@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import json
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 import numpy as np
 import pandas as pd
@@ -34,16 +34,49 @@ HS_WEIGHTS = {"PTS": 1.0, "REB": 1.0, "AST": 2.0, "STL": 3.0, "BLK": 3.0}
 DISPERSION = {"FGA": 1.35, "FTA": 2.1, "REB": 1.25, "AST": 1.18, "STL": 1.06, "BLK": 1.04, "TOV": 1.01}
 
 
-def week_of_game(team_weeks: pd.DataFrame, games: int = 82) -> tuple[list[int], dict[str, np.ndarray]]:
-    """Takım başına oyun indeksi → hafta sırası (WSTATS ekseni). Dönüş: (haftalar, {takım: (games,) hafta indeksi})."""
+def week_of_game(team_weeks: pd.DataFrame, games: int | dict[str, int] = 82) -> tuple[list[int], dict[str, np.ndarray]]:
+    """Takım başına oyun indeksi → hafta sırası (WSTATS ekseni). Dönüş: (haftalar, {takım: (games,) hafta indeksi}).
+    games: her takım için aynı sayı ya da {takım: oyun} (sezon içi: kalan maç)."""
     weeks = sorted(int(w) for w in team_weeks["WEEK"].unique())
     out: dict[str, np.ndarray] = {}
     for team, g in team_weeks.groupby("TEAM"):
+        n = int(games[str(team)]) if isinstance(games, dict) and str(team) in games else (82 if isinstance(games, dict) else int(games))
         exp = g.set_index("WEEK")["GAMES_EXPECTED"].reindex(weeks).fillna(0.0).to_numpy(float)
-        bounds = np.rint(np.cumsum(exp) / max(exp.sum(), 1e-9) * games).astype(int)
+        bounds = np.rint(np.cumsum(exp) / max(exp.sum(), 1e-9) * n).astype(int)
         counts = np.diff(np.concatenate([[0], bounds]))
-        out[str(team)] = np.repeat(np.arange(len(weeks)), counts)[:games]
+        out[str(team)] = np.repeat(np.arange(len(weeks)), counts)[:n]
     return weeks, out
+
+
+def rest_from_week(weeks: pd.DataFrame, as_of: str | None) -> int | None:
+    """Sezon içinde tamamen oynanmamış ilk hafta (SeasonSim.default_from_week ile aynı); sezon öncesinde None."""
+    if not as_of:
+        return None
+    t = pd.Timestamp(as_of)
+    nxt = weeks[pd.to_datetime(weeks["START"]) > t]
+    return int(nxt["WEEK"].min()) if len(nxt) else None
+
+
+def rest_games(team_weeks: pd.DataFrame, weeks: pd.DataFrame, as_of: str, from_week: int) -> tuple[dict[str, int], dict[str, float]]:
+    """Takım başına: (from_week ve sonrasındaki maç sayısı, as_of ile from_week arasında kalan kısmen oynanmış haftanın kalan maçı).
+    SeasonSim.view'daki 'skipped' hesabının aynısı — dünya yalnız from_week'ten başlar, oyuncunun kalan maçı bu oranla küçülür."""
+    t = pd.Timestamp(as_of)
+    span = {int(r.WEEK): (pd.Timestamp(r.START), pd.Timestamp(r.END)) for r in weeks.itertuples()}
+    games, skipped = {}, {}
+    for team, g in team_weeks.groupby("TEAM"):
+        ge = g.set_index("WEEK")["GAMES_EXPECTED"]
+        games[str(team)] = int(round(float(ge[ge.index >= from_week].sum())))
+        sk = 0.0
+        for w, x in ge.items():
+            if w >= from_week or int(w) not in span:
+                continue
+            a, e = span[int(w)]
+            if e <= t:
+                continue
+            left = 1.0 if a > t else float((e - t).days) / max(float((e - a).days + 1), 1.0)
+            sk += float(x) * min(max(left, 0.0), 1.0)
+        skipped[str(team)] = sk
+    return games, skipped
 
 
 def _nb(rng: np.random.Generator, lam: np.ndarray, phi: float) -> np.ndarray:
@@ -85,6 +118,7 @@ class World:
     best_hs: np.ndarray         # (K × W × P) float32 — haftanın en iyi tek maçı (High Score ağırlıkları)
     scenarios: int
     seconds: float = 0.0
+    from_week: int | None = None    # sezon içi: dünya yalnız bu haftadan başlar (öncesi 0); None → tam sezon
     _mean_sums: np.ndarray | None = None
     _mean_best: np.ndarray | None = None
 
@@ -117,15 +151,29 @@ class World:
 
 
 def build_world(inputs: pd.DataFrame, team_weeks: pd.DataFrame, model: dict, scenarios: int = 128, seed: int = 20261020,
-                progress: bool = False) -> World:
-    """inputs: projeksiyon tablosu (PLAYER_ID, TEAM, FP_RATIO_Q, GP_RATIO_Q ve SI_* sütunları)."""
+                progress: bool = False, from_week: int | None = None, weeks_table: pd.DataFrame | None = None,
+                as_of: str | None = None) -> World:
+    """inputs: projeksiyon tablosu (PLAYER_ID, TEAM, FP_RATIO_Q, GP_RATIO_Q ve SI_* sütunları).
+    from_week (+ weeks_table, as_of): sezon içi kalan-sezon dünyası — yalnız from_week ve sonrası oynanır (öncesi 0); girdideki SI_GP
+    kalan maçtır, takımın from_week sonrası maçına oranla küçülür (kısmen oynanmış hafta dışarıda kalır)."""
     t0 = time.time()
+    games_by: dict[str, int] | None = None
+    if from_week is not None:
+        if weeks_table is None or as_of is None:
+            raise ValueError("from_week needs weeks_table and as_of")
+        games_by, skipped = rest_games(team_weeks, weeks_table, as_of, from_week)
+        inputs = inputs.copy()
+        tm = inputs["TEAM"].astype(str)
+        scale = tm.map(lambda x: games_by.get(x, 0) / max(games_by.get(x, 0) + skipped.get(x, 0.0), 1.0)).fillna(0.0)
+        inputs["SI_GP"] = np.minimum(inputs["SI_GP"].to_numpy(float) * scale.to_numpy(float), tm.map(lambda x: float(games_by.get(x, 0))).to_numpy(float))
+        team_weeks = team_weeks.copy()
+        team_weeks.loc[team_weeks["WEEK"] < from_week, "GAMES_EXPECTED"] = 0.0
     p, team, fits, Lold, gpq, fpq, params = ts._frame_inputs(inputs, model, scenarios)
     params.seed = seed
     pids = np.asarray(p.index)
     pos = {int(pid): i for i, pid in enumerate(pids)}
-    weeks, wog = week_of_game(team_weeks, params.games)
-    W, P, K, G = len(weeks), len(pids), params.scenarios, params.games
+    weeks, wog = week_of_game(team_weeks, games_by if games_by is not None else params.games)
+    W, P, K = len(weeks), len(pids), params.scenarios
     sums = np.zeros((K, W, P, len(WSTATS)), dtype=np.float32)
     games = np.zeros((K, W, P), dtype=np.int8)
     best = np.zeros((K, W, P), dtype=np.float32)
@@ -134,7 +182,11 @@ def build_world(inputs: pd.DataFrame, team_weeks: pd.DataFrame, model: dict, sce
         if not isinstance(tm, str) or tm not in wog:
             continue
         ix = [pos[int(q)] for q in g.index]
-        lam, present, _m = ts.team_game_lambdas(g, fits, {k: v[ix] for k, v in Lold.items()}, gpq[ix], fpq[ix], params, seed_offset=ti)
+        G = len(wog[tm])
+        if G == 0:
+            continue
+        Pt = replace(params, games=G)
+        lam, present, _m = ts.team_game_lambdas(g, fits, {k: v[ix] for k, v in Lold.items()}, gpq[ix], fpq[ix], Pt, seed_offset=ti)
         rng = np.random.default_rng([seed, 17, ti])
         draws = game_draws(lam, present, rng)
         onehot = np.zeros((G, W), dtype=np.float32)
@@ -150,7 +202,7 @@ def build_world(inputs: pd.DataFrame, team_weeks: pd.DataFrame, model: dict, sce
                 best[:, w, ix] = np.maximum(fp_hs[:, gi, :].max(axis=1), 0.0)
         if progress:
             print(f"[world] {tm} ({ti + 1}) {time.time() - t0:.1f}s", flush=True)
-    return World(pids, weeks, sums, games, best, K, time.time() - t0)
+    return World(pids, weeks, sums, games, best, K, time.time() - t0, from_week=from_week)
 
 
 def load_world(projection_path, team_weeks_path, model_path, scenarios: int = 128) -> World:

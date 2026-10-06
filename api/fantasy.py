@@ -78,9 +78,14 @@ def _load() -> dict:
 
 
 def _sim_available(st: dict) -> bool:
-    """Simülasyon projeksiyonu yalnız sezon öncesi geçerli: sezon içi güncelleme model değerlerini yeniler, SIM_* eski kadroda kalır."""
+    """Simülasyon projeksiyonu güncel mi? Sezon öncesi her zaman; sezon içinde yalnız SIM_* aynı güncellemede yeniden koşulduysa
+    (`SIM_AS_OF` == `INSEASON_AS_OF`, bkz. src/fantasy/inseason_sim.py) — yoksa eski kadroda kalır ve kapalıdır."""
     p = st["proj"]
-    return "SIM_FP" in p.columns and "INSEASON_AS_OF" not in p.columns and bool(p["SIM_FP"].notna().any())
+    if "SIM_FP" not in p.columns or not bool(p["SIM_FP"].notna().any()):
+        return False
+    if "INSEASON_AS_OF" not in p.columns:
+        return True
+    return "SIM_AS_OF" in p.columns and str(p["SIM_AS_OF"].iloc[0]) == str(p["INSEASON_AS_OF"].iloc[0])
 
 
 def _with_fp_pair(df: pd.DataFrame, proj: pd.DataFrame) -> pd.DataFrame:

@@ -502,35 +502,57 @@ def _world_enabled() -> bool:
     return os.environ.get("FANTASY_WORLD", "1") != "0"
 
 
+def _world_scope(st: dict) -> tuple[bool, int | None, str | None]:
+    """(kurulabilir mi, from_week, as_of). Sezon öncesi: tam sezon dünyası. Sezon içi: yalnız simülasyon girdileri (`SI_*`) o güncellemeye
+    aitse (`SIM_AS_OF` == `INSEASON_AS_OF`) ve oynanacak tam bir hafta kaldıysa — kalan haftalar dünyası."""
+    from src.fantasy.world import rest_from_week
+    proj = st["proj"]
+    if "SI_PTS" not in proj.columns:
+        return False, None, None
+    if "INSEASON_AS_OF" not in proj.columns:
+        return True, None, None
+    as_of = str(proj["INSEASON_AS_OF"].iloc[0])
+    if "SIM_AS_OF" not in proj.columns or str(proj["SIM_AS_OF"].iloc[0]) != as_of:
+        return False, None, as_of
+    fw = rest_from_week(st["weeks"], as_of)
+    return fw is not None, fw, as_of
+
+
 def _build_world_now(st: dict):
     from src.fantasy.world import build_world
     model_path = DATA_DIR / f"{SEASON}__fantasy_context_model.json"
     if not model_path.exists():
         return None
-    return build_world(st["proj"], st["team_weeks"], json.loads(model_path.read_text(encoding="utf-8")), scenarios=WORLD_K)
+    ok, fw, as_of = _world_scope(st)
+    if not ok:
+        return None
+    return build_world(st["proj"], st["team_weeks"], json.loads(model_path.read_text(encoding="utf-8")), scenarios=WORLD_K,
+                       from_week=fw, weeks_table=st["weeks"] if fw is not None else None, as_of=as_of)
 
 
 def get_world(block: bool = False, wait: float = 0.0):
-    """Hazır dünya ya da None (eski motor). Sezon içinde (INSEASON_AS_OF) ve SI_* girdisi yoksa her zaman None.
+    """Hazır dünya ya da None (eski motor). Sezon içinde dünya KALAN haftaları oynatır (`from_week`); girdi güncel değilse None.
     block=False: kurulmamışsa arka planda başlatır, şimdilik None döner. wait>0: kurulum sürüyorsa en çok o kadar saniye bekler
-    (açılıştan hemen sonraki ilk isteklerin eski / yeni motor arasında gidip gelmemesi için)."""
+    (açılıştan hemen sonraki ilk isteklerin eski / yeni motor arasında gidip gelmemesi için). Sezon içi saatlik güncellemede, aynı
+    kalan-sezon haftasına ait bir önceki dünya yenisi kurulana kadar kullanılır (bir saatlik eski, motor değişmez)."""
     if not _world_enabled():
         return None
     st = _load()
-    proj = st["proj"]
-    if "SI_PTS" not in proj.columns or "INSEASON_AS_OF" in proj.columns:
+    ok, fw, _as_of = _world_scope(st)
+    if not ok:
         return None
     mt = st["mtime"]
     with _world_lock:
-        if _world_state["mtime"] == mt and _world_state["world"] is not None:
-            return _world_state["world"]
+        cur = _world_state["world"]
+        if _world_state["mtime"] == mt and cur is not None:
+            return cur
+        stale = cur if (cur is not None and fw is not None and cur.from_week == fw) else None
         if _world_state["building"] and not block:
-            ev = _world_state["event"]
-            if wait > 0:
-                pass
-            else:
+            if stale is not None:
+                return stale
+            ev_wait = _world_state["event"] if wait > 0 else None
+            if ev_wait is None:
                 return None
-            ev_wait = ev
         else:
             ev_wait = None
         if ev_wait is None:
@@ -559,6 +581,8 @@ def get_world(block: bool = False, wait: float = 0.0):
         work()
         return _world_state["world"]
     threading.Thread(target=work, name="fantasy-world", daemon=True).start()
+    if stale is not None:                                         # yeni dünya kurulurken bir önceki saatinki hizmet verir
+        return stale
     if wait > 0:                                                  # bu çağrı kurulumu başlattıysa onu da bekle
         _world_state["event"].wait(wait)
         with _world_lock:
@@ -577,7 +601,7 @@ def start_fantasy_world() -> None:
 
 def _season_sim(b: dr.Board, fmt: dict) -> SeasonSim:
     world = get_world(wait=WORLD_WAIT)
-    key = json.dumps([fmt, _load()["mtime"], world is not None], sort_keys=True, default=str)
+    key = json.dumps([fmt, _load()["mtime"], id(world) if world is not None else 0], sort_keys=True, default=str)   # id: saatlik yenilemede eski → yeni dünya
     with _lock:
         if key in _sims:
             _sims.move_to_end(key)
