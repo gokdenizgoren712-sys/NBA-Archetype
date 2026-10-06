@@ -10,12 +10,17 @@ export const EXPLORE_TABS = [
   { key: "affinity", path: "/basketball/affinity", label: "Affinity" },
 ];
 
-export default function ExploreHeader({ active, aside, title = "Explore", tabs = EXPLORE_TABS }) {
+export default function ExploreHeader({ active, aside, title = "Explore", tabs = EXPLORE_TABS, eyebrow }) {
+  const sport = tabs[0]?.path?.startsWith("/football") ? "Football" : "Basketball";
+  const label = tabs.find(t => t.key === active)?.label;
   const navigate = useNavigate();
   return (
     <header className="ex-head">
       <div className="ex-head-l">
-        <h1>{title}</h1>
+        <div>
+          <p className="pa-eyebrow">{eyebrow || `${sport} · ${title}${label ? ` · ${label}` : ""}`}</p>
+          <h1>{title}</h1>
+        </div>
         <nav className="ex-tabs" role="tablist">
           {tabs.map(t => (
             <button key={t.key} role="tab" aria-selected={active === t.key}
