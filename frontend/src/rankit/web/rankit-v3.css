@@ -1,0 +1,19 @@
+/* ═══ RankIt web v3 dönüşümü (handoff 04-other · RankIt) ═══
+   Dönüşüm yöntemi: köşe 4px, düz paneller, gölge yok. Eşleşme kartı (MatchCard), kart yuvası
+   (.riw-card-slot), denetçi gövdesi ve yuvarlak öğeler (avatar, halka, rozet, anahtar) KASITLI olarak
+   dokunulmadı. Son yüklenen dosya olduğu için sıra ile kazanır. */
+.riw-insp-loading div, .riw-insp-entry, .riw-insp-crowd, .riw-quick, .riw-page-empty, .riw-empty-one, .riw-sheet, .riw-empty,
+.riw-insp-card, .riw-insp-note, .riw-insp-pitch, .riw-insp-events .ri-match-event-list, .riw-insp-events .ri-companion-note,
+.riw-insp-reviews article, .riw-insp-more, .riw-insp-compose-entry, .riw-insp-compose-field, .riw-moment-delta, .riw-club-box,
+.riw-club-next, .riw-shelf-slot, .riw-shelf-skeleton, .riw-heat-skeleton, .riw-read-box, .riw-read-skeleton, .riw-review-long,
+.riw-comp-skeleton, .riw-comp-table, .riw-search-club, .riw-search-rows, .riw-profile-rank, .riw-profile-nav, .riw-entry,
+.riw-people-list, .riw-suggest, .riw-lists-edit, .riw-tile, .riw-activity-item, .riw-diary-card, .riw-activity-row, .riw-notify,
+.riw-welcome-card, .riw-chip, .riw-follow-row, .riw-follow-skeleton, .riw-community-stats > div, .riw-list-new,
+.riw-read-card, .riw-insp-dock, .riw-rail-skeleton, .riw-standing,
+.riw-insp-tags button, .riw-club-squad button, .riw-read-tags li, .riw-welcome-chip, .riw-signin, .riw-fgroup button,
+.riw-filter-btn, .riw-drawer > footer button, .riw-tagcloud span, .riw-review-actions button, .riw-entity-chips button,
+.riw-insp-livepill, .riw-hide { border-radius: var(--radius); }
+.riw-insp-card, .riw-read-card, .riw-insp-dock, .riw-sheet, .riw-notify, .riw-welcome-card, .riw-tile, .riw-diary-card { box-shadow: none; }
+.riw-top { background: var(--bg-base); }
+.riw { background: var(--bg-base); }
+.riw button:focus-visible, .riw a:focus-visible, .riw input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

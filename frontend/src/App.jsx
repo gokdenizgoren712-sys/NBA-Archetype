@@ -69,6 +69,7 @@ const SportSelect    = lazy(() => import("./pages/SportSelect"));
 const FootballPlayers = lazy(() => import("./pages/football/FootballPlayers"));
 const FootballPlayerProfile = lazy(() => import("./pages/football/FootballPlayerProfile"));
 const Leaderboard = lazy(() => import("./pages/Leaderboard"));
+const Methodology = lazy(() => import("./pages/Methodology"));
 const FootballLineups = lazy(() => import("./pages/football/FootballLineups"));
 const FootballGame    = lazy(() => import("./pages/football/FootballGame"));
 const FootballMap     = lazy(() => import("./pages/football/FootballMap"));
@@ -213,6 +214,7 @@ function AppInner() {
               <Route path="/football/players"         element={<FootballPlayers />} />
               <Route path="/football/players/:id"     element={<FootballPlayerProfile />} />
               <Route path="/leaderboard"              element={<Leaderboard />} />
+              <Route path="/basketball/methodology"  element={<Methodology />} />
               <Route path="/football/lineups"         element={<FootballLineups />} />
               {/* Basketbolla aynı yapı: /football/game mod seçimi, oyun alt
                   rotalarda. Önceden Spin & Build doğrudan buradaydı ve kafa

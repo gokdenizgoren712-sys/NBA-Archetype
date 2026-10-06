@@ -30,6 +30,7 @@ export default function LegalPageLayout({ title, description, path, children }) 
           ))}
         </nav>
         <article className="lg-article">
+          <p className="pa-eyebrow">Legal</p>
           <h1>{title}</h1>
           <span className="lg-date">Draft prepared August 9, 2026</span>
           <p className="lg-draft">

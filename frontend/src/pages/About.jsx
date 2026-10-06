@@ -90,7 +90,7 @@ const SECTIONS = [
   {
     h: "Percentile-based scoring",
     p: "Raw statistics don't compare across eras. Every metric is turned into a within-season percentile rank — the only fair way to put a 1990 player and a 2025-26 player on the same scale. It works the same way across leagues: G League, NCAA and EuroLeague players are ranked within their own league.",
-    link: "/basketball/players", label: "See it applied to players",
+    link: "/basketball/methodology", label: "Read the methodology",
   },
   {
     h: "Lineup compatibility",

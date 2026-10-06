@@ -25,6 +25,7 @@ export default function ContactDisclaimer() {
       <SEO title="Contact & Disclaimer" description="How to reach Primary Arch, and a general disclaimer about the site's content." path="/contact" noindex />
       <div className="ct-grid">
         <div className="ct-left">
+          <p className="pa-eyebrow">Legal · Contact</p>
           <h1>Get in touch</h1>
           <p className="ct-sub">Found a wrong stat, a missing player or a bug in the game? Tell us — we read everything.</p>
           <div className="ct-info">
@@ -65,7 +66,7 @@ export default function ContactDisclaimer() {
           </label>
           <div className="ct-send">
             <span>Opens a ready-to-send email in your mail app — nothing is sent from this page.</span>
-            <button type="submit" className="aura-rating-btn" disabled={!msg.trim()}>Write email</button>
+            <button type="submit" className="pa-btn primary s48" disabled={!msg.trim()}>Write email</button>
           </div>
         </form>
       </div>

@@ -44,6 +44,7 @@ import "./rankit-web.css";
 import "./rankit-inspector.css";
 import "./rankit-pages.css";
 import "./rankit-responsive.css";
+import "./rankit-v3.css";
 
 // ── RankIt web yüzeyi ────────────────────────────────────────────────────────
 // Görsel dünya telefondan devralınıyor; masaüstünün getirdiği tek şey aynı anda
