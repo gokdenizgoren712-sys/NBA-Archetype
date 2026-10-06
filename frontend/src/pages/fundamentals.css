@@ -169,3 +169,22 @@
 .ffa-phases > div p { margin: 4px 0 0; font-size: 13px; line-height: 1.5; color: var(--text-secondary); }
 @media (max-width: 1280px) { .ffg-cols { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 767px) { .ffg-cols { grid-template-columns: minmax(0, 1fr); gap: 28px; } }
+
+/* ═══ v3 L1–L2 geçersiz kılmaları: düz kartlar, kutulu çipler, ışıma yok ═══ */
+.fg-inner { padding: 28px clamp(20px, 3vw, 32px) 48px; }
+.fg-kinds button { min-height: 34px; border: 1px solid var(--panel-border); border-radius: var(--radius); background: var(--field); font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .08em; text-transform: uppercase; }
+.fg-kinds button.on { background: var(--accent-dim); border-color: var(--accent-border); color: var(--accent); }
+.fg-kinds button:focus-visible, .fg-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.fg-grid { gap: 16px; }
+.fg-card { border: 1px solid var(--panel-border); border-radius: var(--radius); background: var(--panel); box-shadow: none; transition: border-color .15s; }
+.fg-card:not(.mod):hover, .fg-card:not(.mod):focus-visible { transform: none; box-shadow: none; border-color: var(--c); }
+.fg-card .glow { display: none; }
+.fg-card .art { filter: none; }
+.fg-card h3 { letter-spacing: .06em; text-transform: uppercase; }
+.fg-card .cta { text-shadow: none; }
+.fg-metrics .tr, .ffg-metrics .tr { background: var(--field); }
+.fg-era, .ffg-role { border-radius: var(--radius); }
+.fg-era { border: 1px solid var(--panel-border); background: var(--panel); box-shadow: none; }
+.fg-era .badge { border-radius: var(--radius); }
+.fg-era .chips span { border-radius: var(--radius); }
+.fg-acc-row > button i, .ffg-h i, .ffa-phases > div b i, .fa-colors i { box-shadow: none; }
