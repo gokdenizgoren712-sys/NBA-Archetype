@@ -4971,6 +4971,8 @@ _XI_SIZE = 11
 
 
 class H2HCreateBody(BaseModel):
+    # Draft uzunluğu: "xi" (yalnız ilk 11) | "squad" (11 + 7 yedek, menajer dahil).
+    length: str = "xi"
     mode: str = "friend"
     season: str | None = None
     name: str | None = None
@@ -5161,6 +5163,7 @@ def _h2h_public(row, uid: int) -> dict:
         # geçişi buna bağlıyor — önceden p2_name'e bakıyordu ve join onu hiç
         # yazmadığı için kimse draft'a geçemiyordu.
         "opponent_joined": bool(row["p1_user_id"] and row["p2_user_id"]),
+        "length": row["length"] if "length" in row.keys() else "xi",
         # Ortak biçim (basketbol odasının usernames haritasıyla aynı bilgi).
         "players": [
             {"seat": i, "user_id": row[f"p{i}_user_id"], "username": n}
@@ -5179,6 +5182,8 @@ def _h2h_public(row, uid: int) -> dict:
 def create_h2h_room(body: H2HCreateBody, user=Depends(get_current_user)):
     if body.mode not in _H2H_MODES:
         raise HTTPException(400, "Invalid mode: " + str(body.mode))
+    if body.length not in ("xi", "squad"):
+        raise HTTPException(400, "Invalid draft length: " + str(body.length))
     season = body.season or _football_default_season()
     for _ in range(6):
         code = _h2h_code()
@@ -5186,11 +5191,11 @@ def create_h2h_room(body: H2HCreateBody, user=Depends(get_current_user)):
             with get_conn() as conn:
                 conn.execute(
                     "INSERT INTO football_h2h_rooms "
-                    "(room_code, mode, status, season, p1_user_id, p1_name) "
-                    "VALUES (?,?,'waiting',?,?,?)",
+                    "(room_code, mode, status, season, p1_user_id, p1_name, length) "
+                    "VALUES (?,?,'waiting',?,?,?,?)",
                     (code, body.mode, season, int(user["sub"]),
                      (body.name or "").strip()[:40]
-                     or _h2h_username(user["sub"])))
+                     or _h2h_username(user["sub"]), body.length))
             return {"room_code": code, "season": season, "mode": body.mode}
         except Exception as e:
             if "UNIQUE" not in str(e):

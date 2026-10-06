@@ -127,12 +127,16 @@ def _restore(row) -> dict | None:
 
 # ── Durum ────────────────────────────────────────────────────────────────────
 
-def _init_state(row, first: int | None = None) -> dict:
+def _init_state(row, first: int | None = None, length: str | None = None) -> dict:
     R = _rules()
+    if length is None:
+        # Odanın açılışta seçtiği uzunluk. Eski satırlarda sütun yok / "xi".
+        length = row["length"] if "length" in row.keys() and row["length"] else "xi"
     p1, p2 = row["p1_user_id"], row["p2_user_id"]
     if first is None:
         first = 1 if random.random() < 0.5 else 2
-    d = R.create_draft(shapes={1: "4-3-3", 2: "4-3-3"}, wheel_mode="round", first=first)
+    d = R.create_draft(shapes={1: "4-3-3", 2: "4-3-3"}, wheel_mode="round", first=first,
+                       length=length)
     d.update({
         "seats": {1: p1, 2: p2},
         "names": {"1": _name(row, "p1", "Player 1"), "2": _name(row, "p2", "Player 2")},
@@ -150,6 +154,12 @@ def _init_state(row, first: int | None = None) -> dict:
         "rematch_ready": {},
         "rematches": 0,
         "history": [],
+        # Tam kadro ("squad") akışı: draft → review (son slot takası, ikisi de
+        # kilitleyince) → hire (menajer) → eleme.
+        "locked": {"1": False, "2": False},
+        "manager_options": {},      # {"1": [4 menajer], "2": [4 menajer]} — SUNUCU çeker
+        "managers": {},             # {"1": {...}, "2": {...}} işe alınanlar
+        "numbers": {},              # eleme motorunun gördüğü rakamlar, iki ekran aynısını göstersin
     })
     return d
 
@@ -195,6 +205,11 @@ def _public(code: str, state: dict) -> dict:
         "result": state.get("result"),
         # Rövanş. rematch_ready: {"<user_id>": bool} (docs/BACKEND_PROMPT_GAME_UI.md).
         "challenge": state.get("challenge"),
+        "length": state.get("length", "xi"),
+        "locked": state.get("locked") or {},
+        "manager_options": state.get("manager_options") or {},
+        "managers": state.get("managers") or {},
+        "numbers": state.get("numbers") or {},
         "rematch_ready": state.get("rematch_ready") or {},
         "rematches": state.get("rematches", 0),
         "rematch_limit": REMATCH_LIMIT,
@@ -260,6 +275,7 @@ def _finish(code: str, state: dict) -> None:
     R = _rules()
 
     payloads = {}
+    numbers = {}
     for seat in (1, 2):
         sq = R.squad_of(state, seat)
         entries = [{"player_id": int(p["PLAYER_ID"]),
@@ -269,13 +285,23 @@ def _finish(code: str, state: dict) -> None:
         if not side:
             print(f"[football_ws] {code}: koltuk {seat} skorlanamadı", flush=True)
             return
-        quality = float(max(0.25, min(0.95, side["quality_raw"] - sq["positionPenalty"])))
+        # headToHead.buildSide ile AYNI formül: clamp(ortalama − ceza + menajer).
+        # Menajer yalnız "squad" akışında var; "xi"de bonus 0.
+        mgr = (state.get("managers") or {}).get(str(seat))
+        mb = R.manager_bonus(mgr, sq["shape"])
+        quality = float(max(0.25, min(0.95, side["quality_raw"] - sq["positionPenalty"]
+                                    + mb["bonus"])))
+        numbers[str(seat)] = {"quality": quality, "mean": side["quality_raw"],
+                              "positionFit": 1 - sq["positionPenalty"],
+                              "bonus": mb["bonus"], "matched": mb["matched"]}
         payloads[seat] = json.dumps({
             "entries": entries, "shape": sq["shape"],
+            "manager": mgr["name"] if mgr else None,
             "position_penalty": sq["positionPenalty"],
             "side": {"quality": quality, "chemistry": side["chemistry"]},
             "players": side["players"]}, ensure_ascii=False)
 
+    state["numbers"] = numbers
     with get_conn() as conn:
         conn.execute("UPDATE football_h2h_rooms SET p1_squad_json=?, p2_squad_json=?, "
                      "updated_at=datetime('now') WHERE room_code=?",
@@ -412,14 +438,92 @@ def _start_rematch(code: str, state: dict) -> None:
     # Önceki turda İLK seçmeyen şimdi ilk seçsin.
     want_uid = a if prev_first_uid == b else b
     first_seat = 1 if want_uid == row["p1_user_id"] else 2
-    fresh = _init_state(row, first=first_seat)
+    fresh = _init_state(row, first=first_seat, length=state.get("length", "xi"))
     fresh.update({"history": history, "rematches": rematches, "wheelMode": wheel})
     state.clear()
     state.update(fresh)
 
 
+def _after_draft(code: str, state: dict) -> None:
+    """Draft bitti. Kısa draft'ta doğrudan eleme; tam kadroda önce review → hire."""
+    if state.get("length") == "squad":
+        state["stage"] = "review"
+        state["locked"] = {"1": False, "2": False}
+        if state.get("challenge"):
+            state["locked"]["2"] = True       # donmuş rakip kadrosunu düzenlemez
+    else:
+        _finish(code, state)
+
+
+def _h_length(state: dict, seat: int, msg: dict) -> str | None:
+    """Draft uzunluğu ("xi" | "squad"): odayı açan seçer, yalnız kurulumda.
+    Havuz tek, çark tek: iki ayrı uzunluk olamaz."""
+    R = _rules()
+    if state["stage"] != "setup":
+        return "The draft has already started"
+    if state.get("challenge"):
+        return "A challenge is played at the length it was opened with"
+    if seat != 1:
+        return "Only the player who opened the room sets the draft length"
+    length = str(msg.get("length") or "")
+    if length not in R.LENGTHS:
+        return f"Unknown draft length: {length}"
+    state["length"] = length
+    return None
+
+
+def _h_swap(state: dict, seat: int, msg: dict) -> str | None:
+    """Kilitli kadro ekranındaki son düzenleme. Kilitliyken değişmez: iki taraf da
+    "bitti" dedikten sonra bir tarafın kadrosunun oynaması rakibin gördüğüyle
+    uyuşmazlık demek olurdu."""
+    R = _rules()
+    if state["stage"] != "review":
+        return "There is nothing to rearrange right now"
+    if state["locked"].get(str(seat)):
+        return "Unlock your squad to rearrange it"
+    ok, res = R.swap(state, seat, str(msg.get("a") or ""), str(msg.get("b") or ""))
+    if not ok:
+        return str(res)
+    state.clear()
+    state.update(res)
+    return None
+
+
+def _h_lock(state: dict, seat: int, msg: dict) -> str | None:
+    R = _rules()
+    if state["stage"] != "review":
+        return "There is nothing to lock right now"
+    state["locked"][str(seat)] = bool(msg.get("ready", True))
+    if all(state["locked"].get(str(x)) for x in (1, 2)):
+        if state.get("challenge"):
+            state["_finish_go"] = True        # donmuş kadroların menajeri yok
+        else:
+            state["stage"] = "hire"
+            # İki taraf AYNI ANDA işe alır (iki cihaz); seçenekleri sunucu çeker.
+            state["manager_options"] = {"1": R.draw_managers(4), "2": R.draw_managers(4)}
+            state["managers"] = {}
+    return None
+
+
+def _h_hire(state: dict, seat: int, msg: dict) -> str | None:
+    if state["stage"] != "hire":
+        return "It is not time to hire a manager"
+    if str(seat) in state["managers"]:
+        return "You have already hired a manager"
+    name = str(msg.get("manager") or "")
+    pick = next((m for m in (state["manager_options"].get(str(seat)) or [])
+                 if m["name"] == name), None)
+    if pick is None:
+        return "That manager is not on your list"
+    state["managers"][str(seat)] = pick
+    if len(state["managers"]) == 2:
+        state["_finish_go"] = True
+    return None
+
+
 HANDLERS = {"shape": _h_shape, "wheel": _h_wheel, "ready": _h_ready, "pick": _h_pick,
-            "rematch_ready": _h_rematch_ready}
+            "rematch_ready": _h_rematch_ready, "length": _h_length, "swap": _h_swap,
+            "lock": _h_lock, "hire": _h_hire}
 
 
 # ── Soket ────────────────────────────────────────────────────────────────────
@@ -511,6 +615,8 @@ async def football_room_socket(ws: WebSocket, room_code: str, token: str = Query
                 R = _rules()
                 if (state["stage"] == "drafting" and state["phase"] == "done"
                         and not state.get("result")):
+                    _after_draft(room_code, state)
+                if state.pop("_finish_go", False):
                     _finish(room_code, state)
                 if state.pop("_rematch_go", False):
                     _start_rematch(room_code, state)
@@ -584,7 +690,7 @@ def _user_in_open_room(uid: int) -> bool:
     return bool(row)
 
 
-def _make_room(uid_a: int, uid_b: int, season: str) -> str | None:
+def _make_room(uid_a: int, uid_b: int, season: str, length: str = "xi") -> str | None:
     from .main import _h2h_code, _h2h_username
     for _ in range(6):
         code = _h2h_code()
@@ -593,10 +699,10 @@ def _make_room(uid_a: int, uid_b: int, season: str) -> str | None:
                 conn.execute(
                     "INSERT INTO football_h2h_rooms "
                     "(room_code, mode, status, season, p1_user_id, p2_user_id, "
-                    "p1_name, p2_name, flow) "
-                    "VALUES (?, 'online', 'building', ?, ?, ?, ?, ?, 'draft')",
+                    "p1_name, p2_name, flow, length) "
+                    "VALUES (?, 'online', 'building', ?, ?, ?, ?, ?, 'draft', ?)",
                     (code, season, uid_a, uid_b,
-                     _h2h_username(uid_a), _h2h_username(uid_b)))
+                     _h2h_username(uid_a), _h2h_username(uid_b), length))
             return code
         except Exception as e:
             if "UNIQUE" not in str(e):
@@ -627,7 +733,10 @@ def _avg_wait_s() -> float | None:
 
 def _queue_msg() -> dict:
     # skill_band YOK: futbolda bir beceri puanı sistemi yok, uydurmuyoruz.
-    return {"type": "queue", "size": len(MM_QUEUE), "avg_wait_s": _avg_wait_s()}
+    by_length = {L: sum(1 for e in MM_QUEUE if e.get("length", "xi") == L)
+                 for L in ("xi", "squad")}
+    return {"type": "queue", "size": len(MM_QUEUE), "by_length": by_length,
+            "avg_wait_s": _avg_wait_s()}
 
 
 async def _mm_queue_size() -> None:
@@ -663,7 +772,8 @@ async def _open_match(a: dict, b: dict) -> None:
     now = datetime.now(timezone.utc)
     m = {"id": mid, "users": [a["user_id"], b["user_id"]],
          "entries": {a["user_id"]: a, b["user_id"]: b},
-         "accepted": set(), "deadline": deadline, "task": None}
+         "accepted": set(), "deadline": deadline, "task": None,
+         "length": a.get("length", "xi")}
     PENDING_MATCHES[mid] = m
     for e in (a, b):
         USER_MATCH[e["user_id"]] = mid
@@ -671,7 +781,7 @@ async def _open_match(a: dict, b: dict) -> None:
     m["task"] = asyncio.create_task(_match_timeout(mid))
     for me, them in ((a["user_id"], b["user_id"]), (b["user_id"], a["user_id"])):
         await _mm_notify(me, {
-            "type": "matched", "match_id": mid,
+            "type": "matched", "match_id": mid, "length": m["length"],
             "accept_deadline": deadline, "accept_seconds": ACCEPT_SECONDS,
             "opponent": _opponent_card(them),
             "opponent_user_id": them,          # eski alan, geriye dönük
@@ -679,9 +789,20 @@ async def _open_match(a: dict, b: dict) -> None:
 
 
 async def _try_pair() -> None:
-    while len(MM_QUEUE) >= 2:
-        a, b = MM_QUEUE.pop(0), MM_QUEUE.pop(0)
-        await _open_match(a, b)
+    """FIFO, ama uzunluk başına: kısa draft isteyen, tam kadro isteyenle eşleşmez —
+    biri on bir seçim bekler, öbürü on sekiz; ikisinden biri istemediği oyuna girerdi."""
+    while True:
+        pair = None
+        for length in ("xi", "squad"):
+            same = [e for e in MM_QUEUE if e.get("length", "xi") == length]
+            if len(same) >= 2:
+                pair = (same[0], same[1])
+                break
+        if pair is None:
+            return
+        MM_QUEUE.remove(pair[0])
+        MM_QUEUE.remove(pair[1])
+        await _open_match(*pair)
 
 
 async def _match_timeout(mid: str) -> None:
@@ -747,7 +868,7 @@ async def _accept_match(uid: int) -> str | None:
     from .main import _football_default_season
     _end_match(mid)
     a, b = m["users"]
-    code = _make_room(a, b, _football_default_season())
+    code = _make_room(a, b, _football_default_season(), m["length"])
     if code is None:
         # Oda açılamadı: kimse sessizce düşmesin, ikisi de sıranın başına dönsün.
         for u in reversed(m["users"]):
@@ -765,8 +886,15 @@ async def _accept_match(uid: int) -> str | None:
     return None
 
 
+class QueueBody(BaseModel):
+    length: str = "xi"          # "xi" | "squad" — yalnız aynısını isteyenle eşleşirsin
+
+
 @router.post("/api/football/matchmaking/join")
-async def football_matchmaking_join(user=Depends(get_current_user)):
+async def football_matchmaking_join(body: QueueBody = QueueBody(),
+                                    user=Depends(get_current_user)):
+    if body.length not in ("xi", "squad"):
+        raise HTTPException(400, "Invalid draft length: " + str(body.length))
     uid = int(user["sub"])
     _mm_purge()
     if uid in USER_MATCH:
@@ -776,7 +904,8 @@ async def football_matchmaking_join(user=Depends(get_current_user)):
     if any(e["user_id"] == uid for e in MM_QUEUE):
         return {"queued": True, "queue_size": len(MM_QUEUE), "avg_wait_s": _avg_wait_s()}
 
-    MM_QUEUE.append({"user_id": uid, "joined_at": datetime.now(timezone.utc)})
+    MM_QUEUE.append({"user_id": uid, "joined_at": datetime.now(timezone.utc),
+                     "length": body.length})
     await _try_pair()
     mid = USER_MATCH.get(uid)
     if mid:
@@ -896,6 +1025,7 @@ _BOARD_PLAYER_KEYS = ("PLAYER_ID", "PLAYER_NAME", "TEAM", "LEAGUE", "SEASON", "P
 
 class ChallengeBody(BaseModel):
     entry_id: int
+    length: str = "xi"          # "xi" | "squad" (squad: yedekler + takas; menajer yok)
 
 
 def _frozen_xi(roster, shape: str) -> dict | None:
@@ -1046,10 +1176,21 @@ async def football_challenge(body: ChallengeBody, user=Depends(get_current_user)
         raise HTTPException(404, "Challenge entry not found")
     if row["user_id"] == uid:
         raise HTTPException(400, "Cannot challenge your own squad")
+    if body.length not in ("xi", "squad"):
+        raise HTTPException(400, "Invalid draft length: " + str(body.length))
+    roster = json.loads(row["roster_json"] or "[]")
     entry = _board_entry(row, _chem_reference())
-    frozen = _frozen_xi(json.loads(row["roster_json"] or "[]"), row["mode"]) if entry else None
+    frozen = _frozen_xi(roster, row["mode"]) if entry else None
     if entry is None or frozen is None:
         raise HTTPException(409, "That squad can't be challenged")
+    if body.length == "squad":
+        # Tam kadro: rakibin yedekleri de donmuş kadrosuna girer (draft 18'e
+        # ulaşınca biten taraf olarak sayılması için). Geçerli 7 yedek şart.
+        bench = {p["_slot"]: p for p in roster if isinstance(p, dict)
+                 and str(p.get("_slot", "")).startswith("SUB")}
+        if sorted(bench) != [f"SUB{i}" for i in range(1, 8)]:
+            raise HTTPException(409, "That squad can't be challenged")
+        frozen = {**frozen, **bench}
     if uid in USER_MATCH or _user_in_open_room(uid):
         raise HTTPException(409, "You are already in a room")
 
@@ -1061,10 +1202,10 @@ async def football_challenge(body: ChallengeBody, user=Depends(get_current_user)
                 conn.execute(
                     "INSERT INTO football_h2h_rooms "
                     "(room_code, mode, status, season, p1_user_id, p2_user_id, "
-                    "p1_name, p2_name, flow, challenge_entry_id) "
-                    "VALUES (?, 'challenge', 'building', ?, ?, ?, ?, ?, 'challenge', ?)",
+                    "p1_name, p2_name, flow, challenge_entry_id, length) "
+                    "VALUES (?, 'challenge', 'building', ?, ?, ?, ?, ?, 'challenge', ?, ?)",
                     (c, _football_default_season(), uid, row["user_id"],
-                     _h2h_username(uid), row["username"], body.entry_id))
+                     _h2h_username(uid), row["username"], body.entry_id, body.length))
             code = c
             break
         except Exception as e:

@@ -341,3 +341,60 @@ def test_deleting_the_squad_mid_challenge_does_not_pull_the_room_away(client, po
     with client.websocket_connect(f"/ws/football/room/{code}?token={me['token']}") as ws:
         s = _drain(ws)
     assert s["stage"] == "setup" and len(s["squads"]["2"]) == 11
+
+
+# ── tam kadro (11 + 7 yedek) meydan okuması ──────────────────────────────────
+def test_squad_challenge_rejects_an_unknown_length(client, pool):
+    owner, me = _user(), _user()
+    entry = _save(owner, pool, list(pool)[0], 75)
+    r = client.post("/api/football/challenge", json={"entry_id": entry, "length": "huge"},
+                    headers=me["h"])
+    assert r.status_code == 400
+
+
+def test_squad_challenge_needs_a_full_bench(client, pool):
+    owner, me = _user(), _user()
+    short = [p for p in _roster(pool, list(pool)[0]) if p["_slot"] != "SUB7"]
+    entry = _save(owner, pool, list(pool)[0], 75, roster=short)
+    r = client.post("/api/football/challenge", json={"entry_id": entry, "length": "squad"},
+                    headers=me["h"])
+    assert r.status_code == 409, "7 yedeği olmayan kadro tam-kadro meydan okumasına girdi"
+
+
+def test_squad_challenge_freezes_the_bench_and_skips_hiring(client, pool):
+    import api.football_ws as fws
+    from football import draft_rules as R
+    owner, me = _user(), _user()
+    entry = _save(owner, pool, list(pool)[0], 75)
+    code = client.post("/api/football/challenge", json={"entry_id": entry, "length": "squad"},
+                       headers=me["h"]).json()["room_code"]
+    st = fws.ROOM_STATES[code]
+    assert st["length"] == "squad"
+    assert len(st["squads"][2]) == 18 and len(st["takenIds"]) == 18
+
+    with client.websocket_connect(f"/ws/football/room/{code}?token={me['token']}") as ws:
+        s = _drain(ws)
+        ws.send_json({"type": "ready", "ready": True})
+        s = _drain(ws)
+        guard = 0
+        while s["stage"] == "drafting" and guard < 60:
+            guard += 1
+            taken = set(s["takenIds"])
+            squad = s["squads"]["1"]
+            slots = [x for x in R.slots_for(s["shapes"]["1"])
+                     + [{"id": f"SUB{i}", "bench": True} for i in range(1, 8)]
+                     if x["id"] not in squad]
+            pick = next(((p, sl["id"]) for p in (s["pool"] or {}).get("players", [])
+                         if p["PLAYER_ID"] not in taken
+                         for sl in slots if R.can_place(p, sl)), None)
+            assert pick, "seçilebilir kimse yok"
+            ws.send_json({"type": "pick", "player_id": pick[0]["PLAYER_ID"], "slot": pick[1]})
+            s = _drain(ws)
+        assert s["stage"] == "review" and s["locked"]["2"] is True, \
+            "donmuş rakip review'da kilitli başlamadı"
+        assert len(s["squads"]["1"]) == 18
+
+        ws.send_json({"type": "lock"})
+        s = _drain(ws)
+        assert s["stage"] == "done" and s["result"], "meydan okumada menajer aşaması açıldı"
+        assert s["manager_options"] == {}

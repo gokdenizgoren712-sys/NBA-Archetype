@@ -1014,6 +1014,13 @@ def init_db():
             conn.execute("ALTER TABLE football_h2h_rooms ADD COLUMN draft_state_json TEXT")
         except Exception:
             pass
+        # Draft uzunluğu: "xi" (yalnız ilk 11) | "squad" (11 + 7 yedek). Odayı açan
+        # seçer. Varsayılan "xi": mevcut odalar ve eski istemciler değişmez.
+        try:
+            conn.execute("ALTER TABLE football_h2h_rooms ADD COLUMN "
+                         "length TEXT NOT NULL DEFAULT 'xi'")
+        except Exception:
+            pass
         # Board meydan okuması: hangi kayıtlı kadroya karşı oynanıyor.
         try:
             conn.execute("ALTER TABLE football_h2h_rooms ADD COLUMN challenge_entry_id INTEGER")

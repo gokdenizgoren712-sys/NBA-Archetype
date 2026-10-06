@@ -460,3 +460,51 @@ def test_deleting_an_account_anonymises_results_but_keeps_the_survivors_record(c
     assert kept == 3, "sağ kalanın satırları silindi"
     assert _h2h_record(survivor["id"]) == {"wins": 2, "losses": 1, "played": 3}, \
         "rakibin hesabı silinince sağ kalanın rekoru bozuldu"
+
+
+# ── draft uzunluğu: yalnız aynısını isteyenle eşleşirsin ─────────────────────
+def _join_len(client, u, length):
+    return client.post("/api/football/matchmaking/join", json={"length": length}, headers=u["h"])
+
+
+def test_matchmaking_rejects_unknown_length(client):
+    a = _user()
+    assert _join_len(client, a, "huge").status_code == 400
+
+
+def test_different_lengths_are_never_paired(client):
+    import api.football_ws as fws
+    _reset(fws)
+    with _two(client) as (a, b, wa, wb):
+        assert _join_len(client, a, "xi").status_code == 200
+        assert _join_len(client, b, "squad").status_code == 200
+        time.sleep(0.4)
+        assert not fws.PENDING_MATCHES, "farklı uzunluktaki iki oyuncu eşleşti"
+        assert {e["user_id"] for e in fws.MM_QUEUE} == {a["id"], b["id"]}
+
+
+def test_same_length_pairs_and_the_room_inherits_it(client):
+    import api.football_ws as fws
+    _reset(fws)
+    with _two(client) as (a, b, wa, wb):
+        _join_len(client, a, "squad"); _join_len(client, b, "squad")
+        _wait(lambda: len(fws.PENDING_MATCHES) == 1, what="eşleşme kurulmadı")
+        assert _recv(wa, "matched")["length"] == "squad"
+        _recv(wb, "matched")
+        wa.send_json({"type": "accept"}); wb.send_json({"type": "accept"})
+        sa = _recv(wa, "starting")
+        rooms = _rooms_for(a["id"], b["id"])
+        assert len(rooms) == 1 and rooms[0]["room_code"] == sa["room_code"]
+        assert rooms[0]["length"] == "squad"
+
+
+def test_a_third_player_waits_for_a_partner_of_their_own_length(client):
+    import api.football_ws as fws
+    _reset(fws)
+    with _two(client) as (a, b, wa, wb):
+        c = _user()
+        _join_len(client, a, "xi"); _join_len(client, c, "squad"); _join_len(client, b, "xi")
+        _wait(lambda: len(fws.PENDING_MATCHES) == 1, what="xi çifti eşleşmedi")
+        m = next(iter(fws.PENDING_MATCHES.values()))
+        assert set(m["users"]) == {a["id"], b["id"]} and m["length"] == "xi"
+        assert [e["user_id"] for e in fws.MM_QUEUE] == [c["id"]]

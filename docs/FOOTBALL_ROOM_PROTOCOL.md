@@ -200,3 +200,33 @@ dizilişi bozan, aynı oyuncuyu iki kez içeren kadro. Meydan okunursa 409 `That
 - Sonuç `football_challenge_results`'a yazılır (`won:1` = meydan okuyan kazandı). **H2H rekoruna yazılmaz**:
   sahibi oyunda yoktu, onun rekoruna galibiyet/mağlubiyet yazmak yanlış olurdu.
 - Sahibi, bir meydan okuma sürerken eşleştirmeye ya da kendi odasını kurmaya **engellenmez** (o oyunda yok).
+- Tam kadro (`length:"squad"`): `POST /api/football/challenge {entry_id, length}`. Rakibin 7 yedeği de
+  dondurulur (`takenIds` 18); koltuk 2 review'da **baştan kilitli**; menajer aşaması **yok** (donmuş
+  kadronun menajeri yok). Board'a yalnız 18'lik kadrolar girdiği için kısa draft'ta da bu kadro 18'dir —
+  `length` yalnızca *meydan okuyanın* ne kadar draft edeceğini belirler.
+
+## 5. Draft uzunluğu ve tam kadro akışı
+
+Her futbol modunda iki uzunluk: **`"xi"`** (varsayılan, ilk 11, eski istemciler aynen çalışır) ve
+**`"squad"`** (11 + 7 yedek = 18 seçim). Leaderboard yalnız 18'lik kadrolardan hesaplanır
+(`/api/rosters` futbolda 18 ister), bu yüzden kısa draft'ın sonucu Board'a kaydedilemez.
+
+**Seçim:** `POST /api/football/h2h/room {length}` (geçersiz → 400); odayı açan kurulumda soketten de
+değiştirebilir: `{"type":"length","length":"squad"}` (yalnız host, yalnız `setup`; aksi `error`).
+Online eşleştirmede `POST /api/football/matchmaking/join {length}` — **yalnız aynı uzunluğu isteyenler**
+eşleşir (`queue.by_length`, `matched.length`); oda eşleşmenin uzunluğunu alır. Rövanş uzunluğu korur.
+Oda nesnesi ve `state` mesajı `length` taşır.
+
+**`squad` akışı:** `setup → drafting → review → hire → done`
+
+- Yedek slotlar `SUB1…SUB7`: pozisyon cezası yok, skor/ceza yalnız saha XI'inden. Slot id'leri `pick.slot`'ta.
+- **review** — `{"type":"swap","a":slot,"b":slot}` (kaleci yalnız kalede: `error "A goalkeeper can only stand in goal."`),
+  `{"type":"lock","ready":true|false}`. Kilitliyken takas reddedilir (`"Unlock your squad…"`). İkisi de
+  kilitleyince `hire`.
+- **hire** — `state.manager_options[seat]` = SUNUCUNUN çektiği 4 menajer (iki taraf aynı anda seçer);
+  `{"type":"hire","manager":name}` (listede olmayan/ikinci seçim → `error`). İkisi de seçince eleme.
+- Menajer bonusu: şekil eşleşirse `0.05·q`, değilse `0.01·q`, `q = (grade(att)+grade(def))/2`.
+  `quality = clamp(0.25..0.95, ortalama − pozisyon cezası + bonus)`.
+- `state.numbers[seat] = {quality, mean, positionFit, bonus, matched}` — eleme motorunun gördüğü rakamlar;
+  iki ekran aynısını göstersin diye sunucudan gelir.
+- `state` yeni alanlar: `length`, `locked`, `manager_options`, `managers`, `numbers`.
