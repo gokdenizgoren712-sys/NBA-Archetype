@@ -9,6 +9,7 @@ export const NAV = {
     { title: "Play", items: [
       { to: "/basketball/game",    icon: "game",    label: "Game" },
       { to: "/basketball/lineups", icon: "lineups", label: "Lineups" },
+      { to: "/leaderboard",        icon: "trophy",  label: "Leaderboard" },
       // Fantezi: etkinken alt sayfaları açılır (tasarım L1-1). Sezon içi
       // sayfalar (This week, Trade) açılış gecesinden sonra eklenecek.
       { to: "/basketball/fantasy", icon: "fantasy", label: "Fantasy", kids: [
@@ -41,6 +42,7 @@ export const NAV = {
     { title: "Play", items: [
       { to: "/football/game",    icon: "game",    label: "Game" },
       { to: "/football/lineups", icon: "lineups", label: "Chemistry" },
+      { to: "/leaderboard",      icon: "trophy",  label: "Leaderboard" },
     ] },
     { title: "Scout", items: [
       { to: "/football/players", icon: "football", label: "Players" },

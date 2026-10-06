@@ -12,7 +12,6 @@ import "./settings.css";
 // Google bağlantısını kesme, veri dışa aktarma ve Yahoo (ertelendi) için uç nokta adı uydurulmadı: pasif kalır.
 const WRITE_API = import.meta.env?.VITE_ACCOUNT_API === "1";
 const TABS = [["account", "Account"], ["security", "Security"], ["connections", "Connections"], ["data", "Data & privacy"]];
-const SOON = "Not available yet";
 
 const maskEmail = (e = "") => { const [u, d] = e.split("@"); return d ? `${u.slice(0, 6)}${u.length > 6 ? "···" : ""}@${d}` : e; };
 const since = (iso) => { const d = iso ? new Date(String(iso).replace(" ", "T") + (String(iso).includes("Z") ? "" : "Z")) : null; return d && !Number.isNaN(+d) ? d.toLocaleDateString("en-US", { month: "long", year: "numeric" }) : null; };
@@ -50,15 +49,21 @@ function AccountTab({ me, token, onSaved }) {
           <span className="st-av">{me.username?.[0]?.toUpperCase()}</span>
           <div><h2>{me.username}</h2>{since(me.created_at) && <p>Member since {since(me.created_at)}</p>}</div>
         </div>
-        <Field label="Username" value={name} onChange={(e) => setName(e.target.value)} disabled={!WRITE_API}
-          hint={WRITE_API ? "3 to 24 characters. Letters, numbers, underscore." : `${SOON}. Changing your username needs a server update.`}
-          error={dirty && bad ? "3 to 24 characters. Letters, numbers, underscore." : err} />
-        <div className="st-actions">
-          <Button variant="primary" disabled={!WRITE_API || !dirty || bad || busy} onClick={save}>{busy ? "Saving…" : "Save"}</Button>
-          {dirty && <Button variant="quiet" onClick={() => { setName(me.username); setErr(""); }}>Cancel</Button>}
-        </div>
-        <Row label="Email" action={<Button variant="quiet" disabled title={SOON}>Edit</Button>}>
-          {maskEmail(me.email)}<small>Used to sign in and to reset your password.{WRITE_API ? "" : ` Editing: ${SOON.toLowerCase()}.`}</small>
+        {WRITE_API ? (
+          <>
+            <Field label="Username" value={name} onChange={(e) => setName(e.target.value)}
+              hint="3 to 24 characters. Letters, numbers, underscore."
+              error={dirty && bad ? "3 to 24 characters. Letters, numbers, underscore." : err} />
+            <div className="st-actions">
+              <Button variant="primary" disabled={!dirty || bad || busy} onClick={save}>{busy ? "Saving…" : "Save"}</Button>
+              {dirty && <Button variant="quiet" onClick={() => { setName(me.username); setErr(""); }}>Cancel</Button>}
+            </div>
+          </>
+        ) : (
+          <Row label="Username">{me.username}</Row>
+        )}
+        <Row label="Email">
+          {maskEmail(me.email)}<small>Used to sign in and to reset your password.</small>
         </Row>
       </Panel>
       <Panel pad>
@@ -102,16 +107,23 @@ function SecurityTab({ me, token, logout }) {
         <p className="pa-eyebrow">Password</p>
         {me.has_password ? (
           <>
-            <Field label="Current password" type="password" autoComplete="current-password" value={f.cur} onChange={set("cur")} disabled={!WRITE_API} />
-            <Field label="New password" type="password" autoComplete="new-password" value={f.next} onChange={set("next")} disabled={!WRITE_API}
-              hint="6 to 18 characters." error={short ? "6 to 18 characters." : ""} />
-            <Field label="Repeat new password" type="password" autoComplete="new-password" value={f.rep} onChange={set("rep")} disabled={!WRITE_API}
-              error={mismatch ? "The two passwords don't match." : ""} />
-            {!WRITE_API && <p className="st-note">{SOON}. Changing your password here needs a server update. Use the reset link below meanwhile.</p>}
-            <div className="st-actions">
-              <Button variant="primary" disabled={!WRITE_API || busy || !f.cur || !f.next || short || mismatch || !f.rep} onClick={update}>{busy ? "Updating…" : "Update password"}</Button>
-              <button type="button" className="st-link" onClick={reset}>Forgot it? Send a reset link</button>
-            </div>
+            {WRITE_API ? (
+              <>
+                <Field label="Current password" type="password" autoComplete="current-password" value={f.cur} onChange={set("cur")} />
+                <Field label="New password" type="password" autoComplete="new-password" value={f.next} onChange={set("next")}
+                  hint="6 to 18 characters." error={short ? "6 to 18 characters." : ""} />
+                <Field label="Repeat new password" type="password" autoComplete="new-password" value={f.rep} onChange={set("rep")}
+                  error={mismatch ? "The two passwords don't match." : ""} />
+                <div className="st-actions">
+                  <Button variant="primary" disabled={busy || !f.cur || !f.next || short || mismatch || !f.rep} onClick={update}>{busy ? "Updating…" : "Update password"}</Button>
+                  <button type="button" className="st-link" onClick={reset}>Forgot it? Send a reset link</button>
+                </div>
+              </>
+            ) : (
+              <div className="st-actions">
+                <Button variant="outline" onClick={reset}>Send a password reset link</Button>
+              </div>
+            )}
           </>
         ) : (
           <p className="st-note">You sign in with Google, so there is no password to change.</p>
@@ -133,9 +145,8 @@ function ConnectionsTab({ me }) {
     <>
       <Panel pad>
         <p className="pa-eyebrow">Sign-in</p>
-        <Row label="Google" action={<Button variant="quiet" disabled title={SOON}>Disconnect</Button>}>
+        <Row label="Google">
           {me.has_password ? "Email and password" : "Signed in with Google"}
-          <small>Disconnecting Google is {SOON.toLowerCase()}.</small>
         </Row>
       </Panel>
       <Panel pad>
@@ -160,12 +171,6 @@ function DataTab({ me }) {
             {i === 0 ? (me.terms_current ? "Current version accepted" : "A newer version is waiting for you") : <>{" "}</>}
           </Row>
         ))}
-      </Panel>
-      <Panel pad>
-        <p className="pa-eyebrow">Your data</p>
-        <Row label="Download my data" action={<Button variant="outline" disabled title={SOON}>Request export</Button>}>
-          We'll email a copy of your profile, rosters, lineups and RankIt diary.<small>{SOON}.</small>
-        </Row>
       </Panel>
       <Panel pad className="st-danger">
         <p className="pa-eyebrow">Danger zone</p>

@@ -109,7 +109,6 @@ export default function Profile() {
               <Link to="/leaderboard" className="pa-btn quiet s44">Leaderboard</Link>
               {u.role === "admin" && <Link to="/admin/articles" className="pa-btn quiet s44">Admin panel</Link>}
               <button type="button" className="pa-btn quiet s44" onClick={() => { logout(); navigate("/"); }}>Sign out</button>
-              <Link to="/account/delete" className="pa-btn quiet s44">Delete account</Link>
             </div>
           </header>
           <div className="pf-tiles">
