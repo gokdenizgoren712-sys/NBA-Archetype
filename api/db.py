@@ -183,6 +183,21 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_fb_h2h_res_p2 ON football_h2h_results(p2_user_id);
         CREATE INDEX IF NOT EXISTS idx_fb_h2h_res_win ON football_h2h_results(winner_user_id);
 
+        -- Board meydan okumaları. H2H sonuçlarından AYRI: rakip (kadronun sahibi)
+        -- oyunda yoktu, onun rekoruna ne galibiyet ne mağlubiyet yazılmamalı.
+        -- Basketbolun challenge_results'ının karşılığı.
+        CREATE TABLE IF NOT EXISTS football_challenge_results (
+            id             INTEGER PRIMARY KEY AUTOINCREMENT,
+            challenger_id  INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            entry_id       INTEGER REFERENCES saved_rosters(id) ON DELETE CASCADE,
+            room_code      TEXT,
+            won            INTEGER NOT NULL,          -- 1: meydan okuyan kazandı
+            decided_by     TEXT,
+            agg            TEXT,                      -- "3-2" (meydan okuyan - kadro)
+            created_at     TEXT DEFAULT (datetime('now'))
+        );
+        CREATE INDEX IF NOT EXISTS idx_fb_chal_entry ON football_challenge_results(entry_id);
+
         CREATE TABLE IF NOT EXISTS football_photo_layout (
             player_id  INTEGER PRIMARY KEY,
             scale      REAL NOT NULL DEFAULT 1.0,   -- 0.6 .. 2.0
@@ -997,6 +1012,11 @@ def init_db():
         # buradan geri yükleniyor (bkz. api/football_ws.py).
         try:
             conn.execute("ALTER TABLE football_h2h_rooms ADD COLUMN draft_state_json TEXT")
+        except Exception:
+            pass
+        # Board meydan okuması: hangi kayıtlı kadroya karşı oynanıyor.
+        try:
+            conn.execute("ALTER TABLE football_h2h_rooms ADD COLUMN challenge_entry_id INTEGER")
         except Exception:
             pass
         # Oda hangi akışta: 'submit' = bitmiş XI gönder (eski yol),

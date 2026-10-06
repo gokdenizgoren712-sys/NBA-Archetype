@@ -157,3 +157,46 @@ probe       {t}                                  # ping ölçümü, istemci prob
 
 Tek süreç, bellekte. Birden çok instance'a ölçeklenirse ortak bir kuyruk (Redis vb.) gerekir —
 basketboldaki kuyrukla aynı sınır.
+
+---
+
+## 4. The Board ve meydan okuma
+
+Başkasının kaydettiği 18'lik kadroya karşı draft et. Kaynak: `saved_rosters` (`sport='football'`),
+yani leaderboard'un okuduğu tablo.
+
+| | |
+|---|---|
+| `GET  /api/football/board?limit=25` | Persantil başına **tek temsilci**, yüksekten düşüğe. |
+| `GET  /api/football/board/at-score?pct=` | O persantile ulaşmış **tüm** kadrolar, en yeni önce. |
+| `POST /api/football/challenge` `{entry_id}` | Odayı kurar; yanıt `{room_code, opponent:{username,name,shape,pct,roster}}`. |
+
+**Skor persantildir, ham değil.** Kaydedilen skor 0–1 arası kimya kesri; Board onu leaderboard'la aynı
+referans dağılımına (`_pct_of`, 28.388 gerçek ilk-11) çevirip tam sayı persantile göre gruplar.
+Aynı persantilde birden çok kadro varsa temsilci **ilk kaydeden** (o puana ilk ulaşan).
+Referans dosyası yoksa persantil hesaplanamaz ve kadro listeye girmez — yerleştirilemeyen birini
+sıralamaya sokmak sıralamayı uydurmak olurdu.
+
+**Board kaydı**: `{id, username, name, shape, pct, seasons[], leagues[], created_at, roster[18],
+challenges:{attempts, beaten}}`. `id` challenge'a verilecek `entry_id`. `beaten`: meydan okuyanların
+kaçı kazandı. `roster` **kırpılmış** (10 alan: `PLAYER_ID, PLAYER_NAME, TEAM, LEAGUE, SEASON, PHASE,
+POSITION, primary_arch, overall_score, _slot`) — tam oyuncu satırı 151 alan (~4 KB), 25 giriş ≈ 1,9 MB
+eder; kırpılmışı ≈ 107 KB.
+
+**Geçersiz kadro Board'da görünmez**: 18 kişi olmayan, 11'i saha slotunda olmayan, kaleci kuralını ya da
+dizilişi bozan, aynı oyuncuyu iki kez içeren kadro. Meydan okunursa 409 `That squad can't be challenged`.
+
+### Meydan okuma odası
+
+- `mode:"challenge"`, `flow:"challenge"`, `challenge_entry_id`. Koltuk 1 = meydan okuyan, koltuk 2 = kadronun
+  sahibi (**oyunda yok**, bağlanamaz: `room_not_found`).
+- Donmuş durum meydan okunduğu **anda** kurulup diske yazılır: sahibi sonra kadrosunu silse bile oda düşmez.
+- Koltuk 2'nin XI'i baştan dolu ve hazır; draft yalnız koltuk 1 için işler, rakibi **beklemez**.
+  Rakibin 11 oyuncusu `takenIds`'te — çarktan çekilemez.
+- **Rakip kadro draft sırasında görünür.** Basketboldaki "donmuş, draft bitince görürsün" metni futbolda
+  yok: Board listesi her 18'liği zaten herkese açıyor, draft sırasında saklamak hiçbir şeyi saklamazdı.
+- Rövanş yok (`rematch_ready` → `error`): rakip yok, yeni kadro seçmek için Board'a dönülür.
+- `/squad` (kadro-gönder) bu odada 409.
+- Sonuç `football_challenge_results`'a yazılır (`won:1` = meydan okuyan kazandı). **H2H rekoruna yazılmaz**:
+  sahibi oyunda yoktu, onun rekoruna galibiyet/mağlubiyet yazmak yanlış olurdu.
+- Sahibi, bir meydan okuma sürerken eşleştirmeye ya da kendi odasını kurmaya **engellenmez** (o oyunda yok).

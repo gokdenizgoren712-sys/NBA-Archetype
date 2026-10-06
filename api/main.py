@@ -5226,6 +5226,8 @@ def submit_h2h_squad(code: str, body: H2HSquadBody, user=Depends(get_current_use
         raise HTTPException(404, "Room not found")
     if uid not in (row["p1_user_id"], row["p2_user_id"]):
         raise HTTPException(403, "You are not in this room")
+    if row["flow"] == "challenge":
+        raise HTTPException(409, "A challenge is played over the live draft")
     if row["status"] == "resolved":
         raise HTTPException(409, "This tie has already been played")
     if len(body.entries) != _XI_SIZE:

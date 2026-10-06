@@ -31,6 +31,7 @@ import time
 from datetime import datetime, timezone
 from functools import lru_cache
 
+from pydantic import BaseModel
 from fastapi import (APIRouter, Depends, HTTPException, WebSocket,
                      WebSocketDisconnect, Query)
 
@@ -193,6 +194,7 @@ def _public(code: str, state: dict) -> dict:
         "connected": list(CONNS.get(code, {})),
         "result": state.get("result"),
         # Rövanş. rematch_ready: {"<user_id>": bool} (docs/BACKEND_PROMPT_GAME_UI.md).
+        "challenge": state.get("challenge"),
         "rematch_ready": state.get("rematch_ready") or {},
         "rematches": state.get("rematches", 0),
         "rematch_limit": REMATCH_LIMIT,
@@ -280,7 +282,10 @@ def _finish(code: str, state: dict) -> None:
                      (payloads[1], payloads[2], code))
     row = _row(code)
     result = _resolve_h2h(row)
-    _record_h2h_result(row, result)
+    if state.get("challenge"):
+        _record_challenge_result(row, result, state["challenge"]["entry_id"])
+    else:
+        _record_h2h_result(row, result)
     with get_conn() as conn:
         conn.execute("UPDATE football_h2h_rooms SET result_json=?, status='resolved', "
                      "updated_at=datetime('now') WHERE room_code=?",
@@ -364,6 +369,8 @@ def _h_rematch_ready(state: dict, seat: int, msg: dict) -> str | None:
     """Rövanş "ikisi de dokunmalı": biri hazır olunca bekler, ikisi olunca
     oda yeni drafta döner. Tek taraflı başlatılsaydı, sonucu henüz görmemiş
     rakibin ekranı altından çekilirdi."""
+    if state.get("challenge"):
+        return "A challenge has no rematch — pick another squad from the Board"
     if state["stage"] != "done":
         return "The tie is not over yet"
     if state.get("rematches", 0) >= REMATCH_LIMIT:
@@ -434,6 +441,11 @@ async def football_room_socket(ws: WebSocket, room_code: str, token: str = Query
         await _reject(ws, "room_not_found",
                       "This room doesn't exist, or someone else already took your spot.")
         return
+    if row["flow"] == "challenge" and uid != row["p1_user_id"]:
+        # Kadronun sahibi (p2) o oyunda yok; koltuğu bir bağlantı değil bir kayıt.
+        await _reject(ws, "room_not_found",
+                      "This room doesn't exist, or someone else already took your spot.")
+        return
     if row["status"] == "abandoned":
         # Kapanmış odaya bağlanmak, kimsenin gelmeyeceği bir drafta girmek.
         await _reject(ws, "room_closed", "This room was closed.")
@@ -447,6 +459,13 @@ async def football_room_socket(ws: WebSocket, room_code: str, token: str = Query
     try:
         async with _lock(room_code):
             state = ROOM_STATES.get(room_code) or _restore(row)
+            if state is None and row["flow"] == "challenge":
+                # Donmuş kadro durumda saklanıyordu; kaybolduysa elimizdeki
+                # taze bir _init_state RAKİPSİZ bir oyun kurardı.
+                await ws.send_json({"type": "fatal", "reason": "room_closed",
+                                    "message": "This challenge can't be resumed."})
+                await ws.close(code=1000)
+                return
             if state is None:
                 state = _init_state(row)
                 with get_conn() as conn:
@@ -559,7 +578,7 @@ def _user_in_open_room(uid: int) -> bool:
     with get_conn() as conn:
         row = conn.execute(
             "SELECT 1 FROM football_h2h_rooms WHERE status IN ('waiting','building') "
-            "AND (p1_user_id=? OR p2_user_id=?) "
+            "AND (p1_user_id=? OR (p2_user_id=? AND flow != 'challenge')) "
             f"AND updated_at > datetime('now', '-{STALE_HOURS} hours') LIMIT 1",
             (uid, uid)).fetchone()
     return bool(row)
@@ -854,6 +873,213 @@ async def football_matchmaking_socket(ws: WebSocket, token: str = Query(...)):
         MM_QUEUE = [e for e in MM_QUEUE if e["user_id"] != uid]
         if len(MM_QUEUE) != before:
             await _mm_queue_size()
+
+
+# ── The Board + meydan okuma ─────────────────────────────────────────────────
+# Başkasının kaydettiği 18'lik kadroya karşı draft et. Basketbolun /api/game/board
+# ve /api/game/challenge'ının futbol karşılığı (docs/BACKEND_PROMPT_GAME_UI.md #4).
+#
+# KARARLAR
+#   • Kaynak: saved_rosters (sport='football') — leaderboard'un okuduğu tablo.
+#   • Skor tek bir sayı değil 0-1 arası kimya kesri; Board PERSANTİLE göre
+#     gruplanıyor (leaderboard ile aynı _pct_of). Aynı persantilde birden çok
+#     kadro varsa temsilci İLK kaydeden — o puana ilk ulaşan.
+#   • Rakip kadro draft SIRASINDA GÖRÜNÜR. Basketboldaki "donmuş, sonra görürsün"
+#     metni futbolda yok: Board listesi zaten her 18'liği herkese açıyor, draft
+#     sırasında saklamak hiçbir şeyi saklamazdı.
+#   • Meydan okuma H2H rekoruna YAZILMAZ: kadronun sahibi oyunda yoktu, onun
+#     rekoruna galibiyet ya da mağlubiyet yazmak yanlış olurdu.
+
+_BOARD_PLAYER_KEYS = ("PLAYER_ID", "PLAYER_NAME", "TEAM", "LEAGUE", "SEASON", "PHASE",
+                      "POSITION", "primary_arch", "overall_score", "_slot")
+
+
+class ChallengeBody(BaseModel):
+    entry_id: int
+
+
+def _frozen_xi(roster, shape: str) -> dict | None:
+    """Kayıtlı kadrodan {slot_id: oyuncu} (yalnız ilk 11). Geçersizse None.
+
+    Tam 18 kişi, 11'i saha slotunda, kaleci kuralı dahil dizilişe uyan bir XI
+    olmak zorunda — Board'da bozuk ya da eski bir kadro hiç görünmesin, meydan
+    okunduğunda da elemeyi kuramayıp yarıda kalmasın."""
+    R = _rules()
+    if not isinstance(roster, list) or len(roster) != 18:
+        return None
+    xi = [p for p in roster if isinstance(p, dict)
+          and not str(p.get("_slot", "")).startswith("SUB")]
+    if len(xi) != 11:
+        return None
+    try:
+        R.validate_xi([{"player_id": p["PLAYER_ID"], "slot": p["_slot"]} for p in xi],
+                      shape, {int(p["PLAYER_ID"]): p for p in xi})
+    except (R.InvalidXI, KeyError, TypeError, ValueError):
+        return None
+    return {p["_slot"]: p for p in xi}
+
+
+def _board_entry(row, ref) -> dict | None:
+    """saved_rosters satırı → Board kaydı. Geçersiz kadro ya da persantili
+    hesaplanamayan (referans dosyası yok) kayıt None: yerleştirilemeyen birini
+    sıralamaya sokmak, sıralamayı uydurmak olurdu."""
+    from .main import _pct_of
+    try:
+        roster = json.loads(row["roster_json"] or "[]")
+    except Exception:
+        return None
+    if _frozen_xi(roster, row["mode"]) is None:
+        return None
+    pct = _pct_of(ref, "score", row["overall_pct"])
+    if pct is None:
+        return None
+    return {
+        "id": row["id"],                       # challenge'a verilecek entry_id
+        "username": row["username"], "name": row["name"], "shape": row["mode"],
+        "pct": pct,
+        "seasons": sorted({str(p["SEASON"]) for p in roster if p.get("SEASON")}),
+        "leagues": sorted({p["LEAGUE"] for p in roster if p.get("LEAGUE")}),
+        "created_at": row["created_at"],
+        # Kırpılmış: tam oyuncu satırı 151 alan (~4 KB), 25 giriş ≈ 1,9 MB eder;
+        # kartın çizmesi gereken alanlar ≈ 107 KB. Tam satırlar sunucuda kalıyor
+        # (meydan okuma onlarla kuruluyor), istemciye gitmiyor.
+        "roster": [{k: p.get(k) for k in _BOARD_PLAYER_KEYS} for p in roster],
+    }
+
+
+_BOARD_SQL = ("SELECT r.id, r.user_id, r.name, r.mode, r.overall_pct, r.roster_json, "
+              "r.created_at, u.username FROM saved_rosters r "
+              "JOIN users u ON r.user_id = u.id WHERE r.sport = 'football' ")
+
+
+def _challenge_stats(ids: list[int]) -> dict:
+    """entry_id -> {attempts, beaten}: kaç kişi meydan okudu, kaçı kazandı."""
+    if not ids:
+        return {}
+    with get_conn() as conn:
+        rows = conn.execute(
+            f"SELECT entry_id, COUNT(*) AS n, SUM(won) AS w FROM football_challenge_results "
+            f"WHERE entry_id IN ({','.join('?' * len(ids))}) GROUP BY entry_id", ids).fetchall()
+    return {r["entry_id"]: {"attempts": r["n"], "beaten": int(r["w"] or 0)} for r in rows}
+
+
+def _with_stats(entries: list[dict]) -> list[dict]:
+    stats = _challenge_stats([e["id"] for e in entries])
+    for e in entries:
+        e["challenges"] = stats.get(e["id"], {"attempts": 0, "beaten": 0})
+    return entries
+
+
+@router.get("/api/football/board")
+def football_board(limit: int = Query(25, ge=1, le=100)):
+    """Persantil başına tek temsilci kadro, en yüksekten. İlk kaydeden kazanır."""
+    from .main import _chem_reference
+    ref = _chem_reference()
+    with get_conn() as conn:
+        rows = conn.execute(_BOARD_SQL + "ORDER BY r.id ASC").fetchall()
+    best: dict[int, dict] = {}
+    for r in rows:
+        e = _board_entry(r, ref)
+        if e and e["pct"] not in best:
+            best[e["pct"]] = e
+    entries = [best[k] for k in sorted(best, reverse=True)][:limit]
+    return {"entries": _with_stats(entries), "reference_n": (ref or {}).get("n")}
+
+
+@router.get("/api/football/board/at-score")
+def football_board_at_score(pct: int = Query(..., ge=0, le=100),
+                            limit: int = Query(50, ge=1, le=200)):
+    """Belirli bir persantile ulaşmış TÜM kadrolar — Board'da başka bir kadroyla
+    oynamak isteyenin seçim listesi. En yeni önce."""
+    from .main import _chem_reference
+    ref = _chem_reference()
+    with get_conn() as conn:
+        rows = conn.execute(_BOARD_SQL + "ORDER BY r.id DESC").fetchall()
+    entries = []
+    for r in rows:
+        e = _board_entry(r, ref)
+        if e and e["pct"] == pct:
+            entries.append(e)
+        if len(entries) >= limit:
+            break
+    return {"entries": _with_stats(entries)}
+
+
+def _init_challenge_state(room_row, frozen: dict, entry: dict) -> dict:
+    """Meydan okuma durumu: koltuk 2 (kadronun sahibi) baştan DOLU ve hazır,
+    draft yalnız koltuk 1 için işliyor. Rakibin XI'i takenIds'te — çarktan aynı
+    oyuncuyu çekemezsin."""
+    st = _init_state(room_row, first=1)
+    st["shapes"][2] = entry["shape"]
+    st["squads"][2] = {slot: {**p, "_slot": slot} for slot, p in frozen.items()}
+    st["takenIds"] = [int(p["PLAYER_ID"]) for p in frozen.values()]
+    st["ready"]["2"] = True
+    st["challenge"] = {"entry_id": entry["id"], "owner": entry["username"],
+                       "name": entry["name"], "pct": entry["pct"],
+                       "shape": entry["shape"]}
+    return st
+
+
+def _record_challenge_result(row, result: dict, entry_id: int) -> None:
+    try:
+        with get_conn() as conn:
+            conn.execute(
+                "INSERT INTO football_challenge_results "
+                "(challenger_id, entry_id, room_code, won, decided_by, agg) "
+                "VALUES (?,?,?,?,?,?)",
+                (row["p1_user_id"], entry_id, row["room_code"],
+                 1 if result.get("winner") == "a" else 0,   # a = p1 = meydan okuyan
+                 result.get("decidedBy"),
+                 f"{result.get('aggA')}-{result.get('aggB')}"))
+    except Exception as e:                                     # pragma: no cover
+        print(f"[football_ws] meydan okuma sonucu kaydedilemedi: {e}", flush=True)
+
+
+@router.post("/api/football/challenge")
+async def football_challenge(body: ChallengeBody, user=Depends(get_current_user)):
+    from .main import (_chem_reference, _h2h_code, _h2h_username,
+                       _football_default_season)
+    uid = int(user["sub"])
+    with get_conn() as conn:
+        row = conn.execute(_BOARD_SQL + "AND r.id = ?", (body.entry_id,)).fetchone()
+    if not row:
+        raise HTTPException(404, "Challenge entry not found")
+    if row["user_id"] == uid:
+        raise HTTPException(400, "Cannot challenge your own squad")
+    entry = _board_entry(row, _chem_reference())
+    frozen = _frozen_xi(json.loads(row["roster_json"] or "[]"), row["mode"]) if entry else None
+    if entry is None or frozen is None:
+        raise HTTPException(409, "That squad can't be challenged")
+    if uid in USER_MATCH or _user_in_open_room(uid):
+        raise HTTPException(409, "You are already in a room")
+
+    code = None
+    for _ in range(6):
+        c = _h2h_code()
+        try:
+            with get_conn() as conn:
+                conn.execute(
+                    "INSERT INTO football_h2h_rooms "
+                    "(room_code, mode, status, season, p1_user_id, p2_user_id, "
+                    "p1_name, p2_name, flow, challenge_entry_id) "
+                    "VALUES (?, 'challenge', 'building', ?, ?, ?, ?, ?, 'challenge', ?)",
+                    (c, _football_default_season(), uid, row["user_id"],
+                     _h2h_username(uid), row["username"], body.entry_id))
+            code = c
+            break
+        except Exception as e:
+            if "UNIQUE" not in str(e):
+                break
+    if code is None:
+        raise HTTPException(500, "Could not open a room")
+
+    # Donmuş durum ŞİMDİ kuruluyor ve diske yazılıyor, soket bağlanırken değil:
+    # sahibi bu arada kadrosunu silerse meydan okuyanın odası altından çekilmesin.
+    st = _init_challenge_state(_row(code), frozen, entry)
+    _save(code, st)
+    return {"room_code": code, "opponent": {
+        "username": entry["username"], "name": entry["name"], "shape": entry["shape"],
+        "pct": entry["pct"], "roster": entry["roster"]}}
 
 
 # ── Odadan ayrılma ───────────────────────────────────────────────────────────
