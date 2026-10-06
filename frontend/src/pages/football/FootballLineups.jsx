@@ -124,8 +124,8 @@ export default function FootballLineups() {
       <div className="ch-inner">
         <header className="ch-head">
           <div>
+            <p className="pa-eyebrow">{`Football · Squad chemistry${season ? ` · ${season}` : ""}`}</p>
             <h1>Squad chemistry</h1>
-            <p>Build an XI and see how it fits, compared with real elevens.</p>
           </div>
           {tab === "xi" && (
             <div className="ch-shapes" role="radiogroup" aria-label="Shape">
@@ -169,19 +169,19 @@ export default function FootballLineups() {
 
             {xi?.error ? <ErrorState body={xi.error} onRetry={run} /> : (
               <div className="ch-grid">
-                <div className={`ch-pitch-wrap${loading ? " loading" : ""}`}>
+                <div className={`ch-pitch-wrap ch-panel${loading ? " loading" : ""}`}>
                   <ChemPitch shape={shape} squad={squad} />
                   {loading && <span className="ch-searching">Searching {xi?.pool_size ? xi.pool_size.toLocaleString("en-US") : ""} players…</span>}
                 </div>
 
-                <aside className="ch-side">
+                <aside className="ch-side ch-panel">
                   <span className="lbl">Squad fit</span>
                   {ref?.score != null ? (
                     <>
                       <div className="ch-big">
                         {/* Arama en iyi XI'yi bulduğu için referansın tepesini aşabiliyor;
                             "100th percentile" yerine 99+ ve bunu açıkça söyleyen satır */}
-                        <b style={{ color: hero, textShadow: `0 0 30px ${hero}80` }}>{ref.score >= 100 ? "99+" : ref.score}</b>
+                        <b style={{ color: hero, }}>{ref.score >= 100 ? "99+" : ref.score}</b>
                         <span>{ref.score >= 100 ? "percentile" : `${ordinal(ref.score)} percentile`}</span>
                       </div>
                       <p className="ch-ref">
@@ -191,7 +191,7 @@ export default function FootballLineups() {
                     </>
                   ) : (
                     <div className="ch-big">
-                      <b style={{ color: ACCENT, textShadow: `0 0 30px ${ACCENT}80` }}>{Math.round((fit?.score ?? 0) * 100)}</b>
+                      <b style={{ color: ACCENT }}>{Math.round((fit?.score ?? 0) * 100)}</b>
                       <span>/ 100 chemistry</span>
                     </div>
                   )}

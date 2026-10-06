@@ -109,3 +109,24 @@
   .ch-big b { font-size: 56px; }
   .ch-slider input { width: 110px; }
 }
+
+/* ═══ v3 X4 geçersiz kılmaları: düz paneller, mono eyebrow, kutulu seçiciler ═══ */
+.ch-inner { padding: 28px clamp(20px, 3vw, 32px) 40px; }
+.ch-head .pa-eyebrow { margin: 0 0 8px; }
+.ch-head h1 { font: 700 clamp(44px, 5vw, 64px)/1 var(--font-logo); letter-spacing: .04em; text-transform: uppercase; }
+.ch-panel { border: 1px solid var(--panel-border); border-radius: var(--radius); background: var(--panel); padding: 18px; }
+.ch-pitch-wrap.ch-panel { padding: 14px; }
+.ch-grid { gap: 20px; }
+.ch-pitch { border-radius: var(--radius); box-shadow: none; border: 1px solid var(--panel-border); }
+.ch-shapes button, .ch-leagues button { min-height: 34px; border: 1px solid var(--panel-border); border-radius: var(--radius); background: var(--field); font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .08em; color: var(--text-secondary); }
+.ch-shapes button.on, .ch-leagues button.on { background: var(--accent-dim); border-color: var(--accent-border); color: var(--accent); }
+.ch-tabs button { min-height: var(--touch); }
+.ch-tabs button.on { box-shadow: inset 0 -2px 0 var(--accent); }
+.ch-season { min-height: var(--touch); padding: 0 34px 0 14px; border: 1px solid var(--panel-border); border-radius: var(--radius); background: var(--field); }
+.ch-season select { color: var(--accent); }
+.ch-season svg { right: 12px; }
+.ch-side .lbl { font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .12em; text-transform: uppercase; }
+.ch-bar .tr { background: var(--field); }
+.ch-bar .tr i { box-shadow: none; }
+.ch-foot a { color: var(--accent); }
+.ch-shapes button:focus-visible, .ch-leagues button:focus-visible, .ch-tabs button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
