@@ -10,7 +10,7 @@ import "./fantasy.css";
 function Inner() {
   const f = useFantasy();
   return (
-    <div className="fz">
+    <div className="fz pa-grid">
       <FantasyBar />
       <Suspense fallback={<div className="fz-page"><SkeletonList rows={6} /></div>}>
         <Outlet />

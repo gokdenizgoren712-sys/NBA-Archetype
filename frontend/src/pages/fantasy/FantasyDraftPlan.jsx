@@ -150,6 +150,7 @@ export default function FantasyDraftPlan() {
   const head = (
     <div className="fz-head">
       <div className="fz-head-l">
+        <p className="pa-eyebrow">Fantasy · Draft plan</p>
         <h1 className="fz-h1">Draft plan · slot {f.s} of {f.t}</h1>
         <span className="fz-sub">Every build we simulated for your picks, ranked best to worst. Pick one to mock it. Availability = chance the target is still there when you pick.</span>
         <ProjectionTag />

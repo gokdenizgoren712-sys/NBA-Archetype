@@ -49,7 +49,8 @@ export default function FantasyHome() {
           <div style={{ display: "flex", flexDirection: "column", gap: 28, minWidth: 0 }}>
             <div className="fz-head">
               <div className="fz-head-l">
-                <h1 className="fz-h1">Basketball fantasy</h1>
+                <p className="pa-eyebrow">Fantasy · 2026-27 season</p>
+        <h1 className="fz-h1">Basketball fantasy</h1>
                 <span className="fz-sub" style={{ fontSize: 15 }}>
                   <span className="fz-desk-only">Rankings, draft plans and mock drafts built for your exact league format.</span>
                   <span className="fz-phone-only">
@@ -103,14 +104,13 @@ export default function FantasyHome() {
               </div>
             </div>
 
-            <div className="fz-desk-only" style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(0,1fr))", gap: 10 }}>
-              {shortcuts.map((s) => (
-                <button key={s.t} onClick={() => go(s.to)} className="fz-card"
-                  style={{ padding: 18, border: 0, color: "inherit", textAlign: "left", cursor: "pointer", minHeight: 132,
-                           display: "flex", flexDirection: "column", gap: 8 }}>
+            <div className="fz-desk-only fz-steps">
+              {shortcuts.map((s, i) => (
+                <button key={s.t} onClick={() => go(s.to)} className="fz-step">
+                  <b className="n">{String(i + 1).padStart(2, "0")}</b>
                   <span className="fz-h3">{s.t}</span>
                   <span className="fz-sub" style={{ fontSize: 13, lineHeight: 1.45, flex: 1 }}>{s.d}</span>
-                  <span style={{ fontSize: 12 }}>{s.m}</span>
+                  <span className="fz-meta">{s.m}</span>
                 </button>
               ))}
             </div>

@@ -187,6 +187,7 @@ function FriendsSetup({ f, options, onStart, onCancel }) {
     <div className="fz-page" style={{ gap: 22, maxWidth: 760 }}>
       <SEO title="Fantasy mock draft with friends" description="Draft on one screen with up to four people. Each person gets recommendations for their own plan." path="/basketball/fantasy/mock" />
       <div className="fz-head"><div className="fz-head-l">
+        <p className="pa-eyebrow">Fantasy · Mock draft</p>
         <h1 className="fz-h1">Mock with friends</h1>
         <span className="fz-sub">Up to four people share this screen. The draft stops on each person's pick and shows recommendations for that person's plan. Everyone else is a bot.</span>
       </div></div>

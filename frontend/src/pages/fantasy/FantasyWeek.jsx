@@ -213,7 +213,8 @@ export default function FantasyWeek() {
       <div className="fz-page" style={{ gap: 22, maxWidth: 1300 }}>
         <div className="fz-head">
           <div className="fz-head-l">
-            <h1 className="fz-h1">Week {week}</h1>
+            <p className="pa-eyebrow">Fantasy · This week</p>
+        <h1 className="fz-h1">Week {week}</h1>
             <span className="fz-sub">{info.start ? `${fmtDay(info.start)} – ${fmtDay(info.end)} · lineups lock at each game's tip-off${info.playoff ? " · fantasy playoffs" : ""}` : "Your matchup, lineup and streamers for this fantasy week."}</span>
             <TeamSimLabel engine={a?.engine} onRetry={() => { setResRaw({ key: null, data: null, error: null }); setTryN((n) => n + 1); }} />
             {f.meta?.inseason_as_of && <span className="fz-meta">Updated through {new Date(`${f.meta.inseason_as_of}T00:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric" })}. We don't know who is injured right now; a player who is out only shows up as missed games.</span>}

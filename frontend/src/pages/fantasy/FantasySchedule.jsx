@@ -58,7 +58,8 @@ export default function FantasySchedule() {
       <div className="fz-page" style={{ gap: 22, maxWidth: 1400 }}>
         <div className="fz-head">
           <div className="fz-head-l">
-            <h1 className="fz-h1">2026-27 schedule</h1>
+            <p className="pa-eyebrow">Fantasy · Schedule</p>
+        <h1 className="fz-h1">2026-27 schedule</h1>
             <span className="fz-sub">
               {weeks.length} fantasy weeks{asWeek ? ` · week ${asWeek.week} is the double All-Star week` : ""}
               {first ? ` · playoffs weeks ${first.week}–${last.week} (${fmtDay(first.start)} – ${fmtDay(last.end)})` : ""}

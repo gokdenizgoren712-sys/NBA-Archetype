@@ -180,7 +180,8 @@ export default function FantasyTrade() {
       <SEO title="Fantasy trade analyzer" description="See how a trade changes your playoff odds, weekly matchups and category strengths." path="/basketball/fantasy/trade" />
       <div className="fz-page" style={{ gap: 22, maxWidth: 1300 }}>
         <div className="fz-head"><div className="fz-head-l">
-          <h1 className="fz-h1">Trade analyzer</h1>
+          <p className="pa-eyebrow">Fantasy · Trade</p>
+        <h1 className="fz-h1">Trade analyzer</h1>
           <span className="fz-sub">Tap players on either roster to build the trade. Results recompute live.</span>
         </div></div>
         <RosterSourceBar rs={rs} />

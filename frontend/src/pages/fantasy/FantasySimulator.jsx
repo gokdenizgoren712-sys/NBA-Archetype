@@ -231,7 +231,8 @@ export default function FantasySimulator() {
       <div className="fz-page" style={{ gap: 26, maxWidth: 1400 }}>
         <div className="fz-head">
           <div className="fz-head-l">
-            <h1 className="fz-h1">Season simulator</h1>
+            <p className="pa-eyebrow">Fantasy · Simulator</p>
+        <h1 className="fz-h1">Season simulator</h1>
             <span className="fz-sub">
               {rs.inSeason && rs.scope === "rest"
                 ? `Plays the rest of the 2026-27 schedule, from week ${rs.restFrom}, against 11 simulated rosters.`

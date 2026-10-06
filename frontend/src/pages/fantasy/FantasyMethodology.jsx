@@ -79,7 +79,8 @@ export default function FantasyMethodology() {
           )}
           <article style={{ display: "flex", flexDirection: "column", gap: phone ? 26 : 36, minWidth: 0 }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <h1 className="fz-h1" style={phone ? { lineHeight: 1.05 } : undefined}>How our fantasy numbers work</h1>
+              <p className="pa-eyebrow">Fantasy · Methodology</p>
+        <h1 className="fz-h1" style={phone ? { lineHeight: 1.05 } : undefined}>How our fantasy numbers work</h1>
               {updated && <span className="fz-sub" style={{ fontSize: phone ? 13 : 14 }}>Backtest run {updated}</span>}
             </div>
             {phone && (

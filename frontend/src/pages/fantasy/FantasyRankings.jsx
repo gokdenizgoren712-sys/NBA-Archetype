@@ -346,7 +346,7 @@ export default function FantasyRankings() {
       <SEO title="Fantasy rankings" description="Format-correct basketball fantasy rankings with tiers, punt builds and ADP value." path="/basketball/fantasy/rankings" />
       <div className="fz-page" style={{ gap: 18 }}>
         <div className="fz-head">
-          <div className="fz-head-l"><h1 className="fz-h1">Rankings</h1><span className="fz-sub">{sub}</span><ProjectionTag />{f.meta?.inseason_as_of && <span className="fz-meta">Updated through {new Date(`${f.meta.inseason_as_of}T00:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>}</div>
+          <div className="fz-head-l"><p className="pa-eyebrow">Fantasy · Rankings</p><h1 className="fz-h1">Rankings</h1><span className="fz-sub">{sub}</span><ProjectionTag />{f.meta?.inseason_as_of && <span className="fz-meta">Updated through {new Date(`${f.meta.inseason_as_of}T00:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>}</div>
           <div className={`fz-seg${phone ? " scroll" : ""}`}>
             {FORMATS.map((o) => (
               <button key={o.k} className={!f.isCustom && f.f === o.k ? "on" : ""} onClick={() => f.set({ f: o.k })}>{o.short}</button>

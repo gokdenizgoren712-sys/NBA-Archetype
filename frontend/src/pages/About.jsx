@@ -12,6 +12,22 @@ import "./fundamentals.css";
 // açılır kartlar kalktı; her bölüm doğrudan ilgili sayfaya bağlanıyor.
 
 const CHANGELOG = [
+  {
+    version: "v2.0.0", date: "October 2026",
+    label: "A new look, real accounts, and the team simulation in fantasy",
+    items: [
+      "The whole site redesigned on one visual language: flat panels on a fine grid, mono labels, one gold action per screen. Players, lineups, Explore, Compare, Affinity, the glossary, legal pages and every admin page share it",
+      "One filter column for every player list (NBA, G League, NCAA, EuroLeague and football) that collapses to give the cards more room, and opens as a sheet on a phone",
+      "New player profiles: NBA profiles now show rank, age, a plain-language read of the role with the metrics behind it, the last three seasons and how many real lineups the player appears in. Football players get their own profile page with a role profile against their position, season-by-season per-90 numbers and similar players",
+      "Football squad chemistry shows how each line (goalkeeper, defence, midfield, attack) contributes and which real eleven your XI is closest to",
+      "Settings: change your username, change your email through a confirmation link, change your password, turn Google sign-in off or back on, and ask for a copy of your data. A new Leaderboard page lists the best runs for basketball and football, and your own rank shows on your profile",
+      "A maintenance page that explains when we are back, and an error page with a reference you can quote",
+      "Fantasy gets a team simulation as a second opinion. It plays every team through 100 seasons with injuries, rotation minutes and shared usage. Choose Model, Simulation or Blend on rankings, player pages and the draft tools; the choice is saved in the link. Rankings can list the players where the two differ by 2 or more fantasy points a game. In our tests the simulation ties the model on stat error and the blend does slightly better, and picks under the simulation are marked as untested for drafting",
+      "Fantasy season simulator, trade analyzer and This week now run on the team simulation, say so, and fall back to the simpler model with a note when it is not ready",
+      "A Methodology page that explains archetypes, ratings, percentiles, data sources and the limits, plus a clearer fantasy methodology",
+      "Games: the court keeps its shape on any screen, Same Screen now spins and locks the team and season like single player, and the home page lost its decorative balls",
+    ],
+  },
   // v1.5.0 notlarından (b33b267, 31 Temmuz) bu yana bu dala giren 214 commit,
   // kullanıcıya görünen haliyle gruplandı. RankIt'in kendi sürüm notları ayrı.
   {

@@ -167,6 +167,7 @@ export default function FantasyPlayer() {
           <div style={{ display: "flex", flexDirection: "column", gap: 30, minWidth: 0 }}>
             <div className="fz-head">
               <div className="fz-head-l" style={{ gap: 8 }}>
+                <p className="pa-eyebrow">{["Player profile", p.team, p.eligible?.[0]].filter(Boolean).join(" · ")}</p>
                 <h1 className="fz-h1">{p.name}</h1>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <span className="fz-sub">{p.team} · {pos}{p.age ? ` · age ${Math.floor(p.age)}` : ""}</span>

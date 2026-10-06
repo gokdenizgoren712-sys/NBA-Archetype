@@ -111,7 +111,8 @@ export default function FantasySaved() {
       <SEO title="My fantasy leagues and drafts" description="Your saved fantasy leagues, mock drafts and assistant drafts." path="/basketball/fantasy/saved" />
       <div className="fz-page" style={{ maxWidth: 960 }}>
         <div className="fz-head">
-          <h1 className="fz-h1">My leagues and drafts</h1>
+          <p className="pa-eyebrow">Fantasy · Saved</p>
+        <h1 className="fz-h1">My leagues and drafts</h1>
           <button className="fz-btn fz-desk-only" onClick={f.openSettings}>New league</button>
         </div>
         {!isLoggedIn ? (

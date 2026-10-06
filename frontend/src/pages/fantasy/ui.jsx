@@ -236,7 +236,12 @@ export function ProjectionTag() {
   const o = PROJECTION_INFO[f.projection];
   return (
     <span className="fz-projtag">
-      <span className="fz-flag">{o.l} projection</span>
+      <span className="fz-meta">Projection</span>
+      <span className="fz-seg sm" role="group" aria-label="Projection view">
+        {Object.entries(PROJECTION_INFO).map(([k, v]) => (
+          <button key={k} type="button" aria-pressed={f.projection === k} className={f.projection === k ? "on" : ""} onClick={() => f.setProjection(k)}>{v.l}</button>
+        ))}
+      </span>
       <InfoTip label="Which numbers these are" title={`${o.l} projection`}>
         <p>{o.d}</p>
         <p>Change it from the Projection menu at the top. Simulation is the default.</p>
