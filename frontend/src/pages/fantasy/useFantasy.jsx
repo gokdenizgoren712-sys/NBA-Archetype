@@ -51,6 +51,8 @@ export function FantasyProvider({ children }) {
     st.t = clampInt(params.get("t") ?? st.t, 6, 16, 12);
     st.s = clampInt(params.get("s") ?? st.s, 1, st.t, Math.min(7, st.t));
     if (st.f === "custom" && !st.custom) st.f = "9cat";
+    const pp = params.get("p");
+    if (PROJECTIONS.includes(pp)) st.pr = pp;   // URL > localStorage > varsayılan (paylaşılan link aynı sayıları gösterir)
     return st;
   });
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -63,9 +65,12 @@ export function FantasyProvider({ children }) {
   useEffect(() => {
     try { localStorage.setItem(STORE, JSON.stringify(state)); } catch { /* özel mod */ }
     const want = { f: state.f, t: String(state.t), s: String(state.s) };
-    if (Object.entries(want).some(([k, v]) => params.get(k) !== v)) {
+    if (PROJECTIONS.includes(state.pr)) want.p = state.pr;
+    const dropP = !PROJECTIONS.includes(state.pr) && params.has("p");
+    if (dropP || Object.entries(want).some(([k, v]) => params.get(k) !== v)) {
       const next = new URLSearchParams(params);
       Object.entries(want).forEach(([k, v]) => next.set(k, v));
+      if (dropP) next.delete("p");
       setParams(next, { replace: true });
     }
   }, [state, params]);   // eslint-disable-line react-hooks/exhaustive-deps
@@ -99,7 +104,7 @@ export function FantasyProvider({ children }) {
       isH2H: isCustom ? state.custom.matchup !== "roto" : state.f !== "roto",
       picks: snakePicks(state.t, rosterSize, state.s),
       settingsOpen, openSettings: () => setSettingsOpen(true), closeSettings: () => setSettingsOpen(false),
-      query: `?f=${state.f}&t=${state.t}&s=${state.s}`,
+      query: `?f=${state.f}&t=${state.t}&s=${state.s}${PROJECTIONS.includes(state.pr) ? `&p=${state.pr}` : ""}`,
     };
   }, [state, set, meta, settingsOpen]);
 

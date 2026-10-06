@@ -8,7 +8,7 @@ import { ARCHETYPE_COLOR } from "../../constants/archetypeColors";
 import { SEO } from "../../hooks/useSEO";
 import { fz } from "./fantasyApi";
 import {
-  ArchChip, BAD, CatBar, ErrorNote, FLAGS, GOOD, HeatCell, PROJECTION_INFO, RangeBar, SkeletonList, TREND_NOTE, fmt1, sgn,
+  ArchChip, BAD, CatBar, ErrorNote, FLAGS, GOOD, HeatCell, PROJECTION_INFO, ProjectionTag, RangeBar, SkeletonList, TREND_NOTE, fmt1, sgn,
 } from "./ui";
 const MUTED_C = "#8a8a8a";
 import { useAsync, useFantasy } from "./useFantasy";
@@ -172,6 +172,13 @@ export default function FantasyPlayer() {
                   <span className="fz-sub">{p.team} · {pos}{p.age ? ` · age ${Math.floor(p.age)}` : ""}</span>
                   <ArchChip arch={p.archetype} />
                 </div>
+                <ProjectionTag />
+                {f.meta?.inseason_as_of && (
+                  <span className="fz-meta" style={{ lineHeight: 1.5, maxWidth: 520 }}>
+                    Updated through {new Date(`${f.meta.inseason_as_of}T00:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric" })}.
+                    {" "}We don't know who is injured right now: a player who is out only shows up as missed games.
+                  </span>
+                )}
               </div>
               <div style={{ display: "flex", gap: 28 }}>
                 {[[`Rank · ${f.fmtInfo.short}`, p.rank, "#e5e5e5"], ["ADP", Math.round(p.adp), "#8a8a8a"], ["Games", Math.round(p.proj_gp), "#e5e5e5"]].map(([l, v, c]) => (
@@ -201,7 +208,7 @@ export default function FantasyPlayer() {
             <div className="fz-grid2" style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 40 }}>
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                  <span className="fz-h2">Projection per game{f.simAvailable && <span className="fz-meta" style={{ marginLeft: 8 }}>{PROJECTION_INFO[f.projection].l}</span>}</span><span className="fz-meta">10th–90th pct</span>
+                  <span className="fz-h2">Projection per game</span><span className="fz-meta" style={{ textAlign: "right" }}>{f.simAvailable ? `${PROJECTION_INFO[f.projection].l} view · ` : ""}middle 80%</span>
                 </div>
                 {statRows.map((s) => (
                   <div key={s.l} style={{ display: "grid", gridTemplateColumns: "110px 54px minmax(0,1fr) 92px", gap: 12, alignItems: "center", minHeight: 32 }}>
@@ -213,35 +220,31 @@ export default function FantasyPlayer() {
                 ))}
                 <span className="fz-meta">Games {Math.round(p.proj_gp)} · range {Math.round(games[0])}–{Math.round(games[1])}</span>
                 {sim && mdl && (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 18 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                      <span className="fz-h2">Model vs simulation</span><span className="fz-meta">simulation 10th–90th pct</span>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 18 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+                      <span className="fz-h2">Model and simulation</span>
+                      <span className="fz-meta">always both, whichever view is chosen above</span>
                     </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "96px 52px 52px 52px minmax(0,1fr)", gap: 10, alignItems: "center" }}>
-                      <span /><span className="fz-meta" style={{ textAlign: "right" }}>Model</span><span className="fz-meta" style={{ textAlign: "right" }}>Sim</span>
-                      <span className="fz-meta" style={{ textAlign: "right" }}>Diff</span><span className="fz-meta" style={{ textAlign: "right" }}>Sim range</span>
-                      {[["Points", "pts"], ["Rebounds", "reb"], ["Assists", "ast"], ["Steals", "stl"], ["Blocks", "blk"], ["3-pointers", "fg3m"], ["Turnovers", "tov"]].map(([l, k]) => {
-                        const v = sim.per_game[k], m = mdl.per_game[k], d = v.mean - m;
-                        const good = k === "tov" ? d < 0 : d > 0;
+                    <div role="table" aria-label="Model against simulation, per game" style={{ display: "grid", gridTemplateColumns: "104px 56px 84px 56px minmax(0,1fr)", gap: "8px 10px", alignItems: "center" }}>
+                      <span /><span className="fz-meta" style={{ textAlign: "right" }}>Model</span><span className="fz-meta" style={{ textAlign: "right" }}>Simulation</span>
+                      <span className="fz-meta" style={{ textAlign: "right" }}>Gap</span>
+                      <span className="fz-meta" style={{ textAlign: "right" }} title="The middle 80% of simulated seasons">Middle 80%</span>
+                      {[["Fantasy points", mdl.fp, sim.fp.mean, `${fmt1(sim.fp.p10)}–${fmt1(sim.fp.p90)}`, 1, false], ["Minutes", mdl.mpg, sim.mpg, "", 1, false], ["Games", mdl.gp, sim.gp, "", 0, false],
+                        ...[["Points", "pts"], ["Rebounds", "reb"], ["Assists", "ast"], ["Steals", "stl"], ["Blocks", "blk"], ["3-pointers", "fg3m"], ["Turnovers", "tov"]].map(([l, k]) => [l, mdl.per_game[k], sim.per_game[k].mean, `${fmt1(sim.per_game[k].p10)}–${fmt1(sim.per_game[k].p90)}`, 1, k === "tov"])].map(([l, m, v, r, nd, inv]) => {
+                        const d = v - m;
+                        const good = inv ? d < 0 : d > 0;
                         return [
-                          <span key={`${k}l`} className="fz-sub" style={{ fontSize: 13 }}>{l}</span>,
-                          <span key={`${k}m`} className="fz-num" style={{ fontSize: 15, textAlign: "right" }}>{fmt1(m)}</span>,
-                          <span key={`${k}s`} className="fz-num" style={{ fontSize: 15, textAlign: "right" }}>{fmt1(v.mean)}</span>,
-                          <span key={`${k}d`} className="fz-num" style={{ fontSize: 13, textAlign: "right", color: Math.abs(d) < 0.05 ? MUTED_C : good ? GOOD : BAD }}>{Math.abs(d) < 0.05 ? "–" : sgn(d)}</span>,
-                          <span key={`${k}r`} className="fz-meta" style={{ textAlign: "right" }}>{fmt1(v.p10)}–{fmt1(v.p90)}</span>,
+                          <span key={`${l}l`} className="fz-sub" style={{ fontSize: 13 }}>{l}</span>,
+                          <span key={`${l}m`} className="fz-num" style={{ fontSize: 15, textAlign: "right" }}>{fmt1(m, nd)}</span>,
+                          <span key={`${l}s`} className="fz-num" style={{ fontSize: 15, textAlign: "right" }}>{fmt1(v, nd)}</span>,
+                          <span key={`${l}d`} className="fz-num" style={{ fontSize: 13, textAlign: "right", color: Math.abs(d) < 0.05 ? MUTED_C : good ? GOOD : BAD }}>{Math.abs(d) < 0.05 ? "–" : sgn(d, nd)}</span>,
+                          <span key={`${l}r`} className="fz-meta" style={{ textAlign: "right" }}>{r}</span>,
                         ];
                       })}
-                      {[["Fantasy pts", mdl.fp, sim.fp.mean, `${fmt1(sim.fp.p10)}–${fmt1(sim.fp.p90)}`, 1], ["Minutes", mdl.mpg, sim.mpg, "", 1], ["Games", mdl.gp, sim.gp, "", 0]].map(([l, m, v, r, nd]) => [
-                        <span key={`${l}l`} className="fz-sub" style={{ fontSize: 13 }}>{l}</span>,
-                        <span key={`${l}m`} className="fz-num" style={{ fontSize: 15, textAlign: "right" }}>{fmt1(m, nd)}</span>,
-                        <span key={`${l}s`} className="fz-num" style={{ fontSize: 15, textAlign: "right" }}>{fmt1(v, nd)}</span>,
-                        <span key={`${l}d`} className="fz-num" style={{ fontSize: 13, textAlign: "right", color: Math.abs(v - m) < 0.05 ? MUTED_C : v > m ? GOOD : BAD }}>{Math.abs(v - m) < 0.05 ? "–" : sgn(v - m, nd)}</span>,
-                        <span key={`${l}r`} className="fz-meta" style={{ textAlign: "right" }}>{r}</span>,
-                      ])}
                     </div>
                     <span className="fz-meta" style={{ lineHeight: 1.5 }}>
-                      The simulation averages 100 seasons of this player's team with injuries, rotation minutes and teammates sharing the ball. {Math.abs(sim.fp.mean - mdl.fp) >= 2
-                        ? `It sees ${sim.fp.mean > mdl.fp ? "more" : "less"} production than the model here, usually a roster effect the player's history cannot show.`
+                      The simulation averages 100 seasons of this player's team with injuries, rotation minutes and teammates sharing the ball. {Math.abs(sim.fp.mean - mdl.fp) >= (f.meta?.disagree_fp ?? 2)
+                        ? `Here it sees ${sim.fp.mean > mdl.fp ? "more" : "less"} production than the model, usually a roster effect the player's own history cannot show.`
                         : "Here the two agree closely."}
                     </span>
                   </div>

@@ -6,7 +6,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { SEO } from "../../hooks/useSEO";
 import { fz } from "./fantasyApi";
 import RosterSourceBar from "./RosterSourceBar";
-import { BAD, ErrorNote, GOOD, SkeletonList, ValidationNotice, fmt1, pct } from "./ui";
+import { BAD, ErrorNote, GOOD, SkeletonList, TeamSimLabel, ValidationNotice, WarmupNote, fmt1, pct } from "./ui";
 import { useAsync, useFantasy, useIsPhone } from "./useFantasy";
 import { useRosterSource } from "./useRosterSource";
 
@@ -164,6 +164,7 @@ export default function FantasyWeek() {
   const [resRaw, setResRaw] = useState({ key: null, data: null, error: null });
   const [lineupRaw, setLineupRaw] = useState({ key: null, start: null });
   const [fourOnly, setFourOnly] = useState(false);
+  const [tryN, setTryN] = useState(0);   // "Try again": aynı girdi, sunucu aynı tohumla yeniden hesaplar
   const seq = useRef(0);
 
   const weeks = sched.data?.weeks || [];
@@ -198,7 +199,7 @@ export default function FantasyWeek() {
       }
     }, 200);
     return () => clearTimeout(t);
-  }, [anaKey]);   // eslint-disable-line react-hooks/exhaustive-deps
+  }, [anaKey, tryN]);   // eslint-disable-line react-hooks/exhaustive-deps
   const res = resRaw.key === anaKey ? resRaw : { data: null, error: null };
   const a = res.data;
   const kind = a?.kind;
@@ -214,6 +215,8 @@ export default function FantasyWeek() {
           <div className="fz-head-l">
             <h1 className="fz-h1">Week {week}</h1>
             <span className="fz-sub">{info.start ? `${fmtDay(info.start)} – ${fmtDay(info.end)} · lineups lock at each game's tip-off${info.playoff ? " · fantasy playoffs" : ""}` : "Your matchup, lineup and streamers for this fantasy week."}</span>
+            <TeamSimLabel engine={a?.engine} onRetry={() => { setResRaw({ key: null, data: null, error: null }); setTryN((n) => n + 1); }} />
+            {f.meta?.inseason_as_of && <span className="fz-meta">Updated through {new Date(`${f.meta.inseason_as_of}T00:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric" })}. We don't know who is injured right now; a player who is out only shows up as missed games.</span>}
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <button className="fz-btn sm" disabled={week <= 1} onClick={() => setWeekPick(week - 1)} aria-label="Previous week">‹</button>
@@ -249,6 +252,7 @@ export default function FantasyWeek() {
         {lg.error && <ErrorNote error={lg.error} what="the rosters" />}
         {res.error && <ErrorNote error={res.error} what="the week" />}
         {(stale || (body && !lg.data && !lg.error)) && <SkeletonList rows={6} height={44} />}
+        <WarmupNote active={!!stale} />
         <ValidationNotice v={a?.validation} />
 
         {a && (

@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { SEO } from "../../hooks/useSEO";
 import { fz } from "./fantasyApi";
-import { ArchChip, ErrorNote, GOOD, BAD, Meter, ProbBar, ValidationNotice, ordinal, pct } from "./ui";
+import { ArchChip, ErrorNote, GOOD, BAD, Meter, PROJECTION_INFO, ProbBar, ProjectionTag, ValidationNotice, ordinal, pct } from "./ui";
 import { useAsync, useFantasy, useIsPhone } from "./useFantasy";
 
 const NOTES = {
@@ -152,6 +152,7 @@ export default function FantasyDraftPlan() {
       <div className="fz-head-l">
         <h1 className="fz-h1">Draft plan · slot {f.s} of {f.t}</h1>
         <span className="fz-sub">Every build we simulated for your picks, ranked best to worst. Pick one to mock it. Availability = chance the target is still there when you pick.</span>
+        <ProjectionTag />
       </div>
       <button className="fz-btn fz-desk-only" disabled={!sel} onClick={() => mockPlan(sel.key)}>{sel ? `Mock ${sel.label}` : "Mock this plan"}</button>
     </div>
@@ -178,9 +179,9 @@ export default function FantasyDraftPlan() {
 
         {loading && !data && (
           <div className="fz-card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <span style={{ fontSize: 14 }}>Simulating drafts for slot {f.s}…</span>
+            <span style={{ fontSize: 14 }}>Building plans for slot {f.s}{f.simAvailable ? ` on the ${PROJECTION_INFO[f.projection].l.toLowerCase()} projection` : ""}…</span>
             <div style={{ height: 6, borderRadius: 3, background: "#1f1f1f", overflow: "hidden" }}><div className="fz-skel" style={{ height: "100%" }} /></div>
-            <span className="fz-meta">Custom leagues run a fresh set of simulated drafts; this takes a few seconds.</span>
+            <span className="fz-meta">{f.projection !== "model" ? "These plans are computed on request, about 3 seconds the first time, then cached." : "Custom leagues run a fresh set of simulated drafts; this takes a few seconds."}</span>
           </div>
         )}
 

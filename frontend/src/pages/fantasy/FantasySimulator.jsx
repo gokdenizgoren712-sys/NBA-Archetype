@@ -7,7 +7,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { SEO } from "../../hooks/useSEO";
 import { fz } from "./fantasyApi";
-import { BAD, ENGINE_NOTE, ErrorNote, SkeletonList, ValidationNotice, ordinal } from "./ui";
+import { BAD, ErrorNote, SkeletonList, TeamSimLabel, ValidationNotice, WarmupNote, ordinal } from "./ui";
 import RosterSourceBar from "./RosterSourceBar";
 import { useFantasy, useIsPhone } from "./useFantasy";
 import { useRosterSource } from "./useRosterSource";
@@ -237,6 +237,9 @@ export default function FantasySimulator() {
                 ? `Plays the rest of the 2026-27 schedule, from week ${rs.restFrom}, against 11 simulated rosters.`
                 : "Plays the 2026-27 schedule week by week against 11 simulated rosters."}
             </span>
+            <TeamSimLabel engine={agg?.engine} onRetry={status === "running" ? undefined : run} />
+            {rs.inSeason && rs.scope === "full" && <span className="fz-meta">Full season uses the simpler model, not the team simulation. Pick "rest of season" for the team simulation.</span>}
+            {f.meta?.inseason_as_of && <span className="fz-meta">Updated through {new Date(`${f.meta.inseason_as_of}T00:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric" })}.</span>}
           </div>
         </div>
         {controls}
@@ -262,6 +265,7 @@ export default function FantasySimulator() {
               <span className="fz-meta">Runs on our servers{eta ? ` · about ${eta}s left` : ""} · results below update live</span>
               <button className="fz-btn sm" onClick={cancel}>Cancel</button>
             </div>
+            <WarmupNote active={done === 0} />
           </div>
         )}
         {error && <ErrorNote error={error} onRetry={run} what="the simulation" />}
@@ -305,7 +309,7 @@ export default function FantasySimulator() {
             <WeekGrid agg={agg} phone={phone} />
             <GamesChart weekly={me.weekly} />
             <span className="fz-meta" style={{ lineHeight: 1.6, maxWidth: 760 }}>
-              {ENGINE_NOTE[agg.engine] || ""} Injuries are one or two multi-game absences plus scattered rest days, sized from real 2023-26 seasons. No waiver or trade moves are made in-season.
+              Injuries are one or two multi-game absences plus scattered rest days, sized from real 2023-26 seasons. No waiver or trade moves are made in-season.
               {f.kind === "high_score" ? " High Score: each starter counts only their best game of the week, and the lineup is set every week for the games played." : ""}
               {agg.mode === "simulated_rivals" ? " Rival rosters are drafted by simulated bots, so each batch faces a different league." : ""}
             </span>

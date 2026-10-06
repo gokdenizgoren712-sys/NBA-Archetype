@@ -6,7 +6,7 @@ import { ARCHETYPE_COLOR } from "../../constants/archetypeColors";
 import { SEO } from "../../hooks/useSEO";
 import { fz } from "./fantasyApi";
 import {
-  BAD, ErrorNote, FLAGS, GOOD, InfoTip, MiniCat, PlayerMeta, RangeBar, SkeletonList, TierHeader, fmt1, sgn,
+  BAD, ErrorNote, FLAGS, GOOD, InfoTip, MiniCat, PlayerMeta, ProjectionTag, RangeBar, SkeletonList, TierHeader, fmt1, sgn,
 } from "./ui";
 import { FORMATS, useAsync, useFantasy, useIsPhone } from "./useFantasy";
 
@@ -82,8 +82,9 @@ export default function FantasyRankings() {
   const [flag, setFlag] = useState(null);
   const [limit, setLimit] = useState(PAGE);
   const [sort, setSort] = useState(null);
-  const [disagree, setDisagree] = useState(false);        // yalnız model ile simülasyonun ayrıştığı oyuncular (|ΔFP| ≥ 2)
+  const [disagreeRaw, setDisagree] = useState(false);     // yalnız model ile simülasyonun ayrıştığı oyuncular (|ΔFP| ≥ 2)
   const simOk = f.simAvailable;
+  const disagree = disagreeRaw && simOk;                  // simülasyon kapanırsa liste de kapanır
   const src = f.projection;                               // genel Projeksiyon seçicisi (FantasyBar)
 
   useEffect(() => { const t = setTimeout(() => setQDeb(q.trim()), 250); return () => clearTimeout(t); }, [q]);
@@ -151,7 +152,7 @@ export default function FantasyRankings() {
          ["Volatility", "right", false, "ceiling"], ["4-game wks", "right", false, "four"], ["Games", "right", false, "games"],
          ["ADP", "right", false, "adp"], ["vs ADP", "right", false, "adp_diff"]];
   const sortLabel = (k) => (heads.find((h) => h[3] === k && h[0] !== "#") || heads.find((h) => h[3] === k) || [k])[0];
-  const flat = !!sort;                                   // sıralı görünümde kademeler anlamsız
+  const flat = !!sort || disagree;                      // sıralı görünümde ve ayrışanlar listesinde kademeler anlamsız
   const HEAD_TIPS = {
     "vs ADP": "Where we rank the player minus where Yahoo drafters actually take them. Green: we like him more than the market does.",
     ADP: "Average draft position: the pick number drafters take this player at, from Yahoo preseason drafts when we have them.",
@@ -205,6 +206,21 @@ export default function FantasyRankings() {
       </div>
     );
   };
+
+  // "Where the model and the simulation disagree": iki sayı yan yana, işaretli fark. Hepsi oyuncu başına fantezi puanı (G/Z değil).
+  const gapTone = (d) => (d > 0 ? GOOD : d < 0 ? BAD : "#8a8a8a");
+  const differRow = (p) => (
+    <div key={p.player_id} className="fz-differ" role="link" tabIndex={0} onClick={() => openPlayer(p)}
+      onKeyDown={(e) => e.key === "Enter" && openPlayer(p)}
+      style={{ gridTemplateColumns: phone ? undefined : "36px minmax(0,1fr) 230px 90px" }}>
+      {!phone && <span className="fz-num fz-muted" style={{ fontSize: 16, textAlign: "center" }}>{p.rank}</span>}
+      <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
+        <span className="fz-pname">{p.name}</span><PlayerMeta p={p} />
+      </div>
+      <span className="pair"><span>Model<b>{fmt1(p.fp_model)}</b></span><span>Simulation<b>{fmt1(p.fp_sim)}</b></span></span>
+      <span className="gap" style={{ color: gapTone(p.sim_delta) }}>{sgn(p.sim_delta)}</span>
+    </div>
+  );
 
   const phoneRow = (p) => {
     const d = diffCell(p.adp_diff);
@@ -286,12 +302,12 @@ export default function FantasyRankings() {
       )}
       {simOk && (
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <button className={`fz-chipbtn${disagree ? " on" : ""}`} aria-pressed={disagree} onClick={() => { setDisagree((d) => !d); setLimit(PAGE); }}>
-            Model ≠ simulation
-          </button>
+          <div className="fz-seg sm" role="group" aria-label="Which players to show">
+            <button aria-pressed={!disagree} className={!disagree ? "on" : ""} onClick={() => { setDisagree(false); setLimit(PAGE); }}>All players</button>
+            <button aria-pressed={disagree} className={disagree ? "on" : ""} onClick={() => { setDisagree(true); setSort(null); setLimit(PAGE); }}>Where they differ</button>
+          </div>
           <InfoTip label="Where the model and the simulation disagree" title="Where they disagree">
-            <p>Players whose simulated fantasy points per game differ from the model's by <b>2 or more</b>, biggest gap first.</p>
-            <p>Usually a roster effect the three-season history cannot see: a new star taking shots, a vacated role, an injury-thinned rotation. Worth a closer look before you trust either number.</p>
+            <p>Players whose simulated fantasy points per game differ from the model's by <b>{f.meta?.disagree_fp ?? 2} or more</b>. Usually a roster effect the player's own history cannot show.</p>
             <p>Change the projection from the Projection menu at the top.</p>
           </InfoTip>
         </div>
@@ -330,7 +346,7 @@ export default function FantasyRankings() {
       <SEO title="Fantasy rankings" description="Format-correct basketball fantasy rankings with tiers, punt builds and ADP value." path="/basketball/fantasy/rankings" />
       <div className="fz-page" style={{ gap: 18 }}>
         <div className="fz-head">
-          <div className="fz-head-l"><h1 className="fz-h1">Rankings</h1><span className="fz-sub">{sub}</span></div>
+          <div className="fz-head-l"><h1 className="fz-h1">Rankings</h1><span className="fz-sub">{sub}</span><ProjectionTag />{f.meta?.inseason_as_of && <span className="fz-meta">Updated through {new Date(`${f.meta.inseason_as_of}T00:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>}</div>
           <div className={`fz-seg${phone ? " scroll" : ""}`}>
             {FORMATS.map((o) => (
               <button key={o.k} className={!f.isCustom && f.f === o.k ? "on" : ""} onClick={() => f.set({ f: o.k })}>{o.short}</button>
@@ -351,7 +367,7 @@ export default function FantasyRankings() {
             {!phone && filterRow}
           </div>
           {!phone && puntRow}
-          {!phone && (
+          {!phone && !disagree && (
             <div className="fz-thead" style={{ gridTemplateColumns: cols }}>
               {heads.map(([l, a, dim, k]) => {
                 const active = k && (k === "value" ? !sort || sort.key === "value" : sort?.key === k);
@@ -387,8 +403,26 @@ export default function FantasyRankings() {
         <div style={{ display: "flex", flexDirection: "column" }}>
           {error && !data && <ErrorNote error={error} onRetry={reload} />}
           {loading && !fresh && <SkeletonList rows={10} />}
+          {disagree && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: "4px 0 12px" }}>
+              <h2 className="fz-h2">Where the model and the simulation disagree</h2>
+              <p className="fz-differintro">The simulation plays every team through 100 seasons, so it sees things a player's own history cannot: a new star taking shots, a vacated role, a thin rotation. These are the players where the two differ by {f.meta?.disagree_fp ?? 2} or more fantasy points per game, biggest gap first. Numbers are fantasy points per game whatever the format.</p>
+              <div className="fz-seg sm" role="group" aria-label="Order" style={{ alignSelf: "flex-start" }}>
+                {[["Biggest gap", null], ["Simulation higher", { key: "sim_delta", dir: "desc" }], ["Model higher", { key: "sim_delta", dir: "asc" }]].map(([l, v]) => (
+                  <button key={l} className={(sort?.key ?? null) === (v?.key ?? null) && (sort?.dir ?? null) === (v?.dir ?? null) ? "on" : ""} onClick={() => pickSort(v)}>{l}</button>
+                ))}
+              </div>
+            </div>
+          )}
+          {!phone && disagree && (
+            <div className="fz-diffhead" style={{ gridTemplateColumns: "36px minmax(0,1fr) 230px 90px" }}>
+              <span style={{ textAlign: "center" }}>#</span><span>Player</span><span>Fantasy points per game</span><span style={{ textAlign: "right" }}>Gap</span>
+            </div>
+          )}
           <div style={{ opacity: loading && data ? 0.55 : 1, transition: "opacity .15s" }}>
-            {flat
+            {disagree
+              ? players.map(differRow)
+              : flat
               ? players.map((p) => (phone ? phoneRow(p) : deskRow(p)))
               : tiers.map((t) => (
                 <div key={`${t.n}-${t.rows[0].player_id}`}>
@@ -399,7 +433,7 @@ export default function FantasyRankings() {
           </div>
           {fresh && !loading && players.length === 0 && (
             <div className="fz-state">
-              <span className="t">No players match</span>
+              <span className="t">{disagree ? `Nothing differs by ${f.meta?.disagree_fp ?? 2} or more fantasy points a game` : "No players match"}</span>
               <span className="b">{[pos !== "All" && pos, flag && FLAGS[flag]?.l, arch, qDeb && `“${qDeb}”`].filter(Boolean).join(" · ")}</span>
               <button className="fz-btn sm" style={{ marginTop: 6 }} onClick={clear}>Clear filters</button>
             </div>

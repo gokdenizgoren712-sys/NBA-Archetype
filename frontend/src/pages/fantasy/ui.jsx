@@ -1,6 +1,6 @@
 // Fantezi ortak bileşenleri — tasarımın C1 "Shared components" sayfası.
 import { useEffect, useRef, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import PaIcon from "../../components/shell/PaIcon";
 import { ARCHETYPE_COLOR } from "../../constants/archetypeColors";
 import { useAuth } from "../../contexts/AuthContext";
@@ -210,17 +210,79 @@ export function SkeletonList({ rows = 8, height = 52 }) {
   );
 }
 
-// Bu formatta önerilerimiz gerçek sezonlarda kanıtlanmadıysa (API `validation`) — öneri yine verilir, yalnız güven söylenir.
+// Bu bakışta/formatta önerilerimiz gerçek sezonlarda sınanmadıysa (API `validation`) — öneri yine verilir, yalnız güven söylenir.
+// Sakin ton (nötr nokta), ilk ekranda görünür; Simülasyon/Harman'dayken "Switch to Model" eylemi vardır. Bakış başına, kapatılmaz.
 export function ValidationNotice({ v, compact = false }) {
+  const f = useFantasy();
+  const { pathname } = useLocation();
   if (!v || v.status === "validated") return null;
+  const canSwitch = f.simAvailable && f.projection !== "model" && PROJECTION_PAGES.test(pathname);
   return (
-    <div className="fz-notice" role="note" style={{ alignItems: "flex-start", padding: compact ? "8px 10px" : "10px 12px" }}>
-      <span className="dot" style={{ marginTop: 6, flexShrink: 0, background: "#FFB11B" }} />
-      <span style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+    <div className="fz-notice" role="note" style={{ alignItems: "flex-start", padding: compact ? "8px 10px" : "10px 12px", flexWrap: "wrap" }}>
+      <span className="dot" style={{ marginTop: 6, flexShrink: 0, background: MUTED }} />
+      <span style={{ display: "flex", flexDirection: "column", gap: 2, flex: "1 1 260px", minWidth: 0 }}>
         <span style={{ fontWeight: 600 }}>{v.title}</span>
         {!compact && <span className="fz-sub" style={{ fontSize: 13, lineHeight: 1.45 }}>{v.body}</span>}
       </span>
+      {canSwitch && <button type="button" className="fz-btn sm" onClick={() => f.setProjection("model")}>Switch to Model</button>}
     </div>
+  );
+}
+
+/** Sayfanın hangi bakışı gösterdiğini başlığın yanında söyler (çubuktaki seçici kolay gözden kaçar). Simülasyon yoksa hiçbir şey çizmez. */
+export function ProjectionTag() {
+  const f = useFantasy();
+  if (!f.simAvailable) return null;
+  const o = PROJECTION_INFO[f.projection];
+  return (
+    <span className="fz-projtag">
+      <span className="fz-flag">{o.l} projection</span>
+      <InfoTip label="Which numbers these are" title={`${o.l} projection`}>
+        <p>{o.d}</p>
+        <p>Change it from the Projection menu at the top. Simulation is the default.</p>
+        <p><Link to={`/basketball/fantasy/methodology${f.query}`}>How the three views work</Link></p>
+      </InfoTip>
+    </span>
+  );
+}
+
+/** İstek `ms`'den uzun sürdüyse true: takım simülasyonu sunucu yeniden başlayınca ~13 sn ısınır. */
+function useSlow(active, ms = 3000) {
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    if (!active) return undefined;
+    const t = setTimeout(() => setSlow(true), ms);
+    return () => { clearTimeout(t); setSlow(false); };
+  }, [active, ms]);
+  return active && slow;
+}
+const WARMUP_COPY = "Warming up the league simulation, this can take up to half a minute after an update.";
+export function WarmupNote({ active }) {
+  const slow = useSlow(active);
+  if (!active || !slow) return null;
+  return <span className="fz-meta" role="status" style={{ lineHeight: 1.5 }}>{WARMUP_COPY}</span>;
+}
+
+/** Takvimli araçlar (Simulator, Trade, This week) her zaman takım simülasyonunda koşar; `legacy` = yedek motor. */
+export function TeamSimLabel({ engine, onRetry }) {
+  if (!engine) return null;
+  return (
+    <span className="fz-projtag">
+      {engine === "legacy"
+        ? <span className="fz-flag bad">Simpler model</span>
+        : <span className="fz-flag">Team simulation</span>}
+      <InfoTip label="About the team simulation" title="Team simulation" align="left">
+        <p>Plays every team through 100 seasons of 82 games, with injuries, rotation minutes and shared usage, and averages each player. Injuries are drawn at random.</p>
+        <p>Nobody is added or dropped in season: a player who is out only shows up as missed games.</p>
+        <p><Link to="/basketball/fantasy/methodology">How it works</Link></p>
+      </InfoTip>
+      {engine === "legacy" && (
+        <span className="fz-meta" role="status">
+          We used a simpler model this time because the team simulation was not ready.
+          {onRetry && <> <button type="button" className="fz-link" onClick={onRetry}>Try again</button></>}
+        </span>
+      )}
+    </span>
   );
 }
 

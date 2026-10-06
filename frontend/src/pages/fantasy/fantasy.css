@@ -482,3 +482,17 @@
 @media (max-width: 767px) {
   .fz-chipbtn, .fz-punt { min-height: var(--touch); }
 }
+
+/* Faz 6: projeksiyon etiketi, simülasyon etiketi, ayrışanlar listesi */
+.fz-projtag { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 2px; }
+.fz-notice .fz-btn.sm { margin-left: auto; }
+.fz-differ { display: grid; align-items: center; gap: 10px; min-height: 64px; border-bottom: 1px solid var(--hairline); cursor: pointer; }
+.fz-differ:hover { background: var(--raised); }
+.fz-differ .pair { display: flex; gap: 14px; font-size: 13px; color: var(--text-muted); white-space: nowrap; }
+.fz-differ .pair b { font: 700 18px var(--font-logo); color: var(--text-primary); font-variant-numeric: tabular-nums; margin-left: 4px; }
+.fz-differ .gap { font: 700 20px var(--font-logo); text-align: right; font-variant-numeric: tabular-nums; }
+.fz-diffhead { display: grid; gap: 10px; min-height: 36px; align-items: center; font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .1em; text-transform: uppercase; color: var(--text-muted); border-bottom: 1px solid var(--panel-border); }
+.fz-differintro { margin: 0; max-width: 70ch; font-size: 14px; line-height: 1.55; color: var(--text-secondary); }
+.fz-tip a { color: var(--accent); text-decoration: underline; }
+@media (max-width: 767px) { .fz-differ { grid-template-columns: minmax(0, 1fr) auto !important; row-gap: 4px; padding: 10px 0; } .fz-differ .pair { grid-column: 1 / -1; } }
+@media (max-width: 767px) { .fz [style*="overflow-x: auto"], .fz-seg.scroll { scrollbar-width: none; } }

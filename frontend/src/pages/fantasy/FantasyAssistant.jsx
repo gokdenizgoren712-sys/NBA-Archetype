@@ -7,7 +7,7 @@ import { ARCHETYPE_COLOR } from "../../constants/archetypeColors";
 import { useAuth } from "../../contexts/AuthContext";
 import { SEO } from "../../hooks/useSEO";
 import { fz } from "./fantasyApi";
-import { ErrorNote, Meter, ProbBar, ValidationNotice, fmt1, pct } from "./ui";
+import { ErrorNote, Meter, ProbBar, ProjectionTag, ValidationNotice, fmt1, pct } from "./ui";
 import { pickOwner, useAsync, useFantasy, useIsPhone } from "./useFantasy";
 
 const fold = (s) => (s || "").normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase();
@@ -163,6 +163,7 @@ export default function FantasyAssistant() {
         </div>
       )}
       {recErr && !qq && <ErrorNote error={recErr} what="recommendations" />}
+      {!qq && <ProjectionTag />}
       {!qq && <ValidationNotice v={rec?.validation} compact />}
       {list.map(row)}
       {list.length === 0 && !recErr && (

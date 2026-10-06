@@ -6,7 +6,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { SEO } from "../../hooks/useSEO";
 import { fz } from "./fantasyApi";
 import RosterSourceBar from "./RosterSourceBar";
-import { BAD, ENGINE_NOTE, ErrorNote, GOOD, SkeletonList, ValidationNotice, fmt1, ordinal, pct } from "./ui";
+import { BAD, ErrorNote, GOOD, SkeletonList, TeamSimLabel, ValidationNotice, WarmupNote, fmt1, ordinal, pct } from "./ui";
 import { useFantasy, useIsPhone } from "./useFantasy";
 import { useRosterSource } from "./useRosterSource";
 
@@ -50,7 +50,7 @@ function Delta({ label, now, after, fmt, dfmt, higherBetter = true, eps }) {
   );
 }
 
-function Result({ r, f }) {
+function Result({ r, f, onRetry }) {
   const cats = r.categories || [];
   const good = r.verdict === "Good for you";
   const bad = r.verdict === "Bad for you";
@@ -68,8 +68,9 @@ function Result({ r, f }) {
         <Delta label="Playoff odds" now={r.before.playoff_prob} after={r.after.playoff_prob} fmt={(v) => pct(v)} dfmt={(d) => `${Math.round(d * 100)}`} eps={0.01} />
         <span className="fz-meta">
           {r.scope?.mode === "rest" ? `Rest of season, from week ${r.scope.from_week}: only games still to play count. ` : ""}
-          Average finish is over {r.sims} simulated seasons; the verdict rests on weekly matchup win rate, the steadiest of these. {ENGINE_NOTE[r.engine] || ""}
+          Average finish is over {r.sims} simulated seasons; the verdict rests on weekly matchup win rate, the steadiest of these.
         </span>
+        <TeamSimLabel engine={r.engine} onRetry={onRetry} />
       </div>
       {cats.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
@@ -111,6 +112,7 @@ export default function FantasyTrade() {
   const [q, setQ] = useState("");
   const [hits, setHits] = useState([]);
   const seq = useRef(0);
+  const [tryN, setTryN] = useState(0);
 
   const sel = selRaw.key === ctxKey ? selRaw : { ...EMPTY, key: ctxKey };
   const update = (patch) => setSelRaw({ ...sel, ...patch });
@@ -168,7 +170,7 @@ export default function FantasyTrade() {
       }
     }, 350);
     return () => clearTimeout(t);
-  }, [anaKey]);   // eslint-disable-line react-hooks/exhaustive-deps
+  }, [anaKey, tryN]);   // eslint-disable-line react-hooks/exhaustive-deps
   const res = resRaw.key === anaKey ? resRaw : { data: null, error: null };
   const stale = anaKey && (resRaw.loading || resRaw.key !== anaKey);
 
@@ -238,10 +240,11 @@ export default function FantasyTrade() {
             {res.error && <ErrorNote error={res.error} what="the trade analysis" />}
             {res.data && (
               <div style={{ opacity: stale ? 0.5 : 1, transition: "opacity .15s" }}>
-                <Result r={res.data} f={f} />
+                <Result r={res.data} f={f} onRetry={() => { setResRaw({ key: null, data: null, error: null, loading: true }); setTryN((n) => n + 1); }} />
               </div>
             )}
             {stale && !res.data && <SkeletonList rows={4} height={40} />}
+            <WarmupNote active={!!stale} />
           </>
         )}
       </div>

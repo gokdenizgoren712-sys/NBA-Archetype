@@ -8,7 +8,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { SEO } from "../../hooks/useSEO";
 import { fz } from "./fantasyApi";
 import {
-  ArchChip, BAD, ErrorNote, GOOD, Meter, ProbBar, SkeletonList, ValidationNotice, fmt1, ordinal, pct,
+  ArchChip, BAD, ErrorNote, GOOD, Meter, ProbBar, ProjectionTag, SkeletonList, ValidationNotice, fmt1, ordinal, pct,
 } from "./ui";
 import { pickOwner, useFantasy, useIsPhone } from "./useFantasy";
 
@@ -463,6 +463,7 @@ export default function FantasyMock() {
       </div>
       <span style={{ fontSize: 14, lineHeight: 1.45 }}>{reason}</span>
       {state.next_pick && <span className="fz-meta">Chance still there at pick {state.next_pick}: {pct(rec.available_next_pick)}</span>}
+      <ProjectionTag />
       <ValidationNotice v={state.validation} compact />
       <button className="fz-gold" style={phone ? { height: 54, borderRadius: 12, fontSize: 18 } : undefined} disabled={busy}
         onClick={() => draft(rec.player_id)}>Draft {shortName(rec.player.name)}</button>
