@@ -101,6 +101,19 @@ def main_team(rows: pd.DataFrame) -> pd.Series:
     return rows.sort_values("MP", ascending=False).drop_duplicates("SLUG").set_index("SLUG")["TEAM"]
 
 
+def team_share_features(base_year: int, slugs: pd.Series) -> pd.DataFrame:
+    """Oyuncunun kendi takımındaki rolü (t−1): dakika payı ve takım içi dakika sırası. Takas edilenler için en çok dakika oynadığı takım."""
+    rb = team_rows(base_year)
+    if rb.empty:
+        return pd.DataFrame({"TEAM_SHARE": np.nan, "TEAM_RANK": np.nan}, index=range(len(slugs)))
+    rb = rb.sort_values("MP", ascending=False).drop_duplicates("SLUG")
+    tot = rb.groupby("TEAM")["MP"].transform("sum")
+    rb["TEAM_SHARE"] = rb["MP"] / tot
+    rb["TEAM_RANK"] = rb.groupby("TEAM")["MP"].rank(ascending=False, method="first")
+    m = rb.set_index("SLUG")[["TEAM_SHARE", "TEAM_RANK"]]
+    return pd.DataFrame({"TEAM_SHARE": slugs.map(m["TEAM_SHARE"]).to_numpy(), "TEAM_RANK": slugs.map(m["TEAM_RANK"]).to_numpy()})
+
+
 def role_change_features(base_year: int, t: int, slugs: pd.Series) -> pd.DataFrame:
     """Takım bağlamı değişimi (bizim bağlam katmanımızın tarihsel karşılığı). t sezonunun kadro üyeliği sezon öncesi bilinen bilgidir
     (yaz transferleri); yalnız üyelik kullanılır, performans değil. Sezon ortası takaslar küçük bir sızıntıdır (dokümante)."""
@@ -179,6 +192,8 @@ def build(first_target: int = 1986, last_target: int = 2027, include_unlabeled_l
             d = d.reset_index(drop=True)
             for c in ("MOVED", "VAC", "ARR"):
                 d[c] = rc[c].to_numpy()
+            ts_ = team_share_features(y, d["SLUG"].reset_index(drop=True))
+            d["TEAM_SHARE"], d["TEAM_RANK"] = ts_["TEAM_SHARE"].to_numpy(), ts_["TEAM_RANK"].to_numpy()
             d["TARGET_SEASON"] = season_label(t)
             out.append(d)
     ds = pd.concat(out, ignore_index=True)

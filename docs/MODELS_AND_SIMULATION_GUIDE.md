@@ -208,10 +208,111 @@ Ayrıntılı plan MIP modeli çalıştıktan sonra yazılacak.
 
 ---
 
+# BÖLÜM D: Yolculuk: aşamalar, problemler ve çözümler (video için)
+
+Her aşama aynı kalıpta: **ne istedik → ne ters gitti → nasıl düzelttik → ne öğrendik.** Bu bölüm de her değişiklikte güncellenir; yeni aşama eklenince sona eklenir, devam eden aşama "🔶" ile işaretlenir.
+
+## D1. Fantezi tarafı
+
+### Aşama 1: "Sıralamalar gerçekçi değil" (Trae Young sorunu)
+- **İstek:** Sıralamada G/Z skoru açıklamaları, sıralanabilir sütunlar, sabit arama çubuğu; ama asıl şikâyet: bazı oyuncular gerçekçi görünmüyor.
+- **Problem 1:** Kaçırılan maçlar **sıfır üretim** sayılıyordu. Sakatlığa yatkın yıldız, ilk bakışta olduğundan çok daha değersiz görünüyordu.
+- **Çözüm:** Kaçırılan maçın yerine waiver seviyesinde bir oyuncunun üretimi konuyor (`REPL_CREDIT = 0.75`). Sakatlık riski artık "sıfır" değil, "yedek oyuncuyla doldurulmuş boşluk".
+- **Problem 2:** Piyasa verisi eskiydi. **Çözüm:** Yeni Yahoo ADP (270 oyuncu, ekran görüntülerinden) ve "ADP ≠ sıralama" ilkesi: ADP piyasanın kendisi.
+- **Problem 3:** Tek bir sezondan fazla yükselen projeksiyonlar şüphesi. **Çözüm:** İkinci sezon (sophomore) kontrolü ve "yükseliyor / sabit / düşüyor" etiketleri; etiket projeksiyonu değiştirmiyor, yolu anlatıyor (korelasyon 0.07 ile ölçtük: gerçekten ayrı bir tahmin değil).
+- **Ders:** Gerçekçilik çoğu zaman yeni bir model değil, eksik bir varsayımı (kaçırılan maç = 0) düzeltmek.
+
+### Aşama 2: Takım bağlamı: "Maxey bu kadar üretir mi?"
+- **İstek:** LeBron ve Jaylen Brown'ın geldiği takımda Maxey gerçekten bu kadar üretir mi?
+- **Problem:** Yeni takıma geçen oyuncular yaklaşık %10 fazla tahmin ediliyordu.
+- **Çözüm:** Kullanım esnekliği (`rate = a·L^(−θ)`) ve dakika/oran regresyonları; her sezon dışarıda bırakılarak doğrulandı (3 sezon).
+- **Ders:** Doğrulamayı "bir sezonu dışarıda bırak" şeklinde yapmasaydık, bağlam katmanı kendi verisini ezberlerdi.
+
+### Aşama 3: Takım simülasyonu: dört hata
+Hedef: her NBA takımını oyun oyun oynatıp oyuncunun payını hesaplamak. Dört ayrı hata ve çözümleri:
+1. **Sabit 241 dakikalık bütçe** hatayı büyüttü (MAE 5.39). → Bütçe, takımın kendi beklenen dakika toplamı oldu.
+2. **Bağlam iki kez sayıldı** (dakikaya önceden uygulanan bağlam + simülasyonun kendi dağılımı). → Önceden düzeltme kaldırıldı.
+3. **Yetenek şoku ortalamayı kaydırıyordu** (yanlılık −0.9). → Şok ortalamayı koruyacak şekilde normalize edildi.
+4. **Sakatlık blokları üst üste biniyor, kaçırılan maçı olduğundan az gösteriyordu.** → Eksik kadarını rastgele maçlardan çıkaran "açık kapatma" adımı; bütçe ölçeği 0.94'e yeniden ayarlandı.
+- **Ders:** Karmaşık modelde hata tek yerden gelmez; her bileşeni tek tek ölçmek (yanlılık, MAE, aralık kapsaması) gerekli.
+
+### Aşama 4: Oyun içi gürültü (dünya motoru)
+- **Problem:** 3'lük isabet %6.6 eksik çıktı (FG3M yanlılığı). Neden: 3'lük deneme sayısı ayrı bir sayma değişkeni olarak çekilip kırpılıyordu.
+- **Çözüm:** 3'lük denemeyi, atış denemesinin binom payı olarak çekmek. Yanlılık kayboldu.
+- **Ders:** Birbirine bağlı sayıları (FGA ≥ 3PA) ayrı ayrı çekmek tutarsızlık üretir; yapıyı baştan doğru kurmak lazım.
+
+### Aşama 5: Eski motorla yan yana test: "eşitlik"
+- **Problem:** Yeni motor eskisinden **daha iyi değil**, istatistiksel olarak eşit çıktı (güven aralıkları sıfırı içeriyor).
+- **Karar:** Dürüstçe "eşit" dedik; yine de takım içi bağımlılığı yapısal olarak doğru modellediği için sitede varsayılan yaptık (senin kararın).
+- **Test problemi:** Varsayılan piyasa çekmesi açılınca eski/yeni motor uyum testi kırıldı. → Testi "çekmesiz katı" ve "varsayılan çekmeli daha gevşek" olarak ikiye böldük.
+- **Ders:** "Yeni = daha iyi" demek yerine, kanıtı olduğu kadar söylemek.
+
+### Aşama 6: Sunucu ve sezon içi
+- **Problem 1:** Sunucu yeniden başlayınca dünya 13 saniyede kuruluyor; bu sırada gelen istekler önce eski, sonra yeni motordan yanıt alıyordu. → Hazır olana kadar en çok 25 sn bekleme; hâlâ olmazsa eski motor ve yanıtta bunu söyleyen alan.
+- **Problem 2:** Saatlik sezon içi güncellemede dünya yeniden kurulurken yeni istek eski motora düşebilirdi. → Önceki saatin dünyası, yenisi kurulana kadar hizmet veriyor.
+- **Problem 3 (modelleme):** Sezon içinde güncel hızlar yeni rolü zaten içeriyor; sezon öncesi bağlam düzeltmesi tekrar uygulanırsa çift sayım olur. → Eski takım yükü yok (çarpan 1).
+- **Sonuç:** Sezon içi simülasyon da modelle eşit (FP hatası 3.607 ↔ 3.638); yanlılık daha düşük.
+- **Ders:** Sistem güvenilirliği (bekleme, yedek motor, eski dünya) modelin kendisi kadar önemli.
+
+### Süreç problemleri (fantezi)
+- Yan oturumlar aynı dosyalarda çalışırken yalnızca kendi değişikliklerimizi commit'lemek için hunk bazlı hazırlama.
+- Tarayıcı paneli hiç açılamadı: arayüz yalnızca derleme/lint ve API testleriyle doğrulandı, görsel doğrulama yapılmadı (bilinen açık).
+- Push yapılmadı (senin kuralın); yerel commit'ler birikti.
+
+## D2. Ödül tahmini (MIP)
+
+### Aşama 1: İlham ve ilk sorular
+- **İstek:** Videodaki gibi MIP adayı listesi ve hype indeksi. Soru: simülasyonumuz bunu yapabilir mi?
+- **İlk ölçüm:** Mevcut projeksiyonun artış öngörüsüyle gerçekleşen artış arasındaki sıra korelasyonu 0.34–0.38 (sinyal var, zayıf); ilk 10'un yalnız 1–3'ü gerçek ilk 20'ye giriyor.
+- **Ders:** Hazır bir modelin başka bir soruya (ödül) uyup uymadığını **önce ölçmek**, doğrudan kullanmaktan iyi.
+
+### Aşama 2: Veri: "elimizde var sandığımız" şeyler
+- **Problem 1:** Yaşın tüm geçmişte elimizde olduğunu düşünüyorduk; yalnız 1996-97'den sonrası vardı. → Basketball-Reference'tan 42 sezon yaş çekildi.
+- **Problem 2:** Usage'ı çekeceğimizi sanıyorduk; zaten kayıtlıydı. → Sadece yaş ve MIP oylaması çekildi (gereksiz istek yok).
+- **Problem 3:** Çekim 5. sezonda **bağlantı kopması** ile durdu. → Yeniden deneme (20/40 sn bekleyerek), 403/429'da dur; kaldığı yerden devam.
+- **Problem 4:** Takas edilen oyuncular son yıllarda "TOT" yerine "2TM/3TM" ile geliyor; çift satırlar oluşuyordu. → Oyuncu başına en çok maçı olan (toplam) satır.
+- **Problem 5:** Oyuncu anahtarı iki dosyada farklı biçimdeydi (`b/bridgmi01` ve `bridgmi01`). → Ortak anahtar normalizasyonu.
+- **Ders:** "Bunu zaten biliyoruz" varsayımlarını veriyle doğrulamak iki gereksiz çekimi önledi, bir eksiği yakaladı.
+
+### Aşama 3: Isaac Austin düzeltmesi (senin yakaladığın hata)
+- **Problem:** Bir önceki sezonu NBA'de olmayan oyuncu (Avrupa'dan dönen Isaac Austin, 1997 kazananı) veri setinden düşüyordu; 41 kazanandan 40'ı eşleşiyordu.
+- **Çözüm:** Oyuncunun t'den önceki **en son NBA sezonu** kullanılıyor (en çok 3 yıl geriye), aradaki yıl `GAP` özelliği, yaş düzeltildi. Eşleşme: kazananlar 41/41, oylama 848/850.
+- **Ders:** Eksik veri satırını silmeden önce "neden eksik?" diye sormak; bir kazananın eksikliği bile modelin ne öğrendiğini bozar.
+
+### Aşama 4: Veri setindeki iki sessiz hata
+- **Hata 1:** Aynı sütun iki kez eklenince "duplicate labels" hatası. → Sütun listesi tekilleştirildi.
+- **Hata 2 (sessiz):** Maç başı sayı değişimini tahmin eden model **tamamen boş (NaN)** çıktı, ama program hata vermedi; sonraki aşama NaN'i sıfır sayıp katsayıyı 0.0 buldu. Aday listesindeki boş sütun ve sıfır katsayı bunu ele verdi. → Hedefi NaN olan satırlar eğitimden çıkarıldı. Sonra Aşama A'nın gerçek kalitesi ölçülebildi (korelasyon 0.48).
+- **Ders:** Sessiz hatalar en pahalısı: çıktıdaki "çok temiz" katsayılar (tam 0.0) şüpheli olmalı.
+
+### Aşama 5: İlk model ve beklenmedik bulgular
+- **İstek:** İki aşamalı model (gelişme tahmini + tanınma), walk-forward; sentetik hype.
+- **Bulgu 1:** Aşama A iyi bir istatistik tahmincisi ama MIP sıralamasında **rastgele seviyesinde** (hits@10 0.63, rastgele 0.33). Öngördüğü artış çoğunlukla ortalamaya dönüş.
+- **Bulgu 2:** Tanınma katmanı gerçek kazanç sağlıyor (genç+üretken tabanına göre +0.058 ± 0.022 NDCG).
+- **Bulgu 3:** Aşama A'yı da, takım değişimi özelliklerini de eklemek **fark yaratmadı**. Üç eğitim penceresi de eşit.
+- **Bulgu 4 (asıl problem):** Model oylamaya girenleri buluyor (ilk 10'da 3 isabet) ama **kazananı değil**: son 8 sezonda kazananın sırası 29, 70, 98, 9, 68, 27, 19, 157. Hep zaten yıldız olan gençler (Şengün dört yıl üst üste) ilk 5'te çıkıyor.
+- **Ders:** Ortalama bir metrik (ballot isabeti) iyi görünürken asıl hedefi (kazanan) kaçırmak mümkün; metrikleri hedefe göre seçmek şart.
+
+### Aşama 6 🔶: Teşhis ve ikinci tur (devam ediyor)
+- **Teşhis (veriyle):** Kazananların yaşı 20–26 arasında dengeli dağılırken modelin ilk 10'unun **%81'i 21 ve altı**. Model ayrıca bir önceki yıl zaten çok gelişmiş oyuncuları seçiyor (dakika +5, BPM +1.5); kazananlar ise önceki yıl sıçrama yapmamış (BPM değişimi 0.0). Yani model "momentum"u kovalıyor, MIP sürprizi ödüllendiriyor.
+- **Neden:** Yaş doğrusal ve tek yönlü bir ağırlıktı; "genç = iyi" kuralı yaş sınıflarının gerçek dağılımını yansıtmıyor. Sentetik hype henüz sıralamaya girmiyor, sadece teşhis çıktısı (bu da bir eksik).
+- **Plan (senin sezgin):** (a) yaş kutucukları, (b) daha fazla özellik: takım içi rol payı ve sırası, geçmiş seviyeler, sağlık, çıkış yaşı, (c) hedefi "kim kazanır" olarak değiştirmek (sezon içi sıralama kaybı), (d) sentetik hype'ı gerçekten sıralamaya dahil etmek.
+- **Sonuç:** Bu aşama bitince buraya yazılacak.
+
+## D3. Sürekli tekrar eden dersler (video için ortak tema)
+1. **Önce ölç, sonra inşa et:** Mevcut modelin yeni soruya uyup uymadığı, kurmadan önce ölçüldü.
+2. **"Eşit" demek de bir sonuç:** Yeni motor eskisinden iyi çıkmayınca bunu saklamadık.
+3. **Sessiz hatalar:** Çıktıdaki "fazla temiz" sayılar (tam sıfır, boş sütun) hataya işaret etti.
+4. **Metrik hedefle uyumlu olmalı:** Ortalama isabet iyi, kazananı bulmak kötü: ikisini ayrı ölçmek şart.
+5. **Veri varsayımları doğrulanmalı:** "Elimizde var" dediklerimizin yarısı yoktu, bir kısmı zaten vardı.
+6. **Kullanıcı gözlemleri modelden değerli olabiliyor:** Isaac Austin, yaşın ağırlığı ve Şengün sezgisi; üçü de model hatasını ortaya çıkardı.
+
+---
+
 # Değişiklik günlüğü
 
 | Tarih | Değişiklik |
 |---|---|
+| 2026-10-07 (e) | Bölüm D eklendi: aşamalar, karşılaşılan problemler ve çözümleri (video metni için). Teşhis: model kazananların yaş dağılımını yansıtmıyor (ilk 10'un %81'i ≤21 yaş) ve momentum kovalıyor; ikinci tur başladı. |
 | 2026-10-07 (d) | Aşama A ve B kuruldu, walk-forward ile 2000–2026'da test edildi (B8b). Bulgular: tanınma katmanı genç+üretken tabanını aşıyor (+0.058 ± 0.022 NDCG), A ve takım değişimi katkı vermiyor, pencere farkı yok; model oylamaya girenleri buluyor ama kazananı değil. Üretim modeli B2; ilk 2026-27 listesi çıktı. |
 | 2026-10-07 (c) | Isaac Austin düzeltmesi (senin notun): önceki sezonu olmayan oyuncu için en son NBA sezonu + `GAP` özelliği; 2025-26 B-Ref verisi çekildi; takım değişimi özellikleri (`MOVED`, `VAC`, `ARR`) eklendi. |
 | 2026-10-07 (b) | MIP veri seti kuruldu ve doğrulandı (18 476 satır, oylama eşleşmesi %99.1, kazananlar 40/41). Satır = (oyuncu, hedef sezon); özellikler t−1'den: seviye ve persantiller, son 1–2 yıl değişimi, tepe VORP, kıdem, önceki MIP payı, güvenilirlik ağırlığı. |
