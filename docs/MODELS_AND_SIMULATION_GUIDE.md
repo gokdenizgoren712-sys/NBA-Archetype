@@ -2,7 +2,7 @@
 
 Bu dosya şimdiye kadar konuştuklarımızı ve modellerin / simülasyonun ne yapması gerektiğini tek tek açıklar. **Her değişiklikte güncellenir** (en altta değişiklik günlüğü var). Teknik ayrıntı ve ölçüm tabloları için ilgili plan dosyalarına bağlantı verilir; burada amaç "ne, neden, nasıl, ne durumda" sorularını cevaplamak.
 
-Son güncelleme: 2026-10-07
+Son güncelleme: 2026-10-07 (akşam)
 
 ---
 
@@ -102,7 +102,7 @@ Sonuç: işe yarar bir taban var, ama MIP tek başına istatistikle yakalanmıyo
 | Dakika, per-game, gelişmiş ölçüler (USG%, TS%, BPM, VORP, WS/48 ...) | 1983-84'ten beri **zaten var** (Basketball-Reference) |
 | Yaş | 1996-97'den sonrası vardı; 1983-84 ve sonrası için `{sezon}__bref_age.parquet` olarak **çekildi** (42 sezon, yaş ve oyuncu anahtarı %100 dolu) |
 | MIP oylaması | **Çekildi:** `awards__mip_voting.parquet`, 1985-86 – 2025-26, 41 sezon, 850 satır, sezon başına 4–36 oyuncu (RANK, ilk sıra oyu, PTS_WON, PTS_MAX, SHARE, kazanan). Son kazanan Nickeil Alexander-Walker (2025-26) |
-| 2025-26 sezonu için B-Ref özellikleri | **Eksik**: 2026-27 tahmini için bref_advanced, per-game ve yaş 2025-26 için de çekilecek |
+| 2025-26 sezonu için B-Ref özellikleri | ✅ Çekildi (advanced, per-game, yaş) |
 
 Çekim: `python -m src.fetch_awards --age` / `--mip` (3.5 sn aralık, önbellekli, 403/429'da durur; bağlantı koparsa 3 deneme).
 MIP ödülü 1985-86'da başladığı için etiketli sezon sayısı 41; 1983-85 yalnızca özellik geçmişi.
@@ -114,7 +114,11 @@ MIP ödülü 1985-86'da başladığı için etiketli sezon sayısı 41; 1983-85 
 **Sızıntısızlık:** Walk-forward. Hedef sezon t için yalnızca t'den önceki sezonlarla eğitilir; B'nin eğitim girdileri de ilgili sezonlarda **o gün A'nın verdiği tahminlerdir** (iç içe walk-forward). Test 2000'den başlar (en az 15 yıl eğitim).
 
 **Dakika/rol filtresi yok (senin kararın):** Yerine güvenilirlik ağırlığı `RELIAB = MP / (MP + 800)`. Az dakika oynayanın artışına az güvenilir ama satır silinmez; usage ve dakika birlikte kullanılır.
-**Eğitim penceresi:** 1986'dan beri tüm veri; özellikler sezon içi persantil (dönemler arası taşınabilir). Üç pencere yarıştırılacak: 1986'dan beri, son 20 yıl, son 12 yıl. Veri karar verir.
+**Eğitim penceresi:** 1986'dan beri tüm veri; özellikler sezon içi persantil (dönemler arası taşınabilir). Üç pencere yarıştırıldı (1986'dan beri, son 20, son 12 sezon): **fark yok** (B2'de son 20 − tüm geçmiş: −0.001 ± 0.004; son 12: +0.016 ± 0.009 NDCG). Karar: tüm geçmiş (daha kararlı).
+
+**Oyuncu dönüşleri (senin düzeltmen):** Bir önceki sezonu NBA'de olmayan oyuncu (Avrupa'ya gitmiş, uzun sakatlık; ör. Isaac Austin 1997) artık dışarıda kalmıyor: o oyuncunun t'den önceki **en son NBA sezonu** (en çok 3 yıl geriye, o sezonda ≥ 300 dk) özellik olarak kullanılır, `GAP` aradaki yıl sayısı, yaş da aradaki yıllarla düzeltilir. Sonuç: oylamadaki 850 oyuncunun 848'i ve 41 kazananın 41'i veri setinde (önce 842 ve 40'tı).
+
+**Takım bağlamı değişimi (denendi):** `MOVED` (takım değişti), `VAC` (eski takımdan ayrılan dakika payı), `ARR` (yeni takıma gelenlerin dakika payı), t sezonunun kadro üyeliğinden (yaz transferleri). Üyelik bilgisi sezon öncesi bilinir ama sezon ortası takaslar küçük bir sızıntıdır.
 
 ## B6. Sentetik hype (senin fikrin)
 
@@ -136,6 +140,32 @@ MIP ödülü 1985-86'da başladığı için etiketli sezon sayısı 41; 1983-85 
 Doğruluk değil, **sıralama** ölçütleri: sezon başına ilk 10'un oylamaya giren oyuncuları yakalaması, oy payı geri çağırma, NDCG@10 (kazanç = oy payı), kazananın sırası, olasılık kalibrasyonu (Brier). Karşılaştırma tabanları: "genç + üretken", "son yıl artışı", A tek başına, mevcut simülasyon artışı.
 Final olasılık: `P(MIP) = P(gelişme) × P(yeterli maç oynama)`; ikinci terim için simülasyonun maç dağılımı hazır. (65 maç şartı henüz doğrulanmadı.)
 
+### B8b. İlk sonuçlar (2000–2026, 27 sezon, walk-forward, `python -m src.awards.mip_model`)
+
+Ölçütler sezon ortalaması; "hits@10": modelin ilk 10'unun kaçı oylamaya girdi (oylamada sezon başına 4–36, tipik ~14 oyuncu); "recall@10": oy payının ne kadarı ilk 10'da.
+
+| Model | hits@10 | recall@10 | NDCG@10 | Kazanan ilk 10'da | Kazanan ilk 3'te |
+|---|---|---|---|---|---|
+| Rastgele | 0.33 | 0.023 | 0.023 | %0 | - |
+| Son yıl artışı (BPM / sayı) | 1.2 | 0.05 | 0.03 | %4 | - |
+| Aşama A tek başına | 0.63 | 0.007 | 0.004 | %0 | - |
+| Genç + üretken | 2.15 | 0.12 | 0.084 | %15 | - |
+| B0 (yalnız A'nın istatistik beklentisi) | 2.81 | 0.13 | 0.104 | %7 | %0 |
+| B1 (+ seviye / tarihçe) | 3.07 | 0.19 | 0.142 | %22 | %4 |
+| **B2 (üretim: seviye + yaş + tarihçe + büyüme, A'sız)** | 2.81 | 0.20 | 0.142 | %26 | %7 |
+| B4 (B2 + takım bağlamı değişimi) | 2.85 | 0.19 | 0.137 | %22 | %7 |
+
+Çiftli sezon farkları (NDCG@10, ortalama ± standart hata): B1 − B0 **+0.039 ± 0.022**; B2 − "genç + üretken" **+0.058 ± 0.022**; B2 − B1 0.000 ± 0.018; B3 − B2 (A eklemek) +0.011 ± 0.009; B4 − B2 (takım değişimi) −0.006 ± 0.012. Yani tanınma katmanı (seviye / yaş / tarihçe) ve genç+üretken tabanını aşmak gerçek kazanç; A'yı ya da takım değişimini eklemenin **ölçülebilir bir katkısı yok** (hepsi hata payı içinde).
+
+**Aşama A tek başına iyi bir istatistik tahmincisi** (BPM değişimi için korelasyon 0.48, sıfır tahminine göre MSE iyileşmesi %23; maç başı sayı: 0.45 ve %20) ama **MIP sıralaması için işe yaramıyor**: öngördüğü artış büyük ölçüde ortalamaya dönüş. Oylama "istatistik artışı"nı değil, seviye, yaş ve tarihçeyle şekillenen bir tanınmayı ödüllendiriyor.
+
+**Dürüst sınırlar:**
+- Model oylamaya girenleri iyi buluyor (rastgele 0.33 → 2.8–3.1), **kazananı değil**: son 8 sezonda kazananın sırası 29, 70, 98, 9, 68, 27, 19, 157. İlk 5'te genellikle zaten yıldız olan genç oyuncular çıkıyor (Dončić, Tatum, Wembanyama, Şengün dört yıl üst üste). Kazananların çoğu rol değişikliği yaşayan oyuncular.
+- Kalibrasyon: kazanan başına log-olasılık −4.91 (eşit olasılıkta −6.43): kazanana tesadüfün yaklaşık 4–5 katı olasılık veriyor; en yüksek `P(kazanma)` yaklaşık %4. Liste bir **izleme listesi**.
+- Bu sonuçlar henüz hype olmadan; sentetik hype'ın (B0 − üretim logiti) şu an anlamlı bir ayrıştırması yok (kazananla ilişkisi ölçülmedi).
+
+**2026-27 ilk adaylar (üretim modeli):** Flagg, Harper, Sheppard, Knueppel, Castle, Clingan, Buzelis, Ware, Sarr, Edgecombe, Holland, Podziemski, Queen, Rollins, Mitchell. 19–21 yaşında ağırlıklı: bu modelin yaşa verdiği güçlü ağırlığın sonucu, tek başına güven vermiyor. Maç sayısı (65 maç şartı) henüz uygulanmadı.
+
 ## B9. Diğer ödüller: komple plan (MIP sonrası)
 
 Aynı iskelet: oylama payı hedefi + walk-forward + sentetik/gerçek hype. İhtiyaçlar:
@@ -152,12 +182,13 @@ Ayrıntılı plan MIP modeli çalıştıktan sonra yazılacak.
 | Adım | Durum |
 |---|---|
 | Yaş (42 sezon) ve MIP oylama (41 sezon) çekimi | ✅ Bitti |
-| Veri seti kurucu `src/awards/mip_data.py` | ✅ Çalıştı: `data/awards__mip_dataset.parquet`, 18 476 satır × 93 sütun, 41 etiketli sezon. Oylamadaki 850 oyun %99.1'i (842) eşleşti, 41 kazananın 40'ı (eşleşmeyenler bir önceki sezonu NBA'de oynamamış, ör. Isaac Austin 1997) |
-| 2025-26 sezonu için B-Ref özellikleri | ⏳ |
-| Aşama A (gelişme) ve B (tanınma) modelleri, walk-forward | ⏳ |
-| Pencere karşılaştırması (1986 / 20 yıl / 12 yıl) | ⏳ |
-| Sentetik hype raporu (yıllara göre yanlış pozitif listeleri) | ⏳ |
-| 2026-27 için 10 kişilik aday listesi | ⏳ |
+| Veri seti kurucu `src/awards/mip_data.py` | ✅ `data/awards__mip_dataset.parquet`, 24 349 satır × 106 sütun, 41 etiketli sezon. Oylamadaki 850 oyuncunun 848'i, 41 kazananın 41'i eşleşti (dönüş yapan oyuncular için `GAP`: Isaac Austin 1997 dahil). 2027 hedef sezonu (2026-27) 583 satır, etiketsiz |
+| 2025-26 sezonu için B-Ref özellikleri | ✅ Çekildi (advanced, per-game, yaş) |
+| Aşama A (gelişme) ve B (tanınma) modelleri, walk-forward | ✅ `src/awards/mip_model.py`; A iyi bir istatistik tahmincisi ama MIP sıralamasına katkısı yok; üretim modeli B2 (B8b) |
+| Pencere karşılaştırması (1986 / 20 yıl / 12 yıl) | ✅ Fark yok; tüm geçmiş seçildi |
+| Sentetik hype raporu (yıllara göre yanlış pozitif listeleri) | 🔶 Hype değeri hesaplanıyor (B0 − üretim logiti) ama kazananlarla ilişkisi ve yanlış pozitif listeleri henüz incelenmedi |
+| 2026-27 için 10 kişilik aday listesi | 🔶 İlk liste çıktı (B8b) ama 19–21 yaşa yığılmış; 65 maç şartı ve maç sayısı olasılığı uygulanmadı, kazanan tahmininde zayıf: şimdilik izleme listesi |
+| Kazananı yakalamak için yeni yöntem (sıralama / koşullu lojistik, rol değişikliği vurgusu, simülasyon bağlamı) | ⏳ Sıradaki |
 | Gerçek hype hattı (YouTube + Claude sınıflandırması) | ⏳ (2026 sezonu) |
 | Diğer ödüller planı | ⏳ |
 
@@ -181,5 +212,7 @@ Ayrıntılı plan MIP modeli çalıştıktan sonra yazılacak.
 
 | Tarih | Değişiklik |
 |---|---|
+| 2026-10-07 (d) | Aşama A ve B kuruldu, walk-forward ile 2000–2026'da test edildi (B8b). Bulgular: tanınma katmanı genç+üretken tabanını aşıyor (+0.058 ± 0.022 NDCG), A ve takım değişimi katkı vermiyor, pencere farkı yok; model oylamaya girenleri buluyor ama kazananı değil. Üretim modeli B2; ilk 2026-27 listesi çıktı. |
+| 2026-10-07 (c) | Isaac Austin düzeltmesi (senin notun): önceki sezonu olmayan oyuncu için en son NBA sezonu + `GAP` özelliği; 2025-26 B-Ref verisi çekildi; takım değişimi özellikleri (`MOVED`, `VAC`, `ARR`) eklendi. |
 | 2026-10-07 (b) | MIP veri seti kuruldu ve doğrulandı (18 476 satır, oylama eşleşmesi %99.1, kazananlar 40/41). Satır = (oyuncu, hedef sezon); özellikler t−1'den: seviye ve persantiller, son 1–2 yıl değişimi, tepe VORP, kıdem, önceki MIP payı, güvenilirlik ağırlığı. |
 | 2026-10-07 | Rehber oluşturuldu (fantezi aşama 0–5, ödül tahmini planı). MIP için yaş (42 sezon) ve MIP oylama (41 sezon) verisi çekildi; veri seti kurucusu yazıldı. |

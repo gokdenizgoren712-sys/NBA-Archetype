@@ -19,6 +19,8 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[2]
 DATA = ROOT / "data"
+MAX_GAP = 3                 # en çok kaç yıl geriye bakılır (Avrupa / sakatlık dönüşü)
+MIN_GAP_MP = 300            # boşluklu oyuncunun son sezonunda en az bu kadar dakika
 RELIAB_K = 800.0            # MP / (MP + K): ~800 dk'da güvenilirlik 0.5
 FIRST_FEATURE_END_YEAR = 1984        # 1983-84
 MULTI_TEAM = re.compile(r"^(TOT|\d+TM)$")
@@ -81,11 +83,54 @@ def mip_shares() -> pd.DataFrame:
     return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
 
 
-def build(first_target: int = 1986, last_target: int = 2026, include_unlabeled_last: bool = True) -> pd.DataFrame:
+TEAM_MP = 19680.0           # bir takımın sezonluk toplam oyuncu dakikası (240 × 82)
+
+
+def team_rows(end_year: int) -> pd.DataFrame:
+    """(SLUG, TEAM, MP) — takım başına satırlar; çok-takımlı toplam satırları (TOT / 2TM ...) hariç."""
+    try:
+        a = pd.read_parquet(DATA / f"{season_label(end_year)}__bref_age.parquet")
+    except FileNotFoundError:
+        return pd.DataFrame(columns=["SLUG", "TEAM", "MP"])
+    a = a.rename(columns={"BREF_SLUG": "SLUG", "TEAM_ABBREVIATION": "TEAM"})
+    return a[~a["TEAM"].astype(str).str.match(MULTI_TEAM)][["SLUG", "TEAM", "MP"]].dropna(subset=["MP"])
+
+
+def main_team(rows: pd.DataFrame) -> pd.Series:
+    """Oyuncunun o sezon en çok dakika oynadığı takım."""
+    return rows.sort_values("MP", ascending=False).drop_duplicates("SLUG").set_index("SLUG")["TEAM"]
+
+
+def role_change_features(base_year: int, t: int, slugs: pd.Series) -> pd.DataFrame:
+    """Takım bağlamı değişimi (bizim bağlam katmanımızın tarihsel karşılığı). t sezonunun kadro üyeliği sezon öncesi bilinen bilgidir
+    (yaz transferleri); yalnız üyelik kullanılır, performans değil. Sezon ortası takaslar küçük bir sızıntıdır (dokümante)."""
+    rb, rt = team_rows(base_year), team_rows(t)
+    tb, tt = main_team(rb), main_team(rt)
+    out = pd.DataFrame({"SLUG": slugs.to_numpy()})
+    out["T_BASE"], out["T_NEXT"] = out["SLUG"].map(tb), out["SLUG"].map(tt)
+    out["MOVED"] = ((out["T_BASE"] != out["T_NEXT"]) & out["T_BASE"].notna() & out["T_NEXT"].notna()).astype(float)
+    # ayrılan dakika: eski takımda oynayıp t'de aynı takımda olmayanların dakikası (kendisi hariç)
+    rb = rb.assign(TB=rb["SLUG"].map(tb), TN=rb["SLUG"].map(tt))
+    rb = rb[rb["TEAM"] == rb["TB"]]
+    leaving = rb[rb["TN"] != rb["TB"]].groupby("TB")["MP"].sum()
+    own = rb.set_index("SLUG")["MP"]
+    out["VAC"] = ((out["T_BASE"].map(leaving).fillna(0.0) - np.where(out["MOVED"] > 0, out["SLUG"].map(own).fillna(0.0), 0.0)) / TEAM_MP).clip(lower=0)
+    # gelen dakika: t'de bu takıma katılıp önceki sezon başka takımda (ya da başka yerde) oynayanların dakikası
+    mb = rb.set_index("SLUG")["MP"]
+    arrivals = pd.DataFrame({"SLUG": tt.index, "TN": tt.values})
+    arrivals["TB"] = arrivals["SLUG"].map(tb)
+    arrivals = arrivals[arrivals["TB"] != arrivals["TN"]]
+    arrivals["MPB"] = arrivals["SLUG"].map(mb).fillna(0.0)
+    arr = arrivals.groupby("TN")["MPB"].sum()
+    out["ARR"] = (out["T_NEXT"].map(arr).fillna(0.0) / TEAM_MP).clip(upper=1.0)
+    return out[["MOVED", "VAC", "ARR"]]
+
+
+def build(first_target: int = 1986, last_target: int = 2027, include_unlabeled_last: bool = True) -> pd.DataFrame:
     """Satır: (SLUG, hedef sezon t). Özellikler t−1'den; etiket t'nin MIP payı (oylamada yoksa 0). Etiketsiz son hedef
     (henüz oynanmamış sezon) tahmin için tutulur (`LABELED` = 0)."""
     frames: dict[int, pd.DataFrame] = {}
-    for y in range(FIRST_FEATURE_END_YEAR, last_target):
+    for y in range(FIRST_FEATURE_END_YEAR, last_target + 1):
         try:
             frames[y] = season_frame(y)
         except FileNotFoundError:
@@ -93,25 +138,49 @@ def build(first_target: int = 1986, last_target: int = 2026, include_unlabeled_l
     votes = mip_shares()
     vote_seasons = set(votes["SEASON"].unique()) if len(votes) else set()
     out = []
+    pct_cache: dict[int, pd.DataFrame] = {}
+    lookup = lambda f, cols: (f.set_index("SLUG")[cols] if f is not None else pd.DataFrame(columns=cols))     # noqa: E731
     for t in range(first_target, last_target + 1):
-        cur = frames.get(t - 1)
-        if cur is None:
-            continue
-        cur = cur.copy()
-        for c in LEVEL:
-            cur[f"{c}_pct"] = _pct_within(cur, c)
-        prev = frames.get(t - 2)
-        prev2 = frames.get(t - 3)
-        lookup = lambda f, cols: (f.set_index("SLUG")[cols] if f is not None else pd.DataFrame(columns=cols))     # noqa: E731
-        p1 = lookup(prev, list(dict.fromkeys(DELTA + ["MP", "BPM", "VORP"]))).add_suffix("_p1")
-        p2 = lookup(prev2, list(dict.fromkeys(DELTA + ["MP"]))).add_suffix("_p2")
-        d = cur.join(p1, on="SLUG").join(p2, on="SLUG")
-        for c in DELTA:
-            d[f"d_{c}"] = d[c] - d[f"{c}_p1"]                       # son sezon değişimi
-            d[f"d2_{c}"] = d[c] - d[f"{c}_p2"]                      # iki yıllık değişim
-        d["HAS_PREV"] = d["MP_p1"].notna().astype(float)
-        d["TARGET_SEASON"] = season_label(t)
-        out.append(d)
+        covered: set = set()
+        # Her oyuncu için t'den önceki EN SON NBA sezonu (en çok MAX_GAP yıl geriye). Avrupa'ya giden / sakatlıktan dönen oyuncu
+        # (ör. Isaac Austin 1997: iki yıl Avrupa) bir önceki sezonu olmadığı için kaybolmasın; GAP özelliği aradaki yılı söyler.
+        for gap in range(0, MAX_GAP + 1):
+            y = t - 1 - gap
+            base = frames.get(y)
+            if base is None:
+                continue
+            if y not in pct_cache:
+                b = base.copy()
+                for c in LEVEL:
+                    b[f"{c}_pct"] = _pct_within(b, c)
+                pct_cache[y] = b
+            cur = pct_cache[y]
+            cur = cur[~cur["SLUG"].isin(covered)]
+            if gap > 0:
+                cur = cur[cur["MP"] >= MIN_GAP_MP]                  # yıllardır yok olan bir oyuncu havuzu şişirmesin: gerçekten oynamış olanlar
+            if cur.empty:
+                continue
+            covered |= set(cur["SLUG"])
+            cur = cur.copy()
+            cur["GAP"] = gap
+            cur["AGE"] = cur["AGE"] + gap                           # t−1 sezonundaki yaş
+            p1 = lookup(frames.get(y - 1), list(dict.fromkeys(DELTA + ["MP", "BPM", "VORP"]))).add_suffix("_p1")
+            p2 = lookup(frames.get(y - 2), list(dict.fromkeys(DELTA + ["MP"]))).add_suffix("_p2")
+            d = cur.join(p1, on="SLUG").join(p2, on="SLUG")
+            nxt = frames.get(t)                                      # t sezonunun gerçekleşen değerleri: yalnız Aşama A'nın EĞİTİM hedefi
+            if nxt is not None:
+                nx = lookup(nxt, ["MP", "MPG", "GP", "BPM", "VORP", "WS48", "PTS", "PTS36", "USG"]).add_suffix("_n")
+                d = d.join(nx, on="SLUG")
+            for c in DELTA:
+                d[f"d_{c}"] = d[c] - d[f"{c}_p1"]                   # son sezon değişimi
+                d[f"d2_{c}"] = d[c] - d[f"{c}_p2"]                  # iki yıllık değişim
+            d["HAS_PREV"] = d["MP_p1"].notna().astype(float)
+            rc = role_change_features(y, t, d["SLUG"].reset_index(drop=True))
+            d = d.reset_index(drop=True)
+            for c in ("MOVED", "VAC", "ARR"):
+                d[c] = rc[c].to_numpy()
+            d["TARGET_SEASON"] = season_label(t)
+            out.append(d)
     ds = pd.concat(out, ignore_index=True)
 
     # Tarihçe: tepe seviye, kıdem, önceki MIP payı (yalnız t−1 ve öncesi)
