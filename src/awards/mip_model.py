@@ -39,6 +39,7 @@ VARIANTS = {                                   # ad → B özellikleri (B0 hype'
     "B1_noA": LEVELS_NOA,
     "B2": LEVELS_NOA + GROWTH,
     "B3": LEVELS_NOA + GROWTH + ["A_dBPM", "A_dPTS", "A_BPMn"],
+    "B2sh": LEVELS_NOA + GROWTH + ["PTS36_sh", "AST36_sh", "REB36_sh", "TS_sh", "g1_PTS_sh"],   # + videodaki dakikaya göre küçültülmüş hızlar
     "B4": LEVELS_NOA + GROWTH + ["MOVED", "VAC", "ARR"],          # + takım bağlamı değişimi (yaz transferleri)
 }
 RIDGE_ALPHA = 60.0
@@ -50,12 +51,31 @@ def end_year(season: str) -> int:
     return int(season[:4]) + 1
 
 
+SHRINK_K = 800.0
+
+
+def add_shrunk(d: pd.DataFrame) -> pd.DataFrame:
+    """Videodaki küçültme: dakika başı hızlar, oynanan dakikaya göre sezon ortalamasına çekilir (az dakika → ortalamaya yakın).
+    PTS36_sh = (MP·PTS36 + K·sezon ortalaması) / (MP + K). g1_PTS_sh: küçültülmüş 1 yıllık sayı büyümesi."""
+    for c in ("PTS36", "AST36", "REB36", "TS"):
+        ref = d["MP"] >= 500
+        mean = d[c].where(ref).groupby(d["END_YEAR"]).transform("mean")
+        d[c + "_sh"] = (d["MP"] * d[c] + SHRINK_K * mean) / (d["MP"] + SHRINK_K)
+        if c == "PTS36" and "d_PTS36" in d.columns:
+            prev = (d[c] - d["d_PTS36"]).where(d["MP_p1"].notna())
+            mp1 = d["MP_p1"].fillna(0.0)
+            d["PTS36_p1sh"] = (mp1 * prev.fillna(0.0) + SHRINK_K * mean) / (mp1 + SHRINK_K)
+    d["g1_PTS_sh"] = d["PTS36_sh"] - d["PTS36_p1sh"]
+    d["RANK_N"] = pd.to_numeric(d["RANK"].astype(str).str.replace("T", "", regex=False), errors="coerce")
+    return d
+
+
 def load() -> pd.DataFrame:
     d = pd.read_parquet(DATA / "awards__mip_dataset.parquet")
     d["T"] = d["TARGET_SEASON"].map(end_year)
     d["AGE2"] = d["AGE"] ** 2
     d["SEASONS"] = d["SEASONS"].clip(upper=15)
-    return d
+    return add_shrunk(d)
 
 
 def _matrix(d: pd.DataFrame, cols: list[str]) -> np.ndarray:
@@ -196,13 +216,13 @@ def baselines(ds: pd.DataFrame) -> dict[str, pd.Series]:
     }
 
 
-PRODUCTION = "L_B2"          # üretim modeli: seviye + yaş + tarihçe + büyüme özellikleri (B1_noA / B3 ile istatistiksel olarak eşit; bkz. rehber B10)
+PRODUCTION = "L_B2sh"          # üretim modeli: seviye + yaş + tarihçe + büyüme özellikleri (B1_noA / B3 ile istatistiksel olarak eşit; bkz. rehber B10)
 
 
 def calibrate(ds: pd.DataFrame, col: str = PRODUCTION, start: int = 2000, end: int = 2026) -> dict:
     """Walk-forward puanlardan olasılığa: (1) oylamaya girme için Platt (a, b); (2) kazanan için softmax sıcaklığı β (sezon içinde toplam 1)."""
     m = ds[(ds["T"] >= start) & (ds["T"] <= end) & (ds["LABELED"] == 1) & ds[col].notna()]
-    platt = LogisticRegression(C=1e6, max_iter=1000).fit(m[[col]].to_numpy(), (m["SHARE"] > 0).astype(int).to_numpy())
+    platt = LogisticRegression(C=1e6, max_iter=1000).fit(m[[col]].to_numpy(), ((m["RANK_N"] <= 10) & m["RANK_N"].notna()).astype(int).to_numpy())     # hedef: top-10 MIP finisher (videodaki gibi)
     best = (None, -1e18)
     for beta in np.arange(0.1, 3.01, 0.05):
         ll = 0.0
@@ -224,12 +244,22 @@ def candidates(ds: pd.DataFrame, t: int = 2027, n: int = 15, col: str = PRODUCTI
     c = ds[ds["T"] == t].copy()
     cal = cal or calibrate(ds, col)
     a, b = cal["platt"]
-    c["P_ballot"] = 1 / (1 + np.exp(-(a + b * c[col])))
+    c["P_top10"] = 1 / (1 + np.exp(-(a + b * c[col])))
     z = cal["beta"] * c[col]
     c["P_win"] = np.exp(z - z.max()) / np.exp(z - z.max()).sum()
     c["hype"] = c["L0"] - c[col]                      # B0 (yalnız istatistik) − üretim: seviye/tarihçenin uyguladığı indirim
-    cols = ["PLAYER_NAME", "TEAM_ABBREVIATION", "AGE", "GAP", "MPG", "USG", "BPM", "A_dBPM", "A_dPTS", "P_ballot", "P_win", "hype"]
+    cols = ["PLAYER_NAME", "TEAM_ABBREVIATION", "AGE", "GAP", "MPG", "USG", "BPM", "A_dBPM", "A_dPTS", "P_top10", "P_win", "hype"]
     return c.sort_values(col, ascending=False).head(n)[cols].round(3)
+
+
+def finisher_hits(ds: pd.DataFrame, col: str, seasons: range, topn: int = 10, k: int = 10) -> np.ndarray:
+    """Videonun ölçütü: modelin ilk k tahmininden kaçı gerçek top-N MIP finisher'ı (RANK ≤ N). Sezon başına dizi."""
+    out = []
+    for t in seasons:
+        g = ds[(ds["T"] == t) & (ds["LABELED"] == 1)]
+        top = g.sort_values(col, ascending=False).head(k)
+        out.append(int(((top["RANK_N"] <= topn) & top["RANK_N"].notna()).sum()))
+    return np.array(out)
 
 
 def paired(ds: pd.DataFrame, a, b, metric: str = "ndcg") -> tuple[float, float]:
@@ -270,8 +300,17 @@ def main() -> int:
     rng = np.random.default_rng(0)
     e = evaluate(base_ds, pd.Series(rng.random(len(base_ds)), index=base_ds.index))
     print(f"  {'rastgele':45s} hits@10 {e['hits@10']:.2f}  recall@10 {e['share_recall@10']:.3f}  ndcg {e['ndcg@10']:.3f}  kazanan ilk10 {e['winner_in_top10']:.2f}")
+    print("VİDEO ÖLÇÜTÜ: ilk 10 tahminden kaçı gerçek top-10 MIP finisher'ı (liste başına ortalama; videoda 4 sezonda 7/40 = 1.75)")
+    print(f"  {'':44s} {'2023-26':>8s} {'2011-26':>8s} {'2000-26':>8s}")
+    cols = {f"B2sh (üretim)": "L_B2sh", "B2": "L_B2", "B1_noA": "L_B1_noA", "B3 (+ A)": "L_B3", "B4 (+ takım değişimi)": "L_B4"}
+    cols.update({n: n for n in baselines(base_ds)})
+    for nm, c in cols.items():
+        if c in baselines(base_ds):
+            base_ds[c] = baselines(base_ds)[c]
+        h = [finisher_hits(base_ds, c, range(a, 2027)).mean() for a in (2023, 2011, 2000)]
+        print(f"  {nm:44s} {h[0]:8.2f} {h[1]:8.2f} {h[2]:8.2f}")
     print("ÇİFTLİ FARKLAR (sezon başına NDCG@10; ortalama ± s.h.)")
-    for a_, b_ in (("L_B1", "L_B0"), ("L_B2", "L_B1"), ("L_B1_noA", "L_B1"), ("L_B3", "L_B2"), ("L_B2", "L_B1_noA"), ("L_B4", "L_B2")):
+    for a_, b_ in (("L_B1", "L_B0"), ("L_B2", "L_B1"), ("L_B1_noA", "L_B1"), ("L_B3", "L_B2"), ("L_B2", "L_B1_noA"), ("L_B4", "L_B2"), ("L_B2sh", "L_B2")):
         m, se = paired(base_ds, a_, b_)
         print(f"  {a_} − {b_}: {m:+.3f} ± {se:.3f}")
     m, se = paired(base_ds, "L_B2", baselines(base_ds)["genç + üretken"])

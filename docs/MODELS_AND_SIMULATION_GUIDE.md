@@ -171,7 +171,9 @@ Final olasılık: `P(MIP) = P(gelişme) × P(yeterli maç oynama)`; ikinci terim
 Denenenler: yaş kutucukları, takım içi rol payı / sırası, sağlık, çıkış yaşı, geçmiş seviyeler, sıralama kaybı (ListNet), gradyan artırma. **Hiçbiri tek tek lojistik B2'yi anlamlı biçimde geçmedi** (NDCG 0.138 – 0.142; çiftli farklar hata payı içinde). Yaş bilgisini tamamen çıkarmak NDCG'yi 0.087'ye düşürüyor: yaş gerçek bilgi taşıyor ve ilk 10'un genç yığılması taban oranın sonucu (21 yaşındaki dakika alan oyuncunun oylamaya girme olasılığı yüksek).
 **Üst sınır testi:** Aynı çerçeveye hedef sezonda gerçekleşen değişimi (BPM, maç başı sayı, dakika, usage) vermek NDCG'yi 0.142 → **0.675** yapıyor (+0.533 ± 0.043); kazanan %89 ilk 10'da, %70 ilk 3'te, medyan sıra 2. Sonuç: **MIP sezon öncesi değil, sezon içinde öngörülebilir** → asıl ürün canlı takip (Aşama 7).
 
-### B8d. Hedef netleşti: "10 breakout adayı" (kazanan değil), sonuçlar (`src/awards/mip_breakout.py`)
+### B8d. YAN DAL (ürün değil): "10 breakout adayı" etiketi (kazanan değil), sonuçlar (`src/awards/mip_breakout.py`)
+
+> Not: Bu etiket bizim icadımız; videonun ölçütünden sapıyor. Ürün hedefi B8e'deki ölçüte döndü. Bulgular referans için duruyor.
 
 **Ürün tanımı (senin):** MIP kılıfı altında, modelin ve simülasyonun breakout yılı geçirmesini beklediği 10 oyuncu. Hepsi doğru olmayabilir; çoğunun yıl sonunda kazanan olmasa bile listeye (oylamaya ya da en çok gelişenlere) girmesi beklenir.
 **Etiket (`BREAKOUT`):** (a) MIP oylamasında pay ≥ 0.02 aldı, ya da (b) sezonun en çok gelişen ilk 12 oyuncusundan biri (`dVORP82 = (VORP_n − VORP) × 82 / sezon uzunluğu`, hedef sezonda ≥ 1200 dk). Sezon başına ortalama 17 oyuncu.
@@ -200,6 +202,32 @@ Liste boyutu (etiket: ilk 12 + oylama): 10 kişi 2.07 (%21), 15 kişi 2.89 (%19)
 2. **Geniş tanım** ("sezonun en çok gelişen çeyreğinde": ilk 75): 10'da ~5 isabet, "çoğu tutar" hedefiyle uyumlu; adı "breakout" değil "belirgin gelişme".
 3. **İki kademe:** her oyuncu için hem P(belirgin gelişme) hem P(elit breakout / oylama) gösterilir; liste ikincisine göre, başlık beklentisi birincisine göre.
 4. **Çeşitlilik kuralı:** aynı draft sınıfından / üst sıradan seçilen ikinci yılların sayısını sınırlamak (ürün kararı; draft sırası verisi çekilirse "üst sıradan seçilen" bilgisi modele de girer).
+### B8e. Videoyla yan yana: aynı ölçüt, aynı sonuç
+
+**Videodaki ölçüt (transkriptten):** 2023, 2024, 2025, 2026 sezonları, her sezon ilk 10 tahmin; "40 tahminde 7 gerçek top MIP finisher" (hype'sız model). Küçültme, sade özellik kümesi ve önceki fold'ları ekleyince 8. Taban: "genç + üretken" ve "son yıl gelişimi". Eğitim: yalnız önceki sezonlar (walk-forward). Videonun kendi uyarısı: 2023–26'yı model geliştirirken defalarca gördü, yani 7–8 hafif iyimser.
+**Bizim önceki ölçütümüz farklıydı:** "ilk 10'dan kaçı oylamaya girdi" (oylamada 1 oy alanlar dahil, eski yıllarda 25–36 kişilik liste) ve 2000–2026 ortalaması. Bu, videodan "daha iyi" göründü ama aynı şey değildi; sonra "breakout" etiketine kayınca (B8d) videodan ayrıldık. **Düzeltme: videonun ölçütüne dönüldü.**
+
+**Aynı ölçütle sonuç (ilk 10 tahminden kaçı gerçek top-10 MIP finisher; liste başına ortalama):**
+
+| Model | 2023–26 (4 sezon, videonun dönemi) | 2011–26 (16 sezon) | 2000–26 (27 sezon) |
+|---|---|---|---|
+| **B2sh (üretim: B2 + dakikaya göre küçültülmüş hızlar)** | **1.75 (7/40)** | **1.62** | **1.70** |
+| B2 | 1.25 (5/40) | 1.31 | 1.56 |
+| B1_noA | 1.50 | 1.50 | 1.74 |
+| B3 (+ Aşama A) | 1.25 | 1.38 | 1.63 |
+| B4 (+ takım değişimi) | 1.00 | 1.19 | 1.56 |
+| Genç + üretken (taban) | 1.00 (4/40) | 1.25 | 1.04 |
+| Son yıl gelişimi (BPM / sayı) | 1.00 / 0.75 | 0.62 / 0.56 | 0.59 / 0.67 |
+| Aşama A tek başına | 0.00 | 0.38 | 0.22 |
+| Videodaki model (hype'sız) | 7/40 = 1.75 | - | - |
+
+Yani **videoyla aynı seviyedeyiz** (7/40) ve daha uzun dönemde de (16–27 sezon) kararlıyız (1.6–1.7). Dört sezonluk örnekte bizim varyantlarımız 3/40 ile 7/40 arasında oynuyor: tek bir dört sezonlukta 5 ile 8 arasındaki farklar gürültü. Videonun taban karşılaştırması da bizimkiyle uyuyor (genç + üretken ≈ 1.0–1.25).
+**Videodan kazanım:** Küçültme (dakika başı hızı oynanan dakikaya göre sezon ortalamasına çekmek) bizde de işe yaradı (B2 → B2sh: +0.3 liste başına 2011–26'da, NDCG +0.013 ± 0.011). Aşama A, takım değişimi ve ek özellikler katkı vermedi (videoda "özellik kümesini küçültmek" de buydu).
+**Videoda hype ne yaptı:** Hype yeni isabet eklemedi; yalnız sıralamayı değiştirdi (örn. Flagg 5. → 8.). Hype katmanı, "bariz olanı" aşağı çeken bir yeniden sıralama.
+
+**2026-27 listesi (B2sh; `P_top10` = top-10 MIP finisher olasılığı, kalibre):** Harper 0.18, Sheppard 0.17, Flagg 0.16, Clingan 0.15, Castle 0.15, Knueppel 0.14, Ware 0.12, Edgecombe 0.11, Buzelis 0.11, Sarr 0.10. Olasılıkların toplamı ≈ 1.5: listeden beklenen isabet yaklaşık 1.5–1.7, tıpkı videodaki gibi.
+**Hype (şu an yalnız teşhis):** `hype` = B0 (yalnız istatistik) − üretim logiti. Pozitif = model bu oyuncuyu istatistiğe göre aşağı çekiyor (Flagg +0.41, Knueppel +0.50, Edgecombe +0.58); negatif = yukarı çekiyor (Rollins −0.64, Sarr −0.27). Sıralamaya videodaki gibi `skor − λ·hype` olarak katılacak (λ = 0.40 / 0.65 / 0.80 duyarlılık).
+
 ## B9. Diğer ödüller: komple plan (MIP sonrası)
 
 Aynı iskelet: oylama payı hedefi + walk-forward + sentetik/gerçek hype. İhtiyaçlar:
@@ -224,8 +252,10 @@ Ayrıntılı plan MIP modeli çalıştıktan sonra yazılacak.
 | 2026-27 için 10 kişilik aday listesi | 🔶 İlk liste çıktı (B8b) ama 19–21 yaşa yığılmış; 65 maç şartı ve maç sayısı olasılığı uygulanmadı, kazanan tahmininde zayıf: şimdilik izleme listesi |
 | Kazananı yakalamak için yeni yöntem (sıralama kaybı, yeni özellikler, GBM) | ✅ Denendi, kazanç yok (B8c); sezon öncesi tavan ~3/10 isabet |
 | Üst sınır testi (gerçekleşen sezon içi gelişme) | ✅ NDCG 0.675, kazanan ilk 10'da %89: asıl ürün canlı takip |
-| Hedef: 10 breakout adayı (kazanan değil); etiket ve isabet takası | ✅ Ölçüldü (B8d): katı tanımda 10'da ~2, geniş tanımda ~5 isabet |
-| Breakout etiketinin tanımı (seçenek 1–4, B8d) | ⏳ Senin kararın |
+| Videonun ölçütüyle yan yana (4 sezon × ilk 10, gerçek top-10 finisher) | ✅ B2sh 7/40 = videodaki 7/40 (2011–26: 1.62, 2000–26: 1.70/liste); küçültme (shrinkage) eklendi |
+| Hedef: 10 breakout adayı etiketi (yan dal) | ✅ Ölçüldü (B8d), ürün değil |
+| Hype katmanı: sentetik (veriden) → gerçek (YouTube + Claude) → `skor − λ·hype` | ⏳ Sıradaki |
+| Breakout etiketinin tanımı (seçenek 1–4, B8d) | ⏸ Yan dal; ürün hedefi videonun ölçütüne döndü (B8e) |
 | Canlı MIP takibi (kısmi sezon: 20 / 40 / 60 maç testi, güncelleme hattına bağlama) | ⏳ Sonra (Aşama 8) |
 | Gerçek hype hattı (YouTube + Claude sınıflandırması) | ⏳ (2026 sezonu) |
 | Diğer ödüller planı | ⏳ |
@@ -351,7 +381,15 @@ Hedef: her NBA takımını oyun oyun oynatıp oyuncunun payını hesaplamak. Dö
 - **Ders:** Ürünün başarı ölçütünü (neyi "doğru" sayıyoruz) modelden önce netleştirmek, aynı veriyle 2 ile 5 isabet arasındaki farkı yaratıyor. Karar ürün tarafında.
 - **Durum:** 🔶 Karar bekliyor (B8d, seçenekler 1–4).
 
-### Aşama 8 (sonra): Canlı MIP takibi
+### Aşama 8: Videoya geri dönüş (senin düzeltmen)
+- **Problem:** Hedefi "10 breakout adayı" diye genişletip kendi etiketimizi (en çok gelişen ilk 12) icat ettik. Videodan uzaklaştık, anlamsız bir ölçüt üretmeye başladık ve "2 isabet" gibi videodan kötü görünen bir sayı çıktı. Gerçekte video "10'da 7" demiyor, "40 tahminde 7" diyor.
+- **Teşhis:** Videoyu satır satır yeniden okuduk: ölçüt 4 sezon × ilk 10 = 40 tahminde gerçek top MIP finisher sayısı (hype'sız 7, birleşik 8); taban "genç + üretken" ve "son yıl gelişimi"; kazanım küçültme, sade özellik kümesi ve önceki fold'lardan geliyor; hype yalnız yeniden sıralıyor. Bizim eski ölçütümüz (oylamaya giren, 2000–2026) farklıydı.
+- **Çözüm:** Aynı ölçüt, aynı 4 sezon, sonra daha uzun dönemler. Küçültmeyi (dakikaya göre sezon ortalamasına çekme) üretim modeline aldık.
+- **Sonuç:** Üretim modeli 2023–26'da tam 7/40 (1.75), 2011–26'da 1.62, 2000–26'da 1.70; taban 1.0–1.25. **Videoyla aynı seviye.** Videonun 7'si ile bizim 5–7 arasındaki fark dört sezonluk örneklemin gürültüsü.
+- **Ders:** Kıyas yaparken ölçütü, dönemi ve örneklemi birebir eşlemek şart: bizim "10'da 3" ve videonun "40'ta 7" farklı şeylerdi. Ürün hedefini (breakout) modelden önce kendi icat ettiğimiz bir etikete bağlamak, doğrulanmış bir hattan sapmak demekti. Breakout etiketi yan dal olarak duruyor (B8d), ürün değil.
+- **Sıradaki:** Videodaki hype katmanını eklemek: önce sentetik (veriden), sonra gerçek (YouTube yorumları + Claude sınıflandırması); sıralama `skor − λ·hype`.
+
+### Aşama 9 (sonra): Canlı MIP takibi
 - **Fikir:** Sezon öncesi liste "izleme listesi" kalır (dürüstçe: ilk 10'da ~3 oylama adayı, kazanan tahmini zayıf). Asıl model sezon içinde çalışır: oyuncunun şimdiye kadarki değişimi (maç başı sayı, dakika, usage, BPM) güvenilirlik ağırlığıyla, sezon başlarında temkinli, ilerledikçe güçlü.
 - **Soru:** Kaç maç sonra kazananı güvenle ilk 10'a / ilk 3'e sokar? Üst sınır (82 maç) 0.675; 20 / 40 / 60 maçta ne olacak?
 - **Plan:** (1) 2021-22'den beri maç logları var (5 sezon): kısmi sezon istatistiklerini üretip aynı modeli kısmi sezonda değerlendirmek; (2) eğitimi tam sezon verisi üzerinden yapıp kısmi sezonda güvenilirlik ağırlığıyla küçültmek; (3) sezon içi güncelleme hattına (`update.py`) bağlamak; (4) sentetik hype'ı burada sıralamaya katmak (bariz olan, yani zaten yıldız olan gelişimi indirmek).
@@ -371,6 +409,7 @@ Hedef: her NBA takımını oyun oyun oynatıp oyuncunun payını hesaplamak. Dö
 
 | Tarih | Değişiklik |
 |---|---|
+| 2026-10-07 (h) | Videoya geri dönüş: transkriptteki ölçüt (4 sezon × ilk 10, gerçek top-10 finisher) bire bir uygulandı. Üretim modeli (küçültmeli B2sh) 2023–26'da 7/40 = videoyla aynı; 2011–26: 1.62, 2000–26: 1.70/liste; taban 1.0–1.25. Breakout etiketi yan dala alındı. 2026-27 listesi `P_top10` ile yenilendi (Harper, Sheppard, Flagg, Clingan, Castle, Knueppel, Ware, Edgecombe, Buzelis, Sarr). Hype katmanı sıradaki adım. |
 | 2026-10-07 (g) | Hedef netleşti: sezon öncesi 10 breakout adayı. `BREAKOUT` etiketi (oylama ya da en çok gelişen ilk 12) ve etiket sıkılığı takası ölçüldü: katı etikette 10'da ~2 isabet (rastgele 0.33), geniş etikette (ilk 75) ~5. Simülasyon artışı ek bilgi vermedi. Elit oyuncuları dışarıda bırakan sentetik hype etiketi listeyi üst sıradan seçilen düşük BPM'li ikinci yıllara kaydırdı. Etiket kararı bekliyor. |
 | 2026-10-07 (f) | İkinci tur: yaş kutucukları, yeni özellikler, ListNet sıralama kaybı ve GBM denendi, anlamlı kazanç yok. Üst sınır testi: gerçekleşen sezon içi gelişme verilince NDCG 0.142 → 0.675 (kazanan %89 ilk 10'da). MIP'in sezon içinde okunabilir bir ödül olduğu görüldü; Aşama 7 (canlı takip) planlandı. |
 | 2026-10-07 (e) | Bölüm D eklendi: aşamalar, karşılaşılan problemler ve çözümleri (video metni için). Teşhis: model kazananların yaş dağılımını yansıtmıyor (ilk 10'un %81'i ≤21 yaş) ve momentum kovalıyor; ikinci tur başladı. |
