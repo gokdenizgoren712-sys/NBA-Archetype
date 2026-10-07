@@ -228,6 +228,32 @@ Yani **videoyla aynı seviyedeyiz** (7/40) ve daha uzun dönemde de (16–27 sez
 **2026-27 listesi (B2sh; `P_top10` = top-10 MIP finisher olasılığı, kalibre):** Harper 0.18, Sheppard 0.17, Flagg 0.16, Clingan 0.15, Castle 0.15, Knueppel 0.14, Ware 0.12, Edgecombe 0.11, Buzelis 0.11, Sarr 0.10. Olasılıkların toplamı ≈ 1.5: listeden beklenen isabet yaklaşık 1.5–1.7, tıpkı videodaki gibi.
 **Hype (şu an yalnız teşhis):** `hype` = B0 (yalnız istatistik) − üretim logiti. Pozitif = model bu oyuncuyu istatistiğe göre aşağı çekiyor (Flagg +0.41, Knueppel +0.50, Edgecombe +0.58); negatif = yukarı çekiyor (Rollins −0.64, Sarr −0.27). Sıralamaya videodaki gibi `skor − λ·hype` olarak katılacak (λ = 0.40 / 0.65 / 0.80 duyarlılık).
 
+### B8f. Sentetik hype: modelin kendi hatalarından öğrenilen ceza (`src/awards/mip_hype.py`)
+
+**Mekanik (senin fikrin):** Üretim modeli (B2sh) her sezon sonunda "ilk 30 aday"ını listeler; gerçekte top-10 MIP finisher olmayanlar yanlış pozitif. H aşaması **geçmiş** sezonların ilk-30 listelerinde "hangi tip aday tutmuyor"u öğrenir (sezon öncesi özellikler: rookie yılında elit olma, seviye persantilleri, yaş, çıkış yaşı, tepe VORP, önceki MIP payı, modelin skoru). Hype = H'nin "bu aday büyük ihtimalle tutmaz" logiti (sezon içi z-skoru). Videodaki gibi: `skor' = skor − λ·hype`. Walk-forward: t sezonu için H yalnız t'den önceki sezonlarla eğitilir. Videodaki λ = 0.65 uydurmaydı; biz 0.40 / 0.65 / 0.80 / 1.2 / 2.0 duyarlılığıyla test ettik.
+
+**Sonuç (ilk 10'dan kaçı gerçek top-10 finisher, liste başına):**
+
+| λ | 2023–26 | 2011–26 | 2000–26 | ilk-3 (2000–26) |
+|---|---|---|---|---|
+| 0 (hype'sız) | 1.75 (7/40) | 1.62 | 1.70 | 0.63 |
+| **0.40** | **2.00 (8/40)** | **1.81** | **1.85** | 0.67 |
+| 0.65 | 2.25 (9/40) | 1.69 | 1.74 | 0.63 |
+| 0.80 | 2.25 | 1.75 | 1.74 | 0.56 |
+| 2.00 | 2.25 | 1.81 | 1.67 | 0.48 |
+
+Hype katmanı videodaki gibi küçük bir iyileştirme veriyor (videoda 7 → 8; bizde 7 → 8 aynı dönemde) ama **istatistiksel olarak anlamlı değil**: λ = 0.40 için sezon başına fark +0.15 ± 0.14 (7 sezon iyileşti, 4 kötüleşti, 16 aynı); λ = 0.65 için +0.04 ± 0.16. Öğrenilen H katsayıları: ELITE_SOPH (rookie yılında VORP persantili ≥ 0.85) **negatif** (−0.29: bu tip aday beklenenden az tutuyor), ama SOPH (rookie yılını bitirmiş olmak) pozitif (+0.38) ve tepe VORP pozitif (+0.40).
+
+**"Elit rookie sophomore'lar MIP kazanmaz" sezgisinin sınanması:**
+- 1986'dan beri rookie yılında elit (VORP persantili ≥ 0.85) 66 sophomore: kazanan **0**, ilk 3: 4 (%6), ilk 10: 5 (%7.6). Güçlü (≥ 0.75) 145 oyuncu: kazanan 1. Yani tarihte bu gruptan kazanan çok az; ama bu grubun beklenen kazanma sayısı da zaten ~0.4 (genç oyuncu taban oranı %0.57), yani "hiç kazanmadı" taban orandan ayırt edilemiyor.
+- Modelin top-10 finisher olasılığı bu grupta **kalibre** (2000–26'da elit 36 vaka: 4.8 beklendi, 4 oldu). Model ilk 10'unda bu gruptan 18 oyuncu seçti, 4'ü tuttu (%22; genel %17).
+- Açık kural testi: "ilk 3 sezonunda tepe VORP ≥ 2.0 / 3.0 / 4.0 olan oyunculara −κ ceza": **isabet düştü** (2000–26: 1.70 → 1.30–1.52; eşik 4.0'da 1.63). Modelin ilk 10'unda SEASONS ≤ 3 ve tepe VORP ≥ 2.0 olan oyuncular daha **çok** tutuyor (%23.4, diğerleri %14.5); kazanan 3/77 (%3.9) ve diğerleri 5/193 (%2.6).
+- **Sonuç:** Veri "genç ve zaten elit olan oyuncular daha az tutar" sezgisini top-10 finisher / ilk 3 / kazanan düzeylerinde **desteklemiyor** (küçük örneklem; kazanan sayıları 0–3). Ceza koymak geçmiş isabeti düşürüyor.
+
+**2026-27 (λ = 0.40):** Harper, Sheppard, Clingan, Castle, Edgecombe, Knueppel, Flagg, Ware, Queen, Murray-Boyles; hype'sızda ilk 10: Harper, Sheppard, Flagg, Clingan, Castle, Knueppel, Ware, Edgecombe, Buzelis, Sarr. En yüksek hype (aşağı çekilenler): Daniels, Kyshawn George, J. Smith Jr., Black, Rollins; Buzelis ve Sarr hype ile 9.→14. ve 10.→11. sıraya düşüyor, sophomore'lar yükseliyor (modelin kendi hatalarından çıkan şey bu).
+
+**Gerçek hype'ın rolü:** Sentetik hype geçmiş veriden "tutmaz" tipini öğrenir; **gerçek hype** (halkın ne beklediği: YouTube yorumları) geçmişte yok, yalnız 2026'dan itibaren toplanabilir. Bu yüzden senin sezginin ölçülebilir hâli (herkes zaten Flagg'e inanıyorsa MIP oyu "sürpriz" olmaz) ancak gerçek hype ile ileriye dönük test edilebilir. Videodaki λ da geçmişte öğrenilmemişti.
+
 ## B9. Diğer ödüller: komple plan (MIP sonrası)
 
 Aynı iskelet: oylama payı hedefi + walk-forward + sentetik/gerçek hype. İhtiyaçlar:
@@ -254,7 +280,9 @@ Ayrıntılı plan MIP modeli çalıştıktan sonra yazılacak.
 | Üst sınır testi (gerçekleşen sezon içi gelişme) | ✅ NDCG 0.675, kazanan ilk 10'da %89: asıl ürün canlı takip |
 | Videonun ölçütüyle yan yana (4 sezon × ilk 10, gerçek top-10 finisher) | ✅ B2sh 7/40 = videodaki 7/40 (2011–26: 1.62, 2000–26: 1.70/liste); küçültme (shrinkage) eklendi |
 | Hedef: 10 breakout adayı etiketi (yan dal) | ✅ Ölçüldü (B8d), ürün değil |
-| Hype katmanı: sentetik (veriden) → gerçek (YouTube + Claude) → `skor − λ·hype` | ⏳ Sıradaki |
+| Sentetik hype (modelin ilk-30 yanlış pozitiflerinden öğrenilen, `skor − λ·hype`) | ✅ Kuruldu, ölçüldü (B8f): λ = 0.4'te 8/40 ve 2000–26'da 1.70 → 1.85; anlamlı değil (+0.15 ± 0.14); sezgi (elit sophomore'lar) veride desteklenmedi |
+| Hype kararı: veriden öğrenilen λ = 0.4 / editoryal katman / gerçek hype ile ileriye dönük test | ⏳ Senin kararın |
+| Gerçek hype (YouTube yorumları + Claude sınıflandırması) | ⏳ (YouTube API anahtarı + video seçimi gerekli) |
 | Breakout etiketinin tanımı (seçenek 1–4, B8d) | ⏸ Yan dal; ürün hedefi videonun ölçütüne döndü (B8e) |
 | Canlı MIP takibi (kısmi sezon: 20 / 40 / 60 maç testi, güncelleme hattına bağlama) | ⏳ Sonra (Aşama 8) |
 | Gerçek hype hattı (YouTube + Claude sınıflandırması) | ⏳ (2026 sezonu) |
@@ -389,7 +417,16 @@ Hedef: her NBA takımını oyun oyun oynatıp oyuncunun payını hesaplamak. Dö
 - **Ders:** Kıyas yaparken ölçütü, dönemi ve örneklemi birebir eşlemek şart: bizim "10'da 3" ve videonun "40'ta 7" farklı şeylerdi. Ürün hedefini (breakout) modelden önce kendi icat ettiğimiz bir etikete bağlamak, doğrulanmış bir hattan sapmak demekti. Breakout etiketi yan dal olarak duruyor (B8d), ürün değil.
 - **Sıradaki:** Videodaki hype katmanını eklemek: önce sentetik (veriden), sonra gerçek (YouTube yorumları + Claude sınıflandırması); sıralama `skor − λ·hype`.
 
-### Aşama 9 (sonra): Canlı MIP takibi
+### Aşama 9: Sentetik hype: sezgi ile veri ayrıştı
+- **İstek (senin):** Harper, Flagg, Knueppel, Edgecombe gibi rookie yılında elit olan sophomore'lar tarihte MIP kazanmaz; bizim farkımızı sentetik hype yaratsın.
+- **Kurulan:** Modelin ilk-30 listesindeki yanlış pozitiflerden öğrenen ikinci aşama (`mip_hype.py`); sıralama `skor − λ·hype`.
+- **Bulgu 1 (olumlu):** Videodaki gibi küçük bir iyileşme: 7/40 → 8/40 (λ = 0.4), 2000–26'da 1.70 → 1.85 liste başına. Ama anlamlı değil (+0.15 ± 0.14).
+- **Bulgu 2 (sezgiyle ters):** Model bu sophomore'ları cezalandırmadı, yükseltti: modelin kendi hatalarından öğrendiği şey "sophomore'lar ilk 30'da ortalamadan çok tutuyor" oldu. Elit rookie sophomore'lar için model kalibre; bu grup tarihte 66 oyuncuda 0 kazanan veriyor ama beklenen zaten ~0.4.
+- **Bulgu 3:** Açık bir ceza kuralı ("ilk 3 sezonunda zaten elit olana −κ") geçmişte isabeti düşürdü (1.70 → 1.30–1.52). Bu tip oyuncu modelin ilk 10'unda daha çok tutuyor (%23 vs %14.5).
+- **Ders:** Sezgiyi modelin içine sokmadan önce geçmişe karşı ölçmek zorunlu; ölçüm yanıtı bazen "sezgi örneklemde yok" olur. Küçük sayılarda (kazanan: 0 / 66) hem "kanıtlandı" hem "çürütüldü" demek haksızlık olur.
+- **Karar noktası:** (a) veriden öğrenilen hype'ı (λ = 0.4) kullan, ya da (b) editoryal bir katman ekle ve bunu açıkça "editoryal" etiketle (geçmiş isabet maliyeti ölçüldü), ya da (c) gerçek hype'ı topla ve sezgiyi 2026-27'de ileriye dönük test et.
+
+### Aşama 10 (sonra): Canlı MIP takibi
 - **Fikir:** Sezon öncesi liste "izleme listesi" kalır (dürüstçe: ilk 10'da ~3 oylama adayı, kazanan tahmini zayıf). Asıl model sezon içinde çalışır: oyuncunun şimdiye kadarki değişimi (maç başı sayı, dakika, usage, BPM) güvenilirlik ağırlığıyla, sezon başlarında temkinli, ilerledikçe güçlü.
 - **Soru:** Kaç maç sonra kazananı güvenle ilk 10'a / ilk 3'e sokar? Üst sınır (82 maç) 0.675; 20 / 40 / 60 maçta ne olacak?
 - **Plan:** (1) 2021-22'den beri maç logları var (5 sezon): kısmi sezon istatistiklerini üretip aynı modeli kısmi sezonda değerlendirmek; (2) eğitimi tam sezon verisi üzerinden yapıp kısmi sezonda güvenilirlik ağırlığıyla küçültmek; (3) sezon içi güncelleme hattına (`update.py`) bağlamak; (4) sentetik hype'ı burada sıralamaya katmak (bariz olan, yani zaten yıldız olan gelişimi indirmek).
@@ -409,6 +446,7 @@ Hedef: her NBA takımını oyun oyun oynatıp oyuncunun payını hesaplamak. Dö
 
 | Tarih | Değişiklik |
 |---|---|
+| 2026-10-07 (i) | Sentetik hype kuruldu (`mip_hype.py`): modelin ilk-30 yanlış pozitiflerinden öğrenen ikinci aşama. λ = 0.4'te 7/40 → 8/40 (videoyla aynı) ama anlamlı değil. Elit rookie sophomore sezgisi test edildi: veri desteklemiyor (kalibre, açık ceza isabeti düşürüyor, 66 vakada 0 kazanan ama beklenen ~0.4). |
 | 2026-10-07 (h) | Videoya geri dönüş: transkriptteki ölçüt (4 sezon × ilk 10, gerçek top-10 finisher) bire bir uygulandı. Üretim modeli (küçültmeli B2sh) 2023–26'da 7/40 = videoyla aynı; 2011–26: 1.62, 2000–26: 1.70/liste; taban 1.0–1.25. Breakout etiketi yan dala alındı. 2026-27 listesi `P_top10` ile yenilendi (Harper, Sheppard, Flagg, Clingan, Castle, Knueppel, Ware, Edgecombe, Buzelis, Sarr). Hype katmanı sıradaki adım. |
 | 2026-10-07 (g) | Hedef netleşti: sezon öncesi 10 breakout adayı. `BREAKOUT` etiketi (oylama ya da en çok gelişen ilk 12) ve etiket sıkılığı takası ölçüldü: katı etikette 10'da ~2 isabet (rastgele 0.33), geniş etikette (ilk 75) ~5. Simülasyon artışı ek bilgi vermedi. Elit oyuncuları dışarıda bırakan sentetik hype etiketi listeyi üst sıradan seçilen düşük BPM'li ikinci yıllara kaydırdı. Etiket kararı bekliyor. |
 | 2026-10-07 (f) | İkinci tur: yaş kutucukları, yeni özellikler, ListNet sıralama kaybı ve GBM denendi, anlamlı kazanç yok. Üst sınır testi: gerçekleşen sezon içi gelişme verilince NDCG 0.142 → 0.675 (kazanan %89 ilk 10'da). MIP'in sezon içinde okunabilir bir ödül olduğu görüldü; Aşama 7 (canlı takip) planlandı. |
