@@ -166,6 +166,11 @@ Final olasılık: `P(MIP) = P(gelişme) × P(yeterli maç oynama)`; ikinci terim
 
 **2026-27 ilk adaylar (üretim modeli):** Flagg, Harper, Sheppard, Knueppel, Castle, Clingan, Buzelis, Ware, Sarr, Edgecombe, Holland, Podziemski, Queen, Rollins, Mitchell. 19–21 yaşında ağırlıklı: bu modelin yaşa verdiği güçlü ağırlığın sonucu, tek başına güven vermiyor. Maç sayısı (65 maç şartı) henüz uygulanmadı.
 
+### B8c. İkinci tur ve üst sınır (`src/awards/mip_rank.py`)
+
+Denenenler: yaş kutucukları, takım içi rol payı / sırası, sağlık, çıkış yaşı, geçmiş seviyeler, sıralama kaybı (ListNet), gradyan artırma. **Hiçbiri tek tek lojistik B2'yi anlamlı biçimde geçmedi** (NDCG 0.138 – 0.142; çiftli farklar hata payı içinde). Yaş bilgisini tamamen çıkarmak NDCG'yi 0.087'ye düşürüyor: yaş gerçek bilgi taşıyor ve ilk 10'un genç yığılması taban oranın sonucu (21 yaşındaki dakika alan oyuncunun oylamaya girme olasılığı yüksek).
+**Üst sınır testi:** Aynı çerçeveye hedef sezonda gerçekleşen değişimi (BPM, maç başı sayı, dakika, usage) vermek NDCG'yi 0.142 → **0.675** yapıyor (+0.533 ± 0.043); kazanan %89 ilk 10'da, %70 ilk 3'te, medyan sıra 2. Sonuç: **MIP sezon öncesi değil, sezon içinde öngörülebilir** → asıl ürün canlı takip (Aşama 7).
+
 ## B9. Diğer ödüller: komple plan (MIP sonrası)
 
 Aynı iskelet: oylama payı hedefi + walk-forward + sentetik/gerçek hype. İhtiyaçlar:
@@ -188,7 +193,9 @@ Ayrıntılı plan MIP modeli çalıştıktan sonra yazılacak.
 | Pencere karşılaştırması (1986 / 20 yıl / 12 yıl) | ✅ Fark yok; tüm geçmiş seçildi |
 | Sentetik hype raporu (yıllara göre yanlış pozitif listeleri) | 🔶 Hype değeri hesaplanıyor (B0 − üretim logiti) ama kazananlarla ilişkisi ve yanlış pozitif listeleri henüz incelenmedi |
 | 2026-27 için 10 kişilik aday listesi | 🔶 İlk liste çıktı (B8b) ama 19–21 yaşa yığılmış; 65 maç şartı ve maç sayısı olasılığı uygulanmadı, kazanan tahmininde zayıf: şimdilik izleme listesi |
-| Kazananı yakalamak için yeni yöntem (sıralama / koşullu lojistik, rol değişikliği vurgusu, simülasyon bağlamı) | ⏳ Sıradaki |
+| Kazananı yakalamak için yeni yöntem (sıralama kaybı, yeni özellikler, GBM) | ✅ Denendi, kazanç yok (B8c); sezon öncesi tavan ~3/10 isabet |
+| Üst sınır testi (gerçekleşen sezon içi gelişme) | ✅ NDCG 0.675, kazanan ilk 10'da %89: asıl ürün canlı takip |
+| Canlı MIP takibi (kısmi sezon: 20 / 40 / 60 maç testi, güncelleme hattına bağlama) | ⏳ Sıradaki (Aşama 7) |
 | Gerçek hype hattı (YouTube + Claude sınıflandırması) | ⏳ (2026 sezonu) |
 | Diğer ödüller planı | ⏳ |
 
@@ -292,10 +299,20 @@ Hedef: her NBA takımını oyun oyun oynatıp oyuncunun payını hesaplamak. Dö
 - **Bulgu 4 (asıl problem):** Model oylamaya girenleri buluyor (ilk 10'da 3 isabet) ama **kazananı değil**: son 8 sezonda kazananın sırası 29, 70, 98, 9, 68, 27, 19, 157. Hep zaten yıldız olan gençler (Şengün dört yıl üst üste) ilk 5'te çıkıyor.
 - **Ders:** Ortalama bir metrik (ballot isabeti) iyi görünürken asıl hedefi (kazanan) kaçırmak mümkün; metrikleri hedefe göre seçmek şart.
 
-### Aşama 6 🔶: Teşhis ve ikinci tur (devam ediyor)
+### Aşama 6: Teşhis ve ikinci tur: "özellik eklersek düzelir mi?"
 - **Teşhis (veriyle):** Kazananların yaşı 20–26 arasında dengeli dağılırken modelin ilk 10'unun **%81'i 21 ve altı**. Model ayrıca bir önceki yıl zaten çok gelişmiş oyuncuları seçiyor (dakika +5, BPM +1.5); kazananlar ise önceki yıl sıçrama yapmamış (BPM değişimi 0.0). Yani model "momentum"u kovalıyor, MIP sürprizi ödüllendiriyor.
-- **Neden:** Yaş doğrusal ve tek yönlü bir ağırlıktı; "genç = iyi" kuralı yaş sınıflarının gerçek dağılımını yansıtmıyor. Sentetik hype henüz sıralamaya girmiyor, sadece teşhis çıktısı (bu da bir eksik).
-- **Plan (senin sezgin):** (a) yaş kutucukları, (b) daha fazla özellik: takım içi rol payı ve sırası, geçmiş seviyeler, sağlık, çıkış yaşı, (c) hedefi "kim kazanır" olarak değiştirmek (sezon içi sıralama kaybı), (d) sentetik hype'ı gerçekten sıralamaya dahil etmek.
+- **Senin hipotezin:** Özellikler az; birkaç özellik eklenirse yaşın ağırlığı azalır, ilk 6–7 pick'in ikinci yılları listeyi doldurmaz. Sentetik hype kurulmadığı için de olabilir.
+- **Denenen (src/awards/mip_rank.py):** (a) yaş kutucukları (8 sınıf), (b) yeni özellikler: takım içi dakika payı ve sırası, sağlık (maç oranı), çıkış yaşı, geçmiş seviyeler, ek persantiller, takım değişimi, (c) hedefi "kim kazanır" yapan sıralama kaybı (ListNet; kazanan en çok kütleyi alır), (d) gradyan artırma (GBM).
+- **Sonuç (2000–2026, çiftli sezon farkı, NDCG@10): hiçbiri anlamlı iyileştirme getirmedi.** ListNet − tek tek lojistik: −0.004 ± 0.029; yeni özellikler (v2) − yaş kutucukları: +0.025 ± 0.022; GBM − ListNet: −0.001 ± 0.032. En iyi ikinci tur modeli (NDCG 0.138) ilk turu (0.142) geçemedi.
+- **Yaş yığılması azalmadı, arttı:** Yaş kutucuklarıyla ilk 10'un %97'si ≤ 21 yaş. Sebep model hatası değil, **taban oran**: 21 yaşında dakika alan oyuncunun oylamaya girme olasılığı gerçekten yüksek (katsayılar: 21 yaş +0.136, ≤20 +0.089, 22 +0.081). İlk 10 kişi başına en yüksek olasılıkları seçtiği için gençleri seçiyor; kazananlar ise sayıca çok olan 22–26 yaş grubundan, ama tek tek düşük olasılıkla. Yaşı tamamen çıkarınca (`noage`) NDCG 0.138 → 0.087: yaş gerçekten bilgi taşıyor.
+- **Sentetik hype:** Hype şu an yalnızca teşhis çıktısı, sıralamada kullanılmıyor; sıralamaya katmak (B0 − üretim logiti cezası) denenecek, ama özellik eklemeyle elde edilen sonuç hype'ın da büyük bir sıçrama yapmayacağına işaret ediyor.
+- **Asıl bulgu: üst sınır testi.** Aynı çerçeveye, hedef sezonda **gerçekleşen** gelişmeyi (BPM, sayı, dakika, usage değişimi) verince: kazanan %89 ilk 10'a, %70 ilk 3'e giriyor, medyan sıra 2, NDCG 0.142 → **0.675** (fark +0.533 ± 0.043). Son 8 sezon kazanan sırası: 2, 7, 4, 1, 1, 5, 2, 2.
+- **Ders:** MIP sezon öncesi bilgiyle tahmin edilebilecek bir ödül değil, **sezon içinde okunabilecek** bir ödül. Sezon öncesi özellik eklemek tavana (yaklaşık 3/10 isabet, kazananı bulamama) yakın; geri kalanı sezonun kendisi söylüyor. Tahmin yerine **canlı takip** doğru ürün (sezon içi güncellemelerimiz zaten saatlik çalışıyor).
+
+### Aşama 7 🔶: Canlı MIP takibi (devam edecek)
+- **Fikir:** Sezon öncesi liste "izleme listesi" kalır (dürüstçe: ilk 10'da ~3 oylama adayı, kazanan tahmini zayıf). Asıl model sezon içinde çalışır: oyuncunun şimdiye kadarki değişimi (maç başı sayı, dakika, usage, BPM) güvenilirlik ağırlığıyla, sezon başlarında temkinli, ilerledikçe güçlü.
+- **Soru:** Kaç maç sonra kazananı güvenle ilk 10'a / ilk 3'e sokar? Üst sınır (82 maç) 0.675; 20 / 40 / 60 maçta ne olacak?
+- **Plan:** (1) 2021-22'den beri maç logları var (5 sezon): kısmi sezon istatistiklerini üretip aynı modeli kısmi sezonda değerlendirmek; (2) eğitimi tam sezon verisi üzerinden yapıp kısmi sezonda güvenilirlik ağırlığıyla küçültmek; (3) sezon içi güncelleme hattına (`update.py`) bağlamak; (4) sentetik hype'ı burada sıralamaya katmak (bariz olan, yani zaten yıldız olan gelişimi indirmek).
 - **Sonuç:** Bu aşama bitince buraya yazılacak.
 
 ## D3. Sürekli tekrar eden dersler (video için ortak tema)
@@ -312,6 +329,7 @@ Hedef: her NBA takımını oyun oyun oynatıp oyuncunun payını hesaplamak. Dö
 
 | Tarih | Değişiklik |
 |---|---|
+| 2026-10-07 (f) | İkinci tur: yaş kutucukları, yeni özellikler, ListNet sıralama kaybı ve GBM denendi, anlamlı kazanç yok. Üst sınır testi: gerçekleşen sezon içi gelişme verilince NDCG 0.142 → 0.675 (kazanan %89 ilk 10'da). MIP'in sezon içinde okunabilir bir ödül olduğu görüldü; Aşama 7 (canlı takip) planlandı. |
 | 2026-10-07 (e) | Bölüm D eklendi: aşamalar, karşılaşılan problemler ve çözümleri (video metni için). Teşhis: model kazananların yaş dağılımını yansıtmıyor (ilk 10'un %81'i ≤21 yaş) ve momentum kovalıyor; ikinci tur başladı. |
 | 2026-10-07 (d) | Aşama A ve B kuruldu, walk-forward ile 2000–2026'da test edildi (B8b). Bulgular: tanınma katmanı genç+üretken tabanını aşıyor (+0.058 ± 0.022 NDCG), A ve takım değişimi katkı vermiyor, pencere farkı yok; model oylamaya girenleri buluyor ama kazananı değil. Üretim modeli B2; ilk 2026-27 listesi çıktı. |
 | 2026-10-07 (c) | Isaac Austin düzeltmesi (senin notun): önceki sezonu olmayan oyuncu için en son NBA sezonu + `GAP` özelliği; 2025-26 B-Ref verisi çekildi; takım değişimi özellikleri (`MOVED`, `VAC`, `ARR`) eklendi. |
