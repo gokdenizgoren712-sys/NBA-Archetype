@@ -301,6 +301,7 @@ Ayrıntılı plan MIP modeli çalıştıktan sonra yazılacak.
 | Projeksiyon, bağlam, takım simülasyonu | `src/fantasy/projections.py`, `context.py`, `team_sim.py`, `world.py`, `season_sim.py`, `inseason_sim.py` |
 | Ödül veri çekimi | `src/fetch_awards.py` |
 | MIP veri seti | `src/awards/mip_data.py` → `data/awards__mip_dataset.parquet` |
+| MIP tahmin ↔ gerçek tablosu (2010-11 → 2025-26, λ = 0.4) | `docs/MIP_PREDICTIONS_VS_ACTUAL_2011_2026.md` |
 | Backtest'ler | `python -m src.fantasy.team_sim --backtest`, `python -m src.fantasy.inseason_sim`, `python -m src.fantasy.world_backtest` |
 
 ---
@@ -455,6 +456,7 @@ Hedef: her NBA takımını oyun oyun oynatıp oyuncunun payını hesaplamak. Dö
 
 | Tarih | Değişiklik |
 |---|---|
+| 2026-10-10 (b) | λ = 0.6 denendi: λ = 0.4'e göre −0.07 ± 0.07, ilk 10 aynı; yarar tavanı λ ≈ 0.4–0.5. Sezon sezon tahmin ↔ gerçek tablosu üretildi (16 sezon, 29/160 = 1.81 liste başına). |
 | 2026-10-10 | Gerçek hype hattı çevrimdışı kuruldu (`hype_real.py`, 11 test): yorum çekimi (resmî API), oyuncu eşleştirme, Claude sınıflandırma, küçültme, eksik veri kuralı, `skor − λ·hype_z`. Gerçek çekim için anahtarlar ve video listesi bekleniyor. |
 | 2026-10-07 (i) | Sentetik hype kuruldu (`mip_hype.py`): modelin ilk-30 yanlış pozitiflerinden öğrenen ikinci aşama. λ = 0.4'te 7/40 → 8/40 (videoyla aynı) ama anlamlı değil. Elit rookie sophomore sezgisi test edildi: veri desteklemiyor (kalibre, açık ceza isabeti düşürüyor, 66 vakada 0 kazanan ama beklenen ~0.4). |
 | 2026-10-07 (h) | Videoya geri dönüş: transkriptteki ölçüt (4 sezon × ilk 10, gerçek top-10 finisher) bire bir uygulandı. Üretim modeli (küçültmeli B2sh) 2023–26'da 7/40 = videoyla aynı; 2011–26: 1.62, 2000–26: 1.70/liste; taban 1.0–1.25. Breakout etiketi yan dala alındı. 2026-27 listesi `P_top10` ile yenilendi (Harper, Sheppard, Flagg, Clingan, Castle, Knueppel, Ware, Edgecombe, Buzelis, Sarr). Hype katmanı sıradaki adım. |
