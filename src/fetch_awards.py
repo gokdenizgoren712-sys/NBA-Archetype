@@ -84,6 +84,18 @@ def _num(v):
         return None
 
 
+def _slug_from_cell(cell) -> str | None:
+    """Oyuncu hücresi: önce data-append-csv, yoksa /players/d/doncilu01.html bağlantısından."""
+    v = cell.get("data-append-csv")
+    if v:
+        return v
+    a = cell.find("a")
+    if a is not None and a.get("href"):
+        m = re.search(r"/players/\w/([a-z0-9]+)\.html", a["href"])
+        return m.group(1) if m else None
+    return None
+
+
 # ── Yaş ───────────────────────────────────────────────────────────────────────
 
 def fetch_age(end_year: int, force: bool = False) -> pd.DataFrame:
@@ -125,8 +137,8 @@ def fetch_age(end_year: int, force: bool = False) -> pd.DataFrame:
 
 # ── Ödül oylaması ──────────────────────────────────────────────────────────────
 
-AWARD_TABLE = {a: a for a in ("mvp", "roy", "dpoy", "smoy", "mip", "clutch_poy", "coy")}      # ödül anahtarı → awards_{yıl}.html içindeki tablo kimliği
-AWARD_START = {"mvp": 1956, "roy": 1953, "dpoy": 1983, "smoy": 1983, "mip": 1986, "clutch_poy": 2023, "coy": 1963}   # ilk oylama sezonu (bitiş yılı)
+AWARD_TABLE = {**{a: a for a in ("mvp", "roy", "dpoy", "smoy", "mip", "clutch_poy", "coy")}, "allnba": "leading_all_nba", "alldef": "leading_all_defense"}      # ödül anahtarı → awards_{yıl}.html içindeki tablo kimliği
+AWARD_START = {"mvp": 1956, "roy": 1953, "dpoy": 1983, "smoy": 1983, "mip": 1986, "clutch_poy": 2023, "coy": 1963, "allnba": 1947, "alldef": 1969}   # ilk oylama sezonu (bitiş yılı)
 
 
 def fetch_award_year(award: str, end_year: int, force: bool = False) -> pd.DataFrame:
@@ -164,13 +176,15 @@ def _parse_award_table(table, season: str) -> pd.DataFrame:
     rows = []
     for tr in table.find("tbody").find_all("tr"):
         cells = {td.get("data-stat", ""): td for td in tr.find_all(["td", "th"])}
-        pl = cells.get("player")
+        pl = cells.get("player") or cells.get("coach")                       # COY tablosunda oyuncu yerine koç
         if pl is None or not pl.get_text(strip=True):
             continue
         g = lambda k: cells[k].get_text(strip=True) if k in cells else ""          # noqa: E731
-        rows.append({"SEASON": season, "RANK": g("rank"), "PLAYER_NAME": pl.get_text(strip=True), "BREF_SLUG": pl.get("data-append-csv"),
-                     "AGE": _num(g("age")), "TEAM_ABBREVIATION": g("team_id"), "FIRST": _num(g("votes_first")), "PTS_WON": _num(g("points_won")),
-                     "PTS_MAX": _num(g("points_max")), "SHARE": _num(g("award_share")), "WINNER": 1 if g("rank") in ("1", "T1") else 0})
+        team_label = g("all_nba_team") or g("all_defense_team")              # All-NBA / All-Defense: 1st / 2nd / 3rd (boş = seçilmedi)
+        rows.append({"SEASON": season, "RANK": g("rank"), "PLAYER_NAME": pl.get_text(strip=True), "BREF_SLUG": _slug_from_cell(pl),
+                     "AGE": _num(g("age")), "TEAM_ABBREVIATION": g("team_id"), "POS": g("pos"), "TEAM_LABEL": team_label,
+                     "FIRST": _num(g("votes_first")), "PTS_WON": _num(g("points_won")), "PTS_MAX": _num(g("points_max")),
+                     "SHARE": _num(g("award_share")), "WINNER": 1 if g("rank") in ("1", "T1") else 0})
     return pd.DataFrame(rows)
 
 
@@ -229,18 +243,6 @@ def build_award_table(award: str, years: range, force: bool = False) -> pd.DataF
 
 # ── Draft (ROY için: çaylakların sezon öncesi bilgisi yalnız draft sırası, ülke / kolej) ────────────────────
 
-def _slug_from_cell(cell) -> str | None:
-    """Oyuncu hücresi: önce data-append-csv, yoksa /players/d/doncilu01.html bağlantısından."""
-    v = cell.get("data-append-csv")
-    if v:
-        return v
-    a = cell.find("a")
-    if a is not None and a.get("href"):
-        m = re.search(r"/players/\w/([a-z0-9]+)\.html", a["href"])
-        return m.group(1) if m else None
-    return None
-
-
 def fetch_draft(year: int, force: bool = False) -> pd.DataFrame:
     """draft/NBA_{yıl}.html: PICK, takım, oyuncu (+ slug), kolej (boş = uluslararası / lise)."""
     out = DATA / f"draft__{year}.parquet"
@@ -268,6 +270,98 @@ def fetch_draft(year: int, force: bool = False) -> pd.DataFrame:
     return df
 
 
+# ── GS, takım gücü, koçlar ────────────────────────────────────────────────────
+
+def _first_table(html: str, ids: list[str]):
+    soup = BeautifulSoup(html, "lxml")
+    for tid in ids:
+        t = _find_table(soup, tid)
+        if t is not None:
+            return t
+    return None
+
+
+def fetch_gs(end_year: int, force: bool = False) -> pd.DataFrame:
+    """per_game sayfası: maç ve BAŞLANGIÇ sayısı (6MOY: yedek rolü). `{sezon}__bref_gs.parquet`."""
+    season = season_label(end_year)
+    out = DATA / f"{season}__bref_gs.parquet"
+    if out.exists() and not force:
+        return pd.read_parquet(out)
+    html = _get(f"https://www.basketball-reference.com/leagues/NBA_{end_year}_per_game.html")
+    t = _first_table(html, ["per_game_stats", "per_game"]) if html else None
+    if t is None:
+        return pd.DataFrame()
+    rows = []
+    for tr in t.find("tbody").find_all("tr"):
+        c = {td.get("data-stat", ""): td for td in tr.find_all(["td", "th"])}
+        nm = c.get("name_display") or c.get("player")
+        if nm is None or not nm.get_text(strip=True):
+            continue
+        g = lambda k: c[k].get_text(strip=True) if k in c else ""          # noqa: E731
+        rows.append({"BREF_SLUG": _slug_from_cell(nm), "PLAYER_NAME": nm.get_text(strip=True),
+                     "TEAM_ABBREVIATION": g("team_name_abbr") or g("team_id"), "G": _num(g("games") or g("g")),
+                     "GS": _num(g("games_started") or g("gs"))})
+    df = pd.DataFrame(rows)
+    df = df.sort_values("G", ascending=False).drop_duplicates("BREF_SLUG").reset_index(drop=True)      # takas edilen: toplam satır
+    df.to_parquet(out)
+    print(f"  [{season}] GS: {len(df)} oyuncu", flush=True)
+    return df
+
+
+def fetch_team_season(end_year: int, force: bool = False) -> pd.DataFrame:
+    """Lig sayfasındaki gelişmiş takım tablosu: galibiyet, mağlubiyet, MOV, SRS, ORtg, DRtg. `team__{sezon}.parquet`."""
+    season = season_label(end_year)
+    out = DATA / f"team__{season}.parquet"
+    if out.exists() and not force:
+        return pd.read_parquet(out)
+    html = _get(f"https://www.basketball-reference.com/leagues/NBA_{end_year}.html")
+    t = _first_table(html, ["advanced-team", "misc_stats"]) if html else None
+    if t is None:
+        return pd.DataFrame()
+    rows = []
+    for tr in t.find("tbody").find_all("tr"):
+        c = {td.get("data-stat", ""): td for td in tr.find_all(["td", "th"])}
+        tm = c.get("team")
+        if tm is None or not tm.get_text(strip=True) or tm.get_text(strip=True).startswith("League"):
+            continue
+        g = lambda k: c[k].get_text(strip=True) if k in c else ""          # noqa: E731
+        rows.append({"SEASON": season, "TEAM_NAME": tm.get_text(strip=True).rstrip("*"), "W": _num(g("wins")), "L": _num(g("losses")),
+                     "MOV": _num(g("mov")), "SRS": _num(g("srs")), "ORTG": _num(g("off_rtg")), "DRTG": _num(g("def_rtg")),
+                     "NRTG": _num(g("net_rtg"))})
+    df = pd.DataFrame(rows)
+    df["WIN_PCT"] = df["W"] / (df["W"] + df["L"])
+    df.to_parquet(out)
+    print(f"  [{season}] takım: {len(df)}", flush=True)
+    return df
+
+
+def fetch_coaches(end_year: int, force: bool = False) -> pd.DataFrame:
+    """Koç sayfası: koç, takım, sezon maç / galibiyet, franchise ve kariyer sezon sayısı. `coach__{sezon}.parquet`."""
+    season = season_label(end_year)
+    out = DATA / f"coach__{season}.parquet"
+    if out.exists() and not force:
+        return pd.read_parquet(out)
+    html = _get(f"https://www.basketball-reference.com/leagues/NBA_{end_year}_coaches.html")
+    t = _first_table(html, ["NBA_coaches"]) if html else None
+    if t is None:
+        return pd.DataFrame()
+    rows = []
+    for tr in t.find("tbody").find_all("tr"):
+        c = {td.get("data-stat", ""): td for td in tr.find_all(["td", "th"])}
+        co = c.get("coach")
+        if co is None or not co.get_text(strip=True):
+            continue
+        g = lambda k: c[k].get_text(strip=True) if k in c else ""          # noqa: E731
+        rows.append({"SEASON": season, "COACH": co.get_text(strip=True), "COACH_SLUG": _slug_from_cell(co), "TEAM": g("team"),
+                     "G": _num(g("cur_g")), "W": _num(g("cur_w")), "L": _num(g("cur_l")),
+                     "SEASONS_FRANCHISE": _num(g("seas_num_franch")), "SEASONS_OVERALL": _num(g("seas_num_overall")),
+                     "CAREER_W": _num(g("car_w")), "CAREER_L": _num(g("car_l"))})
+    df = pd.DataFrame(rows)
+    df.to_parquet(out)
+    print(f"  [{season}] koç: {len(df)}", flush=True)
+    return df
+
+
 def main(argv=None) -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
@@ -276,6 +370,7 @@ def main(argv=None) -> int:
     ap.add_argument("--age", action="store_true")
     ap.add_argument("--mip", action="store_true")
     ap.add_argument("--drafts", action="store_true", help="1984-2026 draft sınıfları (ROY için)")
+    ap.add_argument("--extras", action="store_true", help="GS (per_game), takım gücü (lig sayfası), koçlar: 1984-2026")
     ap.add_argument("--awards", action="store_true", help="tüm ödül oylama tabloları (mvp, roy, dpoy, smoy, mip, clutch_poy, coy), sayfa başına tek istek")
     ap.add_argument("--force", action="store_true")
     a = ap.parse_args(argv)
@@ -294,6 +389,13 @@ def main(argv=None) -> int:
             build_award_table("mip", range(MIP_FIRST_YEAR, 2027), a.force)
         if a.awards:
             build_all_awards(range(1984, 2027), a.force)
+        if a.extras:
+            for fn, pat in ((fetch_gs, "{s}__bref_gs"), (fetch_team_season, "team__{s}"), (fetch_coaches, "coach__{s}")):
+                for y in range(1984, 2027):
+                    had = (DATA / (pat.format(s=season_label(y)) + ".parquet")).exists() and not a.force
+                    fn(y, a.force)
+                    if not had:
+                        time.sleep(SLEEP)
         if a.drafts:
             for i, y in enumerate(range(1984, 2027)):
                 had = (DATA / f"draft__{y}.parquet").exists() and not a.force

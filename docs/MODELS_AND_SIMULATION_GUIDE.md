@@ -323,6 +323,21 @@ Hype katmanı videodaki gibi küçük bir iyileştirme veriyor (videoda 7 → 8;
 | COY | ⏳ | Koç düzeyinde: oy tablosu koç adı sütunuyla geliyor (ayrıştırılacak); hedef = takım galibiyeti beklentisine göre sürpriz; **takım simülasyonumuz doğal uyum** |
 | All-NBA / All-Defense / All-Rookie | ⏳ | Oy payı yerine takım yerleşimi + pozisyon kısıtı (2 G, 2 F, 1 C); B-Ref "leading_all_*" tablolarında oy puanı var |
 
+### B9d. Uygulama planı (2026-10-11; sırayla)
+
+**Kararlar (senin):** MVP ve DPOY adaylarına yüzde verilsin; Herro 6MOY listesinde olmamalı (yedekten gireceğini düşünmüyorsun) → GS verisi çekilsin; ROY'a kolej istatistikleri sürekli hâle getirilsin; koç verisi eklensin (COY); **Clutch POY yapılmayacak**; All-NBA ve All-Defense eklensin; MVP/DPOY için önerdiğim takım başarısı özelliği yapılsın.
+
+| Sıra | İş | Veri | Çıktı | Durum |
+|---|---|---|---|---|
+| 0 | Veri çekimi: GS (`games_started`), takım gücü (W, L, MOV, SRS, ORtg, DRtg), koçlar, All-NBA / All-Defense / COY oy tabloları, NCAA 2008-09 → 2015-16 | B-Ref + Torvik | `bref_gs`, `team__`, `coach__`, `awards__allnba/alldef/coy`, `ncaa__*` | 🔶 çekiliyor |
+| 1 | **MVP ve DPOY**: takım başarısı özelliği (geçen sezonun galibiyet yüzdesi, SRS, ORtg/DRtg; takım değiştiyse yeni takım) + **aday yüzdeleri** (kazanma, ilk 3, ilk 5, ilk 10 olasılığı; kalibre) | takım verisi | model + yüzdeli liste | ⏳ |
+| 2 | **6MOY**: GS özellikleri (geçen sezon başlangıç oranı, kariyer başlangıç oranı, yedek rolü); uygunluk: sezonun çoğunda yedek | `bref_gs` | model + Herro gibi başlangıç oyuncularının elenmesi | ⏳ |
+| 3 | **All-NBA ve All-Defense**: etiket = takıma girmek (1., 2., 3. takım; 15 / 10 kişi); pozisyon kısıtı (2 G, 2 F, 1 C) | `awards__allnba/alldef` | P(takıma girme), liste | ⏳ |
+| 4 | **COY**: koç özellikleri (kıdem, franchise kıdemi, geçen sezon galibiyet, takım gücü değişimi); hedef: galibiyet beklentisine göre sürpriz | `coach__`, `team__` | P(COY) | ⏳ |
+| 5 | **ROY**: kolej istatistikleri ve prospect notu (draft sınıfı ↔ NCAA sezonu eşleme), uluslararası oyuncular için lig verisi (EuroLeague / G-League) | `ncaa__*`, `prospect.py` | draft sırasını aşan model | ⏳ |
+
+**İlkeler:** Her adımda videonun ölçütü ve tabanlar (geçen yılın payı, draft sırası); eşit çıkarsa "eşit" yazılır. Eksik veri (örn. GS'in olmadığı eski sezonlar) sıfır değil "bilinmiyor" olarak işlenir. Rehber her adımda güncellenir.
+
 ## B9. Diğer ödüller: komple plan (MIP sonrası)
 
 Aynı iskelet: oylama payı hedefi + walk-forward + sentetik/gerçek hype. İhtiyaçlar:
@@ -548,6 +563,7 @@ Hedef: her NBA takımını oyun oyun oynatıp oyuncunun payını hesaplamak. Dö
 
 | Tarih | Değişiklik |
 |---|---|
+| 2026-10-11 (c) | Plan (B9d): MVP/DPOY'a takım başarısı + aday yüzdeleri, 6MOY'a GS, All-NBA / All-Defense, COY (koç verisi), ROY'a kolej istatistikleri; Clutch POY yapılmayacak. NCAA 2008-09 → 2015-16 çekildi (ROY için 18 sezon). |
 | 2026-10-11 (b) | ROY için ayrı çaylak veri seti (`roy.py`, draft sınıfları): model draft sırası tabanını geçmiyor. Diğer ödüller için veri/özellik eksikleri planı (B9c). Çevrimdışı mekanik testleri (6). Draft verisinde iki hata düzeltildi (oyuncu anahtarı bağlantıdan, tablo içi başlık satırı). |
 | 2026-10-11 | Sentetik hype λ = 0.4 varsayılan yapıldı (`--predict` giriş noktası). Mekanik diğer ödüllere genişletildi: ödül-bağımsız veri seti ve `award_run.py`; MVP (6.19/10), DPOY (4.78/10), 6MOY (2.15/10). MVP ve DPOY'da kazanan ilk 10'da %85–89; kazanç büyük ölçüde geçen yılın oy payı süreğenliğinden. Tüm ödül oylama tabloları ve draft sınıfları çekildi. |
 | 2026-10-10 (c) | 2011-12 sorusu: hype yalnız ilk 30'u yeniden sıralıyor; gerçek ilk 10'un çoğu aday havuzunda yoktu (mükemmel hype tavanı 3.19/liste, biz 1.81). Pencere genişletme fayda vermedi (K = 10–120). B8g ve Aşama 9b eklendi. |
