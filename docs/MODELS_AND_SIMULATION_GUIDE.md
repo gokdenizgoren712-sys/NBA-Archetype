@@ -311,7 +311,7 @@ Hype katmanı videodaki gibi küçük bir iyileştirme veriyor (videoda 7 → 8;
 **2026-27 ilk 10 (draft sırası):** Dybantsa (#1), Peterson (#2), Boozer (#3), Wilson (#4), Wagler (#5), Brown Jr. (#6), Acuff Jr. (#7), Flemings (#8), M. Johnson Jr. (#9), Burries (#10).
 **Eksik:** Kolej istatistikleri (üretim, yaş, kolej seviyesi) ve uluslararası oyuncular için lig verisi yok; bunlar eklenirse pick'in ötesine geçmek mümkün. Takım fırsatı (açılan dakika) sezon öncesi 2026 kadrosu bilinmediği için 2026-27 satırlarında boş.
 
-### B9c. Diğer ödüller için plan (mekanik tamam, veri ve özellik eksikleri)
+### B9c. Diğer ödüller için plan (önceki durum; güncel durum B9e'de)
 
 | Ödül | Durum | Sıradaki eksik |
 |---|---|---|
@@ -337,6 +337,26 @@ Hype katmanı videodaki gibi küçük bir iyileştirme veriyor (videoda 7 → 8;
 | 5 | **ROY**: kolej istatistikleri ve prospect notu (draft sınıfı ↔ NCAA sezonu eşleme), uluslararası oyuncular için lig verisi (EuroLeague / G-League) | `ncaa__*`, `prospect.py` | draft sırasını aşan model | ⏳ |
 
 **İlkeler:** Her adımda videonun ölçütü ve tabanlar (geçen yılın payı, draft sırası); eşit çıkarsa "eşit" yazılır. Eksik veri (örn. GS'in olmadığı eski sezonlar) sıfır değil "bilinmiyor" olarak işlenir. Rehber her adımda güncellenir.
+
+### B9e. Plan yürütüldü (2026-10-11): sonuçlar ve güncel durum
+
+Rapor: `docs/AWARDS_2026-27_CANDIDATES.md` (`python -m src.awards.report`). Tüm ödüller walk-forward; ölçüt: modelin ilk 10'u (All-NBA'de 15'i) içinden gerçek finisher / takım üyesi sayısı.
+
+| Ödül | Eklenen | Sonuç (2000–26) | Taban | Durum |
+|---|---|---|---|---|
+| **MVP** | Takım başarısı (geçen sezon galibiyet %, SRS, ORtg/DRtg; yeni takım) + aday yüzdeleri | 6.07 / 10 (değişmedi: takım özelliği +0.00 ± 0.09) | geçen yılın payı 5.89 | ✅ yüzdeli liste; takım özelliği katkısız olduğu için sade sürüm kullanılıyor |
+| **DPOY** | Aynı | 4.74 / 10 (takım özelliği +0.00 ± 0.11) | geçen yılın payı 4.59 | ✅ yüzdeli liste |
+| **6MOY** | **GS** (geçen sezon / bir önceki / kariyer başlangıç oranı) + yedek süzgeci | **2.67 / 10** (GS'siz 2.22; **+0.44 ± 0.15**); kazanan ilk 10'da %35 → **%54**, medyan sıra 39 → **9** | geçen yılın payı 2.44 | ✅ Herro (geçen sezon başlangıç oranı %85) listeden düştü |
+| **All-NBA** | Oy tablosu (takım etiketi), takıma girme olasılığı, pozisyonlu dizilim | **9.19 / 15** (2011–26: 8.62; 2023–26: 7.75) | geçen yıl takımdaydı 8.85 (+0.33 ± 0.23) | ✅ 3 takım dizilimi + yüzdeler |
+| **All-Defense** | Aynı | **5.52 / 10** (2023–26: 3.0) | geçen yıl takımdaydı 5.30 | ✅ |
+| **COY** | Koç tablosu (kıdem, franchise kıdemi, geçen sezon takım gücü) + yaz yetenek değişimi | 4.56 / 10 (30 koç içinden; yetenek değişimi +0.26 ± 0.20); kazanan ilk 10'da %41 | rastgele 2.6; geçen sezon galibiyet % 4.37 | 🔶 zayıf, tabanın biraz üstü |
+| **ROY** | Kolej istatistikleri (Torvik 2008-09 → 2025-26; 40 dk üretim, BPM, yaş, lig gücü, boy); draft sınıfı ↔ NCAA sezon eşlemesi (katlanmış ad) | top-5/5: 2.54–2.69 vs yalnız pick 2.62 (2014–26; **tutarlı kazanç yok**) | draft sırası 2.63 | 🔶 hat sürekli çalışıyor; pick'in ötesine geçmedi |
+| **Clutch POY** | Yapılmayacak (kararın) | - | - | ⛔ |
+| **MIP** | (önceki) | 1.85 / 10, 8/40 | genç + üretken 1.04 | ✅ |
+
+**Yüzdeler (MVP, DPOY, 6MOY):** P(kazanır) kalibre softmax (sezon içinde toplamı 1; β walk-forward kazanan olabilirliğiyle seçildi); P(ilk 3 / 5 / 10) walk-forward puanlardan doğrudan Platt kalibrasyonu, tutarlılık için P(kazanır) ≤ P(ilk 3) ≤ P(ilk 5) ≤ P(ilk 10). Bir kalibrasyon sorunu bulundu ve düzeltildi: Plackett-Luce ile türetilen üst-k olasılıkları, kazanan için kalibre edilen sıcaklıkla DPOY'da düşük kalıyordu (ilk-10 isabeti beklenen 2.45 ↔ gerçek 4.74). Güncel model için ilk-10 toplamı gerçeğe yakın.
+**Takım başarısı özelliği neden fayda vermedi:** MVP ve DPOY'u önceki yılın oy payı ve oyuncu seviyesi zaten belirliyor; geçen sezonun takım galibiyeti bunların üstüne bir şey eklemiyor. Takım başarısının *tahmini* (simülasyonla) bu testte yer almadı: tarihsel olarak geriye dönük simülasyon yalnız 3 sezon.
+**Eksik verinin sınırı:** 2023–26 All-NBA / All-Defense örnekleri küçük (4 sezon); varyans yüksek.
 
 ## B9. Diğer ödüller: komple plan (MIP sonrası)
 
@@ -368,7 +388,13 @@ Ayrıntılı plan MIP modeli çalıştıktan sonra yazılacak.
 | Hype kararı | ✅ Sentetik hype λ = 0.4 varsayılan (`mip_hype.DEFAULT_LAMBDA`, `python -m src.awards.mip_hype --predict`); gerçek hype sonra |
 | Diğer ödüller: mekanik genişletildi (MVP, DPOY, 6MOY) | ✅ B9a: MVP 6.2/10 ve DPOY 4.8/10 isabet (kazanan ilk 10'da %89 / %85), 6MOY zayıf 2.2/10 |
 | ROY (draft verisiyle) | ✅ `src/awards/roy.py`: draft sırası tabanını geçmiyor (2.56 vs 2.63); ROY neredeyse tamamen pick (B9b) |
-| Clutch POY, COY, All-NBA / All-Defense / All-Rookie | ⏳ Plan B9c'de: veri ve özellik eksikleri tablosu |
+| COY, All-NBA, All-Defense | ✅ B9e: koç verisi, yetenek değişimi, takım etiketi; All-NBA 9.2/15, All-Defense 5.5/10, COY 4.56/10 (zayıf) |
+| 6MOY GS verisi ve yedek süzgeci | ✅ +0.44 ± 0.15 (2.22 → 2.67); Herro listeden düştü |
+| MVP/DPOY yüzdeleri ve takım başarısı özelliği | ✅ yüzdeli liste; takım özelliği katkısız (+0.00) |
+| ROY kolej istatistikleri | 🔶 sürekli hat kuruldu (NCAA 2008-09 → 2025-26); pick'i geçmedi |
+| Clutch POY | ⛔ yapılmayacak (kararın) |
+| All-Rookie | ⏳ yapılmadı (ROY pick'ine bağlı; isteğe bağlı) |
+| 2026-27 ödül aday raporu (yüzdelerle) | ✅ `docs/AWARDS_2026-27_CANDIDATES.md`, `python -m src.awards.report` |
 | Çevrimdışı testler (oy tablosu, slug, ölçüt, hype sızıntısı) | ✅ `tests/test_awards_mechanics.py` (6) + `test_awards_hype_real.py` (11) |
 | Gerçek hype hattı (YouTube yorumları + Claude sınıflandırması): kod ve testler | ✅ `src/awards/hype_real.py`, 11 test (çevrimdışı, sahte yorum/sınıflandırıcı) |
 | Gerçek hype: yorumların çekilmesi ve sınıflandırılması | ⏳ YouTube API anahtarı, Anthropic API anahtarı ve 6–8 video seçimi gerekli |
@@ -390,7 +416,8 @@ Ayrıntılı plan MIP modeli çalıştıktan sonra yazılacak.
 | Ödül veri çekimi | `src/fetch_awards.py` |
 | MIP veri seti | `src/awards/mip_data.py` → `data/awards__mip_dataset.parquet` |
 | MIP tahmin ↔ gerçek tablosu (2010-11 → 2025-26, λ = 0.4) | `docs/MIP_PREDICTIONS_VS_ACTUAL_2011_2026.md` |
-| Diğer ödüller (MVP, DPOY, 6MOY) / ROY | `src/awards/award_run.py`, `src/awards/roy.py`; veri: `awards__{ödül}_voting.parquet`, `draft__{yıl}.parquet` |
+| Diğer ödüller | `src/awards/award_run.py` (MVP, DPOY, 6MOY), `team_awards.py` (All-NBA, All-Defense), `coy.py`, `roy.py`, `report.py`; veri: `awards__{ödül}_voting.parquet`, `draft__{yıl}.parquet`, `{sezon}__bref_gs.parquet`, `team__{sezon}.parquet`, `coach__{sezon}.parquet`, `ncaa__{sezon}__player_scores.parquet` |
+| 2026-27 ödül aday raporu (yüzdelerle) | `docs/AWARDS_2026-27_CANDIDATES.md` |
 | Gerçek hype hattı | `src/awards/hype_real.py` |
 | Backtest'ler | `python -m src.fantasy.team_sim --backtest`, `python -m src.fantasy.inseason_sim`, `python -m src.fantasy.world_backtest` |
 
@@ -543,7 +570,17 @@ Hedef: her NBA takımını oyun oyun oynatıp oyuncunun payını hesaplamak. Dö
 - **Ders:** Tabanları (geçen yılın payı, draft sırası) model kadar özenle kurmak, "modelimiz işe yarıyor" ile "modelimiz zaten bilinen şeyi söylüyor" arasındaki farkı gösteriyor; süreklilik ödüllerinde fark ancak ek, bağımsız bilgiyle (takım başarısı, kolej verisi) açılır.
 - **Test:** Oy tablosu ayrıştırma, slug çıkarma, ölçüt ve hype'ın zaman sızıntısı olmaması (t sezonunun hype'ı t'den sonraki sonuçları değiştirince aynı kalıyor) çevrimdışı testlerle kilitlendi (6 test).
 
-### Aşama 12 (sonra): Canlı MIP takibi
+### Aşama 12: Planı yürütmek: MVP/DPOY yüzdeleri, 6MOY GS, All-NBA/All-Defense, COY koç verisi, ROY kolej
+- **İstek (senin):** MVP/DPOY'a yüzdeler; Herro yedekten girmez → GS çekilsin; ROY'a kolej istatistikleri sürekli hâle gelsin; koç verisi eklensin; Clutch POY boşver; All-NBA ve All-Defense eklensin; MVP/DPOY için takım başarısı.
+- **Problem 1 (veri çekimi):** İlk çekim işini durdurmaya çalıştım ama durmadı; yeni bir işi başlatınca ikisi aynı anda B-Ref'e gitti (iki kat istek, nezaket kuralını çiğnedi). Üstüne takım dosyaları kısaltma sütunu olmadan yazılmıştı. → Dosyalar yeniden çekildi (43 istek), takım gücü franchise koduyla bağlandı (NJN→BRK, NOH→NOP, SEA→OKC, CHA/CHH→CHO). **Ders:** arka plan işini durdurduğundan emin olmadan yenisini başlatma; her çekim işi tek ve kontrollü olmalı.
+- **Problem 2 (etiket biçimi):** All-NBA'de 2021-22'den sonra takım etiketi "1st/2nd/3rd" yerine "1T/2T/3T" geldi; son dört sezon sıfır takım üyesi görünüyor ve model 2023–26'da 0.00 isabet gösteriyordu (taban dahil). → Etiket ilk rakamdan okunuyor. **Ders:** "taban dahil herkes 0.00" bir veri hatası işaretidir, modelin başarısızlığı değil.
+- **Problem 3 (COY):** Oy tablosunda oyuncu yerine koç sütunu vardı (ilk çekimde 0 satır); aynı koç aynı sezon iki takımda görünebiliyor (yinelenen anahtar). → Koç sütunu okunuyor, koç başına en çok maçlı satır tutuluyor.
+- **Problem 4 (NCAA):** Kolej verisi 2008-09 → 2015-16 ve 2021-22 → 2024-25 aralıkları eksikti (yalnız 2016-21 ve 2025-26 vardı). → 12 sezon çekildi (iki zaman aşımı yeniden denendi).
+- **Problem 5 (kalibrasyon):** Üst-k olasılıkları (Plackett-Luce) DPOY'da gerçeği yarıya yakın eksik tahmin ediyordu. → Kazanan için softmax, üst-k için doğrudan Platt.
+- **Sonuçlar:** 6MOY GS ile belirgin düzeldi (+0.44 ± 0.15, kazanan ilk 10'da %35 → %54); MVP/DPOY'da takım başarısı katkı vermedi; All-NBA (9.2/15) ve All-Defense (5.5/10) tabana +0.2–0.3 ekliyor; COY zayıf; ROY'da kolej istatistikleri pick'i geçmedi.
+- **Ders:** Eklenen özelliklerin işe yaradığı yerler (GS) eksik bilgiyi tamamlayanlar; yaramadıkları yerler (takım başarısı, kolej) zaten başka özelliklerin yakaladığı bilgiyi tekrar edenler.
+
+### Aşama 13 (sonra): Canlı MIP takibi
 - **Fikir:** Sezon öncesi liste "izleme listesi" kalır (dürüstçe: ilk 10'da ~3 oylama adayı, kazanan tahmini zayıf). Asıl model sezon içinde çalışır: oyuncunun şimdiye kadarki değişimi (maç başı sayı, dakika, usage, BPM) güvenilirlik ağırlığıyla, sezon başlarında temkinli, ilerledikçe güçlü.
 - **Soru:** Kaç maç sonra kazananı güvenle ilk 10'a / ilk 3'e sokar? Üst sınır (82 maç) 0.675; 20 / 40 / 60 maçta ne olacak?
 - **Plan:** (1) 2021-22'den beri maç logları var (5 sezon): kısmi sezon istatistiklerini üretip aynı modeli kısmi sezonda değerlendirmek; (2) eğitimi tam sezon verisi üzerinden yapıp kısmi sezonda güvenilirlik ağırlığıyla küçültmek; (3) sezon içi güncelleme hattına (`update.py`) bağlamak; (4) sentetik hype'ı burada sıralamaya katmak (bariz olan, yani zaten yıldız olan gelişimi indirmek).
@@ -563,6 +600,7 @@ Hedef: her NBA takımını oyun oyun oynatıp oyuncunun payını hesaplamak. Dö
 
 | Tarih | Değişiklik |
 |---|---|
+| 2026-10-11 (d) | Plan yürütüldü (B9e): MVP/DPOY yüzdeleri; 6MOY'a GS (+0.44 ± 0.15, Herro düştü); All-NBA (9.2/15) ve All-Defense (5.5/10); COY (koç verisi, yetenek değişimi: 4.56/10); ROY'a kolej istatistikleri (pick'i geçmedi, hat kuruldu). Takım başarısı özelliği MVP/DPOY'da katkısız. Üst-k olasılık kalibrasyonu düzeltildi. Çevrimdışı ek testler (7). Aday raporu üretildi. |
 | 2026-10-11 (c) | Plan (B9d): MVP/DPOY'a takım başarısı + aday yüzdeleri, 6MOY'a GS, All-NBA / All-Defense, COY (koç verisi), ROY'a kolej istatistikleri; Clutch POY yapılmayacak. NCAA 2008-09 → 2015-16 çekildi (ROY için 18 sezon). |
 | 2026-10-11 (b) | ROY için ayrı çaylak veri seti (`roy.py`, draft sınıfları): model draft sırası tabanını geçmiyor. Diğer ödüller için veri/özellik eksikleri planı (B9c). Çevrimdışı mekanik testleri (6). Draft verisinde iki hata düzeltildi (oyuncu anahtarı bağlantıdan, tablo içi başlık satırı). |
 | 2026-10-11 | Sentetik hype λ = 0.4 varsayılan yapıldı (`--predict` giriş noktası). Mekanik diğer ödüllere genişletildi: ödül-bağımsız veri seti ve `award_run.py`; MVP (6.19/10), DPOY (4.78/10), 6MOY (2.15/10). MVP ve DPOY'da kazanan ilk 10'da %85–89; kazanç büyük ölçüde geçen yılın oy payı süreğenliğinden. Tüm ödül oylama tabloları ve draft sınıfları çekildi. |

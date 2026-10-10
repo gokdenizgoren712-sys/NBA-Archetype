@@ -325,7 +325,10 @@ def fetch_team_season(end_year: int, force: bool = False) -> pd.DataFrame:
         if tm is None or not tm.get_text(strip=True) or tm.get_text(strip=True).startswith("League"):
             continue
         g = lambda k: c[k].get_text(strip=True) if k in c else ""          # noqa: E731
-        rows.append({"SEASON": season, "TEAM_NAME": tm.get_text(strip=True).rstrip("*"), "W": _num(g("wins")), "L": _num(g("losses")),
+        link = tm.find("a")
+        m = re.search(r"/teams/([A-Z]{3})/", link["href"]) if link is not None and link.get("href") else None
+        rows.append({"SEASON": season, "TEAM": m.group(1) if m else None, "TEAM_NAME": tm.get_text(strip=True).rstrip("*"),
+                     "W": _num(g("wins")), "L": _num(g("losses")),
                      "MOV": _num(g("mov")), "SRS": _num(g("srs")), "ORTG": _num(g("off_rtg")), "DRTG": _num(g("def_rtg")),
                      "NRTG": _num(g("net_rtg"))})
     df = pd.DataFrame(rows)

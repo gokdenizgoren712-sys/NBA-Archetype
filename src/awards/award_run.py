@@ -25,17 +25,25 @@ ROOT = Path(__file__).resolve().parents[2]
 DATA = ROOT / "data"
 SHRUNK = ["PTS36_sh", "AST36_sh", "REB36_sh", "TS_sh", "g1_PTS_sh"]
 COMMON = mm.LEVELS_NOA + mm.GROWTH + SHRUNK + ["PREV_SHARE"]
-FEATS = {
+TEAM = ["TM_WIN_PCT", "TM_SRS", "TM_NRTG", "TM_ORTG", "TM_DRTG", "TMB_WIN_PCT", "TMB_SRS"]      # t'de oynayacağı takımın geçen sezonu + eski takımı
+GS = ["GS_FRAC", "GS_FRAC_P1", "GS_CAREER"]                                                   # başlangıç oranı: yedek rolü
+FEATS_BASE = {
     "mvp": COMMON + ["WS_pct", "OBPM_pct", "PTS36_pct", "AST36_pct", "USG_pct"],
     "dpoy": COMMON + ["DBPM_pct", "STL36_pct", "BLK36_pct", "TRB_PCT_pct", "WS_pct"],
     "smoy": COMMON + ["TEAM_SHARE", "TEAM_RANK_C", "OBPM_pct", "PTS36_pct"],
 }
+FEATS_TEAM = {"mvp": FEATS_BASE["mvp"] + TEAM, "dpoy": FEATS_BASE["dpoy"] + TEAM}      # takım başarısı eklenmiş sürüm (B9e: fark yok, ±0.00 ± 0.10)
+FEATS = {
+    "mvp": FEATS_BASE["mvp"],                        # takım başarısı katkı vermediği için sade küme
+    "dpoy": FEATS_BASE["dpoy"],
+    "smoy": FEATS_BASE["smoy"] + GS + ["TM_WIN_PCT", "TM_NRTG"],
+}
 LABEL = {"mvp": "MVP", "dpoy": "DPOY", "smoy": "6MOY", "mip": "MIP"}
 
 
-def run(award: str, lam: float = mh.DEFAULT_LAMBDA, first_b: int = 1992) -> pd.DataFrame:
+def run(award: str, lam: float = mh.DEFAULT_LAMBDA, first_b: int = 1992, feats: list[str] | None = None) -> pd.DataFrame:
     ds = mr.features_v2(mm.load(award))
-    feats = list(dict.fromkeys(FEATS[award]))
+    feats = list(dict.fromkeys(feats or FEATS[award]))
     out = pd.Series(np.nan, index=ds.index)
     for t in range(first_b, 2028):
         tr = ds[(ds["T"] < t) & (ds["LABELED"] == 1)]
@@ -62,6 +70,61 @@ def summarize(award: str, d: pd.DataFrame) -> dict:
         h = [mm.finisher_hits(d, c, range(a, 2027)).mean() for a in (2023, 2011, 2000)]
         res[nm] = h
     return res
+
+
+def plackett_luce(logits: np.ndarray, beta: float, ks=(1, 3, 5, 10), n: int = 20000, seed: int = 0) -> dict[int, np.ndarray]:
+    """Skorlardan (beta·logit) Plackett-Luce sıralama olasılıkları: oyuncu başına P(sıra ≤ k). Gumbel hilesi: skor + Gumbel gürültüsü, sırala.
+    P(1) softmax ile aynıdır; üst-k olasılıkları aynı kalibre edilmiş sıcaklıkla tutarlı gelir."""
+    rng = np.random.default_rng(seed)
+    z = beta * np.asarray(logits, float)
+    g = rng.gumbel(size=(n, len(z)))
+    order = np.argsort(-(z[None, :] + g), axis=1)
+    ranks = np.empty_like(order)
+    rows = np.arange(n)[:, None]
+    ranks[rows, order] = np.arange(len(z))[None, :]
+    return {k: (ranks < k).mean(axis=0) for k in ks}
+
+
+def calibration_check(d: pd.DataFrame, beta: float, start: int = 2000, end: int = 2026) -> dict:
+    """Walk-forward tahminlerde P(top-10) toplamı ile gerçekleşen top-10 sayısı ve P(kazanan) ortalama log-olasılığı."""
+    exp10, act10, lw = [], [], []
+    for t in range(start, end + 1):
+        g = d[(d["T"] == t) & (d["LABELED"] == 1) & d["L_BASE"].notna()]
+        if g.empty or g["WINNER"].sum() == 0:
+            continue
+        pl = plackett_luce(g["L_BASE"].to_numpy(), beta, ks=(1, 10), n=4000, seed=t)
+        exp10.append(pl[10][np.argsort(-g["L_BASE"].to_numpy())[:10]].sum())      # modelin ilk 10'u için beklenen top-10 isabeti
+        act10.append(int(((g.sort_values("L_BASE", ascending=False).head(10)["RANK_N"] <= 10)).sum()))
+        w = g["WINNER"].to_numpy() == 1
+        lw.append(float(np.log(max(pl[1][w][0], 1e-4))))
+    return {"expected_top10_hits": float(np.mean(exp10)), "actual_top10_hits": float(np.mean(act10)), "winner_logp": float(np.mean(lw))}
+
+
+def candidates_table(d: pd.DataFrame, award: str, n: int = 10, beta: float | None = None, hype: bool = False) -> pd.DataFrame:
+    """2026-27 adayları yüzdeleriyle: P(kazanır), P(ilk 3), P(ilk 5), P(ilk 10)."""
+    from sklearn.linear_model import LogisticRegression
+    cal = mm.calibrate(d, "L_BASE")
+    beta = beta or cal["beta"]
+    cur = d[d["T"] == d["T"].max()].copy()
+    cur = cur[cur["L_BASE"].notna()]
+    # P(kazanır): kalibre edilmiş softmax (sezon içinde toplam 1). P(ilk k): walk-forward puanlardan doğrudan Platt kalibrasyonu (k = 3, 5, 10);
+    # PL üst-k olasılıkları kazanan için kalibre edilen sıcaklıkla düşük kalıyordu (DPOY'da beklenen 2.45 ↔ gerçek 4.74 ilk-10 isabeti).
+    z = beta * cur["L_BASE"].to_numpy()
+    cur["P1"] = np.exp(z - z.max()) / np.exp(z - z.max()).sum()
+    ev = d[(d["T"] >= 2000) & (d["T"] <= 2026) & (d["LABELED"] == 1) & d["L_BASE"].notna()]
+    for k in (3, 5, 10):
+        y = ((ev["RANK_N"] <= k) & ev["RANK_N"].notna()).astype(int)
+        clf = LogisticRegression(C=1e6, max_iter=1000).fit(ev[["L_BASE"]].to_numpy(), y.to_numpy())
+        cur[f"P{k}"] = clf.predict_proba(cur[["L_BASE"]].to_numpy())[:, 1]
+    cur["P3"] = np.maximum(cur["P3"], cur["P1"])                  # tutarlılık: P(kazanır) ≤ P(ilk 3) ≤ P(ilk 5) ≤ P(ilk 10)
+    cur["P5"] = np.maximum(cur["P5"], cur["P3"])
+    cur["P10"] = np.maximum(cur["P10"], cur["P5"])
+    cols = ["PLAYER_NAME", "TEAM_ABBREVIATION", "AGE", "P1", "P3", "P5", "P10"]
+    out = cur.sort_values("L_BASE", ascending=False).head(n)[cols].copy()
+    for c in ("P1", "P3", "P5", "P10"):
+        out[c] = (out[c] * 100).round(1)
+    out.columns = ["Oyuncu", "Takım", "Yaş", "Kazanır %", "İlk 3 %", "İlk 5 %", "İlk 10 %"]
+    return out.reset_index(drop=True)
 
 
 def winner_stats(d: pd.DataFrame, col: str, start: int = 2000) -> tuple[float, float, float]:

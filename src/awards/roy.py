@@ -23,6 +23,7 @@ from src.awards import mip_model as mm
 ROOT = Path(__file__).resolve().parents[2]
 DATA = ROOT / "data"
 FEATS = ["LOG_PICK", "LOTTERY", "TOP3", "UNDRAFTED", "COLLEGE", "AGE", "DRAFT_LAG", "TEAM_OPEN"]
+COLLEGE_FEATS = ["C_PTS40", "C_REB40", "C_AST40", "C_STL40", "C_BLK40", "C_TS", "C_USG", "C_BPM", "C_OBPM", "C_DBPM", "C_AGE", "C_SOS", "C_MPG", "C_OVR", "C_HT"]
 
 
 def drafts() -> pd.DataFrame:
@@ -44,6 +45,41 @@ def team_open(prev_year: int, year: int) -> pd.Series:
     tot = rp.groupby("TEAM")["MP"].sum()
     gone = rp[rp["gone"]].groupby("TEAM")["MP"].sum()
     return (gone / tot).fillna(0.0)
+
+
+def _fold(s) -> str:
+    import unicodedata
+    s = unicodedata.normalize("NFKD", str(s))
+    return "".join(ch for ch in "".join(c for c in s if not unicodedata.combining(c)).lower() if ch.isalnum())
+
+
+def college_features(d: pd.DataFrame) -> pd.DataFrame:
+    """Draft yılı Y olan oyuncu için NCAA (Y−1)-Y sezonu (Torvik): 40 dakikaya göre üretim, verimlilik, kullanım, BPM, yaş, lig gücü, boy, genel skor.
+    Eşleme: katlanmış ad (aynı adlıda en çok dakikalı); kolejsiz / eşleşmeyen satır NaN (bilinmiyor)."""
+    cache: dict[int, pd.DataFrame] = {}
+    cols = {"C_PTS40": None, "C_REB40": None, "C_AST40": None, "C_STL40": None, "C_BLK40": None, "C_TS": "TS_PCT", "C_USG": "USG_PCT", "C_BPM": "BPM",
+            "C_OBPM": "OBPM", "C_DBPM": "DBPM", "C_AGE": "AGE", "C_SOS": "CONF_ADJEM", "C_MPG": "MIN", "C_OVR": "overall_score", "C_HT": "PLAYER_HEIGHT_INCHES"}
+    out = pd.DataFrame(np.nan, index=d.index, columns=list(cols))
+    for y in sorted(d["DRAFT_YEAR"].dropna().unique()):
+        y = int(y)
+        f = DATA / f"ncaa__{y - 1}-{str(y)[2:]}__player_scores.parquet"
+        if not f.exists():
+            continue
+        n = pd.read_parquet(f)
+        n["key"] = n["PLAYER_NAME"].map(_fold)
+        n = n.sort_values("MIN", ascending=False).drop_duplicates("key").set_index("key")
+        rows = d.index[d["DRAFT_YEAR"] == y]
+        m = n.reindex(d.loc[rows, "PLAYER_NAME"].map(_fold).to_numpy())
+        m.index = rows
+        mp = m["MIN"].where(m["MIN"] > 0)
+        for c, src in cols.items():
+            if src is not None and src in m.columns:
+                out.loc[rows, c] = m[src].to_numpy(float)
+        # MIN kolejde maç başı dakika; PTS, REB ... maç başı ortalama: 40 dakikaya ölçekle
+        for c, s_ in (("C_PTS40", "PTS"), ("C_REB40", "REB"), ("C_AST40", "AST"), ("C_STL40", "STL"), ("C_BLK40", "BLK")):
+            if s_ in m.columns:
+                out.loc[rows, c] = (m[s_] / mp * 40.0).to_numpy(float)
+    return out
 
 
 def build(last_target: int = 2027) -> pd.DataFrame:
@@ -82,6 +118,9 @@ def build(last_target: int = 2027) -> pd.DataFrame:
     d["DRAFT_LAG"] = ((d["T"] - 1) - d["DRAFT_YEAR"]).where(d["DRAFT_YEAR"].notna(), 0.0).clip(0, 10)
     opens = {t: team_open(t - 1, t) for t in range(md.FIRST_FEATURE_END_YEAR + 1, last_target + 1)}
     d["TEAM_OPEN"] = [opens[t].get(tm, np.nan) for t, tm in zip(d["T"], d["TEAM_ABBREVIATION"])]
+    cf = college_features(d)
+    for c in cf.columns:
+        d[c] = cf[c].to_numpy()
     d["SHARE"], d["WINNER"], d["RANK"] = 0.0, 0, np.nan
     v = votes.rename(columns={"BREF_SLUG": "SLUG", "SEASON": "TARGET_SEASON"})[["SLUG", "TARGET_SEASON", "SHARE", "WINNER", "RANK"]]
     d = d.drop(columns=["SHARE", "WINNER", "RANK"]).merge(v, on=["SLUG", "TARGET_SEASON"], how="left")
@@ -108,6 +147,16 @@ def main() -> int:
     cov = ev[ev["SHARE"] > 0].shape[0] / max(votes_total(), 1)
     print(f"Satır {len(d)}, etiketli çaylak {len(ev)}, oy alan çaylakların veri setinde bulunma oranı {cov:.0%}")
     d["L_ROY"] = walk_forward(d, FEATS)
+    d["L_ROY_COL"] = walk_forward(d, FEATS + COLLEGE_FEATS, first=2014)
+    d["L_ROY_PICK"] = walk_forward(d, ["LOG_PICK", "LOTTERY", "TOP3", "UNDRAFTED"], first=2014)
+    print("Kolej istatistikleri (2014-26; kolej 2008-09'dan beri): ilk 5 tahminden kaçı top-5 finisher; kazananın sırası")
+    for nm, c in (("model (pick, yaş, takım)", "L_ROY"), ("yalnız pick özellikleri", "L_ROY_PICK"), ("+ kolej istatistikleri", "L_ROY_COL"), ("yalnız draft sırası", "L_PICK")):
+        if c == "L_PICK":
+            d["L_PICK"] = -d["PICK_F"]
+        h5 = mm.finisher_hits(d, c, range(2014, 2027), topn=5, k=5).mean()
+        wr = [int(g[c].rank(ascending=False)[g[g["WINNER"] == 1].index[0]]) for t in range(2014, 2027)
+              for g in [d[(d["T"] == t) & (d["LABELED"] == 1)]] if (g["WINNER"] == 1).any()]
+        print(f"  {nm:30s} top-5/5 {h5:.2f}  kazanan 1.'si %{np.mean(np.array(wr) == 1):.0%}, ilk 3'te %{np.mean(np.array(wr) <= 3):.0%}, medyan {np.median(wr):.0f}")
     d["L_PICK"] = -d["PICK_F"]
     d["rastgele"] = np.random.default_rng(0).random(len(d))
     print("ROY: ilk 5 tahminden kaçı gerçek top-5 finisher / ilk 10'dan kaçı top-10 finisher; liste başına ortalama (2000-26)")
@@ -132,9 +181,10 @@ def main() -> int:
             pr.append(int(g["L_PICK"].rank(ascending=False)[w.index[0]]))
     pr = np.array(pr)
     print(f"  kazanan (yalnız draft sırası): 1.'si %{(pr == 1).mean():.0%}, ilk 3'te %{(pr <= 3).mean():.0%}, ilk 5'te %{(pr <= 5).mean():.0%}, medyan sıra {np.median(pr):.0f}")
-    cur = d[d["T"] == 2027].sort_values("L_ROY", ascending=False).head(10)
-    print("\n2026-27 çaylak (ROY) adayları:")
-    print(cur[["PLAYER_NAME", "TEAM_ABBREVIATION", "PICK", "COLLEGE", "TEAM_OPEN", "L_ROY"]].round(2).to_string(index=False))
+    best = "L_ROY_COL"
+    cur = d[d["T"] == 2027].sort_values(best, ascending=False).head(10)
+    print("2026-27 çaylak (ROY) adayları (kolej istatistikli model):")
+    print(cur[["PLAYER_NAME", "TEAM_ABBREVIATION", "PICK", "C_PTS40", "C_BPM", "C_AGE", best]].round(2).to_string(index=False))
     d.to_parquet(DATA / "awards__roy_walkforward.parquet")
     return 0
 

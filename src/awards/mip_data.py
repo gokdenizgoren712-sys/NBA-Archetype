@@ -108,6 +108,63 @@ def main_team(rows: pd.DataFrame) -> pd.Series:
     return rows.sort_values("MP", ascending=False).drop_duplicates("SLUG").set_index("SLUG")["TEAM"]
 
 
+# Franchise takma adları: B-Ref sezona göre farklı kısaltma kullanır; takım gücü ve koç tablolarını bağlamak için modern koda çevrilir.
+TEAM_ALIAS = {"NJN": "BRK", "NOH": "NOP", "NOK": "NOP", "SEA": "OKC", "VAN": "MEM", "WSB": "WAS", "CHH": "CHO", "CHA": "CHO", "SDC": "LAC",
+              "KCK": "SAC", "CHP": "WAS", "BAL": "WAS", "CAP": "WAS"}
+
+
+def franchise(code):
+    return TEAM_ALIAS.get(code, code) if isinstance(code, str) else code
+
+
+def team_season(end_year: int) -> pd.DataFrame:
+    """Takım gücü: galibiyet yüzdesi, SRS, ORtg, DRtg, net rating (franchise koduyla)."""
+    p = DATA / f"team__{season_label(end_year)}.parquet"
+    if not p.exists():
+        return pd.DataFrame(columns=["FR", "WIN_PCT", "SRS", "ORTG", "DRTG", "NRTG"])
+    d = pd.read_parquet(p)
+    d["FR"] = d["TEAM"].map(franchise)
+    return d.dropna(subset=["FR"]).set_index("FR")[["WIN_PCT", "SRS", "ORTG", "DRTG", "NRTG"]].reset_index()
+
+
+def team_strength_features(base_year: int, t: int, slugs: pd.Series) -> pd.DataFrame:
+    """Oyuncunun t sezonunda oynayacağı takımın (kadro üyeliği sezon öncesi bilinir) GEÇEN SEZONKİ gücü + oyuncunun eski takımının gücü."""
+    rows = {}
+    ts_prev = team_season(t - 1).set_index("FR")
+    ts_base = team_season(base_year).set_index("FR")
+    tt = main_team(team_rows(t)).map(franchise)
+    tb = main_team(team_rows(base_year)).map(franchise)
+    out = pd.DataFrame({"SLUG": slugs.to_numpy()})
+    nxt = out["SLUG"].map(tt)
+    old = out["SLUG"].map(tb)
+    for col in ("WIN_PCT", "SRS", "NRTG", "ORTG", "DRTG"):
+        out[f"TM_{col}"] = nxt.map(ts_prev[col]) if len(ts_prev) else np.nan          # t'de oynayacağı takımın geçen sezonu
+        out[f"TMB_{col}"] = old.map(ts_base[col]) if len(ts_base) else np.nan         # oyuncunun önceki takımı
+    return out.drop(columns=["SLUG"])
+
+
+def gs_features(base_year: int, slugs: pd.Series) -> pd.DataFrame:
+    """Başlangıç oranı: geçen sezon (GS_FRAC), bir önceki sezon, kariyer. 6MOY: yedek rolü. Veri yoksa NaN (bilinmiyor)."""
+    def read(y):
+        p = DATA / f"{season_label(y)}__bref_gs.parquet"
+        return pd.read_parquet(p).set_index("BREF_SLUG") if p.exists() else None
+    cur, prev = read(base_year), read(base_year - 1)
+    out = pd.DataFrame({"SLUG": slugs.to_numpy()})
+    out["GS_FRAC"] = out["SLUG"].map(cur["GS"] / cur["G"].where(cur["G"] > 0)) if cur is not None else np.nan
+    out["GS_FRAC_P1"] = out["SLUG"].map(prev["GS"] / prev["G"].where(prev["G"] > 0)) if prev is not None else np.nan
+    tot_gs = pd.Series(0.0, index=slugs.unique())
+    tot_g = pd.Series(0.0, index=slugs.unique())
+    for y in range(max(FIRST_FEATURE_END_YEAR, base_year - 5), base_year + 1):      # son 6 sezon
+        d = read(y)
+        if d is None:
+            continue
+        m = d.reindex(tot_gs.index)
+        tot_gs += m["GS"].fillna(0.0)
+        tot_g += m["G"].fillna(0.0)
+    out["GS_CAREER"] = out["SLUG"].map(tot_gs / tot_g.where(tot_g > 0))
+    return out[["GS_FRAC", "GS_FRAC_P1", "GS_CAREER"]]
+
+
 def team_share_features(base_year: int, slugs: pd.Series) -> pd.DataFrame:
     """Oyuncunun kendi takımındaki rolü (t−1): dakika payı ve takım içi dakika sırası. Takas edilenler için en çok dakika oynadığı takım."""
     rb = team_rows(base_year)
@@ -200,6 +257,10 @@ def build(first_target: int | None = None, last_target: int = 2027, include_unla
             d = d.reset_index(drop=True)
             for c in ("MOVED", "VAC", "ARR"):
                 d[c] = rc[c].to_numpy()
+            sl = d["SLUG"].reset_index(drop=True)
+            tsf, gsf = team_strength_features(y, t, sl), gs_features(y, sl)
+            for c in list(tsf.columns) + list(gsf.columns):
+                d[c] = (tsf[c] if c in tsf.columns else gsf[c]).to_numpy()
             ts_ = team_share_features(y, d["SLUG"].reset_index(drop=True))
             d["TEAM_SHARE"], d["TEAM_RANK"] = ts_["TEAM_SHARE"].to_numpy(), ts_["TEAM_RANK"].to_numpy()
             d["TARGET_SEASON"] = season_label(t)
@@ -219,7 +280,8 @@ def build(first_target: int | None = None, last_target: int = 2027, include_unla
         prior = v.groupby("BREF_SLUG").apply(lambda x: x.set_index("END_YEAR")["SHARE"].to_dict(), include_groups=False).to_dict()
         ds["PRIOR_MIP_MAX"] = [max([s for y, s in prior.get(sl, {}).items() if y <= ey] or [0.0]) for sl, ey in zip(ds["SLUG"], ds["END_YEAR"])]     # aynı ödülün tarihsel en yüksek payı
         ds["PREV_SHARE"] = [prior.get(sl, {}).get(ey, 0.0) for sl, ey in zip(ds["SLUG"], ds["END_YEAR"])]                                      # bir önceki sezonun payı
-        key = votes.rename(columns={"BREF_SLUG": "SLUG", "SEASON": "TARGET_SEASON"})[["SLUG", "TARGET_SEASON", "SHARE", "WINNER", "RANK", "PTS_WON"]]
+        extra_cols = [c for c in ("TEAM_LABEL", "POS") if c in votes.columns]
+        key = votes.rename(columns={"BREF_SLUG": "SLUG", "SEASON": "TARGET_SEASON"})[["SLUG", "TARGET_SEASON", "SHARE", "WINNER", "RANK", "PTS_WON"] + extra_cols]
         ds = ds.merge(key, on=["SLUG", "TARGET_SEASON"], how="left")
         ds["LABELED"] = ds["TARGET_SEASON"].isin(vote_seasons).astype(int)
         ds["SHARE"] = ds["SHARE"].fillna(0.0)
