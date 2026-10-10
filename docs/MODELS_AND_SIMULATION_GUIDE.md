@@ -254,6 +254,21 @@ Hype katmanı videodaki gibi küçük bir iyileştirme veriyor (videoda 7 → 8;
 
 **Gerçek hype'ın rolü:** Sentetik hype geçmiş veriden "tutmaz" tipini öğrenir; **gerçek hype** (halkın ne beklediği: YouTube yorumları) geçmişte yok, yalnız 2026'dan itibaren toplanabilir. Bu yüzden senin sezginin ölçülebilir hâli (herkes zaten Flagg'e inanıyorsa MIP oyu "sürpriz" olmaz) ancak gerçek hype ile ileriye dönük test edilebilir. Videodaki λ da geçmişte öğrenilmemişti.
 
+### B8g. "Sentetik hype neden 2011-12'yi düzeltemiyor?" (tavan analizi)
+
+**Soru (senin):** 2011-12'de isabet 1/10; tahmin sırası ile gerçek MIP sırası çok farklı. Hype bunu neden düzeltmiyor?
+**Cevap:** Hype bir **yeniden sıralayıcı**; yalnızca modelin ilk 30 adayı arasında yer değiştirir, listeye yeni aday ekleyemez. 2011-12'de gerçek ilk 10'dan **yalnız 3'ü** (Anderson 13., Monroe 7., Teague 18.) modelin ilk 30'undaydı; kalan 7'si (İlyasova 69, Peković 198, Bynum 55, Lin 190, Dragić 63, Bradley 171, Green 220) model için aday bile değildi. **Mükemmel bir hype ile bile tavan 3/10**; biz 1 aldık (Monroe).
+
+**Tavan analizi (2010-11 → 2025-26, liste başına ortalama; gerçek top-10 finisher'dan):** modelin ilk 10'unda 1.62, ilk 30'unda **3.19**, ilk 50'sinde 4.94. Yani mükemmel hype ile tavan 3.19; biz 1.81. Hype'ın kurtarabileceği en çok ~1.4 isabet/liste, ve bu mükemmel bir hype gerektirir. Asıl darboğaz **aday havuzu (recall)**, sıralama değil.
+
+**Neden 7 oyuncu kaçıyor (2011-12 örneği):** Gerçek ilk 10'un çoğu **yedek ve düşük dakikalı** oyuncular (Bradley 5.2 dk, Lin 9.8 dk, Green 11.5 dk, Peković 13.6 dk, Dragić 17.6 dk) ve çoğunun önceki sezon BPM'i negatif. Kimin dakikasının açılacağı (sakatlık, takas, lockout kısa sezonu) sezon öncesi kutu skoru geçmişinden okunamıyor; daha önce denediğimiz takım değişimi / ayrılan dakika özellikleri bu bilgiyi yakalayamadı (B8b). Model ise tam tersi arketipi seçiyor: genç, yüksek dakikalı, zaten üretken (Holiday, Wall, Harden, Jennings, Cousins, Curry) ve bunların çoğu bir önceki sezon zaten iyiydi (Curry VORP persantili 0.92, Jennings 0.86); MIP "zaten iyi" olanı değil sıçrayanı ödüllüyor.
+
+**Hype neden bunları aşağı çekmiyor:** H aşaması geçmişte ilk 30'daki bu tipin (genç, yüksek dakikalı) genel olarak **iyi tuttuğunu** öğrenmiş (2010-11'de Love, Rose, Westbrook, Holiday dördü birden tuttu). 2011-12 (kilitlenme sezonu, 66 maç) bu kuralın dışında kalan bir yıl. Bu bir **örneklem varyansı**: tek sezonun hatası tarihin ortalamasını değiştirmez. Hype tüm sezonlarda ölçüldüğünde ilk-30 içinde bu tipin tutma oranı genel ortalamanın üstünde.
+
+**Pencereyi büyütmek yardım etmiyor:** H'nin öğrendiği/yeniden sıraladığı pencere K = 10 / 20 / 30 / 50 / 80 / 120 denendi (λ = 0.4, 0.8, 1.5): en iyisi K = 30, λ = 0.4 (2000–26'da +0.15 ± 0.14, anlamlı değil); K = 50 ve üstü fark yaratmıyor (±0.00 ile −0.15 arası). Yani özellik kümemiz geniş havuzda "tutan"ı "tutmayan"dan ayırt etmiyor.
+
+**Sonuç:** 2011-12'deki fark kusur değil, bu yaklaşımın tavanı: sezon öncesi kutu skoru bilgisi bu tip yedek-oyuncu sıçramalarını görmüyor; hype yalnız sıralar. Yukarı çıkmak için ya (1) aday üretimini değiştirmek (dakika açılma sinyali: gerçek sakatlık / takas / kadro verisi) ya da (2) dışarıdan gelen bilgi (gerçek hype: yorumlar, gazeteci tahminleri) gerekir.
+
 ## B9. Diğer ödüller: komple plan (MIP sonrası)
 
 Aynı iskelet: oylama payı hedefi + walk-forward + sentetik/gerçek hype. İhtiyaçlar:
@@ -428,6 +443,13 @@ Hedef: her NBA takımını oyun oyun oynatıp oyuncunun payını hesaplamak. Dö
 - **Ders:** Sezgiyi modelin içine sokmadan önce geçmişe karşı ölçmek zorunlu; ölçüm yanıtı bazen "sezgi örneklemde yok" olur. Küçük sayılarda (kazanan: 0 / 66) hem "kanıtlandı" hem "çürütüldü" demek haksızlık olur.
 - **Karar noktası:** (a) veriden öğrenilen hype'ı (λ = 0.4) kullan, ya da (b) editoryal bir katman ekle ve bunu açıkça "editoryal" etiketle (geçmiş isabet maliyeti ölçüldü), ya da (c) gerçek hype'ı topla ve sezgiyi 2026-27'de ileriye dönük test et.
 
+### Aşama 9b: "Hype neden 2011-12'yi düzeltmiyor?" (senin sorun)
+- **Problem:** 2011-12'de isabet 1/10; tahmin ve gerçek sıralama arasındaki fark çok büyük, hype bunu düzeltmiyor.
+- **Teşhis:** Hype yalnız modelin ilk 30'unu yeniden sıralar. O sezon gerçek ilk 10'dan yalnız 3'ü ilk 30'daydı; mükemmel hype ile tavan 3/10. 16 sezon ortalaması: gerçek ilk 10'dan ilk 10'da 1.62, ilk 30'da 3.19, ilk 50'de 4.94. Darboğaz sıralama değil, aday havuzu.
+- **Neden kaçıyor:** Kaçırılanlar düşük dakikalı yedek oyuncular (Bradley 5 dk, Lin 10 dk, Green 12 dk); rol açılması sezon öncesi kutu skorundan okunamıyor.
+- **Denenen çare:** Hype penceresini 10–120 arasında genişletmek: fayda yok (±0.00 ile −0.15).
+- **Ders:** Bir yeniden sıralayıcıyı değerlendirmeden önce tavanını (mükemmel sıralamayla elde edilebilecek en iyi sonuç) hesaplamak, beklentiyi doğru koyar: bu durumda bizim 1.81'imiz, tavan 3.19'un yarısından fazla.
+
 ### Aşama 10: Gerçek hype hattı (kod hazır, anahtar ve video bekliyor)
 - **İstek:** Videodaki gerçek hype indeksi: YouTube yorumları → anlam sınıflandırması → oyuncu başına halkın beklentisi.
 - **Kurulan (`src/awards/hype_real.py`, 11 testle):** (1) yorum çekimi: YouTube Data API v3 resmî uç noktası, sayfalı; (2) oyuncu eşleştirme: tam ad her zaman, soyadı yalnız havuzda tekil ve yaygın olmayan soyadıysa (Williams, Black gibi belirsizler bağlanmaz), aksan katlama, takma ad sözlüğü; (3) Claude ile (yorum, oyuncu) başına anlam sınıfı: gelecek beklentisi / zaten kanıtlandı / şüpheci / ilgisiz + güven; (4) küçültme: oyuncunun kaynaktaki skoru kaynağın normal beklenti düzeyine doğru çekilir (tek yorum +1 olmaz); (5) eksik veri ≠ sıfır hype; güçlü iddia için ≥ 10 ilgili yorum ve ≥ 2 kaynak; (6) `skor' = skor − λ·hype_z`, hype'ı bilinmeyen oyuncu cezasız ve işaretli.
@@ -456,6 +478,7 @@ Hedef: her NBA takımını oyun oyun oynatıp oyuncunun payını hesaplamak. Dö
 
 | Tarih | Değişiklik |
 |---|---|
+| 2026-10-10 (c) | 2011-12 sorusu: hype yalnız ilk 30'u yeniden sıralıyor; gerçek ilk 10'un çoğu aday havuzunda yoktu (mükemmel hype tavanı 3.19/liste, biz 1.81). Pencere genişletme fayda vermedi (K = 10–120). B8g ve Aşama 9b eklendi. |
 | 2026-10-10 (b) | λ = 0.6 denendi: λ = 0.4'e göre −0.07 ± 0.07, ilk 10 aynı; yarar tavanı λ ≈ 0.4–0.5. Sezon sezon tahmin ↔ gerçek tablosu üretildi (16 sezon, 29/160 = 1.81 liste başına). |
 | 2026-10-10 | Gerçek hype hattı çevrimdışı kuruldu (`hype_real.py`, 11 test): yorum çekimi (resmî API), oyuncu eşleştirme, Claude sınıflandırma, küçültme, eksik veri kuralı, `skor − λ·hype_z`. Gerçek çekim için anahtarlar ve video listesi bekleniyor. |
 | 2026-10-07 (i) | Sentetik hype kuruldu (`mip_hype.py`): modelin ilk-30 yanlış pozitiflerinden öğrenen ikinci aşama. λ = 0.4'te 7/40 → 8/40 (videoyla aynı) ama anlamlı değil. Elit rookie sophomore sezgisi test edildi: veri desteklemiyor (kalibre, açık ceza isabeti düşürüyor, 66 vakada 0 kazanan ama beklenen ~0.4). |
