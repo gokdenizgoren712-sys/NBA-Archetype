@@ -282,7 +282,8 @@ Ayrıntılı plan MIP modeli çalıştıktan sonra yazılacak.
 | Hedef: 10 breakout adayı etiketi (yan dal) | ✅ Ölçüldü (B8d), ürün değil |
 | Sentetik hype (modelin ilk-30 yanlış pozitiflerinden öğrenilen, `skor − λ·hype`) | ✅ Kuruldu, ölçüldü (B8f): λ = 0.4'te 8/40 ve 2000–26'da 1.70 → 1.85; anlamlı değil (+0.15 ± 0.14); sezgi (elit sophomore'lar) veride desteklenmedi |
 | Hype kararı: veriden öğrenilen λ = 0.4 / editoryal katman / gerçek hype ile ileriye dönük test | ⏳ Senin kararın |
-| Gerçek hype (YouTube yorumları + Claude sınıflandırması) | ⏳ (YouTube API anahtarı + video seçimi gerekli) |
+| Gerçek hype hattı (YouTube yorumları + Claude sınıflandırması): kod ve testler | ✅ `src/awards/hype_real.py`, 11 test (çevrimdışı, sahte yorum/sınıflandırıcı) |
+| Gerçek hype: yorumların çekilmesi ve sınıflandırılması | ⏳ YouTube API anahtarı, Anthropic API anahtarı ve 6–8 video seçimi gerekli |
 | Breakout etiketinin tanımı (seçenek 1–4, B8d) | ⏸ Yan dal; ürün hedefi videonun ölçütüne döndü (B8e) |
 | Canlı MIP takibi (kısmi sezon: 20 / 40 / 60 maç testi, güncelleme hattına bağlama) | ⏳ Sonra (Aşama 8) |
 | Gerçek hype hattı (YouTube + Claude sınıflandırması) | ⏳ (2026 sezonu) |
@@ -426,7 +427,15 @@ Hedef: her NBA takımını oyun oyun oynatıp oyuncunun payını hesaplamak. Dö
 - **Ders:** Sezgiyi modelin içine sokmadan önce geçmişe karşı ölçmek zorunlu; ölçüm yanıtı bazen "sezgi örneklemde yok" olur. Küçük sayılarda (kazanan: 0 / 66) hem "kanıtlandı" hem "çürütüldü" demek haksızlık olur.
 - **Karar noktası:** (a) veriden öğrenilen hype'ı (λ = 0.4) kullan, ya da (b) editoryal bir katman ekle ve bunu açıkça "editoryal" etiketle (geçmiş isabet maliyeti ölçüldü), ya da (c) gerçek hype'ı topla ve sezgiyi 2026-27'de ileriye dönük test et.
 
-### Aşama 10 (sonra): Canlı MIP takibi
+### Aşama 10: Gerçek hype hattı (kod hazır, anahtar ve video bekliyor)
+- **İstek:** Videodaki gerçek hype indeksi: YouTube yorumları → anlam sınıflandırması → oyuncu başına halkın beklentisi.
+- **Kurulan (`src/awards/hype_real.py`, 11 testle):** (1) yorum çekimi: YouTube Data API v3 resmî uç noktası, sayfalı; (2) oyuncu eşleştirme: tam ad her zaman, soyadı yalnız havuzda tekil ve yaygın olmayan soyadıysa (Williams, Black gibi belirsizler bağlanmaz), aksan katlama, takma ad sözlüğü; (3) Claude ile (yorum, oyuncu) başına anlam sınıfı: gelecek beklentisi / zaten kanıtlandı / şüpheci / ilgisiz + güven; (4) küçültme: oyuncunun kaynaktaki skoru kaynağın normal beklenti düzeyine doğru çekilir (tek yorum +1 olmaz); (5) eksik veri ≠ sıfır hype; güçlü iddia için ≥ 10 ilgili yorum ve ≥ 2 kaynak; (6) `skor' = skor − λ·hype_z`, hype'ı bilinmeyen oyuncu cezasız ve işaretli.
+- **Gizlilik ve koşullar:** Yorum metni saklanmaz; yalnız (video, yorum kimliğinin özeti, oyuncu, sınıf, güven) yazılır. Anahtarlar ortam değişkeninden (`YOUTUBE_API_KEY`, `ANTHROPIC_API_KEY`).
+- **Problemler (testte yakalandı):** Yaygın / çift soyad yanlış oyuncuya bağlanıyordu (`Williams`) → tekillik ve durdurma listesi; Claude cevabı JSON dışına metin ekleyebiliyor ya da yorumda olmayan oyuncu uydurabiliyor → köşeli parantez içindeki JSON ayrıştırılır, yorumda anılmayan oyuncu ve geçersiz sınıf elenir.
+- **Henüz yapılmadı:** Gerçek yorumlar çekilmedi (YouTube API anahtarı ve video listesi gerekiyor); Claude çağrısı yok. Gerçek hype geçmişte olmadığından λ veriyle öğrenilemez; 2026-27 sonuçlarıyla ileriye dönük değerlendirilecek.
+- **Durum:** 🔶 Anahtar ve video seçimi bekleniyor.
+
+### Aşama 11 (sonra): Canlı MIP takibi
 - **Fikir:** Sezon öncesi liste "izleme listesi" kalır (dürüstçe: ilk 10'da ~3 oylama adayı, kazanan tahmini zayıf). Asıl model sezon içinde çalışır: oyuncunun şimdiye kadarki değişimi (maç başı sayı, dakika, usage, BPM) güvenilirlik ağırlığıyla, sezon başlarında temkinli, ilerledikçe güçlü.
 - **Soru:** Kaç maç sonra kazananı güvenle ilk 10'a / ilk 3'e sokar? Üst sınır (82 maç) 0.675; 20 / 40 / 60 maçta ne olacak?
 - **Plan:** (1) 2021-22'den beri maç logları var (5 sezon): kısmi sezon istatistiklerini üretip aynı modeli kısmi sezonda değerlendirmek; (2) eğitimi tam sezon verisi üzerinden yapıp kısmi sezonda güvenilirlik ağırlığıyla küçültmek; (3) sezon içi güncelleme hattına (`update.py`) bağlamak; (4) sentetik hype'ı burada sıralamaya katmak (bariz olan, yani zaten yıldız olan gelişimi indirmek).
@@ -446,6 +455,7 @@ Hedef: her NBA takımını oyun oyun oynatıp oyuncunun payını hesaplamak. Dö
 
 | Tarih | Değişiklik |
 |---|---|
+| 2026-10-10 | Gerçek hype hattı çevrimdışı kuruldu (`hype_real.py`, 11 test): yorum çekimi (resmî API), oyuncu eşleştirme, Claude sınıflandırma, küçültme, eksik veri kuralı, `skor − λ·hype_z`. Gerçek çekim için anahtarlar ve video listesi bekleniyor. |
 | 2026-10-07 (i) | Sentetik hype kuruldu (`mip_hype.py`): modelin ilk-30 yanlış pozitiflerinden öğrenen ikinci aşama. λ = 0.4'te 7/40 → 8/40 (videoyla aynı) ama anlamlı değil. Elit rookie sophomore sezgisi test edildi: veri desteklemiyor (kalibre, açık ceza isabeti düşürüyor, 66 vakada 0 kazanan ama beklenen ~0.4). |
 | 2026-10-07 (h) | Videoya geri dönüş: transkriptteki ölçüt (4 sezon × ilk 10, gerçek top-10 finisher) bire bir uygulandı. Üretim modeli (küçültmeli B2sh) 2023–26'da 7/40 = videoyla aynı; 2011–26: 1.62, 2000–26: 1.70/liste; taban 1.0–1.25. Breakout etiketi yan dala alındı. 2026-27 listesi `P_top10` ile yenilendi (Harper, Sheppard, Flagg, Clingan, Castle, Knueppel, Ware, Edgecombe, Buzelis, Sarr). Hype katmanı sıradaki adım. |
 | 2026-10-07 (g) | Hedef netleşti: sezon öncesi 10 breakout adayı. `BREAKOUT` etiketi (oylama ya da en çok gelişen ilk 12) ve etiket sıkılığı takası ölçüldü: katı etikette 10'da ~2 isabet (rastgele 0.33), geniş etikette (ilk 75) ~5. Simülasyon artışı ek bilgi vermedi. Elit oyuncuları dışarıda bırakan sentetik hype etiketi listeyi üst sıradan seçilen düşük BPM'li ikinci yıllara kaydırdı. Etiket kararı bekliyor. |
