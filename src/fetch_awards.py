@@ -229,6 +229,18 @@ def build_award_table(award: str, years: range, force: bool = False) -> pd.DataF
 
 # ── Draft (ROY için: çaylakların sezon öncesi bilgisi yalnız draft sırası, ülke / kolej) ────────────────────
 
+def _slug_from_cell(cell) -> str | None:
+    """Oyuncu hücresi: önce data-append-csv, yoksa /players/d/doncilu01.html bağlantısından."""
+    v = cell.get("data-append-csv")
+    if v:
+        return v
+    a = cell.find("a")
+    if a is not None and a.get("href"):
+        m = re.search(r"/players/\w/([a-z0-9]+)\.html", a["href"])
+        return m.group(1) if m else None
+    return None
+
+
 def fetch_draft(year: int, force: bool = False) -> pd.DataFrame:
     """draft/NBA_{yıl}.html: PICK, takım, oyuncu (+ slug), kolej (boş = uluslararası / lise)."""
     out = DATA / f"draft__{year}.parquet"
@@ -247,7 +259,7 @@ def fetch_draft(year: int, force: bool = False) -> pd.DataFrame:
             continue
         g = lambda k: c[k].get_text(strip=True) if k in c else ""          # noqa: E731
         rows.append({"DRAFT_YEAR": year, "PICK": _num(g("pick_overall")), "ROUND": _num(g("round") if "round" in c else None),
-                     "TEAM": g("team_id"), "PLAYER_NAME": pl.get_text(strip=True), "BREF_SLUG": pl.get("data-append-csv"),
+                     "TEAM": g("team_id"), "PLAYER_NAME": pl.get_text(strip=True), "BREF_SLUG": _slug_from_cell(pl),
                      "COLLEGE": g("college_name"), "AGE_DRAFT": _num(g("age")) if "age" in c else None})
     df = pd.DataFrame(rows)
     if len(df):
