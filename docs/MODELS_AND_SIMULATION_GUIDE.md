@@ -269,6 +269,32 @@ Hype katmanı videodaki gibi küçük bir iyileştirme veriyor (videoda 7 → 8;
 
 **Sonuç:** 2011-12'deki fark kusur değil, bu yaklaşımın tavanı: sezon öncesi kutu skoru bilgisi bu tip yedek-oyuncu sıçramalarını görmüyor; hype yalnız sıralar. Yukarı çıkmak için ya (1) aday üretimini değiştirmek (dakika açılma sinyali: gerçek sakatlık / takas / kadro verisi) ya da (2) dışarıdan gelen bilgi (gerçek hype: yorumlar, gazeteci tahminleri) gerekir.
 
+### B9a. Mekanik diğer ödüllere genişletildi: MVP, DPOY, 6MOY (`src/awards/award_run.py`)
+
+**Genişletilen:** Veri çekimi (`fetch_awards --awards`: tek sayfadan MVP, ROY, DPOY, 6MOY, MIP, Clutch, COY oy tabloları) → ödül-bağımsız veri seti (`mip_data.py award=`; ek ölçüler DBPM, OBPM, WS, STL36, BLK36, TOV%; `PREV_SHARE` = bir önceki sezonun oy payı) → ödüle özgü özellik kümesi + aynı walk-forward + küçültme + sentetik hype (λ = 0.4) → videonun ölçütü.
+**Özellik kümeleri:** Ortak: yaş, seviye persantilleri, büyüklük, tarihçe, küçültülmüş hızlar, önceki sezon oy payı. MVP: + WS, OBPM, PTS/AST persantilleri, usage. DPOY: + DBPM, STL36, BLK36, TRB% persantilleri. 6MOY: + takım içi dakika payı ve sırası, OBPM, PTS36.
+
+**Sonuç (ilk 10 tahminden kaçı gerçek top-10 finisher; liste başına ortalama; 2000–26):**
+
+| Ödül | Model | Model + hype (λ = 0.4) | Geçen yılın oy payı | Geçen yılın VORP pers. | Genç + üretken | Rastgele | Kazanan ilk 10'da / ilk 3'te |
+|---|---|---|---|---|---|---|---|
+| **MVP** | 6.07 | **6.19** | 5.89 | 5.26 | 2.30 | 0.19 | %89 / %70 |
+| **DPOY** | 4.74 | **4.78** | 4.59 | 2.15 | 1.48 | 0.22 | %85 / %52 |
+| **6MOY** | 2.22 | 2.15 | 2.44 | 0.07 | 0.19 | 0.07 | %35 / %27 |
+| MIP (referans) | 1.70 | 1.85 | - | - | 1.04 | 0.17 | %26 / %7 |
+
+**Okuma:**
+- **MVP ve DPOY öngörülebilir ödüller:** Sezon öncesi bilgiyle ilk 10'un 6'sı (MVP) ve ~4.7'si (DPOY) gerçek top-10; kazanan %85–89 ihtimalle ilk 10'da. Ama **geçen yılın oy payı** tabanı zaten 5.9 / 4.6 veriyor: kazanç modelde değil **süreklilikte** (MVP ve DPOY'u önceki yıl zirveye yakın olanlar alıyor). Model bunu +0.2 / +0.15 geçiyor (hype ile +0.11 ± 0.06 ve +0.04 ± 0.06, anlamlı değil).
+- **6MOY zayıf (2.2/10):** Rol (yedekte oynamak) sezon öncesi bilinmiyor; geçen yılın oy payı modelden iyi (2.44). Hype faydasız (−0.07 ± 0.07). Maç başlangıç sayısı (GS) elimizde yok; bunu çekmek ve "yedek mi" bilgisini eklemek sıradaki adım.
+- **Hype'ın yeri:** Süreklilik ödüllerinde (MVP, DPOY) hype zaten yüksek olasılıklı adayları sıralıyor; "bariz olanı cezalandırma" fikri burada anlamsız (bariz aday gerçekten kazanır). MIP'te işe yarayan ceza mantığı bu ödüllerde yok.
+
+**2026-27 ilk 10:**
+- **MVP:** Jokić, Gilgeous-Alexander, Wembanyama, Dončić, Cunningham, Giannis, J. Johnson, LeBron, Şengün, Edwards.
+- **DPOY:** Wembanyama, Holmgren, Gobert, Daniels, Mobley, A. Thompson, Bridges, Barnes, Am. Thompson, Wallace.
+- **6MOY:** K. Johnson, Jaquez, Reid, Beasley, Herro, Monk, Hyland, Sexton, Pritchard, Quickley.
+
+**Kapsam dışı / sonra:** Clutch POY (yalnız 4 sezon: walk-forward için yetersiz), COY (koç düzeyi; tablo koç adı sütunuyla geliyor, ayrıca ayrıştırılacak), All-NBA / All-Defense / All-Rookie (oy payı yerine takım yerleşimi; pozisyon kısıtı), ROY (çaylaklar önceki sezonu olmadığı için ayrı veri yapısı: draft sırası, kolej/uluslararası; draft verisi çekiliyor).
+
 ## B9. Diğer ödüller: komple plan (MIP sonrası)
 
 Aynı iskelet: oylama payı hedefi + walk-forward + sentetik/gerçek hype. İhtiyaçlar:
@@ -296,7 +322,9 @@ Ayrıntılı plan MIP modeli çalıştıktan sonra yazılacak.
 | Videonun ölçütüyle yan yana (4 sezon × ilk 10, gerçek top-10 finisher) | ✅ B2sh 7/40 = videodaki 7/40 (2011–26: 1.62, 2000–26: 1.70/liste); küçültme (shrinkage) eklendi |
 | Hedef: 10 breakout adayı etiketi (yan dal) | ✅ Ölçüldü (B8d), ürün değil |
 | Sentetik hype (modelin ilk-30 yanlış pozitiflerinden öğrenilen, `skor − λ·hype`) | ✅ Kuruldu, ölçüldü (B8f): λ = 0.4'te 8/40 ve 2000–26'da 1.70 → 1.85; anlamlı değil (+0.15 ± 0.14); sezgi (elit sophomore'lar) veride desteklenmedi |
-| Hype kararı: veriden öğrenilen λ = 0.4 / editoryal katman / gerçek hype ile ileriye dönük test | ⏳ Senin kararın |
+| Hype kararı | ✅ Sentetik hype λ = 0.4 varsayılan (`mip_hype.DEFAULT_LAMBDA`, `python -m src.awards.mip_hype --predict`); gerçek hype sonra |
+| Diğer ödüller: mekanik genişletildi (MVP, DPOY, 6MOY) | ✅ B9a: MVP 6.2/10 ve DPOY 4.8/10 isabet (kazanan ilk 10'da %89 / %85), 6MOY zayıf 2.2/10 |
+| ROY (draft verisiyle), Clutch POY, COY, All-NBA / All-Defense / All-Rookie | ⏳ ROY için draft sınıfları çekiliyor; diğerleri plan aşamasında |
 | Gerçek hype hattı (YouTube yorumları + Claude sınıflandırması): kod ve testler | ✅ `src/awards/hype_real.py`, 11 test (çevrimdışı, sahte yorum/sınıflandırıcı) |
 | Gerçek hype: yorumların çekilmesi ve sınıflandırılması | ⏳ YouTube API anahtarı, Anthropic API anahtarı ve 6–8 video seçimi gerekli |
 | Breakout etiketinin tanımı (seçenek 1–4, B8d) | ⏸ Yan dal; ürün hedefi videonun ölçütüne döndü (B8e) |
@@ -478,6 +506,7 @@ Hedef: her NBA takımını oyun oyun oynatıp oyuncunun payını hesaplamak. Dö
 
 | Tarih | Değişiklik |
 |---|---|
+| 2026-10-11 | Sentetik hype λ = 0.4 varsayılan yapıldı (`--predict` giriş noktası). Mekanik diğer ödüllere genişletildi: ödül-bağımsız veri seti ve `award_run.py`; MVP (6.19/10), DPOY (4.78/10), 6MOY (2.15/10). MVP ve DPOY'da kazanan ilk 10'da %85–89; kazanç büyük ölçüde geçen yılın oy payı süreğenliğinden. Tüm ödül oylama tabloları ve draft sınıfları çekildi. |
 | 2026-10-10 (c) | 2011-12 sorusu: hype yalnız ilk 30'u yeniden sıralıyor; gerçek ilk 10'un çoğu aday havuzunda yoktu (mükemmel hype tavanı 3.19/liste, biz 1.81). Pencere genişletme fayda vermedi (K = 10–120). B8g ve Aşama 9b eklendi. |
 | 2026-10-10 (b) | λ = 0.6 denendi: λ = 0.4'e göre −0.07 ± 0.07, ilk 10 aynı; yarar tavanı λ ≈ 0.4–0.5. Sezon sezon tahmin ↔ gerçek tablosu üretildi (16 sezon, 29/160 = 1.81 liste başına). |
 | 2026-10-10 | Gerçek hype hattı çevrimdışı kuruldu (`hype_real.py`, 11 test): yorum çekimi (resmî API), oyuncu eşleştirme, Claude sınıflandırma, küçültme, eksik veri kuralı, `skor − λ·hype_z`. Gerçek çekim için anahtarlar ve video listesi bekleniyor. |

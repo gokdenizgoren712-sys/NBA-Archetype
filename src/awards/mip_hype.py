@@ -26,6 +26,7 @@ BASE = "L_B2sh"
 LIST_K = 30                 # H'nin öğrendiği aday listesi büyüklüğü (modelin ilk 30'u)
 H_FEATS = ["ELITE_SOPH", "SOPH", "SECOND", "VORP_pct", "BPM_pct", "MPG_pct", "USG_pct", "PTS36_pct", "AGE", "DEBUT_AGE", "PEAK_VORP", "PRIOR_MIP_MAX", "SEASONS", "D_BASE"]
 C_H = 0.3
+DEFAULT_LAMBDA = 0.4         # varsayılan hype ağırlığı (B8f: 2000-26 yarar tavanı λ ≈ 0.4-0.5; videodaki 0.65 uydurmaydı)
 
 
 def add_obvious(d: pd.DataFrame) -> pd.DataFrame:
@@ -37,16 +38,17 @@ def add_obvious(d: pd.DataFrame) -> pd.DataFrame:
     return d
 
 
-def hype_walk_forward(d: pd.DataFrame, first: int = 1996, last: int = 2027) -> pd.DataFrame:
+def hype_walk_forward(d: pd.DataFrame, first: int = 1996, last: int = 2027, base: str = BASE, list_k: int | None = None) -> pd.DataFrame:
     """Her t için: t'den önceki sezonların ilk-30 listelerinden H'yi eğit, t'nin ilk-30'unu puanla. hype = H logitinin ters işaretlisi (z-skoru)."""
+    k = list_k or LIST_K
     d = add_obvious(d)
-    d["rkB"] = d.groupby("T")[BASE].rank(ascending=False)
-    d["D_BASE"] = d[BASE]
+    d["rkB"] = d.groupby("T")[base].rank(ascending=False)
+    d["D_BASE"] = d[base]
     d["hit"] = ((d["RANK_N"] <= 10) & d["RANK_N"].notna()).astype(int)
     d["hype"] = np.nan
     for t in range(first, last + 1):
-        tr = d[(d["T"] < t) & (d["rkB"] <= LIST_K) & (d["LABELED"] == 1) & d[BASE].notna()]
-        cur = (d["T"] == t) & (d["rkB"] <= LIST_K)
+        tr = d[(d["T"] < t) & (d["rkB"] <= k) & (d["LABELED"] == 1) & d[base].notna()]
+        cur = (d["T"] == t) & (d["rkB"] <= k)
         if tr["hit"].sum() < 30 or not cur.any():
             continue
         X = tr[H_FEATS].astype(float)
@@ -62,14 +64,40 @@ def hype_walk_forward(d: pd.DataFrame, first: int = 1996, last: int = 2027) -> p
     return d
 
 
-def rerank(d: pd.DataFrame, lam: float) -> pd.Series:
+def rerank(d: pd.DataFrame, lam: float = DEFAULT_LAMBDA, base: str = BASE) -> pd.Series:
     """skor' = skor − λ·hype (yalnız ilk-30 listesindekiler; geri kalanlar eski sırada, listenin arkasında)."""
-    s = d[BASE] - lam * d["hype"].fillna(0.0)
-    return s.where(d["hype"].notna(), d[BASE] - 100.0)
+    s = d[base] - lam * d["hype"].fillna(0.0)
+    return s.where(d["hype"].notna(), d[base] - 100.0)
+
+
+def predict(top: int = 10, lam: float = DEFAULT_LAMBDA, ds: pd.DataFrame | None = None) -> pd.DataFrame:
+    """2026-27 aday listesi: üretim modeli (B2sh, tüm geçmişle eğitilmiş) + sentetik hype (λ varsayılan 0.4).
+    Sütunlar: sıra, oyuncu, yaş, hype'sız sıra, hype (z; + = 'tutmaz' eğilimi), P_top10 (kalibre, hype'sız modelden), P_win."""
+    ds = mm.load() if ds is None else ds
+    w = mm.walk_forward(ds, None)
+    d = hype_walk_forward(w)
+    cal = mm.calibrate(w, BASE)
+    a, b = cal["platt"]
+    cur = d[d["T"] == d["T"].max()].copy()
+    cur["rk_nohype"] = cur[BASE].rank(ascending=False, method="first").astype(int)
+    cur["score_hype"] = rerank(cur, lam)
+    cur["P_top10"] = 1 / (1 + np.exp(-(a + b * cur[BASE])))
+    z = cal["beta"] * cur[BASE]
+    cur["P_win"] = np.exp(z - z.max()) / np.exp(z - z.max()).sum()
+    out = cur.sort_values("score_hype", ascending=False).head(top).copy()
+    out.insert(0, "rank", range(1, len(out) + 1))
+    cols = ["rank", "PLAYER_NAME", "TEAM_ABBREVIATION", "AGE", "SEASONS", "MPG", "BPM", "rk_nohype", "hype", "P_top10", "P_win"]
+    return out[cols].round(3).reset_index(drop=True)
 
 
 def main() -> int:
     sys.stdout.reconfigure(encoding="utf-8")
+    if "--predict" in sys.argv:
+        lst = predict(top=15)
+        lst.to_parquet(DATA / "awards__mip_2026-27_candidates.parquet")
+        print(f"2026-27 MIP breakout listesi (üretim modeli + sentetik hype, λ = {DEFAULT_LAMBDA}):")
+        print(lst.to_string(index=False))
+        return 0
     ds = mm.load()
     w = pd.read_parquet(DATA / "awards__mip_wf_b2sh.parquet") if (DATA / "awards__mip_wf_b2sh.parquet").exists() else mm.walk_forward(ds, None)
     d = hype_walk_forward(w)

@@ -125,7 +125,8 @@ def fetch_age(end_year: int, force: bool = False) -> pd.DataFrame:
 
 # ── Ödül oylaması ──────────────────────────────────────────────────────────────
 
-AWARD_TABLE = {"mip": "mip"}      # ödül anahtarı → awards_{yıl}.html içindeki tablo kimliği
+AWARD_TABLE = {a: a for a in ("mvp", "roy", "dpoy", "smoy", "mip", "clutch_poy", "coy")}      # ödül anahtarı → awards_{yıl}.html içindeki tablo kimliği
+AWARD_START = {"mvp": 1956, "roy": 1953, "dpoy": 1983, "smoy": 1983, "mip": 1986, "clutch_poy": 2023, "coy": 1963}   # ilk oylama sezonu (bitiş yılı)
 
 
 def fetch_award_year(award: str, end_year: int, force: bool = False) -> pd.DataFrame:
@@ -159,6 +160,56 @@ def fetch_award_year(award: str, end_year: int, force: bool = False) -> pd.DataF
     return df
 
 
+def _parse_award_table(table, season: str) -> pd.DataFrame:
+    rows = []
+    for tr in table.find("tbody").find_all("tr"):
+        cells = {td.get("data-stat", ""): td for td in tr.find_all(["td", "th"])}
+        pl = cells.get("player")
+        if pl is None or not pl.get_text(strip=True):
+            continue
+        g = lambda k: cells[k].get_text(strip=True) if k in cells else ""          # noqa: E731
+        rows.append({"SEASON": season, "RANK": g("rank"), "PLAYER_NAME": pl.get_text(strip=True), "BREF_SLUG": pl.get("data-append-csv"),
+                     "AGE": _num(g("age")), "TEAM_ABBREVIATION": g("team_id"), "FIRST": _num(g("votes_first")), "PTS_WON": _num(g("points_won")),
+                     "PTS_MAX": _num(g("points_max")), "SHARE": _num(g("award_share")), "WINNER": 1 if g("rank") in ("1", "T1") else 0})
+    return pd.DataFrame(rows)
+
+
+def fetch_awards_page(end_year: int, awards: list[str] | None = None, force: bool = False) -> dict[str, pd.DataFrame]:
+    """awards_{yıl}.html tek istekle: sayfadaki TÜM ödül oylama tablolarını (mvp, roy, dpoy, smoy, mip, clutch_poy, coy) ayrı önbelleğe yazar."""
+    season = season_label(end_year)
+    want = [a for a in (awards or list(AWARD_TABLE)) if end_year >= AWARD_START[a]]
+    todo = [a for a in want if force or not (DATA / f"awards__{a}_{season}.parquet").exists()]
+    out = {a: pd.read_parquet(DATA / f"awards__{a}_{season}.parquet") for a in want if a not in todo}
+    if not todo:
+        return out
+    html = _get(f"https://www.basketball-reference.com/awards/awards_{end_year}.html")
+    soup = BeautifulSoup(html, "lxml") if html else None
+    for a in todo:
+        t = _find_table(soup, AWARD_TABLE[a]) if soup is not None else None
+        if t is None:
+            continue
+        df = _parse_award_table(t, season)
+        if len(df):
+            df.to_parquet(DATA / f"awards__{a}_{season}.parquet")
+            out[a] = df
+    print(f"  [{season}] {', '.join(f'{a}:{len(v)}' for a, v in out.items())}", flush=True)
+    return out
+
+
+def build_all_awards(years: range, force: bool = False) -> None:
+    for i, y in enumerate(years):
+        cached = all((DATA / f"awards__{a}_{season_label(y)}.parquet").exists() for a in AWARD_TABLE if y >= AWARD_START[a]) and not force
+        fetch_awards_page(y, force=force)
+        if not cached and i < len(years) - 1:
+            time.sleep(SLEEP)
+    for a in AWARD_TABLE:
+        fr = [pd.read_parquet(DATA / f"awards__{a}_{season_label(y)}.parquet") for y in years if (DATA / f"awards__{a}_{season_label(y)}.parquet").exists()]
+        if fr:
+            allv = pd.concat(fr, ignore_index=True)
+            allv.to_parquet(DATA / f"awards__{a}_voting.parquet")
+            print(f"awards__{a}_voting.parquet: {len(allv)} satır, {allv['SEASON'].nunique()} sezon")
+
+
 def build_award_table(award: str, years: range, force: bool = False) -> pd.DataFrame:
     frames = []
     for i, y in enumerate(years):
@@ -176,6 +227,35 @@ def build_award_table(award: str, years: range, force: bool = False) -> pd.DataF
     return allv
 
 
+# ── Draft (ROY için: çaylakların sezon öncesi bilgisi yalnız draft sırası, ülke / kolej) ────────────────────
+
+def fetch_draft(year: int, force: bool = False) -> pd.DataFrame:
+    """draft/NBA_{yıl}.html: PICK, takım, oyuncu (+ slug), kolej (boş = uluslararası / lise)."""
+    out = DATA / f"draft__{year}.parquet"
+    if out.exists() and not force:
+        return pd.read_parquet(out)
+    html = _get(f"https://www.basketball-reference.com/draft/NBA_{year}.html")
+    t = _find_table(BeautifulSoup(html, "lxml"), "stats") if html else None
+    if t is None:
+        print(f"  [{year}] draft tablosu yok")
+        return pd.DataFrame()
+    rows = []
+    for tr in t.find("tbody").find_all("tr"):
+        c = {td.get("data-stat", ""): td for td in tr.find_all(["td", "th"])}
+        pl = c.get("player")
+        if pl is None or not pl.get_text(strip=True):
+            continue
+        g = lambda k: c[k].get_text(strip=True) if k in c else ""          # noqa: E731
+        rows.append({"DRAFT_YEAR": year, "PICK": _num(g("pick_overall")), "ROUND": _num(g("round") if "round" in c else None),
+                     "TEAM": g("team_id"), "PLAYER_NAME": pl.get_text(strip=True), "BREF_SLUG": pl.get("data-append-csv"),
+                     "COLLEGE": g("college_name"), "AGE_DRAFT": _num(g("age")) if "age" in c else None})
+    df = pd.DataFrame(rows)
+    if len(df):
+        df.to_parquet(out)
+        print(f"  [{year}] draft: {len(df)} oyuncu, kolej dolu {(df['COLLEGE'] != '').mean():.0%}, yaş dolu {df['AGE_DRAFT'].notna().mean():.0%}", flush=True)
+    return df
+
+
 def main(argv=None) -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
@@ -183,6 +263,8 @@ def main(argv=None) -> int:
     ap.add_argument("--test", action="store_true")
     ap.add_argument("--age", action="store_true")
     ap.add_argument("--mip", action="store_true")
+    ap.add_argument("--drafts", action="store_true", help="1984-2026 draft sınıfları (ROY için)")
+    ap.add_argument("--awards", action="store_true", help="tüm ödül oylama tabloları (mvp, roy, dpoy, smoy, mip, clutch_poy, coy), sayfa başına tek istek")
     ap.add_argument("--force", action="store_true")
     a = ap.parse_args(argv)
     try:
@@ -198,6 +280,14 @@ def main(argv=None) -> int:
                     time.sleep(SLEEP)
         if a.mip:
             build_award_table("mip", range(MIP_FIRST_YEAR, 2027), a.force)
+        if a.awards:
+            build_all_awards(range(1984, 2027), a.force)
+        if a.drafts:
+            for i, y in enumerate(range(1984, 2027)):
+                had = (DATA / f"draft__{y}.parquet").exists() and not a.force
+                fetch_draft(y, a.force)
+                if not had:
+                    time.sleep(SLEEP)
     except Blocked as e:
         print(f"[DURDU] {e}")
         return 2

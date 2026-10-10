@@ -62,7 +62,7 @@ def season_frame(end_year: int) -> pd.DataFrame:
 
 
 # Düzey / değişim ölçüleri (sezon içi persantili de alınır)
-LEVEL = ["MPG", "MP", "USG", "TS", "AST_PCT", "TRB_PCT", "BPM", "VORP", "WS48", "PTS36", "AST36", "REB36"]
+LEVEL = ["MPG", "MP", "USG", "TS", "AST_PCT", "TRB_PCT", "BPM", "VORP", "WS48", "PTS36", "AST36", "REB36", "DBPM", "OBPM", "WS", "STL36", "BLK36", "TOV_PCT"]
 DELTA = ["MPG", "USG", "TS", "BPM", "PTS36", "AST36", "WS48"]
 
 
@@ -75,12 +75,19 @@ def _pct_within(df: pd.DataFrame, col: str) -> pd.Series:
     return pd.Series(np.searchsorted(ref, df[col].to_numpy(), side="right") / len(ref), index=df.index).where(df[col].notna())
 
 
-def mip_shares() -> pd.DataFrame:
-    p = DATA / "awards__mip_voting.parquet"
+AWARD_FIRST_END_YEAR = {"mvp": 1956, "roy": 1953, "dpoy": 1983, "smoy": 1983, "mip": 1986, "clutch_poy": 2023, "coy": 1963}
+
+
+def award_shares(award: str = "mip") -> pd.DataFrame:
+    p = DATA / f"awards__{award}_voting.parquet"
     if p.exists():
         return pd.read_parquet(p)
-    frames = [pd.read_parquet(f) for f in sorted(DATA.glob("awards__mip_????-??.parquet"))]
+    frames = [pd.read_parquet(f) for f in sorted(DATA.glob(f"awards__{award}_????-??.parquet"))]
     return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
+
+
+def mip_shares() -> pd.DataFrame:
+    return award_shares("mip")
 
 
 TEAM_MP = 19680.0           # bir takımın sezonluk toplam oyuncu dakikası (240 × 82)
@@ -139,16 +146,17 @@ def role_change_features(base_year: int, t: int, slugs: pd.Series) -> pd.DataFra
     return out[["MOVED", "VAC", "ARR"]]
 
 
-def build(first_target: int = 1986, last_target: int = 2027, include_unlabeled_last: bool = True) -> pd.DataFrame:
+def build(first_target: int | None = None, last_target: int = 2027, include_unlabeled_last: bool = True, award: str = "mip") -> pd.DataFrame:
     """Satır: (SLUG, hedef sezon t). Özellikler t−1'den; etiket t'nin MIP payı (oylamada yoksa 0). Etiketsiz son hedef
     (henüz oynanmamış sezon) tahmin için tutulur (`LABELED` = 0)."""
+    first_target = first_target or max(FIRST_FEATURE_END_YEAR + 1, AWARD_FIRST_END_YEAR.get(award, 1986))
     frames: dict[int, pd.DataFrame] = {}
     for y in range(FIRST_FEATURE_END_YEAR, last_target + 1):
         try:
             frames[y] = season_frame(y)
         except FileNotFoundError:
             continue
-    votes = mip_shares()
+    votes = award_shares(award)
     vote_seasons = set(votes["SEASON"].unique()) if len(votes) else set()
     out = []
     pct_cache: dict[int, pd.DataFrame] = {}
@@ -209,7 +217,8 @@ def build(first_target: int = 1986, last_target: int = 2027, include_unlabeled_l
     if len(votes):
         v = votes.assign(END_YEAR=votes["SEASON"].str[:4].astype(int) + 1)
         prior = v.groupby("BREF_SLUG").apply(lambda x: x.set_index("END_YEAR")["SHARE"].to_dict(), include_groups=False).to_dict()
-        ds["PRIOR_MIP_MAX"] = [max([s for y, s in prior.get(sl, {}).items() if y <= ey] or [0.0]) for sl, ey in zip(ds["SLUG"], ds["END_YEAR"])]
+        ds["PRIOR_MIP_MAX"] = [max([s for y, s in prior.get(sl, {}).items() if y <= ey] or [0.0]) for sl, ey in zip(ds["SLUG"], ds["END_YEAR"])]     # aynı ödülün tarihsel en yüksek payı
+        ds["PREV_SHARE"] = [prior.get(sl, {}).get(ey, 0.0) for sl, ey in zip(ds["SLUG"], ds["END_YEAR"])]                                      # bir önceki sezonun payı
         key = votes.rename(columns={"BREF_SLUG": "SLUG", "SEASON": "TARGET_SEASON"})[["SLUG", "TARGET_SEASON", "SHARE", "WINNER", "RANK", "PTS_WON"]]
         ds = ds.merge(key, on=["SLUG", "TARGET_SEASON"], how="left")
         ds["LABELED"] = ds["TARGET_SEASON"].isin(vote_seasons).astype(int)
@@ -221,7 +230,9 @@ def build(first_target: int = 1986, last_target: int = 2027, include_unlabeled_l
 if __name__ == "__main__":
     import sys
     sys.stdout.reconfigure(encoding="utf-8")
-    d = build()
-    out = DATA / "awards__mip_dataset.parquet"
-    d.to_parquet(out)
-    print(out.name, d.shape, "etiketli sezon", d.loc[d["LABELED"] == 1, "TARGET_SEASON"].nunique() if "LABELED" in d else "-")
+    which = [a for a in sys.argv[1:] if not a.startswith("-")] or ["mip"]
+    for award in which:
+        d = build(award=award)
+        out = DATA / f"awards__{award}_dataset.parquet"
+        d.to_parquet(out)
+        print(out.name, d.shape, "etiketli sezon", d.loc[d["LABELED"] == 1, "TARGET_SEASON"].nunique() if "LABELED" in d else "-")

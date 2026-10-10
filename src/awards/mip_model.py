@@ -70,8 +70,8 @@ def add_shrunk(d: pd.DataFrame) -> pd.DataFrame:
     return d
 
 
-def load() -> pd.DataFrame:
-    d = pd.read_parquet(DATA / "awards__mip_dataset.parquet")
+def load(award: str = "mip") -> pd.DataFrame:
+    d = pd.read_parquet(DATA / f"awards__{award}_dataset.parquet")
     d["T"] = d["TARGET_SEASON"].map(end_year)
     d["AGE2"] = d["AGE"] ** 2
     d["SEASONS"] = d["SEASONS"].clip(upper=15)
