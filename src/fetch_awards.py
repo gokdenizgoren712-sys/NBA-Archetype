@@ -137,8 +137,8 @@ def fetch_age(end_year: int, force: bool = False) -> pd.DataFrame:
 
 # ── Ödül oylaması ──────────────────────────────────────────────────────────────
 
-AWARD_TABLE = {**{a: a for a in ("mvp", "roy", "dpoy", "smoy", "mip", "clutch_poy", "coy")}, "allnba": "leading_all_nba", "alldef": "leading_all_defense"}      # ödül anahtarı → awards_{yıl}.html içindeki tablo kimliği
-AWARD_START = {"mvp": 1956, "roy": 1953, "dpoy": 1983, "smoy": 1983, "mip": 1986, "clutch_poy": 2023, "coy": 1963, "allnba": 1947, "alldef": 1969}   # ilk oylama sezonu (bitiş yılı)
+AWARD_TABLE = {**{a: a for a in ("mvp", "roy", "dpoy", "smoy", "mip", "clutch_poy", "coy")}, "allnba": "leading_all_nba", "alldef": "leading_all_defense", "allrookie": "leading_all_rookie"}      # ödül anahtarı → awards_{yıl}.html içindeki tablo kimliği
+AWARD_START = {"mvp": 1956, "roy": 1953, "dpoy": 1983, "smoy": 1983, "mip": 1986, "clutch_poy": 2023, "coy": 1963, "allnba": 1947, "alldef": 1969, "allrookie": 1963}   # ilk oylama sezonu (bitiş yılı)
 
 
 def fetch_award_year(award: str, end_year: int, force: bool = False) -> pd.DataFrame:
@@ -180,7 +180,7 @@ def _parse_award_table(table, season: str) -> pd.DataFrame:
         if pl is None or not pl.get_text(strip=True):
             continue
         g = lambda k: cells[k].get_text(strip=True) if k in cells else ""          # noqa: E731
-        team_label = g("all_nba_team") or g("all_defense_team")              # All-NBA / All-Defense: 1st / 2nd / 3rd (boş = seçilmedi)
+        team_label = g("all_nba_team") or g("all_defense_team") or g("all_rookie_team")              # All-NBA / All-Defense: 1st / 2nd / 3rd (boş = seçilmedi)
         rows.append({"SEASON": season, "RANK": g("rank"), "PLAYER_NAME": pl.get_text(strip=True), "BREF_SLUG": _slug_from_cell(pl),
                      "AGE": _num(g("age")), "TEAM_ABBREVIATION": g("team_id"), "POS": g("pos"), "TEAM_LABEL": team_label,
                      "FIRST": _num(g("votes_first")), "PTS_WON": _num(g("points_won")), "PTS_MAX": _num(g("points_max")),

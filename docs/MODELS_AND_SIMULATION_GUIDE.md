@@ -74,6 +74,26 @@ Saatlik güncelleme (`update.py`): oynanan maçlara göre dakika, üretim ve kal
 
 # BÖLÜM B: Ödül tahmini (önce MIP, sonra tüm NBA ödülleri)
 
+### Genel ödül tablosu (2026-10-15; hepsi walk-forward, yalnızca geçmişle eğitilmiş)
+
+Ölçüt: modelin ilk 10 tahmininden (All-NBA'de 15) gerçek finisher / takım üyesi sayısı, liste başına ortalama, 2000–26. "Güç": ◎ tabanın üstünde ve istikrarlı, ◐ tabanla aynı ya da küçük kazanç, ○ zayıf (tabanın biraz üstü). Aday yüzdeleri 2026-27; kalibre; olasılıktır, tahmin değil.
+
+| Ödül | Ne tahmin ediliyor | Başarı (ilk 10'dan) | Taban | Model − taban | Kazanan ilk 10'da / ilk 3'te | Güç | 2026-27 ilk 3 |
+|---|---|---|---|---|---|---|---|
+| **MVP** | oy payı (kimler ilk 10) | **6.07** | geçen yılın payı 5.89 | +0.18 | %89 / %70 | ◎ (süreklilik) | Jokić **%40**, Gilgeous-Alexander **%28**, Wembanyama **%9** |
+| **DPOY** | oy payı | **4.74** | geçen yılın payı 4.59 | +0.15 | %85 / %52 | ◎ (süreklilik) | Wembanyama **%24**, Holmgren %3, Gobert %1 |
+| **6MOY** | oy payı (yedek rolü: GS) | **2.67** | geçen yılın payı 2.44 | +0.23 (GS'siz 2.22: GS +0.44 ± 0.15) | %54 / %19 | ◐ | K. Johnson (ilk 3 %19), Jaquez (%15), Reid (%9) |
+| **MIP** | oy payı (sürpriz); sentetik hype λ = 0.4 | **1.85** (hype'sız 1.70; 2023–26: 8/40) | genç + üretken 1.04 | +0.81 | %26 / %7 | ◐ (videoyla aynı) | Harper (top-10 finisher %18), Sheppard (%17), Clingan (%15) |
+| **ROY** | oy payı (çaylaklar) | top-5/5: **2.56** | draft sırası 2.63 | −0.07 | model 1.'si %38, ilk 3'te %62 | ◐ (pick) | Dybantsa **%47**, Peterson %16, Boozer %8 |
+| **All-NBA** | 3 takıma girmek (15 kişi) | **9.19 / 15** | geçen yıl takımdaydı 8.85 | +0.33 ± 0.23 | - | ◎ | Jokić %97, Wembanyama %92, Dončić %91 (takıma girme) |
+| **All-Defense** | 2 takıma girmek (10 kişi) | **5.52 / 10** | geçen yıl takımdaydı 5.30 | +0.22 ± 0.22 | - | ◎ | Wembanyama %88, A. Thompson %85, Holmgren %85 |
+| **All-Rookie** | 2 takıma girmek (10 çaylak) | **5.48 / 10** | draft sırası 5.52 | −0.04 ± 0.12 | - | ◐ (pick) | Dybantsa %89, Peterson %72, Wilson %63 |
+| **COY** | oy payı (koç) | **4.56 / 10** (30 koç) | geçen sezon galibiyet % 4.37; rastgele 2.6 | +0.19 | %41 / %15 | ○ | Daigneault %5.1, Atkinson %5.0, Lue %4.1 |
+| **Clutch POY** | yapılmadı | - | - | - | - | ⛔ | - |
+
+**Okuma:** (1) Süreklilik ödülleri (MVP, DPOY, All-NBA, All-Defense) iyi öngörülüyor, ama kazancın büyük kısmı "geçen yıl da öndeydi" bilgisinden; model tabanı küçük farkla geçiyor. (2) Draft sırasına bağlı ödüller (ROY, All-Rookie) pick'in ötesine geçmiyor; kolej istatistikleri tutarlı kazanç vermedi. (3) Sürpriz ödülleri (MIP, COY, 6MOY) zayıf: MIP'te videoyla aynı seviye, 6MOY'da yalnız GS verisi anlamlı kazanç getirdi (+0.44 ± 0.15). (4) Yüzde sütunları: MVP/DPOY/6MOY/ROY/COY'da "kazanır" (softmax, β walk-forward), All-NBA/Defense/Rookie'de "takıma girer" (Platt).
+
+
 ## B1. Amaç
 
 NBA'nin bütün ödüllerini (MIP, ROY, 6MOY, DPOY, MVP, All-NBA, vb.) tahmin eden ortak bir iskelet kurmak. **Önce MIP (En Çok Gelişen Oyuncu)** ile başlıyoruz; çalışan bir model çıkınca diğer ödüllerin komple planını bunun üzerinden yaparız.
@@ -393,7 +413,7 @@ Ayrıntılı plan MIP modeli çalıştıktan sonra yazılacak.
 | MVP/DPOY yüzdeleri ve takım başarısı özelliği | ✅ yüzdeli liste; takım özelliği katkısız (+0.00) |
 | ROY kolej istatistikleri | 🔶 sürekli hat kuruldu (NCAA 2008-09 → 2025-26); pick'i geçmedi |
 | Clutch POY | ⛔ yapılmayacak (kararın) |
-| All-Rookie | ⏳ yapılmadı (ROY pick'ine bağlı; isteğe bağlı) |
+| All-Rookie | ✅ `src/awards/allrookie.py`: 5.48/10, draft sırası 5.52 (model − sıra −0.04 ± 0.12): pick ve dakika yeterli |
 | 2026-27 ödül aday raporu (yüzdelerle) | ✅ `docs/AWARDS_2026-27_CANDIDATES.md`, `python -m src.awards.report` |
 | Çevrimdışı testler (oy tablosu, slug, ölçüt, hype sızıntısı) | ✅ `tests/test_awards_mechanics.py` (6) + `test_awards_hype_real.py` (11) |
 | Gerçek hype hattı (YouTube yorumları + Claude sınıflandırması): kod ve testler | ✅ `src/awards/hype_real.py`, 11 test (çevrimdışı, sahte yorum/sınıflandırıcı) |
@@ -600,6 +620,7 @@ Hedef: her NBA takımını oyun oyun oynatıp oyuncunun payını hesaplamak. Dö
 
 | Tarih | Değişiklik |
 |---|---|
+| 2026-10-15 | All-Rookie eklendi (`allrookie.py`; takım etiketi parser düzeltmesi: `all_rookie_team`; 5.48/10, draft sırasını geçmiyor). Genel ödül tablosu (10 ödül, başarı, taban, güç, 2026-27 ilk 3 yüzdeleriyle) rehberin başına eklendi; aday raporu All-Rookie ve ROY/COY kazanma yüzdeleriyle yenilendi. |
 | 2026-10-11 (d) | Plan yürütüldü (B9e): MVP/DPOY yüzdeleri; 6MOY'a GS (+0.44 ± 0.15, Herro düştü); All-NBA (9.2/15) ve All-Defense (5.5/10); COY (koç verisi, yetenek değişimi: 4.56/10); ROY'a kolej istatistikleri (pick'i geçmedi, hat kuruldu). Takım başarısı özelliği MVP/DPOY'da katkısız. Üst-k olasılık kalibrasyonu düzeltildi. Çevrimdışı ek testler (7). Aday raporu üretildi. |
 | 2026-10-11 (c) | Plan (B9d): MVP/DPOY'a takım başarısı + aday yüzdeleri, 6MOY'a GS, All-NBA / All-Defense, COY (koç verisi), ROY'a kolej istatistikleri; Clutch POY yapılmayacak. NCAA 2008-09 → 2015-16 çekildi (ROY için 18 sezon). |
 | 2026-10-11 (b) | ROY için ayrı çaylak veri seti (`roy.py`, draft sınıfları): model draft sırası tabanını geçmiyor. Diğer ödüller için veri/özellik eksikleri planı (B9c). Çevrimdışı mekanik testleri (6). Draft verisinde iki hata düzeltildi (oyuncu anahtarı bağlantıdan, tablo içi başlık satırı). |

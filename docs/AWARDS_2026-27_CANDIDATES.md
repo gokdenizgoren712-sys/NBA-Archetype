@@ -124,35 +124,56 @@ Pozisyon kısıtlı (2 G + 2 F + 1 C) açgözlü dizilim:
 
 Koç verisi eklendi (kıdem, franchise kıdemi, geçen sezon takım gücü, yaz yetenek değişimi). Ölçülen başarı (ilk 10 tahminden gerçek top-10 finisher, 30 koç içinden; rastgele ≈ 2.6–2.9): 2011–26 **4.50**, 2000–26 **4.56**. Zayıf ödül: tabanlar (geçen sezon galibiyet yüzdesi) aynı seviyede.
 
-| Koç | Takım | Geçen sezon galibiyet % | Koçluk sezonu | Yaz yetenek değişimi (VORP) | Skor |
-|---|---|---|---|---|---|
-| Mark Daigneault | OKC | 83.0 | 6.0 | 0.7 | 1.91 |
-| Kenny Atkinson | CLE | 78.0 | 6.0 | -1.2 | 1.84 |
-| Tyronn Lue | LAC | 61.0 | 10.0 | 1.5 | 1.04 |
-| Ime Udoka | HOU | 63.0 | 4.0 | -0.1 | 0.84 |
-| Chris Finch | MIN | 60.0 | 6.0 | -0.8 | 0.79 |
-| J.B. Bickerstaff | DET | 54.0 | 10.0 | -0.3 | 0.77 |
-| Joe Mazzulla | BOS | 74.0 | 4.0 | -4.0 | 0.73 |
-| David Adelman | DEN | 61.0 | 2.0 | 1.6 | 0.67 |
-| Steve Kerr | GSW | 59.0 | 12.0 | -1.5 | 0.61 |
-| Erik Spoelstra | MIA | 45.0 | 18.0 | 2.7 | 0.56 |
+| Koç | Takım | Kazanır % | Geçen sezon galibiyet % | Koçluk sezonu | Yaz yetenek değişimi (VORP) | Skor |
+|---|---|---|---|---|---|---|
+| Mark Daigneault | OKC | 5.1 | 83.0 | 6.0 | 0.7 | 1.91 |
+| Kenny Atkinson | CLE | 5.0 | 78.0 | 6.0 | -1.2 | 1.84 |
+| Tyronn Lue | LAC | 4.1 | 61.0 | 10.0 | 1.5 | 1.04 |
+| Ime Udoka | HOU | 3.9 | 63.0 | 4.0 | -0.1 | 0.84 |
+| Chris Finch | MIN | 3.9 | 60.0 | 6.0 | -0.8 | 0.79 |
+| J.B. Bickerstaff | DET | 3.8 | 54.0 | 10.0 | -0.3 | 0.77 |
+| Joe Mazzulla | BOS | 3.8 | 74.0 | 4.0 | -4.0 | 0.73 |
+| David Adelman | DEN | 3.7 | 61.0 | 2.0 | 1.6 | 0.67 |
+| Steve Kerr | GSW | 3.7 | 59.0 | 12.0 | -1.5 | 0.61 |
+| Erik Spoelstra | MIA | 3.6 | 45.0 | 18.0 | 2.7 | 0.56 |
 
 ## ROY (Yılın Çaylağı)
 
 Sıralama draft sırası ile belirleniyor; kolej istatistikleri (Torvik, 2008-09 → 2025-26) eklendi ve ölçüldü, pick'in ötesinde tutarlı kazanç vermedi (top-5/5: 2.54–2.69 vs 2.62).
 
-| Oyuncu | Takım | Pick | Kolej 40 dk sayı | Kolej BPM | Kolej yaşı |
-|---|---|---|---|---|---|
-| AJ Dybantsa | WAS | 1 | 29.4 | 5.4 | 19.4 |
-| Darryn Peterson | UTA | 2 | 27.8 | 5.6 | 19.4 |
-| Cameron Boozer | MEM | 3 | 26.9 | 9.0 | 18.9 |
-| Caleb Wilson | CHI | 4 | 25.3 | 8.4 | 19.9 |
-| Keaton Wagler | LAC | 5 | 21.1 | 4.4 | 19.4 |
-| Mikel Brown Jr. | BRK | 6 | 24.9 | 5.8 | 20.2 |
-| Darius Acuff Jr. | SAC | 7 | 26.7 | 7.0 | 19.6 |
-| Kingston Flemings | ATL | 8 | 20.3 | 7.5 | 19.5 |
-| Morez Johnson Jr. | DAL | 9 | 20.9 | 3.5 | 20.4 |
-| Brayden Burries | MIL | 10 | 21.5 | 3.7 | 20.8 |
+| Oyuncu | Takım | Pick | Kazanır % | Kolej 40 dk sayı | Kolej BPM | Kolej yaşı |
+|---|---|---|---|---|---|---|
+| AJ Dybantsa | WAS | 1 | 46.5 | 29.4 | 5.4 | 19.4 |
+| Darryn Peterson | UTA | 2 | 15.7 | 27.8 | 5.6 | 19.4 |
+| Cameron Boozer | MEM | 3 | 8.3 | 26.9 | 9.0 | 18.9 |
+| Caleb Wilson | CHI | 4 | 5.4 | 25.3 | 8.4 | 19.9 |
+| Keaton Wagler | LAC | 5 | 3.8 | 21.1 | 4.4 | 19.4 |
+| Mikel Brown Jr. | BRK | 6 | 2.8 | 24.9 | 5.8 | 20.2 |
+| Darius Acuff Jr. | SAC | 7 | 2.2 | 26.7 | 7.0 | 19.6 |
+| Kingston Flemings | ATL | 8 | 1.8 | 20.3 | 7.5 | 19.5 |
+| Morez Johnson Jr. | DAL | 9 | 1.5 | 20.9 | 3.5 | 20.4 |
+| Brayden Burries | MIL | 10 | 1.3 | 21.5 | 3.7 | 20.8 |
+
+## All-Rookie (10 çaylak, 2 takım)
+
+Ölçülen başarı (modelin ilk 10'undan takıma girenler; liste başına): 2014–26 **5.31**, 2000–26 **5.48** / 10; yalnız draft sırası **5.23** / **5.52**: model sırayı geçmiyor, All-Rookie neredeyse tamamen draft sırası + dakika.
+
+| Oyuncu | Takım | Pick | Takıma girme % |
+|---|---|---|---|
+| AJ Dybantsa | WAS | 1 | 88.7 |
+| Darryn Peterson | UTA | 2 | 72.3 |
+| Caleb Wilson | CHI | 4 | 62.9 |
+| Cameron Boozer | MEM | 3 | 57.9 |
+| Keaton Wagler | LAC | 5 | 54.3 |
+| Mikel Brown Jr. | BRK | 6 | 47.1 |
+| Darius Acuff Jr. | SAC | 7 | 41.1 |
+| Kingston Flemings | ATL | 8 | 36.1 |
+| Morez Johnson Jr. | DAL | 9 | 31.9 |
+| Brayden Burries | MIL | 10 | 28.4 |
+| Yaxel Lendeborg | GSW | 11 | 25.4 |
+| Aday Mara | OKC | 12 | 22.9 |
+| Nate Ament | MIA | 13 | 20.8 |
+| Hannes Steinbach | CHA | 14 | 18.9 |
 
 ## MIP (En Çok Gelişen Oyuncu)
 

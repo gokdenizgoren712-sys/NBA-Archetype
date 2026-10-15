@@ -82,7 +82,7 @@ def college_features(d: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
-def build(last_target: int = 2027) -> pd.DataFrame:
+def build(last_target: int = 2027, award: str = "roy") -> pd.DataFrame:
     dr = drafts()
     first_seen: dict[str, int] = {}
     frames: dict[int, pd.DataFrame] = {}
@@ -94,7 +94,7 @@ def build(last_target: int = 2027) -> pd.DataFrame:
         frames[y] = f
         for s in f["SLUG"]:
             first_seen.setdefault(s, y)
-    votes = md.award_shares("roy")
+    votes = md.award_shares(award)
     vote_seasons = set(votes["SEASON"].unique())
     out = []
     for t in range(md.FIRST_FEATURE_END_YEAR + 1, last_target + 1):
@@ -122,7 +122,8 @@ def build(last_target: int = 2027) -> pd.DataFrame:
     for c in cf.columns:
         d[c] = cf[c].to_numpy()
     d["SHARE"], d["WINNER"], d["RANK"] = 0.0, 0, np.nan
-    v = votes.rename(columns={"BREF_SLUG": "SLUG", "SEASON": "TARGET_SEASON"})[["SLUG", "TARGET_SEASON", "SHARE", "WINNER", "RANK"]]
+    keep = ["SLUG", "TARGET_SEASON", "SHARE", "WINNER", "RANK"] + (["TEAM_LABEL"] if "TEAM_LABEL" in votes.columns else [])
+    v = votes.rename(columns={"BREF_SLUG": "SLUG", "SEASON": "TARGET_SEASON"})[keep]
     d = d.drop(columns=["SHARE", "WINNER", "RANK"]).merge(v, on=["SLUG", "TARGET_SEASON"], how="left")
     d["SHARE"], d["WINNER"] = d["SHARE"].fillna(0.0), d["WINNER"].fillna(0).astype(int)
     d["LABELED"] = d["TARGET_SEASON"].isin(vote_seasons).astype(int)
