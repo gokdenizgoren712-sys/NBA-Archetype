@@ -7,9 +7,9 @@ export const SPORT_ACCENT = { basketball: "#FFB11B", football: "#3FB08C" };
 export const NAV = {
   basketball: [
     { title: "Play", items: [
-      { to: "/basketball/guess",   icon: "guess",   label: "Guess" },
       { to: "/basketball/game",    icon: "game",    label: "Game" },
       { to: "/basketball/lineups", icon: "lineups", label: "Lineups" },
+      { to: "/basketball/guess",   icon: "guess",   label: "Guess" },
       { to: "/leaderboard",        icon: "trophy",  label: "Leaderboard" },
       // Fantezi: etkinken alt sayfaları açılır (tasarım L1-1). Sezon içi
       // sayfalar (This week, Trade) açılış gecesinden sonra eklenecek.
