@@ -1,0 +1,90 @@
+/* /basketball/guess — Over/Under ızgarası. Düz paneller, mono etiketler, altın tek vurgu;
+   over = --good, under = --danger (yalnız anlam taşıyan renkler). */
+.gs-page { height: 100%; overflow-y: auto; box-sizing: border-box; padding: 28px clamp(20px, 3vw, 32px) 48px; display: flex; flex-direction: column; gap: 18px; }
+.gs-page > * { flex-shrink: 0; }
+.gs-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+.gs-head .pa-eyebrow { margin-bottom: 8px; }
+.gs-sub { margin: 10px 0 0; max-width: 56ch; font-size: 15px; line-height: 1.5; color: var(--text-secondary); }
+
+.gs-people { display: flex; flex-direction: column; gap: 18px; padding: 18px 20px; }
+.gs-add { display: flex; flex-direction: column; gap: 8px; max-width: 420px; }
+.gs-lab, .gs-th, .gs-foot, .gs-hint, .gs-count, .gs-div { font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .1em; text-transform: uppercase; color: var(--text-muted); }
+.gs-add-row { display: flex; gap: 8px; }
+.gs-add-row input { flex: 1; min-width: 0; min-height: 44px; padding: 0 12px; border: 1px solid var(--panel-border); border-radius: var(--radius); background: var(--field); color: var(--text-primary); font: 15px var(--font-sans); }
+.gs-add-row input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.gs-add-row input::placeholder { color: var(--text-muted); }
+.gs-hint { text-transform: none; letter-spacing: .02em; }
+.gs-hint[role="alert"] { color: var(--danger); }
+
+.gs-cards { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+.gs-card { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; background: var(--fill-1); border: 1px solid var(--hairline); border-radius: var(--radius); min-width: 0; }
+.gs-card-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.gs-card-top strong { font: 700 20px var(--font-logo); letter-spacing: .06em; text-transform: uppercase; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gs-bar { display: flex; height: 6px; gap: 2px; }
+.gs-bar i { display: block; flex-basis: 0; min-width: 0; border-radius: 1px; }
+.gs-bar .o { background: var(--good); }
+.gs-bar .u { background: var(--danger); }
+.gs-bar .none { flex-grow: 1; background: var(--raised); }
+.gs-card-meta { display: flex; justify-content: space-between; font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; font-variant-numeric: tabular-nums; }
+.gs-card-meta .o { color: var(--good); }
+.gs-card-meta .u { color: var(--danger); }
+.gs-card-actions { display: flex; gap: 14px; }
+.gs-card-actions button { min-height: 32px; padding: 0; background: none; border: 0; color: var(--text-muted); font-size: 12px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.gs-card-actions button:hover:not(:disabled) { color: var(--text-primary); }
+.gs-card-actions button:disabled { opacity: .4; cursor: default; }
+.gs-card-actions button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.gs-controls { display: flex; gap: 14px; flex-wrap: wrap; }
+.gs-empty { margin: 0; font-size: 14px; color: var(--text-muted); }
+
+/* ızgara: takım sütunu yatay kaydırmada sabit */
+.gs-scroll { overflow-x: auto; padding: 0; }
+.gs-table { width: max-content; min-width: 100%; }
+.gs-fragment { display: contents; }
+.gs-row { display: grid; grid-template-columns: 176px 64px repeat(var(--n), 92px) minmax(120px, 1fr); align-items: center; min-height: 52px; border-bottom: 1px solid var(--hairline); font-size: 14px; color: var(--text-secondary); }
+.gs-row:hover { background: var(--fill-1); }
+.gs-th { min-height: 44px; }
+.gs-th:hover { background: none; }
+.gs-team { position: sticky; left: 0; z-index: 1; display: flex; align-items: baseline; gap: 10px; align-self: stretch; padding: 0 12px 0 16px; background: var(--bg-surface); min-width: 0; }
+.gs-row:hover .gs-team { background: #191919; }
+.gs-team { align-items: center; }
+.gs-team b { font: 700 18px var(--font-logo); letter-spacing: .06em; color: var(--text-primary); }
+.gs-team span { font-size: 12px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gs-th .gs-team { color: var(--text-muted); }
+.gs-line { font: 700 18px var(--font-logo); font-variant-numeric: tabular-nums; color: var(--text-primary); text-align: right; padding-right: 14px; }
+.gs-th .gs-line { font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; }
+.gs-pick { display: flex; justify-content: center; gap: 6px; padding: 0 6px; min-width: 0; }
+.gs-th .gs-pick span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-primary); }
+.gs-pick button { width: 36px; height: 36px; display: grid; place-items: center; padding: 0; border: 1px solid var(--panel-border); border-radius: var(--radius); background: var(--field); color: var(--text-muted); font: 700 14px ui-monospace, SFMono-Regular, Menlo, monospace; cursor: pointer; }
+.gs-pick button:hover { border-color: var(--text-muted); color: var(--text-primary); }
+.gs-pick button.o.on { background: color-mix(in srgb, var(--good) 18%, transparent); border-color: var(--good); color: var(--good); }
+.gs-pick button.u.on { background: color-mix(in srgb, var(--danger) 18%, transparent); border-color: var(--danger); color: var(--danger); }
+.gs-pick button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.gs-cons { padding: 0 14px; display: flex; justify-content: flex-end; }
+.gs-tag { display: inline-flex; align-items: baseline; gap: 8px; font: 700 13px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .08em; text-transform: uppercase; }
+.gs-tag em { font-style: normal; font-weight: 400; font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.gs-tag.over { color: var(--good); }
+.gs-tag.under { color: var(--danger); }
+.gs-tag.even { color: var(--accent); }
+.gs-none { color: var(--text-muted); }
+
+.gs-div { position: relative; min-height: 34px; display: flex; align-items: center; background: var(--raised); border-bottom: 1px solid var(--hairline); }
+.gs-div-in { position: sticky; left: 16px; display: inline-flex; align-items: center; gap: 10px; }
+.gs-conf { padding: 2px 6px; border: 1px solid var(--panel-border); border-radius: 2px; color: var(--text-secondary); }
+.gs-conf.west { border-color: var(--accent-border); color: var(--accent); }
+.gs-foot { margin: 0; text-transform: none; letter-spacing: .02em; line-height: 1.5; max-width: 70ch; }
+
+@media (max-width: 767px) {
+  .gs-page { padding: 16px 16px 40px; }
+  .gs-people { padding: 14px; }
+  .gs-cards { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+  .gs-card { padding: 10px 12px; }
+  .gs-row { grid-template-columns: 112px 52px repeat(var(--n), 84px) minmax(104px, 1fr); }
+  .gs-team { padding: 0 8px 0 12px; }
+  .gs-team span { display: none; }
+  .gs-pick button { width: 34px; height: 40px; }
+  .gs-line { padding-right: 8px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .gs-pick button { transition: background-color .12s, border-color .12s, color .12s; }
+}

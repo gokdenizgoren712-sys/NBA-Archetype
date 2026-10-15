@@ -7,6 +7,7 @@ export const SPORT_ACCENT = { basketball: "#FFB11B", football: "#3FB08C" };
 export const NAV = {
   basketball: [
     { title: "Play", items: [
+      { to: "/basketball/guess",   icon: "guess",   label: "Guess" },
       { to: "/basketball/game",    icon: "game",    label: "Game" },
       { to: "/basketball/lineups", icon: "lineups", label: "Lineups" },
       { to: "/leaderboard",        icon: "trophy",  label: "Leaderboard" },
@@ -107,6 +108,7 @@ export function isActive(item, pathname) {
 /* ── Breadcrumb ─────────────────────────────────────────────────────
    Masaüstünde sayfanın ilk satırı, mobilde üst barın başlığı (son parça). */
 const CRUMBS = [
+  [/^\/basketball\/guess$/,           ["Guess"]],
   [/^\/basketball\/game$/,            ["Game"]],
   [/^\/basketball\/game\/single$/,    ["Game", "Lineup Builder"]],
   [/^\/basketball\/game\/same-screen$/, ["Game", "Same Screen"]],

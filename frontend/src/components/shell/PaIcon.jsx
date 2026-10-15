@@ -34,6 +34,8 @@ const PATHS = {
         <circle key={`${x}-${y}`} cx={x} cy={y} r="1" />)}
     </g>
   ),
+  // Guess: over/under — üstte yukarı, altta aşağı ok
+  guess:    (c) => <g stroke={c.gold}><path d="M7 10l5-5 5 5" /><path d="M7 14l5 5 5-5" /></g>,
   lineups:  (c) => <path stroke={c.gray} d="M4 7h16M7 12h13M10 17h10" />,
   // Fantezi: draft tahtası (Claude Design "Primary Arch Fantasy", PaIcon is.fantasy)
   fantasy:  (c) => (

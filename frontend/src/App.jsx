@@ -69,6 +69,7 @@ const SportSelect    = lazy(() => import("./pages/SportSelect"));
 const FootballPlayers = lazy(() => import("./pages/football/FootballPlayers"));
 const FootballPlayerProfile = lazy(() => import("./pages/football/FootballPlayerProfile"));
 const Leaderboard = lazy(() => import("./pages/Leaderboard"));
+const Guess = lazy(() => import("./pages/Guess"));
 const Methodology = lazy(() => import("./pages/Methodology"));
 const ConfirmEmail = lazy(() => import("./pages/ConfirmEmail"));
 const FootballLineups = lazy(() => import("./pages/football/FootballLineups"));
@@ -179,6 +180,7 @@ function AppInner() {
 
               {/* ── Basketbol (mevcut ürünün tamamı) ── */}
               <Route path="/basketball"                     element={<Navigate to="/basketball/game" replace />} />
+              <Route path="/basketball/guess"               element={<Guess />} />
               <Route path="/basketball/game"                element={<GameModeSelect />} />
               <Route path="/basketball/fantasy"             element={<FantasyLayout />}>
                 <Route index                                element={<FantasyHome />} />
