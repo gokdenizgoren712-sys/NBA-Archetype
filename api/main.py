@@ -152,6 +152,10 @@ app.include_router(_rankit_router)
 from .fantasy import router as _fantasy_router
 app.include_router(_fantasy_router)
 
+# Guess — sezon öncesi tahmin odaları (link ile paylaşım) — api/guess.py
+from .guess import router as _guess_router
+app.include_router(_guess_router)
+
 # Güvenlik header'ları
 # CSP önce YALNIZ RAPOR modunda (hiçbir şeyi engellemez): ihlaller
 # /api/csp-report'a düşer, bir süre izlenip temizlenince zorunlu yapılır.

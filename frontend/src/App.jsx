@@ -181,6 +181,7 @@ function AppInner() {
               {/* ── Basketbol (mevcut ürünün tamamı) ── */}
               <Route path="/basketball"                     element={<Navigate to="/basketball/game" replace />} />
               <Route path="/basketball/guess"               element={<Guess />} />
+              <Route path="/basketball/guess/:roomId"       element={<Guess />} />
               <Route path="/basketball/game"                element={<GameModeSelect />} />
               <Route path="/basketball/fantasy"             element={<FantasyLayout />}>
                 <Route index                                element={<FantasyHome />} />

@@ -108,7 +108,7 @@ export function isActive(item, pathname) {
 /* ── Breadcrumb ─────────────────────────────────────────────────────
    Masaüstünde sayfanın ilk satırı, mobilde üst barın başlığı (son parça). */
 const CRUMBS = [
-  [/^\/basketball\/guess$/,           ["Guess"]],
+  [/^\/basketball\/guess(\/.+)?$/,      ["Guess"]],
   [/^\/basketball\/game$/,            ["Game"]],
   [/^\/basketball\/game\/single$/,    ["Game", "Lineup Builder"]],
   [/^\/basketball\/game\/same-screen$/, ["Game", "Same Screen"]],
