@@ -855,7 +855,7 @@ def rankit_sync_health():
     — sessizce bozulan bir job ile hiç kurulmamış bir job'ı ayıran tek şey bu.
     """
     with get_conn() as conn:
-        providers = ["nba", "euroleague", "football"]
+        providers = ["nba", "euroleague", "eurocup", "football", "sofascore"]
         out = {}
         for name in providers:
             last = conn.execute("""SELECT ok,matches,players,links,pruned,stale,error,duration_ms,created_at,
@@ -873,6 +873,31 @@ def rankit_sync_health():
             SUM(status='finished') finished, SUM(status='upcoming') upcoming, SUM(status='live') live
             FROM rankit_matches""").fetchone()
         return {"providers": out, "catalog": dict(totals)}
+
+
+_ADMIN_SYNC_LOCK = threading.Lock()
+
+
+@router.post("/admin/sync")
+def rankit_admin_sync(user=Depends(require_admin)):
+    """Katalog taramasini HEMEN baslat (yeni yarisma eklendikten sonra 6 saatlik
+    turu beklememek icin). Arka planda calisir; sonucu /sync-health gosterir.
+    Ayni anda ikinci bir elle tur baslatilamaz."""
+    if not _ADMIN_SYNC_LOCK.acquire(blocking=False):
+        return {"started": False, "reason": "A sync is already running"}
+
+    def run():
+        try:
+            from .rankit_catalog_sync import refresh_catalog
+            logging.warning("ADMIN SYNC: %s", refresh_catalog())
+        except Exception as exc:  # noqa: BLE001
+            logging.error("Admin sync failed: %s", exc)
+        finally:
+            _ADMIN_SYNC_LOCK.release()
+
+    threading.Thread(target=run, daemon=True).start()
+    logging.warning("ADMIN AUDIT: user %s started a catalog sync", user["sub"])
+    return {"started": True}
 
 
 DISCOVER_WHEN = ("today", "tomorrow", "weekend", "next7", "past7")

@@ -361,3 +361,31 @@ def test_volleyball_is_a_valid_sport_after_migration(fresh_db):
         conn.execute("INSERT INTO rankit_competitions(sport,name,season) VALUES('Volleyball','X','2026-27')")
         with pytest.raises(Exception):
             conn.execute("INSERT INTO rankit_competitions(sport,name,season) VALUES('Curling','X','2026-27')")
+
+
+def test_admin_can_start_a_sync_now_and_health_lists_new_providers(fresh_db, monkeypatch):
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+    from api import rankit as RK
+    from api import rankit_catalog_sync as catalog
+    from api.auth import create_token
+
+    with db.get_conn() as conn:
+        conn.execute("INSERT INTO users(id,email,username,hashed_password,role) VALUES(1,'a@t','a','x','admin'),"
+                     "(2,'b@t','b','x','user')")
+    ran = []
+    monkeypatch.setattr(catalog, "refresh_catalog", lambda: ran.append(1) or {"ok": True})
+    app = FastAPI()
+    app.include_router(RK.router)
+    api = TestClient(app)
+    hdr = lambda uid: {"Authorization": f"Bearer {create_token(uid, 'admin')}"}
+    assert api.post("/api/rankit/admin/sync").status_code == 401
+    assert api.post("/api/rankit/admin/sync", headers=hdr(2)).status_code == 403
+    assert api.post("/api/rankit/admin/sync", headers=hdr(1)).json()["started"] is True
+    for _ in range(50):
+        if ran:
+            break
+        __import__("time").sleep(0.05)
+    assert ran == [1]
+    assert set(api.get("/api/rankit/sync-health").json()["providers"]) == {
+        "nba", "euroleague", "eurocup", "football", "sofascore"}

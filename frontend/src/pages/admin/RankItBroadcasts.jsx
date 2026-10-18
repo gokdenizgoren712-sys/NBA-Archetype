@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import AdminLayout from "./AdminLayout";
+import RankItSyncPanel from "./RankItSyncPanel";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { SEO } from "../../hooks/useSEO";
@@ -82,6 +83,7 @@ export default function RankItBroadcasts() {
         ))}
       </div>
     }>
+        <RankItSyncPanel token={token} />
         <p style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.6, maxWidth: 720 }}>
           Where a match can be watched in <b>{COUNTRY_LABEL[country]}</b>. This is not
           provider data — it is typed here and RankIt reads it back. A competition rule
