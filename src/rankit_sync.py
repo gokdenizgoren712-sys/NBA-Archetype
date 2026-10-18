@@ -30,24 +30,10 @@ sys.path.insert(0, str(ROOT / "src" / "football"))
 from api.db import get_conn, init_db  # noqa: E402
 
 
-FOOTBALL_LEAGUES = {
-    "premier-league": (47, "Premier League", "England", "league"),
-    "la-liga": (87, "La Liga", "Spain", "league"),
-    "serie-a": (55, "Serie A", "Italy", "league"),
-    "bundesliga": (54, "Bundesliga", "Germany", "league"),
-    "ligue-1": (53, "Ligue 1", "France", "league"),
-    "fa-cup": (132, "FA Cup", "England", "cup"),
-    "copa-del-rey": (138, "Copa del Rey", "Spain", "cup"),
-    "coppa-italia": (141, "Coppa Italia", "Italy", "cup"),
-    "dfb-pokal": (209, "DFB-Pokal", "Germany", "cup"),
-    "coupe-de-france": (134, "Coupe de France", "France", "cup"),
-    "champions-league": (42, "UEFA Champions League", "Europe", "uefa"),
-    "champions-league-qualification": (10611, "UEFA Champions League", "Europe", "qualifying"),
-    "europa-league": (73, "UEFA Europa League", "Europe", "uefa"),
-    "europa-league-qualification": (10613, "UEFA Europa League", "Europe", "qualifying"),
-    "conference-league": (10216, "UEFA Conference League", "Europe", "uefa"),
-    "conference-league-qualification": (10615, "UEFA Conference League", "Europe", "qualifying"),
-}
+# Lig listesi tek kaynaktan: api/rankit_competitions.py.
+from api import rankit_competitions as rc  # noqa: E402
+
+FOOTBALL_LEAGUES = rc.football_leagues()
 
 NBA_COLORS = {
     "ATL":"#E03A3E","BOS":"#007A33","BKN":"#000000","CHA":"#1D1160","CHI":"#CE1141",
@@ -204,36 +190,47 @@ def _fixture_in_season(item: dict, start_year: int) -> bool:
     return f"{start_year}-07-01" <= date_part < f"{start_year + 1}-07-01"
 
 
-def _euroleague_payload(season: str) -> list[dict]:
+def _euroleague_payload(season: str, code: str = "E") -> list[dict]:
     start = int(season.split("-")[0])
-    url = f"https://api-live.euroleague.net/v2/competitions/E/seasons/E{start}/games"
+    url = f"https://api-live.euroleague.net/v2/competitions/{code}/seasons/{code}{start}/games"
     request = Request(url, headers={"User-Agent": "PrimaryArch-RankIt/0.4"})
     with urlopen(request, timeout=30) as response:
         return (json.load(response) or {}).get("data") or []
 
 
-def _euroleague_stage(item: dict) -> str:
+def _euroleague_stage(item: dict, fallback: str = "EuroLeague") -> str:
     phase = str((item.get("phaseType") or {}).get("name") or "").strip().title()
     group = str((item.get("group") or {}).get("rawName") or "").strip().title()
     round_name = str(item.get("roundName") or "").strip()
     if phase == "Regular Season":
         return round_name or "Regular Season"
-    return " · ".join(part for part in (phase, group) if part) or round_name or "EuroLeague"
+    return " · ".join(part for part in (phase, group) if part) or round_name or fallback
 
 
-def sync_euroleague(season: str) -> dict:
-    """Resmi EuroLeague canlı feed'ini ortak RankIt maç şemasına aktar."""
-    games = _euroleague_payload(season)
+def sync_eurocup(season: str) -> dict:
+    return sync_euroleague(season, "U")
+
+
+def sync_euroleague(season: str, code: str = "E") -> dict:
+    """Resmi EuroLeague canlı feed'ini ortak RankIt maç şemasına aktar.
+
+    Aynı uç EuroCup'ı da veriyor (yarışma kodu "U"). EuroCup maçları ayrı
+    sağlayıcı adıyla ("eurocup") yazılır: iki yarışmanın maç kimlikleri
+    çakışmasın ve canlı güncelleyici hangi kodla soracağını bilsin."""
+    comp = next(c for c in rc.COMPETITIONS if c.provider in ("euroleague", "eurocup") and c.source == code)
+    games = _euroleague_payload(season, code)
     if not games:
         return {"matches": 0, "players": 0, "links": 0}
     player_path = ROOT / "data" / f"euroleague__{season}__player_scores.parquet"
     if not player_path.exists():
         player_path = ROOT / "data" / f"euroleague__{_previous_season(season)}__player_scores.parquet"
+    if code != "E":
+        player_path = Path("/nonexistent")     # oyuncu parquet'i yalnız EuroLeague için
     players = pd.read_parquet(player_path) if player_path.exists() else pd.DataFrame(
         columns=["PLAYER_ID", "PLAYER_NAME", "TEAM_ABBREVIATION"])
     linked = 0
     with get_conn() as conn:
-        comp_id = _competition(conn, "Basketball", "EuroLeague", "Europe", season)
+        comp_id = _competition(conn, "Basketball", comp.name, "Europe", season)
         team_ids: dict[str, int] = {}
         for game in games:
             for side_key in ("local", "road"):
@@ -263,13 +260,13 @@ def sync_euroleague(season: str) -> dict:
             game_status = str(game.get("gameStatus") or "").lower()
             played = bool(game.get("played"))
             status = "finished" if played else "live" if game_status in {"live", "playing", "in progress", "started"} else "upcoming"
-            mid = _match(conn, provider="euroleague", external_id=game.get("identifier") or game.get("id"),
+            mid = _match(conn, provider=comp.provider, external_id=game.get("identifier") or game.get("id"),
                          sport="Basketball", comp_id=comp_id, season=season,
                          starts_at=str(game.get("utcDate") or game.get("date") or ""), status=status,
                          home_id=team_ids[home_code], away_id=team_ids[away_code],
                          home_score=int(home.get("score") or 0) if played or status == "live" else None,
                          away_score=int(away.get("score") or 0) if played or status == "live" else None,
-                         stage=_euroleague_stage(game))
+                         stage=_euroleague_stage(game, comp.name))
             for code in (home_code, away_code):
                 for pid in rosters.get(code, []):
                     conn.execute("INSERT OR IGNORE INTO rankit_match_players(match_id,player_id,team_id) VALUES(?,?,?)",
@@ -289,7 +286,10 @@ def _nba_schedule_v2(season: str) -> pd.DataFrame:
     # NBA Cup eleme slotlarinda takimlar grup asamasi bitene kadar null gelir.
     # Bunlari uydurmak yerine sonraki idempotent senkronizasyona birak.
     raw = raw.dropna(subset=["homeTeam_teamTricode", "awayTeam_teamTricode"])
+    label = raw.get("gameLabel", pd.Series("", index=raw.index)).fillna("").astype(str).str.strip()
+    sub = raw.get("gameSubLabel", pd.Series("", index=raw.index)).fillna("").astype(str).str.strip()
     return pd.DataFrame({
+        "STAGE": [nba_stage(a, b) for a, b in zip(label, sub)],
         "GAME_ID": raw["gameId"].astype(str),
         "GAME_DATE_TIME": raw["gameDateTimeUTC"],
         "HOME_ABBREVIATION": raw["homeTeam_teamTricode"],
@@ -298,6 +298,18 @@ def _nba_schedule_v2(season: str) -> pd.DataFrame:
         "HOME_PTS": pd.to_numeric(raw["homeTeam_score"], errors="coerce"),
         "AWAY_PTS": pd.to_numeric(raw["awayTeam_score"], errors="coerce"),
     })
+
+
+def nba_stage(label: str, sub_label: str = "") -> str:
+    """ScheduleLeagueV2 gameLabel/gameSubLabel -> aşama. Etiketsiz maç normal
+    sezon. NBA Cup grup maçları da normal sezonun parçası, ama aşamada görünür
+    (Hunt'ın 82 maç kuralı "Regular Season%" ile süzer)."""
+    label, sub_label = (label or "").strip(), (sub_label or "").strip()
+    if not label:
+        return "Regular Season"
+    if "cup" in label.lower() and "final" not in f"{label} {sub_label}".lower():
+        return f"Regular Season · {label}"
+    return " · ".join(part for part in (label, sub_label) if part)
 
 
 def _cache_is_fresh(path: Path, max_age_hours: float | None) -> bool:
@@ -376,7 +388,8 @@ def sync_nba(season: str, max_age_hours: float | None = None) -> dict:
             mid = _match(conn, provider="nba", external_id=row.GAME_ID, sport="Basketball", comp_id=comp_id,
                          season=season, starts_at=row.GAME_DATE_TIME, status="finished" if int(row.GAME_STATUS) == 3 else "live" if int(row.GAME_STATUS) == 2 else "upcoming",
                          home_id=team_ids[row.HOME_ABBREVIATION], away_id=team_ids[row.AWAY_ABBREVIATION],
-                         home_score=None if pd.isna(row.HOME_PTS) else int(row.HOME_PTS), away_score=None if pd.isna(row.AWAY_PTS) else int(row.AWAY_PTS))
+                         home_score=None if pd.isna(row.HOME_PTS) else int(row.HOME_PTS), away_score=None if pd.isna(row.AWAY_PTS) else int(row.AWAY_PTS),
+                         stage=getattr(row, "STAGE", None) or "Regular Season")
             for abbr in (row.HOME_ABBREVIATION, row.AWAY_ABBREVIATION):
                 for pid in roster.get(abbr, []):
                     conn.execute("INSERT OR IGNORE INTO rankit_match_players(match_id,player_id,team_id) VALUES(?,?,?)", (mid, pid, team_ids[abbr]))
@@ -392,6 +405,7 @@ def sync_football(season: str) -> dict:
     long_season = f"{start_year}-{start_year + 1}"
     fotmob_season = f"{start_year}/{start_year + 1}"
     total_matches = total_players = linked = total_pruned = 0
+    mismatched: list[str] = []
     # Saglayici istekleri yazma islemi ACILMADAN once. Eskiden ff.api() bu
     # transaction'in icindeydi: ilk INSERT yazma kilidini aliyor ve 16 lig
     # istegi boyunca (403/429'da geri cekilmeyle dakikalarca) birakmiyordu --
@@ -402,6 +416,14 @@ def sync_football(season: str) -> dict:
                 for slug, (league_id, _name, _country, _mode) in FOOTBALL_LEAGUES.items()}
     with get_conn() as conn:
         for slug, (league_id, league_name, country, mode) in FOOTBALL_LEAGUES.items():
+            payload = payloads[slug]
+            # Ad doğrulaması: kimlik yanlışsa (ör. yeni eklenen bir kupa)
+            # başka bir ligin maçları bu yarışmanın altına yazılmasın.
+            expected = rc.BY_KEY.get(slug.removesuffix("-qualification"))
+            provider_name = str((payload.get("details") or {}).get("name") or "")
+            if payload and expected and provider_name and not rc.name_matches(expected, provider_name):
+                mismatched.append(f"{slug}: FotMob id {league_id} is '{provider_name}'")
+                continue
             comp_id = _competition(conn, "Football", league_name, country, season)
             parquet = ROOT / "data" / f"football__{slug}__{long_season}__fotmob.parquet"
             if not parquet.exists():
@@ -471,7 +493,88 @@ def sync_football(season: str) -> dict:
                 total_matches += 1
             # Lig basina commit: kilit tek bir ligin yazimi kadar kisa kalir.
             conn.commit()
-    return {"matches": total_matches, "players": total_players, "links": linked, "pruned": total_pruned}
+    result = {"matches": total_matches, "players": total_players, "links": linked, "pruned": total_pruned}
+    if mismatched:
+        result["skipped"] = mismatched
+        print("[rankit-sync] FotMob ad uyuşmazlığı, atlandı: " + "; ".join(mismatched), file=sys.stderr)
+    return result
+
+
+def _team_resolver(conn, sport: str, women: bool):
+    """Sağlayıcının takım adı -> bizim satırımız. Aynı kulüp iki kaynakta
+    farklı yazılıyor ("Fenerbahce Beko Istanbul" EuroLeague'de, "Fenerbahçe
+    Beko" SofaScore'da); ayrı satır olsa takip ve Hunt ikiye bölünürdü.
+    Kadın ve erkek takımları ayrı dizinde: "Fenerbahçe (W)" erkek takıma
+    asla eşlenmez (ve tersi)."""
+    from api.rankit_live_sync import _match_team, _norm_team
+    from api.rankit_sofascore import WOMEN_SUFFIX
+
+    index: dict = {}
+    for row in conn.execute("SELECT id,name,short_name FROM rankit_teams WHERE sport=?", (sport,)):
+        if row["name"].endswith(WOMEN_SUFFIX) != women:
+            continue
+        for key in (row["name"], row["short_name"]):
+            if key:
+                index.setdefault(_norm_team(key), row["id"])
+    index.pop("", None)
+
+    def resolve(name: str, short: str, country: str) -> int:
+        found = _match_team(index, name)
+        if found:
+            return found
+        tid = _team(conn, sport, name, short, _color(name), country)
+        index[_norm_team(name)] = tid
+        return tid
+    return resolve
+
+
+def sync_sofascore(season: str, keys: list[str] | None = None, get=None) -> dict:
+    """Voleybol, Basketbol Süper Ligi ve Türk kupaları (SofaScore).
+
+    Yarışma başına bağımsız: biri çözülemezse (kimlik bulunamadı, ad
+    uyuşmadı) diğerleri yine yazılır, hata sonuçta listelenir. Sağlayıcı
+    istekleri yazma işlemi AÇILMADAN önce (sync_football'daki kilit dersi)."""
+    from api import rankit_sofascore as sofa
+
+    get = get or sofa.http_get
+    comps = [c for c in rc.of("sofascore") if keys is None or c.key in keys]
+    fetched, errors = [], []
+    for comp in comps:
+        try:
+            tournament_id, provider_name = sofa.resolve_tournament(comp, get)
+            batch = []
+            for sid in sofa.season_ids(tournament_id, season, get):
+                batch += [e for e in sofa.events(tournament_id, sid, get) if sofa.in_season(e, season)]
+            fetched.append((comp, batch))
+        except sofa.Blocked as exc:
+            errors.append(f"{comp.key}: {exc}")
+            break                                  # engellendik: kalanları zorlamıyoruz
+        except Exception as exc:                   # noqa: BLE001 — yarışma hatası ölümcül değil
+            errors.append(f"{comp.key}: {type(exc).__name__}: {exc}")
+    total = 0
+    with get_conn() as conn:
+        for comp, batch in fetched:
+            comp_id = _competition(conn, comp.sport, comp.name, comp.country, season)
+            resolve = _team_resolver(conn, comp.sport, comp.women)
+            for event in batch:
+                status = sofa.status_of(event)
+                home, away = event.get("homeTeam") or {}, event.get("awayTeam") or {}
+                home_name, away_name = sofa.team_name(home, comp), sofa.team_name(away, comp)
+                if status is None or not home_name or not away_name:
+                    continue
+                home_score, away_score = sofa.scores(event, status)
+                _match(conn, provider="sofascore", external_id=event["id"], sport=comp.sport,
+                       comp_id=comp_id, season=season, starts_at=sofa.starts_at(event), status=status,
+                       home_id=resolve(home_name, _short_label(home.get("shortName"), home_name), comp.country),
+                       away_id=resolve(away_name, _short_label(away.get("shortName"), away_name), comp.country),
+                       home_score=home_score, away_score=away_score, stage=sofa.stage_of(event, comp))
+                total += 1
+            conn.commit()
+    result = {"matches": total, "players": 0, "links": 0, "competitions": len(fetched)}
+    if errors:
+        result["errors"] = errors
+        print("[rankit-sync] SofaScore: " + "; ".join(errors), file=sys.stderr)
+    return result
 
 
 def _record_run(provider: str, season: str, ok: bool, result: dict, error: str, duration_ms: int) -> None:
@@ -500,7 +603,10 @@ def _run(provider: str, fn, season: str) -> bool:
     try:
         result = fn()
         ms = int((time.time() - started) * 1000)
-        _record_run(provider, season, True, result, "", ms)
+        # Tur çalıştı ama bazı yarışmalar atlandıysa (kimlik çözülemedi, ad
+        # uyuşmadı) bu sync-health'te görünmeli: hata sütununa not düşülür.
+        partial = "; ".join(result.get("errors") or result.get("skipped") or [])
+        _record_run(provider, season, True, result, partial, ms)
         print(provider.upper(), result)
         return True
     except Exception as exc:                       # noqa: BLE001 — sağlayıcı hatası ölümcül değil
@@ -513,7 +619,7 @@ def _run(provider: str, fn, season: str) -> bool:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--season", default="2025-26")
-    parser.add_argument("--only", choices=["nba", "euroleague", "football", "all"], default="all")
+    parser.add_argument("--only", choices=["nba", "euroleague", "eurocup", "football", "sofascore", "all"], default="all")
     parser.add_argument("--refresh", action="store_true",
                         help="Cache'i yok say, saglayiciya git (--max-age 0 ile ayni)")
     parser.add_argument("--max-age", type=float, default=None, metavar="SAAT",
@@ -528,8 +634,12 @@ def main():
         ok &= _run("nba", lambda: sync_nba(args.season, max_age), args.season)
     if args.only in ("euroleague", "all"):
         ok &= _run("euroleague", lambda: sync_euroleague(args.season), args.season)
+    if args.only in ("eurocup", "all"):
+        ok &= _run("eurocup", lambda: sync_eurocup(args.season), args.season)
     if args.only in ("football", "all"):
         ok &= _run("football", lambda: sync_football(args.season), args.season)
+    if args.only in ("sofascore", "all"):
+        ok &= _run("sofascore", lambda: sync_sofascore(args.season), args.season)
     # Zamanlayıcının başarısızlığı görebilmesi için çıkış kodu.
     sys.exit(0 if ok else 1)
 

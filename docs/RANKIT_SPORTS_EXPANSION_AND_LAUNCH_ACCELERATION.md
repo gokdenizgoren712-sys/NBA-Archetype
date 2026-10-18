@@ -76,7 +76,7 @@ Bu modele uyan sporlar hızlı eklenir. Uymayanlar yeni bir "etkinlik" modeli is
 
 | Sağlayıcı | Kapsam | Fiyat (teyit et) | RankIt için |
 |---|---|---|---|
-| **API-Sports** ([api-football.com](https://www.api-football.com/news/post/how-to-get-started-with-api-football-the-complete-beginners-guide)) | Futbol 1000+ lig; basketbol 400+ lig; voleybol, hentbol, hokey, NFL, MLB, tenis, F1, MMA dahil 35+ API | Free 100 istek/gün; Pro $19 (7.500/gün), Ultra $29 (75.000/gün), Mega $39 (150.000/gün) | **Önerilen ana yol:** tek satıcı, tek şema, düşük fiyat. BSL ve Sultanlar Ligi kapsamı satın almadan önce lig listesinden doğrulanmalı (aramada teyit edilemedi) |
+| **API-Sports** ([api-football.com](https://www.api-football.com/news/post/how-to-get-started-with-api-football-the-complete-beginners-guide)) | Futbol 1000+ lig; basketbol 400+ lig; voleybol, hentbol, hokey, NFL, MLB, tenis, F1, MMA dahil 35+ API | Ücretsiz katman 100 istek/gün. **Futbol:** Pro $19/ay (7.500 istek/gün), Ultra $29/ay (75.000/gün), Mega $39/ay (150.000/gün). **Basketbol ve voleybol (her biri):** Pro $15/ay (7.500/gün), orta plan $25/ay (75.000/gün). Fiyatlar sahibin api-sports.io'dan aktardığı (18 Ekim 2026) | **Önerilen ana yol:** tek satıcı, tek şema, düşük fiyat. BSL ve Sultanlar Ligi kapsamı satın almadan önce lig listesinden doğrulanmalı (aramada teyit edilemedi) |
 | **Sportmonks** ([fiyatlar](https://www.sportmonks.com/football-api/plans-pricing)) | Futbol 2.300+ lig | Starter €29/ay (5 lig), Growth €99 (30 lig), Pro €249 (120 lig); ek lig €4/ay | Futbolda daha zengin veri; yalnız futbol |
 | **football-data.org** ([karşılaştırma](https://www.thestatsapi.com/blog/football-data-org-free-tier-limits-2026)) | Ücretsiz 12 yarışma (Süper Lig yok); ücretli ~€12–199 | Ücretsiz katman | Yedek ya da çapraz doğrulama; Süper Lig yok |
 | **EuroLeague API** (bugün kullanılıyor) | EuroLeague + EuroCup | Ücretsiz, resmi değil | EuroCup için hemen |
@@ -85,39 +85,55 @@ Bu modele uyan sporlar hızlı eklenir. Uymayanlar yeni bir "etkinlik" modeli is
 
 **Not: veri lisansı ile marka hakkı ayrı şeyler.** Ücretli API skor ve fikstür verisini lisanslar. Kulüp armaları, lig logoları ve oyuncu fotoğrafları ise kulüplerin ve ligin markasıdır; API'nin logo bağlantısı vermesi kullanım hakkı vermez. Bu yüzden Paket E (arma yerine takım rengi + kısa ad rozeti) lisanslı veriye geçilse de geçerli kalır.
 
-### 3.3 Öneri
+### 3.3 Karar (18 Ekim 2026): Türkiye lansman paketi
 
-- **Lansman öncesi** (riski artırmayan, çok ucuz işler):
-  1. NBA fikstürünü otomatik taramaya ekle. Bu bir hata düzeltmesi.
-  2. Lig listesini tek kayda topla.
-  3. EuroCup (aynı kaynak).
-  4. **Süper Lig:** FotMob'a eklenirse yarım gün; lisanslı yoldan eklenirse API-Sports Pro $19/ay ve 2–3 gün (yeni sağlayıcı katmanı). Önerim lisanslı yol. TR lansmanının en güçlü kancası, ama "kazınmış veriyle büyümek" riskini lansman ölçeğinde büyütmemek gerek.
-- **Lansmandan sonraki 30 gün:**
-  - futbolda kaynağı API-Sports'a taşı; FotMob yalnız yedek ya da kapalı;
-  - BSL;
-  - milli takım maçları.
-- **30–90 gün:**
-  - Voleybol (Sultanlar Ligi önce): sporun genel uyarlaması (göç + skor/etiket/POTM metinleri) burada bir kez yapılır, sonraki takım sporları ucuzlar;
-  - Güney Amerika ligleri (Türkçe arayüzden sonra İspanyolca ve Portekizce ile birlikte).
-- **90+ gün:**
-  - tenis (bireysel model);
-  - F1 / MotoGP (yarış modeli).
-  Ürün kararı gerektirir: "maçı puanla" yerine "yarışı puanla".
+Sahibin kararı: lansman Türkiye'de güçlü bir kapsamla yapılacak. Voleybol ve Basketbol Süper Ligi **şimdilik SofaScore'dan** çekilecek (resmi olmayan uç, FotMob'la aynı risk sınıfı). Lisanslı sağlayıcıya geçiş lansman sonrasına kaldı.
 
-### 3.4 Teknik iş listesi (sağlayıcı katmanı)
+| Eklenecek | Spor | Kaynak | Not |
+|---|---|---|---|
+| **Sultanlar Ligi** (kadın), **Efeler Ligi** (erkek) | Voleybol | SofaScore | "Türkiye ligi" |
+| **Kupa Voley** (kadın + erkek), **Türkiye Süper Kupası** (kadın + erkek) | Voleybol | SofaScore | Ulusal kupalar |
+| **CEV Şampiyonlar Ligi** (erkek + kadın) | Voleybol | SofaScore | |
+| **Basketbol Süper Ligi** | Basketbol | SofaScore | |
+| **Türkiye Kupası**, **Cumhurbaşkanlığı (Süper) Kupası** | Basketbol | SofaScore | Ulusal kupalar |
+| **EuroCup** | Basketbol | EuroLeague API (kod `U`) | |
+| **EFL Cup**, **Community Shield**, **Supercopa de España**, **Supercoppa Italiana**, **DFL-Supercup**, **Trophée des Champions** | Futbol | FotMob | Mevcut liglerin eksik ulusal kupaları (FA Cup, Copa del Rey, Coppa Italia, DFB-Pokal, Coupe de France zaten var) |
+| **NBA eksikleri** | Basketbol | nba_api | Fikstür otomatik taramaya girer; aşama (NBA Cup, Play-In, playoff) yazılır |
 
-| İş | Efor |
+**Açık soru:** futbolda Süper Lig + Türkiye Kupası (FotMob'da var, yarım gün) bu pakete girsin mi? Türkiye lansmanında en çok sorulacak lig bu.
+
+**Güvenlik önlemleri** (kazınan kaynak için):
+- **Ad doğrulaması:** her yarışmanın sağlayıcıdaki adı kayıtta tutulan beklentiyle karşılaştırılır. Kimlik yanlışsa yanlış lig içeri alınmaz, tur günlüğe hata olarak yazılır.
+- **Kimlik çözümü:** SofaScore yarışma kimlikleri sabit yazılmadı. Ülke kategorisinden adla bulunur; tek aday yoksa hata verir. `SOFASCORE_TOURNAMENT_IDS` ortam değişkeniyle elle sabitlenebilir.
+- **Bağımsızlık:** sağlayıcılar birbirinden bağımsız çalışır; SofaScore düşerse futbol ve EuroLeague etkilenmez.
+- **Armalar:** SofaScore armaları kullanılmaz (Paket E: takım rengi + kısa ad).
+- **Kadın takımları:** Fenerbahçe gibi hem erkek hem kadın takımı olan kulüpler karışmasın diye kadın yarışmalarındaki takımlar "(W)" ekiyle ayrı tutulur.
+
+**Lansman sonrası:**
+- voleybol ve BSL için lisanslı sağlayıcıya geçiş: API-Sports ([basketbol kapsamı](https://api-sports.io/sports/basketball)).
+  - **Maliyet:** basketbol + voleybol Pro planla ayda $30 (2 × $15, günde 7.500 istek); futbol da eklenirse ayda $49.
+  - **Canlı skor sıklığı:** 15 dakikalık turda günde 7.500 istek yeter; canlı maçlarda 45 saniyelik yoklamaya geçilirse orta plan gerekir (basketbol/voleybol $25, futbol $29).
+  - Geçiş için tek iş sağlayıcı katmanını yazmak; yarışma kaydına yeni bir `provider` olarak girer.
+- milli takım maçları;
+- Güney Amerika ligleri;
+- tenis;
+- F1.
+
+### 3.4 Teknik iş listesi
+
+| İş | Durum |
 |---|---|
-| `rankit_competitions.py` tek kayıt (lig, sağlayıcı, kimlik, mod); üç tekrarı kaldır | 0,5 gün |
-| NBA fikstürünü `refresh_catalog`'a ekle + test | 0,5 gün |
-| EuroCup | 0,5 gün |
-| Sağlayıcı arayüzü (`fixtures(season)`, `live(match)`, `lineups(match)`) + API-Sports uygulaması; anahtar Railway'de (`API_SPORTS_KEY`); istek bütçesi ve önbellek | 2–3 gün |
-| Süper Lig + Türkiye Kupası (yeni sağlayıcıdan), yayıncı kuralları (beIN / TRT) | 1 gün |
-| Aynı takımın iki sağlayıcıdaki adını eşleme (bugünkü `_norm_team` genişler) | 1 gün |
-| Yeni spor göçü (`sport` CHECK'li tabloyu kopyalayarak yeniden kur) + voleybol arayüz uyarlaması (set skoru, etiketler, POTM metni, `discoverFilters`) | 3–4 gün |
-| Her lig için: sezon başı fikstür, canlı skor, sonuç doğrulama testi | lig başına 0,5 gün |
-
----
+| `api/rankit_competitions.py`: tek kayıt (yarışma, spor, sağlayıcı, kimlik, mod, ad beklentisi); üç tekrar listesi bundan türetilir | Bu turda |
+| Veritabanı göçü: `rankit_competitions.sport` kısıtına `Volleyball` (tablo veri korunarak yeniden kurulur) | Bu turda |
+| `src/rankit_sofascore.py`: kimlik çözümü, sezon seçimi, sayfalı fikstür, durum/skor/aşama eşleme, takım adı eşleme (EuroLeague'deki "Fenerbahçe Beko" ile BSL'deki aynı takım tek satır), istek sınırı ve geri çekilme | Bu turda |
+| EuroCup (EuroLeague senkronunun kod parametresiyle) | Bu turda |
+| Futbol kupaları (FotMob, ad doğrulamalı) | Bu turda |
+| NBA: otomatik fikstür taraması, aşama | Bu turda |
+| Canlı skor: SofaScore ve EuroCup maçları 15 dakikalık turda | Bu turda |
+| Hunt / sezon kuralları: yeni ligler çift devreli lig sayılır, playoff hariç | Bu turda |
+| Arayüz: voleybol filtresi, set skoru gösterimi, voleybol etiketleri, POTM metni, companion dakika yerine set | Sonraki tur |
+| Yayıncı kuralları (TRT Spor, S Sport, beIN, Tivibu) | Sonraki tur |
+| İlk canlı çalıştırma: `sync-health` ve `rankit_sync_runs` ile kimlik çözümünün doğrulanması | Deploy sonrası |
 
 ## 4. Mağaza çıkışını hızlandırma
 
@@ -151,8 +167,8 @@ Sayaç başlamadan geçen her gün yayını bir gün geciktirir. Kodda kapalı t
 
 | Tarih | Android | iOS |
 |---|---|---|
-| 19–23 Eki | Hesap → AAB → internal test → **kapalı test başlar** | Apple hesabı; Mac/CI kararı |
-| 23 Eki – 6 Kas (14 gün) | Kapalı test. Paralelde: Paket C, NBA/EuroCup/tek kayıt, (Süper Lig), hukuk metinleri, mağaza görselleri, Paket E | iOS projesi, Google'ı gizleme, geri/kapat denetimi → TestFlight internal |
+| 19–23 Eki | Hesap → AAB → internal test → **kapalı test başlar**. Backend: Türkiye paketi (voleybol, BSL, EuroCup, kupalar, NBA) | Apple hesabı; Mac/CI kararı |
+| 23 Eki – 6 Kas (14 gün) | Kapalı test. Paralelde: voleybol arayüzü, yayıncılar, Paket C, Paket E, hukuk metinleri, mağaza görselleri. Test kullanıcıları Sultanlar Ligi ve BSL maçlarıyla dener | iOS projesi, Google'ı gizleme, geri/kapat denetimi → TestFlight internal |
 | 7–12 Kas | Production erişim başvurusu → kademeli yayın | TestFlight external |
 | ~13–20 Kas | **Android yayında** | App Store başvurusu (inceleme genelde 24–48 saat; red payı 1 hafta) |
 | ~20–30 Kas | | **iOS yayında** |
@@ -199,19 +215,19 @@ Kapalı test 23 Ekim'e kadar başlamazsa Android tarihi gün gün kayar. Hedef a
 
 | # | Karar | Önerim |
 |---|---|---|
-| 1 | Veri yolu: FotMob'u genişlet / API-Sports'a geç / Sportmonks | **API-Sports** (futbol Pro $19 ile başla; basketbol ve voleybol eklenince her biri ayrı abonelik) |
-| 2 | Süper Lig lansmandan önce mi? | Evet, lisanslı yoldan, kapalı test sırasında (2–3 gün) |
+| 1 | Veri yolu | ✅ **Karar verildi:** lansmanda SofaScore (voleybol, BSL, Türk kupaları) + FotMob + EuroLeague API; lisanslı sağlayıcıya geçiş lansman sonrası |
+| 2 | Futbolda Süper Lig + Türkiye Kupası lansmana girsin mi? | Evet; FotMob'dan yarım gün. **Senin onayını bekliyor** |
 | 3 | Arma ve fotoğraflar (Paket E) | Lansmanda rozet; marka izni olmadan logo yok |
 | 4 | Hesap tipi | D-U-N-S hazır değilse bireysel |
 | 5 | iOS girişi | iOS'ta Google'ı gizle, Apple ile giriş v1.1'de |
 | 6 | iOS derleme | Mac yoksa GitHub Actions macOS + TestFlight |
-| 7 | Sporların sırası (lansman sonrası) | BSL → voleybol (Sultanlar Ligi) → milli takımlar → Güney Amerika → tenis → F1 |
+| 7 | Sporların sırası | ✅ Voleybol ve BSL lansmanda; sonra milli takımlar → Güney Amerika → tenis → F1 |
 
 ---
 
 ## 6. Benim tarafımda sıradakiler
 
-1. **Hemen** (onayınla): NBA fikstürünü otomatik taramaya ekle, lig listesini tek kayda topla, EuroCup.
+1. **Başladı (18 Ekim):** tek lig kaydı, voleybol şema göçü, SofaScore sağlayıcısı (voleybol + BSL + Türk kupaları), EuroCup, futbol kupaları, NBA otomatik fikstür. Ardından voleybol arayüzü.
 2. **Kapalı test sırasında:**
    - Paket C: Sentry, sync sağlığı, paylaşım, erişilebilirlik;
    - sağlayıcı katmanı + Süper Lig (karar 1–2'ye göre);

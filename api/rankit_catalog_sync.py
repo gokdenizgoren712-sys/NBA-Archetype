@@ -78,18 +78,31 @@ def _mark_result(*, matches: int = 0, error: str = "") -> None:
         )
 
 
+# Otomatik taranan sağlayıcılar, sırayla. NBA eskiden burada YOKTU: fikstür
+# yalnız elle çalıştırılan src/rankit_sync.py ile geliyordu, canlı güncelleyici
+# de yalnız var olan maçları güncelliyor -- yeni sezonun takvimi kendiliğinden
+# hiç gelmiyordu (2026-10-18). NBA 6 saatlik önbellekle: her turda
+# stats.nba.com'a gitmez.
+def _providers():
+    from src import rankit_sync as rs
+    return (
+        ("euroleague", rs.sync_euroleague),
+        ("eurocup", rs.sync_eurocup),
+        ("football", rs.sync_football),
+        ("nba", lambda season: rs.sync_nba(season, max_age_hours=REFRESH_HOURS)),
+        ("sofascore", rs.sync_sofascore),
+    )
+
+
 def _sync_once() -> int:
-    from src.rankit_sync import sync_euroleague, sync_football
+    from src.rankit_sync import _run
 
     total = 0
     for season in ("2025-26", "2026-27"):
-        euroleague = sync_euroleague(season)
-        total += int(euroleague.get("matches", 0))
-        print(f"[rankit-catalog] EuroLeague {season}: {euroleague}", flush=True)
-
-        football = sync_football(season)
-        total += int(football.get("matches", 0))
-        print(f"[rankit-catalog] Football {season}: {football}", flush=True)
+        for provider, fn in _providers():
+            _run(provider, lambda s=season, f=fn: f(s), season)
+    with get_conn() as conn:
+        total = conn.execute("SELECT COUNT(*) FROM rankit_matches WHERE provider IS NOT NULL").fetchone()[0]
     return total
 
 
@@ -116,7 +129,7 @@ def seasons_to_refresh(conn, now: datetime | None = None) -> list[str]:
     since = (now - timedelta(days=OPEN_MATCH_DAYS)).strftime("%Y-%m-%d %H:%M:%S")
     still_open = conn.execute(
         """SELECT 1 FROM rankit_matches
-           WHERE season=? AND provider IN ('fotmob','euroleague')
+           WHERE season=? AND provider IN ('fotmob','euroleague','eurocup','nba','sofascore')
              AND status IN ('upcoming','live')
              AND datetime(starts_at) >= datetime(?)
            LIMIT 1""",
@@ -153,16 +166,16 @@ def _mark_refresh(ok: bool, note: str = "") -> None:
 
 def refresh_catalog(now: datetime | None = None) -> dict:
     """Guncel sezonun fiksturlerini yeniden tara; yeni yayimlananlari ekle."""
-    from src.rankit_sync import _run, sync_euroleague, sync_football
+    from src.rankit_sync import _run
 
     with get_conn() as conn:
         seasons = seasons_to_refresh(conn, now)
     ok = True
     for season in seasons:
-        # _run hatayi yutar ve rankit_sync_runs'a yazar: FotMob dusse bile
-        # EuroLeague turu yapilmis olur (ve tersi).
-        ok = _run("euroleague", lambda s=season: sync_euroleague(s), season) and ok
-        ok = _run("football", lambda s=season: sync_football(s), season) and ok
+        # _run hatayi yutar ve rankit_sync_runs'a yazar: bir saglayici dusse
+        # bile digerlerinin turu yapilmis olur.
+        for provider, fn in _providers():
+            ok = _run(provider, lambda s=season, f=fn: f(s), season) and ok
     _mark_refresh(ok, "" if ok else "see rankit_sync_runs")
     return {"seasons": seasons, "ok": ok}
 

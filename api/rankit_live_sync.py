@@ -11,18 +11,11 @@ import threading
 import time
 
 from .db import get_conn
+from . import rankit_competitions as rc
 
 
-FOTMOB_LEAGUES = {
-    "Premier League": [(47, "league")], "La Liga": [(87, "league")],
-    "Serie A": [(55, "league")], "Bundesliga": [(54, "league")],
-    "Ligue 1": [(53, "league")], "FA Cup": [(132, "cup")],
-    "Copa del Rey": [(138, "cup")], "Coppa Italia": [(141, "cup")],
-    "DFB-Pokal": [(209, "cup")], "Coupe de France": [(134, "cup")],
-    "UEFA Champions League": [(42, "uefa"), (10611, "qualifying")],
-    "UEFA Europa League": [(73, "uefa"), (10613, "qualifying")],
-    "UEFA Conference League": [(10216, "uefa"), (10615, "qualifying")],
-}
+# Lig listesi tek kaynaktan: api/rankit_competitions.py.
+FOTMOB_LEAGUES = rc.fotmob_leagues()
 JOB_NAME = "rankit_live_scores"
 
 # FotMob canli dakikayi yon isaretleriyle veriyor ("73" + U+200E + U+2019 +
@@ -115,12 +108,12 @@ def _refresh_fotmob(competition: str, season: str) -> int:
     return updated
 
 
-def _refresh_euroleague(season: str) -> int:
+def _refresh_euroleague(season: str, code: str = "E", provider: str = "euroleague") -> int:
     from curl_cffi import requests
 
     start = str(season).split("-")[0]
     response = requests.get(
-        f"https://api-live.euroleague.net/v2/competitions/E/seasons/E{start}/games",
+        f"https://api-live.euroleague.net/v2/competitions/{code}/seasons/{code}{start}/games",
         headers={"User-Agent": "PrimaryArch-RankIt/0.4"}, timeout=25,
     )
     response.raise_for_status()
@@ -140,17 +133,54 @@ def _refresh_euroleague(season: str) -> int:
             external_id = str(item.get("identifier") or item.get("id"))
             starts_at = str(item.get("utcDate") or item.get("date") or "")
             cur = conn.execute("""UPDATE rankit_matches SET starts_at=?,status=?,home_score=?,away_score=?,stage=?
-                WHERE provider='euroleague' AND provider_match_id=?
+                WHERE provider=? AND provider_match_id=?
                   AND (starts_at<>? OR status<>? OR COALESCE(home_score,-1)<>COALESCE(?,-1)
                        OR COALESCE(away_score,-1)<>COALESCE(?,-1) OR COALESCE(stage,'')<>?)""",
-                (starts_at, status, home_score, away_score, stage, external_id,
+                (starts_at, status, home_score, away_score, stage, provider, external_id,
                  starts_at, status, home_score, away_score, stage))
+            updated += max(0, cur.rowcount)
+    return updated
+
+
+def _refresh_sofascore(competition: str, get=None) -> int:
+    """SofaScore maçları: lig sayfası yerine maç başına /event/{id} -- yalnız
+    canlı penceredeki (2 gün geri, 8 saat ileri) birkaç maç sorulur."""
+    from . import rankit_sofascore as sofa
+
+    comp = rc.BY_NAME.get(competition)
+    if not comp or comp.provider != "sofascore":
+        return 0
+    get = get or sofa.http_get
+    with get_conn() as conn:
+        targets = [r[0] for r in conn.execute("""SELECT m.provider_match_id FROM rankit_matches m
+            JOIN rankit_competitions c ON c.id=m.competition_id
+            WHERE m.provider='sofascore' AND c.name=? AND m.status IN ('upcoming','live')
+              AND datetime(m.starts_at) BETWEEN datetime('now','-2 days') AND datetime('now','+8 hours')""",
+            (competition,))]
+    updated = 0
+    for external_id in targets:
+        event = (get(f"/event/{external_id}") or {}).get("event")
+        if not event:
+            continue
+        status = sofa.status_of(event)
+        if status is None:
+            continue
+        home_score, away_score = sofa.scores(event, status)
+        starts, stage = sofa.starts_at(event), sofa.stage_of(event, comp)
+        with get_conn() as conn:
+            cur = conn.execute("""UPDATE rankit_matches SET starts_at=?,status=?,home_score=?,away_score=?,stage=?
+                WHERE provider='sofascore' AND provider_match_id=?
+                  AND (starts_at<>? OR status<>? OR COALESCE(home_score,-1)<>COALESCE(?,-1)
+                       OR COALESCE(away_score,-1)<>COALESCE(?,-1) OR COALESCE(stage,'')<>?)""",
+                (starts, status, home_score, away_score, stage, str(external_id),
+                 starts, status, home_score, away_score, stage))
             updated += max(0, cur.rowcount)
     return updated
 
 
 def _refresh_nba(season: str) -> int:
     from nba_api.stats.endpoints import ScheduleLeagueV2
+    from src.rankit_sync import nba_stage
 
     frame = ScheduleLeagueV2(season=season, timeout=45).get_data_frames()[0]
     if frame.empty:
@@ -166,12 +196,14 @@ def _refresh_nba(season: str) -> int:
             home_score = int(home_raw) if str(home_raw).isdigit() else None
             away_score = int(away_raw) if str(away_raw).isdigit() else None
             starts_at = str(getattr(row, "gameDateTimeUTC"))
-            cur = conn.execute("""UPDATE rankit_matches SET starts_at=?,status=?,home_score=?,away_score=?
+            # Asama (NBA Cup, Play-In, playoff): katalogla ayni kural.
+            stage = nba_stage(str(getattr(row, "gameLabel", "") or ""), str(getattr(row, "gameSubLabel", "") or ""))
+            cur = conn.execute("""UPDATE rankit_matches SET starts_at=?,status=?,home_score=?,away_score=?,stage=?
                 WHERE provider='nba' AND provider_match_id=?
                   AND (starts_at<>? OR status<>? OR COALESCE(home_score,-1)<>COALESCE(?,-1)
-                       OR COALESCE(away_score,-1)<>COALESCE(?,-1))""",
-                (starts_at, status, home_score, away_score, game_id,
-                 starts_at, status, home_score, away_score))
+                       OR COALESCE(away_score,-1)<>COALESCE(?,-1) OR COALESCE(stage,'')<>?)""",
+                (starts_at, status, home_score, away_score, stage, game_id,
+                 starts_at, status, home_score, away_score, stage))
             updated += max(0, cur.rowcount)
     return updated
 
@@ -550,6 +582,10 @@ def refresh_live_scores() -> dict:
                 updated += _refresh_nba(scope["season"])
             elif scope["provider"] == "euroleague":
                 updated += _refresh_euroleague(scope["season"])
+            elif scope["provider"] == "eurocup":
+                updated += _refresh_euroleague(scope["season"], "U", "eurocup")
+            elif scope["provider"] == "sofascore":
+                updated += _refresh_sofascore(scope["competition"])
         except Exception as exc:
             errors.append(f"{scope['competition']} {scope['season']}: {exc}")
     # Kadrolar aynı 15 dakikalık turda: ayrı bir zamanlayıcı açmak yerine

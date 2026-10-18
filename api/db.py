@@ -15,8 +15,51 @@ def get_conn():
     conn.execute("PRAGMA busy_timeout = 15000")
     return conn
 
+RANKIT_SPORTS = ("Basketball", "Football", "Olympics", "Volleyball")
+
+
+def _migrate_competition_sports() -> None:
+    """rankit_competitions.sport CHECK'ine yeni spor (Volleyball, 2026-10).
+
+    SQLite bir CHECK kisitini ALTER edemiyor; belgelenen yol tabloyu yeni
+    adla kurmak, veriyi kopyalamak, eskisini dusurup yenisini yeniden
+    adlandirmak. Yabanci anahtarlar ADLA baglandigi icin (rankit_matches,
+    koleksiyonlar...) yeniden adlandirmadan sonra yeni tabloyu gosterir;
+    islem foreign_keys KAPALIYKEN ve tek transaction icinde yapilir, kimlikler
+    aynen kopyalanir. Idempotent: kisit zaten genisse hicbir sey yapmaz."""
+    if not DB_PATH.exists():
+        return
+    conn = sqlite3.connect(str(DB_PATH), timeout=15, isolation_level=None)
+    try:
+        row = conn.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='rankit_competitions'").fetchone()
+        if not row or "Volleyball" in row[0]:
+            return
+        conn.execute("PRAGMA foreign_keys = OFF")
+        conn.execute("BEGIN IMMEDIATE")
+        conn.execute(f"""CREATE TABLE rankit_competitions__new (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            sport       TEXT NOT NULL CHECK(sport IN ({",".join(repr(x) for x in RANKIT_SPORTS)})),
+            name        TEXT NOT NULL,
+            country     TEXT,
+            season      TEXT NOT NULL,
+            UNIQUE(sport, name, season))""")
+        conn.execute("""INSERT INTO rankit_competitions__new(id,sport,name,country,season)
+                        SELECT id,sport,name,country,season FROM rankit_competitions""")
+        conn.execute("DROP TABLE rankit_competitions")
+        conn.execute("ALTER TABLE rankit_competitions__new RENAME TO rankit_competitions")
+        broken = conn.execute("PRAGMA foreign_key_check").fetchall()
+        if broken:
+            conn.execute("ROLLBACK")
+            raise RuntimeError(f"rankit_competitions migration left {len(broken)} broken references")
+        conn.execute("COMMIT")
+    finally:
+        conn.execute("PRAGMA foreign_keys = ON")
+        conn.close()
+
+
 def init_db():
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+    _migrate_competition_sports()
     with get_conn() as conn:
         # WAL: okuyanlar yazani bloklamiyor. Bu bir DOSYA ayari, bir kez
         # yazilir ve kalir. Gerekcesi olculdu (2026-09-23): `GET /collections`
@@ -250,7 +293,7 @@ def init_db():
         -- mac gunlugu. Tum tablolar rankit_ prefix'iyle izole tutulur.
         CREATE TABLE IF NOT EXISTS rankit_competitions (
             id          INTEGER PRIMARY KEY AUTOINCREMENT,
-            sport       TEXT NOT NULL CHECK(sport IN ('Basketball','Football','Olympics')),
+            sport       TEXT NOT NULL CHECK(sport IN ('Basketball','Football','Olympics','Volleyball')),
             name        TEXT NOT NULL,
             country     TEXT,
             season      TEXT NOT NULL,

@@ -25,25 +25,13 @@ from . import rankit_notify
 from . import rankit_hunt
 from .rankit_live_sync import clean_minute
 from . import moderation_words
+from . import rankit_competitions as rc
 
 router = APIRouter(prefix="/api/rankit", tags=["RankIt"])
 IS_PROD = bool(os.environ.get("RAILWAY_ENVIRONMENT") or os.environ.get("RENDER") == "true" or os.environ.get("IS_PROD") == "true")
 
-FOTMOB_LEAGUE_IDS = {
-    "Premier League": [47],
-    "La Liga": [87],
-    "Serie A": [55],
-    "Bundesliga": [54],
-    "Ligue 1": [53],
-    "FA Cup": [132],
-    "Copa del Rey": [138],
-    "Coppa Italia": [141],
-    "DFB-Pokal": [209],
-    "Coupe de France": [134],
-    "UEFA Champions League": [42, 10611],
-    "UEFA Europa League": [73, 10613],
-    "UEFA Conference League": [10216, 10615],
-}
+# Lig listesi tek kaynaktan: api/rankit_competitions.py.
+FOTMOB_LEAGUE_IDS = rc.fotmob_league_ids()
 
 
 def _team_key(value: str) -> str:
@@ -144,7 +132,9 @@ def backfill_rankit_team_logos() -> dict:
 #    degil. Kilitli baslar; Turf gibi bir kez acilan kalir.
 LEAGUE_SKINS = (("premier", "Premier League"), ("laliga", "La Liga"), ("seriea", "Serie A"),
                 ("bundesliga", "Bundesliga"), ("ligue1", "Ligue 1"), ("euroleague", "EuroLeague"),
-                ("nba", "NBA"))
+                ("nba", "NBA"),
+                # Turkiye lansman paketi (2026-10-18): yeni Hunt ligleri.
+                ("bsl", "Basketbol Süper Ligi"), ("sultanlar", "Sultanlar Ligi"), ("efeler", "Efeler Ligi"))
 SKINS = (("default", "Default", None), ("broadsheet", "Broadsheet", None),
          ("holofoil", "Holofoil", None), ("ember", "Ember", None), ("ink", "Ink", None),
          ("stub", "Stub", None), ("chalk", "Chalk", None), ("scarf", "Scarf", None),
@@ -1036,7 +1026,7 @@ class CollectionIn(BaseModel):
     id: Optional[int] = Field(default=None, gt=0)
     title: str = Field(min_length=1, max_length=80)
     subtitle: str = Field(default="", max_length=160)
-    sport: Optional[Literal["Football", "Basketball"]] = None
+    sport: Optional[Literal["Football", "Basketball", "Volleyball"]] = None
     season: Optional[str] = Field(default=None, max_length=16)
     declared_total: Optional[int] = Field(default=None, ge=0, le=500)
     opens_note: Optional[str] = Field(default=None, max_length=160)
@@ -3464,7 +3454,7 @@ def watchalong_history(match_id: int, room: str = "community",
 # yok; sohbet soketi ise panel acilinca baglaniyor. Sure, baglantinin macin
 # CANLI penceresiyle ortusen kismi: baslama anindan itibaren, spora gore en
 # uzun mac suresiyle sinirli. Istemci sayi gonderip hile yapamaz.
-MATCH_SPAN_SECONDS = {"Football": 130 * 60, "Basketball": 180 * 60}
+MATCH_SPAN_SECONDS = {"Football": 130 * 60, "Basketball": 180 * 60, "Volleyball": 160 * 60}
 PRESENCE_FIRST_REPORT_SECONDS = 60
 
 

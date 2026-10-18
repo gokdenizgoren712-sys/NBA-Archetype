@@ -65,7 +65,8 @@ def test_catalog_shows_what_is_locked_and_what_fits_this_card(db):
     table = skins()
     assert list(table) == ["default", "broadsheet", "holofoil", "ember", "ink", "stub",
                            "chalk", "scarf", "scoreboard", "rain", "gilt", "turf", "floodlight",
-                           "premier", "laliga", "seriea", "bundesliga", "ligue1", "euroleague", "nba"]
+                           "premier", "laliga", "seriea", "bundesliga", "ligue1", "euroleague", "nba",
+                           "bsl", "sultanlar", "efeler"]
     assert table["turf"]["locked"] and table["floodlight"]["locked"] and not table["ember"]["locked"]
     assert table["gilt"]["available"] is False                          # kart yok
     classic = log(1, classic=True).json()["entry_id"]

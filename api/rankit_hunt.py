@@ -24,16 +24,18 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from . import rankit_rank
-from .rankit_live_sync import FOTMOB_LEAGUES
+from . import rankit_competitions as rc
 
 # Cift devreli ligler: senkronun "league" dedigi futbol ligleri + EuroLeague
 # normal sezonu. Kupalar ve UEFA turnuvalari kulup sezonu degil.
-ROUND_ROBIN_LEAGUES = {name for name, sources in FOTMOB_LEAGUES.items()
-                       if any(kind == "league" for _id, kind in sources)} | {"EuroLeague"}
+# Kayittaki tum "league" modlu yarismalar (Sultanlar Ligi, BSL... dahil).
+ROUND_ROBIN_LEAGUES = rc.round_robin_names()
 FIXED_SEASON_GAMES = {"NBA": 82}
 # EuroLeague'de normal sezon "Round N" asamasi (tablo da bu filtreyi kullaniyor);
 # play-in / playoff / Final Four "her mac" hedefini uzatmaz.
-STAGE_FILTER = {"EuroLeague": "Round %"}
+STAGE_FILTER = {"EuroLeague": "Round %",
+                # SofaScore liglerinde normal sezon "Matchday N"; playoff haric.
+                **{c.name: "Matchday %" for c in rc.of("sofascore") if c.mode == "league"}}
 KINDS = ("curated", "club_season", "classics_year")
 
 
@@ -42,6 +44,10 @@ def is_league(name: str) -> bool:
 
 
 def _stage(name: str, alias: str = "m") -> tuple[str, list]:
+    if name == "NBA":
+        # NBA'de 82 maclik normal sezon: Play-In ve playoff sayilmaz. Asama
+        # 2026-10'dan once yazilmiyordu; asamasiz eski satir normal sezon.
+        return (f" AND ({alias}.stage IS NULL OR {alias}.stage LIKE 'Regular Season%')", [])
     pattern = STAGE_FILTER.get(name)
     return (f" AND {alias}.stage LIKE ?", [pattern]) if pattern else ("", [])
 

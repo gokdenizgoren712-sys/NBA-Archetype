@@ -142,6 +142,9 @@ def test_refresh_records_runs_and_success(fresh_db, monkeypatch):
 
     _fake_fotmob(monkeypatch)
     monkeypatch.setattr(rs, "sync_euroleague", lambda season: {"matches": 0})
+    monkeypatch.setattr(rs, "sync_eurocup", lambda season: {"matches": 0})
+    monkeypatch.setattr(rs, "sync_nba", lambda season, max_age_hours=None: {"matches": 0})
+    monkeypatch.setattr(rs, "sync_sofascore", lambda season: {"matches": 0})
     out = catalog.refresh_catalog(datetime(2026, 9, 15, 12, 0))
     assert out == {"seasons": ["2026-27"], "ok": True}
     with db.get_conn() as conn:
@@ -149,7 +152,9 @@ def test_refresh_records_runs_and_success(fresh_db, monkeypatch):
             "SELECT provider, season, ok FROM rankit_sync_runs ORDER BY id").fetchall()]
         state = conn.execute("SELECT last_success FROM rankit_sync_state WHERE job_name=?",
                              (catalog.REFRESH_JOB,)).fetchone()
-    assert runs == [("euroleague", "2026-27", 1), ("football", "2026-27", 1)]
+    # NBA ve SofaScore da otomatik turda (2026-10-18: NBA fikstürü eskiden hiç taranmıyordu).
+    assert runs == [("euroleague", "2026-27", 1), ("eurocup", "2026-27", 1), ("football", "2026-27", 1),
+                    ("nba", "2026-27", 1), ("sofascore", "2026-27", 1)]
     assert state["last_success"]
 
 

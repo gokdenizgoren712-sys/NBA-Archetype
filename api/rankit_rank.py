@@ -56,7 +56,7 @@ DEFAULT_RULES = [
 RESPECT_CAP_PER_REVIEW = 50
 
 # Sahibin kurali. Futbol yarisi 45 dakika; NBA ceyregi 12 dakika, iki ceyrek 24.
-PRESENCE_SECONDS = {"Football": 45 * 60, "Basketball": 24 * 60}
+PRESENCE_SECONDS = {"Football": 45 * 60, "Basketball": 24 * 60, "Volleyball": 40 * 60}
 PRESENCE_DEFAULT = 45 * 60
 
 
