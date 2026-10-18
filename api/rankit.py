@@ -134,7 +134,8 @@ LEAGUE_SKINS = (("premier", "Premier League"), ("laliga", "La Liga"), ("seriea",
                 ("bundesliga", "Bundesliga"), ("ligue1", "Ligue 1"), ("euroleague", "EuroLeague"),
                 ("nba", "NBA"),
                 # Turkiye lansman paketi (2026-10-18): yeni Hunt ligleri.
-                ("bsl", "Basketbol Süper Ligi"), ("sultanlar", "Sultanlar Ligi"), ("efeler", "Efeler Ligi"))
+                ("superlig", "Süper Lig"), ("bsl", "Basketbol Süper Ligi"),
+                ("sultanlar", "Sultanlar Ligi"), ("efeler", "Efeler Ligi"))
 SKINS = (("default", "Default", None), ("broadsheet", "Broadsheet", None),
          ("holofoil", "Holofoil", None), ("ember", "Ember", None), ("ink", "Ink", None),
          ("stub", "Stub", None), ("chalk", "Chalk", None), ("scarf", "Scarf", None),

@@ -131,7 +131,7 @@ def test_registry_is_the_single_source_and_keeps_the_old_lists():
     assert rs.FOOTBALL_LEAGUES["champions-league-qualification"] == (10611, "UEFA Champions League", "Europe", "qualifying")
     assert live.FOTMOB_LEAGUES["UEFA Europa League"] == [(73, "uefa"), (10613, "qualifying")]
     assert rk.FOTMOB_LEAGUE_IDS["UEFA Conference League"] == [10216, 10615]
-    for added in ("EFL Cup", "FA Community Shield", "Supercopa de España", "Supercoppa Italiana",
+    for added in ("Süper Lig", "Turkish Cup", "EFL Cup", "FA Community Shield", "Supercopa de España", "Supercoppa Italiana",
                   "DFL-Supercup", "Trophée des Champions"):
         assert added in live.FOTMOB_LEAGUES, added
     keys = [c.key for c in rc.COMPETITIONS]
@@ -162,6 +162,12 @@ def test_registry_is_the_single_source_and_keeps_the_old_lists():
     ("tr-basketball-cup", "Türkiye Kupası", True),
     ("tr-basketball-cup", "Cumhurbaşkanlığı Kupası", False),
     ("tr-basketball-supercup", "Cumhurbaşkanlığı Kupası", True),
+    ("super-lig", "Süper Lig", True),
+    ("super-lig", "Trendyol Süper Lig", True),
+    ("super-lig", "1. Lig", False),
+    ("turkish-cup", "Turkish Cup", True),
+    ("turkish-cup", "Ziraat Türkiye Kupası", True),
+    ("turkish-cup", "Turkish Super Cup", False),
     ("efl-cup", "Carabao Cup", True),
     ("efl-cup", "Eredivisie", False),
 ])

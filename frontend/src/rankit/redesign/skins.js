@@ -31,7 +31,7 @@ export const FREE_SKINS = ["default", "broadsheet", "holofoil", "ember", "ink", 
 export const LEAGUE_SKINS = {
   premier: "Premier League", laliga: "La Liga", seriea: "Serie A", bundesliga: "Bundesliga",
   ligue1: "Ligue 1", euroleague: "EuroLeague", nba: "NBA",
-  bsl: "Basketbol Süper Ligi", sultanlar: "Sultanlar Ligi", efeler: "Efeler Ligi",
+  superlig: "Süper Lig", bsl: "Basketbol Süper Ligi", sultanlar: "Sultanlar Ligi", efeler: "Efeler Ligi",
 };
 export const SKIN_ORDER = [...FREE_SKINS, "gilt", "turf", "floodlight", ...Object.keys(LEAGUE_SKINS)];
 
@@ -191,6 +191,11 @@ export function skinTokens(id, { homeColor = "#3a3f47", awayColor = "#2a2e34" } 
       return { ...DARK, base: "linear-gradient(180deg,rgba(10,6,3,.1),rgba(10,6,3,.55)),repeating-linear-gradient(90deg,#5a3519 0 11%,#4e2d14 11% 22%,#633b1c 22% 33%)",
         wash: "linear-gradient(90deg,transparent 30%,rgba(255,255,255,.14) 30% 30.8%,transparent 30.8% 69.2%,rgba(255,255,255,.14) 69.2% 70%,transparent 70%)",
         eyebrow: "rgba(245,228,210,.72)", notch: "rgba(255,255,255,.26)", gap: "#4a2b14" };
+    case "superlig":
+      // Gece kırmızısı, alt kenarda ince beyaz bir çizgi.
+      return { ...DARK, base: "linear-gradient(150deg,#9e0f1c,#2c0408 72%)",
+        wash: "linear-gradient(90deg,rgba(255,255,255,.75),rgba(255,255,255,.75)) 0 100%/100% 3px no-repeat",
+        eyebrow: "rgba(255,222,222,.74)", notch: "rgba(255,255,255,.26)", gap: "#62080f" };
     case "bsl":
       // Gece lacivert ve köşeden kırmızı bir parke çizgisi.
       return { ...DARK, base: "linear-gradient(150deg,#14284f,#070d1c 72%)",

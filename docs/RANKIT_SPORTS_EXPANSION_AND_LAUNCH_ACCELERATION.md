@@ -100,7 +100,7 @@ Sahibin kararı: lansman Türkiye'de güçlü bir kapsamla yapılacak. Voleybol 
 | **EFL Cup**, **Community Shield**, **Supercopa de España**, **Supercoppa Italiana**, **DFL-Supercup**, **Trophée des Champions** | Futbol | FotMob | Mevcut liglerin eksik ulusal kupaları (FA Cup, Copa del Rey, Coppa Italia, DFB-Pokal, Coupe de France zaten var) |
 | **NBA eksikleri** | Basketbol | nba_api | Fikstür otomatik taramaya girer; aşama (NBA Cup, Play-In, playoff) yazılır |
 
-**Açık soru:** futbolda Süper Lig + Türkiye Kupası (FotMob'da var, yarım gün) bu pakete girsin mi? Türkiye lansmanında en çok sorulacak lig bu.
+**Futbolda Süper Lig + Türkiye Kupası** da pakete eklendi (FotMob, ad doğrulamalı; sahibin kararı 18 Ekim).
 
 **Güvenlik önlemleri** (kazınan kaynak için):
 - **Ad doğrulaması:** her yarışmanın sağlayıcıdaki adı kayıtta tutulan beklentiyle karşılaştırılır. Kimlik yanlışsa yanlış lig içeri alınmaz, tur günlüğe hata olarak yazılır.
@@ -216,7 +216,7 @@ Kapalı test 23 Ekim'e kadar başlamazsa Android tarihi gün gün kayar. Hedef a
 | # | Karar | Önerim |
 |---|---|---|
 | 1 | Veri yolu | ✅ **Karar verildi:** lansmanda SofaScore (voleybol, BSL, Türk kupaları) + FotMob + EuroLeague API; lisanslı sağlayıcıya geçiş lansman sonrası |
-| 2 | Futbolda Süper Lig + Türkiye Kupası lansmana girsin mi? | Evet; FotMob'dan yarım gün. **Senin onayını bekliyor** |
+| 2 | Futbolda Süper Lig + Türkiye Kupası | ✅ Eklendi (FotMob) |
 | 3 | Arma ve fotoğraflar (Paket E) | Lansmanda rozet; marka izni olmadan logo yok |
 | 4 | Hesap tipi | D-U-N-S hazır değilse bireysel |
 | 5 | iOS girişi | iOS'ta Google'ı gizle, Apple ile giriş v1.1'de |

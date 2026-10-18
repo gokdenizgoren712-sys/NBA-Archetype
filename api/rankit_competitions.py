@@ -59,6 +59,12 @@ COMPETITIONS: tuple[Competition, ...] = (
     C("coppa-italia", "Coppa Italia", "Football", "Italy", "fotmob", "cup", 141, ("coppa italia",)),
     C("dfb-pokal", "DFB-Pokal", "Football", "Germany", "fotmob", "cup", 209, ("pokal",)),
     C("coupe-de-france", "Coupe de France", "Football", "France", "fotmob", "cup", 134, ("coupe de france",)),
+    # Turkiye (2026-10-18, sahibin karari): Super Lig + Turkiye Kupasi. FotMob'da;
+    # kimlikler ad dogrulamasiyla korunuyor (yanlissa lig atlanir, gunluge yazilir).
+    C("super-lig", "Süper Lig", "Football", "Turkey", "fotmob", "league", 71, ("super lig",),
+      ("1. lig", "1 lig", "women", "kadin")),
+    C("turkish-cup", "Turkish Cup", "Football", "Turkey", "fotmob", "cup", 151,
+      ("turkish cup", "turkiye kupasi", "ziraat"), ("super cup", "super kupa")),
     # Ulusal kupalarin eksikleri (2026-10-18). Kimlikler ad dogrulamasiyla korunuyor.
     C("efl-cup", "EFL Cup", "Football", "England", "fotmob", "cup", 133, ("efl cup", "league cup", "carabao")),
     C("community-shield", "FA Community Shield", "Football", "England", "fotmob", "supercup", 247, ("community shield",)),
