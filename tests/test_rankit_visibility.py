@@ -215,11 +215,14 @@ def test_rewatch_keeps_the_award_while_another_entry_is_rated(db):
 # (3) Beklenen isi: izleme listesine ekleyenin 1-5 okumasi
 
 def _upcoming(mid=3):
+    # Sabit tarih zamanla gecmise dusup testi kiriyordu: hep bir hafta sonrasi.
+    from datetime import datetime, timedelta, timezone
+    kickoff = (datetime.now(timezone.utc) + timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%S")
     with DB.get_conn() as c:
         c.execute("""INSERT INTO rankit_matches(id,sport,competition_id,season,starts_at,status,
                      home_team_id,away_team_id,provider)
-                     VALUES(?,'Football',1,'2026-27','2026-10-13T19:00:00','upcoming',1,2,'fotmob')""",
-                  (mid,))
+                     VALUES(?,'Football',1,'2026-27',?,'upcoming',1,2,'fotmob')""",
+                  (mid, kickoff))
     return mid
 
 

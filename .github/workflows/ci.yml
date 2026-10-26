@@ -27,7 +27,7 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
-      - run: pip install -r requirements.txt pytest
+      - run: pip install -r requirements.txt pytest beautifulsoup4 lxml   # bs4 yalnız fetch-time scraper testleri için (runtime değil)
       - name: pytest (geçici DB, arka plan işleri kapalı)
         env:
           DB_PATH: ${{ runner.temp }}/ci.db
